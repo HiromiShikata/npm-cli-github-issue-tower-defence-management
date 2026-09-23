@@ -1870,6 +1870,74 @@ describe('ConsolePage auto-advance tab', () => {
     expect(localStorage.getItem('console-story-show-gray')).toBe('true');
   });
 
+  it('renders the new story in the list immediately after handleStoryAdd succeeds without waiting for a poll cycle', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                },
+              ],
+              defaultNameWithOwner: 'o/r',
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/addstory') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            stories: [
+              { id: 'st1', name: 'TDPM Console port', color: 'BLUE', description: '' },
+              { id: 'st_new', name: 'My brand new story', color: 'RED', description: '' },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByRole, getByPlaceholderText, findByText } = render(
+      <ConsolePage />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Add story' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    fireEvent.change(getByPlaceholderText('Story name'), {
+      target: { value: 'My brand new story' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+
+    expect(await findByText('My brand new story')).toBeInTheDocument();
+  });
+
   it('does not navigate to the next project automatically when prs count drops to zero on data refresh in timer mode', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',

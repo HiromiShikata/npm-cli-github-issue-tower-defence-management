@@ -456,6 +456,31 @@ describe('postConsoleAddStory', () => {
     });
   });
 
+  it('returns the stories array from the response body', async () => {
+    const stories = [
+      { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
+      { id: 'opt_new', name: 'My new story', color: 'RED', description: '' },
+    ];
+    mockFetchOnce({ ok: true, stories });
+    const result = await postConsoleAddStory({
+      pjcode: 'acme',
+      storyName: 'My new story',
+    });
+    expect(result).toEqual([
+      { id: 'opt_first', name: 'First story', color: 'BLUE' },
+      { id: 'opt_new', name: 'My new story', color: 'RED' },
+    ]);
+  });
+
+  it('returns an empty array when the response body has no stories field', async () => {
+    mockFetchOnce({ ok: true });
+    const result = await postConsoleAddStory({
+      pjcode: 'acme',
+      storyName: 'My new story',
+    });
+    expect(result).toEqual([]);
+  });
+
   it('throws the error reason surfaced by the server', async () => {
     mockFetchFailureOnce(
       400,
