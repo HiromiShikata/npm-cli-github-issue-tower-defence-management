@@ -1,3 +1,10 @@
+# [2.136.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.12...v2.136.0) (2026-09-23)
+
+
+### Features
+
+* **console:** add Edit button to task-create dialog to restore draft in full create dialog ([#2522](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2522)) ([bc26c22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bc26c2203046d6c0f084fbff005aadc537305203))
+
 ## [2.135.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.11...v2.135.12) (2026-09-23)
 
 
