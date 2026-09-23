@@ -3,6 +3,14 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+
+jest.mock('zlib', () => ({
+  ...jest.requireActual<typeof import('zlib')>('zlib'),
+}));
+
+const gunzipAsync = promisify(zlib.gunzip);
 import { mock } from 'jest-mock-extended';
 import { parseAllDocuments } from 'yaml';
 import {
@@ -3544,6 +3552,176 @@ describe('webServer aborted error without ECONNRESET code', () => {
       consoleSpy.mockRestore();
       consoleInfoSpy.mockRestore();
       server.close();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('webServer sendDataResponse gzip compression', () => {
+  const testToken = 'gzip-test-token';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+
+  const requestRaw = (
+    server: http.Server,
+    requestPath: string,
+    headers: Record<string, string> = {},
+  ): Promise<{
+    statusCode: number;
+    rawBuffer: Buffer;
+    contentEncoding: string | undefined;
+    contentType: string | undefined;
+  }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const { port } = address;
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: '127.0.0.1', port, path: requestPath, headers },
+        (res) => {
+          const chunks: Uint8Array[] = [];
+          res.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              statusCode: res.statusCode ?? 0,
+              rawBuffer: Buffer.concat(chunks),
+              contentEncoding: res.headers['content-encoding'],
+              contentType: res.headers['content-type'],
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+  };
+
+  const smallBodyJson = JSON.stringify({
+    pjcode: 'acme',
+    items: [{ projectItemId: 'PVTI_1' }],
+  });
+
+  const setupServer = async (
+    bodyJson: string,
+  ): Promise<{ server: http.Server; tmpDir: string }> => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-gz-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const listDir = path.join(dataDir, 'acme', 'prs');
+    fs.mkdirSync(listDir, { recursive: true });
+    fs.writeFileSync(path.join(listDir, 'list.json'), bodyJson);
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    return { server, tmpDir };
+  };
+
+  const dataPath = `/projects/acme/prs/list.json?k=${testToken}`;
+
+  const compressionCases: Array<{
+    acceptEncoding: string | undefined;
+    expectGzip: boolean;
+  }> = [
+    { acceptEncoding: 'gzip', expectGzip: true },
+    { acceptEncoding: 'gzip, deflate', expectGzip: true },
+    { acceptEncoding: 'deflate', expectGzip: false },
+    { acceptEncoding: undefined, expectGzip: false },
+  ];
+
+  it('compresses with gzip when requested and serves uncompressed otherwise', async () => {
+    const { server, tmpDir } = await setupServer(smallBodyJson);
+    try {
+      for (const { acceptEncoding, expectGzip } of compressionCases) {
+        const headers: Record<string, string> = {};
+        if (acceptEncoding !== undefined) {
+          headers['accept-encoding'] = acceptEncoding;
+        }
+        const response = await requestRaw(server, dataPath, headers);
+        expect(response.statusCode).toBe(200);
+        if (expectGzip) {
+          expect(response.contentEncoding).toBe('gzip');
+          const decompressed = await gunzipAsync(response.rawBuffer);
+          expect(decompressed.toString('utf-8')).toBe(smallBodyJson);
+        } else {
+          expect(response.contentEncoding).toBeUndefined();
+          expect(response.rawBuffer.toString('utf-8')).toBe(smallBodyJson);
+        }
+      }
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('compresses a large body and decompresses to original content', async () => {
+    const largeItems = Array.from({ length: 3200 }, (_, i) => ({
+      projectItemId: `PVTI_${String(i).padStart(10, '0')}`,
+      padding: 'x'.repeat(100),
+    }));
+    const largeBodyJson = JSON.stringify({ pjcode: 'acme', items: largeItems });
+    expect(largeBodyJson.length).toBeGreaterThan(400 * 1024);
+
+    const { server, tmpDir } = await setupServer(largeBodyJson);
+    try {
+      const response = await requestRaw(server, dataPath, {
+        'accept-encoding': 'gzip',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.contentEncoding).toBe('gzip');
+      expect(response.rawBuffer.length).toBeLessThan(largeBodyJson.length);
+      const decompressed = await gunzipAsync(response.rawBuffer);
+      expect(decompressed.toString('utf-8')).toBe(largeBodyJson);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to uncompressed response when gzip compression fails', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const zlibMock = jest.requireMock<typeof import('zlib')>('zlib');
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      zlibMock,
+      'gzip',
+    );
+    Object.defineProperty(zlibMock, 'gzip', {
+      value: (_buf: zlib.InputType, callback: zlib.CompressCallback): void => {
+        callback(new Error('test gzip failure'), Buffer.alloc(0));
+      },
+      writable: true,
+      configurable: true,
+    });
+    const { server, tmpDir } = await setupServer(smallBodyJson);
+    try {
+      const response = await requestRaw(server, dataPath, {
+        'accept-encoding': 'gzip',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.contentEncoding).toBeUndefined();
+      expect(response.rawBuffer.toString('utf-8')).toBe(smallBodyJson);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'gzip compression failed',
+        expect.any(Error),
+      );
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(zlibMock, 'gzip', originalDescriptor);
+      }
+      consoleSpy.mockRestore();
+      await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
