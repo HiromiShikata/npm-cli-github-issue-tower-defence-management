@@ -2043,9 +2043,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('reopenIssueByUrl sends PATCH with state open and resolves on success', async () => {
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify({ state: 'open' }), { status: 200 }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ state: 'open' }), { status: 200 }),
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       await repository.reopenIssueByUrl(
@@ -2063,12 +2065,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('reopenIssueByUrl throws with a clear message when the API responds with an error', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'Resource not accessible by integration' }),
-          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-        ),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Resource not accessible by integration',
+            }),
+            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+          ),
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(

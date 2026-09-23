@@ -85,7 +85,13 @@ describe('ReopenClosedStoryIssueUseCase', () => {
         'reopens closed story issue and updates storyIssue when story is non-regular and closed story issue with story label exists',
       storyNames: ['feature / X'],
       storyIssues: [null],
-      issues: [createMockIssue({ title: 'feature / X', isClosed: true, labels: ['story'] })],
+      issues: [
+        createMockIssue({
+          title: 'feature / X',
+          isClosed: true,
+          labels: ['story'],
+        }),
+      ],
       expectedReopenCallCount: 1,
       expectedStoryIssueClosedState: [false],
     },
@@ -95,7 +101,11 @@ describe('ReopenClosedStoryIssueUseCase', () => {
       storyNames: ['regular / NO STORY'],
       storyIssues: [null],
       issues: [
-        createMockIssue({ title: 'regular / NO STORY', isClosed: true, labels: ['story'] }),
+        createMockIssue({
+          title: 'regular / NO STORY',
+          isClosed: true,
+          labels: ['story'],
+        }),
       ],
       expectedReopenCallCount: 0,
       expectedStoryIssueClosedState: [null],
@@ -103,8 +113,16 @@ describe('ReopenClosedStoryIssueUseCase', () => {
     {
       description: 'skips when storyIssue is already set (open issue exists)',
       storyNames: ['feature / X'],
-      storyIssues: [createMockIssue({ isClosed: false, state: 'OPEN', stateReason: null })],
-      issues: [createMockIssue({ title: 'feature / X', isClosed: true, labels: ['story'] })],
+      storyIssues: [
+        createMockIssue({ isClosed: false, state: 'OPEN', stateReason: null }),
+      ],
+      issues: [
+        createMockIssue({
+          title: 'feature / X',
+          isClosed: true,
+          labels: ['story'],
+        }),
+      ],
       expectedReopenCallCount: 0,
       expectedStoryIssueClosedState: [false],
     },
@@ -112,7 +130,9 @@ describe('ReopenClosedStoryIssueUseCase', () => {
       description: 'skips when matching closed issue has no story label',
       storyNames: ['feature / X'],
       storyIssues: [null],
-      issues: [createMockIssue({ title: 'feature / X', isClosed: true, labels: [] })],
+      issues: [
+        createMockIssue({ title: 'feature / X', isClosed: true, labels: [] }),
+      ],
       expectedReopenCallCount: 0,
       expectedStoryIssueClosedState: [null],
     },
@@ -125,7 +145,8 @@ describe('ReopenClosedStoryIssueUseCase', () => {
       expectedStoryIssueClosedState: [null],
     },
     {
-      description: 'reopens both closed story issues when two non-regular stories each have a closed story issue',
+      description:
+        'reopens both closed story issues when two non-regular stories each have a closed story issue',
       storyNames: ['feature / X', 'feature / Y'],
       storyIssues: [null, null],
       issues: [
@@ -147,10 +168,17 @@ describe('ReopenClosedStoryIssueUseCase', () => {
       expectedStoryIssueClosedState: [false, false],
     },
     {
-      description: 'throws AggregateError and leaves storyIssue null when reopenIssueByUrl throws',
+      description:
+        'throws AggregateError and leaves storyIssue null when reopenIssueByUrl throws',
       storyNames: ['feature / X'],
       storyIssues: [null],
-      issues: [createMockIssue({ title: 'feature / X', isClosed: true, labels: ['story'] })],
+      issues: [
+        createMockIssue({
+          title: 'feature / X',
+          isClosed: true,
+          labels: ['story'],
+        }),
+      ],
       expectedReopenCallCount: 1,
       expectedStoryIssueClosedState: [null],
       expectedToThrow: true,
