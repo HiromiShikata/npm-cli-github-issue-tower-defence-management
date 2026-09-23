@@ -675,6 +675,21 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (rejections.length <= 0) {
+      const effectiveDeveloperAgentNames = params.developerAgentNames ?? [];
+      const isNonDeveloperTask =
+        issue.agent !== null &&
+        !effectiveDeveloperAgentNames.includes(issue.agent);
+      if (isNonDeveloperTask) {
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        return;
+      }
       await this.changeTargetPullRequestApprover.approveIfConfined(
         issue.labels,
         approvedPrUrl,
