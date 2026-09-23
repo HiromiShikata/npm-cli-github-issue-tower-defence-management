@@ -646,6 +646,7 @@ const createStubIssueRepository = (
   renameIssueCalls: ConsoleE2eRenameIssueCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
+  appendIssueToProjectCache: async (): Promise<void> => undefined,
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
     buildIssueForUrl(url),
   getIssueBodyByUrl: async (url: string): Promise<string | null> =>

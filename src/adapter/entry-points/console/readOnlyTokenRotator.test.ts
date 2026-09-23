@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import type { Issue } from '../../../domain/entities/Issue';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
@@ -201,6 +202,27 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       expect(repo1.deleteAllCommentsByUrl).not.toHaveBeenCalled();
       expect(repo2.deleteAllCommentsByUrl).not.toHaveBeenCalled();
+    });
+
+    it('delegates appendIssueToProjectCache to the write repository, not read repositories', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      writeRepo.appendIssueToProjectCache.mockResolvedValue(undefined);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const issue = mock<Issue>();
+      await rotating.appendIssueToProjectCache('proj-1', issue);
+
+      expect(writeRepo.appendIssueToProjectCache).toHaveBeenCalledWith(
+        'proj-1',
+        issue,
+      );
+      expect(repo1.appendIssueToProjectCache).not.toHaveBeenCalled();
+      expect(repo2.appendIssueToProjectCache).not.toHaveBeenCalled();
     });
   });
 });

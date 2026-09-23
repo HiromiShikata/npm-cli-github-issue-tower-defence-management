@@ -319,6 +319,7 @@ export class HandleScheduledEventUseCase {
       storyObject.storyIssue = newIssue;
       issues.push(newIssue);
       storyObject.issues.push(newIssue);
+      await this.issueRepository.appendIssueToProjectCache(projectId, newIssue);
       console.log(
         `[HandleScheduledEvent] Story issue created: story="${storyObject.story.name}" elapsed=${Date.now() - storyStartTime}ms`,
       );
