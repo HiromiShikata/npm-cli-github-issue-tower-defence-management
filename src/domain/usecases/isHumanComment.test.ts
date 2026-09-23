@@ -8,6 +8,7 @@ import {
   CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD,
   DEPENDENCY_REMOVED_COMMENT_HEAD,
   DEPENDED_ISSUE_URLS_COMMENT_HEAD,
+  REACTIVATION_TRIGGER_COMMENT_HEAD,
   SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
@@ -113,8 +114,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content:
-            'Reactivation trigger fields have been set:\n- Depended Issue URL: https://github.com/owner/repo/issues/1\n- Next Action Date: 2026-09-25\n- Next Action Hour: not set',
+          content: `${REACTIVATION_TRIGGER_COMMENT_HEAD}\n- Depended Issue URL: https://github.com/owner/repo/issues/1\n- Next Action Date: 2026-09-25\n- Next Action Hour: not set`,
         },
         trustAll,
       ),

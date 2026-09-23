@@ -38,6 +38,7 @@ import {
   isAgentReportBody,
   isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
+import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -1150,7 +1151,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         : 'not set';
     const nextActionHourValue =
       issue.nextActionHour !== null ? String(issue.nextActionHour) : 'not set';
-    return `Reactivation trigger fields have been set:\n- Depended Issue URL: ${dependedIssueUrlValue}\n- Next Action Date: ${nextActionDateValue}\n- Next Action Hour: ${nextActionHourValue}`;
+    return `${REACTIVATION_TRIGGER_COMMENT_HEAD}\n- Depended Issue URL: ${dependedIssueUrlValue}\n- Next Action Date: ${nextActionDateValue}\n- Next Action Hour: ${nextActionHourValue}`;
   };
 
   private createCommentWithDedup = async (
