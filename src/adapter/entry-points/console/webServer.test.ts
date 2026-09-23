@@ -1298,7 +1298,7 @@ describe('webServer new routes integration', () => {
         { pjcode: 'acme', storyName: 'My new story' },
       );
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body)).toEqual({ ok: true });
+      expect(JSON.parse(response.body)).toEqual({ ok: true, stories: [] });
       expect(updateStoryList).toHaveBeenCalledWith(projectWithStory, [
         {
           id: 'opt_blue',
