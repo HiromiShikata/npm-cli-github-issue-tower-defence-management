@@ -7026,13 +7026,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
 
       expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
-      const [, savedValue] =
-        localStorageCacheRepository.setSingle.mock.calls[0];
-      const saved = savedValue as { issues: Issue[] };
-      expect(saved.issues).toHaveLength(2);
-      expect(saved.issues.find((i) => i.url === newIssue.url)).toMatchObject({
-        url: newIssue.url,
-        title: newIssue.title,
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        issues: [
+          expect.objectContaining({ url: existingIssue.url }),
+          expect.objectContaining({ url: newIssue.url, title: newIssue.title }),
+        ],
       });
     });
 
@@ -7044,14 +7043,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
 
-      const [, savedValue] =
-        localStorageCacheRepository.setSingle.mock.calls[0];
-      const saved = savedValue as {
-        storyIssueUrlByOptionName: Record<string, string>;
-      };
-      expect(saved.storyIssueUrlByOptionName['feature / NewStory']).toBe(
-        newIssue.url,
-      );
+      const cacheWrite2 = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite2).toMatchObject({
+        storyIssueUrlByOptionName: { 'feature / NewStory': newIssue.url },
+      });
     });
 
     it('does nothing when the cache is absent', async () => {

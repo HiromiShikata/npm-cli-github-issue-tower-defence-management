@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import type { Issue } from '../../../domain/entities/Issue';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
@@ -213,9 +214,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
         [repo1, repo2],
         writeRepo,
       );
-      const issue = {} as Parameters<
-        IssueRepository['appendIssueToProjectCache']
-      >[1];
+      const issue = mock<Issue>();
       await rotating.appendIssueToProjectCache('proj-1', issue);
 
       expect(writeRepo.appendIssueToProjectCache).toHaveBeenCalledWith(
