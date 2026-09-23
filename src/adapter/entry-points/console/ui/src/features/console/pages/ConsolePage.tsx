@@ -175,7 +175,8 @@ export const ConsolePage = () => {
   const loadedTabs = useMemo(() => {
     const result = new Set<ConsoleTabName>();
     for (const tab of CONSOLE_TABS) {
-      if (snapshots[tab.name] !== null) {
+      const snapshot = snapshots[tab.name];
+      if (snapshot !== null && !snapshot.fromCache) {
         result.add(tab.name);
       }
     }

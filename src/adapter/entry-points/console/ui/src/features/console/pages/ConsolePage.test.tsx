@@ -3236,3 +3236,76 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 });
+
+describe('ConsolePage stale cache snapshot tab lock', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  it('keeps todo-by-human as the active tab when its snapshot is served from the browser Cache API with zero items while prs has fresh items', async () => {
+    const cachedTodoPayload = { ...listPayload('todo-by-human'), items: [] };
+    const mockCache = {
+      put: jest.fn(),
+      match: jest.fn(async (url: string) =>
+        url.includes('/todo-by-human/')
+          ? new Response(JSON.stringify(cachedTodoPayload), {
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : undefined,
+      ),
+    };
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: { open: jest.fn(async () => mockCache) },
+    });
+
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'todo-by-human') {
+          throw new Error('Network unavailable');
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    render(<ConsolePage />);
+
+    await waitFor(() => {
+      expect(
+        within(tabBar())
+          .getByText('Awaiting Owner')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+    });
+    await act(async () => {});
+    expect(window.location.pathname).toBe('/projects/acme/todo-by-human');
+  });
+});
