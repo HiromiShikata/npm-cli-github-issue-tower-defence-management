@@ -2678,6 +2678,39 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should route non-developer agent completing with no routing signal to Awaiting Workspace', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      labels: [],
+      agent: 'chore',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: '```json\n{}\n```' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Owner' }),
+      mockProject,
+    );
+  });
+
   it('should still check for report comment even when issue has llm-agent:research label', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
