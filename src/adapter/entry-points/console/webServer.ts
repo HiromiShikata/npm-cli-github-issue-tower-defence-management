@@ -1,6 +1,10 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+
+const gzipAsync = promisify(zlib.gzip);
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -441,12 +445,37 @@ const handleImageProxy = async (
   sendImage(response, result.contentType, result.body);
 };
 
-const sendDataResponse = (
+const sendDataResponse = async (
+  request: http.IncomingMessage,
   response: http.ServerResponse,
   statusCode: number,
   contentType: string,
   body: string,
-): void => {
+): Promise<void> => {
+  const acceptEncoding = request.headers['accept-encoding'];
+  const acceptsGzip =
+    typeof acceptEncoding === 'string' &&
+    acceptEncoding
+      .split(',')
+      .some(
+        (encoding) =>
+          encoding.trim().split(';')[0].trim().toLowerCase() === 'gzip',
+      );
+  if (acceptsGzip) {
+    try {
+      const compressed = await gzipAsync(body);
+      response.writeHead(statusCode, {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+        'Content-Encoding': 'gzip',
+        'Content-Length': String(compressed.length),
+      });
+      response.end(compressed);
+      return;
+    } catch (error) {
+      console.error('gzip compression failed', error);
+    }
+  }
   response.writeHead(statusCode, {
     'Content-Type': contentType,
     'Cache-Control': 'no-store',
@@ -950,7 +979,8 @@ const handleTokenedRequest = async (
         options.consoleDataOutputDir,
         dataRoute,
       );
-      sendDataResponse(
+      await sendDataResponse(
+        request,
         response,
         dataResponse.statusCode,
         dataResponse.contentType,
