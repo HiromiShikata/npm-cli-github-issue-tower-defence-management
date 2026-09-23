@@ -1,3 +1,10 @@
+## [2.140.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.1...v2.140.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** route non-developer agents to Awaiting Workspace on empty completion ([#2537](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2537)) ([ccb2187](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ccb2187f38841ce611aad308e0bcfd026a233f79)), closes [HiromiShikata/secretary#6841](https://github.com/HiromiShikata/secretary/issues/6841)
+
 ## [2.140.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.0...v2.140.1) (2026-09-23)
 
 
