@@ -6973,6 +6973,115 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('appendIssueToProjectCache', () => {
+    const newIssue: Issue = {
+      nameWithOwner: 'test-org/test-repo',
+      number: 99,
+      title: 'feature / NewStory',
+      state: 'OPEN',
+      status: 'Preparation',
+      story: 'feature / NewStory',
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      url: 'https://github.com/test-org/test-repo/issues/99',
+      assignees: [],
+      labels: ['story'],
+      org: 'test-org',
+      repo: 'test-repo',
+      body: '',
+      itemId: 'item-99',
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      agent: null,
+      stateReason: null,
+    };
+
+    const existingIssue = buildCachedIssueRecord(
+      'https://github.com/test-org/test-repo/issues/1',
+      'Existing Issue',
+    );
+
+    const baseCache = {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: buildTestProject('proj-cache-test'),
+      issues: [existingIssue],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    };
+
+    it('appends the issue to the cache issues array when cache exists and issue is not present', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(baseCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
+      const [, savedValue] =
+        localStorageCacheRepository.setSingle.mock.calls[0];
+      const saved = savedValue as { issues: Issue[] };
+      expect(saved.issues).toHaveLength(2);
+      expect(saved.issues.find((i) => i.url === newIssue.url)).toMatchObject({
+        url: newIssue.url,
+        title: newIssue.title,
+      });
+    });
+
+    it('updates storyIssueUrlByOptionName to include the new story issue', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(baseCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
+
+      const [, savedValue] =
+        localStorageCacheRepository.setSingle.mock.calls[0];
+      const saved = savedValue as {
+        storyIssueUrlByOptionName: Record<string, string>;
+      };
+      expect(saved.storyIssueUrlByOptionName['feature / NewStory']).toBe(
+        newIssue.url,
+      );
+    });
+
+    it('does nothing when the cache is absent', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+
+      await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the issue URL is already present in the cache', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const cacheWithIssue = {
+        ...baseCache,
+        issues: [
+          existingIssue,
+          { ...buildCachedIssueRecord(newIssue.url, newIssue.title) },
+        ],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(cacheWithIssue);
+
+      await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getIssueByUrl', () => {
     it('returns the cached issue without calling fetchProjectItemByUrl when a fresh cache entry matches the url', async () => {
       const {

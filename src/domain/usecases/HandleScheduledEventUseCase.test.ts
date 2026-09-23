@@ -881,16 +881,43 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       it('persists newly created story issue to project cache to prevent duplicate creation in subsequent daemon cycles', async () => {
+        const createdIssue: Issue = {
+          nameWithOwner: 'test-org/test-repo',
+          number: 99,
+          title: 'feature / StoryOne',
+          state: 'OPEN',
+          status: 'Preparation',
+          story: 'feature / StoryOne',
+          nextActionDate: null,
+          nextActionHour: null,
+          estimationMinutes: null,
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          url: 'https://github.com/test-org/test-repo/issues/99',
+          assignees: [],
+          labels: ['story'],
+          org: 'test-org',
+          repo: 'test-repo',
+          body: '',
+          itemId: 'item-99',
+          isPr: false,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          agent: null,
+          stateReason: null,
+        };
+        mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();
         await runPromise;
 
         expect(
           mockIssueRepository.appendIssueToProjectCache,
-        ).toHaveBeenCalledWith(
-          'project-1',
-          expect.objectContaining({ itemId: 'item-99' }),
-        );
+        ).toHaveBeenCalledWith('project-1', createdIssue);
       });
 
       it('should not create a new story issue when a closed story issue already exists', async () => {
