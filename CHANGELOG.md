@@ -1,3 +1,10 @@
+# [2.140.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.2...v2.140.0) (2026-09-23)
+
+
+### Features
+
+* **ReopenClosedStoryIssueUseCase:** auto-reopen closed story tracking issues ([#2545](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2545)) ([85617b6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/85617b64fd0aa6ee8a2fe4fc791e094b37d61556)), closes [#2534](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2534)
+
 ## [2.139.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.1...v2.139.2) (2026-09-23)
 
 
