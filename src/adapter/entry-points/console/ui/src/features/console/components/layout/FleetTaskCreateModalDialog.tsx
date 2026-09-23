@@ -4,13 +4,17 @@ import { createPortal } from 'react-dom';
 export type FleetTaskCreateModalDialogProps = {
   onSubmit: (title: string) => Promise<void>;
   onClose: () => void;
+  initialTitle?: string;
+  onTitleChange?: (title: string) => void;
 };
 
 export const FleetTaskCreateModalDialog = ({
   onSubmit,
   onClose,
+  initialTitle,
+  onTitleChange,
 }: FleetTaskCreateModalDialogProps) => {
-  const [titleValue, setTitleValue] = useState('');
+  const [titleValue, setTitleValue] = useState(initialTitle ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -80,7 +84,10 @@ export const FleetTaskCreateModalDialog = ({
             className="console-fleet-task-create-dialog-input"
             aria-label="Title"
             value={titleValue}
-            onChange={(e) => setTitleValue(e.target.value)}
+            onChange={(e) => {
+              setTitleValue(e.target.value);
+              onTitleChange?.(e.target.value);
+            }}
             disabled={submitting}
           />
           {submitError !== null && (

@@ -3458,6 +3458,69 @@ describe('ConsolePage workflow issue creation', () => {
       jest.useRealTimers();
     }
   });
+
+  it('preserves the draft title when the fleet task dialog is closed without creating', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByRole, queryByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRole('button', { name: 'Create fleet task' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+    await waitFor(() => {
+      expect(getByRole('dialog')).toBeInTheDocument();
+    });
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Draft fleet task' },
+    });
+    fireEvent.click(getByRole('button', { name: /cancel/i }));
+    await waitFor(() => {
+      expect(queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+    await waitFor(() => {
+      expect(getByRole('dialog')).toBeInTheDocument();
+    });
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'Draft fleet task',
+    );
+  });
+
+  it('resets the draft title to empty after the fleet task dialog is submitted', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const { getByRole, queryByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Fleet task to submit' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await waitFor(() => {
+        expect(queryByRole('dialog')).not.toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      expect(getByRole('textbox', { name: /title/i })).toHaveValue('');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage stale cache snapshot tab lock', () => {
