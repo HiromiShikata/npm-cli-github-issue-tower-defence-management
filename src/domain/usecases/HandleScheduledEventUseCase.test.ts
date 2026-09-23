@@ -30,6 +30,7 @@ import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -130,6 +131,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockAdvanceQualityCheckUseCase = mock<QualityCheckAdvanceUseCase>();
     const mockReopenedDoneIssueRevertUseCase =
       mock<ReopenedDoneIssueRevertUseCase>();
+    const mockClosedStoryIssueReopenUseCase =
+      mock<ClosedStoryIssueReopenUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -160,6 +163,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockDailySecurityScanUseCase,
       mockAdvanceQualityCheckUseCase,
       mockReopenedDoneIssueRevertUseCase,
+      mockClosedStoryIssueReopenUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -910,6 +914,68 @@ describe('HandleScheduledEventUseCase', () => {
           project: storyProject,
           cacheUsed: false,
         });
+        mockClosedStoryIssueReopenUseCase.run.mockResolvedValue(0);
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(mockClosedStoryIssueReopenUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issues: [closedStoryIssue],
+          }),
+        );
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+      });
+
+      it('skips story creation when closedStoryIssueReopenUseCase mutates storyIssue (mutation-based skip path)', async () => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: storyProject,
+          cacheUsed: false,
+        });
+        mockClosedStoryIssueReopenUseCase.run.mockImplementation(
+          async ({ storyObjectMap }) => {
+            for (const obj of storyObjectMap.values()) {
+              if (obj.storyIssue === null) {
+                obj.storyIssue = {
+                  nameWithOwner: 'test-org/test-repo',
+                  number: 99,
+                  title: obj.story.name,
+                  state: 'OPEN',
+                  status: 'Todo',
+                  story: null,
+                  nextActionDate: null,
+                  nextActionHour: null,
+                  estimationMinutes: null,
+                  dependedIssueUrls: [],
+                  completionDate50PercentConfidence: null,
+                  url: 'https://github.com/test-org/test-repo/issues/99',
+                  assignees: [],
+                  labels: ['story'],
+                  org: 'test-org',
+                  repo: 'test-repo',
+                  body: '',
+                  itemId: 'item-99',
+                  isPr: false,
+                  isInProgress: false,
+                  isClosed: false,
+                  createdAt: new Date('2024-01-01T00:00:00Z'),
+                  author: '',
+                  closingIssueReferenceUrls: [],
+                  agent: null,
+                  stateReason: 'REOPENED',
+                };
+              }
+            }
+            return 1;
+          },
+        );
 
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();
@@ -1963,6 +2029,35 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
       });
     });
+
+    describe('closedStoryIssueReopenUseCase', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('continues the cycle when closedStoryIssueReopenUseCase.run rejects', async () => {
+        mockClosedStoryIssueReopenUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GitHub API error')],
+            'Failed to reopen 1 story issue(s)',
+          ),
+        );
+
+        await useCase.run(baseInput);
+
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('storyIssues', () => {
@@ -1991,6 +2086,7 @@ describe('HandleScheduledEventUseCase', () => {
       null,
       mock<QualityCheckAdvanceUseCase>(),
       mock<ReopenedDoneIssueRevertUseCase>(),
+      mock<ClosedStoryIssueReopenUseCase>(),
       mock<DateRepository>(),
       mock<SpreadsheetRepository>(),
       mock<ProjectRepository>(),

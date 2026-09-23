@@ -38,6 +38,7 @@ import {
 } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
@@ -141,6 +142,7 @@ export class HandleScheduledEventUseCase {
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
     readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
+    readonly closedStoryIssueReopenUseCase: ClosedStoryIssueReopenUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -250,6 +252,17 @@ export class HandleScheduledEventUseCase {
       project,
       issues,
     });
+    try {
+      await this.closedStoryIssueReopenUseCase.run({
+        issues,
+        storyObjectMap: storyIssues,
+      });
+    } catch (reopenError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to reopen closed story issues for project ${project.url}: ${reopenError instanceof Error ? reopenError.message : String(reopenError)}`,
+        reopenError,
+      );
+    }
     if (input.afterIssuesFetched) {
       await input.afterIssuesFetched(project, issues);
     }

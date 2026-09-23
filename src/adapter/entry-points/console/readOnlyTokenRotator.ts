@@ -182,6 +182,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       issueUrl: string,
       stateReason: 'completed' | 'not_planned',
     ) => writeRepository.closeIssueByUrl(issueUrl, stateReason),
+    reopenIssueByUrl: (issueUrl: string) =>
+      writeRepository.reopenIssueByUrl(issueUrl),
     deletePullRequestBranch: (prUrl: string, branchName: string) =>
       writeRepository.deletePullRequestBranch(prUrl, branchName),
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
