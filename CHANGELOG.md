@@ -1,3 +1,10 @@
+## [2.139.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.0...v2.139.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** unify reactivation trigger comment format ([#2546](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2546)) ([293a57e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/293a57eaf92571ff50439895d76d760e9935a7d9)), closes [#2533](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2533)
+
 # [2.139.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.138.0...v2.139.0) (2026-09-23)
 
 
