@@ -17,8 +17,9 @@ export class ConsoleErrorReportUseCase {
     owner: string;
     repo: string;
     requestPath: string;
+    requestBody?: Record<string, unknown>;
   }): Promise<void> => {
-    const { error, owner, repo, requestPath } = params;
+    const { error, owner, repo, requestPath, requestBody } = params;
     const errorName =
       error instanceof Error ? (error.name ?? 'Error') : 'Error';
     const message = error instanceof Error ? error.message : String(error);
@@ -35,6 +36,15 @@ export class ConsoleErrorReportUseCase {
         `Message: ${message}`,
         `Request path: \`${requestPath}\``,
         `Occurred at: ${occurredAt}`,
+        ...(requestBody !== undefined
+          ? [
+              ``,
+              `Request body:`,
+              `\`\`\`json`,
+              JSON.stringify(requestBody, null, 2),
+              `\`\`\``,
+            ]
+          : []),
         ``,
         `Stack trace:`,
         `\`\`\``,
