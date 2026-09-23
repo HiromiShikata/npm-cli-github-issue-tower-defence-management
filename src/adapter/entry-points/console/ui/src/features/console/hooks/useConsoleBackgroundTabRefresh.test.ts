@@ -157,5 +157,4 @@ describe('useConsoleBackgroundTabRefresh', () => {
     rerender({ activeTab: 'todo-by-human' });
     expect(mockRefresh).not.toHaveBeenCalled();
   });
-
 });
