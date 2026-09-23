@@ -953,6 +953,7 @@ export const startConsoleE2eHarness = async (options?: {
   fleetTaskCreateUrl?: string | null;
   mergePullRequest?: () => Promise<void>;
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
+  createNewIssueError?: Error;
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -1016,6 +1017,13 @@ export const startConsoleE2eHarness = async (options?: {
         ? {
             getIssueOrPullRequestComments:
               options.getIssueOrPullRequestComments,
+          }
+        : {}),
+      ...(options?.createNewIssueError !== undefined
+        ? {
+            createNewIssue: async (): Promise<never> => {
+              throw options.createNewIssueError;
+            },
           }
         : {}),
     },

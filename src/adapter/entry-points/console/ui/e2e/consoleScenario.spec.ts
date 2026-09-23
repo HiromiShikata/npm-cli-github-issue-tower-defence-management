@@ -1849,3 +1849,54 @@ test('in timer mode, automatically opens the first pending item when navigating 
 
   await expect(page.locator('.console-detail-title')).toBeVisible();
 });
+
+test.describe('story task create with server failure', () => {
+  let failHarness: ConsoleE2eHarness;
+
+  test.beforeAll(async () => {
+    failHarness = await startConsoleE2eHarness({
+      createNewIssueError: new Error('simulated server error'),
+    });
+  });
+
+  test.afterAll(async () => {
+    if (failHarness !== undefined) {
+      await failHarness.stop();
+    }
+  });
+
+  test('shows Edit button on story task create failure and opens pre-filled IssueCreateModalDialog', async ({
+    page,
+  }) => {
+    await page.goto(failHarness.appRootUrl);
+
+    await tabByLabel(page, 'Stories').click();
+
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
+
+    const addTaskDialog = page.getByRole('dialog', {
+      name: /Add task to TDPM Console port/,
+    });
+    await addTaskDialog.locator('.console-modal-input').fill('My draft task');
+    await addTaskDialog.getByRole('button', { name: 'Create' }).click();
+
+    const editButton = addTaskDialog.getByRole('button', { name: 'Edit' });
+    await expect(editButton).toBeVisible({ timeout: 10000 });
+    await editButton.click();
+
+    const fullDialog = page.getByRole('dialog', { name: /create new task/i });
+    await expect(fullDialog).toBeVisible();
+    await expect(
+      fullDialog.getByRole('textbox', { name: /title/i }),
+    ).toHaveValue('My draft task');
+    await expect(
+      fullDialog.getByRole('button', {
+        name: /TDPM Console port/,
+        pressed: true,
+      }),
+    ).toBeVisible();
+  });
+});
