@@ -111,10 +111,7 @@ describe('ConsoleStoryTaskCreateModalDialog', () => {
   it('does not show Edit button when there is no error', () => {
     const onEdit = jest.fn();
     const { queryByRole } = render(
-      <ConsoleStoryTaskCreateModalDialog
-        {...defaultProps}
-        onEdit={onEdit}
-      />,
+      <ConsoleStoryTaskCreateModalDialog {...defaultProps} onEdit={onEdit} />,
     );
     expect(queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
