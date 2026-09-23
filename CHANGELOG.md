@@ -1,3 +1,10 @@
+## [2.140.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.0...v2.140.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** persist new story issue to cache to prevent duplicate creation ([#2548](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2548)) ([83b8087](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/83b80879cd01d35aa0a185f2eb9eb79d04c814b8))
+
 # [2.140.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.2...v2.140.0) (2026-09-23)
 
 
