@@ -544,14 +544,19 @@ describe('ConsoleStoryList', () => {
     });
 
     it('displays an optimistic color from optimisticColors prop', () => {
-      const { getAllByRole } = render(
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           optimisticColors={{ '1491051e': 'RED' }}
         />,
       );
-      const overflowBtns = getAllByRole('button', { name: 'More options' });
-      expect(overflowBtns[0]).toBeInTheDocument();
+      const storytag = getByText('TDPM Console port').closest(
+        '.console-storytag',
+      );
+      expect(storytag).toHaveStyle({
+        color: '#f85149',
+        borderColor: 'rgba(248,81,73,0.4)',
+      });
     });
 
     it('shows a per-row error message from colorErrors prop', () => {
