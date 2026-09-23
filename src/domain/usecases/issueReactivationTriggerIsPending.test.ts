@@ -534,7 +534,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           allowedIssueAuthors: null,
         });
 
-        const TRIGGER_MESSAGE = 'Reactivation trigger not yet reached';
+        const TRIGGER_MESSAGE = 'Reactivation trigger fields have been set:';
         const triggerSentBack =
           notifyMockIssueCommentRepository.createComment.mock.calls.some(
             (call) =>

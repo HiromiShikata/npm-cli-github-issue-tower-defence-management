@@ -698,7 +698,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -728,20 +727,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       'awaiting-workspace-id',
     );
-    expect(consoleLogSpy).toHaveBeenCalledWith(
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Reactivation trigger fields have been set:'),
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining(
-        'Issue has dependent issue URLs:\n- https://github.com/user/repo/issues/2\n- https://github.com/user/repo/issues/3',
+        'https://github.com/user/repo/issues/2, https://github.com/user/repo/issues/3',
       ),
     );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Issue has dependent issue URLs:'),
-    );
-    consoleLogSpy.mockRestore();
   });
 
   it('should enrich dependedIssueUrls from storyObjectMap when issue has none', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -781,14 +779,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Issue has dependent issue URLs:'),
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('Reactivation trigger fields have been set:'),
     );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Issue has dependent issue URLs:'),
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('https://github.com/user/repo/issues/5'),
     );
-    consoleLogSpy.mockRestore();
   });
 
   it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
@@ -821,7 +819,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('Reactivation trigger not yet reached:'),
+      expect.stringContaining('Reactivation trigger fields have been set:'),
     );
   });
 
@@ -855,7 +853,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('nextActionHour=9'),
+      expect.stringContaining('Next Action Hour: 9'),
     );
   });
 
@@ -8058,28 +8056,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
     const prohibitedCases = [
-      {
-        description: 'dependency URL notification',
-        setup: () => {
-          const issue = createMockIssue({
-            url: issueUrl,
-            status: 'Preparation',
-            dependedIssueUrls: ['https://github.com/user/repo/issues/2'],
-          });
-          mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-          mockIssueRepository.get.mockResolvedValue(issue);
-          return {
-            runArgs: {
-              projectUrl: 'https://github.com/users/user/projects/1',
-              issueUrl,
-              thresholdForAutoReject: 3,
-              workflowBlockerResolvedWebhookUrl: null,
-              allowedIssueAuthors: ['test-user'],
-            },
-            expectedLogFragment: 'Issue has dependent issue URLs:',
-          };
-        },
-      },
       {
         description: 'transient failure deferral notification',
         setup: () => {
