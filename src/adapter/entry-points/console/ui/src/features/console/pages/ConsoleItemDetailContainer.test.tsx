@@ -1067,7 +1067,7 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
-  it('opens IssueCreateModalDialog with empty title when onCreateWorkflowIssue is provided and a comment create-workflow-issue button is clicked', async () => {
+  it('opens IssueCreateModalDialog with empty title and issue title blockquote body when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -1075,7 +1075,7 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -1090,7 +1090,7 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     await waitFor(() => {
@@ -1111,9 +1111,14 @@ describe('ConsoleItemDetailContainer', () => {
     ) as HTMLTextAreaElement | null;
     expect(titleTextarea).not.toBeNull();
     expect(titleTextarea?.value).toBe('');
+    const bodyTextarea = document.body.querySelector(
+      '[aria-label="Body"]',
+    ) as HTMLTextAreaElement | null;
+    expect(bodyTextarea).not.toBeNull();
+    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
   });
 
-  it('opens IssueCreateModalDialog with body containing item URL, item title, and comment blockquote when a comment create-workflow-issue button is clicked', async () => {
+  it('does not include comment body in the dialog body when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -1121,7 +1126,7 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -1136,7 +1141,7 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     await waitFor(() => {
@@ -1156,11 +1161,10 @@ describe('ConsoleItemDetailContainer', () => {
       '[aria-label="Body"]',
     ) as HTMLTextAreaElement | null;
     expect(bodyTextarea).not.toBeNull();
-    const expectedBody = `${prItem.url}\n\n${prItem.title}\n\n\n\n\n\n> ${comment.body}`;
-    expect(bodyTextarea?.value).toBe(expectedBody);
+    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
   });
 
-  it('blockquotes each line independently when comment body has multiple lines', async () => {
+  it('shows issue title as blockquote in body regardless of which comment triggered the dialog', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'First line\nSecond line\nThird line',
@@ -1168,7 +1172,7 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -1183,7 +1187,7 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     await waitFor(() => {
@@ -1203,7 +1207,6 @@ describe('ConsoleItemDetailContainer', () => {
       '[aria-label="Body"]',
     ) as HTMLTextAreaElement | null;
     expect(bodyTextarea).not.toBeNull();
-    const expectedBody = `${prItem.url}\n\n${prItem.title}\n\n\n\n\n\n> First line\n> Second line\n> Third line`;
-    expect(bodyTextarea?.value).toBe(expectedBody);
+    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
   });
 });

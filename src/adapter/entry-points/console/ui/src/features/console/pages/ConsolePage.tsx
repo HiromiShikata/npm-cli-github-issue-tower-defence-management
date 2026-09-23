@@ -1133,8 +1133,7 @@ export const ConsolePage = () => {
           }}
           onSubmit={handleCreateWorkflowIssueFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
-          initialTitle={fleetTaskCreateDialogTitle}
-          onTitleChange={setFleetTaskCreateDialogTitle}
+          containerClassName="console-fleet-task-create-dialog-container"
         />
       )}
       <ConsoleProjectTimerBar

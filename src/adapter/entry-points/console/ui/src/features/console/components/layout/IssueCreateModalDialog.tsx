@@ -27,6 +27,7 @@ export type IssueCreateModalDialogProps = {
   onDraftChange?: (draft: IssueCreateDraft) => void;
   fleetTaskCreateUrl?: string | null;
   newIssueUrl?: string | null;
+  containerClassName?: string;
 };
 
 export const IssueCreateModalDialog = ({
@@ -38,6 +39,7 @@ export const IssueCreateModalDialog = ({
   onDraftChange,
   fleetTaskCreateUrl,
   newIssueUrl,
+  containerClassName,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
@@ -162,7 +164,9 @@ export const IssueCreateModalDialog = ({
   };
 
   return createPortal(
-    <div className="console-task-create-dialog-container">
+    <div
+      className={`console-task-create-dialog-container${containerClassName !== undefined ? ` ${containerClassName}` : ''}`}
+    >
       <button
         type="button"
         className="console-task-create-dialog-overlay"
