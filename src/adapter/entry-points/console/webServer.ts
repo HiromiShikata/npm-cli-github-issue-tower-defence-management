@@ -2,9 +2,6 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { promisify } from 'util';
-
-const gzipAsync = promisify(zlib.gzip);
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -463,7 +460,12 @@ const sendDataResponse = async (
       );
   if (acceptsGzip) {
     try {
-      const compressed = await gzipAsync(body);
+      const compressed = await new Promise<Buffer>((resolve, reject) => {
+        zlib.gzip(body, (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        });
+      });
       response.writeHead(statusCode, {
         'Content-Type': contentType,
         'Cache-Control': 'no-store',

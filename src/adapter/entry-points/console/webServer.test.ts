@@ -6,6 +6,8 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
 
+jest.mock('zlib', () => ({ ...jest.requireActual<typeof import('zlib')>('zlib') }));
+
 const gunzipAsync = promisify(zlib.gunzip);
 import { mock } from 'jest-mock-extended';
 import { parseAllDocuments } from 'yaml';
@@ -3626,26 +3628,13 @@ describe('webServer sendDataResponse gzip compression', () => {
   const dataPath = `/projects/acme/prs/list.json?k=${testToken}`;
 
   const compressionCases: Array<{
-    name: string;
     acceptEncoding: string | undefined;
     expectGzip: boolean;
   }> = [
-    { name: 'Accept-Encoding: gzip', acceptEncoding: 'gzip', expectGzip: true },
-    {
-      name: 'Accept-Encoding: gzip, deflate',
-      acceptEncoding: 'gzip, deflate',
-      expectGzip: true,
-    },
-    {
-      name: 'Accept-Encoding: deflate (no gzip)',
-      acceptEncoding: 'deflate',
-      expectGzip: false,
-    },
-    {
-      name: 'no Accept-Encoding header',
-      acceptEncoding: undefined,
-      expectGzip: false,
-    },
+    { acceptEncoding: 'gzip', expectGzip: true },
+    { acceptEncoding: 'gzip, deflate', expectGzip: true },
+    { acceptEncoding: 'deflate', expectGzip: false },
+    { acceptEncoding: undefined, expectGzip: false },
   ];
 
   it('compresses with gzip when requested and serves uncompressed otherwise', async () => {
@@ -3692,6 +3681,45 @@ describe('webServer sendDataResponse gzip compression', () => {
       const decompressed = await gunzipAsync(response.rawBuffer);
       expect(decompressed.toString('utf-8')).toBe(largeBodyJson);
     } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to uncompressed response when gzip compression fails', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    // jest.spyOn cannot redefine the non-configurable getter that __importStar
+    // creates on the namespace object.  Object.defineProperty on the underlying
+    // mock object bypasses the getter — the production code reads through to the
+    // same object and picks up the replacement.
+    const zlibMock = jest.requireMock<typeof import('zlib')>('zlib');
+    const originalDescriptor = Object.getOwnPropertyDescriptor(zlibMock, 'gzip');
+    Object.defineProperty(zlibMock, 'gzip', {
+      value: (_buf: zlib.InputType, callback: zlib.CompressCallback): void => {
+        callback(new Error('test gzip failure'), Buffer.alloc(0));
+      },
+      writable: true,
+      configurable: true,
+    });
+    const { server, tmpDir } = await setupServer(smallBodyJson);
+    try {
+      const response = await requestRaw(server, dataPath, {
+        'accept-encoding': 'gzip',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.contentEncoding).toBeUndefined();
+      expect(response.rawBuffer.toString('utf-8')).toBe(smallBodyJson);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'gzip compression failed',
+        expect.any(Error),
+      );
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(zlibMock, 'gzip', originalDescriptor);
+      }
+      consoleSpy.mockRestore();
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
