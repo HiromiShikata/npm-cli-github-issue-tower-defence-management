@@ -642,8 +642,12 @@ test('changes the color of a story row via the color palette in the stories tab'
   });
   await expect(tdpmRow).toBeVisible();
 
-  const changeColorButton = tdpmRow.locator('.console-op-button', {
-    hasText: 'Change color',
+  const overflowBtn = tdpmRow.getByRole('button', { name: 'More options' });
+  await expect(overflowBtn).toBeVisible();
+  await overflowBtn.click();
+
+  const changeColorButton = tdpmRow.getByRole('menuitem', {
+    name: 'Change color',
   });
   await expect(changeColorButton).toBeVisible();
 
@@ -1040,7 +1044,8 @@ test('renames a story option in the GitHub custom field via the rename form', as
   });
   await expect(tdpmRow).toBeVisible();
 
-  await tdpmRow.getByRole('button', { name: 'Rename story' }).click();
+  await tdpmRow.getByRole('button', { name: 'More options' }).click();
+  await tdpmRow.getByRole('menuitem', { name: 'Rename' }).click();
 
   const renameDialog = page.getByRole('dialog', { name: 'Rename story' });
   const input = renameDialog.locator('.console-modal-input');
@@ -1081,7 +1086,8 @@ test('deletes a story option from the GitHub custom field when confirmed via the
   });
   await expect(tdpmRow).toBeVisible();
 
-  const deleteButton = tdpmRow.getByRole('button', { name: 'Delete story' });
+  await tdpmRow.getByRole('button', { name: 'More options' }).click();
+  const deleteButton = tdpmRow.getByRole('menuitem', { name: 'Delete story' });
   await expect(deleteButton).toBeVisible();
 
   await deleteButton.click();
@@ -1546,9 +1552,7 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
 
   await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 
-  await tdpmRow
-    .locator('.console-op-button', { hasText: 'Show tasks' })
-    .click();
+  await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
 
   await expect(
     tdpmRow.locator('.console-story-task-title', {
@@ -1578,9 +1582,7 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
   );
 
-  await tdpmRow
-    .locator('.console-op-button', { hasText: 'Hide tasks' })
-    .click();
+  await tdpmRow.getByRole('button', { name: 'Hide tasks' }).click();
 
   await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 });
