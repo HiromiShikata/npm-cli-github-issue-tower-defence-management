@@ -1054,7 +1054,13 @@ export class ApiV3CheerioRestIssueRepository
     if (effectiveIsFullFetch) {
       const items =
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-      const issues = items.map((item) => this.convertProjectItemToIssue(item));
+      const issuesByUrl = new Map<string, Issue>(
+        cache !== null ? cache.issues.map((issue) => [issue.url, issue]) : [],
+      );
+      for (const item of items) {
+        issuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
+      }
+      const issues = Array.from(issuesByUrl.values());
       const nowIso = now.toISOString();
       await this.projectIssuesCacheRepository.write(projectId, {
         lastFetchedAt: nowIso,

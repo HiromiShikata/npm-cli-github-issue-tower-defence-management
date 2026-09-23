@@ -398,6 +398,143 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getAllIssues full fetch cache preservation', () => {
+    const storyIssueUrl = 'https://github.com/o/r/issues/100';
+    const freshIssueUrl = 'https://github.com/o/r/issues/1';
+
+    const buildFullFetchTriggeredCache = (issues: object[] = []) => ({
+      lastFetchedAt: '2026-07-07T00:50:00.000Z',
+      lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+      project: buildTestProject('proj-full'),
+      issues,
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+
+    it('returns only fresh pagination items when no cache exists', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('proj-full'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getAllIssues('proj-full');
+
+      expect(result.issues.map((i) => i.url)).toEqual([freshIssueUrl]);
+    });
+
+    it('preserves a cached story issue absent from fresh pagination', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        buildFullFetchTriggeredCache([
+          {
+            ...buildCachedIssueRecord(storyIssueUrl, 'regular / StoryA'),
+            labels: ['story'],
+            story: 'regular / StoryA',
+          },
+        ]),
+      );
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('proj-full'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        buildProjectItem(freshIssueUrl, 'Task Issue'),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getAllIssues('proj-full');
+
+      expect(result.issues.map((i) => i.url)).toContain(storyIssueUrl);
+      expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
+    });
+
+    it('uses the fresh pagination entry when a story issue appears in both cache and pagination', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        buildFullFetchTriggeredCache([
+          {
+            ...buildCachedIssueRecord(storyIssueUrl, 'Old Story Title'),
+            labels: ['story'],
+            story: 'regular / StoryA',
+          },
+        ]),
+      );
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('proj-full'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(storyIssueUrl, 'Updated Story Title'),
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'regular / StoryA' }],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getAllIssues('proj-full');
+
+      const storyIssue = result.issues.find((i) => i.url === storyIssueUrl);
+      expect(storyIssue?.title).toBe('Updated Story Title');
+    });
+
+    it('includes a story issue from fresh pagination when cache has no story issue', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        buildFullFetchTriggeredCache([
+          buildCachedIssueRecord(freshIssueUrl, 'Task Issue'),
+        ]),
+      );
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('proj-full'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'regular / StoryA' }],
+        },
+        buildProjectItem(freshIssueUrl, 'Task Issue'),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getAllIssues('proj-full');
+
+      expect(result.issues.map((i) => i.url)).toContain(storyIssueUrl);
+    });
+  });
+
   describe('get', () => {
     it('reads the single project item scoped to the given project without consulting the getAllIssues memo', async () => {
       const {
