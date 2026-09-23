@@ -16,6 +16,7 @@ export const ConsoleStoryTaskCreateModalDialog = ({
   const [titleInput, setTitleInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [serverSubmitFailed, setServerSubmitFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export const ConsoleStoryTaskCreateModalDialog = ({
       onClose();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
+      setServerSubmitFailed(true);
     } finally {
       setSubmitting(false);
     }
@@ -99,7 +101,7 @@ export const ConsoleStoryTaskCreateModalDialog = ({
             >
               Cancel
             </button>
-            {submitError !== null && onEdit !== undefined && (
+            {serverSubmitFailed && onEdit !== undefined && (
               <button
                 type="button"
                 className="console-op-button"

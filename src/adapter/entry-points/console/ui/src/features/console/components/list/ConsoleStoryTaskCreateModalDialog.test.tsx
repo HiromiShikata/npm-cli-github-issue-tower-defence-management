@@ -116,6 +116,16 @@ describe('ConsoleStoryTaskCreateModalDialog', () => {
     expect(queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
+  it('does not show Edit button after client-side validation error (empty title)', () => {
+    const onEdit = jest.fn();
+    const { getByRole, getByText, queryByRole } = render(
+      <ConsoleStoryTaskCreateModalDialog {...defaultProps} onEdit={onEdit} />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    expect(getByText('Title is required')).toBeInTheDocument();
+    expect(queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
   it('shows Edit button and calls onEdit with storyName and title when Create fails', async () => {
     const onEdit = jest.fn();
     const onClose = jest.fn();
