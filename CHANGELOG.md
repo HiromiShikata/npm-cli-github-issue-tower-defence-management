@@ -1,3 +1,11 @@
+## [2.135.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.9...v2.135.10) (2026-09-23)
+
+
+### Bug Fixes
+
+* **handleCreateIssue:** fall back to fresh GitHub data when story option absent from cached project ([c1e5385](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1e5385c0fb82f74ae3f98859125ec3893fd6a3c))
+* **resolveNextStepAgentDispatchRepetition:** correct false no-report message for legitimate multi-session agent continuations ([#2457](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2457)) ([a0ac749](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a0ac7493c7ba210f3f32e61522618196b18e6a66))
+
 ## [2.135.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.8...v2.135.9) (2026-09-22)
 
 
