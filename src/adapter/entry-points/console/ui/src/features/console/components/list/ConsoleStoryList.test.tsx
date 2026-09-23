@@ -550,9 +550,8 @@ describe('ConsoleStoryList', () => {
           optimisticColors={{ '1491051e': 'RED' }}
         />,
       );
-      const storytag = getByText('TDPM Console port').closest(
-        '.console-storytag',
-      );
+      const storytag =
+        getByText('TDPM Console port').closest('.console-storytag');
       expect(storytag).toHaveStyle({
         color: '#f85149',
         borderColor: 'rgba(248,81,73,0.4)',
