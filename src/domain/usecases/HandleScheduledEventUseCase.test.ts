@@ -1974,6 +1974,35 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
       });
     });
+
+    describe('reopenClosedStoryIssueUseCase', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('continues the cycle when reopenClosedStoryIssueUseCase.run rejects', async () => {
+        mockReopenClosedStoryIssueUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GitHub API error')],
+            'Failed to reopen 1 story issue(s)',
+          ),
+        );
+
+        await useCase.run(baseInput);
+
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('storyIssues', () => {

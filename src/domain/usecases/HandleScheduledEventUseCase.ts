@@ -252,10 +252,17 @@ export class HandleScheduledEventUseCase {
       project,
       issues,
     });
-    await this.reopenClosedStoryIssueUseCase.run({
-      issues,
-      storyObjectMap: storyIssues,
-    });
+    try {
+      await this.reopenClosedStoryIssueUseCase.run({
+        issues,
+        storyObjectMap: storyIssues,
+      });
+    } catch (reopenError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to reopen closed story issues for project ${project.url}: ${reopenError instanceof Error ? reopenError.message : String(reopenError)}`,
+        reopenError,
+      );
+    }
     if (input.afterIssuesFetched) {
       await input.afterIssuesFetched(project, issues);
     }
