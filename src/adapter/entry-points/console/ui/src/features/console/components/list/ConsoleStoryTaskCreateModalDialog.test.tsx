@@ -107,4 +107,54 @@ describe('ConsoleStoryTaskCreateModalDialog', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('does not show Edit button when there is no error', () => {
+    const onEdit = jest.fn();
+    const { queryByRole } = render(
+      <ConsoleStoryTaskCreateModalDialog
+        {...defaultProps}
+        onEdit={onEdit}
+      />,
+    );
+    expect(queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('shows Edit button and calls onEdit with storyName and title when Create fails', async () => {
+    const onEdit = jest.fn();
+    const onClose = jest.fn();
+    const onSubmit = jest.fn().mockRejectedValue(new Error('API error'));
+    const { getByPlaceholderText, getByRole, findByRole } = render(
+      <ConsoleStoryTaskCreateModalDialog
+        {...defaultProps}
+        onSubmit={onSubmit}
+        onClose={onClose}
+        onEdit={onEdit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Issue title'), {
+      target: { value: 'My task' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await findByRole('alert');
+    const editButton = getByRole('button', { name: 'Edit' });
+    fireEvent.click(editButton);
+    expect(onEdit).toHaveBeenCalledWith('TDPM Console port', 'My task');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show Edit button when onEdit is not provided even after error', async () => {
+    const onSubmit = jest.fn().mockRejectedValue(new Error('API error'));
+    const { getByPlaceholderText, getByRole, findByRole, queryByRole } = render(
+      <ConsoleStoryTaskCreateModalDialog
+        {...defaultProps}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Issue title'), {
+      target: { value: 'My task' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await findByRole('alert');
+    expect(queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
 });

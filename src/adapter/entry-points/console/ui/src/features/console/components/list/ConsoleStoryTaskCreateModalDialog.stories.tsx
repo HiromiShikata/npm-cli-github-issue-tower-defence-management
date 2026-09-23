@@ -22,3 +22,12 @@ export const WithError: Story = {
     onSubmit: () => Promise.reject(new Error('GitHub API rate limit exceeded')),
   },
 };
+
+export const WithEditButton: Story = {
+  args: {
+    onSubmit: () => Promise.reject(new Error('GitHub API rate limit exceeded')),
+    onEdit: (storyName, title) => {
+      console.log('Edit clicked', { storyName, title });
+    },
+  },
+};
