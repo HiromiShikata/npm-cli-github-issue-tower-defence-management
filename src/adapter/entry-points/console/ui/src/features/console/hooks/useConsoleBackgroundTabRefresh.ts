@@ -6,9 +6,25 @@ import {
 
 export const useConsoleBackgroundTabRefresh = (
   activePjcode: string | null,
+  activeTab: string | null,
   allPjcodes: string[],
   enabled: boolean,
 ): void => {
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    const backgroundPjcodes = allPjcodes.filter(
+      (c) => c !== activePjcode && c !== activeTab,
+    );
+    if (backgroundPjcodes.length === 0) {
+      return;
+    }
+    for (const pjcode of backgroundPjcodes) {
+      refreshProjectTabsToCache(pjcode).catch(() => {});
+    }
+  }, [enabled, activePjcode, activeTab, allPjcodes]);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -17,15 +33,11 @@ export const useConsoleBackgroundTabRefresh = (
     if (backgroundPjcodes.length === 0) {
       return;
     }
-
-    const refresh = (): void => {
+    const timer = setInterval(() => {
       for (const pjcode of backgroundPjcodes) {
         refreshProjectTabsToCache(pjcode).catch(() => {});
       }
-    };
-
-    refresh();
-    const timer = setInterval(refresh, CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    }, CONSOLE_TAB_REFRESH_INTERVAL_MS);
     return () => {
       clearInterval(timer);
     };
