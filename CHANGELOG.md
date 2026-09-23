@@ -1,3 +1,10 @@
+## [2.135.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.10...v2.135.11) (2026-09-23)
+
+
+### Bug Fixes
+
+* **console:** trigger background project refresh on tab switch ([#2523](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2523)) ([4182a15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4182a15a7edcbdfc711a41fc2f9a66e9a0f5f13c)), closes [HiromiShikata/umino-corporait-operation#32170](https://github.com/HiromiShikata/umino-corporait-operation/issues/32170)
+
 ## [2.135.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.9...v2.135.10) (2026-09-23)
 
 
