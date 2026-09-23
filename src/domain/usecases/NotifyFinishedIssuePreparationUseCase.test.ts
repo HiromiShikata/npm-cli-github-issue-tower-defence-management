@@ -4963,7 +4963,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('Preparation deferred due to transient failure'),
+        expect.stringContaining(
+          'Preparation deferred due to transient failure',
+        ),
       );
 
       expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
@@ -5039,7 +5041,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('Preparation deferred due to transient failure'),
+        expect.stringContaining(
+          'Preparation deferred due to transient failure',
+        ),
       );
       consoleLogSpy.mockRestore();
     });
@@ -5064,7 +5068,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('Preparation deferred due to transient failure'),
+        expect.stringContaining(
+          'Preparation deferred due to transient failure',
+        ),
       );
       consoleLogSpy.mockRestore();
     });
@@ -5106,7 +5112,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('Preparation deferred due to transient failure'),
+        expect.stringContaining(
+          'Preparation deferred due to transient failure',
+        ),
       );
       consoleLogSpy.mockRestore();
     });
@@ -8065,7 +8073,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
               projectUrl: 'https://github.com/users/user/projects/1',
               issueUrl,
               thresholdForAutoReject: 3,
-              workflowBlockerResolvedWebhookUrl: null as null,
+              workflowBlockerResolvedWebhookUrl: null,
               allowedIssueAuthors: ['test-user'],
             },
             expectedLogFragment: 'Issue has dependent issue URLs:',
@@ -8086,7 +8094,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
               projectUrl: 'https://github.com/users/user/projects/1',
               issueUrl,
               thresholdForAutoReject: 3,
-              workflowBlockerResolvedWebhookUrl: null as null,
+              workflowBlockerResolvedWebhookUrl: null,
               allowedIssueAuthors: ['test-user'],
               deferPreparation: true,
               sessionErrorLine: 'api_error_transient',
@@ -8109,7 +8117,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect(consoleLogSpy).toHaveBeenCalledWith(
           expect.stringContaining(expectedLogFragment),
         );
-        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(
           expect.anything(),
           expect.stringContaining(expectedLogFragment),
         );
