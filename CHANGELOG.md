@@ -1,3 +1,10 @@
+## [2.139.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.1...v2.139.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **FleetTaskCreateModalDialog:** preserve draft title on close-before-create ([#2547](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2547)) ([f47f53b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f47f53bce7fbed396b08de1f11dd693d2008f693)), closes [#2535](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2535)
+
 ## [2.139.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.139.0...v2.139.1) (2026-09-23)
 
 
