@@ -259,6 +259,8 @@ export const ConsolePage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
     useState(false);
+  const [fleetTaskCreateDialogTitle, setFleetTaskCreateDialogTitle] =
+    useState('');
   const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
     title: '',
     body: null,
@@ -714,6 +716,7 @@ export const ConsolePage = () => {
         },
         advance: () => {},
       });
+      setFleetTaskCreateDialogTitle('');
       return Promise.resolve();
     },
     [fleetTaskCreateUrl, actionQueue],
@@ -1146,6 +1149,8 @@ export const ConsolePage = () => {
         <FleetTaskCreateModalDialog
           onSubmit={handleFleetTaskCreateSubmit}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
+          initialTitle={fleetTaskCreateDialogTitle}
+          onTitleChange={setFleetTaskCreateDialogTitle}
         />
       )}
       <ConsoleProjectTimerBar

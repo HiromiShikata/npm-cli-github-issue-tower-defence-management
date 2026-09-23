@@ -27,3 +27,9 @@ export const WithError: Story = {
     onSubmit: () => Promise.reject(new Error('Network failure')),
   },
 };
+
+export const WithDraft: Story = {
+  args: {
+    initialTitle: 'Fix CI pipeline for console UI build',
+  },
+};

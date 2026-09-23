@@ -127,4 +127,30 @@ describe('FleetTaskCreateModalDialog', () => {
     expect(getByText(/title is required/i)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('populates the title input with initialTitle when provided', () => {
+    const { getByRole } = render(
+      <FleetTaskCreateModalDialog
+        onSubmit={jest.fn().mockResolvedValue(undefined)}
+        onClose={jest.fn()}
+        initialTitle="Draft title"
+      />,
+    );
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue('Draft title');
+  });
+
+  it('calls onTitleChange with the new value when the title input changes', () => {
+    const onTitleChange = jest.fn();
+    const { getByRole } = render(
+      <FleetTaskCreateModalDialog
+        onSubmit={jest.fn().mockResolvedValue(undefined)}
+        onClose={jest.fn()}
+        onTitleChange={onTitleChange}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'New value' },
+    });
+    expect(onTitleChange).toHaveBeenCalledWith('New value');
+  });
 });
