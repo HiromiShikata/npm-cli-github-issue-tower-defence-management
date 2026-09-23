@@ -1875,7 +1875,9 @@ test.describe('story task create with server failure', () => {
     const tdpmRow = page.locator('.console-story-list-row', {
       hasText: 'TDPM Console port',
     });
-    await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
+    await tdpmRow
+      .locator('.console-op-button', { hasText: 'Add task' })
+      .click();
 
     const addTaskDialog = page.getByRole('dialog', {
       name: /Add task to TDPM Console port/,
