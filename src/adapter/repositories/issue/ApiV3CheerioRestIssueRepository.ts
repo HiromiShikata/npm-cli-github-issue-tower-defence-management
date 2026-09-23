@@ -3204,6 +3204,29 @@ export class ApiV3CheerioRestIssueRepository
     }
   };
 
+  reopenIssueByUrl = async (issueUrl: string): Promise<void> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const reopenIssueUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(reopenIssueUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state: 'open' }),
+        }),
+      { method: 'PATCH', path: sanitizeRestPath(reopenIssueUrl) },
+    );
+    if (!response.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to reopen issue ${issueUrl}: ${reason}`);
+    }
+  };
+
   getPullRequestChangedFilePaths = async (prUrl: string): Promise<string[]> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
     const perPage = 100;

@@ -30,6 +30,7 @@ import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { ReopenClosedStoryIssueUseCase } from './ReopenClosedStoryIssueUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -130,6 +131,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockAdvanceQualityCheckUseCase = mock<QualityCheckAdvanceUseCase>();
     const mockReopenedDoneIssueRevertUseCase =
       mock<ReopenedDoneIssueRevertUseCase>();
+    const mockReopenClosedStoryIssueUseCase =
+      mock<ReopenClosedStoryIssueUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -160,6 +163,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockDailySecurityScanUseCase,
       mockAdvanceQualityCheckUseCase,
       mockReopenedDoneIssueRevertUseCase,
+      mockReopenClosedStoryIssueUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -910,10 +914,17 @@ describe('HandleScheduledEventUseCase', () => {
           project: storyProject,
           cacheUsed: false,
         });
+        mockReopenClosedStoryIssueUseCase.run.mockResolvedValue(0);
 
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();
         await runPromise;
+
+        expect(mockReopenClosedStoryIssueUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issues: [closedStoryIssue],
+          }),
+        );
 
         const storyIssueCalls =
           mockIssueRepository.createNewIssue.mock.calls.filter(
@@ -1991,6 +2002,7 @@ describe('HandleScheduledEventUseCase', () => {
       null,
       mock<QualityCheckAdvanceUseCase>(),
       mock<ReopenedDoneIssueRevertUseCase>(),
+      mock<ReopenClosedStoryIssueUseCase>(),
       mock<DateRepository>(),
       mock<SpreadsheetRepository>(),
       mock<ProjectRepository>(),

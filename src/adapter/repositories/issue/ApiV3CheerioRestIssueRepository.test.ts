@@ -2041,6 +2041,44 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(4);
       expect(sleep).toHaveBeenCalledTimes(3);
     });
+
+    it('reopenIssueByUrl sends PATCH with state open and resolves on success', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ state: 'open' }), { status: 200 }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.reopenIssueByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/42',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ state: 'open' }),
+        }),
+      );
+    });
+
+    it('reopenIssueByUrl throws with a clear message when the API responds with an error', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ message: 'Resource not accessible by integration' }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.reopenIssueByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to reopen issue https://github.com/HiromiShikata/test-repository/issues/42:',
+      );
+    });
   });
 
   describe('createCommentByUrl', () => {
