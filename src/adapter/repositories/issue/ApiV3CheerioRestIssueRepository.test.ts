@@ -7043,7 +7043,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
 
-      const cacheWrite2 = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      const cacheWrite2 =
+        localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite2).toMatchObject({
         storyIssueUrlByOptionName: { 'feature / NewStory': newIssue.url },
       });
