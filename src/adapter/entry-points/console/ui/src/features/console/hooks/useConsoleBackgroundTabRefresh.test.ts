@@ -40,7 +40,13 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('does not refresh when disabled', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, false),
+      useConsoleBackgroundTabRefresh(
+        'acme',
+        null,
+        ['acme', 'beta'],
+        false,
+        false,
+      ),
     );
     expect(mockRefresh).not.toHaveBeenCalled();
   });
@@ -54,7 +60,13 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('refreshes background projects at the refresh interval', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, true),
+      useConsoleBackgroundTabRefresh(
+        'acme',
+        null,
+        ['acme', 'beta'],
+        false,
+        true,
+      ),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
 
@@ -71,7 +83,13 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('stops refreshing after unmount', () => {
     const { unmount } = renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, true),
+      useConsoleBackgroundTabRefresh(
+        'acme',
+        null,
+        ['acme', 'beta'],
+        false,
+        true,
+      ),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     unmount();
