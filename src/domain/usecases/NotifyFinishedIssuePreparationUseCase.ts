@@ -340,8 +340,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
+      console.log(
         `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
       return;
@@ -762,8 +761,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.createCommentWithDedup(
-      issue,
+    console.log(
       `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
     );
   };
