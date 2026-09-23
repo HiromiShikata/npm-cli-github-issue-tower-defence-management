@@ -932,6 +932,61 @@ describe('HandleScheduledEventUseCase', () => {
           );
         expect(storyIssueCalls).toHaveLength(0);
       });
+
+      it('skips story creation when closedStoryIssueReopenUseCase mutates storyIssue (mutation-based skip path)', async () => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: storyProject,
+          cacheUsed: false,
+        });
+        mockClosedStoryIssueReopenUseCase.run.mockImplementation(
+          async ({ storyObjectMap }) => {
+            for (const obj of storyObjectMap.values()) {
+              if (obj.storyIssue === null) {
+                obj.storyIssue = {
+                  nameWithOwner: 'test-org/test-repo',
+                  number: 99,
+                  title: obj.story.name,
+                  state: 'OPEN',
+                  status: 'Todo',
+                  story: null,
+                  nextActionDate: null,
+                  nextActionHour: null,
+                  estimationMinutes: null,
+                  dependedIssueUrls: [],
+                  completionDate50PercentConfidence: null,
+                  url: 'https://github.com/test-org/test-repo/issues/99',
+                  assignees: [],
+                  labels: ['story'],
+                  org: 'test-org',
+                  repo: 'test-repo',
+                  body: '',
+                  itemId: 'item-99',
+                  isPr: false,
+                  isInProgress: false,
+                  isClosed: false,
+                  createdAt: new Date('2024-01-01T00:00:00Z'),
+                  author: '',
+                  closingIssueReferenceUrls: [],
+                  agent: null,
+                  stateReason: 'REOPENED',
+                };
+              }
+            }
+            return 1;
+          },
+        );
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+      });
     });
 
     describe('slow sweep cadence', () => {

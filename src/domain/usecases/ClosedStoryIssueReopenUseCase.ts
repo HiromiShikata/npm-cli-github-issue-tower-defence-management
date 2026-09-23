@@ -23,7 +23,7 @@ export class ClosedStoryIssueReopenUseCase {
       }
       const closedStoryIssue = params.issues.find(
         (issue) =>
-          issue.title === storyObject.story.name &&
+          storyObject.story.name.startsWith(issue.title) &&
           issue.isClosed &&
           issue.labels.includes('story'),
       );
