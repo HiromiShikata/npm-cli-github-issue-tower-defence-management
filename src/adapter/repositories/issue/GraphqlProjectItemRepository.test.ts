@@ -2979,24 +2979,23 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      let caughtError: Error | undefined;
-      try {
-        await repository.updateProjectField(
+      const resultPromise = repository
+        .updateProjectField(
           'proj-id-123',
           'field-id-456',
           'item-id-789',
           { singleSelectOptionId: 'opt-abc' },
-        );
-      } catch (e) {
-        caughtError = e as Error;
-      }
+        )
+        .catch((e: unknown) => e);
+      await jest.runAllTimersAsync();
 
-      expect(caughtError).toBeDefined();
-      expect(caughtError!.message).toContain('proj-id-123');
-      expect(caughtError!.message).toContain('field-id-456');
-      expect(caughtError!.message).toContain('item-id-789');
-      expect(caughtError!.message).toContain('opt-abc');
-      expect(caughtError!.message).toContain(
+      const caught = await resultPromise;
+      expect(caught).toBeInstanceOf(Error);
+      expect(extractErrorMessage(caught)).toContain('proj-id-123');
+      expect(extractErrorMessage(caught)).toContain('field-id-456');
+      expect(extractErrorMessage(caught)).toContain('item-id-789');
+      expect(extractErrorMessage(caught)).toContain('opt-abc');
+      expect(extractErrorMessage(caught)).toContain(
         'Did not receive a single select option Id to update a field of type single_select',
       );
     });
