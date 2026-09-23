@@ -38,6 +38,7 @@ import {
   isAgentReportBody,
   isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
+import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -52,7 +53,6 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
-import { DEPENDED_ISSUE_URLS_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class IssueNotFoundError extends Error {
@@ -340,9 +340,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      console.log(
-        `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
-      );
+      console.log(this.formatReactivationTriggerMessage(issue));
       return;
     }
 
@@ -358,7 +356,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.createCommentWithDedup(
         issue,
-        `Reactivation trigger not yet reached: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
+        this.formatReactivationTriggerMessage(issue),
       );
       return;
     }
@@ -1136,6 +1134,24 @@ export class NotifyFinishedIssuePreparationUseCase {
       item,
       targetTabName,
     });
+  };
+
+  private formatReactivationTriggerMessage = (issue: {
+    dependedIssueUrls: string[];
+    nextActionDate: Date | null;
+    nextActionHour: number | null;
+  }): string => {
+    const dependedIssueUrlValue =
+      issue.dependedIssueUrls.length > 0
+        ? issue.dependedIssueUrls.join(', ')
+        : 'not set';
+    const nextActionDateValue =
+      issue.nextActionDate !== null
+        ? issue.nextActionDate.toISOString().slice(0, 10)
+        : 'not set';
+    const nextActionHourValue =
+      issue.nextActionHour !== null ? String(issue.nextActionHour) : 'not set';
+    return `${REACTIVATION_TRIGGER_COMMENT_HEAD}\n- Depended Issue URL: ${dependedIssueUrlValue}\n- Next Action Date: ${nextActionDateValue}\n- Next Action Hour: ${nextActionHourValue}`;
   };
 
   private createCommentWithDedup = async (

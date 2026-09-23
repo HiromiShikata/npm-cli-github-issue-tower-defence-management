@@ -1,3 +1,4 @@
+import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -534,11 +535,11 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           allowedIssueAuthors: null,
         });
 
-        const TRIGGER_MESSAGE = 'Reactivation trigger not yet reached';
         const triggerSentBack =
           notifyMockIssueCommentRepository.createComment.mock.calls.some(
             (call) =>
-              typeof call[1] === 'string' && call[1].includes(TRIGGER_MESSAGE),
+              typeof call[1] === 'string' &&
+              call[1].includes(REACTIVATION_TRIGGER_COMMENT_HEAD),
           );
 
         expect(spawnStarted).toBe(!triggerIsPending);
