@@ -79,6 +79,10 @@ export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
   ) => Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>;
+  appendIssueToProjectCache: (
+    projectId: Project['id'],
+    issue: Issue,
+  ) => Promise<void>;
   getIssueByUrl: (url: string) => Promise<Issue | null>;
   getIssueBodyByUrl: (url: string) => Promise<string | null>;
   createNewIssue: (

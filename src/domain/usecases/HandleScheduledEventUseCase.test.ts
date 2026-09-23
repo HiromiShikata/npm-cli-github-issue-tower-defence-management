@@ -880,6 +880,19 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       });
 
+      it('persists newly created story issue to project cache to prevent duplicate creation in subsequent daemon cycles', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(
+          mockIssueRepository.appendIssueToProjectCache,
+        ).toHaveBeenCalledWith(
+          'project-1',
+          expect.objectContaining({ itemId: 'item-99' }),
+        );
+      });
+
       it('should not create a new story issue when a closed story issue already exists', async () => {
         const closedStoryIssue: Issue = {
           nameWithOwner: 'test-org/test-repo',
