@@ -1104,4 +1104,60 @@ describe('ConsoleStoryList', () => {
       expect(queryByText('Move to Okinawa tasks')).toBeNull();
     });
   });
+
+  describe('onStoryTaskCreateEdit', () => {
+    it('calls onStoryTaskCreateEdit with storyName and title when Edit is clicked after a failed Create', async () => {
+      const onStoryTaskCreateEdit = jest.fn();
+      const onCreateIssue = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error'));
+      const { getAllByRole, getByPlaceholderText, getByRole, findByRole } =
+        render(
+          <ConsoleStoryList
+            {...defaultProps}
+            onCreateIssue={onCreateIssue}
+            onStoryTaskCreateEdit={onStoryTaskCreateEdit}
+          />,
+        );
+      fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'My new task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      await findByRole('alert');
+      fireEvent.click(getByRole('button', { name: 'Edit' }));
+      expect(onStoryTaskCreateEdit).toHaveBeenCalledWith(
+        'TDPM Console port',
+        'My new task',
+      );
+    });
+
+    it('closes the create dialog after Edit is clicked', async () => {
+      const onStoryTaskCreateEdit = jest.fn();
+      const onCreateIssue = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error'));
+      const {
+        getAllByRole,
+        getByPlaceholderText,
+        getByRole,
+        findByRole,
+        queryByPlaceholderText,
+      } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          onCreateIssue={onCreateIssue}
+          onStoryTaskCreateEdit={onStoryTaskCreateEdit}
+        />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'My new task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      await findByRole('alert');
+      fireEvent.click(getByRole('button', { name: 'Edit' }));
+      expect(queryByPlaceholderText('Issue title')).toBeNull();
+    });
+  });
 });

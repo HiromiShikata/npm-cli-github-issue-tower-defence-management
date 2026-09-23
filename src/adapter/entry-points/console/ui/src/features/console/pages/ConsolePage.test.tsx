@@ -2675,6 +2675,80 @@ describe('ConsolePage task creation action queue', () => {
     const button = getByRole('button', { name: 'Create new task' });
     expect(button.querySelector('svg')).toBeInTheDocument();
   });
+
+  it('opens IssueCreateModalDialog with title and story pre-filled when Edit is clicked after story task creation failure', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/createissue') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => '',
+          json: async () => ({}),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByRole, getByPlaceholderText } = render(<ConsolePage />);
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Add task' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Add task' }));
+
+    await waitFor(() => {
+      expect(
+        getByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.change(getByPlaceholderText('Issue title'), {
+      target: { value: 'My draft task' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Edit' }));
+
+    await waitFor(() => {
+      expect(
+        getByRole('dialog', { name: 'Create new task' }),
+      ).toBeInTheDocument();
+    });
+
+    const fullDialog = getByRole('dialog', { name: 'Create new task' });
+    expect(within(fullDialog).getByLabelText('Title')).toHaveValue(
+      'My draft task',
+    );
+    expect(
+      within(fullDialog).getByRole('button', {
+        name: /TDPM Console port/,
+        pressed: true,
+      }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {

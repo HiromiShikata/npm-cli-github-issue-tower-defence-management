@@ -4,16 +4,19 @@ export type ConsoleStoryTaskCreateModalDialogProps = {
   storyName: string;
   onSubmit: (storyName: string, title: string) => Promise<void>;
   onClose: () => void;
+  onEdit?: (storyName: string, title: string) => void;
 };
 
 export const ConsoleStoryTaskCreateModalDialog = ({
   storyName,
   onSubmit,
   onClose,
+  onEdit,
 }: ConsoleStoryTaskCreateModalDialogProps) => {
   const [titleInput, setTitleInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [serverSubmitFailed, setServerSubmitFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export const ConsoleStoryTaskCreateModalDialog = ({
       onClose();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
+      setServerSubmitFailed(true);
     } finally {
       setSubmitting(false);
     }
@@ -97,6 +101,19 @@ export const ConsoleStoryTaskCreateModalDialog = ({
             >
               Cancel
             </button>
+            {serverSubmitFailed && onEdit !== undefined && (
+              <button
+                type="button"
+                className="console-op-button"
+                onClick={() => {
+                  onEdit(storyName, titleInput);
+                  onClose();
+                }}
+                disabled={submitting}
+              >
+                Edit
+              </button>
+            )}
           </div>
         </form>
       </div>
