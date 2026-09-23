@@ -172,12 +172,6 @@ export const ConsolePage = () => {
     return result;
   }, [snapshots, effectiveOverlay]);
 
-  useConsoleBackgroundTabRefresh(
-    pjcode,
-    pjcodes,
-    timerMode && airplaneSnapshot === null,
-  );
-
   const loadedTabs = useMemo(() => {
     const result = new Set<ConsoleTabName>();
     for (const tab of CONSOLE_TABS) {
@@ -216,6 +210,13 @@ export const ConsolePage = () => {
     [],
   );
   const selectProject = useConsoleProjectSelectHandler(navigateToProject);
+
+  useConsoleBackgroundTabRefresh(
+    pjcode,
+    activeTab,
+    pjcodes,
+    timerMode && airplaneSnapshot === null,
+  );
 
   const commentDrafts = useRef(new Map<string, string>());
   const handleCommentDraftChange = useCallback(

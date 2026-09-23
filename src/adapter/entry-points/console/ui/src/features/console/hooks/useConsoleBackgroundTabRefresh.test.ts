@@ -25,7 +25,12 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('immediately refreshes background projects on mount when enabled', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', ['acme', 'beta', 'gamma'], true),
+      useConsoleBackgroundTabRefresh(
+        'acme',
+        null,
+        ['acme', 'beta', 'gamma'],
+        true,
+      ),
     );
     expect(mockRefresh).toHaveBeenCalledWith('beta');
     expect(mockRefresh).toHaveBeenCalledWith('gamma');
@@ -34,19 +39,21 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('does not refresh when disabled', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', ['acme', 'beta'], false),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false),
     );
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('does not refresh when there are no background projects', () => {
-    renderHook(() => useConsoleBackgroundTabRefresh('acme', ['acme'], true));
+    renderHook(() =>
+      useConsoleBackgroundTabRefresh('acme', null, ['acme'], true),
+    );
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('refreshes background projects at the refresh interval', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], true),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
 
@@ -63,7 +70,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('stops refreshing after unmount', () => {
     const { unmount } = renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], true),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     unmount();
@@ -76,7 +83,12 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('excludes the active project from background refresh', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('beta', ['acme', 'beta', 'gamma'], true),
+      useConsoleBackgroundTabRefresh(
+        'beta',
+        null,
+        ['acme', 'beta', 'gamma'],
+        true,
+      ),
     );
     expect(mockRefresh).toHaveBeenCalledWith('acme');
     expect(mockRefresh).toHaveBeenCalledWith('gamma');
@@ -85,7 +97,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('refreshes all pjcodes as background when active project is null', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh(null, ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh(null, null, ['acme', 'beta'], true),
     );
     expect(mockRefresh).toHaveBeenCalledWith('acme');
     expect(mockRefresh).toHaveBeenCalledWith('beta');
@@ -96,6 +108,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
       ({ activePjcode }: { activePjcode: string }) =>
         useConsoleBackgroundTabRefresh(
           activePjcode,
+          null,
           ['acme', 'beta', 'gamma'],
           true,
         ),
@@ -107,5 +120,41 @@ describe('useConsoleBackgroundTabRefresh', () => {
     expect(mockRefresh).toHaveBeenCalledWith('acme');
     expect(mockRefresh).toHaveBeenCalledWith('gamma');
     expect(mockRefresh).not.toHaveBeenCalledWith('beta');
+  });
+
+  it('immediately refreshes background projects when active tab changes while enabled', () => {
+    const { rerender } = renderHook(
+      ({ activeTab }: { activeTab: string | null }) =>
+        useConsoleBackgroundTabRefresh(
+          'acme',
+          activeTab,
+          ['acme', 'beta', 'gamma'],
+          true,
+        ),
+      { initialProps: { activeTab: 'prs' as string | null } },
+    );
+    mockRefresh.mockClear();
+
+    rerender({ activeTab: 'todo-by-human' });
+    expect(mockRefresh).toHaveBeenCalledWith('beta');
+    expect(mockRefresh).toHaveBeenCalledWith('gamma');
+    expect(mockRefresh).not.toHaveBeenCalledWith('acme');
+  });
+
+  it('does not refresh when active tab changes while disabled', () => {
+    const { rerender } = renderHook(
+      ({ activeTab }: { activeTab: string | null }) =>
+        useConsoleBackgroundTabRefresh(
+          'acme',
+          activeTab,
+          ['acme', 'beta'],
+          false,
+        ),
+      { initialProps: { activeTab: 'prs' as string | null } },
+    );
+    mockRefresh.mockClear();
+
+    rerender({ activeTab: 'todo-by-human' });
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 });
