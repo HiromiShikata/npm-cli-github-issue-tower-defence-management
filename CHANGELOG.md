@@ -1,3 +1,10 @@
+## [2.140.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.3...v2.140.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* **ClosedStoryIssueReopenUseCase:** search GitHub Issues API for auto-archived story issues ([#2554](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2554)) ([4ed0fc7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ed0fc79da99727491228158da7ea78259ca58c1))
+
 ## [2.140.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.2...v2.140.3) (2026-09-23)
 
 
