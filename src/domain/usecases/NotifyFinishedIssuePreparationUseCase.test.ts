@@ -710,6 +710,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
 
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
@@ -727,16 +729,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       'awaiting-workspace-id',
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining('Reactivation trigger fields have been set:'),
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         'https://github.com/user/repo/issues/2, https://github.com/user/repo/issues/3',
       ),
     );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Reactivation trigger fields have been set:'),
+    );
+    consoleLogSpy.mockRestore();
   });
 
   it('should enrich dependedIssueUrls from storyObjectMap when issue has none', async () => {
@@ -767,6 +772,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
       issueUrl: 'https://github.com/user/repo/issues/1',
@@ -779,14 +786,17 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining('Reactivation trigger fields have been set:'),
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining('https://github.com/user/repo/issues/5'),
     );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Reactivation trigger fields have been set:'),
+    );
+    consoleLogSpy.mockRestore();
   });
 
   it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
@@ -8077,6 +8087,28 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
             },
             expectedLogFragment:
               'Preparation deferred due to transient failure',
+          };
+        },
+      },
+      {
+        description: 'dependency URL notification',
+        setup: () => {
+          const issue = createMockIssue({
+            url: issueUrl,
+            status: 'Preparation',
+            dependedIssueUrls: ['https://github.com/user/repo/issues/2'],
+          });
+          mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+          mockIssueRepository.get.mockResolvedValue(issue);
+          return {
+            runArgs: {
+              projectUrl: 'https://github.com/users/user/projects/1',
+              issueUrl,
+              thresholdForAutoReject: 3,
+              workflowBlockerResolvedWebhookUrl: null,
+              allowedIssueAuthors: ['test-user'],
+            },
+            expectedLogFragment: 'Reactivation trigger fields have been set:',
           };
         },
       },

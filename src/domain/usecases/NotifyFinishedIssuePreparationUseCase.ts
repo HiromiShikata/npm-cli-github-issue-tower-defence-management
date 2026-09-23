@@ -339,10 +339,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
-        this.formatReactivationTriggerMessage(issue),
-      );
+      console.log(this.formatReactivationTriggerMessage(issue));
       return;
     }
 

@@ -108,6 +108,19 @@ describe('isHumanComment', () => {
     ).toBe(false);
   });
 
+  it('treats a reactivation trigger fields comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content:
+            'Reactivation trigger fields have been set:\n- Depended Issue URL: https://github.com/owner/repo/issues/1\n- Next Action Date: 2026-09-25\n- Next Action Hour: not set',
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
   it('treats an all-depended-closed-cleared comment as machine generated', () => {
     expect(
       isHumanComment(
