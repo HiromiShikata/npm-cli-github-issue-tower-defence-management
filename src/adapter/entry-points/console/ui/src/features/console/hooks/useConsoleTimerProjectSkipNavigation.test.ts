@@ -17,6 +17,7 @@ const defaultArgs = {
   todoByHumanSnapshotLoaded: true,
   prsSnapshotFromCache: false,
   todoByHumanSnapshotFromCache: false,
+  explicitlySelectedPjcode: null as string | null,
 };
 
 describe('useConsoleTimerProjectSkipNavigation', () => {
@@ -37,6 +38,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         defaultArgs.todoByHumanSnapshotLoaded,
         defaultArgs.prsSnapshotFromCache,
         defaultArgs.todoByHumanSnapshotFromCache,
+        defaultArgs.explicitlySelectedPjcode,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -55,6 +57,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -73,6 +76,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -91,6 +95,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -109,6 +114,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -127,6 +133,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -145,6 +152,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         true,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -163,6 +171,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         true,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -181,6 +190,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -199,6 +209,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -217,6 +228,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     rerender();
@@ -237,6 +249,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -261,6 +274,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -288,6 +302,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         false,
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith(
@@ -309,6 +324,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -339,6 +355,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { pjcodes: [] as string[] } },
     );
@@ -362,6 +379,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { prsCount: 1 } },
     );
@@ -385,6 +403,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { todoByHumanCount: 3 } },
     );
@@ -408,6 +427,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           true,
           false,
           false,
+          null,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -419,6 +439,63 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     (navigatePush as jest.Mock).mockClear();
 
     rerender({ pjcode: 'acme', prsCount: 0 });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate when explicitlySelectedPjcode matches current pjcode', () => {
+    renderHook(() =>
+      useConsoleTimerProjectSkipNavigation(
+        true,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        'acme',
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('navigates when explicitlySelectedPjcode is null', () => {
+    renderHook(() =>
+      useConsoleTimerProjectSkipNavigation(
+        true,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('navigates when explicitlySelectedPjcode is set to a different project than current pjcode', () => {
+    renderHook(() =>
+      useConsoleTimerProjectSkipNavigation(
+        true,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        'beta',
+      ),
+    );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
   });
 });

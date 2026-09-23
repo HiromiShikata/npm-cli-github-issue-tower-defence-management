@@ -16,6 +16,7 @@ export const useConsoleTimerProjectSkipNavigation = (
   todoByHumanSnapshotLoaded: boolean,
   prsSnapshotFromCache: boolean,
   todoByHumanSnapshotFromCache: boolean,
+  explicitlySelectedPjcode: string | null,
 ): void => {
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
@@ -39,6 +40,13 @@ export const useConsoleTimerProjectSkipNavigation = (
     if (prsCount > 0 || todoByHumanCount > 0) {
       skipCountRef.current = 0;
       evaluatedPjcodeRef.current = null;
+      return;
+    }
+
+    if (
+      explicitlySelectedPjcode !== null &&
+      pjcode === explicitlySelectedPjcode
+    ) {
       return;
     }
 
@@ -78,5 +86,6 @@ export const useConsoleTimerProjectSkipNavigation = (
     todoByHumanSnapshotLoaded,
     prsSnapshotFromCache,
     todoByHumanSnapshotFromCache,
+    explicitlySelectedPjcode,
   ]);
 };

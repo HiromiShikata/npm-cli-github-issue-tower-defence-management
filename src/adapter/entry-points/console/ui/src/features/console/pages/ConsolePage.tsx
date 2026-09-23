@@ -26,6 +26,7 @@ import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
+import { useConsoleExplicitProjectSelection } from '../hooks/useConsoleExplicitProjectSelection';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
@@ -205,9 +206,14 @@ export const ConsolePage = () => {
   );
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
   const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
+  const { explicitlySelectedPjcode, notifyExplicitSelection } =
+    useConsoleExplicitProjectSelection(pjcode);
   const navigateToProject = useCallback(
-    (code: string) => navigatePush(`/projects/${code}`),
-    [],
+    (code: string) => {
+      notifyExplicitSelection(code);
+      navigatePush(`/projects/${code}`);
+    },
+    [notifyExplicitSelection],
   );
   const selectProject = useConsoleProjectSelectHandler(navigateToProject);
 
@@ -493,6 +499,7 @@ export const ConsolePage = () => {
     snapshots['todo-by-human'] !== null,
     snapshots.prs?.fromCache ?? false,
     snapshots['todo-by-human']?.fromCache ?? false,
+    explicitlySelectedPjcode,
   );
 
   useConsoleTimerFirstItemAutoOpen(

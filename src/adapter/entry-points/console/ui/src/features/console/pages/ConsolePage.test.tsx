@@ -3197,6 +3197,87 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
+  it('does not auto-skip when user explicitly selects the current project via the project dropdown', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
+    );
+    let todoCallCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'todo-by-human') {
+          todoCallCount += 1;
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              todoCallCount === 1
+                ? listPayload('todo-by-human')
+                : { ...listPayload('todo-by-human'), items: [] },
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ...listPayload(tab), items: [] }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          queryByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+
+      fireEvent.click(document.querySelector('.console-tab-pjname-button')!);
+      const menuItems = Array.from(
+        document.querySelectorAll('[role="menuitem"]'),
+      );
+      const acmeItem = menuItems.find((el) => el.textContent === 'acme');
+      fireEvent.click(acmeItem!);
+
+      expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
+      navigatePush.mockClear();
+
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(
+          queryByText('Notify finished issue preparation'),
+        ).not.toBeInTheDocument();
+      });
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner for fleet task dialog', async () => {
     jest.useFakeTimers();
     try {
