@@ -1912,8 +1912,18 @@ describe('ConsolePage auto-advance tab', () => {
           json: async () => ({
             ok: true,
             stories: [
-              { id: 'st1', name: 'TDPM Console port', color: 'BLUE', description: '' },
-              { id: 'st_new', name: 'My brand new story', color: 'RED', description: '' },
+              {
+                id: 'st1',
+                name: 'TDPM Console port',
+                color: 'BLUE',
+                description: '',
+              },
+              {
+                id: 'st_new',
+                name: 'My brand new story',
+                color: 'RED',
+                description: '',
+              },
             ],
           }),
         };

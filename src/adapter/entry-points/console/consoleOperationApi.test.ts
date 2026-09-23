@@ -3922,9 +3922,24 @@ describe('consoleOperationApi', () => {
 
     it('includes the FieldOption[] returned by updateStoryList in the response body as stories', async () => {
       const savedStories = [
-        { id: 'opt_first', name: 'First story', color: 'BLUE' as const, description: '' },
-        { id: 'opt_new', name: 'Brand new story', color: 'RED' as const, description: '' },
-        { id: 'opt_second', name: 'Second story', color: 'GREEN' as const, description: '' },
+        {
+          id: 'opt_first',
+          name: 'First story',
+          color: 'BLUE' as const,
+          description: '',
+        },
+        {
+          id: 'opt_new',
+          name: 'Brand new story',
+          color: 'RED' as const,
+          description: '',
+        },
+        {
+          id: 'opt_second',
+          name: 'Second story',
+          color: 'GREEN' as const,
+          description: '',
+        },
       ];
       const p = buildProjectWithStories();
       const localUpdateStoryList = jest.fn().mockResolvedValue(savedStories);

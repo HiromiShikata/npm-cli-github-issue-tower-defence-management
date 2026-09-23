@@ -1202,7 +1202,10 @@ export const handleStoryAdd = async (
   const freshProject = await projectRepository.getProject(project.id);
   const freshStories = freshProject?.story?.stories ?? project.story.stories;
   const newStoryList = buildStoryListWithNew(freshStories, storyName);
-  const savedStories = await projectRepository.updateStoryList(project, newStoryList);
+  const savedStories = await projectRepository.updateStoryList(
+    project,
+    newStoryList,
+  );
   context.invalidateProject?.(pjcode);
   return { statusCode: 200, body: { ok: true, stories: savedStories } };
 };
