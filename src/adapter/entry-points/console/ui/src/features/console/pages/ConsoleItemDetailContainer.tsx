@@ -128,6 +128,7 @@ export type ConsoleItemDetailContainerProps = {
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
+  onCommentError?: (message: string, reason: string) => void;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
   onCreateWorkflowIssue?: (title: string, body: string) => Promise<void>;
@@ -149,6 +150,7 @@ export const ConsoleItemDetailContainer = ({
   initialCommentDraft,
   onCommentDraftChange,
   onQueueAction,
+  onCommentError,
   onDeleteStory,
   storyNameForDeletion,
   onCreateWorkflowIssue,
@@ -370,7 +372,16 @@ export const ConsoleItemDetailContainer = ({
       ? async (body: string): Promise<ConsoleComment> => {
           onCommentDraftChange?.('');
           handlers.onSetStatus(awaitingWorkspaceOption);
-          return addComment(body);
+          try {
+            return await addComment(body);
+          } catch (cause) {
+            if (onCommentError !== undefined) {
+              onCommentError('Failed to post comment', String(cause));
+            } else {
+              console.error('Failed to post comment', cause);
+            }
+            throw cause;
+          }
         }
       : undefined;
 

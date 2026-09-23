@@ -1249,6 +1249,9 @@ export const ConsolePage = () => {
             }
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
+            onCommentError={(message, reason) =>
+              actionQueue.showError(message, reason)
+            }
             onDeleteStory={
               selectedItemStoryEntry !== null
                 ? async (deleteChildTasks: boolean) => {
