@@ -1,3 +1,16 @@
+# [2.138.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.137.0...v2.138.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **ConsolePage:** exclude stale cache snapshots from loadedTabs to prevent premature tab fallthrough ([#2544](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2544)) ([6dc8552](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6dc85525b76a2f4d2417b74b3424cb5760882a7d)), closes [#2528](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2528)
+
+
+### Features
+
+* **console:** prevent timer mode from auto-skipping explicitly selected project with zero tasks ([#2539](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2539)) ([8b95c05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b95c05a8e410094394f9d3ca8e71d5e99b91b02)), closes [#2530](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2530)
+* **ConsoleStoryList:** redesign 8-button row with 3-level hierarchy and overflow menu ([#2543](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2543)) ([b426eba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b426eba3178010869fe3bde1b514a8c074eafeb2))
+
 # [2.137.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.136.0...v2.137.0) (2026-09-23)
 
 
