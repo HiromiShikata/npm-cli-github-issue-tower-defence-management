@@ -29,6 +29,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
         'acme',
         null,
         ['acme', 'beta', 'gamma'],
+        false,
         true,
       ),
     );
@@ -39,21 +40,21 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('does not refresh when disabled', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, false),
     );
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('does not refresh when there are no background projects', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme'], true),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme'], false, true),
     );
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('refreshes background projects at the refresh interval', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, true),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
 
@@ -70,7 +71,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('stops refreshing after unmount', () => {
     const { unmount } = renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh('acme', null, ['acme', 'beta'], false, true),
     );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     unmount();
@@ -87,6 +88,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
         'beta',
         null,
         ['acme', 'beta', 'gamma'],
+        false,
         true,
       ),
     );
@@ -97,7 +99,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
   it('refreshes all pjcodes as background when active project is null', () => {
     renderHook(() =>
-      useConsoleBackgroundTabRefresh(null, null, ['acme', 'beta'], true),
+      useConsoleBackgroundTabRefresh(null, null, ['acme', 'beta'], false, true),
     );
     expect(mockRefresh).toHaveBeenCalledWith('acme');
     expect(mockRefresh).toHaveBeenCalledWith('beta');
@@ -110,6 +112,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
           activePjcode,
           null,
           ['acme', 'beta', 'gamma'],
+          false,
           true,
         ),
       { initialProps: { activePjcode: 'acme' } },
@@ -129,6 +132,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
           'acme',
           activeTab,
           ['acme', 'beta', 'gamma'],
+          false,
           true,
         ),
       { initialProps: { activeTab: 'prs' as string | null } },
@@ -149,6 +153,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
           activeTab,
           ['acme', 'beta'],
           false,
+          false,
         ),
       { initialProps: { activeTab: 'prs' as string | null } },
     );
@@ -156,5 +161,46 @@ describe('useConsoleBackgroundTabRefresh', () => {
 
     rerender({ activeTab: 'todo-by-human' });
     expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { isForegroundLoading: true, expectedCalled: false },
+    { isForegroundLoading: false, expectedCalled: true },
+  ])(
+    'isForegroundLoading=$isForegroundLoading: refresh fired=$expectedCalled when enabled',
+    ({ isForegroundLoading, expectedCalled }) => {
+      renderHook(() =>
+        useConsoleBackgroundTabRefresh(
+          'acme',
+          null,
+          ['acme', 'beta'],
+          isForegroundLoading,
+          true,
+        ),
+      );
+      if (expectedCalled) {
+        expect(mockRefresh).toHaveBeenCalledWith('beta');
+      } else {
+        expect(mockRefresh).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('starts background refresh when isForegroundLoading transitions from true to false', () => {
+    const { rerender } = renderHook(
+      ({ isForegroundLoading }: { isForegroundLoading: boolean }) =>
+        useConsoleBackgroundTabRefresh(
+          'acme',
+          null,
+          ['acme', 'beta'],
+          isForegroundLoading,
+          true,
+        ),
+      { initialProps: { isForegroundLoading: true } },
+    );
+    expect(mockRefresh).not.toHaveBeenCalled();
+
+    rerender({ isForegroundLoading: false });
+    expect(mockRefresh).toHaveBeenCalledWith('beta');
   });
 });

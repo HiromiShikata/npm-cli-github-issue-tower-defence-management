@@ -215,6 +215,7 @@ export const ConsolePage = () => {
     pjcode,
     activeTab,
     pjcodes,
+    isLoading,
     timerMode && airplaneSnapshot === null,
   );
 

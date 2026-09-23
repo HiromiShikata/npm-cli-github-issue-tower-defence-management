@@ -8,10 +8,11 @@ export const useConsoleBackgroundTabRefresh = (
   activePjcode: string | null,
   activeTab: string | null,
   allPjcodes: string[],
+  isForegroundLoading: boolean,
   enabled: boolean,
 ): void => {
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isForegroundLoading) {
       return;
     }
     const backgroundPjcodes = allPjcodes.filter(
@@ -23,10 +24,10 @@ export const useConsoleBackgroundTabRefresh = (
     for (const pjcode of backgroundPjcodes) {
       refreshProjectTabsToCache(pjcode).catch(() => {});
     }
-  }, [enabled, activePjcode, activeTab, allPjcodes]);
+  }, [enabled, isForegroundLoading, activePjcode, activeTab, allPjcodes]);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isForegroundLoading) {
       return;
     }
     const backgroundPjcodes = allPjcodes.filter((c) => c !== activePjcode);
@@ -41,5 +42,5 @@ export const useConsoleBackgroundTabRefresh = (
     return () => {
       clearInterval(timer);
     };
-  }, [enabled, activePjcode, allPjcodes]);
+  }, [enabled, isForegroundLoading, activePjcode, allPjcodes]);
 };
