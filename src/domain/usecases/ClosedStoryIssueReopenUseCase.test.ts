@@ -335,7 +335,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
 
     it('skips reopen when getIssueByUrl returns null for search result', async () => {
       mockRepository.searchIssues.mockResolvedValue([
-        createMockSearchedIssue({ url: 'https://github.com/owner/repo/issues/42' }),
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(null);
 
@@ -355,7 +357,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
 
     it('skips reopen when search result issue is not closed', async () => {
       mockRepository.searchIssues.mockResolvedValue([
-        createMockSearchedIssue({ url: 'https://github.com/owner/repo/issues/42' }),
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(
         createMockIssue({
@@ -382,7 +386,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
 
     it('skips reopen when search result issue has no story label', async () => {
       mockRepository.searchIssues.mockResolvedValue([
-        createMockSearchedIssue({ url: 'https://github.com/owner/repo/issues/42' }),
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(
         createMockIssue({
@@ -415,7 +421,10 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         labels: ['story'],
       });
       mockRepository.searchIssues.mockResolvedValue([
-        createMockSearchedIssue({ url: 'https://github.com/owner/repo/issues/42', number: 42 }),
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+          number: 42,
+        }),
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(archivedIssue);
       mockRepository.reopenIssueByUrl.mockRejectedValue(new Error('API error'));
