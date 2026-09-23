@@ -4100,6 +4100,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
@@ -4118,6 +4119,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
@@ -6327,7 +6329,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should advance to Awaiting Owner when chore agent has exactly one linked PR where all CI passes', async () => {
+    it('should route to Awaiting Workspace when chore agent has exactly one linked PR where all CI passes', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
