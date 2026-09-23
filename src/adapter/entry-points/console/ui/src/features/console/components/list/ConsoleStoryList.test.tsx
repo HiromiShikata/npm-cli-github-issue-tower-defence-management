@@ -313,7 +313,9 @@ describe('ConsoleStoryList', () => {
 
     it('opens the overflow menu when More options is clicked', () => {
       const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       expect(getAllByRole('menuitem').length).toBeGreaterThan(0);
     });
@@ -322,7 +324,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(firstOverflowBtn);
       expect(queryByRole('menu')).toBeNull();
@@ -332,7 +336,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.mouseDown(document.body);
       expect(queryByRole('menu')).toBeNull();
@@ -340,27 +346,41 @@ describe('ConsoleStoryList', () => {
 
     it('shows Change color, Rename, Edit description, and Delete story options in the menu', () => {
       const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      expect(getAllByRole('menuitem', { name: 'Change color' })).toHaveLength(1);
+      expect(getAllByRole('menuitem', { name: 'Change color' })).toHaveLength(
+        1,
+      );
       expect(getAllByRole('menuitem', { name: 'Rename' })).toHaveLength(1);
-      expect(getAllByRole('menuitem', { name: 'Edit description' })).toHaveLength(1);
-      expect(getAllByRole('menuitem', { name: 'Delete story' })).toHaveLength(1);
+      expect(
+        getAllByRole('menuitem', { name: 'Edit description' }),
+      ).toHaveLength(1);
+      expect(getAllByRole('menuitem', { name: 'Delete story' })).toHaveLength(
+        1,
+      );
     });
 
     it('opens the color picker dialog when Change color is clicked in the overflow menu', () => {
       const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
-      expect(getAllByRole('button', { name: /GRAY \(disable\)/ })).toHaveLength(1);
+      expect(getAllByRole('button', { name: /GRAY \(disable\)/ })).toHaveLength(
+        1,
+      );
     });
 
     it('closes the overflow menu after clicking Change color', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
       expect(queryByRole('menu')).toBeNull();
@@ -372,7 +392,9 @@ describe('ConsoleStoryList', () => {
       );
       const overflowBtns = getAllByRole('button', { name: 'More options' });
       fireEvent.click(overflowBtns[0]);
-      const changeColorItem = getAllByRole('menuitem', { name: 'Change color' })[0];
+      const changeColorItem = getAllByRole('menuitem', {
+        name: 'Change color',
+      })[0];
       expect(changeColorItem).toBeDisabled();
     });
 
@@ -382,7 +404,9 @@ describe('ConsoleStoryList', () => {
       );
       const overflowBtns = getAllByRole('button', { name: 'More options' });
       fireEvent.click(overflowBtns[1]);
-      const changeColorItem = getAllByRole('menuitem', { name: 'Change color' })[0];
+      const changeColorItem = getAllByRole('menuitem', {
+        name: 'Change color',
+      })[0];
       expect(changeColorItem).not.toBeDisabled();
     });
 
@@ -390,7 +414,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       expect(getByPlaceholderText('Story name')).toBeInTheDocument();
@@ -400,7 +426,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       expect(queryByRole('menu')).toBeNull();
@@ -410,9 +438,13 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       expect(getByPlaceholderText('Story description')).toBeInTheDocument();
     });
 
@@ -420,9 +452,13 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       expect(queryByRole('menu')).toBeNull();
     });
 
@@ -430,7 +466,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       expect(getByRole('dialog')).toBeInTheDocument();
@@ -440,7 +478,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       expect(queryByRole('menu')).toBeNull();
@@ -450,10 +490,14 @@ describe('ConsoleStoryList', () => {
   describe('change color', () => {
     it('shows the color palette when Change color is clicked via overflow menu', () => {
       const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
-      expect(getAllByRole('button', { name: /GRAY \(disable\)/ })).toHaveLength(1);
+      expect(getAllByRole('button', { name: /GRAY \(disable\)/ })).toHaveLength(
+        1,
+      );
     });
 
     it('calls onSelectColor with the correct storyOptionId and color when a swatch is clicked', () => {
@@ -461,7 +505,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole } = render(
         <ConsoleStoryList {...defaultProps} onSelectColor={onSelectColor} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
       const greenSwatch = getAllByRole('button', { name: 'GREEN' })[0];
@@ -473,7 +519,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
       const greenSwatch = getAllByRole('button', { name: 'GREEN' })[0];
@@ -485,10 +533,14 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Change color' })[0]);
-      expect(getByRole('button', { name: 'GRAY (disable)' })).toBeInTheDocument();
+      expect(
+        getByRole('button', { name: 'GRAY (disable)' }),
+      ).toBeInTheDocument();
     });
 
     it('displays an optimistic color from optimisticColors prop', () => {
@@ -518,9 +570,13 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       expect(getByPlaceholderText('Story description')).toBeInTheDocument();
     });
 
@@ -543,9 +599,13 @@ describe('ConsoleStoryList', () => {
           onUpdateDescription={onUpdateDescription}
         />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: 'New description text' },
       });
@@ -567,9 +627,13 @@ describe('ConsoleStoryList', () => {
             onUpdateDescription={onUpdateDescription}
           />,
         );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: 'Some description' },
       });
@@ -590,9 +654,13 @@ describe('ConsoleStoryList', () => {
           onUpdateDescription={onUpdateDescription}
         />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
-      fireEvent.click(getAllByRole('menuitem', { name: 'Edit description' })[0]);
+      fireEvent.click(
+        getAllByRole('menuitem', { name: 'Edit description' })[0],
+      );
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: '' },
       });
@@ -776,7 +844,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       expect(getByPlaceholderText('Story name')).toBeInTheDocument();
@@ -786,7 +856,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       const input = getByPlaceholderText('Story name') as HTMLInputElement;
@@ -798,7 +870,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText, getByRole } = render(
         <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       fireEvent.change(getByPlaceholderText('Story name'), {
@@ -814,7 +888,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole, getByText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       fireEvent.change(getByRole('textbox'), { target: { value: '' } });
@@ -831,7 +907,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText, getByText } = render(
         <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       fireEvent.change(getByPlaceholderText('Story name'), {
@@ -850,7 +928,9 @@ describe('ConsoleStoryList', () => {
         render(
           <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
         );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       fireEvent.change(getByPlaceholderText('Story name'), {
@@ -868,7 +948,9 @@ describe('ConsoleStoryList', () => {
         render(
           <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
         );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Rename' })[0]);
       fireEvent.change(getByPlaceholderText('Story name'), {
@@ -885,7 +967,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       expect(getByRole('dialog')).toBeInTheDocument();
@@ -895,7 +979,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const dialog = getByRole('dialog');
@@ -906,7 +992,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const cancelButton = getAllByRole('button', { name: 'Cancel' })[0];
@@ -919,7 +1007,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
@@ -936,7 +1026,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
@@ -953,7 +1045,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
@@ -972,7 +1066,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, findByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
@@ -994,7 +1090,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getAllByText } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstOverflowBtn] = getAllByRole('button', { name: 'More options' });
+      const [firstOverflowBtn] = getAllByRole('button', {
+        name: 'More options',
+      });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {

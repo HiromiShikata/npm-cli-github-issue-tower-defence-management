@@ -216,7 +216,9 @@ export const TasksExpanded: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const [firstChevron] = canvas.getAllByRole('button', { name: 'Show tasks' });
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
     await userEvent.click(firstChevron);
   },
 };
