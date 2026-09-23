@@ -760,6 +760,7 @@ const createStubIssueRepository = (
   closeIssueByUrl: async (url: string): Promise<void> => {
     closeIssueCalls.push(url);
   },
+  reopenIssueByUrl: async (): Promise<void> => undefined,
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
   createCommentByUrl: async (
     url: string,
