@@ -847,8 +847,23 @@ export const handleCreateIssue = async (
   const cachedStoryOption = cachedProjectStory.stories.find(
     (s) => s.name === storyName,
   );
-  if (cachedStoryOption === undefined) {
-    return badRequest(`story option "${storyName}" not found in project`);
+  let preloadedFreshProject: Project | null = null;
+  let resolvedStoryOption: FieldOption;
+  if (cachedStoryOption !== undefined) {
+    resolvedStoryOption = cachedStoryOption;
+  } else {
+    if (context.resolveProjectRepository !== null) {
+      preloadedFreshProject = await context
+        .resolveProjectRepository(project.url)
+        .getProject(project.id);
+    }
+    const freshStoryOption = preloadedFreshProject?.story?.stories.find(
+      (s) => s.name === storyName,
+    );
+    if (freshStoryOption === undefined) {
+      return badRequest(`story option "${storyName}" not found in project`);
+    }
+    resolvedStoryOption = freshStoryOption;
   }
 
   const agentOptionId =
@@ -906,14 +921,15 @@ export const handleCreateIssue = async (
           ? context.resolveProjectRepository(project.url)
           : null;
       const freshProject =
-        projectRepository !== null
+        preloadedFreshProject ??
+        (projectRepository !== null
           ? await projectRepository.getProject(project.id)
-          : null;
+          : null);
       const effectiveProject = freshProject ?? project;
       const effectiveStory = freshProject?.story ?? cachedProjectStory;
       const storyOption =
         effectiveStory.stories.find((s) => s.name === storyName) ??
-        cachedStoryOption;
+        resolvedStoryOption;
       await issueRepository.updateStory(
         { ...effectiveProject, story: effectiveStory },
         addedIssue,
