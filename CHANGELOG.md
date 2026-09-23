@@ -1,3 +1,15 @@
+# [2.139.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.138.0...v2.139.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **console:** call setLocalStoryEntriesOverride after handleStoryAdd succeeds ([#2542](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2542)) ([2370864](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/237086461eafb38d23e67ddf2d8c10d91f6d0d1d))
+
+
+### Features
+
+* **webServer:** add gzip compression to TDPM web server console data responses ([#2541](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2541)) ([0d25bd1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0d25bd1963e364df4cc2d99785ae7e78473e3afc))
+
 # [2.138.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.137.0...v2.138.0) (2026-09-23)
 
 
