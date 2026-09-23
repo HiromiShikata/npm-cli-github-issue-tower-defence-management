@@ -38,7 +38,7 @@ import {
 } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
-import { ReopenClosedStoryIssueUseCase } from './ReopenClosedStoryIssueUseCase';
+import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
@@ -142,7 +142,7 @@ export class HandleScheduledEventUseCase {
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
     readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
-    readonly reopenClosedStoryIssueUseCase: ReopenClosedStoryIssueUseCase,
+    readonly closedStoryIssueReopenUseCase: ClosedStoryIssueReopenUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -253,7 +253,7 @@ export class HandleScheduledEventUseCase {
       issues,
     });
     try {
-      await this.reopenClosedStoryIssueUseCase.run({
+      await this.closedStoryIssueReopenUseCase.run({
         issues,
         storyObjectMap: storyIssues,
       });

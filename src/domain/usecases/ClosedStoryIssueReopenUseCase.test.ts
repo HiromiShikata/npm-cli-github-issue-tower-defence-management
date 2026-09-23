@@ -1,4 +1,4 @@
-import { ReopenClosedStoryIssueUseCase } from './ReopenClosedStoryIssueUseCase';
+import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
@@ -60,15 +60,15 @@ const buildStoryObjectMap = (
   return map;
 };
 
-describe('ReopenClosedStoryIssueUseCase', () => {
+describe('ClosedStoryIssueReopenUseCase', () => {
   let mockRepository: MockedRepository;
-  let useCase: ReopenClosedStoryIssueUseCase;
+  let useCase: ClosedStoryIssueReopenUseCase;
 
   beforeEach(() => {
     mockRepository = {
       reopenIssueByUrl: jest.fn().mockResolvedValue(undefined),
     };
-    useCase = new ReopenClosedStoryIssueUseCase(mockRepository);
+    useCase = new ClosedStoryIssueReopenUseCase(mockRepository);
   });
 
   const testCases: Array<{

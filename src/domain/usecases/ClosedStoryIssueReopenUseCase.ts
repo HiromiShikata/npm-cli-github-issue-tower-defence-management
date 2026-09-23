@@ -2,7 +2,7 @@ import { Issue } from '../entities/Issue';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 
-export class ReopenClosedStoryIssueUseCase {
+export class ClosedStoryIssueReopenUseCase {
   constructor(
     private readonly issueRepository: Pick<IssueRepository, 'reopenIssueByUrl'>,
   ) {}
