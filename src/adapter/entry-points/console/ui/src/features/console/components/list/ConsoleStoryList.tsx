@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
 import type {
   ConsoleColor,
@@ -127,6 +127,26 @@ export const ConsoleStoryList = ({
   const [rowReorderStates, setRowReorderStates] = useState<
     Record<string, RowReorderState>
   >({});
+  const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (overflowMenuOpenId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (
+        !target.closest('.console-story-overflow-menu') &&
+        !target.closest('.console-story-overflow-btn')
+      ) {
+        setOverflowMenuOpenId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [overflowMenuOpenId]);
 
   const getRowReorderState = (id: string): RowReorderState =>
     rowReorderStates[id] ?? { inProgress: false, error: null };
@@ -246,6 +266,7 @@ export const ConsoleStoryList = ({
             const isLast = index === visibleStories.length - 1;
             const isTasksExpanded =
               expandedTasksOptionId === entry.storyOptionId;
+            const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
@@ -281,6 +302,18 @@ export const ConsoleStoryList = ({
                   </span>
                   <button
                     type="button"
+                    className="console-story-chevron"
+                    aria-label={isTasksExpanded ? 'Hide tasks' : 'Show tasks'}
+                    onClick={() =>
+                      setExpandedTasksOptionId(
+                        isTasksExpanded ? null : entry.storyOptionId,
+                      )
+                    }
+                  >
+                    {isTasksExpanded ? '▼' : '▶'}
+                  </button>
+                  <button
+                    type="button"
                     className="console-op-button"
                     onClick={() =>
                       setTaskCreateDialogId(
@@ -290,21 +323,7 @@ export const ConsoleStoryList = ({
                       )
                     }
                   >
-                    Add task
-                  </button>
-                  <button
-                    type="button"
-                    className="console-op-button"
-                    onClick={() =>
-                      setColorPickerOptionId(
-                        colorPickerOptionId === entry.storyOptionId
-                          ? null
-                          : entry.storyOptionId,
-                      )
-                    }
-                    disabled={isInFlight}
-                  >
-                    Change color
+                    + Add task
                   </button>
                   <button
                     type="button"
@@ -328,55 +347,72 @@ export const ConsoleStoryList = ({
                   >
                     ↓
                   </button>
-                  <button
-                    type="button"
-                    className="console-op-button console-op-button-danger"
-                    aria-label="Delete story"
-                    onClick={() =>
-                      setDeleteConfirmOptionId(entry.storyOptionId)
-                    }
-                  >
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    className="console-op-button"
-                    aria-label="Rename story"
-                    onClick={() =>
-                      setRenameOptionId(
-                        renameOptionId === entry.storyOptionId
-                          ? null
-                          : entry.storyOptionId,
-                      )
-                    }
-                  >
-                    Rename
-                  </button>
-                  <button
-                    type="button"
-                    className="console-op-button"
-                    aria-label="Edit description"
-                    onClick={() =>
-                      setDescriptionEditOptionId(
-                        descriptionEditOptionId === entry.storyOptionId
-                          ? null
-                          : entry.storyOptionId,
-                      )
-                    }
-                  >
-                    Edit description
-                  </button>
-                  <button
-                    type="button"
-                    className="console-op-button"
-                    onClick={() =>
-                      setExpandedTasksOptionId(
-                        isTasksExpanded ? null : entry.storyOptionId,
-                      )
-                    }
-                  >
-                    {isTasksExpanded ? 'Hide tasks' : 'Show tasks'}
-                  </button>
+                  <div className="console-story-overflow-container">
+                    <button
+                      type="button"
+                      className="console-story-overflow-btn"
+                      aria-label="More options"
+                      aria-haspopup="menu"
+                      aria-expanded={isOverflowOpen}
+                      onClick={() =>
+                        setOverflowMenuOpenId(
+                          isOverflowOpen ? null : entry.storyOptionId,
+                        )
+                      }
+                    >
+                      ⋯
+                    </button>
+                    {isOverflowOpen && (
+                      <div role="menu" className="console-story-overflow-menu">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="console-story-overflow-option"
+                          disabled={isInFlight}
+                          onClick={() => {
+                            setOverflowMenuOpenId(null);
+                            setColorPickerOptionId(entry.storyOptionId);
+                          }}
+                        >
+                          Change color
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="console-story-overflow-option"
+                          onClick={() => {
+                            setOverflowMenuOpenId(null);
+                            setRenameOptionId(entry.storyOptionId);
+                          }}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="console-story-overflow-option"
+                          onClick={() => {
+                            setOverflowMenuOpenId(null);
+                            setDescriptionEditOptionId(entry.storyOptionId);
+                          }}
+                        >
+                          Edit description
+                        </button>
+                        <hr className="console-story-overflow-separator" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="console-story-overflow-option console-story-overflow-option--danger"
+                          onClick={() => {
+                            setOverflowMenuOpenId(null);
+                            setDeleteConfirmOptionId(entry.storyOptionId);
+                          }}
+                        >
+                          Delete story
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {description !== '' && (
                   <p className="console-story-description">{description}</p>

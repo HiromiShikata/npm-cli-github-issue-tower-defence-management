@@ -2710,10 +2710,10 @@ describe('ConsolePage task creation action queue', () => {
     const { getByRole, getByPlaceholderText } = render(<ConsolePage />);
 
     await waitFor(() => {
-      expect(getByRole('button', { name: 'Add task' })).toBeInTheDocument();
+      expect(getByRole('button', { name: '+ Add task' })).toBeInTheDocument();
     });
 
-    fireEvent.click(getByRole('button', { name: 'Add task' }));
+    fireEvent.click(getByRole('button', { name: '+ Add task' }));
 
     await waitFor(() => {
       expect(

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
 const sampleItems = [
@@ -189,5 +190,35 @@ export const WithArchivedShown: Story = {
     isLoading: false,
     error: null,
     showGray: true,
+  },
+};
+
+export const OverflowMenuOpen: Story = {
+  args: {
+    stories: storiesWithoutUrl,
+    isLoading: false,
+    error: null,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstOverflowBtn] = canvas.getAllByRole('button', {
+      name: 'More options',
+    });
+    await userEvent.click(firstOverflowBtn);
+  },
+};
+
+export const TasksExpanded: Story = {
+  args: {
+    stories: storiesWithoutUrl,
+    isLoading: false,
+    error: null,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
+    await userEvent.click(firstChevron);
   },
 };
