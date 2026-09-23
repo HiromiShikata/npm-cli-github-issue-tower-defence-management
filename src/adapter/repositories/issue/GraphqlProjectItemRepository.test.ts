@@ -2980,12 +2980,9 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const resultPromise = repository
-        .updateProjectField(
-          'proj-id-123',
-          'field-id-456',
-          'item-id-789',
-          { singleSelectOptionId: 'opt-abc' },
-        )
+        .updateProjectField('proj-id-123', 'field-id-456', 'item-id-789', {
+          singleSelectOptionId: 'opt-abc',
+        })
         .catch((e: unknown) => e);
       await jest.runAllTimersAsync();
 
