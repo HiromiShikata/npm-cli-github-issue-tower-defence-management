@@ -963,6 +963,7 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockClosedStoryIssueReopenUseCase.run).toHaveBeenCalledWith(
           expect.objectContaining({
             issues: [closedStoryIssue],
+            storyIssueOwnerRepo: 'test-org/test-repo',
           }),
         );
 

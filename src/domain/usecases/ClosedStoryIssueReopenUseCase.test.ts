@@ -3,9 +3,12 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
 import { StoryOption } from '../entities/Project';
+import { SearchedIssue } from '../entities/SearchedIssue';
 
 type MockedRepository = {
   reopenIssueByUrl: jest.MockedFunction<IssueRepository['reopenIssueByUrl']>;
+  searchIssues: jest.MockedFunction<IssueRepository['searchIssues']>;
+  getIssueByUrl: jest.MockedFunction<IssueRepository['getIssueByUrl']>;
 };
 
 const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
@@ -38,6 +41,19 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   ...overrides,
 });
 
+const createMockSearchedIssue = (
+  overrides: Partial<SearchedIssue> = {},
+): SearchedIssue => ({
+  url: 'https://github.com/owner/repo/issues/1',
+  org: 'owner',
+  repo: 'repo',
+  number: 1,
+  state: 'CLOSED',
+  author: '',
+  assignees: [],
+  ...overrides,
+});
+
 const createStoryOption = (name: string): StoryOption => ({
   id: `story-${name}`,
   name,
@@ -67,6 +83,8 @@ describe('ClosedStoryIssueReopenUseCase', () => {
   beforeEach(() => {
     mockRepository = {
       reopenIssueByUrl: jest.fn().mockResolvedValue(undefined),
+      searchIssues: jest.fn().mockResolvedValue([]),
+      getIssueByUrl: jest.fn().mockResolvedValue(null),
     };
     useCase = new ClosedStoryIssueReopenUseCase(mockRepository);
   });
@@ -202,10 +220,18 @@ describe('ClosedStoryIssueReopenUseCase', () => {
 
       if (tc.expectedToThrow) {
         await expect(
-          useCase.run({ issues: tc.issues, storyObjectMap }),
+          useCase.run({
+            issues: tc.issues,
+            storyObjectMap,
+            storyIssueOwnerRepo: 'owner/repo',
+          }),
         ).rejects.toBeInstanceOf(AggregateError);
       } else {
-        await useCase.run({ issues: tc.issues, storyObjectMap });
+        await useCase.run({
+          issues: tc.issues,
+          storyObjectMap,
+          storyIssueOwnerRepo: 'owner/repo',
+        });
       }
 
       expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledTimes(
@@ -221,6 +247,201 @@ describe('ClosedStoryIssueReopenUseCase', () => {
           expect(storyObject?.storyIssue?.isClosed).toBe(expectedClosed);
         }
       });
+    });
+  });
+
+  describe('archived issue fallback via searchIssues', () => {
+    it('reopens archived closed story issue via searchIssues when not found in params.issues', async () => {
+      const archivedIssue = createMockIssue({
+        title: 'feature / X',
+        url: 'https://github.com/owner/repo/issues/42',
+        number: 42,
+        isClosed: true,
+        labels: ['story'],
+      });
+      mockRepository.searchIssues.mockResolvedValue([
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+          number: 42,
+        }),
+      ]);
+      mockRepository.getIssueByUrl.mockResolvedValue(archivedIssue);
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.searchIssues).toHaveBeenCalledWith(
+        'repo:owner/repo is:closed label:story "feature / X" in:title',
+      );
+      expect(mockRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/owner/repo/issues/42',
+      );
+      expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/owner/repo/issues/42',
+      );
+      const storyObject = storyObjectMap.get('feature / X');
+      expect(storyObject?.storyIssue?.isClosed).toBe(false);
+      expect(storyObject?.storyIssue?.url).toBe(
+        'https://github.com/owner/repo/issues/42',
+      );
+    });
+
+    it('does not call searchIssues when closed story issue already found in params.issues', async () => {
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [
+          createMockIssue({
+            title: 'feature / X',
+            isClosed: true,
+            labels: ['story'],
+          }),
+        ],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.searchIssues).not.toHaveBeenCalled();
+      expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips reopen when searchIssues returns empty results for archived story', async () => {
+      mockRepository.searchIssues.mockResolvedValue([]);
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.searchIssues).toHaveBeenCalledTimes(1);
+      expect(mockRepository.getIssueByUrl).not.toHaveBeenCalled();
+      expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+    });
+
+    it('skips reopen when getIssueByUrl returns null for search result', async () => {
+      mockRepository.searchIssues.mockResolvedValue([
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
+      ]);
+      mockRepository.getIssueByUrl.mockResolvedValue(null);
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+    });
+
+    it('skips reopen when search result issue is not closed', async () => {
+      mockRepository.searchIssues.mockResolvedValue([
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
+      ]);
+      mockRepository.getIssueByUrl.mockResolvedValue(
+        createMockIssue({
+          title: 'feature / X',
+          isClosed: false,
+          state: 'OPEN',
+          labels: ['story'],
+        }),
+      );
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+    });
+
+    it('skips reopen when search result issue has no story label', async () => {
+      mockRepository.searchIssues.mockResolvedValue([
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
+      ]);
+      mockRepository.getIssueByUrl.mockResolvedValue(
+        createMockIssue({
+          title: 'feature / X',
+          isClosed: true,
+          labels: [],
+        }),
+      );
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+    });
+
+    it('throws AggregateError when reopenIssueByUrl throws for archived issue found via searchIssues', async () => {
+      const archivedIssue = createMockIssue({
+        title: 'feature / X',
+        url: 'https://github.com/owner/repo/issues/42',
+        number: 42,
+        isClosed: true,
+        labels: ['story'],
+      });
+      mockRepository.searchIssues.mockResolvedValue([
+        createMockSearchedIssue({
+          url: 'https://github.com/owner/repo/issues/42',
+          number: 42,
+        }),
+      ]);
+      mockRepository.getIssueByUrl.mockResolvedValue(archivedIssue);
+      mockRepository.reopenIssueByUrl.mockRejectedValue(new Error('API error'));
+
+      const storyObjectMap = buildStoryObjectMap([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await expect(
+        useCase.run({
+          issues: [],
+          storyObjectMap,
+          storyIssueOwnerRepo: 'owner/repo',
+        }),
+      ).rejects.toBeInstanceOf(AggregateError);
+
+      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
     });
   });
 });

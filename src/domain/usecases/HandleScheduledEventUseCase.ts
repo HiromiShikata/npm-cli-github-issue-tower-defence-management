@@ -256,6 +256,7 @@ export class HandleScheduledEventUseCase {
       await this.closedStoryIssueReopenUseCase.run({
         issues,
         storyObjectMap: storyIssues,
+        storyIssueOwnerRepo: `${input.org}/${input.workingReport.repo}`,
       });
     } catch (reopenError) {
       console.error(

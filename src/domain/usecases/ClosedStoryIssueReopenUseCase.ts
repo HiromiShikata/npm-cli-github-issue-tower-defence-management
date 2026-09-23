@@ -4,12 +4,16 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 
 export class ClosedStoryIssueReopenUseCase {
   constructor(
-    private readonly issueRepository: Pick<IssueRepository, 'reopenIssueByUrl'>,
+    private readonly issueRepository: Pick<
+      IssueRepository,
+      'reopenIssueByUrl' | 'searchIssues' | 'getIssueByUrl'
+    >,
   ) {}
 
   run = async (params: {
     issues: Issue[];
     storyObjectMap: StoryObjectMap;
+    storyIssueOwnerRepo: string;
   }): Promise<number> => {
     let reopenedCount = 0;
     const errors: unknown[] = [];
@@ -21,12 +25,17 @@ export class ClosedStoryIssueReopenUseCase {
       if (storyObject.story.name.startsWith('regular / ')) {
         continue;
       }
-      const closedStoryIssue = params.issues.find(
-        (issue) =>
-          storyObject.story.name.startsWith(issue.title) &&
-          issue.isClosed &&
-          issue.labels.includes('story'),
-      );
+      const closedStoryIssue =
+        params.issues.find(
+          (issue) =>
+            storyObject.story.name.startsWith(issue.title) &&
+            issue.isClosed &&
+            issue.labels.includes('story'),
+        ) ??
+        (await this.findArchivedClosedStoryIssue(
+          storyObject.story.name,
+          params.storyIssueOwnerRepo,
+        ));
       if (!closedStoryIssue) {
         continue;
       }
@@ -51,5 +60,21 @@ export class ClosedStoryIssueReopenUseCase {
       );
     }
     return reopenedCount;
+  };
+
+  private findArchivedClosedStoryIssue = async (
+    storyName: string,
+    ownerRepo: string,
+  ): Promise<Issue | null> => {
+    const query = `repo:${ownerRepo} is:closed label:story "${storyName}" in:title`;
+    const results = await this.issueRepository.searchIssues(query);
+    if (results.length === 0) {
+      return null;
+    }
+    const issue = await this.issueRepository.getIssueByUrl(results[0].url);
+    if (!issue || !issue.isClosed || !issue.labels.includes('story')) {
+      return null;
+    }
+    return issue;
   };
 }
