@@ -1,3 +1,11 @@
+# [2.137.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.136.0...v2.137.0) (2026-09-23)
+
+
+### Features
+
+* **console:** delay background tab refresh until foreground loading completes ([#2538](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2538)) ([ee34637](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ee346370404cd10ecd879b707222978f1798189b)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2529](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2529)
+* **NotifyFinishedIssuePreparationUseCase:** suppress non-actionable pipeline comments and document behavior in spec/BEHAVIOR.md ([#2540](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2540)) ([0e62092](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0e620926ab29ac1e3b4061c2e17aa297fb17cf76)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2527](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2527)
+
 # [2.136.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.12...v2.136.0) (2026-09-23)
 
 
