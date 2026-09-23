@@ -2792,6 +2792,79 @@ describe('consoleOperationApi', () => {
       });
     });
 
+    it('succeeds when storyName is absent from cached project but present in fresh GitHub data', async () => {
+      const cachedProjectWithoutStory: Project = {
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_green',
+              name: 'Move to Okinawa',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+        },
+      };
+      const freshProjectWithStory: Project = {
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_green',
+              name: 'Move to Okinawa',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+        },
+      };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(freshProjectWithStory),
+            updateStoryList: jest.fn(),
+          }),
+          cachedProjectWithoutStory,
+        ),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      await response.backgroundTask;
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.anything(),
+        createdIssue,
+        'opt_blue',
+      );
+    });
+
     it('creates issue with provided body text when body is given', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleCreateIssue(
