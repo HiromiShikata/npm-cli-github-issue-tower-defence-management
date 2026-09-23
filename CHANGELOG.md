@@ -1,3 +1,10 @@
+## [2.135.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.11...v2.135.12) (2026-09-23)
+
+
+### Bug Fixes
+
+* **RestIssueRepository:** remove state field from updateIssue PATCH to prevent reopening closed issues ([#2525](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2525)) ([f250443](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f250443eab58200632cbf3269b1108f7b882b54c)), closes [HiromiShikata/secretary#6837](https://github.com/HiromiShikata/secretary/issues/6837)
+
 ## [2.135.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.10...v2.135.11) (2026-09-23)
 
 
