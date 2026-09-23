@@ -545,6 +545,79 @@ describe('ConsoleItemDetailContainer', () => {
     resolveAddComment?.();
   });
 
+  it('calls onCommentError with the error details when addComment rejects via Comment & Awaiting Workspace', async () => {
+    const operations = buildOperations();
+    const error = new Error('network failure');
+    operations.addComment = jest.fn(async () => {
+      throw error;
+    });
+    const onCommentError = jest.fn();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        onCommentError={onCommentError}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'test comment body' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    await waitFor(() => {
+      expect(onCommentError).toHaveBeenCalledWith(
+        expect.any(String),
+        String(error),
+      );
+    });
+  });
+
+  it('re-throws the error from addCommentAndMoveToAwaitingWorkspace when addComment rejects so the composer shows the error state', async () => {
+    const operations = buildOperations();
+    const error = new Error('network failure');
+    operations.addComment = jest.fn(async () => {
+      throw error;
+    });
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText, findByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'test comment body' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('network failure');
+    expect(onQueueAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
+      }),
+    );
+  });
+
   it('calls onCommentDraftChange with empty string before queuing the status change when Comment & Awaiting Workspace is clicked', async () => {
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();
