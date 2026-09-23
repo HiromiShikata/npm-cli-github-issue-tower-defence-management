@@ -628,6 +628,10 @@ test('creates a new story when the add-story button and form are used', async ({
   expect(harness.addStoryCalls[0].storyName).toBe('My new story');
 
   await expect(page.getByRole('dialog', { name: 'Add story' })).toHaveCount(0);
+
+  await expect(
+    page.locator('.console-story-list-row', { hasText: 'My new story' }),
+  ).toBeVisible();
 });
 
 test('changes the color of a story row via the color palette in the stories tab', async ({
