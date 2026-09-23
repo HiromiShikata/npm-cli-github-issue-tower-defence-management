@@ -6,7 +6,9 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
 
-jest.mock('zlib', () => ({ ...jest.requireActual<typeof import('zlib')>('zlib') }));
+jest.mock('zlib', () => ({
+  ...jest.requireActual<typeof import('zlib')>('zlib'),
+}));
 
 const gunzipAsync = promisify(zlib.gunzip);
 import { mock } from 'jest-mock-extended';
@@ -3695,7 +3697,10 @@ describe('webServer sendDataResponse gzip compression', () => {
     // mock object bypasses the getter — the production code reads through to the
     // same object and picks up the replacement.
     const zlibMock = jest.requireMock<typeof import('zlib')>('zlib');
-    const originalDescriptor = Object.getOwnPropertyDescriptor(zlibMock, 'gzip');
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      zlibMock,
+      'gzip',
+    );
     Object.defineProperty(zlibMock, 'gzip', {
       value: (_buf: zlib.InputType, callback: zlib.CompressCallback): void => {
         callback(new Error('test gzip failure'), Buffer.alloc(0));
