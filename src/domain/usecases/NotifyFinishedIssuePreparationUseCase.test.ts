@@ -698,6 +698,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -727,15 +728,20 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       'awaiting-workspace-id',
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         'Issue has dependent issue URLs:\n- https://github.com/user/repo/issues/2\n- https://github.com/user/repo/issues/3',
       ),
     );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Issue has dependent issue URLs:'),
+    );
+    consoleLogSpy.mockRestore();
   });
 
   it('should enrich dependedIssueUrls from storyObjectMap when issue has none', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -775,10 +781,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+    expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining('Issue has dependent issue URLs:'),
     );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Issue has dependent issue URLs:'),
+    );
+    consoleLogSpy.mockRestore();
   });
 
   it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
@@ -4917,6 +4927,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
     it('sets nextActionDate to start of tomorrow and returns item to Awaiting Workspace without creating any issue', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
       const now = new Date('2026-08-24T10:00:00Z');
       jest.useFakeTimers();
       jest.setSystemTime(now);
@@ -4947,15 +4958,18 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'awaiting-workspace-id',
       );
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('2026-08-25'),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Preparation deferred due to transient failure'),
       );
 
       expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
       expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+      consoleLogSpy.mockRestore();
     });
 
     it('takes precedence over missingAgentName and defers without creating any issue', async () => {
@@ -5001,7 +5015,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
     });
 
-    it('states the session stop reason in the deferral comment', async () => {
+    it('states the session stop reason in the deferral log output', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -5017,16 +5032,20 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'Task failed 3 consecutive times with terminal_reason=api_error',
       });
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining(
           'Task failed 3 consecutive times with terminal_reason=api_error',
         ),
       );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Preparation deferred due to transient failure'),
+      );
+      consoleLogSpy.mockRestore();
     });
 
     it('states that no stop reason was captured when sessionErrorLine is absent', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -5040,13 +5059,18 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         deferPreparation: true,
       });
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('(not captured)'),
       );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Preparation deferred due to transient failure'),
+      );
+      consoleLogSpy.mockRestore();
     });
 
     it('defers and sets next action date even when issue status is Awaiting Workspace', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
       const now = new Date('2026-09-05T21:00:00Z');
       jest.useFakeTimers();
       jest.setSystemTime(now);
@@ -5075,13 +5099,16 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Awaiting Workspace' }),
         'awaiting-workspace-id',
       );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining(
           'Task failed 3 consecutive times with terminal_reason=aborted_tools',
         ),
       );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Preparation deferred due to transient failure'),
+      );
+      consoleLogSpy.mockRestore();
     });
   });
 
@@ -8017,5 +8044,77 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
       );
     });
+  });
+
+  describe('notification suppression: prohibited GitHub Issue comment cases', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    const prohibitedCases = [
+      {
+        description: 'dependency URL notification',
+        setup: () => {
+          const issue = createMockIssue({
+            url: issueUrl,
+            status: 'Preparation',
+            dependedIssueUrls: ['https://github.com/user/repo/issues/2'],
+          });
+          mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+          mockIssueRepository.get.mockResolvedValue(issue);
+          return {
+            runArgs: {
+              projectUrl: 'https://github.com/users/user/projects/1',
+              issueUrl,
+              thresholdForAutoReject: 3,
+              workflowBlockerResolvedWebhookUrl: null as null,
+              allowedIssueAuthors: ['test-user'],
+            },
+            expectedLogFragment: 'Issue has dependent issue URLs:',
+          };
+        },
+      },
+      {
+        description: 'transient failure deferral notification',
+        setup: () => {
+          const issue = createMockIssue({
+            url: issueUrl,
+            status: 'Preparation',
+          });
+          mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+          mockIssueRepository.get.mockResolvedValue(issue);
+          return {
+            runArgs: {
+              projectUrl: 'https://github.com/users/user/projects/1',
+              issueUrl,
+              thresholdForAutoReject: 3,
+              workflowBlockerResolvedWebhookUrl: null as null,
+              allowedIssueAuthors: ['test-user'],
+              deferPreparation: true,
+              sessionErrorLine: 'api_error_transient',
+            },
+            expectedLogFragment:
+              'Preparation deferred due to transient failure',
+          };
+        },
+      },
+    ];
+
+    it.each(prohibitedCases)(
+      'outputs $description to console.log and does not post a GitHub Issue comment',
+      async ({ setup }) => {
+        const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+        const { runArgs, expectedLogFragment } = setup();
+
+        await useCase.run(runArgs);
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining(expectedLogFragment),
+        );
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.stringContaining(expectedLogFragment),
+        );
+        consoleLogSpy.mockRestore();
+      },
+    );
   });
 });
