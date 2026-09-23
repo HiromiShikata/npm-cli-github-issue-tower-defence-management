@@ -43,7 +43,10 @@ export const useConsoleTimerProjectSkipNavigation = (
       return;
     }
 
-    if (explicitlySelectedPjcode !== null && pjcode === explicitlySelectedPjcode) {
+    if (
+      explicitlySelectedPjcode !== null &&
+      pjcode === explicitlySelectedPjcode
+    ) {
       return;
     }
 
