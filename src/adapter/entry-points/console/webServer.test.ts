@@ -1121,10 +1121,18 @@ describe('webServer new routes integration', () => {
       'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405',
     );
     issueRepository.mergePullRequest.mockRejectedValue(operationError);
-    const reportedErrors: { error: unknown; requestPath: string }[] = [];
+    const reportedErrors: {
+      error: unknown;
+      requestPath: string;
+      requestBody: Record<string, unknown> | undefined;
+    }[] = [];
     const consoleErrorReporter = jest.fn(
-      async (error: unknown, requestPath: string) => {
-        reportedErrors.push({ error, requestPath });
+      async (
+        error: unknown,
+        requestPath: string,
+        requestBody?: Record<string, unknown>,
+      ) => {
+        reportedErrors.push({ error, requestPath, requestBody });
       },
     );
     const server = await startWebServer({
@@ -1159,6 +1167,12 @@ describe('webServer new routes integration', () => {
       expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
       expect(reportedErrors[0].error).toBe(operationError);
       expect(reportedErrors[0].requestPath).toBe('/api/review');
+      expect(reportedErrors[0].requestBody).toMatchObject({
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_op',
+      });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

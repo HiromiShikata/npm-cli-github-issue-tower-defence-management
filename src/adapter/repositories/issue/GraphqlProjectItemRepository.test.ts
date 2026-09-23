@@ -2961,6 +2961,42 @@ describe('GraphqlProjectItemRepository', () => {
       expect(mockPost).toHaveBeenCalledTimes(1);
     });
 
+    it('includes input parameters in the error message when graphql returns a non-transient error', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message:
+                'Did not receive a single select option Id to update a field of type single_select',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .updateProjectField('proj-id-123', 'field-id-456', 'item-id-789', {
+          singleSelectOptionId: 'opt-abc',
+        })
+        .catch((e: unknown) => e);
+      await jest.runAllTimersAsync();
+
+      const caught = await resultPromise;
+      expect(caught).toBeInstanceOf(Error);
+      expect(extractErrorMessage(caught)).toContain('proj-id-123');
+      expect(extractErrorMessage(caught)).toContain('field-id-456');
+      expect(extractErrorMessage(caught)).toContain('item-id-789');
+      expect(extractErrorMessage(caught)).toContain('opt-abc');
+      expect(extractErrorMessage(caught)).toContain(
+        'Did not receive a single select option Id to update a field of type single_select',
+      );
+    });
+
     it('still throws when archived-item error is mixed with other error types in updateProjectField', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(

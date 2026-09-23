@@ -146,6 +146,34 @@ describe('ConsoleErrorReportUseCase', () => {
       expect(bodyArg).not.toContain('From: :robot:');
     });
 
+    it('should include the request body in the issue body when requestBody is provided', async () => {
+      const error = new Error('cmd error');
+      const requestBody = {
+        issueUrl: 'https://github.com/owner/repo/issues/123',
+        storyName: 'my-story',
+        action: 'set_story',
+      };
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(2);
+
+      await useCase.run({ error, owner, repo, requestPath, requestBody });
+
+      const bodyArg = mockIssueRepository.createNewIssue.mock.calls[0][3];
+      expect(bodyArg).toContain('https://github.com/owner/repo/issues/123');
+      expect(bodyArg).toContain('my-story');
+    });
+
+    it('should not include a request body section when requestBody is not provided', async () => {
+      const error = new Error('cmd error');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(2);
+
+      await useCase.run({ error, owner, repo, requestPath });
+
+      const bodyArg = mockIssueRepository.createNewIssue.mock.calls[0][3];
+      expect(bodyArg).not.toContain('Request body:');
+    });
+
     it('should handle non-Error values', async () => {
       const error = 'plain string error';
       mockIssueRepository.searchIssue.mockResolvedValue([]);

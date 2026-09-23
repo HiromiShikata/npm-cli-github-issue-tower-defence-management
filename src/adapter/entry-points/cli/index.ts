@@ -934,7 +934,13 @@ export const extractOwnerRepoFromGithubUrl = (
 const buildConsoleErrorReporter = (
   workflowImprovementIssueUrl: string | null,
   issueRepository: IssueRepository | null,
-): ((error: unknown, requestPath: string) => Promise<void>) | null => {
+):
+  | ((
+      error: unknown,
+      requestPath: string,
+      requestBody?: Record<string, unknown>,
+    ) => Promise<void>)
+  | null => {
   if (workflowImprovementIssueUrl === null || issueRepository === null) {
     return null;
   }
@@ -943,12 +949,17 @@ const buildConsoleErrorReporter = (
     return null;
   }
   const useCase = new ConsoleErrorReportUseCase(issueRepository);
-  return async (error: unknown, requestPath: string): Promise<void> => {
+  return async (
+    error: unknown,
+    requestPath: string,
+    requestBody?: Record<string, unknown>,
+  ): Promise<void> => {
     await useCase.run({
       error,
       owner: ownerRepo.owner,
       repo: ownerRepo.repo,
       requestPath,
+      requestBody,
     });
   };
 };

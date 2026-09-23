@@ -1488,7 +1488,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         );
         return;
       }
-      throw new Error(res.errors.map((e) => e.message).join('\n'));
+      throw new Error(
+        `updateProjectField failed: projectId=${projectId}, fieldId=${fieldId}, itemId=${itemId}, value=${JSON.stringify(value)}\n${res.errors.map((e) => e.message).join('\n')}`,
+      );
     }
   };
 
