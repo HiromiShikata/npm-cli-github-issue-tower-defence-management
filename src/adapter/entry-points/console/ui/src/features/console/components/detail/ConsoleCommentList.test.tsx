@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleCommentList } from './ConsoleCommentList';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
@@ -453,20 +453,20 @@ describe('ConsoleCommentList', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it('renders a create workflow issue button for each comment when onRequestWorkflowIssueCreate is provided', () => {
+  it('renders a create workflow issue button for each comment when onCreateIssueFromComment is provided', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onRequestWorkflowIssueCreate = jest.fn();
+    const onCreateIssueFromComment = jest.fn();
     const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     const btn = container.querySelector(
@@ -475,7 +475,7 @@ describe('ConsoleCommentList', () => {
     expect(btn).not.toBeNull();
   });
 
-  it('does not render a create workflow issue button when onRequestWorkflowIssueCreate is not provided', () => {
+  it('does not render a create workflow issue button when onCreateIssueFromComment is not provided', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -494,20 +494,21 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
-  it('calls onRequestWorkflowIssueCreate with the comment when the create workflow issue button is clicked', () => {
+  it('calls onCreateIssueFromComment with IssueCreateParams when the dialog Create button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onRequestWorkflowIssueCreate = jest.fn();
-    const { container } = render(
+    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
+    const { container, getByRole, getByLabelText } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
+        issueTitle="Source issue title"
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     const btn = container.querySelector(
@@ -515,23 +516,133 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    expect(onRequestWorkflowIssueCreate).toHaveBeenCalledWith(comment);
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'New task from comment' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => {
+      expect(onCreateIssueFromComment).toHaveBeenCalledWith({
+        title: 'New task from comment',
+        body: '> Source issue title',
+        storyName: null,
+        agentOptionId: null,
+        files: [],
+      });
+    });
   });
 
-  it('does not open an inline dialog when the create workflow issue button is clicked with onRequestWorkflowIssueCreate', () => {
+  it('pre-populates dialog with empty title and issue title as blockquote in the body', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'First line\nSecond line',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueTitle="My issue title"
+        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    const titleTextarea = getByRole('textbox', { name: 'Title' });
+    const bodyTextarea = getByRole('textbox', { name: 'Body' });
+    expect((titleTextarea as HTMLTextAreaElement).value).toBe('');
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      '> My issue title',
+    );
+  });
+
+  it('disables the dialog submit button while onCreateIssueFromComment is in progress', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    let resolveSubmit!: () => void;
+    const onCreateIssueFromComment = jest.fn().mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSubmit = resolve;
+      }),
+    );
+    const { container, getByRole, getByLabelText } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateIssueFromComment={onCreateIssueFromComment}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'Task title' },
+    });
+    const createBtn = getByRole('button', { name: 'Create' });
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      expect(createBtn).toBeDisabled();
+    });
+    resolveSubmit();
+  });
+
+  it('shows error in the dialog when onCreateIssueFromComment rejects', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const onCreateIssueFromComment = jest
+      .fn()
+      .mockRejectedValue(new Error('Server error'));
+    const { container, getByRole, getByText, getByLabelText } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateIssueFromComment={onCreateIssueFromComment}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'Task title' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => {
+      expect(getByText('Server error')).toBeInTheDocument();
+    });
+  });
+
+  it('opens a dialog when the create workflow issue button is clicked instead of calling the callback directly', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onRequestWorkflowIssueCreate = jest.fn();
+    const onCreateIssueFromComment = jest.fn();
     const { container, queryByRole } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
+        onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
     const btn = container.querySelector(
@@ -539,11 +650,8 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    expect(onRequestWorkflowIssueCreate).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-    );
-    expect(queryByRole('dialog')).toBeNull();
+    expect(onCreateIssueFromComment).not.toHaveBeenCalled();
+    expect(queryByRole('dialog')).not.toBeNull();
   });
 
   it('does not propagate click events from the expanded body to ancestor elements', () => {

@@ -3,7 +3,6 @@ import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleP
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
-import { FleetTaskCreateModalDialog } from '../components/layout/FleetTaskCreateModalDialog';
 import {
   type IssueCreateDraft,
   IssueCreateModalDialog,
@@ -106,11 +105,6 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 };
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
-
-const parseFleetNameWithOwner = (fleetTaskCreateUrl: string): string =>
-  fleetTaskCreateUrl
-    .replace('https://github.com/', '')
-    .replace(/\/issues\/new.*$/, '');
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
@@ -677,51 +671,6 @@ export const ConsolePage = () => {
     return storyEntries.find((e) => e.storyName === selectedItem.story) ?? null;
   }, [selectedItem, storyEntries]);
 
-  const handleCreateWorkflowIssue = useCallback(
-    (title: string, body: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null || selectedItem === null)
-        return Promise.resolve();
-      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
-      const capturedNameWithOwner = nameWithOwner;
-      actionQueue.enqueue({
-        message: `Task created — "${title}"`,
-        color: 'blue',
-        commit: async () => {
-          await postConsoleCreateWorkflowIssue({
-            nameWithOwner: capturedNameWithOwner,
-            title,
-            body,
-          });
-        },
-        advance: () => {},
-      });
-      return Promise.resolve();
-    },
-    [fleetTaskCreateUrl, selectedItem, actionQueue],
-  );
-
-  const handleFleetTaskCreateSubmit = useCallback(
-    (title: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null) return Promise.resolve();
-      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
-      actionQueue.enqueue({
-        message: `Task created — "${title}"`,
-        color: 'blue',
-        commit: async () => {
-          await postConsoleCreateWorkflowIssue({
-            nameWithOwner,
-            title,
-            body: '',
-          });
-        },
-        advance: () => {},
-      });
-      setFleetTaskCreateDialogTitle('');
-      return Promise.resolve();
-    },
-    [fleetTaskCreateUrl, actionQueue],
-  );
-
   const handleCreateIssue = useCallback(
     async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
@@ -799,6 +748,33 @@ export const ConsolePage = () => {
       return Promise.resolve();
     },
     [pjcode, defaultNameWithOwner, actionQueue],
+  );
+
+  const handleCreateWorkflowIssueFromDialog = useCallback(
+    ({ title, body }: IssueCreateParams): Promise<void> => {
+      if (fleetTaskCreateUrl === null) {
+        return Promise.resolve();
+      }
+      const match = fleetTaskCreateUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+      if (match === null) {
+        return Promise.resolve();
+      }
+      const nameWithOwner = match[1];
+      actionQueue.enqueue({
+        message: `Task created — "${title}"`,
+        color: 'blue',
+        commit: async () => {
+          await postConsoleCreateWorkflowIssue({
+            nameWithOwner,
+            title,
+            body: body ?? '',
+          });
+        },
+        advance: () => {},
+      });
+      return Promise.resolve();
+    },
+    [fleetTaskCreateUrl, actionQueue],
   );
 
   const handleReorderStory = useCallback(
@@ -1146,8 +1122,16 @@ export const ConsolePage = () => {
         now={now}
       />
       {isFleetTaskCreateDialogOpen && (
-        <FleetTaskCreateModalDialog
-          onSubmit={handleFleetTaskCreateSubmit}
+        <IssueCreateModalDialog
+          storyEntries={[]}
+          agentOptions={[]}
+          initialDraft={{
+            title: '',
+            body: null,
+            storyName: null,
+            agentOptionId: null,
+          }}
+          onSubmit={handleCreateWorkflowIssueFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
           initialTitle={fleetTaskCreateDialogTitle}
           onTitleChange={setFleetTaskCreateDialogTitle}
@@ -1264,9 +1248,9 @@ export const ConsolePage = () => {
                 : null
             }
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
-            onCreateWorkflowIssue={
+            onCreateIssueFromComment={
               fleetTaskCreateUrl !== null
-                ? handleCreateWorkflowIssue
+                ? handleCreateWorkflowIssueFromDialog
                 : undefined
             }
           />

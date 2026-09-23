@@ -1837,7 +1837,7 @@ test('creates a workflow improvement issue from a comment when the + button is c
     await expect(dialog).toBeVisible();
     await dialog
       .getByRole('textbox', { name: 'Title' })
-      .fill('Test workflow issue');
+      .fill('New workflow improvement task');
     await dialog.getByRole('button', { name: 'Create' }).click();
 
     await expect
@@ -1848,9 +1848,8 @@ test('creates a workflow improvement issue from a comment when the + button is c
     expect(call?.org).toBe('HiromiShikata');
     expect(call?.repo).toBe('secretary');
     expect(call?.body).toContain(
-      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+      '> Resolve the shared GitHub token rate-limit exhaustion blocker',
     );
-    expect(call?.body).toContain('> Console E2E fixture comment.');
   } finally {
     await ctx.close();
     await localHarness.stop();
