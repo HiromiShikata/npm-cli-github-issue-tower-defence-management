@@ -824,7 +824,7 @@ export const ConsolePage = () => {
     [pjcode],
   );
 
-  const handleStoryEditCreate = useCallback(
+  const handleStoryTaskCreateEdit = useCallback(
     (storyName: string, title: string): void => {
       setDialogDraft({ title, body: null, storyName, agentOptionId: null });
       setIsDialogOpen(true);
@@ -1140,7 +1140,7 @@ export const ConsolePage = () => {
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}
             onUpdateDescription={handleStoryUpdateDescription}
-            onEditCreate={handleStoryEditCreate}
+            onStoryTaskCreateEdit={handleStoryTaskCreateEdit}
             optimisticColors={storyOptimisticColors}
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}

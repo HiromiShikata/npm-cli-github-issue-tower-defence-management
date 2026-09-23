@@ -1105,9 +1105,9 @@ describe('ConsoleStoryList', () => {
     });
   });
 
-  describe('onEditCreate', () => {
-    it('calls onEditCreate with storyName and title when Edit is clicked after a failed Create', async () => {
-      const onEditCreate = jest.fn();
+  describe('onStoryTaskCreateEdit', () => {
+    it('calls onStoryTaskCreateEdit with storyName and title when Edit is clicked after a failed Create', async () => {
+      const onStoryTaskCreateEdit = jest.fn();
       const onCreateIssue = jest
         .fn()
         .mockRejectedValue(new Error('Network error'));
@@ -1116,7 +1116,7 @@ describe('ConsoleStoryList', () => {
           <ConsoleStoryList
             {...defaultProps}
             onCreateIssue={onCreateIssue}
-            onEditCreate={onEditCreate}
+            onStoryTaskCreateEdit={onStoryTaskCreateEdit}
           />,
         );
       fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
@@ -1126,14 +1126,14 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await findByRole('alert');
       fireEvent.click(getByRole('button', { name: 'Edit' }));
-      expect(onEditCreate).toHaveBeenCalledWith(
+      expect(onStoryTaskCreateEdit).toHaveBeenCalledWith(
         'TDPM Console port',
         'My new task',
       );
     });
 
     it('closes the create dialog after Edit is clicked', async () => {
-      const onEditCreate = jest.fn();
+      const onStoryTaskCreateEdit = jest.fn();
       const onCreateIssue = jest
         .fn()
         .mockRejectedValue(new Error('Network error'));
@@ -1147,7 +1147,7 @@ describe('ConsoleStoryList', () => {
         <ConsoleStoryList
           {...defaultProps}
           onCreateIssue={onCreateIssue}
-          onEditCreate={onEditCreate}
+          onStoryTaskCreateEdit={onStoryTaskCreateEdit}
         />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);

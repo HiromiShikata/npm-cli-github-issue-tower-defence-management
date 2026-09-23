@@ -75,7 +75,7 @@ export type ConsoleStoryListProps = {
     storyOptionId: string,
     newDescription: string,
   ) => Promise<void>;
-  onEditCreate?: (storyName: string, title: string) => void;
+  onStoryTaskCreateEdit?: (storyName: string, title: string) => void;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
@@ -99,7 +99,7 @@ export const ConsoleStoryList = ({
   onDeleteStory,
   onRenameStory,
   onUpdateDescription,
-  onEditCreate,
+  onStoryTaskCreateEdit,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -421,10 +421,10 @@ export const ConsoleStoryList = ({
           onSubmit={(storyName, title) => onCreateIssue(storyName, title)}
           onClose={() => setTaskCreateDialogId(null)}
           onEdit={
-            onEditCreate !== undefined
+            onStoryTaskCreateEdit !== undefined
               ? (storyName, title) => {
                   setTaskCreateDialogId(null);
-                  onEditCreate(storyName, title);
+                  onStoryTaskCreateEdit(storyName, title);
                 }
               : undefined
           }
