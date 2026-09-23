@@ -179,12 +179,6 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
             {
               color: 'GRAY',
               description: '',
-              id: 'aa14ce66',
-              name: 'Awaiting quality check',
-            },
-            {
-              color: 'GRAY',
-              description: '',
               id: 'bebc3184',
               name: 'In Progress',
             },
@@ -193,6 +187,12 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
               description: '',
               id: '88c0a10e',
               name: 'Done',
+            },
+            {
+              color: 'GRAY',
+              description: '',
+              id: '74cb5e50',
+              name: 'Awaiting Owner',
             },
           ],
         },
