@@ -1,3 +1,11 @@
+## [2.140.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.2...v2.140.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** preserve injected cache entries through full-fetch refresh cycles ([#2552](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2552)) ([41350ca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41350cab2bd86f90502b528d3a7cbd65c57dae1a))
+* **ConsoleItemDetailContainer:** call onCommentError and re-throw when addComment rejects in Comment & Awaiting Workspace ([#2553](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2553)) ([4e02730](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4e027305f7d912b3792fa6bc34fe04718a30ac7d)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2551](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2551)
+
 ## [2.140.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.1...v2.140.2) (2026-09-23)
 
 
