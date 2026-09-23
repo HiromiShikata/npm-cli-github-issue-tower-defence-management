@@ -821,22 +821,24 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       const returnedStories = await postConsoleAddStory({ pjcode, storyName });
-      const nextEntries: ConsoleStoryEntry[] = returnedStories.map((api) => {
-        const existing = storyEntries.find((e) => e.storyOptionId === api.id);
-        return {
-          storyOptionId: api.id,
-          storyName: api.name,
-          color: api.color as ConsoleColor,
-          description: existing?.description ?? '',
-          openItemCount: existing?.openItemCount ?? 0,
-          storyViewUrl: existing?.storyViewUrl ?? null,
-          items: existing?.items ?? [],
-        };
-      });
-      setLocalStoryEntriesOverride({
-        generatedAt: storiesSnapshot?.generatedAt,
-        stories: nextEntries,
-      });
+      if (returnedStories.length > 0) {
+        const nextEntries: ConsoleStoryEntry[] = returnedStories.map((api) => {
+          const existing = storyEntries.find((e) => e.storyOptionId === api.id);
+          return {
+            storyOptionId: api.id,
+            storyName: api.name,
+            color: api.color as ConsoleColor,
+            description: existing?.description ?? '',
+            openItemCount: existing?.openItemCount ?? 0,
+            storyViewUrl: existing?.storyViewUrl ?? null,
+            items: existing?.items ?? [],
+          };
+        });
+        setLocalStoryEntriesOverride({
+          generatedAt: storiesSnapshot?.generatedAt,
+          stories: nextEntries,
+        });
+      }
     },
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
