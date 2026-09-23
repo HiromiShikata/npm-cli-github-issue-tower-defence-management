@@ -1273,11 +1273,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Owner',
+        status: 'Awaiting Workspace',
       }),
       mockProject,
     );
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
       'awaiting-workspace-id',
@@ -2620,7 +2620,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Owner when issue has non-developer agent field', async () => {
+  it('should skip PR checks and route to Awaiting Workspace when issue has non-developer agent field', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -2644,12 +2644,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
   });
 
-  it('should skip PR checks when issue has non-developer agent field value', async () => {
+  it('should skip PR checks and route to Awaiting Workspace when issue has non-developer agent field value', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -2673,7 +2673,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
   });
@@ -3993,6 +3993,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(
@@ -5922,9 +5923,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -5995,9 +5996,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6095,9 +6096,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6134,9 +6135,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6173,9 +6174,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6212,9 +6213,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6359,7 +6360,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -6389,7 +6390,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
     });
