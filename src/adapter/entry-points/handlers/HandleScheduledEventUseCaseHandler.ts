@@ -75,6 +75,7 @@ import { BrowserGitHubProjectRepository } from '../../repositories/BrowserGitHub
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from '../../../domain/usecases/QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from '../../../domain/usecases/ReopenedDoneIssueRevertUseCase';
+import { StaleAwaitingOwnerIssueRevertUseCase } from '../../../domain/usecases/StaleAwaitingOwnerIssueRevertUseCase';
 import { ClosedStoryIssueReopenUseCase } from '../../../domain/usecases/ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from '../../../domain/usecases/ConflictedIssueRevertUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
@@ -534,6 +535,9 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
+    const staleAwaitingOwnerIssueRevertUseCase =
+      new StaleAwaitingOwnerIssueRevertUseCase(issueRepository);
+
     const closedStoryIssueReopenUseCase = new ClosedStoryIssueReopenUseCase(
       issueRepository,
     );
@@ -563,6 +567,7 @@ export class HandleScheduledEventUseCaseHandler {
       dailySecurityScanUseCase,
       qualityCheckAdvanceUseCase,
       reopenedDoneIssueRevertUseCase,
+      staleAwaitingOwnerIssueRevertUseCase,
       closedStoryIssueReopenUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,

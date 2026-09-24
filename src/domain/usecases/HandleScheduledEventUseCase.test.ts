@@ -30,6 +30,7 @@ import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { StaleAwaitingOwnerIssueRevertUseCase } from './StaleAwaitingOwnerIssueRevertUseCase';
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
@@ -131,6 +132,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockAdvanceQualityCheckUseCase = mock<QualityCheckAdvanceUseCase>();
     const mockReopenedDoneIssueRevertUseCase =
       mock<ReopenedDoneIssueRevertUseCase>();
+    const mockStaleAwaitingOwnerIssueRevertUseCase =
+      mock<StaleAwaitingOwnerIssueRevertUseCase>();
     const mockClosedStoryIssueReopenUseCase =
       mock<ClosedStoryIssueReopenUseCase>();
     const mockDateRepository = mock<DateRepository>();
@@ -163,6 +166,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockDailySecurityScanUseCase,
       mockAdvanceQualityCheckUseCase,
       mockReopenedDoneIssueRevertUseCase,
+      mockStaleAwaitingOwnerIssueRevertUseCase,
       mockClosedStoryIssueReopenUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
@@ -2256,6 +2260,7 @@ describe('HandleScheduledEventUseCase', () => {
       null,
       mock<QualityCheckAdvanceUseCase>(),
       mock<ReopenedDoneIssueRevertUseCase>(),
+      mock<StaleAwaitingOwnerIssueRevertUseCase>(),
       mock<ClosedStoryIssueReopenUseCase>(),
       mock<DateRepository>(),
       mock<SpreadsheetRepository>(),

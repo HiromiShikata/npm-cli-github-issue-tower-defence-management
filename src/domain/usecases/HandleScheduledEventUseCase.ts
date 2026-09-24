@@ -38,6 +38,7 @@ import {
 } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { StaleAwaitingOwnerIssueRevertUseCase } from './StaleAwaitingOwnerIssueRevertUseCase';
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
@@ -143,6 +144,7 @@ export class HandleScheduledEventUseCase {
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
     readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
+    readonly staleAwaitingOwnerIssueRevertUseCase: StaleAwaitingOwnerIssueRevertUseCase,
     readonly closedStoryIssueReopenUseCase: ClosedStoryIssueReopenUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
@@ -185,6 +187,7 @@ export class HandleScheduledEventUseCase {
       awaitingOwnerStatus?: string | null;
       autoAdvanceQualityCheckEnabled?: boolean;
       autoRevertReopenedDoneEnabled?: boolean;
+      staleAwaitingOwnerThresholdMinutes?: number | null;
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
@@ -560,6 +563,23 @@ ${JSON.stringify(e)}
           console.error(
             `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
             revertError,
+          );
+        }
+      }
+      if (input.startPreparation.staleAwaitingOwnerThresholdMinutes != null) {
+        try {
+          await this.staleAwaitingOwnerIssueRevertUseCase.run({
+            project,
+            issues,
+            now,
+            staleThresholdMinutes:
+              input.startPreparation.staleAwaitingOwnerThresholdMinutes,
+            allowedIssueAuthors,
+          });
+        } catch (staleRevertError) {
+          console.error(
+            `[HandleScheduledEvent] Failed to revert stale Awaiting Owner issues for project ${project.url}: ${staleRevertError instanceof Error ? staleRevertError.message : String(staleRevertError)}`,
+            staleRevertError,
           );
         }
       }
