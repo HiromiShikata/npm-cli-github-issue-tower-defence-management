@@ -133,6 +133,7 @@ type NotifyFinishedOptions = {
   missingAgentName?: string;
   sessionErrorLine?: string;
   deferPreparation?: boolean;
+  rateLimitRejected?: boolean;
   moveToFailedPreparation?: boolean;
 };
 
@@ -628,6 +629,10 @@ program
     'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
   )
   .option(
+    '--rateLimitRejected',
+    'Return the item to Awaiting Workspace without incrementing the consecutive-no-report counter; use when the session ended due to an API rate limit rejection',
+  )
+  .option(
     '--moveToFailedPreparation',
     'Move the item to Failed Preparation status after reaching the consecutive failure threshold',
   )
@@ -793,6 +798,7 @@ program
         developerAgentNames: config.developerAgentNames ?? null,
         defaultAgentName: config.defaultAgentName ?? null,
         deferPreparation: options.deferPreparation ?? null,
+        rateLimitRejected: options.rateLimitRejected ?? null,
         moveToFailedPreparation: options.moveToFailedPreparation ?? null,
         workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
           notifyFleetConfigFilePath,
