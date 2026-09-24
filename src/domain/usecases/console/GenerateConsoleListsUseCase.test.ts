@@ -955,7 +955,7 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({
           status: 'Awaiting Workspace',
-          assignees: ['other-person'],
+          assignees: [ASSIGNEE],
         }),
       ]);
       expect(result.queued.items).toHaveLength(1);
@@ -963,7 +963,7 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('includes Preparation issues', () => {
       const result = run([
-        makeIssue({ status: 'Preparation', assignees: ['other-person'] }),
+        makeIssue({ status: 'Preparation', assignees: [ASSIGNEE] }),
       ]);
       expect(result.queued.items).toHaveLength(1);
     });
@@ -1008,16 +1008,22 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.queued.items).toHaveLength(0);
     });
 
-    it('includes issues regardless of assignee', () => {
-      const result = run([
-        makeIssue({ status: 'Awaiting Workspace', assignees: [] }),
-        makeIssue({
-          status: 'Preparation',
-          assignees: ['completely-other-person'],
-        }),
-        makeIssue({ status: 'Awaiting Workspace', assignees: [ASSIGNEE] }),
-      ]);
-      expect(result.queued.items).toHaveLength(3);
+    it('includes only issues assigned to the assignee login', () => {
+      const assigneeIssue = makeIssue({
+        status: 'Awaiting Workspace',
+        assignees: [ASSIGNEE],
+      });
+      const otherPersonIssue = makeIssue({
+        status: 'Preparation',
+        assignees: ['other-person'],
+      });
+      const unassignedIssue = makeIssue({
+        status: 'Awaiting Workspace',
+        assignees: [],
+      });
+      const result = run([assigneeIssue, otherPersonIssue, unassignedIssue]);
+      expect(result.queued.items).toHaveLength(1);
+      expect(result.queued.items[0].url).toBe(assigneeIssue.url);
     });
 
     it('propagates agentOptions from project.agent field', () => {
