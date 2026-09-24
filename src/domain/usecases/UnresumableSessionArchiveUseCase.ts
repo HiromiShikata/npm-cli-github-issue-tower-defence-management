@@ -1,3 +1,4 @@
+import { isRecord } from './isRecord';
 import { SessionRecordArchiver } from './adapter-interfaces/SessionRecordArchiver';
 
 export type UnresumableSessionArchiveResult =
@@ -12,9 +13,6 @@ export type UnresumableSessionArchiveInput = {
 };
 
 const PROMPT_TOO_LONG_RESULT = 'Prompt is too long';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const unresumableSessionIdInLine = (line: string): string | null => {
   let parsed: unknown;
