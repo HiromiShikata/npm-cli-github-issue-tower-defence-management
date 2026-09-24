@@ -2484,6 +2484,98 @@ describe('ConsolePage story-labeled item Delete Story button', () => {
     fireEvent.click(getByText('⚠'));
     expect(queryByText('Delete Story')).toBeNull();
   });
+
+  it('advances to the next pending item instead of returning to the list after Delete Story', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        const base = listPayload(tab);
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'todo-by-human'
+              ? {
+                  ...base,
+                  items: [
+                    {
+                      number: 999,
+                      title: 'TDPM Console port story issue',
+                      url: 'https://github.com/o/r/issues/999',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_ST1',
+                      itemId: 'PVTI_ST1',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Todo by human',
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: ['story'],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                    {
+                      number: 1000,
+                      title: 'Next task after story deletion',
+                      url: 'https://github.com/o/r/issues/1000',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_NT2',
+                      itemId: 'PVTI_NT2',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Todo by human',
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:01.000Z',
+                    },
+                  ],
+                }
+              : base,
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/deletestory') {
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('TDPM Console port story issue')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('TDPM Console port story issue'));
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('⚠'));
+    await waitFor(() => {
+      expect(getByText('Delete Story')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Delete Story'));
+    await waitFor(() => {
+      expect(getByText('Keep child tasks')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Keep child tasks'));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_NT2');
+    });
+  });
 });
 
 describe('ConsolePage task creation action queue', () => {

@@ -1259,7 +1259,11 @@ export const ConsolePage = () => {
                       selectedItemStoryEntry.storyOptionId,
                       deleteChildTasks,
                     );
-                    closeItem();
+                    if (selectedItemKey !== null) {
+                      advanceToNext(selectedItemKey);
+                    } else {
+                      closeItem();
+                    }
                   }
                 : null
             }
