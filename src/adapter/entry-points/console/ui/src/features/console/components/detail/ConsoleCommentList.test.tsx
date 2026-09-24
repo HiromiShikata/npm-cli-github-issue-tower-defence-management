@@ -562,6 +562,33 @@ describe('ConsoleCommentList', () => {
     );
   });
 
+  it('pre-populates dialog body with title prefix when issueTitle is provided but issueUrl is absent', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueTitle="Only title provided"
+        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    const bodyTextarea = getByRole('textbox', { name: 'Body' });
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      'Only title provided\n\n\n\n\n\n> A comment body',
+    );
+  });
+
   it('pre-populates dialog body with only comment blockquote when no issueUrl or issueTitle is provided', () => {
     const comment = {
       author: 'HiromiShikata',
