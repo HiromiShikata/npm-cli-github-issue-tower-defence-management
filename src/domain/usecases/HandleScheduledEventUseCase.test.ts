@@ -1047,7 +1047,10 @@ describe('HandleScheduledEventUseCase', () => {
         const grayStoryProject: Project = {
           ...storyProject,
           story: {
-            ...storyProject.story!,
+            name: 'Story',
+            fieldId: 'f2',
+            databaseId: 2,
+            workflowManagementStory: { id: 'wm-1', name: 'workflow' },
             stories: [
               {
                 id: 'story-gray',

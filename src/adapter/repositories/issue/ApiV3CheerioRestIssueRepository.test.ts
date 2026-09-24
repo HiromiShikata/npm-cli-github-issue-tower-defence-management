@@ -7656,11 +7656,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       if (tc.expectCacheWrite) {
         expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
-        const written = localStorageCacheRepository.setSingle.mock
-          .calls[0][1] as {
-          issues: { url: string }[];
-        };
-        expect(written.issues.some((i) => i.url === issueUrl)).toBe(true);
+        const cacheValue =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(JSON.stringify(cacheValue)).toContain(`"url":"${issueUrl}"`);
       } else {
         expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
       }
