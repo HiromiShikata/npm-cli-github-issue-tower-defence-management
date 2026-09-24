@@ -1,3 +1,10 @@
+# [2.143.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.3...v2.143.0) (2026-09-24)
+
+
+### Features
+
+* **archive-unresumable-session:** add a command that archives the record of a session ended by an over-limit prompt ([#2334](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2334)) ([07f2747](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/07f274798638cd1a6f396ae77cfd0eadc900b114))
+
 ## [2.142.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.2...v2.142.3) (2026-09-24)
 
 
