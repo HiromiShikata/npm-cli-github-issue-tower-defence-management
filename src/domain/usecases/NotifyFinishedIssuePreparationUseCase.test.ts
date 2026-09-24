@@ -669,7 +669,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip posting rejection comment when identical comment already exists within dedup window', async () => {
+  it('should post NO_REPORT_AGAIN counter comment and skip duplicate rejection comment within dedup window', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'In Tmux by agent',
@@ -708,15 +708,22 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       status: 'In Tmux by agent',
     });
 
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+    const existingComments = [
       createMockComment({
         content:
           'Auto Status Check: NO_REPORT_AGAIN 1/3\n\nNo completion comment was posted. Dispatch 1 of 3 before escalation.',
+        createdAt: new Date(Date.now() - 90 * 60 * 1000),
+      }),
+      createMockComment({
+        content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
         createdAt: new Date(Date.now() - 30 * 60 * 1000),
       }),
-    ]);
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+      existingComments,
+    );
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
@@ -726,6 +733,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: ['test-user'],
     });
 
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('NO_REPORT_AGAIN 2/3'),
