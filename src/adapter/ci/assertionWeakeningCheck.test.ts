@@ -349,7 +349,8 @@ index abc..def 100644
     it('passes when the PR body has a cross-repo closing ref and the issue has criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedAssertion,
-        prBody: 'This PR changes behavior.\n\nCloses HiromiShikata/secretary#7041',
+        prBody:
+          'This PR changes behavior.\n\nCloses HiromiShikata/secretary#7041',
         issueBody: issueBodyWithSuccessCriteria,
       });
       expect(result.exitStatus).toBe(0);
