@@ -793,6 +793,8 @@ describe('HandleScheduledEventUseCase', () => {
         mockIssueRepository.addIssueToProject.mockResolvedValue(
           'created-item-id',
         );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        mockClosedStoryIssueReopenUseCase.run.mockResolvedValue(0);
         const createdIssue = mock<Issue>();
         createdIssue.itemId = 'item-99';
         mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);

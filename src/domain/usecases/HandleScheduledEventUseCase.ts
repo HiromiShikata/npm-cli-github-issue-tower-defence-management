@@ -289,6 +289,16 @@ export class HandleScheduledEventUseCase {
       if (hasClosedStoryIssue) {
         continue;
       }
+      const existingOpenStoryIssues = await this.issueRepository.searchIssue({
+        owner: input.org,
+        repositoryName: input.workingReport.repo,
+        type: 'issue',
+        state: 'open',
+        title: storyObject.story.name,
+      });
+      if (existingOpenStoryIssues.length > 0) {
+        continue;
+      }
       const storyStartTime = Date.now();
       console.log(
         `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
