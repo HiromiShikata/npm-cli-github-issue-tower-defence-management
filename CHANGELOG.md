@@ -1,3 +1,10 @@
+## [2.144.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.2...v2.144.3) (2026-09-24)
+
+
+### Bug Fixes
+
+* **ConsoleItemDetailContainer:** call onQueueAction immediately in okAndClose to eliminate API wait ([#2574](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2574)) ([ee5001a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ee5001ae4e02cde7813bee56e4b42bed714706d7))
+
 ## [2.144.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.1...v2.144.2) (2026-09-24)
 
 
