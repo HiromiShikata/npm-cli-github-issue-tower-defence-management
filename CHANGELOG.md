@@ -1,3 +1,10 @@
+## [2.142.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.0...v2.142.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** treat stale story option ID error as transient ([#2561](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2561)) ([5095baf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5095baf2a6c213a209df5895841cc3dc92d8638d)), closes [HiromiShikata/secretary#6900](https://github.com/HiromiShikata/secretary/issues/6900)
+
 # [2.142.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.2...v2.142.0) (2026-09-24)
 
 
