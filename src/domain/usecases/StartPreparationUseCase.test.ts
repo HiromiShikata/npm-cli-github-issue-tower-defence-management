@@ -7139,7 +7139,8 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
+    const { runCommand: runCommandForSpawn } = mockLocalCommandRunner;
+    expect(runCommandForSpawn).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -7201,7 +7202,8 @@ describe('StartPreparationUseCase', () => {
         labelsAsLlmAgentName: null,
       });
 
-      expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalled();
+      const { runCommand: runCommandForSkip } = mockLocalCommandRunner;
+      expect(runCommandForSkip).not.toHaveBeenCalled();
     },
   );
 });
