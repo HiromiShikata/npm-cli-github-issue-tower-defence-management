@@ -3062,7 +3062,9 @@ describe('ConsolePage workflow issue creation', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ markdown: '![test.png](https://example.com/test.png)' }),
+          json: async () => ({
+            markdown: '![test.png](https://example.com/test.png)',
+          }),
         };
       }
       if (url === '/api/comment') {
@@ -3070,7 +3072,11 @@ describe('ConsolePage workflow issue creation', () => {
           ok: true,
           status: 200,
           json: async () => ({
-            comment: { author: 'bot', body: '![test.png](https://example.com/test.png)', createdAt: '2026-06-19T00:00:00.000Z' },
+            comment: {
+              author: 'bot',
+              body: '![test.png](https://example.com/test.png)',
+              createdAt: '2026-06-19T00:00:00.000Z',
+            },
           }),
         };
       }
@@ -3605,9 +3611,13 @@ describe('ConsolePage workflow issue creation', () => {
         target: { value: 'Fleet task with file' },
       });
       const testFile = new File(['hello'], 'test.png', { type: 'image/png' });
-      (testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer =
-        async () => new Uint8Array([104, 101, 108, 108, 111]).buffer;
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      (
+        testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () =>
+        new Uint8Array([104, 101, 108, 108, 111]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
       Object.defineProperty(fileInput, 'files', {
         value: [testFile],
         configurable: true,
@@ -3616,7 +3626,9 @@ describe('ConsolePage workflow issue creation', () => {
         fireEvent.change(fileInput);
       });
       await waitFor(() => {
-        expect(document.querySelector('.console-task-create-dialog-file-name')).toBeInTheDocument();
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument();
       });
       fireEvent.click(getByRole('button', { name: /^create$/i }));
       await act(async () => {
