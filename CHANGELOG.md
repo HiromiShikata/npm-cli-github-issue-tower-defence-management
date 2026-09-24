@@ -1,3 +1,10 @@
+## [2.143.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.1...v2.143.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **console:** replace buggy workflow dialog with standard IssueCreateModalDialog when creating task from comment ([#2474](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2474)) ([2144f05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2144f05ed80716ccbdd73e857061fac4a96d5dea))
+
 ## [2.143.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.0...v2.143.1) (2026-09-24)
 
 
