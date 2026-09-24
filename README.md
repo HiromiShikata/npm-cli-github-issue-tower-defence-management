@@ -733,7 +733,7 @@ The array is ordered with selected (eligible) tokens first, sorted by ascending 
 - `name`: Non-secret identifier for the token entry, taken from the `name` field in the token list JSON.
 - `fiveHourUtilization`: Current 5-hour utilization ratio (0.0–1.0) for this token.
 - `blocked`: `true` if the token is marked as blocked.
-- `rejected`: `true` if any rate-limit window (unified, 5-hour, or 7-day) reports a rejected status, which excludes the token from rotation.
+- `rejected`: `true` if the token's 5-hour window is rejected, which excludes the token from rotation.
 - `thresholdExcluded`: `true` if the token is eligible (not blocked, not 5-hour-rejected, not in cooldown, and not weekly-limited for the requested model) but excluded because its 5-hour utilization is at or above the configured threshold, giving it zero available preparation slots.
 
 ## Cadence and Cache Contract
