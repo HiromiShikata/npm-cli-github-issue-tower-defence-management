@@ -120,8 +120,9 @@ export class StaleAwaitingOwnerIssueRevertUseCase {
     staleThresholdMinutes: number,
     allowedIssueAuthors: string[] | null | undefined,
   ): Promise<boolean> => {
-    const comments =
-      await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+    const comments = await this.issueRepository.getIssueOrPullRequestComments(
+      issue.url,
+    );
 
     const reversedComments = [...comments].reverse();
     const lastAgentComment = reversedComments.find((comment) =>

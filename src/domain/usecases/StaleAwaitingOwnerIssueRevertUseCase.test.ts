@@ -2,7 +2,10 @@ import {
   StaleAwaitingOwnerIssueRevertUseCase,
   DEFAULT_STALE_AWAITING_OWNER_THRESHOLD_MINUTES,
 } from './StaleAwaitingOwnerIssueRevertUseCase';
-import { IssueRepository, IssueComment } from './adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  IssueComment,
+} from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import {
@@ -114,10 +117,7 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     useCase = new StaleAwaitingOwnerIssueRevertUseCase(mockIssueRepository);
   });
 
-  const runUseCase = (
-    issues: Issue[],
-    project = createMockProject(),
-  ) =>
+  const runUseCase = (issues: Issue[], project = createMockProject()) =>
     useCase.run({
       project,
       issues,
@@ -132,7 +132,11 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
       now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
     ]);
 
     const result = await runUseCase([issue]);
@@ -140,7 +144,9 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     expect(result).toBe(1);
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
       issue.url,
-      expect.stringContaining('Stale Awaiting Owner: auto-reverted to Awaiting Workspace'),
+      expect.stringContaining(
+        'Stale Awaiting Owner: auto-reverted to Awaiting Workspace',
+      ),
     );
     const postedComment =
       mockIssueRepository.createCommentByUrl.mock.calls[0][1];
@@ -158,7 +164,11 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
       now.getTime() - (thresholdMinutes - 10) * 60 * 1000,
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
     ]);
 
     const result = await runUseCase([issue]);
@@ -172,9 +182,15 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     const agentCommentTime = new Date(
       now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
     );
-    const ownerCommentTime = new Date(agentCommentTime.getTime() + 5 * 60 * 1000);
+    const ownerCommentTime = new Date(
+      agentCommentTime.getTime() + 5 * 60 * 1000,
+    );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
       makeIssueComment(OWNER_COMMENT_BODY, 'owner-user', ownerCommentTime),
     ]);
 
@@ -187,7 +203,11 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
   it('does not revert when there is no agent comment', async () => {
     const issue = createMockIssue();
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(OWNER_COMMENT_BODY, 'owner-user', new Date(now.getTime() - 200 * 60 * 1000)),
+      makeIssueComment(
+        OWNER_COMMENT_BODY,
+        'owner-user',
+        new Date(now.getTime() - 200 * 60 * 1000),
+      ),
     ]);
 
     const result = await runUseCase([issue]);
@@ -202,7 +222,9 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     const result = await runUseCase([issue]);
 
     expect(result).toBe(0);
-    expect(mockIssueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.getIssueOrPullRequestComments,
+    ).not.toHaveBeenCalled();
   });
 
   it('does not revert a PR item', async () => {
@@ -214,7 +236,9 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     const result = await runUseCase([issue]);
 
     expect(result).toBe(0);
-    expect(mockIssueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.getIssueOrPullRequestComments,
+    ).not.toHaveBeenCalled();
   });
 
   it('does not process issues not in Awaiting Owner status', async () => {
@@ -223,7 +247,9 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     const result = await runUseCase([issue]);
 
     expect(result).toBe(0);
-    expect(mockIssueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.getIssueOrPullRequestComments,
+    ).not.toHaveBeenCalled();
   });
 
   it('skips when Awaiting Workspace status option is missing', async () => {
@@ -265,7 +291,13 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     const elapsedStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
     const existingRevertComment = makeIssueComment(
-      `Stale Awaiting Owner: auto-reverted to Awaiting Workspace after ${elapsedStr} with no owner response.\n\n**Previous agent question**\nThe previous agent explicitly requested owner confirmation or approval. Content of the previous agent comment:\n\n${AGENT_REPORT_BODY_WITH_CONFIRMATION.split('\n').map((l) => `> ${l}`).join('\n')}\n\n**Guidance for next agent**\nPer \`story-gate-check\` criteria: reversible decisions — those undoable by a later pull request without external action — belong to the agent, not the owner.\nIrreversible actions (contacting external parties, spending money, altering production in a way code cannot revert) still require the owner.\nProceed autonomously for reversible choices and record your reasoning in a comment.`,
+      `Stale Awaiting Owner: auto-reverted to Awaiting Workspace after ${elapsedStr} with no owner response.\n\n**Previous agent question**\nThe previous agent explicitly requested owner confirmation or approval. Content of the previous agent comment:\n\n${AGENT_REPORT_BODY_WITH_CONFIRMATION.split(
+        '\n',
+      )
+        .map((l) => `> ${l}`)
+        .join(
+          '\n',
+        )}\n\n**Guidance for next agent**\nPer \`story-gate-check\` criteria: reversible decisions — those undoable by a later pull request without external action — belong to the agent, not the owner.\nIrreversible actions (contacting external parties, spending money, altering production in a way code cannot revert) still require the owner.\nProceed autonomously for reversible choices and record your reasoning in a comment.`,
       'bot',
       new Date(now.getTime() - 30 * 60 * 1000),
     );
@@ -296,14 +328,24 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     );
     mockIssueRepository.getIssueOrPullRequestComments
       .mockResolvedValueOnce([
-        makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+        makeIssueComment(
+          AGENT_REPORT_BODY_WITH_CONFIRMATION,
+          'bot',
+          agentCommentTime,
+        ),
       ])
       .mockResolvedValueOnce([
-        makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+        makeIssueComment(
+          AGENT_REPORT_BODY_WITH_CONFIRMATION,
+          'bot',
+          agentCommentTime,
+        ),
       ]);
     mockIssueRepository.createCommentByUrl
       .mockRejectedValueOnce(new Error('createComment failed for issue1'))
-      .mockResolvedValueOnce(makeIssueComment('revert comment', 'tdpm-bot', now));
+      .mockResolvedValueOnce(
+        makeIssueComment('revert comment', 'tdpm-bot', now),
+      );
 
     await expect(runUseCase([issue1, issue2])).rejects.toBeInstanceOf(
       AggregateError,
@@ -314,11 +356,13 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
 
   it('includes elapsed time in the revert comment', async () => {
     const issue = createMockIssue();
-    const agentCommentTime = new Date(
-      now.getTime() - 90 * 60 * 1000,
-    );
+    const agentCommentTime = new Date(now.getTime() - 90 * 60 * 1000);
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
     ]);
 
     await runUseCase([issue]);
@@ -337,8 +381,16 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
       now.getTime() - (thresholdMinutes - 10) * 60 * 1000,
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_NO_CONFIRMATION, 'bot', olderAgentCommentTime),
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', recentAgentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_NO_CONFIRMATION,
+        'bot',
+        olderAgentCommentTime,
+      ),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        recentAgentCommentTime,
+      ),
     ]);
 
     const result = await runUseCase([issue]);
