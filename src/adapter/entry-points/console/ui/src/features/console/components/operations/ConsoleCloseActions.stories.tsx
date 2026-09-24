@@ -18,3 +18,16 @@ export const WithCommentAndClose: Story = {
     onCommentAndClose: async () => {},
   },
 };
+
+export const WithOkAndClose: Story = {
+  args: {
+    onOkAndClose: async () => {},
+  },
+};
+
+export const WithOkAndCloseAndCommentAndClose: Story = {
+  args: {
+    onOkAndClose: async () => {},
+    onCommentAndClose: async () => {},
+  },
+};

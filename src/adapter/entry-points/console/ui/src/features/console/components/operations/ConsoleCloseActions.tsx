@@ -4,23 +4,27 @@ import type { ConsoleCloseAction } from '../../logic/operations';
 export type ConsoleCloseButtonGroupProps = {
   onClose: (action: ConsoleCloseAction) => void;
   onCommentAndClose?: () => Promise<void>;
+  onOkAndClose?: () => Promise<void>;
   isDraftEmpty?: boolean;
 };
 
 export const ConsoleCloseActions = ({
   onClose,
   onCommentAndClose,
+  onOkAndClose,
   isDraftEmpty,
 }: ConsoleCloseButtonGroupProps) => {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCommentAndClose = async (): Promise<void> => {
-    if (onCommentAndClose === undefined || posting) return;
+  const handleAsyncClose = async (
+    fn: (() => Promise<void>) | undefined,
+  ): Promise<void> => {
+    if (fn === undefined || posting) return;
     setPosting(true);
     setError(null);
     try {
-      await onCommentAndClose();
+      await fn();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to post');
     } finally {
@@ -44,24 +48,34 @@ export const ConsoleCloseActions = ({
       >
         Close
       </button>
+      {onOkAndClose !== undefined && (
+        <button
+          type="button"
+          className="console-op-button"
+          disabled={posting}
+          onClick={() => {
+            void handleAsyncClose(onOkAndClose);
+          }}
+        >
+          OK &amp; Close
+        </button>
+      )}
       {onCommentAndClose !== undefined && (
-        <>
-          <button
-            type="button"
-            className="console-op-button"
-            disabled={posting || isDraftEmpty === true}
-            onClick={() => {
-              void handleCommentAndClose();
-            }}
-          >
-            Comment &amp; Close
-          </button>
-          {error !== null && (
-            <span role="alert" className="console-op-comment-close-error">
-              {error}
-            </span>
-          )}
-        </>
+        <button
+          type="button"
+          className="console-op-button"
+          disabled={posting || isDraftEmpty === true}
+          onClick={() => {
+            void handleAsyncClose(onCommentAndClose);
+          }}
+        >
+          Comment &amp; Close
+        </button>
+      )}
+      {error !== null && (
+        <span role="alert" className="console-op-comment-close-error">
+          {error}
+        </span>
       )}
     </div>
   );

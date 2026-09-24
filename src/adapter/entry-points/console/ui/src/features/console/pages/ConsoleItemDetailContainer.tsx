@@ -410,6 +410,10 @@ export const ConsoleItemDetailContainer = ({
     await commentAndClose(body);
   };
 
+  const okAndClose = async (): Promise<void> => {
+    await commentAndClose('ok');
+  };
+
   const resolvedStoryName =
     storyName ?? (item.story.trim() !== '' ? item.story : null);
   const storyColorEnum: ConsoleColor | null =
@@ -485,6 +489,7 @@ export const ConsoleItemDetailContainer = ({
             handlers={handlers}
             storyNameForDeletion={storyNameForDeletion}
             onCommentAndClose={commentAndCloseWithDraft}
+            onOkAndClose={okAndClose}
             isDraftEmpty={isDraftEmpty}
           />
         }

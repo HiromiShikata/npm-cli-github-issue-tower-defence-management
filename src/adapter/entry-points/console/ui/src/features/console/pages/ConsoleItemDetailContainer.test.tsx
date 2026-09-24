@@ -1001,6 +1001,37 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
+  it('clicking OK & Close in the operations bar calls addComment with ok then queues a close action', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByText('OK & Close'));
+    await waitFor(() => {
+      expect(operations.addComment).toHaveBeenCalledWith(issueItem, 'ok');
+    });
+    expect(onQueueAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: { type: 'close', action: 'close' },
+        item: issueItem,
+      }),
+    );
+  });
+
   it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
     const operations = buildOperations();
     (operations.issueRename as jest.Mock).mockResolvedValue(undefined);

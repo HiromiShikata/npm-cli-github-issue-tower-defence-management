@@ -835,6 +835,45 @@ test('posts a comment and closes the item when the Comment & Close button is use
     .toBe(true);
 });
 
+test('posts an ok comment and closes the item when the OK & Close button is used', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await page.getByRole('button', { name: 'OK & Close', exact: true }).click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url ===
+              'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expect
+    .poll(
+      () =>
+        harness.closeIssueCalls.some(
+          (url) =>
+            url ===
+            'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720',
+        ),
+      { timeout: 8000 },
+    )
+    .toBe(true);
+});
+
 test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
   page,
 }) => {
