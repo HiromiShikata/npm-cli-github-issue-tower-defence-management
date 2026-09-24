@@ -405,7 +405,11 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
       now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
     ]);
     mockIssueRepository.updateStatus.mockRejectedValue(
       new Error('updateStatus failed'),
@@ -422,8 +426,16 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
       now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
-      makeIssueComment('some comment', 'anyone', new Date(agentCommentTime.getTime() + 5 * 60 * 1000)),
+      makeIssueComment(
+        AGENT_REPORT_BODY_WITH_CONFIRMATION,
+        'bot',
+        agentCommentTime,
+      ),
+      makeIssueComment(
+        'some comment',
+        'anyone',
+        new Date(agentCommentTime.getTime() + 5 * 60 * 1000),
+      ),
     ]);
 
     const result = await useCase.run({
