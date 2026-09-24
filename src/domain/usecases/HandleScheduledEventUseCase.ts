@@ -298,6 +298,8 @@ export class HandleScheduledEventUseCase {
         storyObject.story.description,
         [input.manager],
         ['story'],
+        projectId,
+        storyObject.story.name,
       );
       const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
       const projectItemId = await this.issueRepository.addIssueToProject(

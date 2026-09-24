@@ -826,6 +826,20 @@ describe('HandleScheduledEventUseCase', () => {
         expect(storyIssueCalls[0][3]).toContain('story desc');
       });
 
+      it('should pass projectId and storyOptionName to createNewIssue for story issue', async () => {
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(1);
+        expect(storyIssueCalls[0][6]).toBe('project-1');
+        expect(storyIssueCalls[0][7]).toBe('feature / StoryOne');
+      });
+
       it('should emit Waiting for story update log before 10s sleep', async () => {
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();

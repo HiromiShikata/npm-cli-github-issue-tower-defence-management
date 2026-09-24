@@ -92,6 +92,8 @@ export interface IssueRepository {
     body: string,
     assignees: Member['name'][],
     labels: Label[],
+    projectId?: Project['id'],
+    storyOptionName?: string,
   ) => Promise<number>;
   searchIssue: (query: {
     owner: string;

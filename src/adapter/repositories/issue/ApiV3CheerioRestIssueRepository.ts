@@ -1119,8 +1119,10 @@ export class ApiV3CheerioRestIssueRepository
     body: string,
     assignees: string[],
     labels: string[],
+    projectId?: string,
+    storyOptionName?: string,
   ): Promise<number> => {
-    return await this.restIssueRepository.createNewIssue(
+    const issueNumber = await this.restIssueRepository.createNewIssue(
       org,
       repo,
       title,
@@ -1128,6 +1130,40 @@ export class ApiV3CheerioRestIssueRepository
       assignees,
       labels,
     );
+    if (projectId !== undefined && storyOptionName !== undefined) {
+      const issueUrl = `https://github.com/${org}/${repo}/issues/${issueNumber}`;
+      const now = await this.dateRepository.now();
+      const partialIssue: Issue = {
+        nameWithOwner: `${org}/${repo}`,
+        number: issueNumber,
+        title,
+        state: 'OPEN',
+        status: null,
+        story: storyOptionName,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: issueUrl,
+        assignees: [],
+        labels,
+        org,
+        repo,
+        body: '',
+        itemId: '',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: now,
+        author: '',
+        closingIssueReferenceUrls: [],
+        agent: null,
+        stateReason: null,
+      };
+      await this.appendIssueToProjectCache(projectId, partialIssue);
+    }
+    return issueNumber;
   };
   searchIssue = async (query: {
     owner: string;
