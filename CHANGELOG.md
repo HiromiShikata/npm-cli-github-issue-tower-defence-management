@@ -1,3 +1,10 @@
+# [2.141.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.5...v2.141.0) (2026-09-24)
+
+
+### Features
+
+* **ApiV3CheerioRestIssueRepository:** log issueUrl and date in updateNextActionDate ([#2557](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2557)) ([3156f2f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3156f2f96cabe20c3e74bc2987530e46c8b2e2b6)), closes [HiromiShikata/secretary#6881](https://github.com/HiromiShikata/secretary/issues/6881)
+
 ## [2.140.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.4...v2.140.5) (2026-09-24)
 
 
