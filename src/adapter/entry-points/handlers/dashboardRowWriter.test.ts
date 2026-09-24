@@ -71,6 +71,7 @@ describe('writeDashboardRow', () => {
     const expected: DashboardRowFile = {
       pjcode: 'ac',
       capturedAt: '2026-06-26T12:00:00.000Z',
+      assigneeLogin: ASSIGNEE,
       todo: 0,
       qc: 1,
       fail: 0,
@@ -94,6 +95,24 @@ describe('writeDashboardRow', () => {
     });
 
     expect(fs.readdirSync(dir)).toEqual([]);
+  });
+
+  it('writes assigneeLogin and allIssuesCacheDir when provided', () => {
+    writeDashboardRow({
+      dashboardDataDir: dir,
+      pjcode: 'ac',
+      assigneeLogin: ASSIGNEE,
+      issues: [makeIssue({ status: 'Awaiting Workspace' })],
+      generatedAt: '2026-06-26T12:00:00.000Z',
+      allIssuesCacheDir:
+        '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
+    });
+
+    expect(readJson(path.join(dir, 'projects', 'ac.json'))).toMatchObject({
+      assigneeLogin: ASSIGNEE,
+      allIssuesCacheDir:
+        '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
+    });
   });
 
   it('is a no-op when pjcode or assigneeLogin is missing', () => {
