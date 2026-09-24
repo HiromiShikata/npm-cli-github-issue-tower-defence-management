@@ -396,5 +396,81 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         ],
       ]);
     });
+
+    it('should use NO STORY option by name even when it is not at index 0', async () => {
+      const reorderedStory = {
+        ...basicStory,
+        stories: [
+          {
+            id: 'highPriorityId',
+            name: 'regular / high priority',
+            color: 'RED' as const,
+            description: '',
+          },
+          {
+            id: 'noStoryId',
+            name: 'regular / NO STORY',
+            color: 'RED' as const,
+            description: '',
+          },
+        ],
+      };
+      const project = { ...basicProject, story: reorderedStory };
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [{ ...project, story: reorderedStory }, issue, 'noStoryId'],
+      ]);
+    });
+
+    it('should do nothing when NO STORY option does not exist in the stories list', async () => {
+      const storyWithoutNoStory = {
+        ...basicStory,
+        stories: [
+          {
+            id: 'highPriorityId',
+            name: 'regular / high priority',
+            color: 'RED' as const,
+            description: '',
+          },
+        ],
+      };
+      const project = { ...basicProject, story: storyWithoutNoStory };
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
   });
 });
