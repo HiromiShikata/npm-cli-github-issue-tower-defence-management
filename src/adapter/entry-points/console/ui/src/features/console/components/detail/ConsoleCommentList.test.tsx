@@ -583,7 +583,9 @@ describe('ConsoleCommentList', () => {
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
     const bodyTextarea = getByRole('textbox', { name: 'Body' });
-    expect((bodyTextarea as HTMLTextAreaElement).value).toBe('> A comment body');
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      '> A comment body',
+    );
   });
 
   it('disables the dialog submit button while onCreateIssueFromComment is in progress', async () => {
