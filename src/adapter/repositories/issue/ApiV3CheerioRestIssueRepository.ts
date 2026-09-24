@@ -1336,6 +1336,9 @@ export class ApiV3CheerioRestIssueRepository
     date: Date,
     projectItemId?: string,
   ): Promise<void> => {
+    console.log(
+      `updateNextActionDate: issueUrl=${issueUrl} date=${date.toISOString().split('T')[0]}`,
+    );
     if (!project.nextActionDate) {
       return;
     }

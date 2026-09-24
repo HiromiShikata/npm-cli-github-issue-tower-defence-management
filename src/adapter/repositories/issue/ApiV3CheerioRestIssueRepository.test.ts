@@ -1546,6 +1546,29 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         date: '2026-07-20',
       });
     });
+
+    it('logs issueUrl and date at the start of the call', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem('https://github.com/o/r/issues/42', 'item'),
+      );
+      const logSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+
+      await repository.updateNextActionDate(
+        'https://github.com/o/r/issues/42',
+        projectWithNextActionDate(),
+        new Date('2026-09-23T00:00:00.000Z'),
+      );
+
+      expect(logSpy).toHaveBeenCalledWith(
+        'updateNextActionDate: issueUrl=https://github.com/o/r/issues/42 date=2026-09-23',
+      );
+      logSpy.mockRestore();
+    });
   });
 
   describe('updateNextActionHour', () => {
