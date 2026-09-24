@@ -1,25 +1,24 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { OauthTokenSelectUseCase } from '../../domain/usecases/OauthTokenSelectUseCase';
 import {
   cacheDir,
   cachePathForToken,
   FABLE_LIMIT_TYPE,
-  hashToken,
   HEADERLESS_429_DEFAULT_COOLDOWN_SECONDS,
   HEADERLESS_429_MAX_COOLDOWN_SECONDS,
+  hashToken,
   isFableModel,
-  parseModelRateLimitsFromBody,
-  parseModelRateLimitsFromHeaders,
-  parseSevenDayRejection,
   PERMISSION_DISABLED_COOLDOWN_SECONDS,
+  parseModelRateLimitsFromBody,
+  parseSevenDayRejection,
   readRateLimit,
   writeFableRejection,
   writeModelRateLimit,
   writeRateLimit,
   writeSubscriptionDisabled,
 } from './RateLimitCache';
-import { OauthTokenSelectUseCase } from '../../domain/usecases/OauthTokenSelectUseCase';
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -896,100 +895,6 @@ describe('RateLimitCache', () => {
           'anthropic-ratelimit-unified-7d-reset': ['1893456000'],
         }),
       ).toEqual({ sevenDayRejected: true, sevenDayReset: 1893456000 });
-    });
-  });
-
-  describe('parseModelRateLimitsFromHeaders', () => {
-    it('should extract a rejected seven_day_sonnet limit from the per-model unified headers', () => {
-      expect(
-        parseModelRateLimitsFromHeaders({
-          'anthropic-ratelimit-unified-7d_sonnet-status': 'rejected',
-          'anthropic-ratelimit-unified-7d_sonnet-reset': '1779642000',
-        }),
-      ).toEqual({
-        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
-      });
-    });
-
-    it('should extract both seven_day_sonnet and seven_day_opus limits with their statuses', () => {
-      expect(
-        parseModelRateLimitsFromHeaders({
-          'anthropic-ratelimit-unified-7d_sonnet-status': 'rejected',
-          'anthropic-ratelimit-unified-7d_sonnet-reset': '1779642000',
-          'anthropic-ratelimit-unified-7d_opus-status': 'allowed',
-          'anthropic-ratelimit-unified-7d_opus-reset': '1779700000',
-        }),
-      ).toEqual({
-        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
-        seven_day_opus: { rejected: false, resetsAt: 1779700000 },
-      });
-    });
-
-    it('should return an empty map when no per-model headers are present', () => {
-      expect(
-        parseModelRateLimitsFromHeaders({
-          'anthropic-ratelimit-unified-status': 'allowed',
-          'anthropic-ratelimit-unified-7d-status': 'allowed',
-        }),
-      ).toEqual({});
-    });
-
-    it('should default resetsAt to 0 when the per-model reset header is missing', () => {
-      expect(
-        parseModelRateLimitsFromHeaders({
-          'anthropic-ratelimit-unified-7d_opus-status': 'rejected',
-        }),
-      ).toEqual({
-        seven_day_opus: { rejected: true, resetsAt: 0 },
-      });
-    });
-  });
-
-  describe('readRateLimit per-model header population', () => {
-    it('should populate seven_day_sonnet from the per-model headers when the body carried no rate_limit event', () => {
-      const token = 'header-only-sonnet-token';
-      writeRateLimit(token, {
-        'anthropic-ratelimit-unified-status': 'rejected',
-        'anthropic-ratelimit-unified-5h-status': 'allowed',
-        'anthropic-ratelimit-unified-5h-reset': '1700000000',
-        'anthropic-ratelimit-unified-5h-utilization': '53',
-        'anthropic-ratelimit-unified-7d-status': 'allowed_warning',
-        'anthropic-ratelimit-unified-7d-reset': '1700100000',
-        'anthropic-ratelimit-unified-7d-utilization': '88',
-        'anthropic-ratelimit-unified-7d_sonnet-status': 'rejected',
-        'anthropic-ratelimit-unified-7d_sonnet-reset': '1779642000',
-        'anthropic-ratelimit-unified-7d_opus-status': 'allowed',
-        'anthropic-ratelimit-unified-7d_opus-reset': '1779700000',
-      });
-      const snapshot = readRateLimit(token);
-      expect(snapshot?.modelWeeklyLimits).toEqual({
-        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
-        seven_day_opus: { rejected: false, resetsAt: 1779700000 },
-      });
-      expect(snapshot?.unifiedRejected).toBe(true);
-      expect(snapshot?.fiveHourRejected).toBe(false);
-    });
-
-    it('should let a body-derived model limit override the per-model header value for the same claim', () => {
-      const token = 'body-overrides-header-token';
-      writeRateLimit(token, {
-        'anthropic-ratelimit-unified-status': 'allowed',
-        'anthropic-ratelimit-unified-5h-status': 'allowed',
-        'anthropic-ratelimit-unified-5h-reset': '1700000000',
-        'anthropic-ratelimit-unified-5h-utilization': '10',
-        'anthropic-ratelimit-unified-7d-status': 'allowed',
-        'anthropic-ratelimit-unified-7d-reset': '1700100000',
-        'anthropic-ratelimit-unified-7d-utilization': '5',
-        'anthropic-ratelimit-unified-7d_sonnet-status': 'allowed',
-        'anthropic-ratelimit-unified-7d_sonnet-reset': '1700200000',
-      });
-      writeModelRateLimit(token, {
-        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
-      });
-      const snapshot = readRateLimit(token);
-      expect(snapshot?.modelWeeklyLimits).toEqual({
-        seven_day_sonnet: { rejected: true, resetsAt: 1779642000 },
-      });
     });
   });
 

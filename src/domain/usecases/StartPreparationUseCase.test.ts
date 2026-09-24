@@ -3803,7 +3803,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 100 * 3600,
           },
@@ -3819,7 +3819,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -4035,7 +4035,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 100 * 3600,
           },
@@ -4051,7 +4051,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -4123,7 +4123,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 100 * 3600,
           },
@@ -4139,7 +4139,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -4500,7 +4500,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 50 * 3600,
           },
@@ -4516,7 +4516,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 10 * 3600,
           },
@@ -4532,7 +4532,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 150 * 3600,
           },
@@ -4602,7 +4602,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 10 * 3600,
           },
@@ -4618,7 +4618,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 150 * 3600,
           },
@@ -5270,7 +5270,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 100 * 3600,
           },
@@ -5286,7 +5286,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -5447,7 +5447,7 @@ describe('StartPreparationUseCase', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -6055,805 +6055,59 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  describe('Sonnet-to-Opus weekly limit fallback', () => {
+  it('should select a token whose legacy per-model limit is rejected but the unified seven_day key is absent', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
-
-    it('spawns preparations with the Opus fallback model when the sonnet default is selected and every token has its seven_day_sonnet weekly limit exhausted while opus capacity remains', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        name: 'token-with-opus-rejected',
+        token: 'token-with-opus-rejected',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 0,
+        blocked: false,
+        rejected: false,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {
+          seven_day_opus: { rejected: true, resetsAt: futureReset },
         },
-      ]);
+      },
+    ]);
 
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
-        'url1',
-        'agent1',
-        'claude-opus-4-8',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ]);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-        env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
-          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-        },
-      });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
     });
 
-    it('uses the configured fallbackLlmModelName instead of the default when falling back to opus', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-opus-4-8',
-      );
-    });
-
-    it('skips preparation when the sonnet default is exhausted and the opus fallback is also exhausted via the generic seven_day weekly limit', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-fully-exhausted',
-          token: 'token-fully-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('uses the sonnet default with no fallback when sonnet tokens are available', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-ok',
-          token: 'token-ok',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-sonnet-4-6',
-      );
-    });
-
-    it('does not fall back to opus for an issue whose llm-model label explicitly set the model even when the sonnet weekly limit is exhausted', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl', 'llm-model:claude-sonnet-4-6'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-sonnet-4-6',
-      );
-    });
-
-    it('does not fall back to opus when sonnet tokens are merely throttled by 5-hour utilization rather than the weekly limit', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-throttled',
-          token: 'token-throttled',
-          fiveHourUtilization: 0.95,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-  });
-
-  describe('per-token model weekly-limit routing', () => {
-    const futureReset = Math.floor(Date.now() / 1000) + 3600;
-
-    it('routes a token whose seven_day_sonnet weekly limit is rejected to Opus while a sibling token with Sonnet headroom uses Sonnet in the same pass', async () => {
-      const issues = [
-        createMockIssue({
-          url: 'url1',
-          title: 'Issue 1',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 1,
-          itemId: 'item-1',
-        }),
-        createMockIssue({
-          url: 'url2',
-          title: 'Issue 2',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 2,
-          itemId: 'item-2',
-        }),
-      ];
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(issues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-        {
-          name: 'token-sonnet-ok',
-          token: 'token-sonnet-ok',
-          fiveHourUtilization: 0.5,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
-      const callForExhausted =
-        mockLocalCommandRunner.runCommand.mock.calls.find(
-          (call) =>
-            call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === 'token-sonnet-exhausted',
-        );
-      const callForOk = mockLocalCommandRunner.runCommand.mock.calls.find(
-        (call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === 'token-sonnet-ok',
-      );
-      expect(callForExhausted).toBeDefined();
-      expect(callForOk).toBeDefined();
-      expect(callForExhausted?.[1][2]).toBe('claude-opus-4-8');
-      expect(callForOk?.[1][2]).toBe('claude-sonnet-4-6');
-    });
-
-    it('excludes a token whose seven_day_sonnet and seven_day_opus weekly limits are both rejected', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-both-exhausted',
-          token: 'token-both-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('excludes a token whose generic seven_day weekly limit is rejected even when the per-model windows are open', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-general-exhausted',
-          token: 'token-general-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('lets a per-issue llm-model label override the per-token routed model', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl', 'llm-model:claude-3-5-haiku-20241022'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-3-5-haiku-20241022',
-      );
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-        env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
-          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-        },
-      });
-    });
-
-    it('includes a token whose unified representative-claim status is rejected (seven_day_sonnet) while its Opus weekly window is allowed and routes it to Opus', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-rejected-unified',
-          token: 'token-sonnet-rejected-unified',
-          fiveHourUtilization: 0.53,
-          sevenDayUtilization: 0.88,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: false, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(
-        mockLocalCommandRunner.runCommand.mock.calls[0][2]?.env
-          ?.CLAUDE_CODE_OAUTH_TOKEN,
-      ).toBe('token-sonnet-rejected-unified');
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-opus-4-8',
-      );
-    });
-
-    it('excludes a token whose 5-hour window is rejected even when its Opus weekly window is allowed', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-5h-rejected',
-          token: 'token-5h-rejected',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: true,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_opus: { rejected: false, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('excludes a token whose unified status is rejected and whose seven_day_sonnet and seven_day_opus weekly windows are both rejected', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-both-rejected-unified',
-          token: 'token-both-rejected-unified',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-with-opus-rejected' },
     });
   });
 
@@ -7952,7 +7206,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result[0].name).toBe('soon-7d-reset');
     expect(result[1].name).toBe('far-7d-reset');
@@ -7975,7 +7229,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
     const serialized = JSON.stringify(result);
 
     expect(serialized).not.toContain('sk-ant-secret-value');
@@ -7996,7 +7250,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result).toHaveLength(1);
     expect(result[0].thresholdExcluded).toBe(true);
@@ -8018,7 +7272,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result).toHaveLength(1);
     expect(result[0].thresholdExcluded).toBe(true);
@@ -8054,7 +7308,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result[0].name).toBe('available');
     const cooling = result.find((entry) => entry.name === 'cooling-down');
@@ -8080,7 +7334,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('lapsed-cooldown');
@@ -8088,12 +7342,12 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(result[0].thresholdExcluded).toBe(false);
   });
 
-  it('selects a token whose unified status is rejected but whose requested model weekly window is allowed', () => {
+  it('selects a token whose overall rejected status is true but the unified seven_day weekly window is not rejected', () => {
     const nowEpochSeconds = Math.floor(Date.now() / 1000);
     const tokenUsages: ClaudeTokenUsage[] = [
       {
-        name: 'sonnet-rejected-opus-ok',
-        token: 'sk-ant-sonnet-rejected',
+        name: 'overall-rejected-seven-day-ok',
+        token: 'sk-ant-overall-rejected',
         fiveHourUtilization: 0.53,
         sevenDayUtilization: 0.88,
         blocked: false,
@@ -8101,11 +7355,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         fiveHourRejected: false,
         blockedUntilEpoch: 0,
         modelWeeklyLimits: {
-          seven_day_sonnet: {
-            rejected: true,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-          seven_day_opus: {
+          seven_day: {
             rejected: false,
             resetsAt: nowEpochSeconds + 20 * 3600,
           },
@@ -8113,21 +7363,16 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(
-      tokenUsages,
-      90,
-      'claude-opus-4-8',
-    );
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('sonnet-rejected-opus-ok');
+    expect(result[0].name).toBe('overall-rejected-seven-day-ok');
     expect(result[0].rejected).toBe(false);
     expect(result[0].thresholdExcluded).toBe(false);
     expect(result[0].cooldownExcluded).toBe(false);
   });
 
   it('excludes a token whose 5-hour window is rejected and marks it rejected in the rotation entry', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
     const tokenUsages: ClaudeTokenUsage[] = [
       {
         name: 'five-hour-rejected',
@@ -8138,12 +7383,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         rejected: true,
         fiveHourRejected: true,
         blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
+        modelWeeklyLimits: {},
       },
       {
         name: 'available',
@@ -8158,7 +7398,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
 
     expect(result[0].name).toBe('available');
     const excluded = result.find(

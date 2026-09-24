@@ -1,26 +1,26 @@
-import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
-import { Issue } from '../entities/Issue';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
-import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
-import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
-import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
-import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
-import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
+import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
+import type { Issue } from '../entities/Issue';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
-import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
-import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
-import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
-import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
+import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
+import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
+import type {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
+import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
+import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -81,26 +81,14 @@ export class StartPreparationUseCase {
     private readonly gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository,
   ) {}
 
-  private weeklyLimitTypeForModel = (modelName: string | null): string => {
-    const normalized = (modelName ?? '').toLowerCase();
-    if (normalized.includes('sonnet')) return 'seven_day_sonnet';
-    if (normalized.includes('opus')) return 'seven_day_opus';
-    return 'seven_day';
-  };
-
   private isWithinCooldown = (
     usage: ClaudeTokenUsage,
     nowEpochSeconds: number,
   ): boolean => usage.blockedUntilEpoch > nowEpochSeconds;
 
-  private isModelWeeklyLimitRejected = (
-    usage: ClaudeTokenUsage,
-    weeklyLimitType: string,
-  ): boolean => {
-    const specific = usage.modelWeeklyLimits[weeklyLimitType];
-    if (specific !== undefined && specific.rejected) return true;
-    const general = usage.modelWeeklyLimits['seven_day'];
-    return general !== undefined && general.rejected;
+  private isModelWeeklyLimitRejected = (usage: ClaudeTokenUsage): boolean => {
+    const limit = usage.modelWeeklyLimits['seven_day'];
+    return limit !== undefined && limit.rejected;
   };
 
   private selectModelForToken = (
@@ -108,55 +96,40 @@ export class StartPreparationUseCase {
     defaultModelName: string | null,
     fallbackModelName: string | null,
   ): string | null => {
-    const generalWeeklyLimit = usage.modelWeeklyLimits['seven_day'];
-    if (generalWeeklyLimit !== undefined && generalWeeklyLimit.rejected) {
+    const sevenDayLimit = usage.modelWeeklyLimits['seven_day'];
+    if (sevenDayLimit !== undefined && sevenDayLimit.rejected) {
       return null;
     }
-    const candidateModelNames = [defaultModelName, fallbackModelName].filter(
-      (modelName): modelName is string =>
-        modelName !== null && modelName !== '',
+    return (
+      [defaultModelName, fallbackModelName].find(
+        (modelName): modelName is string =>
+          modelName !== null && modelName !== '',
+      ) ?? null
     );
-    for (const candidateModelName of candidateModelNames) {
-      const weeklyLimitType = this.weeklyLimitTypeForModel(candidateModelName);
-      const specificWeeklyLimit = usage.modelWeeklyLimits[weeklyLimitType];
-      if (specificWeeklyLimit === undefined || !specificWeeklyLimit.rejected) {
-        return candidateModelName;
-      }
-    }
-    return null;
   };
 
   private secondsUntilSevenDayReset = (
     usage: ClaudeTokenUsage,
-    weeklyLimitType: string,
     nowEpochSeconds: number,
   ): number => {
-    const specific = usage.modelWeeklyLimits[weeklyLimitType];
-    if (specific !== undefined) {
-      return specific.resetsAt - nowEpochSeconds;
-    }
-    const general = usage.modelWeeklyLimits['seven_day'];
-    if (general !== undefined) {
-      return general.resetsAt - nowEpochSeconds;
+    const limit = usage.modelWeeklyLimits['seven_day'];
+    if (limit !== undefined) {
+      return limit.resetsAt - nowEpochSeconds;
     }
     return Number.POSITIVE_INFINITY;
   };
 
   private compareBySevenDayDeadlineThenUtilization = (
     a: ClaudeTokenUsage,
-    aWeeklyLimitType: string,
     b: ClaudeTokenUsage,
-    bWeeklyLimitType: string,
     nowEpochSeconds: number,
   ): number => {
     const aSecondsUntilReset = this.secondsUntilSevenDayReset(
       a,
-      aWeeklyLimitType,
       nowEpochSeconds,
     );
     const bSecondsUntilReset = this.secondsUntilSevenDayReset(
       b,
-      bWeeklyLimitType,
       nowEpochSeconds,
     );
     if (aSecondsUntilReset !== bSecondsUntilReset) {
@@ -327,9 +300,7 @@ export class StartPreparationUseCase {
       .sort((a, b) =>
         this.compareBySevenDayDeadlineThenUtilization(
           a.usage,
-          this.weeklyLimitTypeForModel(a.model),
           b.usage,
-          this.weeklyLimitTypeForModel(b.model),
           nowEpochSeconds,
         ),
       );
@@ -349,7 +320,6 @@ export class StartPreparationUseCase {
       ),
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
-        this.weeklyLimitTypeForModel(model),
         nowEpochSeconds,
       ),
     }));
@@ -373,29 +343,19 @@ export class StartPreparationUseCase {
   buildRotationOrder = (
     tokenUsages: ClaudeTokenUsage[],
     utilizationPercentageThreshold: number,
-    modelName: string | null,
   ): RotationOrderEntry[] => {
-    const weeklyLimitType = this.weeklyLimitTypeForModel(modelName);
     const nowEpochSeconds = Date.now() / 1000;
     const selectedTokens = tokenUsages
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.fiveHourRejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
-      .filter(
-        (usage) => !this.isModelWeeklyLimitRejected(usage, weeklyLimitType),
-      )
+      .filter((usage) => !this.isModelWeeklyLimitRejected(usage))
       .filter(
         (usage) =>
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
       .sort((a, b) =>
-        this.compareBySevenDayDeadlineThenUtilization(
-          a,
-          weeklyLimitType,
-          b,
-          weeklyLimitType,
-          nowEpochSeconds,
-        ),
+        this.compareBySevenDayDeadlineThenUtilization(a, b, nowEpochSeconds),
       );
     const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
     const excluded: RotationOrderEntry[] = tokenUsages
@@ -409,7 +369,7 @@ export class StartPreparationUseCase {
           !usage.blocked &&
           !usage.fiveHourRejected &&
           !this.isWithinCooldown(usage, nowEpochSeconds) &&
-          !this.isModelWeeklyLimitRejected(usage, weeklyLimitType) &&
+          !this.isModelWeeklyLimitRejected(usage) &&
           usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
         cooldownExcluded:
           !usage.blocked &&
@@ -465,7 +425,6 @@ export class StartPreparationUseCase {
         ? this.buildRotationOrder(
             tokenUsages,
             params.utilizationPercentageThreshold,
-            params.defaultLlmModelName,
           )
         : null;
     const maximumPreparingIssuesCount =

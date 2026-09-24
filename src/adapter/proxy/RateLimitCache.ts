@@ -306,34 +306,6 @@ export const parseModelRateLimitsFromBody = (
   return result;
 };
 
-const HEADER_CLAIM_TO_LIMIT_TYPE: Record<string, string> = {
-  '7d_sonnet': 'seven_day_sonnet',
-  '7d_opus': 'seven_day_opus',
-};
-
-export const parseModelRateLimitsFromHeaders = (
-  headers: Record<string, string>,
-): Record<string, ModelWeeklyLimit> => {
-  const result: Record<string, ModelWeeklyLimit> = {};
-  for (const [headerClaim, limitType] of Object.entries(
-    HEADER_CLAIM_TO_LIMIT_TYPE,
-  )) {
-    const status = headers[`anthropic-ratelimit-unified-${headerClaim}-status`];
-    const resetRaw =
-      headers[`anthropic-ratelimit-unified-${headerClaim}-reset`];
-    if (status === undefined) continue;
-    const resetsAt =
-      resetRaw !== undefined && Number.isFinite(Number(resetRaw))
-        ? Number(resetRaw)
-        : 0;
-    result[limitType] = {
-      rejected: status === 'rejected',
-      resetsAt,
-    };
-  }
-  return result;
-};
-
 export const readRateLimit = (
   token: string,
   baseDir: string = cacheDir(),
@@ -403,7 +375,6 @@ export const readRateLimit = (
       unifiedStatus: status ?? null,
       overageDisabledReason: overageDisabledReason ?? null,
       modelWeeklyLimits: {
-        ...parseModelRateLimitsFromHeaders(headers),
         ...readModelWeeklyLimits(parsed),
       },
       lastUpdatedEpoch,
