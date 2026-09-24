@@ -1,3 +1,10 @@
+## [2.143.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.0...v2.143.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** escalate to Failed Preparation after N consecutive no-report dispatches ([#2564](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2564)) ([cbcd098](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cbcd09816dc29609f229e7e29cec775d100a4536)), closes [HiromiShikata/secretary#6908](https://github.com/HiromiShikata/secretary/issues/6908)
+
 # [2.143.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.3...v2.143.0) (2026-09-24)
 
 
