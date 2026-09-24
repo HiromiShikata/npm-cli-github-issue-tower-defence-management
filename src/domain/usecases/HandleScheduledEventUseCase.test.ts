@@ -1114,6 +1114,32 @@ describe('HandleScheduledEventUseCase', () => {
           }),
         );
       });
+
+      it('proceeds with story issue creation when searchIssue returns only issues with different titles (no exact-title match)', async () => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: storyProject,
+          cacheUsed: false,
+        });
+        mockIssueRepository.searchIssue.mockResolvedValue([
+          {
+            url: 'https://github.com/test-org/test-repo/issues/78',
+            title: 'feature / StoryOne fix',
+            number: '78',
+          },
+        ]);
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(1);
+        expect(storyIssueCalls[0][2]).toBe('feature / StoryOne');
+      });
     });
 
     describe('slow sweep cadence', () => {

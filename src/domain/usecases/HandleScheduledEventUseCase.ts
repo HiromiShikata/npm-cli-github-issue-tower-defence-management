@@ -296,7 +296,11 @@ export class HandleScheduledEventUseCase {
         state: 'open',
         title: storyObject.story.name,
       });
-      if (existingOpenStoryIssues.length > 0) {
+      if (
+        existingOpenStoryIssues.some(
+          (issue) => issue.title === storyObject.story.name,
+        )
+      ) {
         continue;
       }
       const storyStartTime = Date.now();
