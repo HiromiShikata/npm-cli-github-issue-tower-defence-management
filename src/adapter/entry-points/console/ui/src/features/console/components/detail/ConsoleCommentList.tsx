@@ -203,7 +203,7 @@ export const ConsoleCommentList = ({
           onClose={() => setPendingComment(null)}
           initialDraft={{
             title: '',
-            body: formatAsBlockquote(issueTitle ?? ''),
+            body: issueTitle != null ? formatAsBlockquote(issueTitle) : null,
             storyName: null,
             agentOptionId: null,
           }}

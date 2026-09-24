@@ -782,6 +782,19 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
+  it('adds containerClassName to the portal container div alongside the default class', () => {
+    render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        containerClassName="extra-class"
+      />,
+    );
+    const container = document.querySelector(
+      '.console-task-create-dialog-container.extra-class',
+    );
+    expect(container).not.toBeNull();
+  });
+
   it('does not truncate title when it is exactly 256 characters', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(

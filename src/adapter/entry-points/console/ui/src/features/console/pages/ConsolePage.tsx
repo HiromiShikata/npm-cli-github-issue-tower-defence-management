@@ -253,8 +253,12 @@ export const ConsolePage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
     useState(false);
-  const [fleetTaskCreateDialogTitle, setFleetTaskCreateDialogTitle] =
-    useState('');
+  const [fleetDialogDraft, setFleetDialogDraft] = useState<IssueCreateDraft>({
+    title: '',
+    body: null,
+    storyName: null,
+    agentOptionId: null,
+  });
   const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
     title: '',
     body: null,
@@ -751,7 +755,7 @@ export const ConsolePage = () => {
   );
 
   const handleCreateWorkflowIssueFromDialog = useCallback(
-    ({ title, body }: IssueCreateParams): Promise<void> => {
+    ({ title, body, files }: IssueCreateParams): Promise<void> => {
       if (fleetTaskCreateUrl === null) {
         return Promise.resolve();
       }
@@ -760,21 +764,45 @@ export const ConsolePage = () => {
         return Promise.resolve();
       }
       const nameWithOwner = match[1];
+      const capturedPjcode = pjcode;
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
         commit: async () => {
-          await postConsoleCreateWorkflowIssue({
+          const issueUrl = await postConsoleCreateWorkflowIssue({
             nameWithOwner,
             title,
             body: body ?? '',
           });
+          if (capturedPjcode !== null && files.length > 0) {
+            const markdownParts = await Promise.all(
+              files.map(async (file) => {
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                const contentBase64 = encodeAttachmentContent(bytes);
+                return postConsoleAttachment({
+                  pjcode: capturedPjcode,
+                  url: issueUrl,
+                  fileName: file.name,
+                  contentBase64,
+                });
+              }),
+            );
+            const commentResult = await postConsoleComment({
+              pjcode: capturedPjcode,
+              url: issueUrl,
+              body: markdownParts.join('\n\n'),
+            });
+            if (!commentResult.posted) {
+              throw new Error(commentResult.error);
+            }
+          }
         },
         advance: () => {},
       });
+      setFleetDialogDraft({ title: '', body: null, storyName: null, agentOptionId: null });
       return Promise.resolve();
     },
-    [fleetTaskCreateUrl, actionQueue],
+    [fleetTaskCreateUrl, pjcode, actionQueue],
   );
 
   const handleReorderStory = useCallback(
@@ -1125,12 +1153,8 @@ export const ConsolePage = () => {
         <IssueCreateModalDialog
           storyEntries={[]}
           agentOptions={[]}
-          initialDraft={{
-            title: '',
-            body: null,
-            storyName: null,
-            agentOptionId: null,
-          }}
+          initialDraft={fleetDialogDraft}
+          onDraftChange={setFleetDialogDraft}
           onSubmit={handleCreateWorkflowIssueFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
           containerClassName="console-fleet-task-create-dialog-container"
