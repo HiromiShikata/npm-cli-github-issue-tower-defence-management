@@ -7453,6 +7453,38 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'story-opt-wf',
       );
     });
+
+    it('calls updateStory when issue agent field is null and triager posts story as default agent on no-story issue', async () => {
+      const project = projectWithStoryAndAgent();
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: null,
+        story: null,
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-wf',
+      );
+    });
   });
 
   describe('null nextStepAgent dispatch loop detection', () => {

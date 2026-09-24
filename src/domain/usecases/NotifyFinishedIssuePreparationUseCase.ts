@@ -379,14 +379,14 @@ export class NotifyFinishedIssuePreparationUseCase {
         ? extractAgentNameFromReportBody(lastAgentReport.content)
         : null;
     if (
-      issue.agent === null ||
       lastAgentReport === null ||
       reporterName === null ||
-      !isAgentReportBodyFromAgent(
-        lastAgentReport.content,
-        reporterName,
-        issue.agent,
-      )
+      (issue.agent !== null &&
+        !isAgentReportBodyFromAgent(
+          lastAgentReport.content,
+          reporterName,
+          issue.agent,
+        ))
     ) {
       storyName = null;
     }
