@@ -18,6 +18,7 @@ export type ConsoleActionKind =
   | { type: 'set_in_tmux_by_human'; optionName: string }
   | { type: 'close'; action: ConsoleCloseAction }
   | { type: 'ok_and_awaiting_workspace' }
+  | { type: 'ok_and_close' }
   | { type: 'delete_all_comments' };
 
 export const ACTION_TOAST_DELAY_MS = 5000;
@@ -79,6 +80,8 @@ export const actionToastMessage = (
       return 'Added to In Tmux by human';
     case 'ok_and_awaiting_workspace':
       return 'ok → Awaiting Workspace';
+    case 'ok_and_close':
+      return 'ok → Closed';
     case 'close':
       return kind.action === 'close' ? 'Closed' : 'Closed as not planned';
     case 'delete_all_comments':
@@ -109,6 +112,7 @@ export const actionToastColor = (
     case 'set_in_tmux_by_human':
     case 'ok_and_awaiting_workspace':
       return 'blue';
+    case 'ok_and_close':
     case 'close':
       return 'red';
     case 'delete_all_comments':

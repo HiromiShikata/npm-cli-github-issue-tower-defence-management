@@ -390,7 +390,19 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const okAndClose = async (): Promise<void> => {
-    await commentAndClose('ok');
+    onQueueAction({
+      kind: { type: 'ok_and_close' },
+      item,
+      commit: async () => {
+        await operations.addComment(item, 'ok');
+        await operations.closeIssue(item, 'close');
+      },
+      offline:
+        pjcode != null
+          ? buildTriageOfflinePayload(pjcode, item, 'close')
+          : undefined,
+      overlayPatch: { done: true },
+    });
   };
 
   const resolvedStoryName =
