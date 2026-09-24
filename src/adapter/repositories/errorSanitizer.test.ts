@@ -136,29 +136,15 @@ describe('sanitizeErrorForLogging', () => {
   });
 
   describe('when the value does not carry an authorization header', () => {
-    it('returns the original Error instance unchanged when it has no request property', () => {
-      const error = new Error('generic network error');
-
-      const result = sanitizeErrorForLogging(error);
-
-      expect(result).toBe(error);
-    });
-
-    it('returns null unchanged', () => {
-      expect(sanitizeErrorForLogging(null)).toBeNull();
-    });
-
-    it('returns a string unchanged', () => {
-      const value = 'error string';
-      expect(sanitizeErrorForLogging(value)).toBe(value);
-    });
-
-    it('returns a number unchanged', () => {
-      expect(sanitizeErrorForLogging(404)).toBe(404);
-    });
-
-    it('returns undefined unchanged', () => {
-      expect(sanitizeErrorForLogging(undefined)).toBeUndefined();
+    test.each`
+      description                              | input
+      ${'null'}                                | ${null}
+      ${'a string'}                            | ${'error string'}
+      ${'a number'}                            | ${404}
+      ${'undefined'}                           | ${undefined}
+      ${'an Error without a request property'} | ${new Error('generic network error')}
+    `('returns $description unchanged', ({ input }: { input: unknown }) => {
+      expect(sanitizeErrorForLogging(input)).toBe(input);
     });
   });
 });
