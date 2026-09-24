@@ -5519,14 +5519,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'awaiting-workspace-id',
       );
 
-      const allCommentTexts: string[] =
-        mockIssueCommentRepository.createComment.mock.calls.map(
-          (call: unknown[]) => call[1] as string,
-        );
-      const hasNoReportComment = allCommentTexts.some((c) =>
-        c.includes('NO_REPORT'),
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT'),
       );
-      expect(hasNoReportComment).toBe(false);
     });
 
     it('does not call updateNextActionDate unlike deferPreparation (SC-4)', async () => {
