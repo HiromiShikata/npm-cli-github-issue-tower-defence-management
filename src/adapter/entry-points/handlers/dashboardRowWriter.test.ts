@@ -104,12 +104,18 @@ describe('writeDashboardRow', () => {
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue({ status: 'Awaiting Workspace' })],
       generatedAt: '2026-06-26T12:00:00.000Z',
-      allIssuesCacheDir: '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
+      allIssuesCacheDir:
+        '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
     });
 
-    const written = readJson(path.join(dir, 'projects', 'ac.json')) as Record<string, unknown>;
+    const written = readJson(path.join(dir, 'projects', 'ac.json')) as Record<
+      string,
+      unknown
+    >;
     expect(written.assigneeLogin).toBe(ASSIGNEE);
-    expect(written.allIssuesCacheDir).toBe('/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123');
+    expect(written.allIssuesCacheDir).toBe(
+      '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
+    );
   });
 
   it('is a no-op when pjcode or assigneeLogin is missing', () => {

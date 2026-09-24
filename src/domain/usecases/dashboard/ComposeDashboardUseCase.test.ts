@@ -507,7 +507,13 @@ describe('formatProjectRowLine', () => {
     const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
     expect(
       formatProjectRowLine(
-        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: capturedAt, isFallback: false },
+        {
+          code: 'ac',
+          row: projectRow({}),
+          closeEventCounts: noCloseEvents,
+          rowCapturedAt: capturedAt,
+          isFallback: false,
+        },
         nowMs,
       ),
     ).toMatch(/ 5m$/);
@@ -518,7 +524,13 @@ describe('formatProjectRowLine', () => {
     const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
     expect(
       formatProjectRowLine(
-        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: capturedAt, isFallback: true },
+        {
+          code: 'ac',
+          row: projectRow({}),
+          closeEventCounts: noCloseEvents,
+          rowCapturedAt: capturedAt,
+          isFallback: true,
+        },
         nowMs,
       ),
     ).toMatch(/ ~5m$/);
@@ -528,7 +540,13 @@ describe('formatProjectRowLine', () => {
     const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
     expect(
       formatProjectRowLine(
-        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: null, isFallback: false },
+        {
+          code: 'ac',
+          row: projectRow({}),
+          closeEventCounts: noCloseEvents,
+          rowCapturedAt: null,
+          isFallback: false,
+        },
         nowMs,
       ),
     ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0  0');

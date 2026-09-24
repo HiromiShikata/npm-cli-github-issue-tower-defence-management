@@ -154,8 +154,7 @@ const readProjectRowWithFreshness = (
   if (!isRecord(raw)) {
     return { row: null, capturedAt: null, isFallback: false };
   }
-  const capturedAt =
-    typeof raw.capturedAt === 'string' ? raw.capturedAt : null;
+  const capturedAt = typeof raw.capturedAt === 'string' ? raw.capturedAt : null;
   const row = parseDashboardRow(raw);
   if (row === null) {
     return { row: null, capturedAt, isFallback: false };
@@ -178,11 +177,15 @@ const readProjectRowWithFreshness = (
         assigneeLogin,
         storyColorMap: cacheData.storyColorMap,
       });
-      return { row: freshRow, capturedAt: cacheData.lastFetchedAt, isFallback: false };
+      return {
+        row: freshRow,
+        capturedAt: cacheData.lastFetchedAt,
+        isFallback: false,
+      };
     }
     return { row, capturedAt, isFallback: true };
   }
-  return { row, capturedAt, isFallback: false };
+  return { row, capturedAt: null, isFallback: false };
 };
 
 const parseLoad = (value: unknown): [number, number, number] | null => {

@@ -54,7 +54,7 @@ describe('buildComposeDashboardInput', () => {
             humanPendingBlue: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
-          rowCapturedAt: 'x',
+          rowCapturedAt: null,
           isFallback: false,
         },
         {
