@@ -793,6 +793,8 @@ describe('HandleScheduledEventUseCase', () => {
         mockIssueRepository.addIssueToProject.mockResolvedValue(
           'created-item-id',
         );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        mockClosedStoryIssueReopenUseCase.run.mockResolvedValue(0);
         const createdIssue = mock<Issue>();
         createdIssue.itemId = 'item-99';
         mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
@@ -1077,6 +1079,66 @@ describe('HandleScheduledEventUseCase', () => {
             (call) => Array.isArray(call[5]) && call[5].includes('story'),
           );
         expect(storyIssueCalls).toHaveLength(0);
+      });
+
+      it('skips story issue creation when searchIssue returns an open issue with the story name even when the project cache has no entry for it', async () => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: storyProject,
+          cacheUsed: false,
+        });
+        mockIssueRepository.searchIssue.mockResolvedValue([
+          {
+            url: 'https://github.com/test-org/test-repo/issues/77',
+            title: 'feature / StoryOne',
+            number: '77',
+          },
+        ]);
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+        expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            owner: 'test-org',
+            repositoryName: 'test-repo',
+            type: 'issue',
+            state: 'open',
+            title: 'feature / StoryOne',
+          }),
+        );
+      });
+
+      it('proceeds with story issue creation when searchIssue returns only issues with different titles (no exact-title match)', async () => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: storyProject,
+          cacheUsed: false,
+        });
+        mockIssueRepository.searchIssue.mockResolvedValue([
+          {
+            url: 'https://github.com/test-org/test-repo/issues/78',
+            title: 'feature / StoryOne fix',
+            number: '78',
+          },
+        ]);
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(1);
+        expect(storyIssueCalls[0][2]).toBe('feature / StoryOne');
       });
     });
 
