@@ -1,3 +1,10 @@
+# [2.144.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.2...v2.144.0) (2026-09-24)
+
+
+### Features
+
+* **dashboard:** refresh rows from TDPM cache and show per-row age ([af441ef](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/af441eff911fa9c2930d7ea74fe3994243b3f355))
+
 ## [2.143.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.1...v2.143.2) (2026-09-24)
 
 
