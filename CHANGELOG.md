@@ -1,3 +1,10 @@
+# [2.145.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.5...v2.145.0) (2026-09-24)
+
+
+### Features
+
+* **ci:** fail CI when a pull request deletes or weakens an existing test assertion ([#2577](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2577)) ([6c55cba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6c55cba9da5a0c2672a846f7bf6b6f9469c4289a)), closes [HiromiShikata/secretary#7041](https://github.com/HiromiShikata/secretary/issues/7041)
+
 ## [2.144.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.4...v2.144.5) (2026-09-24)
 
 
