@@ -1261,8 +1261,6 @@ export const ConsolePage = () => {
                     );
                     if (selectedItemKey !== null) {
                       advanceToNext(selectedItemKey);
-                    } else {
-                      closeItem();
                     }
                   }
                 : null
