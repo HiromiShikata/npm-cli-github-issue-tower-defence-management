@@ -107,6 +107,7 @@ describe('StartPreparationUseCase', () => {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
+      | 'getIssueByUrl'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -134,6 +135,12 @@ describe('StartPreparationUseCase', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -7097,6 +7104,106 @@ describe('StartPreparationUseCase', () => {
 
     expect(originalIssue.status).toBe('Preparation');
   });
+
+  it('spawns normally when re-fetched issue is still Awaiting Workspace with no dependencies', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+  });
+
+  it.each([
+    {
+      label:
+        'does not spawn when re-fetched issue has non-empty dependedIssueUrls',
+      refetchedIssue: createMockIssue({
+        status: 'Awaiting Workspace',
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      }),
+    },
+    {
+      label:
+        'does not spawn when re-fetched issue status is no longer Awaiting Workspace',
+      refetchedIssue: createMockIssue({
+        status: 'Preparation',
+        dependedIssueUrls: [],
+      }),
+    },
+    {
+      label: 'does not spawn when getIssueByUrl returns null',
+      refetchedIssue: null,
+    },
+  ])(
+    '$label',
+    async ({
+      refetchedIssue,
+    }: {
+      refetchedIssue: import('../entities/Issue').Issue | null;
+    }) => {
+      const awaitingIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Awaiting Workspace',
+        dependedIssueUrls: [],
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(refetchedIssue);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    },
+  );
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -7121,6 +7228,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
+      | 'getIssueByUrl'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -7134,6 +7242,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
     setIssueAgentField: jest.fn(),
     removeLabel: jest.fn(),
+    getIssueByUrl: jest.fn().mockResolvedValue(null),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -7431,6 +7540,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
+        getIssueByUrl: jest.fn().mockResolvedValue(null),
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
@@ -7520,6 +7630,12 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -7612,6 +7728,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -7690,6 +7812,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -7772,6 +7900,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
+        getIssueByUrl: jest.fn().mockResolvedValue(null),
         ...issueRepositoryOverrides,
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },

@@ -74,6 +74,7 @@ export class StartPreparationUseCase {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
+      | 'getIssueByUrl'
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
@@ -787,6 +788,20 @@ export class StartPreparationUseCase {
       if (!/^[\w./-]+$/.test(branchName)) {
         console.error(
           `Skipping issue ${issue.url}: branch name contains unexpected characters: ${branchName}`,
+        );
+        continue;
+      }
+
+      const refetchedIssue = await this.issueRepository.getIssueByUrl(
+        issue.url,
+      );
+      if (
+        refetchedIssue === null ||
+        refetchedIssue.dependedIssueUrls.length > 0 ||
+        refetchedIssue.status !== AWAITING_WORKSPACE_STATUS_NAME
+      ) {
+        console.warn(
+          `Skipping ${issue.url}: re-fetch shows issue is no longer eligible for spawning.`,
         );
         continue;
       }

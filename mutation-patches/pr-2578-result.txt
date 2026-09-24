@@ -1,0 +1,3 @@
+mutation_result=missed
+failing_test=none
+patch_file=mutation-patches/pr-2578.patch
