@@ -7630,7 +7630,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         );
       }
 
-      localStorageCacheRepository.getSingle.mockResolvedValue(projectCacheValue);
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        projectCacheValue,
+      );
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       graphqlProjectItemRepository.addIssueToProject.mockResolvedValue(
@@ -7641,7 +7643,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       if (tc.urlInPending) {
-        await repository.addIssueToProject(buildTestProject(projectId), issueUrl);
+        await repository.addIssueToProject(
+          buildTestProject(projectId),
+          issueUrl,
+        );
         localStorageCacheRepository.setSingle.mockClear();
       }
 
@@ -7651,10 +7656,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       if (tc.expectCacheWrite) {
         expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
-        const written =
-          localStorageCacheRepository.setSingle.mock.calls[0][1] as {
-            issues: { url: string }[];
-          };
+        const written = localStorageCacheRepository.setSingle.mock
+          .calls[0][1] as {
+          issues: { url: string }[];
+        };
         expect(written.issues.some((i) => i.url === issueUrl)).toBe(true);
       } else {
         expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
@@ -7670,7 +7675,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
 
-      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:30:00.000Z'));
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:30:00.000Z'),
+      );
       graphqlProjectItemRepository.addIssueToProject.mockRejectedValue(
         new Error('network error'),
       );
