@@ -86,6 +86,7 @@ import {
   mergeConfigs,
   parseProjectReadmeConfig,
 } from './projectConfig';
+import { sanitizeErrorForLogging } from '../../repositories/errorSanitizer';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -1528,7 +1529,7 @@ program
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
-  console.error(error);
+  console.error(sanitizeErrorForLogging(error));
   process.exit(1);
 };
 
