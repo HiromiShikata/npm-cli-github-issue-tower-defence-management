@@ -787,7 +787,11 @@ export const ConsolePage = () => {
         message: `Task created — "${title}"`,
         color: 'blue',
         commit: () =>
-          createIssueWithAttachments(capturedPjcode, nameWithOwner, capturedParams),
+          createIssueWithAttachments(
+            capturedPjcode,
+            nameWithOwner,
+            capturedParams,
+          ),
         advance: () => {},
       });
       setFleetDialogDraft({
