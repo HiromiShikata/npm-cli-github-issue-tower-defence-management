@@ -3,7 +3,9 @@ import { sanitizeErrorForLogging } from './errorSanitizer';
 
 describe('sanitizeErrorForLogging', () => {
   describe('when the value passed to the logger carries a Request with an authorization header', () => {
-    const makeRequestCarryingError = (token: string): Error & {
+    const makeRequestCarryingError = (
+      token: string,
+    ): Error & {
       request: Request;
     } => {
       const request = new Request('https://api.github.com/graphql', {
@@ -61,7 +63,7 @@ describe('sanitizeErrorForLogging', () => {
       expect(sanitized.message).toBe(
         'Request timed out: POST https://api.github.com/graphql',
       );
-      expect((sanitized as { name: string }).name).toBe('TimeoutError');
+      expect(sanitized.name).toBe('TimeoutError');
     });
 
     it('keeps the request url and method in the sanitized output for diagnostics', () => {
