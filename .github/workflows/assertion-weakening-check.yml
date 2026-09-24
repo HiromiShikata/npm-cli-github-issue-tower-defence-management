@@ -1,0 +1,33 @@
+name: Assertion Weakening Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+concurrency:
+  group: assertion-weakening-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assertion-weakening-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check for deleted or weakened test assertions
+        run: bash scripts/assertionWeakeningCheck.sh
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
