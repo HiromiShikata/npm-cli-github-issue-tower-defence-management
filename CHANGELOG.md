@@ -1,3 +1,10 @@
+## [2.145.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.145.0...v2.145.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** re-fetch issue before spawning to prevent race condition ([#2578](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2578)) ([0f798ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0f798ac1d2dc63a7dae984c9717b2b090869bba6)), closes [HiromiShikata/secretary#7058](https://github.com/HiromiShikata/secretary/issues/7058)
+
 # [2.145.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.5...v2.145.0) (2026-09-24)
 
 
