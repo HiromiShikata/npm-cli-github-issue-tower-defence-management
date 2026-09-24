@@ -99,6 +99,7 @@ type NotifyFinishedIssuePreparationParams = {
   developerAgentNames?: string[] | null;
   defaultAgentName?: string | null;
   deferPreparation?: boolean | null;
+  rateLimitRejected?: boolean | null;
   moveToFailedPreparation?: boolean | null;
   workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
@@ -244,6 +245,15 @@ export class NotifyFinishedIssuePreparationUseCase {
         project,
         awaitingWorkspaceStatusOption,
         params.sessionErrorLine ?? null,
+      );
+      return;
+    }
+
+    if (params.rateLimitRejected) {
+      await this.handleRateLimitRejected(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
       );
       return;
     }
@@ -837,6 +847,25 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.patchConsoleTab(issue);
     console.log(
       `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
+    );
+  };
+
+  private handleRateLimitRejected = async (
+    issue: Issue,
+    project: Project,
+    awaitingWorkspaceStatusOption: { id: string },
+  ): Promise<void> => {
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.issueCommentRepository.createComment(
+      issue,
+      'Session ended due to API rate limit; returning to Awaiting Workspace without incrementing the consecutive-no-report counter.',
     );
   };
 
