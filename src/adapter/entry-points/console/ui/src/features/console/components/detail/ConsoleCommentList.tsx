@@ -6,12 +6,15 @@ import {
   saveCommentExpandedKeys,
 } from '../../logic/commentExpandedStorage';
 import { formatRelativeTime } from '../../logic/relativeTime';
-import type { ConsoleComment } from '../../logic/types';
+import type {
+  ConsoleComment,
+  ConsoleFieldOption,
+  ConsoleStoryEntry,
+} from '../../logic/types';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import type { IssueCreateParams } from '../layout/IssueCreateModalDialog';
 import { IssueCreateModalDialog } from '../layout/IssueCreateModalDialog';
-import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
 const formatAsBlockquote = (body: string): string =>
   body

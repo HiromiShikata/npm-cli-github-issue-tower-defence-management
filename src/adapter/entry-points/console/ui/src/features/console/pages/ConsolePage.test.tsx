@@ -3462,12 +3462,15 @@ describe('ConsolePage workflow issue creation', () => {
         '/projects/beta/todo-by-human',
       );
 
-      fireEvent.click(document.querySelector('.console-tab-pjname-button')!);
+      const pjnameBtn = document.querySelector('.console-tab-pjname-button');
+      expect(pjnameBtn).not.toBeNull();
+      fireEvent.click(pjnameBtn as Element);
       const menuItems = Array.from(
         document.querySelectorAll('[role="menuitem"]'),
       );
       const acmeItem = menuItems.find((el) => el.textContent === 'acme');
-      fireEvent.click(acmeItem!);
+      expect(acmeItem).not.toBeUndefined();
+      fireEvent.click(acmeItem as Element);
 
       expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
       navigatePush.mockClear();
