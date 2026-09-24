@@ -1,3 +1,10 @@
+## [2.142.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.2...v2.142.3) (2026-09-24)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** add pendingCacheUpdateByIssueUrl to prevent duplicate story issue creation ([#2562](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2562)) ([73793da](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/73793da405297338220d42ccc4b21cce09f43c31))
+
 ## [2.142.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.1...v2.142.2) (2026-09-24)
 
 
