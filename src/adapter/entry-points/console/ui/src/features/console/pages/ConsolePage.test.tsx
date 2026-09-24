@@ -2995,15 +2995,19 @@ describe('ConsolePage workflow issue creation', () => {
 
   const installFetchWithFleetUrl = (
     fleetTaskCreateUrl: string | null,
-    createWorkflowIssueOk = true,
+    createIssueOk = true,
   ) => {
-    global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+    global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
+        const tab = listMatch[1];
         return {
           ok: true,
           status: 200,
-          json: async () => listPayload(listMatch[1]),
+          json: async () =>
+            tab === 'stories'
+              ? { ...listPayload(tab), defaultNameWithOwner: 'o/r' }
+              : listPayload(tab),
         };
       }
       if (url === '/api/projects') {
@@ -3038,24 +3042,41 @@ describe('ConsolePage workflow issue creation', () => {
           }),
         };
       }
-      if (url.startsWith('/api/createworkflowissue')) {
-        if (!createWorkflowIssueOk) {
+      if (url === '/api/createissue') {
+        if (!createIssueOk) {
           return {
             ok: false,
             status: 500,
             text: async () => 'Internal Server Error',
           };
         }
-        const requestBody =
-          init?.body !== undefined && typeof init.body === 'string'
-            ? (JSON.parse(init.body) as Record<string, unknown>)
-            : {};
         return {
           ok: true,
           status: 200,
           json: async () => ({
             issueUrl: 'https://github.com/HiromiShikata/secretary/issues/100',
-            ...requestBody,
+          }),
+        };
+      }
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            markdown: '![test.png](https://example.com/test.png)',
+          }),
+        };
+      }
+      if (url === '/api/comment') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'bot',
+              body: '![test.png](https://example.com/test.png)',
+              createdAt: '2026-06-19T00:00:00.000Z',
+            },
           }),
         };
       }
@@ -3095,13 +3116,89 @@ describe('ConsolePage workflow issue creation', () => {
     });
   });
 
-  it('shows an undo toast when workflow issue creation is triggered from a comment plus button', async () => {
+  it('pre-populates the comment-triggered create-task dialog with empty title and source issue title as body blockquote', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByText, getAllByTitle, getByRole, getByLabelText } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      expect(getByRole('dialog')).toBeInTheDocument();
+    });
+    expect((getByLabelText('Title') as HTMLTextAreaElement).value).toBe('');
+    expect((getByLabelText('Body') as HTMLTextAreaElement).value).toBe(
+      '> Add serveConsole subcommand',
+    );
+  });
+
+  it('closes the comment-triggered dialog and shows undo toast when Create is clicked', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
         'https://github.com/HiromiShikata/secretary/issues/new',
       );
-      const { getByText, getAllByTitle, getByRole, queryByText } = render(
+      const {
+        getByText,
+        getAllByTitle,
+        getByRole,
+        queryByRole,
+        getByLabelText,
+      } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      await waitFor(() => {
+        expect(
+          getAllByTitle('Create workflow improvement issue from this comment')
+            .length,
+        ).toBeGreaterThan(0);
+      });
+      const createBtn = getAllByTitle(
+        'Create workflow improvement issue from this comment',
+      )[0];
+      fireEvent.click(createBtn);
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'New workflow task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      await waitFor(() => {
+        expect(queryByRole('dialog')).toBeNull();
+      });
+      expect(
+        getByText(/Task created — "New workflow task"/),
+      ).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('calls postConsoleCreateIssue with correct nameWithOwner after the undo window elapses', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByText, getAllByTitle, getByRole, getByLabelText } = render(
         <ConsolePage />,
       );
       await waitFor(() => {
@@ -3114,42 +3211,6 @@ describe('ConsolePage workflow issue creation', () => {
             .length,
         ).toBeGreaterThan(0);
       });
-      fireEvent.click(
-        getAllByTitle('Create workflow improvement issue from this comment')[0],
-      );
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
-      });
-      fireEvent.click(getByRole('button', { name: 'Create' }));
-      await waitFor(() => {
-        expect(queryByText(/Task created/)).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner after the undo window elapses', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-      );
-      const fetchSpy = global.fetch as jest.Mock;
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      await waitFor(() => {
-        expect(
-          getAllByTitle('Create workflow improvement issue from this comment')
-            .length,
-        ).toBeGreaterThan(0);
-      });
       const createBtn = getAllByTitle(
         'Create workflow improvement issue from this comment',
       )[0];
@@ -3157,8 +3218,8 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'My fleet task' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
@@ -3167,7 +3228,7 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
@@ -3179,14 +3240,16 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('shows an error toast when postConsoleCreateWorkflowIssue fails after the undo window elapses', async () => {
+  it('shows an error toast when postConsoleCreateIssue fails after the undo window elapses', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
         'https://github.com/HiromiShikata/secretary/issues/new',
         false,
       );
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
+      const { getByText, getAllByTitle, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
@@ -3204,8 +3267,8 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Failing task' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
@@ -3223,14 +3286,16 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner', async () => {
+  it('passes storyName and agentOptionId to postConsoleCreateIssue when selected in comment dialog', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
-        'https://github.com/owner/repo/issues/new?projects=org/3',
+        'https://github.com/HiromiShikata/secretary/issues/new',
       );
       const fetchSpy = global.fetch as jest.Mock;
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
+      const { getByText, getAllByTitle, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
@@ -3248,8 +3313,10 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
+      const dialog = getByRole('dialog');
+      fireEvent.click(within(dialog).getByText('developer'));
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Story agent task' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
@@ -3258,13 +3325,14 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('owner/repo');
+      expect(requestBody.storyName).toBe('TDPM Console port');
+      expect(requestBody.agentOptionId).toBe('ag1');
     } finally {
       jest.useRealTimers();
     }
@@ -3298,7 +3366,7 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
+  it('calls postConsoleCreateIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
@@ -3325,7 +3393,7 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
@@ -3333,7 +3401,7 @@ describe('ConsolePage workflow issue creation', () => {
       ) as Record<string, unknown>;
       expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
       expect(requestBody.title).toBe('My fleet task');
-      expect(requestBody.body).toBe('');
+      expect(requestBody.storyName).toBe('TDPM Console port');
     } finally {
       jest.useRealTimers();
     }
@@ -3394,12 +3462,15 @@ describe('ConsolePage workflow issue creation', () => {
         '/projects/beta/todo-by-human',
       );
 
-      fireEvent.click(document.querySelector('.console-tab-pjname-button')!);
+      const pjnameBtn = document.querySelector('.console-tab-pjname-button');
+      expect(pjnameBtn).not.toBeNull();
+      fireEvent.click(pjnameBtn as Element);
       const menuItems = Array.from(
         document.querySelectorAll('[role="menuitem"]'),
       );
       const acmeItem = menuItems.find((el) => el.textContent === 'acme');
-      fireEvent.click(acmeItem!);
+      expect(acmeItem).not.toBeUndefined();
+      fireEvent.click(acmeItem as Element);
 
       expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
       navigatePush.mockClear();
@@ -3447,7 +3518,7 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
@@ -3517,6 +3588,66 @@ describe('ConsolePage workflow issue creation', () => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
       expect(getByRole('textbox', { name: /title/i })).toHaveValue('');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('uploads file attachments and posts comment when fleet task dialog includes files', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Fleet task with file' },
+      });
+      const testFile = new File(['hello'], 'test.png', { type: 'image/png' });
+      (
+        testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () =>
+        new Uint8Array([104, 101, 108, 108, 111]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [testFile],
+        configurable: true,
+      });
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+      const uploadCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/upload',
+      );
+      expect(uploadCalls.length).toBeGreaterThan(0);
+      const commentCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/comment',
+      );
+      expect(commentCalls.length).toBeGreaterThan(0);
     } finally {
       jest.useRealTimers();
     }

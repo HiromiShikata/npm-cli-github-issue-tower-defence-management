@@ -21,10 +21,12 @@ import type {
   ConsoleOverlayStatus,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
+  ConsoleStoryEntry,
 } from '../../logic/types';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
+import type { IssueCreateParams } from '../layout/IssueCreateModalDialog';
 import { ConsoleChangedFileList } from './ConsoleChangedFileList';
 import { ConsoleCommentList } from './ConsoleCommentList';
 import { ConsoleCommitList } from './ConsoleCommitList';
@@ -79,7 +81,9 @@ export type ConsoleItemDetailProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
-  onRequestWorkflowIssueCreate?: (comment: ConsoleComment) => void;
+  storyEntries?: ConsoleStoryEntry[];
+  agentOptions?: ConsoleFieldOption[];
+  onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
 };
 
 export const ConsoleItemDetail = ({
@@ -113,7 +117,9 @@ export const ConsoleItemDetail = ({
   renderReferenceLink,
   onAddInlineComment,
   onTitleRename,
-  onRequestWorkflowIssueCreate,
+  storyEntries,
+  agentOptions,
+  onCreateIssueFromComment,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -359,7 +365,10 @@ export const ConsoleItemDetail = ({
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
             persistenceKey={item.url}
-            onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
+            issueTitle={item.title}
+            storyEntries={storyEntries}
+            agentOptions={agentOptions}
+            onCreateIssueFromComment={onCreateIssueFromComment}
           />
         </ConsolePanel>
 

@@ -92,9 +92,9 @@ describe('console CSS class contract', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-tab-project-link');
     expect(ruleBlock).not.toBeNull();
-    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    const paddingMatch = (ruleBlock as string).match(/padding:\s*([^;]+)/);
     expect(paddingMatch).not.toBeNull();
-    const parts = paddingMatch![1].trim().split(/\s+/);
+    const parts = (paddingMatch as RegExpMatchArray)[1].trim().split(/\s+/);
     const verticalPx = parseInt(parts[0], 10);
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
@@ -106,9 +106,9 @@ describe('console CSS class contract', () => {
       '.console-timer-settings-button',
     );
     expect(ruleBlock).not.toBeNull();
-    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    const paddingMatch = (ruleBlock as string).match(/padding:\s*([^;]+)/);
     expect(paddingMatch).not.toBeNull();
-    const parts = paddingMatch![1].trim().split(/\s+/);
+    const parts = (paddingMatch as RegExpMatchArray)[1].trim().split(/\s+/);
     const verticalPx = parseInt(parts[0], 10);
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
@@ -117,9 +117,9 @@ describe('console CSS class contract', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-tab-settings-button');
     expect(ruleBlock).not.toBeNull();
-    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    const paddingMatch = (ruleBlock as string).match(/padding:\s*([^;]+)/);
     expect(paddingMatch).not.toBeNull();
-    const parts = paddingMatch![1].trim().split(/\s+/);
+    const parts = (paddingMatch as RegExpMatchArray)[1].trim().split(/\s+/);
     const verticalPx = parseInt(parts[0], 10);
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
@@ -128,9 +128,9 @@ describe('console CSS class contract', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-task-create-button');
     expect(ruleBlock).not.toBeNull();
-    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    const paddingMatch = (ruleBlock as string).match(/padding:\s*([^;]+)/);
     expect(paddingMatch).not.toBeNull();
-    const parts = paddingMatch![1].trim().split(/\s+/);
+    const parts = (paddingMatch as RegExpMatchArray)[1].trim().split(/\s+/);
     const verticalPx = parseInt(parts[0], 10);
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });

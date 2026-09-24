@@ -3,7 +3,6 @@ import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleP
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
-import { FleetTaskCreateModalDialog } from '../components/layout/FleetTaskCreateModalDialog';
 import {
   type IssueCreateDraft,
   IssueCreateModalDialog,
@@ -49,7 +48,6 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleCreateIssue,
-  postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
@@ -107,10 +105,42 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
-const parseFleetNameWithOwner = (fleetTaskCreateUrl: string): string =>
-  fleetTaskCreateUrl
-    .replace('https://github.com/', '')
-    .replace(/\/issues\/new.*$/, '');
+const createIssueWithAttachments = async (
+  pjcode: string,
+  nameWithOwner: string,
+  { title, storyName, agentOptionId, body, files }: IssueCreateParams,
+): Promise<void> => {
+  const issueUrl = await postConsoleCreateIssue({
+    pjcode,
+    title,
+    storyName: storyName ?? '',
+    nameWithOwner,
+    agentOptionId: agentOptionId ?? null,
+    body: body ?? null,
+  });
+  if (files.length > 0) {
+    const markdownParts = await Promise.all(
+      files.map(async (file) => {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const contentBase64 = encodeAttachmentContent(bytes);
+        return postConsoleAttachment({
+          pjcode,
+          url: issueUrl,
+          fileName: file.name,
+          contentBase64,
+        });
+      }),
+    );
+    const commentResult = await postConsoleComment({
+      pjcode,
+      url: issueUrl,
+      body: markdownParts.join('\n\n'),
+    });
+    if (!commentResult.posted) {
+      throw new Error(commentResult.error);
+    }
+  }
+};
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
@@ -259,8 +289,12 @@ export const ConsolePage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
     useState(false);
-  const [fleetTaskCreateDialogTitle, setFleetTaskCreateDialogTitle] =
-    useState('');
+  const [fleetDialogDraft, setFleetDialogDraft] = useState<IssueCreateDraft>({
+    title: '',
+    body: null,
+    storyName: null,
+    agentOptionId: null,
+  });
   const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
     title: '',
     body: null,
@@ -677,51 +711,6 @@ export const ConsolePage = () => {
     return storyEntries.find((e) => e.storyName === selectedItem.story) ?? null;
   }, [selectedItem, storyEntries]);
 
-  const handleCreateWorkflowIssue = useCallback(
-    (title: string, body: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null || selectedItem === null)
-        return Promise.resolve();
-      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
-      const capturedNameWithOwner = nameWithOwner;
-      actionQueue.enqueue({
-        message: `Task created — "${title}"`,
-        color: 'blue',
-        commit: async () => {
-          await postConsoleCreateWorkflowIssue({
-            nameWithOwner: capturedNameWithOwner,
-            title,
-            body,
-          });
-        },
-        advance: () => {},
-      });
-      return Promise.resolve();
-    },
-    [fleetTaskCreateUrl, selectedItem, actionQueue],
-  );
-
-  const handleFleetTaskCreateSubmit = useCallback(
-    (title: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null) return Promise.resolve();
-      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
-      actionQueue.enqueue({
-        message: `Task created — "${title}"`,
-        color: 'blue',
-        commit: async () => {
-          await postConsoleCreateWorkflowIssue({
-            nameWithOwner,
-            title,
-            body: '',
-          });
-        },
-        advance: () => {},
-      });
-      setFleetTaskCreateDialogTitle('');
-      return Promise.resolve();
-    },
-    [fleetTaskCreateUrl, actionQueue],
-  );
-
   const handleCreateIssue = useCallback(
     async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
@@ -753,41 +742,16 @@ export const ConsolePage = () => {
       }
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
+      const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
-        commit: async () => {
-          const issueUrl = await postConsoleCreateIssue({
-            pjcode: capturedPjcode,
-            title,
-            storyName: storyName ?? '',
-            nameWithOwner: capturedNameWithOwner,
-            agentOptionId: agentOptionId ?? null,
-            body: body ?? null,
-          });
-          if (files.length > 0) {
-            const markdownParts = await Promise.all(
-              files.map(async (file) => {
-                const bytes = new Uint8Array(await file.arrayBuffer());
-                const contentBase64 = encodeAttachmentContent(bytes);
-                return postConsoleAttachment({
-                  pjcode: capturedPjcode,
-                  url: issueUrl,
-                  fileName: file.name,
-                  contentBase64,
-                });
-              }),
-            );
-            const commentResult = await postConsoleComment({
-              pjcode: capturedPjcode,
-              url: issueUrl,
-              body: markdownParts.join('\n\n'),
-            });
-            if (!commentResult.posted) {
-              throw new Error(commentResult.error);
-            }
-          }
-        },
+        commit: () =>
+          createIssueWithAttachments(
+            capturedPjcode,
+            capturedNameWithOwner,
+            capturedParams,
+          ),
         advance: () => {},
       });
       setDialogDraft({
@@ -799,6 +763,46 @@ export const ConsolePage = () => {
       return Promise.resolve();
     },
     [pjcode, defaultNameWithOwner, actionQueue],
+  );
+
+  const handleCreateFleetTaskFromDialog = useCallback(
+    ({
+      title,
+      body,
+      storyName,
+      agentOptionId,
+      files,
+    }: IssueCreateParams): Promise<void> => {
+      if (fleetTaskCreateUrl === null || pjcode === null) {
+        return Promise.resolve();
+      }
+      const match = fleetTaskCreateUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+      if (match === null) {
+        return Promise.resolve();
+      }
+      const nameWithOwner = match[1];
+      const capturedPjcode = pjcode;
+      const capturedParams = { title, storyName, agentOptionId, body, files };
+      actionQueue.enqueue({
+        message: `Task created — "${title}"`,
+        color: 'blue',
+        commit: () =>
+          createIssueWithAttachments(
+            capturedPjcode,
+            nameWithOwner,
+            capturedParams,
+          ),
+        advance: () => {},
+      });
+      setFleetDialogDraft({
+        title: '',
+        body: null,
+        storyName: null,
+        agentOptionId: null,
+      });
+      return Promise.resolve();
+    },
+    [fleetTaskCreateUrl, pjcode, actionQueue],
   );
 
   const handleReorderStory = useCallback(
@@ -1146,11 +1150,14 @@ export const ConsolePage = () => {
         now={now}
       />
       {isFleetTaskCreateDialogOpen && (
-        <FleetTaskCreateModalDialog
-          onSubmit={handleFleetTaskCreateSubmit}
+        <IssueCreateModalDialog
+          storyEntries={storyEntries}
+          agentOptions={agentOptions}
+          initialDraft={fleetDialogDraft}
+          onDraftChange={setFleetDialogDraft}
+          onSubmit={handleCreateFleetTaskFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
-          initialTitle={fleetTaskCreateDialogTitle}
-          onTitleChange={setFleetTaskCreateDialogTitle}
+          containerClassName="console-fleet-task-create-dialog-container"
         />
       )}
       <ConsoleProjectTimerBar
@@ -1240,6 +1247,7 @@ export const ConsolePage = () => {
             statusOptions={statusOptions}
             storyOptions={storyOptions}
             agentOptions={agentOptions}
+            storyEntries={storyEntries}
             storyColors={storyColors}
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}
@@ -1264,9 +1272,9 @@ export const ConsolePage = () => {
                 : null
             }
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
-            onCreateWorkflowIssue={
+            onCreateIssueFromComment={
               fleetTaskCreateUrl !== null
-                ? handleCreateWorkflowIssue
+                ? handleCreateFleetTaskFromDialog
                 : undefined
             }
           />
