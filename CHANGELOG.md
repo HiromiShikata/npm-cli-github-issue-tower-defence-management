@@ -1,3 +1,12 @@
+## [2.144.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.0...v2.144.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **console:** Fix queued tab filter to include assigneeLogin check in GenerateConsoleListsUseCase ([#2570](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2570)) ([4c6acaf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4c6acaf3473bd8bec403a0b0012e614e41d510ef))
+* **ConsolePage:** navigate to next task after Delete Story from detail view ([#2565](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2565)) ([3392559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3392559eee786f5091e8a4681195629d2d6fdca7))
+* **reportFatalErrorAndExit:** redact authorization headers from ky error objects before logging ([#2567](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2567)) ([2b720af](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2b720af495b1a74b35e278ea0f9fc0993ef35f9a)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1972](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1972)
+
 # [2.144.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.143.2...v2.144.0) (2026-09-24)
 
 
