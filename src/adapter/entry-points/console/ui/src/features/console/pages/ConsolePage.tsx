@@ -105,6 +105,43 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
+const createIssueWithAttachments = async (
+  pjcode: string,
+  nameWithOwner: string,
+  { title, storyName, agentOptionId, body, files }: IssueCreateParams,
+): Promise<void> => {
+  const issueUrl = await postConsoleCreateIssue({
+    pjcode,
+    title,
+    storyName: storyName ?? '',
+    nameWithOwner,
+    agentOptionId: agentOptionId ?? null,
+    body: body ?? null,
+  });
+  if (files.length > 0) {
+    const markdownParts = await Promise.all(
+      files.map(async (file) => {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const contentBase64 = encodeAttachmentContent(bytes);
+        return postConsoleAttachment({
+          pjcode,
+          url: issueUrl,
+          fileName: file.name,
+          contentBase64,
+        });
+      }),
+    );
+    const commentResult = await postConsoleComment({
+      pjcode,
+      url: issueUrl,
+      body: markdownParts.join('\n\n'),
+    });
+    if (!commentResult.posted) {
+      throw new Error(commentResult.error);
+    }
+  }
+};
+
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const featuresConfig = useConsoleFeaturesConfig();
@@ -705,41 +742,16 @@ export const ConsolePage = () => {
       }
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
+      const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
-        commit: async () => {
-          const issueUrl = await postConsoleCreateIssue({
-            pjcode: capturedPjcode,
-            title,
-            storyName: storyName ?? '',
-            nameWithOwner: capturedNameWithOwner,
-            agentOptionId: agentOptionId ?? null,
-            body: body ?? null,
-          });
-          if (files.length > 0) {
-            const markdownParts = await Promise.all(
-              files.map(async (file) => {
-                const bytes = new Uint8Array(await file.arrayBuffer());
-                const contentBase64 = encodeAttachmentContent(bytes);
-                return postConsoleAttachment({
-                  pjcode: capturedPjcode,
-                  url: issueUrl,
-                  fileName: file.name,
-                  contentBase64,
-                });
-              }),
-            );
-            const commentResult = await postConsoleComment({
-              pjcode: capturedPjcode,
-              url: issueUrl,
-              body: markdownParts.join('\n\n'),
-            });
-            if (!commentResult.posted) {
-              throw new Error(commentResult.error);
-            }
-          }
-        },
+        commit: () =>
+          createIssueWithAttachments(
+            capturedPjcode,
+            capturedNameWithOwner,
+            capturedParams,
+          ),
         advance: () => {},
       });
       setDialogDraft({
@@ -770,41 +782,12 @@ export const ConsolePage = () => {
       }
       const nameWithOwner = match[1];
       const capturedPjcode = pjcode;
+      const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
-        commit: async () => {
-          const issueUrl = await postConsoleCreateIssue({
-            pjcode: capturedPjcode,
-            title,
-            storyName: storyName ?? '',
-            nameWithOwner,
-            agentOptionId: agentOptionId ?? null,
-            body: body ?? null,
-          });
-          if (files.length > 0) {
-            const markdownParts = await Promise.all(
-              files.map(async (file) => {
-                const bytes = new Uint8Array(await file.arrayBuffer());
-                const contentBase64 = encodeAttachmentContent(bytes);
-                return postConsoleAttachment({
-                  pjcode: capturedPjcode,
-                  url: issueUrl,
-                  fileName: file.name,
-                  contentBase64,
-                });
-              }),
-            );
-            const commentResult = await postConsoleComment({
-              pjcode: capturedPjcode,
-              url: issueUrl,
-              body: markdownParts.join('\n\n'),
-            });
-            if (!commentResult.posted) {
-              throw new Error(commentResult.error);
-            }
-          }
-        },
+        commit: () =>
+          createIssueWithAttachments(capturedPjcode, nameWithOwner, capturedParams),
         advance: () => {},
       });
       setFleetDialogDraft({
