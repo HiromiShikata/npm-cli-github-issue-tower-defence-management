@@ -8,6 +8,24 @@ const sanitizeRequest = (request: unknown): unknown => {
   };
 };
 
+type ObjectWithHeaders = object & { headers: unknown };
+
+const hasHeadersProperty = (value: object): value is ObjectWithHeaders =>
+  'headers' in value;
+
+const sanitizeOptions = (options: unknown): unknown => {
+  if (typeof options !== 'object' || options === null) {
+    return options;
+  }
+  if (!hasHeadersProperty(options)) {
+    return options;
+  }
+  if (!(options.headers instanceof Headers)) {
+    return options;
+  }
+  return Object.assign({}, options, { headers: new Headers() });
+};
+
 type ObjectWithRequest = object & { request: unknown };
 
 const hasRequestProperty = (value: object): value is ObjectWithRequest =>
@@ -31,5 +49,13 @@ export const sanitizeErrorForLogging = (value: unknown): unknown => {
     enumerable: true,
     writable: true,
   };
+  if ('options' in value) {
+    descriptors['options'] = {
+      value: sanitizeOptions(value.options),
+      configurable: true,
+      enumerable: true,
+      writable: true,
+    };
+  }
   return Object.create(proto, descriptors);
 };
