@@ -3234,7 +3234,7 @@ describe('ConsolePage workflow issue creation', () => {
       const requestBody = JSON.parse(
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('o/r');
+      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
     } finally {
       jest.useRealTimers();
     }

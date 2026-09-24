@@ -1287,7 +1287,7 @@ export const ConsolePage = () => {
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
             onCreateIssueFromComment={
               fleetTaskCreateUrl !== null
-                ? handleCreateIssueFromDialog
+                ? handleCreateFleetTaskFromDialog
                 : undefined
             }
           />
