@@ -300,6 +300,22 @@ describe('assertion weakening check script', () => {
         assertion: '    expect(fn).rejects.toThrow();',
         description: 'rejects',
       },
+      {
+        assertion: '    expect(value).toBeUndefined();',
+        description: 'toBeUndefined',
+      },
+      {
+        assertion: '    expect(value).toBeTruthy();',
+        description: 'toBeTruthy',
+      },
+      {
+        assertion: '    expect(value).toBeFalsy();',
+        description: 'toBeFalsy',
+      },
+      {
+        assertion: '    assert.strictEqual(result, expected);',
+        description: 'assert.',
+      },
     ];
 
     it.each(cases)(
@@ -323,5 +339,31 @@ index abc..def 100644
         expect(result.exitStatus).toBe(1);
       },
     );
+  });
+
+  describe('closing reference parsing', () => {
+    it('passes when the closing issue in cross-repo format has acceptance criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+    });
+
+    it('uses the first closing reference when multiple are present in the PR body', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+    });
+
+    it('fails when TEST_ISSUE_BODY is not set at all, meaning no closing issue was resolved', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('no linked closing issue');
+    });
   });
 });
