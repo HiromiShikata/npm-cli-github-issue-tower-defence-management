@@ -74,11 +74,13 @@ export const countConsecutiveNoReportDispatches = <
     -1,
   );
   const cycleStart = Math.max(lastHumanCommentIndex, lastAgentReportIndex);
-  return params.comments.slice(cycleStart + 1).filter(
-    (c) =>
-      params.isTrustedAuthor(c.author) &&
-      c.content.startsWith(NO_REPORT_REDISPATCH_COUNT_PREFIX),
-  ).length;
+  return params.comments
+    .slice(cycleStart + 1)
+    .filter(
+      (c) =>
+        params.isTrustedAuthor(c.author) &&
+        c.content.startsWith(NO_REPORT_REDISPATCH_COUNT_PREFIX),
+    ).length;
 };
 
 const isSilentRedispatchCommentForAgent = (
