@@ -799,7 +799,12 @@ export const ConsolePage = () => {
         },
         advance: () => {},
       });
-      setFleetDialogDraft({ title: '', body: null, storyName: null, agentOptionId: null });
+      setFleetDialogDraft({
+        title: '',
+        body: null,
+        storyName: null,
+        agentOptionId: null,
+      });
       return Promise.resolve();
     },
     [fleetTaskCreateUrl, pjcode, actionQueue],
