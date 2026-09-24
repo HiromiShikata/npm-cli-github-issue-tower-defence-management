@@ -218,6 +218,20 @@ describe('actionToastMessage for ok_and_awaiting_workspace', () => {
   });
 });
 
+describe('actionToastMessage for ok_and_close', () => {
+  it('returns the composite label', () => {
+    expect(actionToastMessage({ type: 'ok_and_close' }, 'todo-by-human')).toBe(
+      'ok → Closed',
+    );
+  });
+});
+
+describe('actionToastColor for ok_and_close', () => {
+  it('returns red', () => {
+    expect(actionToastColor({ type: 'ok_and_close' })).toBe('red');
+  });
+});
+
 describe('actionAdvances', () => {
   it('advances every non-snooze action in every tab', () => {
     expect(

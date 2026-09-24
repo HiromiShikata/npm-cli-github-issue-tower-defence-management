@@ -1001,8 +1001,20 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
-  it('clicking OK & Close in the operations bar calls addComment with ok then queues a close action', async () => {
+  it('clicking OK & Close calls onQueueAction immediately even when addComment never resolves, and commit calls addComment then closeIssue', async () => {
     const operations = buildOperations();
+    let resolveAddComment: (() => void) | undefined;
+    operations.addComment = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveAddComment = () =>
+            resolve({
+              author: 'HiromiShikata',
+              body: 'ok',
+              createdAt: '2026-06-19T11:58:00.000Z',
+            });
+        }),
+    );
     const onQueueAction = jest.fn();
     const { getByText } = render(
       <ConsoleItemDetailContainer
@@ -1022,14 +1034,23 @@ describe('ConsoleItemDetailContainer', () => {
     );
     fireEvent.click(getByText('OK & Close'));
     await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: { type: 'ok_and_close' },
+          item: issueItem,
+        }),
+      );
+    });
+    expect(operations.addComment).not.toHaveBeenCalled();
+    const input = onQueueAction.mock.calls[0][0];
+    const commitPromise = input.commit();
+    await waitFor(() => {
       expect(operations.addComment).toHaveBeenCalledWith(issueItem, 'ok');
     });
-    expect(onQueueAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: { type: 'close', action: 'close' },
-        item: issueItem,
-      }),
-    );
+    expect(operations.closeIssue).not.toHaveBeenCalledWith(issueItem, 'close');
+    resolveAddComment?.();
+    await commitPromise;
+    expect(operations.closeIssue).toHaveBeenCalledWith(issueItem, 'close');
   });
 
   it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
