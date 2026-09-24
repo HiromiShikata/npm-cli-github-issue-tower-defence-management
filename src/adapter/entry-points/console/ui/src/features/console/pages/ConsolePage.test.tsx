@@ -3208,7 +3208,7 @@ describe('ConsolePage workflow issue creation', () => {
     });
   });
 
-  it('pre-populates the comment-triggered create-task dialog with empty title and source issue title as body blockquote', async () => {
+  it('pre-populates the comment-triggered create-task dialog with empty title and comment body as blockquote prefixed by item url and title', async () => {
     installFetchWithFleetUrl(
       'https://github.com/HiromiShikata/secretary/issues/new',
     );
@@ -3234,7 +3234,7 @@ describe('ConsolePage workflow issue creation', () => {
     });
     expect((getByLabelText('Title') as HTMLTextAreaElement).value).toBe('');
     expect((getByLabelText('Body') as HTMLTextAreaElement).value).toBe(
-      '> Add serveConsole subcommand',
+      'https://github.com/o/r/pull/851\n\nAdd serveConsole subcommand\n\n\n\n\n\n> Workflow test comment body.',
     );
   });
 
