@@ -1,3 +1,10 @@
+## [2.141.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.0...v2.141.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **IssueRepository:** update disk cache in createNewIssue to prevent duplicate story issue creation ([#2558](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2558)) ([8352638](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8352638b15a8ec28e0b7526bc5f91bca53050fbd))
+
 # [2.141.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.5...v2.141.0) (2026-09-24)
 
 
