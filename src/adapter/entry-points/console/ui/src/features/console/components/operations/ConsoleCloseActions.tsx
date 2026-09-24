@@ -17,25 +17,12 @@ export const ConsoleCloseActions = ({
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCommentAndClose = async (): Promise<void> => {
-    if (onCommentAndClose === undefined || posting) return;
+  const handleAsyncClose = async (fn: (() => Promise<void>) | undefined): Promise<void> => {
+    if (fn === undefined || posting) return;
     setPosting(true);
     setError(null);
     try {
-      await onCommentAndClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'failed to post');
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  const handleOkAndClose = async (): Promise<void> => {
-    if (onOkAndClose === undefined || posting) return;
-    setPosting(true);
-    setError(null);
-    try {
-      await onOkAndClose();
+      await fn();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to post');
     } finally {
@@ -65,7 +52,7 @@ export const ConsoleCloseActions = ({
           className="console-op-button"
           disabled={posting}
           onClick={() => {
-            void handleOkAndClose();
+            void handleAsyncClose(onOkAndClose);
           }}
         >
           OK &amp; Close
@@ -77,7 +64,7 @@ export const ConsoleCloseActions = ({
           className="console-op-button"
           disabled={posting || isDraftEmpty === true}
           onClick={() => {
-            void handleCommentAndClose();
+            void handleAsyncClose(onCommentAndClose);
           }}
         >
           Comment &amp; Close
