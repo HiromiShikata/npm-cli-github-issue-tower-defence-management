@@ -5552,12 +5552,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
-          content:
-            'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+          content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
         }),
         createMockComment({
-          content:
-            'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+          content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
         }),
       ]);
 
