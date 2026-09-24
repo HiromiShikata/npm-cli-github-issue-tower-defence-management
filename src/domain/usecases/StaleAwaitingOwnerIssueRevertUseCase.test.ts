@@ -398,4 +398,43 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     expect(result).toBe(0);
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
+
+  it('does not call createCommentByUrl when updateStatus rejects', async () => {
+    const issue = createMockIssue();
+    const agentCommentTime = new Date(
+      now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+    ]);
+    mockIssueRepository.updateStatus.mockRejectedValue(
+      new Error('updateStatus failed'),
+    );
+
+    await expect(runUseCase([issue])).rejects.toBeInstanceOf(AggregateError);
+
+    expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+  });
+
+  it('reverts when allowedIssueAuthors is null even if a comment exists on the issue', async () => {
+    const issue = createMockIssue();
+    const agentCommentTime = new Date(
+      now.getTime() - (thresholdMinutes + 10) * 60 * 1000,
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+      makeIssueComment(AGENT_REPORT_BODY_WITH_CONFIRMATION, 'bot', agentCommentTime),
+      makeIssueComment('some comment', 'anyone', new Date(agentCommentTime.getTime() + 5 * 60 * 1000)),
+    ]);
+
+    const result = await useCase.run({
+      project: createMockProject(),
+      issues: [issue],
+      now,
+      staleThresholdMinutes: thresholdMinutes,
+      allowedIssueAuthors: null,
+    });
+
+    expect(result).toBe(1);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalled();
+  });
 });

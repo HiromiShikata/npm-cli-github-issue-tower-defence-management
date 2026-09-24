@@ -293,6 +293,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   awaitingOwnerStatus?: string | null # Optional: Project status name for issues awaiting owner review. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus
   autoAdvanceQualityCheckEnabled?: boolean # Optional: When true, issues in the Awaiting Owner status are automatically advanced to Done on each scheduled cycle. Default false (issues remain in Awaiting Owner for human review). Use awaitingOwnerStatus to configure the status name when it differs from the default
   autoRevertReopenedDoneEnabled?: boolean # Optional: When true, issues in the Done status that were reopened on GitHub (stateReason = REOPENED) are automatically moved back to Awaiting Workspace on each scheduled cycle. Default false. Requires startPreparation to be configured.
+  staleAwaitingOwnerThresholdMinutes?: number | null # Optional: Minutes a task can remain in Awaiting Owner with no owner response before being automatically reverted to Awaiting Workspace. When absent or null, the auto-revert is disabled. When set, each scheduled cycle scans Awaiting Owner issues, checks whether any allowed author commented after the last agent report, and reverts issues that have been stale longer than this threshold, posting a comment with the elapsed time, the previous agent question, and guidance on autonomous decision-making. Default threshold when enabled: 60 minutes (see DEFAULT_STALE_AWAITING_OWNER_THRESHOLD_MINUTES).
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
   awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
@@ -350,6 +351,7 @@ startPreparation:
   awaitingOwnerStatus: 'Awaiting Owner'
   autoAdvanceQualityCheckEnabled: false # set to true to auto-advance to Done without human review
   autoRevertReopenedDoneEnabled: false # set to true to auto-revert reopened Done issues to Awaiting Workspace
+  staleAwaitingOwnerThresholdMinutes: 60 # set to a number to auto-revert stale Awaiting Owner issues with no owner response
   awLogDirectoryPath: '/home/user/logs-aw'
   awLogStaleThresholdMinutes: 15
   labelsAsLlmAgentName:
