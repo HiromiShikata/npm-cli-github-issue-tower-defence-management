@@ -1,3 +1,10 @@
+## [2.140.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.4...v2.140.5) (2026-09-24)
+
+
+### Bug Fixes
+
+* **ConsoleErrorReportUseCase:** include request body and input params in error task ([#2556](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2556)) ([0761671](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/07616716fefe82f1680c105f9ba4f3a5ad313c58))
+
 ## [2.140.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.140.3...v2.140.4) (2026-09-23)
 
 
