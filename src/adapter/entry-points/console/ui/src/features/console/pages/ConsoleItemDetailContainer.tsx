@@ -36,6 +36,7 @@ import type {
   ConsoleOverlayEntry,
   ConsoleOverlayStatus,
   ConsoleStoryColorSource,
+  ConsoleStoryEntry,
   ConsoleTabName,
 } from '../logic/types';
 import { ConsoleReferenceLinkContainer } from './ConsoleReferenceLinkContainer';
@@ -130,6 +131,7 @@ export type ConsoleItemDetailContainerProps = {
   onCommentError?: (message: string, reason: string) => void;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
+  storyEntries?: ConsoleStoryEntry[];
   onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
 };
 
@@ -152,6 +154,7 @@ export const ConsoleItemDetailContainer = ({
   onCommentError,
   onDeleteStory,
   storyNameForDeletion,
+  storyEntries,
   onCreateIssueFromComment,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item, tab);
@@ -427,6 +430,8 @@ export const ConsoleItemDetailContainer = ({
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
       onTitleRename={issueRename}
+      storyEntries={storyEntries}
+      agentOptions={agentOptions}
       onCreateIssueFromComment={onCreateIssueFromComment}
       commentComposer={
         <ConsoleCommentComposer

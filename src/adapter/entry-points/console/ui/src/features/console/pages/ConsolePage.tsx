@@ -48,7 +48,6 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleCreateIssue,
-  postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
@@ -754,9 +753,15 @@ export const ConsolePage = () => {
     [pjcode, defaultNameWithOwner, actionQueue],
   );
 
-  const handleCreateWorkflowIssueFromDialog = useCallback(
-    ({ title, body, files }: IssueCreateParams): Promise<void> => {
-      if (fleetTaskCreateUrl === null) {
+  const handleCreateFleetTaskFromDialog = useCallback(
+    ({
+      title,
+      body,
+      storyName,
+      agentOptionId,
+      files,
+    }: IssueCreateParams): Promise<void> => {
+      if (fleetTaskCreateUrl === null || pjcode === null) {
         return Promise.resolve();
       }
       const match = fleetTaskCreateUrl.match(/github\.com\/([^/]+\/[^/]+)/);
@@ -769,12 +774,15 @@ export const ConsolePage = () => {
         message: `Task created — "${title}"`,
         color: 'blue',
         commit: async () => {
-          const issueUrl = await postConsoleCreateWorkflowIssue({
-            nameWithOwner,
+          const issueUrl = await postConsoleCreateIssue({
+            pjcode: capturedPjcode,
             title,
-            body: body ?? '',
+            storyName: storyName ?? '',
+            nameWithOwner,
+            agentOptionId: agentOptionId ?? null,
+            body: body ?? null,
           });
-          if (capturedPjcode !== null && files.length > 0) {
+          if (files.length > 0) {
             const markdownParts = await Promise.all(
               files.map(async (file) => {
                 const bytes = new Uint8Array(await file.arrayBuffer());
@@ -1156,11 +1164,11 @@ export const ConsolePage = () => {
       />
       {isFleetTaskCreateDialogOpen && (
         <IssueCreateModalDialog
-          storyEntries={[]}
-          agentOptions={[]}
+          storyEntries={storyEntries}
+          agentOptions={agentOptions}
           initialDraft={fleetDialogDraft}
           onDraftChange={setFleetDialogDraft}
-          onSubmit={handleCreateWorkflowIssueFromDialog}
+          onSubmit={handleCreateFleetTaskFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
           containerClassName="console-fleet-task-create-dialog-container"
         />
@@ -1252,6 +1260,7 @@ export const ConsolePage = () => {
             statusOptions={statusOptions}
             storyOptions={storyOptions}
             agentOptions={agentOptions}
+            storyEntries={storyEntries}
             storyColors={storyColors}
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}
@@ -1278,7 +1287,7 @@ export const ConsolePage = () => {
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
             onCreateIssueFromComment={
               fleetTaskCreateUrl !== null
-                ? handleCreateWorkflowIssueFromDialog
+                ? handleCreateIssueFromDialog
                 : undefined
             }
           />

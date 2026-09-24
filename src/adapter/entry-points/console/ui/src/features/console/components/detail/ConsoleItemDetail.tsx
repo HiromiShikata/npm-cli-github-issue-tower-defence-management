@@ -21,6 +21,7 @@ import type {
   ConsoleOverlayStatus,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
+  ConsoleStoryEntry,
 } from '../../logic/types';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
@@ -80,6 +81,8 @@ export type ConsoleItemDetailProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
+  storyEntries?: ConsoleStoryEntry[];
+  agentOptions?: ConsoleFieldOption[];
   onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
 };
 
@@ -114,6 +117,8 @@ export const ConsoleItemDetail = ({
   renderReferenceLink,
   onAddInlineComment,
   onTitleRename,
+  storyEntries,
+  agentOptions,
   onCreateIssueFromComment,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
@@ -361,6 +366,8 @@ export const ConsoleItemDetail = ({
             repoContext={repoContext}
             persistenceKey={item.url}
             issueTitle={item.title}
+            storyEntries={storyEntries}
+            agentOptions={agentOptions}
             onCreateIssueFromComment={onCreateIssueFromComment}
           />
         </ConsolePanel>

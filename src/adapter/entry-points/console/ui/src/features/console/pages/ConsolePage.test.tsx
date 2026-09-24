@@ -2995,9 +2995,9 @@ describe('ConsolePage workflow issue creation', () => {
 
   const installFetchWithFleetUrl = (
     fleetTaskCreateUrl: string | null,
-    createWorkflowIssueOk = true,
+    createIssueOk = true,
   ) => {
-    global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+    global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
         const tab = listMatch[1];
@@ -3042,33 +3042,35 @@ describe('ConsolePage workflow issue creation', () => {
           }),
         };
       }
-      if (url === '/api/createworkflowissue') {
-        if (!createWorkflowIssueOk) {
+      if (url === '/api/createissue') {
+        if (!createIssueOk) {
           return {
             ok: false,
             status: 500,
             text: async () => 'Internal Server Error',
           };
         }
-        const requestBody =
-          init?.body !== undefined && typeof init.body === 'string'
-            ? (JSON.parse(init.body) as Record<string, unknown>)
-            : {};
         return {
           ok: true,
           status: 200,
           json: async () => ({
             issueUrl: 'https://github.com/HiromiShikata/secretary/issues/100',
-            ...requestBody,
           }),
         };
       }
-      if (url === '/api/createissue') {
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ markdown: '![test.png](https://example.com/test.png)' }),
+        };
+      }
+      if (url === '/api/comment') {
         return {
           ok: true,
           status: 200,
           json: async () => ({
-            issueUrl: 'https://github.com/o/r/issues/200',
+            comment: { author: 'bot', body: '![test.png](https://example.com/test.png)', createdAt: '2026-06-19T00:00:00.000Z' },
           }),
         };
       }
@@ -3183,7 +3185,7 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner after the undo window elapses', async () => {
+  it('calls postConsoleCreateIssue with correct nameWithOwner after the undo window elapses', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
@@ -3220,19 +3222,19 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
+      expect(requestBody.nameWithOwner).toBe('o/r');
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('shows an error toast when postConsoleCreateWorkflowIssue fails after the undo window elapses', async () => {
+  it('shows an error toast when postConsoleCreateIssue fails after the undo window elapses', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
@@ -3278,11 +3280,11 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner', async () => {
+  it('passes storyName and agentOptionId to postConsoleCreateIssue when selected in comment dialog', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
-        'https://github.com/owner/repo/issues/new?projects=org/3',
+        'https://github.com/HiromiShikata/secretary/issues/new',
       );
       const fetchSpy = global.fetch as jest.Mock;
       const { getByText, getAllByTitle, getByRole, getByLabelText } = render(
@@ -3305,8 +3307,10 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
+      const dialog = getByRole('dialog');
+      fireEvent.click(within(dialog).getByText('developer'));
       fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'Query string test task' },
+        target: { value: 'Story agent task' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
@@ -3315,13 +3319,14 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('owner/repo');
+      expect(requestBody.storyName).toBe('TDPM Console port');
+      expect(requestBody.agentOptionId).toBe('ag1');
     } finally {
       jest.useRealTimers();
     }
@@ -3355,7 +3360,7 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
+  it('calls postConsoleCreateIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
     jest.useFakeTimers();
     try {
       installFetchWithFleetUrl(
@@ -3382,7 +3387,7 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
@@ -3390,7 +3395,7 @@ describe('ConsolePage workflow issue creation', () => {
       ) as Record<string, unknown>;
       expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
       expect(requestBody.title).toBe('My fleet task');
-      expect(requestBody.body).toBe('');
+      expect(requestBody.storyName).toBe('TDPM Console port');
     } finally {
       jest.useRealTimers();
     }
@@ -3504,7 +3509,7 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
       });
       const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
       );
       expect(createIssueCalls.length).toBeGreaterThan(0);
       const requestBody = JSON.parse(
@@ -3574,6 +3579,60 @@ describe('ConsolePage workflow issue creation', () => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
       expect(getByRole('textbox', { name: /title/i })).toHaveValue('');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('uploads file attachments and posts comment when fleet task dialog includes files', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Fleet task with file' },
+      });
+      const testFile = new File(['hello'], 'test.png', { type: 'image/png' });
+      (testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer =
+        async () => new Uint8Array([104, 101, 108, 108, 111]).buffer;
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [testFile],
+        configurable: true,
+      });
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        expect(document.querySelector('.console-task-create-dialog-file-name')).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+      const uploadCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/upload',
+      );
+      expect(uploadCalls.length).toBeGreaterThan(0);
+      const commentCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/comment',
+      );
+      expect(commentCalls.length).toBeGreaterThan(0);
     } finally {
       jest.useRealTimers();
     }

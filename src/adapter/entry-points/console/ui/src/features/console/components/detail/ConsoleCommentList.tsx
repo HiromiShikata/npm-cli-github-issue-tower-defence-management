@@ -11,6 +11,7 @@ import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownCon
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import type { IssueCreateParams } from '../layout/IssueCreateModalDialog';
 import { IssueCreateModalDialog } from '../layout/IssueCreateModalDialog';
+import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
 const formatAsBlockquote = (body: string): string =>
   body
@@ -67,6 +68,8 @@ export type ConsoleCommentListProps = {
   repoContext?: ConsoleRepoContext;
   persistenceKey?: string | null;
   issueTitle?: string;
+  storyEntries?: ConsoleStoryEntry[];
+  agentOptions?: ConsoleFieldOption[];
   onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
 };
 
@@ -80,6 +83,8 @@ export const ConsoleCommentList = ({
   repoContext,
   persistenceKey = null,
   issueTitle,
+  storyEntries,
+  agentOptions,
   onCreateIssueFromComment,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
@@ -197,8 +202,8 @@ export const ConsoleCommentList = ({
       })}
       {pendingComment !== null && onCreateIssueFromComment !== undefined && (
         <IssueCreateModalDialog
-          storyEntries={[]}
-          agentOptions={[]}
+          storyEntries={storyEntries ?? []}
+          agentOptions={agentOptions ?? []}
           onSubmit={onCreateIssueFromComment}
           onClose={() => setPendingComment(null)}
           initialDraft={{
