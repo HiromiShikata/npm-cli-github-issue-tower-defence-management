@@ -15,19 +15,23 @@ get_diff() {
 }
 
 get_issue_body() {
-  if [ -n "${TEST_DIFF_CONTENT+x}" ]; then
+  # Legacy simple test mode: TEST_DIFF_CONTENT set without TEST_PR_BODY bypasses all parsing.
+  if [ -n "${TEST_DIFF_CONTENT+x}" ] && [ -z "${TEST_PR_BODY+x}" ]; then
     printf '%s' "${TEST_ISSUE_BODY:-}"
     return
   fi
 
-  local pr_number="${PR_NUMBER:-}"
-  if [ -z "${pr_number}" ]; then
-    printf ''
-    return
-  fi
-
   local pr_body
-  pr_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" --jq '.body // empty' 2>/dev/null || true)
+  if [ -n "${TEST_PR_BODY+x}" ]; then
+    pr_body="${TEST_PR_BODY}"
+  else
+    local pr_number="${PR_NUMBER:-}"
+    if [ -z "${pr_number}" ]; then
+      printf ''
+      return
+    fi
+    pr_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" --jq '.body // empty' 2>/dev/null || true)
+  fi
 
   local closing_ref
   closing_ref=$(printf '%s' "${pr_body}" | grep -oiP '(?i)(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+\K([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+#[0-9]+|#[0-9]+)' | head -1 || true)
@@ -42,8 +46,13 @@ get_issue_body() {
     repo=$(printf '%s' "${closing_ref}" | grep -oP '^[^#]+')
     issue_number=$(printf '%s' "${closing_ref}" | grep -oP '[0-9]+$')
   else
-    repo="${GITHUB_REPOSITORY}"
+    repo="${GITHUB_REPOSITORY:-}"
     issue_number=$(printf '%s' "${closing_ref}" | grep -oP '[0-9]+$')
+  fi
+
+  if [ -n "${TEST_ISSUE_BODY+x}" ]; then
+    printf '%s' "${TEST_ISSUE_BODY}"
+    return
   fi
 
   gh api "repos/${repo}/issues/${issue_number}" --jq '.body // empty' 2>/dev/null || true

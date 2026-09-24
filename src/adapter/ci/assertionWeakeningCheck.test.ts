@@ -17,6 +17,7 @@ type CheckResult = {
 const runCheck = (options: {
   readonly diffContent: string;
   readonly issueBody?: string;
+  readonly prBody?: string;
 }): CheckResult => {
   const parentEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -30,6 +31,9 @@ const runCheck = (options: {
   };
   if (options.issueBody !== undefined) {
     env['TEST_ISSUE_BODY'] = options.issueBody;
+  }
+  if (options.prBody !== undefined) {
+    env['TEST_PR_BODY'] = options.prBody;
   }
 
   const result = spawnSync('bash', [scriptPath], {
@@ -341,29 +345,53 @@ index abc..def 100644
     );
   });
 
-  describe('closing reference parsing', () => {
-    it('passes when the closing issue in cross-repo format has acceptance criteria', () => {
+  describe('closing reference parsing via TEST_PR_BODY injection', () => {
+    it('passes when the PR body has a cross-repo closing ref and the issue has criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedAssertion,
+        prBody: 'This PR changes behavior.\n\nCloses HiromiShikata/secretary#7041',
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+      expect(result.output).toContain('Acceptance criteria found');
+    });
+
+    it('fails when the PR body has a cross-repo closing ref but the issue lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes HiromiShikata/secretary#7041',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('acceptance criteria');
+    });
+
+    it('passes when the PR body has a same-repo closing ref and the issue has criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes #100',
         issueBody: issueBodyWithSuccessCriteria,
       });
       expect(result.exitStatus).toBe(0);
     });
 
-    it('uses the first closing reference when multiple are present in the PR body', () => {
+    it('fails when the PR body contains no closing reference', () => {
       const result = runCheck({
         diffContent: diffWithDeletedAssertion,
-        issueBody: issueBodyWithSuccessCriteria,
-      });
-      expect(result.exitStatus).toBe(0);
-    });
-
-    it('fails when TEST_ISSUE_BODY is not set at all, meaning no closing issue was resolved', () => {
-      const result = runCheck({
-        diffContent: diffWithDeletedAssertion,
+        prBody: 'This PR updates some test assertions for performance reasons.',
       });
       expect(result.exitStatus).toBe(1);
       expect(result.output).toContain('no linked closing issue');
+    });
+
+    it('uses the first closing reference when multiple are present and the first lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes HiromiShikata/secretary#1\nCloses HiromiShikata/secretary#2',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
     });
   });
 });
