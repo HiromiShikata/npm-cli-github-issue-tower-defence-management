@@ -620,6 +620,7 @@ export class HandleScheduledEventUseCaseHandler {
           assigneeLogin: input.manager,
           issues,
           storyColorMap,
+          allIssuesCacheDir: `${cachePath}/allIssues-${project.id}`,
         });
       } catch (error) {
         console.error(

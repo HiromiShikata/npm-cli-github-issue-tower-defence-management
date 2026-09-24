@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import type { Issue } from '../../../domain/entities/Issue';
 import {
   CloseEventCounts,
   ComposeDashboardDisk,
@@ -9,7 +10,10 @@ import {
   ComposeDashboardUseCase,
 } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
-import { DashboardRow } from '../../../domain/usecases/dashboard/GenerateDashboardRowUseCase';
+import {
+  DashboardRow,
+  GenerateDashboardRowUseCase,
+} from '../../../domain/usecases/dashboard/GenerateDashboardRowUseCase';
 import {
   SevenDayWindowAggregate,
   TokenStatus,
@@ -93,15 +97,93 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   };
 };
 
-const readProjectRow = (
+type ProjectRowData = {
+  row: DashboardRow | null;
+  capturedAt: string | null;
+  isFallback: boolean;
+};
+
+const isIssueArray = (value: unknown): value is Issue[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item: unknown) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'nameWithOwner' in item &&
+      typeof (item as Record<string, unknown>).nameWithOwner === 'string',
+  );
+
+type TdpmCacheData = {
+  lastFetchedAt: string;
+  issues: Issue[];
+  storyColorMap: Map<string, string>;
+};
+
+const parseTdpmCacheData = (raw: unknown): TdpmCacheData | null => {
+  if (!isRecord(raw)) return null;
+  const lastFetchedAt =
+    typeof raw.lastFetchedAt === 'string' ? raw.lastFetchedAt : null;
+  if (lastFetchedAt === null) return null;
+  if (!isIssueArray(raw.issues)) return null;
+  const storyColorMap = new Map<string, string>();
+  if (
+    isRecord(raw.project) &&
+    isRecord(raw.project.story) &&
+    Array.isArray(raw.project.story.stories)
+  ) {
+    for (const story of raw.project.story.stories) {
+      if (
+        isRecord(story) &&
+        typeof story.name === 'string' &&
+        typeof story.color === 'string'
+      ) {
+        storyColorMap.set(story.name, story.color);
+      }
+    }
+  }
+  return { lastFetchedAt, issues: raw.issues, storyColorMap };
+};
+
+const readProjectRowWithFreshness = (
   dashboardDataDir: string,
   projectName: string,
-): DashboardRow | null =>
-  parseDashboardRow(
-    readJsonFile(
-      path.join(dashboardDataDir, 'projects', `${projectName}.json`),
-    ),
+): ProjectRowData => {
+  const raw = readJsonFile(
+    path.join(dashboardDataDir, 'projects', `${projectName}.json`),
   );
+  if (!isRecord(raw)) {
+    return { row: null, capturedAt: null, isFallback: false };
+  }
+  const capturedAt =
+    typeof raw.capturedAt === 'string' ? raw.capturedAt : null;
+  const row = parseDashboardRow(raw);
+  if (row === null) {
+    return { row: null, capturedAt, isFallback: false };
+  }
+  const assigneeLogin =
+    typeof raw.assigneeLogin === 'string' ? raw.assigneeLogin : null;
+  const allIssuesCacheDir =
+    typeof raw.allIssuesCacheDir === 'string' ? raw.allIssuesCacheDir : null;
+  if (
+    allIssuesCacheDir !== null &&
+    assigneeLogin !== null &&
+    capturedAt !== null
+  ) {
+    const cacheData = parseTdpmCacheData(
+      readJsonFile(path.join(allIssuesCacheDir, 'latest.json')),
+    );
+    if (cacheData !== null && cacheData.lastFetchedAt > capturedAt) {
+      const freshRow = new GenerateDashboardRowUseCase().run({
+        issues: cacheData.issues,
+        assigneeLogin,
+        storyColorMap: cacheData.storyColorMap,
+      });
+      return { row: freshRow, capturedAt: cacheData.lastFetchedAt, isFallback: false };
+    }
+    return { row, capturedAt, isFallback: true };
+  }
+  return { row, capturedAt, isFallback: false };
+};
 
 const parseLoad = (value: unknown): [number, number, number] | null => {
   if (!Array.isArray(value) || value.length !== 3) {
@@ -241,15 +323,23 @@ export const buildComposeDashboardInput = (
 ): ComposeDashboardInput => {
   const nowMs = options.nowMs ?? Date.now();
   const projects: ComposeDashboardProject[] = options.projectNames.map(
-    (projectName) => ({
-      code: toDashboardDisplayLabel(projectName),
-      row: readProjectRow(options.dashboardDataDir, projectName),
-      closeEventCounts: readCloseEventCounts(
-        options.consoleDataOutputDir,
+    (projectName) => {
+      const { row, capturedAt, isFallback } = readProjectRowWithFreshness(
+        options.dashboardDataDir,
         projectName,
-        nowMs,
-      ),
-    }),
+      );
+      return {
+        code: toDashboardDisplayLabel(projectName),
+        row,
+        closeEventCounts: readCloseEventCounts(
+          options.consoleDataOutputDir,
+          projectName,
+          nowMs,
+        ),
+        rowCapturedAt: capturedAt,
+        isFallback,
+      };
+    },
   );
   const tokenStatusFile = readTokenStatusFile(options.dashboardDataDir);
   return {
@@ -257,6 +347,7 @@ export const buildComposeDashboardInput = (
     machineStatus: readMachineStatus(options.dashboardDataDir),
     tokens: tokenStatusFile.tokens,
     sevenDayWindowAggregate: tokenStatusFile.sevenDayWindowAggregate,
+    nowMs,
   };
 };
 

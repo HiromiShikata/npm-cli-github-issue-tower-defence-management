@@ -6,6 +6,7 @@ import {
   STATUS_DOT_DISPLAY_WIDTH,
   TOKEN_SESSION_COLUMN_START,
   TOKEN_UTILIZATION_WIDTH,
+  formatElapsedMinutes,
   formatMachineStatusLines,
   formatProjectHeaderLine,
   formatProjectRowLine,
@@ -72,6 +73,23 @@ describe('formatResetCountdown', () => {
 
   it('renders zero for a negative remaining countdown', () => {
     expect(formatResetCountdown(-10)).toBe('0d00h00');
+  });
+});
+
+describe('formatElapsedMinutes', () => {
+  it.each([
+    [0, '0m'],
+    [30000, '0m'],
+    [60000, '1m'],
+    [5 * 60 * 1000, '5m'],
+    [59 * 60 * 1000 + 59000, '59m'],
+    [60 * 60 * 1000, '1h'],
+    [3 * 60 * 60 * 1000, '3h'],
+    [23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59000, '23h'],
+    [24 * 60 * 60 * 1000, '1d'],
+    [2 * 24 * 60 * 60 * 1000, '2d'],
+  ])('formats %d ms as %s', (ms, expected) => {
+    expect(formatElapsedMinutes(ms)).toBe(expected);
   });
 });
 
@@ -482,6 +500,50 @@ describe('formatProjectRowLine', () => {
     expect(codePointLength(absent)).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
+  });
+
+  it('appends elapsed minutes when rowCapturedAt and nowMs are provided', () => {
+    const capturedAt = '2026-06-26T12:00:00.000Z';
+    const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
+    expect(
+      formatProjectRowLine(
+        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: capturedAt, isFallback: false },
+        nowMs,
+      ),
+    ).toMatch(/ 5m$/);
+  });
+
+  it('prefixes the age with ~ for a fallback row', () => {
+    const capturedAt = '2026-06-26T12:00:00.000Z';
+    const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
+    expect(
+      formatProjectRowLine(
+        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: capturedAt, isFallback: true },
+        nowMs,
+      ),
+    ).toMatch(/ ~5m$/);
+  });
+
+  it('omits elapsed time when rowCapturedAt is null', () => {
+    const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
+    expect(
+      formatProjectRowLine(
+        { code: 'ac', row: projectRow({}), closeEventCounts: noCloseEvents, rowCapturedAt: null, isFallback: false },
+        nowMs,
+      ),
+    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0  0');
+  });
+
+  it('omits elapsed time when nowMs is not provided', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({}),
+        closeEventCounts: noCloseEvents,
+        rowCapturedAt: '2026-06-26T12:00:00.000Z',
+        isFallback: false,
+      }),
+    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0  0');
   });
 });
 

@@ -54,8 +54,16 @@ describe('buildComposeDashboardInput', () => {
             humanPendingBlue: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
+          rowCapturedAt: 'x',
+          isFallback: false,
         },
-        { code: 'in', row: null, closeEventCounts: { h1: 0, h3: 0, h5: 0 } },
+        {
+          code: 'in',
+          row: null,
+          closeEventCounts: { h1: 0, h3: 0, h5: 0 },
+          rowCapturedAt: null,
+          isFallback: false,
+        },
       ]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
@@ -455,6 +463,146 @@ describe('buildComposeDashboardInput', () => {
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
       fs.rmSync(consoleDir, { recursive: true, force: true });
+    }
+  });
+
+  it('uses fresher cache data when the cache lastFetchedAt is newer than capturedAt', () => {
+    const dataDir = makeDataDir();
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-cache-'));
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T12:00:00.000Z',
+        assigneeLogin: 'HiromiShikata',
+        allIssuesCacheDir: cacheDir,
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 0,
+        humanPendingYellow: 0,
+        humanPendingBlue: 0,
+      });
+      fs.writeFileSync(
+        path.join(cacheDir, 'latest.json'),
+        JSON.stringify({
+          lastFetchedAt: '2026-06-26T12:05:00.000Z',
+          issues: [
+            {
+              nameWithOwner: 'demo/repo',
+              number: 1,
+              title: 'Issue 1',
+              state: 'OPEN',
+              status: 'Awaiting Workspace',
+              story: null,
+              nextActionDate: null,
+              nextActionHour: null,
+              estimationMinutes: null,
+              dependedIssueUrls: [],
+              completionDate50PercentConfidence: null,
+              url: 'https://github.com/demo/repo/issues/1',
+              assignees: ['HiromiShikata'],
+              labels: [],
+              org: 'demo',
+              repo: 'repo',
+              body: '',
+              itemId: 'item-1',
+              isPr: false,
+              isInProgress: false,
+              isClosed: false,
+              createdAt: '2026-06-13T08:18:45.000Z',
+              author: 'someone',
+              closingIssueReferenceUrls: [],
+              agent: null,
+              stateReason: null,
+            },
+          ],
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].row?.ws).toBe(1);
+      expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:05:00.000Z');
+      expect(input.projects[0].isFallback).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+    }
+  });
+
+  it('marks the row as fallback when the cache file is absent', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T12:00:00.000Z',
+        assigneeLogin: 'HiromiShikata',
+        allIssuesCacheDir: path.join(dataDir, 'nonexistent-cache'),
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 1,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 0,
+        humanPendingYellow: 0,
+        humanPendingBlue: 0,
+      });
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].row?.ws).toBe(1);
+      expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:00:00.000Z');
+      expect(input.projects[0].isFallback).toBe(true);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('marks the row as fallback when the cache lastFetchedAt is not newer than capturedAt', () => {
+    const dataDir = makeDataDir();
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-cache-'));
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T12:05:00.000Z',
+        assigneeLogin: 'HiromiShikata',
+        allIssuesCacheDir: cacheDir,
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 1,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 0,
+        humanPendingYellow: 0,
+        humanPendingBlue: 0,
+      });
+      fs.writeFileSync(
+        path.join(cacheDir, 'latest.json'),
+        JSON.stringify({
+          lastFetchedAt: '2026-06-26T12:00:00.000Z',
+          issues: [],
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].row?.ws).toBe(1);
+      expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:05:00.000Z');
+      expect(input.projects[0].isFallback).toBe(true);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(cacheDir, { recursive: true, force: true });
     }
   });
 });

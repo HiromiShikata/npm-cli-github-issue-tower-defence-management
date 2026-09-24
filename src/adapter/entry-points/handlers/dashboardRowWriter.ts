@@ -13,11 +13,14 @@ export type DashboardRowWriterParams = {
   issues: Issue[];
   generatedAt?: string;
   storyColorMap?: Map<string, string>;
+  allIssuesCacheDir?: string;
 };
 
 export type DashboardRowFile = DashboardRow & {
   pjcode: string;
   capturedAt: string;
+  assigneeLogin?: string;
+  allIssuesCacheDir?: string;
 };
 
 const writeJsonAtomic = (filePath: string, data: unknown): void => {
@@ -43,6 +46,10 @@ export const writeDashboardRow = (params: DashboardRowWriterParams): void => {
   const file: DashboardRowFile = {
     pjcode,
     capturedAt: params.generatedAt ?? new Date().toISOString(),
+    ...(assigneeLogin !== null ? { assigneeLogin } : {}),
+    ...(params.allIssuesCacheDir !== undefined
+      ? { allIssuesCacheDir: params.allIssuesCacheDir }
+      : {}),
     ...row,
   };
 

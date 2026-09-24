@@ -156,6 +156,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
     const composed = composeDashboardText({
       dashboardDataDir: dir,
       projectNames: CONFIGURED_PROJECT_NAMES,
+      nowMs: new Date('2026-06-26T12:05:00.000Z').getTime(),
     });
 
     const wrap = (line: string): string =>
@@ -166,19 +167,19 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         wrap('      1  1  2  1  1  0  0  0  0  0  0  0'),
         wrap('  pj td ao fl pp ws dp 🔴 🟡 🔵 1h 3h 5h'),
         wrap(
-          `🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0  0  0  0 5m`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0  0  0  0 5m`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('initech')}  0  0  0  0  1  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('initech')}  0  0  0  0  1  0  0  0  0  0  0  0 5m`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('umbrella')}  1  0  0  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('umbrella')}  1  0  0  0  0  0  0  0  0  0  0  0 5m`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('soylent')}  0  0  0  1  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('soylent')}  0  0  0  1  0  0  0  0  0  0  0  0 5m`,
         ),
         wrap(''),
       ].join('\n') + '\n';

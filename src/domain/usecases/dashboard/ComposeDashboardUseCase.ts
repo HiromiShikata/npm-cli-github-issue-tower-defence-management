@@ -17,6 +17,8 @@ export type ComposeDashboardProject = {
   code: string;
   row: DashboardRow | null;
   closeEventCounts: CloseEventCounts;
+  rowCapturedAt?: string | null;
+  isFallback?: boolean;
 };
 
 export type ComposeDashboardDisk = {
@@ -38,6 +40,7 @@ export type ComposeDashboardInput = {
   machineStatus: ComposeDashboardMachineStatus | null;
   tokens: TokenStatus[];
   sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
+  nowMs?: number;
 };
 
 type ProjectColumn = {
@@ -118,6 +121,14 @@ const padStartZero = (value: string, width: number): string => {
     result = '0' + result;
   }
   return result;
+};
+
+export const formatElapsedMinutes = (elapsedMs: number): string => {
+  const totalMinutes = Math.floor(elapsedMs / 60000);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
 };
 
 export const roundHalfToEven = (value: number): number => {
@@ -283,6 +294,7 @@ const severityDot = (row: DashboardRow): string => {
 
 export const formatProjectRowLine = (
   project: ComposeDashboardProject,
+  nowMs?: number,
 ): string => {
   const mark = project.row === null ? SEVERITY_BLANK : severityDot(project.row);
   const cells = PROJECT_COLUMNS.map((column) => {
@@ -299,12 +311,23 @@ export const formatProjectRowLine = (
     const cell = capTwoDigits(project.closeEventCounts[column.key]);
     return ' ' + padStart(cell, CLOSE_COUNT_COLUMN_WIDTH);
   }).join('');
+  const capturedAt = project.rowCapturedAt ?? null;
+  const ageSuffix =
+    capturedAt !== null && nowMs !== undefined
+      ? (() => {
+          const elapsed = nowMs - new Date(capturedAt).getTime();
+          if (isNaN(elapsed) || elapsed < 0) return '';
+          const age = formatElapsedMinutes(elapsed);
+          return project.isFallback === true ? ` ~${age}` : ` ${age}`;
+        })()
+      : '';
   return (
     mark +
     padEnd(project.code, 2, ' ') +
     cells +
     storyColorCells +
-    closeCountCells
+    closeCountCells +
+    ageSuffix
   );
 };
 
@@ -424,11 +447,12 @@ const wrapLine = (line: string): string =>
 
 export class ComposeDashboardUseCase {
   run = (input: ComposeDashboardInput): string => {
+    const nowMs = input.nowMs;
     const statsLines = formatMachineStatusLines(input.machineStatus);
     const projectLines = [
       formatProjectTotalLine(input.projects),
       formatProjectHeaderLine(),
-      ...input.projects.map((project) => formatProjectRowLine(project)),
+      ...input.projects.map((project) => formatProjectRowLine(project, nowMs)),
     ];
     const sortedTokens = sortTokens(input.tokens);
     const tokenLines = sortedTokens.map((token) => formatTokenRowLine(token));
