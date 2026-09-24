@@ -111,10 +111,7 @@ describe('ConsoleCloseActions', () => {
 
   it('renders OK & Close button when onOkAndClose is provided', () => {
     const { getByText } = render(
-      <ConsoleCloseActions
-        onClose={() => {}}
-        onOkAndClose={async () => {}}
-      />,
+      <ConsoleCloseActions onClose={() => {}} onOkAndClose={async () => {}} />,
     );
     expect(getByText('OK & Close')).toBeInTheDocument();
   });
@@ -140,10 +137,7 @@ describe('ConsoleCloseActions', () => {
   it('calls onOkAndClose when OK & Close is clicked', () => {
     const onOkAndClose = jest.fn().mockResolvedValue(undefined);
     const { getByText } = render(
-      <ConsoleCloseActions
-        onClose={() => {}}
-        onOkAndClose={onOkAndClose}
-      />,
+      <ConsoleCloseActions onClose={() => {}} onOkAndClose={onOkAndClose} />,
     );
     fireEvent.click(getByText('OK & Close'));
     expect(onOkAndClose).toHaveBeenCalledTimes(1);
