@@ -1,3 +1,10 @@
+# [2.142.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.2...v2.142.0) (2026-09-24)
+
+
+### Features
+
+* **console:** add OK & Close button to the left of Comment & Close ([#2559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2559)) ([6f3dfb4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6f3dfb4a7c0a9761b26a2a644e6a62388615a2cb)), closes [HiromiShikata/umino-corporait-operation#32554](https://github.com/HiromiShikata/umino-corporait-operation/issues/32554)
+
 ## [2.141.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.1...v2.141.2) (2026-09-24)
 
 
