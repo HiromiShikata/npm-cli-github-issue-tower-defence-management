@@ -322,6 +322,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'getIssueOrPullRequestComments'
           | 'setIssueAgentField'
           | 'removeLabel'
+          | 'getIssueByUrl'
         >
       >;
       let spawnMockProjectRepository: jest.Mocked<
@@ -398,6 +399,11 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
           setIssueAgentField: jest.fn().mockResolvedValue(undefined),
           removeLabel: jest.fn().mockResolvedValue(undefined),
+          getIssueByUrl: jest
+            .fn()
+            .mockResolvedValue(
+              createMinimalIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+            ),
         };
         spawnMockLocalCommandRunner = {
           runCommand: jest
