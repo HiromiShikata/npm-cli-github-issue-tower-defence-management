@@ -135,11 +135,12 @@ describe('StartPreparationUseCase', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -7629,11 +7630,12 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -7726,11 +7728,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -7809,11 +7812,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
