@@ -281,6 +281,7 @@ export class GenerateConsoleListsUseCase {
             .filter(
               (issue) =>
                 !issue.isClosed &&
+                issue.assignees.includes(assigneeLogin) &&
                 (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
                   issue.status === PREPARATION_STATUS_NAME) &&
                 issue.dependedIssueUrls.length === 0 &&
