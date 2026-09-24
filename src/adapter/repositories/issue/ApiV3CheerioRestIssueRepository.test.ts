@@ -1567,6 +1567,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(logSpy).toHaveBeenCalledWith(
         'updateNextActionDate: issueUrl=https://github.com/o/r/issues/42 date=2026-09-23',
       );
+      logSpy.mockRestore();
     });
   });
 
