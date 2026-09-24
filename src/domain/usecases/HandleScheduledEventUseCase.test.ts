@@ -2204,6 +2204,108 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('staleAwaitingOwnerIssueRevertUseCase', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('does not call staleAwaitingOwnerIssueRevertUseCase when startPreparation is absent', async () => {
+        await useCase.run(baseInput);
+
+        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('does not call staleAwaitingOwnerIssueRevertUseCase when staleAwaitingOwnerThresholdMinutes is absent', async () => {
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+          },
+        });
+
+        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('does not call staleAwaitingOwnerIssueRevertUseCase when staleAwaitingOwnerThresholdMinutes is null', async () => {
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+            staleAwaitingOwnerThresholdMinutes: null,
+          },
+        });
+
+        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('calls staleAwaitingOwnerIssueRevertUseCase with project, issues, now and threshold when staleAwaitingOwnerThresholdMinutes is set', async () => {
+        const mockProject = mock<Project>();
+        const mockIssues: Issue[] = [];
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: mockIssues,
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+            staleAwaitingOwnerThresholdMinutes: 60,
+          },
+        });
+
+        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).toHaveBeenCalledWith({
+          project: mockProject,
+          issues: mockIssues,
+          now: new Date('2024-01-01T00:00:00Z'),
+          staleThresholdMinutes: 60,
+          allowedIssueAuthors: null,
+        });
+      });
+
+      it('continues the cycle when staleAwaitingOwnerIssueRevertUseCase.run rejects', async () => {
+        mockStaleAwaitingOwnerIssueRevertUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GitHub API error')],
+            'Failed to process 1 stale Awaiting Owner issue(s)',
+          ),
+        );
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+            staleAwaitingOwnerThresholdMinutes: 60,
+          },
+        });
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+    });
+
     describe('closedStoryIssueReopenUseCase', () => {
       const baseInput = {
         projectName: 'test-project',

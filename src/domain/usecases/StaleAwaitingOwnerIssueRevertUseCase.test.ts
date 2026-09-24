@@ -274,7 +274,7 @@ describe('StaleAwaitingOwnerIssueRevertUseCase', () => {
     consoleSpy.mockRestore();
   });
 
-  it('skips deduplication when the same revert comment was already posted within the window', async () => {
+  it('does not post a duplicate comment when the same revert comment was already posted within the window', async () => {
     const issue = createMockIssue();
     const agentCommentTime = new Date(
       now.getTime() - (thresholdMinutes + 10) * 60 * 1000,

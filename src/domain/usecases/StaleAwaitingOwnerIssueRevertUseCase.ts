@@ -171,12 +171,12 @@ export class StaleAwaitingOwnerIssueRevertUseCase {
       return false;
     }
 
-    await this.issueRepository.createCommentByUrl(issue.url, commentBody);
     await this.issueRepository.updateStatus(
       project,
       issue,
       awaitingWorkspaceStatusOptionId,
     );
+    await this.issueRepository.createCommentByUrl(issue.url, commentBody);
 
     return true;
   };
