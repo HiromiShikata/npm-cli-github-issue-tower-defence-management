@@ -1,5 +1,7 @@
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
 import {
+  countConsecutiveNoReportDispatches,
+  NO_REPORT_REDISPATCH_COUNT_PREFIX,
   resolveNextStepAgentDispatchRepetition,
   SILENT_CRASH_ESCALATION_PHRASE,
   REPORTING_LOOP_ESCALATION_PHRASE,
@@ -1051,5 +1053,119 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
       expect(result.type).toBe('escalateSilentRedispatch');
     });
+  });
+});
+
+describe('countConsecutiveNoReportDispatches', () => {
+  const noReportAgainComment = (
+    n: number,
+    threshold: number,
+    author = 'bot',
+  ): TestComment => ({
+    author,
+    content: `${NO_REPORT_REDISPATCH_COUNT_PREFIX}${n}/${threshold}\n\nNo completion comment was posted.`,
+  });
+
+  it('returns 0 when there are no comments', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(0);
+  });
+
+  it('returns 0 when there are no NO_REPORT_AGAIN comments', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [humanComment(), report('developer')],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(0);
+  });
+
+  it('returns 1 when there is one NO_REPORT_AGAIN comment and no human comment or agent report', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [noReportAgainComment(1, 3)],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(1);
+  });
+
+  it('returns 2 when there are two NO_REPORT_AGAIN comments in sequence', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [noReportAgainComment(1, 3), noReportAgainComment(2, 3)],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(2);
+  });
+
+  it('resets to 0 after a human comment', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          humanComment(),
+        ],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(0);
+  });
+
+  it('counts only NO_REPORT_AGAIN comments after the last human comment', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          humanComment(),
+          noReportAgainComment(1, 3),
+        ],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(1);
+  });
+
+  it('resets to 0 after an agent report', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(0);
+  });
+
+  it('counts only NO_REPORT_AGAIN comments after the last agent report', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          report('developer'),
+          noReportAgainComment(1, 3),
+        ],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(1);
+  });
+
+  it('ignores NO_REPORT_AGAIN comments from untrusted authors', () => {
+    const trustNone = (): boolean => false;
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3, 'untrusted-user'),
+          noReportAgainComment(2, 3, 'untrusted-user'),
+        ],
+        isTrustedAuthor: trustNone,
+      }),
+    ).toBe(0);
   });
 });

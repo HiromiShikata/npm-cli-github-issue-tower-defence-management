@@ -7,6 +7,8 @@ import {
 } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 
+export const NO_REPORT_REDISPATCH_COUNT_PREFIX = `${AUTO_STATUS_CHECK_MESSAGE_HEAD} NO_REPORT_AGAIN `;
+
 export const SILENT_CRASH_ESCALATION_PHRASE =
   'The agent may have crashed or stopped silently';
 export const REPORTING_LOOP_ESCALATION_PHRASE =
@@ -52,6 +54,34 @@ const findLastHumanCommentIndex = <
       isHumanComment(comment, isTrustedAuthor) ? index : found,
     -1,
   );
+
+export const countConsecutiveNoReportDispatches = <
+  CommentLike extends { author: string; content: string },
+>(params: {
+  comments: CommentLike[];
+  isTrustedAuthor: (author: string) => boolean;
+}): number => {
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
+  const lastAgentReportIndex = params.comments.reduce(
+    (found, comment, index) =>
+      params.isTrustedAuthor(comment.author) &&
+      isAgentReportBody(comment.content)
+        ? index
+        : found,
+    -1,
+  );
+  const cycleStart = Math.max(lastHumanCommentIndex, lastAgentReportIndex);
+  return params.comments
+    .slice(cycleStart + 1)
+    .filter(
+      (c) =>
+        params.isTrustedAuthor(c.author) &&
+        c.content.startsWith(NO_REPORT_REDISPATCH_COUNT_PREFIX),
+    ).length;
+};
 
 const isSilentRedispatchCommentForAgent = (
   content: string,

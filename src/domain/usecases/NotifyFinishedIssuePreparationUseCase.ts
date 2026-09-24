@@ -44,7 +44,9 @@ import {
   issueReactivationTriggerStartOfTomorrow,
 } from './issueReactivationTriggerIsPending';
 import {
+  countConsecutiveNoReportDispatches,
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  NO_REPORT_REDISPATCH_COUNT_PREFIX,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
@@ -465,6 +467,41 @@ export class NotifyFinishedIssuePreparationUseCase {
       rejections.length > 0
         ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
         : 'Auto Status Check: APPROVED';
+
+    const hasNoReportRejection = rejections.some(
+      (r) => r.type === 'NO_REPORT_FROM_AGENT_BOT',
+    );
+    if (hasNoReportRejection) {
+      const consecutiveCount = countConsecutiveNoReportDispatches({
+        comments,
+        isTrustedAuthor,
+      });
+      const thisDispatchCount = consecutiveCount + 1;
+      if (thisDispatchCount >= params.thresholdForAutoReject) {
+        issue.status = FAILED_PREPARATION_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.createCommentWithDedup(
+          issue,
+          `Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT\n\nSession ended without a completion comment for ${thisDispatchCount} consecutive dispatches. Moved to Failed Preparation.`,
+        );
+        await this.sendWorkflowBlockerNotification(
+          params.issueUrl,
+          params.workflowBlockerResolvedWebhookUrl,
+          project,
+        );
+        return;
+      }
+      await this.createCommentWithDedup(
+        issue,
+        `${NO_REPORT_REDISPATCH_COUNT_PREFIX}${thisDispatchCount}/${params.thresholdForAutoReject}\n\nNo completion comment was posted. Dispatch ${thisDispatchCount} of ${params.thresholdForAutoReject} before escalation.`,
+      );
+    }
 
     const lastTargetComments = comments.slice(
       -params.thresholdForAutoReject * 2,
