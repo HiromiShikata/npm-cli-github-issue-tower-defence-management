@@ -365,6 +365,7 @@ export const ConsoleItemDetail = ({
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
             persistenceKey={item.url}
+            issueUrl={item.url}
             issueTitle={item.title}
             storyEntries={storyEntries}
             agentOptions={agentOptions}
