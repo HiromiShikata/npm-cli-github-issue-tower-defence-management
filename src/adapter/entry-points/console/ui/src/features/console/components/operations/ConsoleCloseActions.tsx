@@ -17,7 +17,9 @@ export const ConsoleCloseActions = ({
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAsyncClose = async (fn: (() => Promise<void>) | undefined): Promise<void> => {
+  const handleAsyncClose = async (
+    fn: (() => Promise<void>) | undefined,
+  ): Promise<void> => {
     if (fn === undefined || posting) return;
     setPosting(true);
     setError(null);

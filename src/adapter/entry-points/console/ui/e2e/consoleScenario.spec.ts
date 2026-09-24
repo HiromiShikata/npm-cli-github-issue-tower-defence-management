@@ -846,9 +846,7 @@ test('posts an ok comment and closes the item when the OK & Close button is used
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
   ).click();
 
-  await page
-    .getByRole('button', { name: 'OK & Close', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'OK & Close', exact: true }).click();
 
   await expect
     .poll(
