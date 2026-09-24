@@ -1088,7 +1088,7 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
-  it('opens IssueCreateModalDialog with empty title and issue title blockquote body when a comment create-workflow-issue button is clicked', async () => {
+  it('opens IssueCreateModalDialog with empty title and comment body as blockquote prefixed by item url and title when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -1136,10 +1136,12 @@ describe('ConsoleItemDetailContainer', () => {
       '[aria-label="Body"]',
     ) as HTMLTextAreaElement | null;
     expect(bodyTextarea).not.toBeNull();
-    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
+    expect(bodyTextarea?.value).toBe(
+      `${prItem.url}\n\n${prItem.title}\n\n\n\n\n\n> ${comment.body}`,
+    );
   });
 
-  it('does not include comment body in the dialog body when a comment create-workflow-issue button is clicked', async () => {
+  it('includes comment body as blockquote in the dialog body when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -1182,10 +1184,10 @@ describe('ConsoleItemDetailContainer', () => {
       '[aria-label="Body"]',
     ) as HTMLTextAreaElement | null;
     expect(bodyTextarea).not.toBeNull();
-    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
+    expect(bodyTextarea?.value).toContain(`> ${comment.body}`);
   });
 
-  it('shows issue title as blockquote in body regardless of which comment triggered the dialog', async () => {
+  it('includes each line of multi-line comment body as its own blockquote line in the dialog body', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'First line\nSecond line\nThird line',
@@ -1228,6 +1230,8 @@ describe('ConsoleItemDetailContainer', () => {
       '[aria-label="Body"]',
     ) as HTMLTextAreaElement | null;
     expect(bodyTextarea).not.toBeNull();
-    expect(bodyTextarea?.value).toBe(`> ${prItem.title}`);
+    expect(bodyTextarea?.value).toBe(
+      `${prItem.url}\n\n${prItem.title}\n\n\n\n\n\n> First line\n> Second line\n> Third line`,
+    );
   });
 });

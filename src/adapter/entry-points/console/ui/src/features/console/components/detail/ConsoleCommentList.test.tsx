@@ -494,7 +494,7 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
-  it('calls onCreateIssueFromComment with IssueCreateParams when the dialog Create button is clicked', async () => {
+  it('calls onCreateIssueFromComment with comment body as blockquote when the dialog Create button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -507,6 +507,7 @@ describe('ConsoleCommentList', () => {
         isLoading={false}
         error={null}
         now={now}
+        issueUrl="https://github.com/owner/repo/issues/1"
         issueTitle="Source issue title"
         onCreateIssueFromComment={onCreateIssueFromComment}
       />,
@@ -523,7 +524,7 @@ describe('ConsoleCommentList', () => {
     await waitFor(() => {
       expect(onCreateIssueFromComment).toHaveBeenCalledWith({
         title: 'New task from comment',
-        body: '> Source issue title',
+        body: 'https://github.com/owner/repo/issues/1\n\nSource issue title\n\n\n\n\n\n> Please split the token validation into its own tested function.',
         storyName: null,
         agentOptionId: null,
         files: [],
@@ -531,7 +532,7 @@ describe('ConsoleCommentList', () => {
     });
   });
 
-  it('pre-populates dialog with empty title and issue title as blockquote in the body', () => {
+  it('pre-populates dialog with empty title and comment body as blockquote prefixed by issue url and title', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'First line\nSecond line',
@@ -543,6 +544,7 @@ describe('ConsoleCommentList', () => {
         isLoading={false}
         error={null}
         now={now}
+        issueUrl="https://github.com/owner/repo/issues/1"
         issueTitle="My issue title"
         onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
       />,
@@ -556,7 +558,60 @@ describe('ConsoleCommentList', () => {
     const bodyTextarea = getByRole('textbox', { name: 'Body' });
     expect((titleTextarea as HTMLTextAreaElement).value).toBe('');
     expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
-      '> My issue title',
+      'https://github.com/owner/repo/issues/1\n\nMy issue title\n\n\n\n\n\n> First line\n> Second line',
+    );
+  });
+
+  it('pre-populates dialog body with title prefix when issueTitle is provided but issueUrl is absent', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueTitle="Only title provided"
+        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    const bodyTextarea = getByRole('textbox', { name: 'Body' });
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      'Only title provided\n\n\n\n\n\n> A comment body',
+    );
+  });
+
+  it('pre-populates dialog body with only comment blockquote when no issueUrl or issueTitle is provided', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    const bodyTextarea = getByRole('textbox', { name: 'Body' });
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      '> A comment body',
     );
   });
 

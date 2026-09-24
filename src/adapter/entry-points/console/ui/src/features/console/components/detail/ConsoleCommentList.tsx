@@ -70,6 +70,7 @@ export type ConsoleCommentListProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
   persistenceKey?: string | null;
+  issueUrl?: string;
   issueTitle?: string;
   storyEntries?: ConsoleStoryEntry[];
   agentOptions?: ConsoleFieldOption[];
@@ -85,6 +86,7 @@ export const ConsoleCommentList = ({
   renderReferenceLink,
   repoContext,
   persistenceKey = null,
+  issueUrl,
   issueTitle,
   storyEntries,
   agentOptions,
@@ -211,7 +213,16 @@ export const ConsoleCommentList = ({
           onClose={() => setPendingComment(null)}
           initialDraft={{
             title: '',
-            body: issueTitle != null ? formatAsBlockquote(issueTitle) : null,
+            body: (() => {
+              const commentBlockquote = formatAsBlockquote(pendingComment.body);
+              if (issueUrl != null && issueTitle != null) {
+                return `${issueUrl}\n\n${issueTitle}\n\n\n\n\n\n${commentBlockquote}`;
+              }
+              if (issueTitle != null) {
+                return `${issueTitle}\n\n\n\n\n\n${commentBlockquote}`;
+              }
+              return commentBlockquote;
+            })(),
             storyName: null,
             agentOptionId: null,
           }}
