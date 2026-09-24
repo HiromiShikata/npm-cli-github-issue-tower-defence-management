@@ -275,7 +275,8 @@ export class HandleScheduledEventUseCase {
       }
       if (
         storyObject.storyIssue ||
-        storyObject.story.name.startsWith('regular / ')
+        storyObject.story.name.startsWith('regular / ') ||
+        storyObject.story.color === 'GRAY'
       ) {
         continue;
       }

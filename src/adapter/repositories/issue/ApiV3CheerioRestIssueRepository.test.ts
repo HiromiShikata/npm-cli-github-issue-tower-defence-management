@@ -7545,6 +7545,156 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('addIssueToProject then getIssueByUrl cache update', () => {
+    const projectId = 'proj-pending-test';
+    const issueUrl = 'https://github.com/o/r/issues/100';
+
+    const testCases: {
+      name: string;
+      urlInPending: boolean;
+      cacheHasProject: boolean;
+      freshFetch: boolean;
+      expectCacheWrite: boolean;
+    }[] = [
+      {
+        name: 'url in pending + project cache exists + fresh fetch: adds issue to project cache and deletes pending entry',
+        urlInPending: true,
+        cacheHasProject: true,
+        freshFetch: true,
+        expectCacheWrite: true,
+      },
+      {
+        name: 'url in pending + project cache is null + fresh fetch: no cache write, no error, deletes pending entry',
+        urlInPending: true,
+        cacheHasProject: false,
+        freshFetch: true,
+        expectCacheWrite: false,
+      },
+      {
+        name: 'url not in pending + project cache exists + fresh fetch: no cache update',
+        urlInPending: false,
+        cacheHasProject: true,
+        freshFetch: true,
+        expectCacheWrite: false,
+      },
+      {
+        name: 'url in pending + project cache exists + cache hit: deletes pending entry, no cache write',
+        urlInPending: true,
+        cacheHasProject: true,
+        freshFetch: false,
+        expectCacheWrite: false,
+      },
+    ];
+
+    test.each(testCases)('$name', async (tc) => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const freshLastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+
+      const existingCacheIssue = buildCachedIssueRecord(
+        'https://github.com/o/r/issues/1',
+        'Existing Issue',
+      );
+
+      const projectCacheValue = tc.cacheHasProject
+        ? {
+            lastFetchedAt: freshLastFetchedAt,
+            lastFullFetchAt: freshLastFetchedAt,
+            project: buildTestProject(projectId),
+            issues: [existingCacheIssue],
+            storyIssueUrlByOptionName: {},
+            storyOptions: [],
+          }
+        : null;
+
+      if (tc.freshFetch) {
+        localStorageRepository.listFiles.mockReturnValue([]);
+      } else {
+        localStorageRepository.listFiles
+          .mockReturnValueOnce(['umino'])
+          .mockReturnValueOnce([`allIssues-${projectId}`])
+          .mockReturnValueOnce(['latest.json']);
+        localStorageRepository.read.mockReturnValue(
+          JSON.stringify({
+            lastFetchedAt: freshLastFetchedAt,
+            issues: [buildCachedIssueRecord(issueUrl, 'Cached Issue')],
+          }),
+        );
+      }
+
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        projectCacheValue,
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      graphqlProjectItemRepository.addIssueToProject.mockResolvedValue(
+        'new-item-id',
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Fresh Issue'),
+      );
+
+      if (tc.urlInPending) {
+        await repository.addIssueToProject(
+          buildTestProject(projectId),
+          issueUrl,
+        );
+        localStorageCacheRepository.setSingle.mockClear();
+      }
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result).not.toBeNull();
+
+      if (tc.expectCacheWrite) {
+        expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
+        const cacheValue =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(JSON.stringify(cacheValue)).toContain(`"url":"${issueUrl}"`);
+      } else {
+        expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      }
+    });
+
+    it('does not record pending entry when addIssueToProject throws', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:30:00.000Z'),
+      );
+      graphqlProjectItemRepository.addIssueToProject.mockRejectedValue(
+        new Error('network error'),
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Fresh Issue'),
+      );
+      localStorageRepository.listFiles.mockReturnValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await expect(
+        repository.addIssueToProject(buildTestProject(projectId), issueUrl),
+      ).rejects.toThrow('network error');
+
+      await repository.getIssueByUrl(issueUrl);
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateBranch', () => {
     afterEach(() => {
       jest.restoreAllMocks();

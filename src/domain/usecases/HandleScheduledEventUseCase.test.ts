@@ -1042,6 +1042,42 @@ describe('HandleScheduledEventUseCase', () => {
           );
         expect(storyIssueCalls).toHaveLength(0);
       });
+
+      it('skips story issue creation for GRAY story option even when no open or closed story issue exists', async () => {
+        const grayStoryProject: Project = {
+          ...storyProject,
+          story: {
+            name: 'Story',
+            fieldId: 'f2',
+            databaseId: 2,
+            workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+            stories: [
+              {
+                id: 'story-gray',
+                name: 'feature / GrayStory',
+                color: 'GRAY',
+                description: 'disabled story',
+              },
+            ],
+          },
+        };
+        mockProjectRepository.getProject.mockResolvedValue(grayStoryProject);
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: grayStoryProject,
+          cacheUsed: false,
+        });
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+      });
     });
 
     describe('slow sweep cadence', () => {

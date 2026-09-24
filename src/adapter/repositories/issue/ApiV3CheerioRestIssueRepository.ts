@@ -715,6 +715,8 @@ export class ApiV3CheerioRestIssueRepository
 
   private readonly projectIssuesCacheRepository: ProjectIssuesCacheRepository;
 
+  private readonly pendingCacheUpdateByIssueUrl = new Map<string, string>();
+
   private readonly commitCiContextsInMemoryCache = new Map<
     string,
     CiContextNode[]
@@ -1254,25 +1256,38 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   getIssueByUrl = async (url: string): Promise<Issue | null> => {
+    const pendingProjectId = this.pendingCacheUpdateByIssueUrl.get(url);
     const cached = await this.findIssueInAllIssuesCache(url);
     if (cached) {
+      if (pendingProjectId !== undefined) {
+        this.pendingCacheUpdateByIssueUrl.delete(url);
+      }
       return cached;
     }
     const projectItem =
       await this.graphqlProjectItemRepository.fetchProjectItemByUrl(url);
+    if (pendingProjectId !== undefined) {
+      this.pendingCacheUpdateByIssueUrl.delete(url);
+    }
     if (!projectItem) {
       return null;
     }
-    return this.convertProjectItemToIssue(projectItem);
+    const issue = this.convertProjectItemToIssue(projectItem);
+    if (pendingProjectId !== undefined) {
+      await this.appendIssueToProjectCache(pendingProjectId, issue);
+    }
+    return issue;
   };
   addIssueToProject = async (
     project: Project,
     issueUrl: string,
   ): Promise<string> => {
-    return this.graphqlProjectItemRepository.addIssueToProject(
+    const result = await this.graphqlProjectItemRepository.addIssueToProject(
       project.id,
       issueUrl,
     );
+    this.pendingCacheUpdateByIssueUrl.set(issueUrl, project.id);
+    return result;
   };
   appendIssueToProjectCache = async (
     projectId: Project['id'],
