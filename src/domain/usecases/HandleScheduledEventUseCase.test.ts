@@ -2222,7 +2222,9 @@ describe('HandleScheduledEventUseCase', () => {
       it('does not call staleAwaitingOwnerIssueRevertUseCase when startPreparation is absent', async () => {
         await useCase.run(baseInput);
 
-        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+        expect(
+          mockStaleAwaitingOwnerIssueRevertUseCase.run,
+        ).not.toHaveBeenCalled();
       });
 
       it('does not call staleAwaitingOwnerIssueRevertUseCase when staleAwaitingOwnerThresholdMinutes is absent', async () => {
@@ -2236,7 +2238,9 @@ describe('HandleScheduledEventUseCase', () => {
           },
         });
 
-        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+        expect(
+          mockStaleAwaitingOwnerIssueRevertUseCase.run,
+        ).not.toHaveBeenCalled();
       });
 
       it('does not call staleAwaitingOwnerIssueRevertUseCase when staleAwaitingOwnerThresholdMinutes is null', async () => {
@@ -2251,7 +2255,9 @@ describe('HandleScheduledEventUseCase', () => {
           },
         });
 
-        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).not.toHaveBeenCalled();
+        expect(
+          mockStaleAwaitingOwnerIssueRevertUseCase.run,
+        ).not.toHaveBeenCalled();
       });
 
       it('calls staleAwaitingOwnerIssueRevertUseCase with project, issues, now and threshold when staleAwaitingOwnerThresholdMinutes is set', async () => {
@@ -2274,7 +2280,9 @@ describe('HandleScheduledEventUseCase', () => {
           },
         });
 
-        expect(mockStaleAwaitingOwnerIssueRevertUseCase.run).toHaveBeenCalledWith({
+        expect(
+          mockStaleAwaitingOwnerIssueRevertUseCase.run,
+        ).toHaveBeenCalledWith({
           project: mockProject,
           issues: mockIssues,
           now: new Date('2024-01-01T00:00:00Z'),
