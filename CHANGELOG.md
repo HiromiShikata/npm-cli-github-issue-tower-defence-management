@@ -1,3 +1,10 @@
+## [2.141.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.1...v2.141.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **SetNoStoryIssueToStoryUseCase:** look up NO STORY option by name instead of stories[0] ([#2560](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2560)) ([4029138](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/40291381acd12d36a429b8e1a15ef3baccecff3b))
+
 ## [2.141.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.141.0...v2.141.1) (2026-09-24)
 
 
