@@ -1,6 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 
 export class SetNoStoryIssueToStoryUseCase {
   constructor(readonly issueRepository: Pick<IssueRepository, 'updateStory'>) {}
@@ -29,8 +30,10 @@ export class SetNoStoryIssueToStoryUseCase {
         issue.state === 'OPEN'
       );
     };
-    const firstStory = input.project.story?.stories[0];
-    if (!firstStory) {
+    const noStoryOption = story.stories.find(
+      (s) => s.name === NO_STORY_STORY_NAME,
+    );
+    if (!noStoryOption) {
       return;
     }
     for (const issue of input.issues) {
@@ -40,7 +43,7 @@ export class SetNoStoryIssueToStoryUseCase {
       await this.issueRepository.updateStory(
         { ...input.project, story },
         issue,
-        firstStory.id,
+        noStoryOption.id,
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
