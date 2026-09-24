@@ -39,6 +39,7 @@ import {
   isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
+import { isHumanComment } from './isHumanComment';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -269,6 +270,30 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       return;
     } else if (issue.status === AWAITING_OWNER_STATUS_NAME) {
+      const ownerCheckComments =
+        await this.issueCommentRepository.getCommentsFromIssue(issue);
+      const isTrustedAuthorForOwnerCheck = (author: string): boolean =>
+        isAuthorAuthorizedForAutoStatusCheck(
+          author,
+          params.allowedIssueAuthors,
+        );
+      const lastOwnerCheckComment =
+        ownerCheckComments[ownerCheckComments.length - 1];
+      if (
+        lastOwnerCheckComment &&
+        isTrustedAuthorForOwnerCheck(lastOwnerCheckComment.author) &&
+        isHumanComment(lastOwnerCheckComment, isTrustedAuthorForOwnerCheck)
+      ) {
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        return;
+      }
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Owner`,
       );
@@ -1005,12 +1030,8 @@ export class NotifyFinishedIssuePreparationUseCase {
   }> => {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
-    const lastComment = comments[comments.length - 1];
-    if (
-      !lastComment ||
-      !isTrustedAuthor(lastComment.author) ||
-      !isAgentReportBody(lastComment.content)
-    ) {
+    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+    if (!lastAgentReport) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
@@ -1023,7 +1044,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         labelsNotRequiringPullRequest,
         { developerAgentNames },
       );
-    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     const lastReportIsFromDeveloperAgent =
       lastAgentReport !== null &&
