@@ -1,3 +1,10 @@
+## [2.144.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.3...v2.144.4) (2026-09-24)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** add authoritative story issue existence check before creation ([#2573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2573)) ([b3031cf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b3031cf51f32c9db3e8baaf13eecaece4d2ee9da))
+
 ## [2.144.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.2...v2.144.3) (2026-09-24)
 
 
