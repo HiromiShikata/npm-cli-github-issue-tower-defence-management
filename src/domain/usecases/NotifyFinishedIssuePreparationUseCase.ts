@@ -35,7 +35,6 @@ import { findLastAgentReport } from './findLastAgentReport';
 
 import {
   extractAgentNameFromReportBody,
-  isAgentReportBody,
   isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
