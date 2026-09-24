@@ -1518,6 +1518,23 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
         expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
       });
+
+      it('should not create or comment an incident issue for a stale story option ID error', async () => {
+        const staleOptionError = new Error(
+          'The single select option Id does not belong to the field',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          staleOptionError,
+        );
+
+        await expect(useCase.run(errorInput)).rejects.toThrow(
+          'does not belong to the field',
+        );
+
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
     });
 
     describe('spreadsheet access failure error issue creation', () => {
