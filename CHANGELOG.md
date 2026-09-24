@@ -1,3 +1,10 @@
+# [2.146.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.145.1...v2.146.0) (2026-09-24)
+
+
+### Features
+
+* **notifyFinishedIssuePreparation:** add --rateLimitRejected flag to bypass consecutive-no-report counter ([8cf834e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cf834ed86c08677e01db4eb1855ad9272c4f7bc))
+
 ## [2.145.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.145.0...v2.145.1) (2026-09-24)
 
 
