@@ -1,3 +1,10 @@
+## [2.144.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.4...v2.144.5) (2026-09-24)
+
+
+### Bug Fixes
+
+* **ConsoleCommentList:** include comment body and source url in task-create dialog body ([#2576](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2576)) ([fc02a76](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fc02a76fb85c98170239be8c3201dfd916e8cb5b)), closes [#2504](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2504) [HiromiShikata/umino-corporait-operation#32613](https://github.com/HiromiShikata/umino-corporait-operation/issues/32613)
+
 ## [2.144.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.3...v2.144.4) (2026-09-24)
 
 
