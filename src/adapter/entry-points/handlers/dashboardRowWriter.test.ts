@@ -108,14 +108,11 @@ describe('writeDashboardRow', () => {
         '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
     });
 
-    const written = readJson(path.join(dir, 'projects', 'ac.json')) as Record<
-      string,
-      unknown
-    >;
-    expect(written.assigneeLogin).toBe(ASSIGNEE);
-    expect(written.allIssuesCacheDir).toBe(
-      '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
-    );
+    expect(readJson(path.join(dir, 'projects', 'ac.json'))).toMatchObject({
+      assigneeLogin: ASSIGNEE,
+      allIssuesCacheDir:
+        '/home/user/.cache/tdpm/cache/myproject/allIssues-PVT_123',
+    });
   });
 
   it('is a no-op when pjcode or assigneeLogin is missing', () => {

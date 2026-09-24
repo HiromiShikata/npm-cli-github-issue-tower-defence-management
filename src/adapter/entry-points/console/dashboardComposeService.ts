@@ -106,11 +106,7 @@ type ProjectRowData = {
 const isIssueArray = (value: unknown): value is Issue[] =>
   Array.isArray(value) &&
   value.every(
-    (item: unknown) =>
-      typeof item === 'object' &&
-      item !== null &&
-      'nameWithOwner' in item &&
-      typeof (item as Record<string, unknown>).nameWithOwner === 'string',
+    (item: unknown) => isRecord(item) && typeof item.nameWithOwner === 'string',
   );
 
 type TdpmCacheData = {
