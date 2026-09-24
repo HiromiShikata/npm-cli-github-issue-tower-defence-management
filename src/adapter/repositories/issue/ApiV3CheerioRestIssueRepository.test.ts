@@ -7238,6 +7238,181 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('createNewIssue', () => {
+    const newIssueNumber = 99;
+    const newIssueUrl = 'https://github.com/o/r/issues/99';
+    const existingIssue = buildCachedIssueRecord(
+      'https://github.com/o/r/issues/1',
+      'Existing Issue',
+    );
+    const existingStoryIssue = {
+      ...buildCachedIssueRecord(
+        'https://github.com/o/r/issues/2',
+        'feature / OldStory',
+      ),
+      story: 'feature / OldStory',
+      labels: ['story'],
+    };
+    const baseCache = {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: buildTestProject('proj-create-test'),
+      issues: [existingIssue],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    };
+    const cacheWithNewUrlPresent = {
+      ...baseCache,
+      issues: [buildCachedIssueRecord(newIssueUrl, 'feature / NewStory')],
+    };
+    const cacheWithExistingStory = {
+      ...baseCache,
+      issues: [existingIssue, existingStoryIssue],
+      storyIssueUrlByOptionName: {
+        'feature / OldStory': 'https://github.com/o/r/issues/2',
+      },
+    };
+
+    const testCases: {
+      name: string;
+      cacheValue: unknown;
+      projectId: string | undefined;
+      storyOptionName: string | undefined;
+      expectedSetSingleCalled: boolean;
+    }[] = [
+      {
+        name: 'case 1: cache null — no-op',
+        cacheValue: null,
+        projectId: 'proj-create-test',
+        storyOptionName: 'feature / NewStory',
+        expectedSetSingleCalled: false,
+      },
+      {
+        name: 'case 2: cache exists, URL absent — appends issue and updates storyIssueUrlByOptionName, preserves lastFetchedAt',
+        cacheValue: baseCache,
+        projectId: 'proj-create-test',
+        storyOptionName: 'feature / NewStory',
+        expectedSetSingleCalled: true,
+      },
+      {
+        name: 'case 3: cache exists, URL already present — no-op',
+        cacheValue: cacheWithNewUrlPresent,
+        projectId: 'proj-create-test',
+        storyOptionName: 'feature / NewStory',
+        expectedSetSingleCalled: false,
+      },
+      {
+        name: 'case 4: cache exists with existing story issues, new story — appends without affecting existing issues',
+        cacheValue: cacheWithExistingStory,
+        projectId: 'proj-create-test',
+        storyOptionName: 'feature / NewStory',
+        expectedSetSingleCalled: true,
+      },
+      {
+        name: 'case 5: projectId/storyOptionName not provided — no-op',
+        cacheValue: baseCache,
+        projectId: undefined,
+        storyOptionName: undefined,
+        expectedSetSingleCalled: false,
+      },
+    ];
+
+    test.each(testCases)('$name', async (tc) => {
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);
+      localStorageCacheRepository.getSingle.mockResolvedValue(tc.cacheValue);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        tc.projectId,
+        tc.storyOptionName,
+      );
+
+      if (!tc.expectedSetSingleCalled) {
+        expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      } else {
+        expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
+        expect(
+          localStorageCacheRepository.setSingle.mock.calls[0][1],
+        ).toMatchObject({
+          lastFetchedAt: baseCache.lastFetchedAt,
+          lastFullFetchAt: baseCache.lastFullFetchAt,
+          storyIssueUrlByOptionName: { 'feature / NewStory': newIssueUrl },
+        });
+      }
+    });
+
+    it('case 2 detail: new issue is appended to the issues array', async () => {
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);
+      localStorageCacheRepository.getSingle.mockResolvedValue(baseCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        'proj-create-test',
+        'feature / NewStory',
+      );
+
+      expect(
+        localStorageCacheRepository.setSingle.mock.calls[0][1],
+      ).toMatchObject({
+        issues: [
+          expect.objectContaining({ url: existingIssue.url }),
+          expect.objectContaining({ url: newIssueUrl }),
+        ],
+      });
+    });
+
+    it('case 4 detail: existing issues are preserved when appending', async () => {
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        cacheWithExistingStory,
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        'proj-create-test',
+        'feature / NewStory',
+      );
+
+      expect(
+        localStorageCacheRepository.setSingle.mock.calls[0][1],
+      ).toMatchObject({
+        issues: [
+          expect.objectContaining({ url: existingIssue.url }),
+          expect.objectContaining({ url: 'https://github.com/o/r/issues/2' }),
+          expect.objectContaining({ url: newIssueUrl }),
+        ],
+        storyIssueUrlByOptionName: {
+          'feature / OldStory': 'https://github.com/o/r/issues/2',
+          'feature / NewStory': newIssueUrl,
+        },
+      });
+    });
+  });
+
   describe('getIssueByUrl', () => {
     it('returns the cached issue without calling fetchProjectItemByUrl when a fresh cache entry matches the url', async () => {
       const {

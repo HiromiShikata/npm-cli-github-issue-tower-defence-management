@@ -1307,7 +1307,7 @@ describe('DailySecurityScanUseCase', () => {
     };
 
     const kevReportCalls = (
-      calls: [string, string, string, string, string[], string[]][],
+      calls: Parameters<IssueRepository['createNewIssue']>[],
     ) => calls.filter((call) => call[1] === 'security-reports');
 
     const runWithKevReporting = async (useCase: DailySecurityScanUseCase) =>
