@@ -1,3 +1,10 @@
+## [2.142.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.1...v2.142.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* allow default agent to set story when issue agent field is null ([#2563](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2563)) ([63faec1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/63faec199e1d889bc8826d871938eed65d42a861))
+
 ## [2.142.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.142.0...v2.142.1) (2026-09-24)
 
 
