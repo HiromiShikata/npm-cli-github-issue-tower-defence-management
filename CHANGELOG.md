@@ -1,3 +1,10 @@
+## [2.144.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.1...v2.144.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** re-dispatch from Awaiting Owner on owner comment and fix false NO_REPORT ([#2571](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2571)) ([6d396db](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d396db9f6935502704bba8b665eb4025356a5fd))
+
 ## [2.144.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.144.0...v2.144.1) (2026-09-24)
 
 
