@@ -1905,8 +1905,12 @@ test('creates a workflow improvement issue from a comment when the + button is c
     expect(call?.org).toBe('HiromiShikata');
     expect(call?.repo).toBe('secretary');
     expect(call?.body).toContain(
-      '> Resolve the shared GitHub token rate-limit exhaustion blocker',
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720',
     );
+    expect(call?.body).toContain(
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    );
+    expect(call?.body).toContain('> Console E2E fixture comment.');
   } finally {
     await ctx.close();
     await localHarness.stop();
