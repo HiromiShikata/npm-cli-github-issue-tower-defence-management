@@ -197,7 +197,7 @@ describe('CreateEstimationIssueUseCase', () => {
 
       const storyObjectMap = new Map<string, StoryObject>([
         [
-          featureStory.name,
+          featureStory.id,
           { story: featureStory, storyIssue, issues: [issueInStory] },
         ],
       ]);

@@ -61,7 +61,7 @@ const createStoryOption = (name: string): StoryOption => ({
   description: '',
 });
 
-const buildStoryObjectMap = (
+const buildStoryObjectMapFixture = (
   entries: Array<{ storyName: string; storyIssue: Issue | null }>,
 ): StoryObjectMap => {
   const map: StoryObjectMap = new Map();
@@ -71,7 +71,7 @@ const buildStoryObjectMap = (
       storyIssue: entry.storyIssue,
       issues: [],
     };
-    map.set(entry.storyName, storyObject);
+    map.set(storyObject.story.id, storyObject);
   }
   return map;
 };
@@ -211,7 +211,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         );
       }
 
-      const storyObjectMap = buildStoryObjectMap(
+      const storyObjectMap = buildStoryObjectMapFixture(
         tc.storyNames.map((name, i) => ({
           storyName: name,
           storyIssue: tc.storyIssues[i],
@@ -239,7 +239,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       );
 
       tc.storyNames.forEach((name, i) => {
-        const storyObject = storyObjectMap.get(name);
+        const storyObject = storyObjectMap.get(createStoryOption(name).id);
         const expectedClosed = tc.expectedStoryIssueClosedState[i];
         if (expectedClosed === null) {
           expect(storyObject?.storyIssue).toBeNull();
@@ -267,7 +267,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(archivedIssue);
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -286,7 +286,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/owner/repo/issues/42',
       );
-      const storyObject = storyObjectMap.get('feature / X');
+      const storyObject = storyObjectMap.get('story-feature / X');
       expect(storyObject?.storyIssue?.isClosed).toBe(false);
       expect(storyObject?.storyIssue?.url).toBe(
         'https://github.com/owner/repo/issues/42',
@@ -294,7 +294,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
     });
 
     it('does not call searchIssues when closed story issue already found in params.issues', async () => {
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -317,7 +317,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
     it('skips reopen when searchIssues returns empty results for archived story', async () => {
       mockRepository.searchIssues.mockResolvedValue([]);
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -330,7 +330,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       expect(mockRepository.searchIssues).toHaveBeenCalledTimes(1);
       expect(mockRepository.getIssueByUrl).not.toHaveBeenCalled();
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
     });
 
     it('skips reopen when getIssueByUrl returns null for search result', async () => {
@@ -341,7 +341,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       ]);
       mockRepository.getIssueByUrl.mockResolvedValue(null);
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -352,7 +352,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
     });
 
     it('skips reopen when search result issue is not closed', async () => {
@@ -370,7 +370,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         }),
       );
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -381,7 +381,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
     });
 
     it('skips reopen when search result issue has no story label', async () => {
@@ -398,7 +398,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         }),
       );
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -409,7 +409,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
     });
 
     it('throws AggregateError when reopenIssueByUrl throws for archived issue found via searchIssues', async () => {
@@ -429,7 +429,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       mockRepository.getIssueByUrl.mockResolvedValue(archivedIssue);
       mockRepository.reopenIssueByUrl.mockRejectedValue(new Error('API error'));
 
-      const storyObjectMap = buildStoryObjectMap([
+      const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
       ]);
 
@@ -441,7 +441,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         }),
       ).rejects.toBeInstanceOf(AggregateError);
 
-      expect(storyObjectMap.get('feature / X')?.storyIssue).toBeNull();
+      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
     });
   });
 });
