@@ -1,5 +1,6 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import {
   extractAgentNameFromReportBody,
@@ -248,9 +249,18 @@ const countDispatchesInCurrentCycle = <
     },
     -1,
   );
+  const lastReactivationTriggerConfirmationIndex = params.comments.reduce(
+    (found, comment, index) =>
+      params.isTrustedAuthor(comment.author) &&
+      comment.content.startsWith(REACTIVATION_TRIGGER_COMMENT_HEAD)
+        ? index
+        : found,
+    -1,
+  );
   const cycleStart = Math.max(
     lastHumanCommentIndex,
     lastEscalationCommentIndex,
+    lastReactivationTriggerConfirmationIndex,
   );
   const reportsInCurrentCycle = params.comments
     .slice(cycleStart + 1)
