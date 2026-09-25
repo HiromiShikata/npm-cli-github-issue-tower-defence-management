@@ -1368,6 +1368,9 @@ export const handleDeleteStory = async (
     return badRequest('project does not have a story field');
   }
   const projectStory = project.story;
+  if (projectStory.workflowManagementStory.id === storyOptionId) {
+    return badRequest('cannot delete the workflow management story');
+  }
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
@@ -1389,9 +1392,6 @@ export const handleDeleteStory = async (
     return resolved;
   }
   const { storyOption, freshStories } = resolved;
-  if (projectStory.workflowManagementStory.id === storyOptionId) {
-    return badRequest('cannot delete the workflow management story');
-  }
   const deleteChildTasks = body.deleteChildTasks !== false;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);

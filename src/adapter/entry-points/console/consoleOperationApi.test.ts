@@ -5051,6 +5051,27 @@ describe('consoleOperationApi', () => {
       });
     });
 
+    it('rejects deleting the workflow management story without fetching the fresh project or the story object map', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const wmsId = story.workflowManagementStory.id;
+      const localGetProject = jest.fn();
+      const ctx: ConsoleOperationContext = {
+        ...deleteStoryContext(p),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn(),
+          getProject: localGetProject,
+        }),
+      };
+      await handleDeleteStory(ctx, {
+        pjcode: 'acme',
+        storyOptionId: wmsId,
+      });
+      expect(localGetProject).not.toHaveBeenCalled();
+      expect(issueRepository.getStoryObjectMap).not.toHaveBeenCalled();
+    });
+
     it('closes the story issue when one exists in the project', async () => {
       const p = projectWithStoriesToDelete();
       const { story } = p;
