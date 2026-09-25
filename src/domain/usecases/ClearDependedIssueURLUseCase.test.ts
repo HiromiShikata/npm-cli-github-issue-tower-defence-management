@@ -1116,105 +1116,88 @@ describe('ClearDependedIssueURLUseCase', () => {
         ]);
       });
 
-      it('should keep the live-confirmed-open URL and remove the live-confirmed-not-found URL when a same-repo issue has two absent depended-issue URLs with mixed live-check outcomes in the same run, listed open-then-not-found', async () => {
-        jest.clearAllMocks();
-        const liveOpenDependedIssueUrl =
-          'https://github.com/testowner/testrepo/issues/970';
-        const liveNotFoundDependedIssueUrl =
-          'https://github.com/testowner/testrepo/issues/971';
-        const issueWithMixedOutcomeDependencies = {
-          ...sameRepoDependingIssue,
+      const mixedOutcomeOrderingCases: {
+        name: string;
+        liveOpenDependedIssueUrl: string;
+        liveNotFoundDependedIssueUrl: string;
+        dependedIssueUrls: string[];
+      }[] = [
+        {
+          name: 'listed open-then-not-found',
+          liveOpenDependedIssueUrl:
+            'https://github.com/testowner/testrepo/issues/970',
+          liveNotFoundDependedIssueUrl:
+            'https://github.com/testowner/testrepo/issues/971',
           dependedIssueUrls: [
-            liveOpenDependedIssueUrl,
-            liveNotFoundDependedIssueUrl,
+            'https://github.com/testowner/testrepo/issues/970',
+            'https://github.com/testowner/testrepo/issues/971',
           ],
-        };
-        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
-          async (url) =>
-            url === liveOpenDependedIssueUrl
-              ? {
-                  state: 'open',
-                  merged: false,
-                  isPullRequest: false,
-                  title: 'x',
-                }
-              : Promise.reject(new Error('HTTP 404 Not Found')),
-        );
-        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
-        await useCase.run({
-          project: basicProject,
-          issues: [issueWithMixedOutcomeDependencies],
-          cacheUsed: false,
-        });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
-          0,
-        );
-        expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual([
-          [
-            basicProject,
-            'fieldId',
-            issueWithMixedOutcomeDependencies,
-            liveOpenDependedIssueUrl,
-          ],
-        ]);
-        expect(mockIssueRepository.createComment.mock.calls).toEqual([
-          [
-            issueWithMixedOutcomeDependencies,
-            `Dependency removed:\n- ${liveNotFoundDependedIssueUrl}`,
-          ],
-        ]);
-      });
-
-      it('should keep the live-confirmed-open URL and remove the live-confirmed-not-found URL when a same-repo issue has two absent depended-issue URLs with mixed live-check outcomes in the same run, listed not-found-then-open', async () => {
-        jest.clearAllMocks();
-        const liveOpenDependedIssueUrl =
-          'https://github.com/testowner/testrepo/issues/972';
-        const liveNotFoundDependedIssueUrl =
-          'https://github.com/testowner/testrepo/issues/973';
-        const issueWithMixedOutcomeDependencies = {
-          ...sameRepoDependingIssue,
+        },
+        {
+          name: 'listed not-found-then-open',
+          liveOpenDependedIssueUrl:
+            'https://github.com/testowner/testrepo/issues/972',
+          liveNotFoundDependedIssueUrl:
+            'https://github.com/testowner/testrepo/issues/973',
           dependedIssueUrls: [
-            liveNotFoundDependedIssueUrl,
-            liveOpenDependedIssueUrl,
+            'https://github.com/testowner/testrepo/issues/973',
+            'https://github.com/testowner/testrepo/issues/972',
           ],
-        };
-        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
-          async (url) =>
-            url === liveOpenDependedIssueUrl
-              ? {
-                  state: 'open',
-                  merged: false,
-                  isPullRequest: false,
-                  title: 'x',
-                }
-              : Promise.reject(new Error('HTTP 404 Not Found')),
-        );
-        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
-        await useCase.run({
-          project: basicProject,
-          issues: [issueWithMixedOutcomeDependencies],
-          cacheUsed: false,
-        });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
-          0,
-        );
-        expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual([
-          [
-            basicProject,
-            'fieldId',
-            issueWithMixedOutcomeDependencies,
-            liveOpenDependedIssueUrl,
-          ],
-        ]);
-        expect(mockIssueRepository.createComment.mock.calls).toEqual([
-          [
-            issueWithMixedOutcomeDependencies,
-            `Dependency removed:\n- ${liveNotFoundDependedIssueUrl}`,
-          ],
-        ]);
-      });
+        },
+      ];
+      it.each(mixedOutcomeOrderingCases)(
+        'should keep the live-confirmed-open URL and remove the live-confirmed-not-found URL when a same-repo issue has two absent depended-issue URLs with mixed live-check outcomes in the same run, $name',
+        async ({
+          liveOpenDependedIssueUrl,
+          liveNotFoundDependedIssueUrl,
+          dependedIssueUrls,
+        }) => {
+          jest.clearAllMocks();
+          const issueWithMixedOutcomeDependencies = {
+            ...sameRepoDependingIssue,
+            dependedIssueUrls,
+          };
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+            async (url) =>
+              url === liveOpenDependedIssueUrl
+                ? {
+                    state: 'open',
+                    merged: false,
+                    isPullRequest: false,
+                    title: 'x',
+                  }
+                : Promise.reject(new Error('HTTP 404 Not Found')),
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run({
+            project: basicProject,
+            issues: [issueWithMixedOutcomeDependencies],
+            cacheUsed: false,
+          });
+          expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+            0,
+          );
+          expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual(
+            [
+              [
+                basicProject,
+                'fieldId',
+                issueWithMixedOutcomeDependencies,
+                liveOpenDependedIssueUrl,
+              ],
+            ],
+          );
+          expect(mockIssueRepository.createComment.mock.calls).toEqual([
+            [
+              issueWithMixedOutcomeDependencies,
+              `Dependency removed:\n- ${liveNotFoundDependedIssueUrl}`,
+            ],
+          ]);
+        },
+      );
     });
   });
 
