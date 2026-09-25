@@ -244,9 +244,7 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour effect on concurrent limit'
       ].join('\n'),
     );
 
-    const settings = loadLiveSessionOauthTokenSelectionSettings(
-      configPath,
-    );
+    const settings = loadLiveSessionOauthTokenSelectionSettings(configPath);
 
     const result = useCase.run(
       [
