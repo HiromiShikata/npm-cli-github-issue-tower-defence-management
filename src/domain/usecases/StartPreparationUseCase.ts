@@ -501,25 +501,8 @@ export class StartPreparationUseCase {
     const runningIssueUrls = new Set(
       this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
     );
-    const awaitingWorkspaceIssues = allOpenedIssues.filter(
-      (issue) =>
-        issue.status === AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed,
-    );
     const allProjectOpenIssues =
       await this.issueRepository.getAllOpened(project);
-    const storyUnsetAwaitingWorkspaceIssueUrls = allProjectOpenIssues
-      .filter(
-        (issue) =>
-          issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
-          !issue.isClosed &&
-          issue.story === null,
-      )
-      .map((issue) => issue.url);
-    if (storyUnsetAwaitingWorkspaceIssueUrls.length > 0) {
-      console.warn(
-        `Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: ${storyUnsetAwaitingWorkspaceIssueUrls.join(', ')}`,
-      );
-    }
     const currentPreparationIssueCount = allOpenedIssues.filter(
       (issue) => issue.status === PREPARATION_STATUS_NAME,
     ).length;
@@ -536,6 +519,53 @@ export class StartPreparationUseCase {
     };
 
     const now = new Date();
+
+    const isUnstoriedAwaitingWorkspaceIssue = (issue: Issue): boolean =>
+      issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
+
+    const storiedAwaitingWorkspaceIssues = allOpenedIssues.filter(
+      (issue) =>
+        issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
+        !issue.isClosed &&
+        !isUnstoriedAwaitingWorkspaceIssue(issue),
+    );
+    const unstoriedAwaitingWorkspaceIssuesOldestFirst = allProjectOpenIssues
+      .filter(
+        (issue) =>
+          issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
+          !issue.isClosed &&
+          isUnstoriedAwaitingWorkspaceIssue(issue),
+      )
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const nextEligibleUnstoriedIssueIndex =
+      unstoriedAwaitingWorkspaceIssuesOldestFirst.findIndex(
+        (issue) =>
+          this.spawnCandidateExclusionReasonOf(
+            issue,
+            params.allowedIssueAuthors,
+            params.manager,
+            now,
+          ) === null,
+      );
+    const awaitingWorkspaceIssues: Issue[] =
+      nextEligibleUnstoriedIssueIndex === -1
+        ? [
+            ...storiedAwaitingWorkspaceIssues,
+            ...unstoriedAwaitingWorkspaceIssuesOldestFirst,
+          ]
+        : [
+            unstoriedAwaitingWorkspaceIssuesOldestFirst[
+              nextEligibleUnstoriedIssueIndex
+            ],
+            ...storiedAwaitingWorkspaceIssues,
+            ...unstoriedAwaitingWorkspaceIssuesOldestFirst.slice(
+              0,
+              nextEligibleUnstoriedIssueIndex,
+            ),
+            ...unstoriedAwaitingWorkspaceIssuesOldestFirst.slice(
+              nextEligibleUnstoriedIssueIndex + 1,
+            ),
+          ];
 
     const maxConcurrentWorkers = params.maxConcurrentWorkers ?? null;
     const graphqlRateLimitFloor = params.graphqlRateLimitFloor ?? null;

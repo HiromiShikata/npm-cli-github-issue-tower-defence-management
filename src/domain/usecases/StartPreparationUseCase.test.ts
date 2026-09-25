@@ -2475,6 +2475,7 @@ describe('StartPreparationUseCase', () => {
       labels: [],
       status: 'Awaiting Workspace',
       state: 'OPEN',
+      story: 'Workflow blocker',
     });
 
     const issueInBlockedRepo = createMockIssue({
@@ -2483,6 +2484,7 @@ describe('StartPreparationUseCase', () => {
       labels: [],
       status: 'Awaiting Workspace',
       state: 'OPEN',
+      story: 'Default Story',
     });
 
     const workflowBlockerMap: StoryObjectMap = new Map();
@@ -6127,19 +6129,21 @@ describe('StartPreparationUseCase', () => {
         'agent-option-systems-analyst',
         'systems-analyst',
       );
+      const noStoryIssueWithAgentSet = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: 'systems-analyst',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: 'systems-analyst',
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithAgentSet]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithAgentSet,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -6170,19 +6174,21 @@ describe('StartPreparationUseCase', () => {
 
     it('dispatches the explicitly designated agent even when story is NO STORY', async () => {
       const project = projectWithAgentOption('agent-option-liaison', 'liaison');
+      const noStoryIssueWithLiaisonAgent = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: 'liaison',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: 'liaison',
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithLiaisonAgent]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithLiaisonAgent,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -6212,19 +6218,21 @@ describe('StartPreparationUseCase', () => {
 
     it('dispatches to defaultAgentName without setting the Agent field when story is NO STORY and agent field is null', async () => {
       const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      const noStoryIssueWithNoAgent = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: null,
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: null,
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithNoAgent]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithNoAgent,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -6922,7 +6930,7 @@ describe('StartPreparationUseCase', () => {
     expect(result).toBeNull();
   });
 
-  it('should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset', async () => {
+  it('should never warn about Story-unset Awaiting Workspace issues and should spawn them as Tier B candidates alongside real-story issues', async () => {
     const issueWithStory = createMockIssue({
       url: 'https://github.com/user/repo/issues/31',
       title: 'Issue With Story',
@@ -6937,6 +6945,7 @@ describe('StartPreparationUseCase', () => {
       status: 'Awaiting Workspace',
       number: 32,
       story: null,
+      createdAt: new Date('2020-01-01T00:00:00Z'),
     });
     const storyUnsetAwaitingWorkspaceIssueTwo = createMockIssue({
       url: 'https://github.com/user/repo/issues/33',
@@ -6944,6 +6953,7 @@ describe('StartPreparationUseCase', () => {
       status: 'Awaiting Workspace',
       number: 33,
       story: null,
+      createdAt: new Date('2020-01-02T00:00:00Z'),
     });
     const storyUnsetOtherStatusIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/34',
@@ -6987,55 +6997,236 @@ describe('StartPreparationUseCase', () => {
     const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
       String(call[0]).includes('Story is unset'),
     );
-    expect(storyUnsetWarningCalls).toHaveLength(1);
-    expect(storyUnsetWarningCalls[0][0]).toBe(
-      'Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: https://github.com/user/repo/issues/32, https://github.com/user/repo/issues/33',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(storyUnsetWarningCalls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        'https://github.com/user/repo/issues/32',
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i32',
+      ],
+    ]);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+      'aw',
+      [
+        'https://github.com/user/repo/issues/31',
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i31',
+      ],
+    ]);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
+      'aw',
+      [
+        'https://github.com/user/repo/issues/33',
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i33',
+      ],
+    ]);
     consoleWarnSpy.mockRestore();
   });
 
-  it('should not warn about Story-unset issues when every Awaiting Workspace issue has a Story', async () => {
-    const issueWithStory = createMockIssue({
-      url: 'https://github.com/user/repo/issues/41',
-      title: 'Issue With Story',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 41,
-      story: 'Default Story',
+  describe('two-tier no-story spawn candidate ordering', () => {
+    it('spawns a no-story Awaiting Workspace item with no dependency, no pending trigger and an empty Agent field using the default agent in the same run', async () => {
+      const noStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/50',
+        title: 'No Story Issue',
+        status: 'Awaiting Workspace',
+        number: 50,
+        story: null,
+        agent: null,
+        dependedIssueUrls: [],
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getAllOpened.mockResolvedValue([noStoryIssue]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          'https://github.com/user/repo/issues/50',
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          'i50',
+        ],
+      ]);
     });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithStory]),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithStory]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
+
+    it('with 3 free slots, spawns the oldest Tier B item followed by the first 2 Tier A items in Story option order when 130 Tier B items and 5 Tier A items are eligible', async () => {
+      const tierBIssues: Issue[] = Array.from({ length: 130 }, (_, index) =>
+        createMockIssue({
+          url: `https://github.com/user/repo/issues/${2000 + index}`,
+          number: 2000 + index,
+          title: `No Story Issue ${index}`,
+          status: 'Awaiting Workspace',
+          story: null,
+          agent: null,
+          dependedIssueUrls: [],
+          createdAt: new Date(Date.UTC(2020, 0, 1, 0, 0, index)),
+        }),
+      );
+      const tierAIssues: Issue[] = Array.from({ length: 5 }, (_, index) =>
+        createMockIssue({
+          url: `https://github.com/user/repo/issues/${3000 + index}`,
+          number: 3000 + index,
+          title: `Real Story Issue ${index}`,
+          status: 'Awaiting Workspace',
+          story: 'Default Story',
+          agent: null,
+          dependedIssueUrls: [],
+        }),
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(tierAIssues),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        ...tierAIssues,
+        ...tierBIssues,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 3,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          tierBIssues[0].url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${tierBIssues[0].number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+        'aw',
+        [
+          tierAIssues[0].url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${tierAIssues[0].number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
+        'aw',
+        [
+          tierAIssues[1].url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${tierAIssues[1].number}`,
+        ],
+      ]);
     });
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
+
+    it('with 3 free slots, spawns the 3 oldest Tier B items when 130 Tier B items are eligible and no Tier A item is eligible', async () => {
+      const tierBIssues: Issue[] = Array.from({ length: 130 }, (_, index) =>
+        createMockIssue({
+          url: `https://github.com/user/repo/issues/${4000 + index}`,
+          number: 4000 + index,
+          title: `No Story Issue ${index}`,
+          status: 'Awaiting Workspace',
+          story: null,
+          agent: null,
+          dependedIssueUrls: [],
+          createdAt: new Date(Date.UTC(2021, 0, 1, 0, 0, index)),
+        }),
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getAllOpened.mockResolvedValue(tierBIssues);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 3,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+      [0, 1, 2].forEach((slotIndex) => {
+        expect(mockLocalCommandRunner.runCommand.mock.calls[slotIndex]).toEqual(
+          [
+            'aw',
+            [
+              tierBIssues[slotIndex].url,
+              'agent1',
+              'claude-opus',
+              '--configFilePath',
+              '/path/to/config.yml',
+              '--branch',
+              `i${tierBIssues[slotIndex].number}`,
+            ],
+          ],
+        );
+      });
     });
-    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Story is unset'),
-    );
-    expect(storyUnsetWarningCalls).toHaveLength(0);
-    consoleWarnSpy.mockRestore();
   });
 
   describe('token in-flight count refresh', () => {
