@@ -6260,6 +6260,47 @@ describe('StartPreparationUseCase', () => {
         'agent1',
       );
     });
+
+    it('dispatches to defaultAgentName without setting the Agent field when story is null and agent field is null', async () => {
+      const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      const nullStoryIssueWithNoAgent = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story: null,
+        agent: null,
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        nullStoryIssueWithNoAgent,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'agent1',
+      );
+    });
   });
 
   it('should select a token whose legacy per-model limit is rejected but the unified seven_day key is absent', async () => {
