@@ -14,6 +14,7 @@ import {
   TODO_STATUS_NAME,
   WorkflowStatusDefinition,
 } from '../entities/WorkflowStatus';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class StaleProjectItemError extends Error {
   constructor(public readonly itemId: string) {
@@ -30,7 +31,7 @@ export class SetupTowerDefenceProjectUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'updateStatus'
+      'getAllIssues' | 'updateStatus' | 'get'
     >,
     private readonly statusDefaultRepository: Pick<
       StatusDefaultRepository,
@@ -136,6 +137,16 @@ export class SetupTowerDefenceProjectUseCase {
           (issue.status === DONE_STATUS_NAME || issue.status === null),
       );
       for (const issue of limboIssues) {
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status', 'state'],
+          skippedWriteDescription: `the ${AWAITING_WORKSPACE_STATUS_NAME} Status write of an open item without an active Status`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
         try {
           await this.issueRepository.updateStatus(
             project,

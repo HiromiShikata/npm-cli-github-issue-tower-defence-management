@@ -87,7 +87,7 @@ export class StartPreparationUseCase {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
-      | 'getIssueByUrl'
+      | 'get'
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
@@ -827,9 +827,7 @@ export class StartPreparationUseCase {
         continue;
       }
 
-      const refetchedIssue = await this.issueRepository.getIssueByUrl(
-        issue.url,
-      );
+      const refetchedIssue = await this.issueRepository.get(issue.url, project);
       if (
         refetchedIssue === null ||
         refetchedIssue.dependedIssueUrls.length > 0 ||

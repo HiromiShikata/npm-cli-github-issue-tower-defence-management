@@ -7314,7 +7314,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([awaitingIssue]),
     );
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+    mockIssueRepository.get.mockResolvedValue(
       createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
@@ -7359,7 +7359,7 @@ describe('StartPreparationUseCase', () => {
       }),
     },
     {
-      label: 'does not spawn when getIssueByUrl returns null',
+      label: 'does not spawn when the live item read returns null',
       refetchedIssue: null,
     },
   ])(
@@ -7378,7 +7378,7 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([awaitingIssue]),
       );
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(refetchedIssue);
+      mockIssueRepository.get.mockResolvedValue(refetchedIssue);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -7471,7 +7471,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
-      | 'getIssueByUrl'
+      | 'get'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -7485,7 +7485,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
     setIssueAgentField: jest.fn(),
     removeLabel: jest.fn(),
-    getIssueByUrl: jest.fn().mockResolvedValue(null),
+    get: jest.fn().mockResolvedValue(null),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -7784,7 +7784,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
-        getIssueByUrl: jest.fn().mockResolvedValue(null),
+        get: jest.fn().mockResolvedValue(null),
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
@@ -7875,7 +7875,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -7974,7 +7974,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -8059,7 +8059,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -8148,7 +8148,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
-        getIssueByUrl: jest.fn().mockResolvedValue(null),
+        get: jest.fn().mockResolvedValue(null),
         ...issueRepositoryOverrides,
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },

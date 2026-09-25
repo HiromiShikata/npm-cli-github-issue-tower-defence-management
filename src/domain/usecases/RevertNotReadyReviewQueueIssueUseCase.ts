@@ -12,6 +12,8 @@ import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequirin
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { Project } from '../entities/Project';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -56,6 +58,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'getPullRequestChangedFilePaths'
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
+      | 'get'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -154,6 +157,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       }
 
       if (issue.dependedIssueUrls.length > 0) {
+        if (
+          !(await this.isSnapshotStatusStillCurrent(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.name,
+          ))
+        ) {
+          continue;
+        }
         await this.issueRepository.updateStatus(
           project,
           issue,
@@ -167,6 +179,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       }
 
       if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
+        if (
+          !(await this.isSnapshotStatusStillCurrent(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.name,
+          ))
+        ) {
+          continue;
+        }
         await this.issueRepository.updateStatus(
           project,
           issue,
@@ -227,6 +248,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 isNoStory: false,
               });
               if (repetition.type === 'escalateSilentRedispatch') {
+                if (
+                  !(await this.isSnapshotStatusStillCurrent(
+                    project,
+                    issue,
+                    failedPreparationStatusOption.name,
+                  ))
+                ) {
+                  continue;
+                }
                 await this.issueRepository.updateStatus(
                   project,
                   issue,
@@ -239,6 +269,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 repetition.type === 'escalateReportingLoop' ||
                 repetition.type === 'escalateDispatchLoop'
               ) {
+                if (
+                  !(await this.isSnapshotStatusStillCurrent(
+                    project,
+                    issue,
+                    failedPreparationStatusOption.name,
+                  ))
+                ) {
+                  continue;
+                }
                 await this.issueRepository.updateStatus(
                   project,
                   issue,
@@ -248,6 +287,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 continue;
               }
             }
+          }
+          if (
+            !(await this.isSnapshotStatusStillCurrent(
+              project,
+              issue,
+              awaitingWorkspaceStatusOption.name,
+            ))
+          ) {
+            continue;
           }
           try {
             await this.issueRepository.updateStatus(
@@ -286,6 +334,21 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         throw error;
       }
     }
+  };
+
+  private isSnapshotStatusStillCurrent = async (
+    project: Project,
+    issue: Issue,
+    plannedStatusName: string,
+  ): Promise<boolean> => {
+    const staleness = await issueSnapshotStalenessCheck({
+      issueRepository: this.issueRepository,
+      project,
+      snapshotIssue: issue,
+      checkedFieldNames: ['status'],
+      skippedWriteDescription: `the ${plannedStatusName} Status write of an ${AWAITING_OWNER_STATUS_NAME} item`,
+    });
+    return staleness.type === 'current';
   };
 
   private resolveRelatedOpenPrUrlsForUncoveredIssues = async (

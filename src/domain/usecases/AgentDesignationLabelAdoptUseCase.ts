@@ -3,6 +3,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export const adoptIssueAgentDesignationLabel = async (
   issue: Issue,
@@ -12,7 +13,10 @@ export const adoptIssueAgentDesignationLabel = async (
     ProjectRepository,
     'getByUrl' | 'createField' | 'updateAgentList'
   >,
-  issueRepository: Pick<IssueRepository, 'setIssueAgentField' | 'removeLabel'>,
+  issueRepository: Pick<
+    IssueRepository,
+    'setIssueAgentField' | 'removeLabel' | 'get'
+  >,
   agentDesignationLabelsToKeep?: string[] | null,
   defaultAgentName?: string | null,
 ): Promise<void> => {
@@ -21,6 +25,19 @@ export const adoptIssueAgentDesignationLabel = async (
   );
   if (agentLabel === undefined) {
     if (defaultAgentName && issue.agent === null) {
+      const staleness = await issueSnapshotStalenessCheck({
+        issueRepository,
+        project,
+        snapshotIssue: issue,
+        checkedFieldNames: ['agent'],
+        skippedWriteDescription: `the default Agent write of ${defaultAgentName}`,
+      });
+      if (staleness.type === 'stale') {
+        issue.agent = staleness.liveIssue.agent;
+      }
+      if (staleness.type !== 'current') {
+        return;
+      }
       const agentOptionId = await ensureAgentOptionAndGetId(
         projectRepository,
         project,
@@ -72,7 +89,7 @@ export class AgentDesignationLabelAdoptUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'setIssueAgentField' | 'removeLabel'
+      'setIssueAgentField' | 'removeLabel' | 'get'
     >,
   ) {}
 

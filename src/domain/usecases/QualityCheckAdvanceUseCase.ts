@@ -6,10 +6,14 @@ import {
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class QualityCheckAdvanceUseCase {
   constructor(
-    private readonly issueRepository: Pick<IssueRepository, 'updateStatus'>,
+    private readonly issueRepository: Pick<
+      IssueRepository,
+      'updateStatus' | 'get'
+    >,
   ) {}
 
   run = async (params: {
@@ -54,6 +58,16 @@ export class QualityCheckAdvanceUseCase {
     const errors: unknown[] = [];
     for (const issue of itemsToAdvance) {
       try {
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project: params.project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status', 'isClosed'],
+          skippedWriteDescription: `the ${DONE_STATUS_NAME} Status write of a ${qualityCheckStatusName} item with a merged pull request`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
         await this.issueRepository.updateStatus(
           params.project,
           issue,

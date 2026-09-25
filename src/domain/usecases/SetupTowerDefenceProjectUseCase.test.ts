@@ -1045,6 +1045,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [openDoneIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockResolvedValue(openDoneIssue);
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const mockStatusDefaultRepository =
@@ -1086,6 +1087,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [openNullStatusIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockResolvedValue(openNullStatusIssue);
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const mockStatusDefaultRepository =
@@ -1415,6 +1417,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [staleItemIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockResolvedValue(staleItemIssue);
     mockIssueRepository.updateStatus.mockRejectedValue(
       new StaleProjectItemError('PVTI_stale'),
     );
@@ -1453,6 +1456,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [limboIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockResolvedValue(limboIssue);
     mockIssueRepository.updateStatus.mockRejectedValue(
       new Error('Network timeout'),
     );

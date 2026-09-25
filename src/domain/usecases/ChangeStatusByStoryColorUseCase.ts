@@ -6,13 +6,14 @@ import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { Member } from '../entities/Member';
 import { Issue } from '../entities/Issue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(
     readonly dateRepository: Pick<DateRepository, 'now'>,
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'createComment' | 'getIssueOrPullRequestComments'
+      'updateStatus' | 'createComment' | 'getIssueOrPullRequestComments' | 'get'
     >,
   ) {}
 
@@ -43,6 +44,15 @@ export class ChangeStatusByStoryColorUseCase {
           if (issue.status && issue.status === ICEBOX_STATUS_NAME) {
             continue;
           }
+          if (
+            !(await this.isSnapshotStoryAndStatusStillCurrent(
+              input.project,
+              issue,
+              disabledStatusObject.name,
+            ))
+          ) {
+            continue;
+          }
           await this.issueRepository.updateStatus(
             input.project,
             issue,
@@ -66,6 +76,15 @@ export class ChangeStatusByStoryColorUseCase {
             );
             continue;
           }
+          if (
+            !(await this.isSnapshotStoryAndStatusStillCurrent(
+              input.project,
+              issue,
+              firstStatus.name,
+            ))
+          ) {
+            continue;
+          }
           await this.issueRepository.updateStatus(
             input.project,
             issue,
@@ -78,6 +97,21 @@ export class ChangeStatusByStoryColorUseCase {
         }
       }
     }
+  };
+
+  private isSnapshotStoryAndStatusStillCurrent = async (
+    project: Project,
+    issue: Issue,
+    plannedStatusName: string,
+  ): Promise<boolean> => {
+    const staleness = await issueSnapshotStalenessCheck({
+      issueRepository: this.issueRepository,
+      project,
+      snapshotIssue: issue,
+      checkedFieldNames: ['story', 'status'],
+      skippedWriteDescription: `the ${plannedStatusName} Status write`,
+    });
+    return staleness.type === 'current';
   };
 
   private createCommentWithDedup = async (

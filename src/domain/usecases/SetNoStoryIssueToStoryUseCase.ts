@@ -2,9 +2,12 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class SetNoStoryIssueToStoryUseCase {
-  constructor(readonly issueRepository: Pick<IssueRepository, 'updateStory'>) {}
+  constructor(
+    readonly issueRepository: Pick<IssueRepository, 'updateStory' | 'get'>,
+  ) {}
 
   run = async (input: {
     targetDates: Date[];
@@ -38,6 +41,16 @@ export class SetNoStoryIssueToStoryUseCase {
     }
     for (const issue of input.issues) {
       if (!isTargetIssue(issue)) {
+        continue;
+      }
+      const staleness = await issueSnapshotStalenessCheck({
+        issueRepository: this.issueRepository,
+        project: input.project,
+        snapshotIssue: issue,
+        checkedFieldNames: ['story'],
+        skippedWriteDescription: `the ${NO_STORY_STORY_NAME} Story write`,
+      });
+      if (staleness.type !== 'current') {
         continue;
       }
       await this.issueRepository.updateStory(

@@ -1,12 +1,13 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue'
+      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue' | 'get'
     >,
   ) {}
 
@@ -43,6 +44,15 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
+        if (
+          !(await this.isSnapshotStoryStillCurrent(
+            input.project,
+            issue,
+            story.workflowManagementStory.name,
+          ))
+        ) {
+          continue;
+        }
         await this.issueRepository.updateStory(
           { ...input.project, story },
           issue,
@@ -102,6 +112,15 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         await this.notifyUnmatchedStoryLabel(issue, storyLabel, labelSuffix);
         continue;
       }
+      if (
+        !(await this.isSnapshotStoryStillCurrent(
+          input.project,
+          issue,
+          matchingStory.name,
+        ))
+      ) {
+        continue;
+      }
 
       await this.issueRepository.updateStory(
         { ...input.project, story },
@@ -111,6 +130,21 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+
+  private isSnapshotStoryStillCurrent = async (
+    project: Project,
+    issue: Issue,
+    plannedStoryName: string,
+  ): Promise<boolean> => {
+    const staleness = await issueSnapshotStalenessCheck({
+      issueRepository: this.issueRepository,
+      project,
+      snapshotIssue: issue,
+      checkedFieldNames: ['story'],
+      skippedWriteDescription: `the ${plannedStoryName} Story write`,
+    });
+    return staleness.type === 'current';
   };
 
   static buildUnmatchedStoryLabelTitle = (

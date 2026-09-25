@@ -228,6 +228,9 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   describe('run', () => {
     testCases.forEach(({ name, input, expectedCalls }) => {
       it(name, async () => {
+        mockIssueRepository.get.mockResolvedValue(
+          input.storyObjectMap.get('Story 1')?.issues[0] ?? null,
+        );
         await useCase.run(input);
 
         expect(mockIssueRepository.createComment.mock.calls).toEqual(
@@ -299,6 +302,9 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         assignees: [manager],
       };
 
+      mockIssueRepository.get.mockResolvedValue(
+        managerAssignedIssueWithoutStatus,
+      );
       await useCase.run(runInput(managerAssignedIssueWithoutStatus));
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -357,6 +363,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         assignees: [],
       };
 
+      mockIssueRepository.get.mockResolvedValue(unassignedIssueWithoutStatus);
       await useCase.run(runInput(unassignedIssueWithoutStatus));
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -407,6 +414,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         assignees: [nonManagerAssignee],
       };
 
+      mockIssueRepository.get.mockResolvedValue(assignedIceboxIssue);
       await useCase.run(runInput(assignedIceboxIssue));
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -427,6 +435,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         assignees: [],
       };
 
+      mockIssueRepository.get.mockResolvedValue(unassignedIceboxIssue);
       await useCase.run(runInput(unassignedIceboxIssue));
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
