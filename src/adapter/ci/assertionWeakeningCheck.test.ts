@@ -23,7 +23,7 @@ const writeFakeGhExecutableRespondingByRepoIssuePath = (
     .map(([repoIssuePath, body], index) => {
       const bodyFilePath = path.join(tmpDir, `issue-body-${index}.txt`);
       fs.writeFileSync(bodyFilePath, body);
-      return `  *"${repoIssuePath}"*) cat "${bodyFilePath}" ;;`;
+      return `  "api ${repoIssuePath} --jq .body // empty") cat "${bodyFilePath}" ;;`;
     })
     .join('\n');
   const ghScriptContent = `#!/usr/bin/env bash
