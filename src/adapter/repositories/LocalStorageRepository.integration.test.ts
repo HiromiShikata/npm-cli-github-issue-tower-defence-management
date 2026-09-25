@@ -139,4 +139,62 @@ describe('LocalStorageRepository', () => {
       });
     });
   });
+
+  describe('tryCreateExclusive', () => {
+    const dirPath = 'tmp/test/LocalStorageRepository/exclusive';
+    const lockPath = `${dirPath}/.write.lock`;
+
+    test('returns true on first creation and false while the path still exists', () => {
+      fs.mkdirSync(dirPath, { recursive: true });
+      if (fs.existsSync(lockPath)) {
+        fs.unlinkSync(lockPath);
+      }
+
+      const first = repository.tryCreateExclusive(lockPath);
+      const second = repository.tryCreateExclusive(lockPath);
+
+      expect(first).toBe(true);
+      expect(second).toBe(false);
+      expect(fs.existsSync(lockPath)).toBe(true);
+    });
+
+    test('returns true again once the previously created path has been removed', () => {
+      fs.mkdirSync(dirPath, { recursive: true });
+      if (fs.existsSync(lockPath)) {
+        fs.unlinkSync(lockPath);
+      }
+      expect(repository.tryCreateExclusive(lockPath)).toBe(true);
+      fs.unlinkSync(lockPath);
+
+      const result = repository.tryCreateExclusive(lockPath);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('statMtimeMs', () => {
+    const dirPath = 'tmp/test/LocalStorageRepository/mtime';
+    const filePath = `${dirPath}/file.txt`;
+
+    test('returns a number for an existing file', () => {
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(filePath, 'content', 'utf8');
+
+      const result = repository.statMtimeMs(filePath);
+
+      expect(typeof result).toBe('number');
+      expect(result).toBe(fs.statSync(filePath).mtimeMs);
+    });
+
+    test('returns null for a missing path', () => {
+      const missingPath = `${dirPath}/does-not-exist.txt`;
+      if (fs.existsSync(missingPath)) {
+        fs.unlinkSync(missingPath);
+      }
+
+      const result = repository.statMtimeMs(missingPath);
+
+      expect(result).toBeNull();
+    });
+  });
 });

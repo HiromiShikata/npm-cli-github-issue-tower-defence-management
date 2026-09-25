@@ -1,6 +1,17 @@
 import { localStorageCacheBaseDirectory } from './localStorageCacheDirectory';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
+export type Sleep = (milliseconds: number) => Promise<void>;
+
+const realSleep: Sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export const PROJECT_CACHE_LOCK_STALE_TIMEOUT_MS = 30_000;
+
+export const PROJECT_CACHE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
+
+export const PROJECT_CACHE_LOCK_RETRY_DELAY_MS = 50;
+
 export class LocalStorageCacheRepository {
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
@@ -75,5 +86,38 @@ export class LocalStorageCacheRepository {
     const tmpPath = `${finalPath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
     this.localStorageRepository.write(tmpPath, JSON.stringify(value));
     this.localStorageRepository.rename(tmpPath, finalPath);
+  };
+  withLock = async <T>(
+    key: string,
+    fn: () => Promise<T>,
+    sleep: Sleep = realSleep,
+    now: () => number = Date.now,
+  ): Promise<T> => {
+    const dirPath = `${this.cachePath}/${key}`;
+    const lockPath = `${dirPath}/.write.lock`;
+    this.localStorageRepository.mkdir(dirPath);
+    const deadline = now() + PROJECT_CACHE_LOCK_ACQUIRE_TIMEOUT_MS;
+    for (;;) {
+      if (this.localStorageRepository.tryCreateExclusive(lockPath)) {
+        break;
+      }
+      const mtimeMs = this.localStorageRepository.statMtimeMs(lockPath);
+      if (
+        mtimeMs !== null &&
+        now() - mtimeMs >= PROJECT_CACHE_LOCK_STALE_TIMEOUT_MS
+      ) {
+        this.localStorageRepository.remove(lockPath);
+        continue;
+      }
+      if (now() >= deadline) {
+        throw new Error(`Timed out waiting for project cache lock: ${key}`);
+      }
+      await sleep(PROJECT_CACHE_LOCK_RETRY_DELAY_MS);
+    }
+    try {
+      return await fn();
+    } finally {
+      this.localStorageRepository.remove(lockPath);
+    }
   };
 }

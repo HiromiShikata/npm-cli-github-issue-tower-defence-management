@@ -88,7 +88,7 @@ const buildCacheStub = (overrides?: {
   set?: jest.Mock;
 }): Pick<
   LocalStorageCacheRepository,
-  'getLatest' | 'set' | 'getSingle' | 'setSingle'
+  'getLatest' | 'set' | 'getSingle' | 'setSingle' | 'withLock'
 > & {
   getLatest: jest.Mock;
   set: jest.Mock;
@@ -97,6 +97,7 @@ const buildCacheStub = (overrides?: {
   set: overrides?.set ?? jest.fn().mockResolvedValue(undefined),
   getSingle: jest.fn().mockResolvedValue(null),
   setSingle: jest.fn().mockResolvedValue(undefined),
+  withLock: jest.fn(async (_key, fn) => fn()),
 });
 
 describe('GraphqlProjectRepository disk cache', () => {

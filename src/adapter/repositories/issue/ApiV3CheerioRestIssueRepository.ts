@@ -713,7 +713,7 @@ export class ApiV3CheerioRestIssueRepository
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
-      'getSingle' | 'setSingle'
+      'getSingle' | 'setSingle' | 'withLock'
     >,
     readonly projectRepository: Pick<ProjectRepository, 'getProject'>,
     readonly dateRepository: DateRepository,
@@ -1589,13 +1589,15 @@ export class ApiV3CheerioRestIssueRepository
         ),
       });
     }
-    const cached = await this.projectIssuesCacheRepository.read(project.id);
-    const cachedIssue = cached?.issues.find((i) => i.itemId === issue.itemId);
-    if (cached === null || cachedIssue === undefined) {
-      return;
-    }
-    cachedIssue.dependedIssueUrls = [...writtenDependedIssueUrls];
-    await this.projectIssuesCacheRepository.write(project.id, cached);
+    await this.projectIssuesCacheRepository.withLock(project.id, async () => {
+      const cached = await this.projectIssuesCacheRepository.read(project.id);
+      const cachedIssue = cached?.issues.find((i) => i.itemId === issue.itemId);
+      if (cached === null || cachedIssue === undefined) {
+        return;
+      }
+      cachedIssue.dependedIssueUrls = [...writtenDependedIssueUrls];
+      await this.projectIssuesCacheRepository.write(project.id, cached);
+    });
   };
 
   updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {

@@ -27,4 +27,31 @@ export class LocalStorageRepository {
       recursive: true,
     });
   };
+  tryCreateExclusive = (path: string): boolean => {
+    try {
+      const fileDescriptor = fs.openSync(
+        path,
+        fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+      );
+      fs.closeSync(fileDescriptor);
+      return true;
+    } catch (err) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        err.code === 'EEXIST'
+      ) {
+        return false;
+      }
+      throw err;
+    }
+  };
+  statMtimeMs = (path: string): number | null => {
+    try {
+      return fs.statSync(path).mtimeMs;
+    } catch {
+      return null;
+    }
+  };
 }
