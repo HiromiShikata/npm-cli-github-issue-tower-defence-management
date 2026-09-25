@@ -1,6 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
@@ -43,11 +44,22 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
-        const storyStillUnset = await this.isStoryStillUnset(
-          issue,
-          input.project,
-        );
-        if (!storyStillUnset) {
+        try {
+          const staleness = await issueSnapshotStalenessCheck({
+            issueRepository: this.issueRepository,
+            project: input.project,
+            snapshotIssue: issue,
+            checkedFieldNames: ['story'],
+            skippedWriteDescription: 'the workflow-management Story write',
+          });
+          if (staleness.type !== 'current') {
+            continue;
+          }
+        } catch (error) {
+          console.error(
+            `Failed to re-read the live Story value before writing the workflow-management Story. issueUrl: ${issue.url}`,
+            error,
+          );
           continue;
         }
         await this.issueRepository.updateStory(
@@ -110,11 +122,22 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         continue;
       }
 
-      const storyStillUnsetForLabel = await this.isStoryStillUnset(
-        issue,
-        input.project,
-      );
-      if (!storyStillUnsetForLabel) {
+      try {
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project: input.project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['story'],
+          skippedWriteDescription: 'the matched-story-label Story write',
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
+      } catch (error) {
+        console.error(
+          `Failed to re-read the live Story value before writing the matched-story-label Story. issueUrl: ${issue.url}`,
+          error,
+        );
         continue;
       }
 
@@ -126,23 +149,6 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
-  };
-
-  private isStoryStillUnset = async (
-    issue: Issue,
-    project: Project,
-  ): Promise<boolean> => {
-    let liveIssue: Issue | null;
-    try {
-      liveIssue = await this.issueRepository.get(issue.url, project);
-    } catch (error) {
-      console.error(
-        `Failed to re-read the live Story value before writing a Story. issueUrl: ${issue.url}`,
-        error,
-      );
-      return false;
-    }
-    return liveIssue !== null && liveIssue.story === null;
   };
 
   static buildUnmatchedStoryLabelTitle = (

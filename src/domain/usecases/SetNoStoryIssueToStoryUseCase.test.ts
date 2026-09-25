@@ -39,15 +39,18 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
   const targetDate = new Date('2000-01-01T01:00:00Z');
 
   let useCase: SetNoStoryIssueToStoryUseCase;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     useCase = new SetNoStoryIssueToStoryUseCase(mockIssueRepository);
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    warnSpy.mockRestore();
   });
 
   describe('run', () => {
@@ -513,6 +516,47 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
+    it('should log a console.warn naming the changed field when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / high priority',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(
+        warnSpy.mock.calls.some((call: unknown[]) => {
+          const message = call[0];
+          return (
+            typeof message === 'string' &&
+            message.includes('story changed from')
+          );
+        }),
+      ).toBe(true);
+      expect(
+        warnSpy.mock.calls.every((call: unknown[]) => {
+          const message = call[0];
+          return typeof message === 'string' && message.includes(issue.url);
+        }),
+      ).toBe(true);
+    });
+
     it('should not write when the live re-read returns null (issue not found)', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
@@ -537,6 +581,44 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         [issue.url, basicProject],
       ]);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('should log a console.warn naming the project removal when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockResolvedValue(null);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(
+        warnSpy.mock.calls.some((call: unknown[]) => {
+          const message = call[0];
+          return (
+            typeof message === 'string' &&
+            message.includes('is no longer on project')
+          );
+        }),
+      ).toBe(true);
+      expect(
+        warnSpy.mock.calls.every((call: unknown[]) => {
+          const message = call[0];
+          return typeof message === 'string' && message.includes(issue.url);
+        }),
+      ).toBe(true);
     });
 
     it('should not write and should not throw when the live re-read rejects', async () => {
