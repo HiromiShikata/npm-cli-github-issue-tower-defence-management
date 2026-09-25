@@ -106,7 +106,11 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
 }));
 const mockLiveSessionOauthTokenSelectHandlerHandle = jest
   .fn()
-  .mockReturnValue({ selectedToken: null, selectedName: null, diagnostics: [] });
+  .mockReturnValue({
+    selectedToken: null,
+    selectedName: null,
+    diagnostics: [],
+  });
 jest.mock('../handlers/LiveSessionOauthTokenSelectHandler', () => ({
   LiveSessionOauthTokenSelectHandler: jest.fn().mockImplementation(() => ({
     handle: mockLiveSessionOauthTokenSelectHandlerHandle,
@@ -326,7 +330,10 @@ describe('CLI', () => {
 
         expect(handleFatalError).not.toHaveBeenCalled();
         expect(processExitSpy).toHaveBeenCalledWith(1);
-        const errorOutput = consoleErrorSpy.mock.calls.flat().map(String).join('');
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
         expect(errorOutput).toContain('errorReportingRepository');
         expect(mockScheduleHandle).not.toHaveBeenCalled();
       } finally {
@@ -1747,7 +1754,10 @@ mysteryKey: 'value'
 
         expect(handleFatalError).not.toHaveBeenCalled();
         expect(processExitSpy).toHaveBeenCalledWith(1);
-        const errorOutput = consoleErrorSpy.mock.calls.flat().map(String).join('');
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
         expect(errorOutput).toContain('errorReportingRepository');
         expect(mockRun).not.toHaveBeenCalled();
       } finally {
@@ -1842,7 +1852,10 @@ mysteryKey: 'value'
 
         expect(handleFatalError).not.toHaveBeenCalled();
         expect(processExitSpy).toHaveBeenCalledWith(1);
-        const errorOutput = consoleErrorSpy.mock.calls.flat().map(String).join('');
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
         expect(errorOutput).toContain('normalConcurrentLimit');
         expect(mockRun).not.toHaveBeenCalled();
       } finally {
@@ -1914,12 +1927,12 @@ mysteryKey: 'value'
         return this;
       });
       const mockRevertRun = jest.fn().mockResolvedValue(undefined);
-      jest.mocked(RevertOrphanedPreparationUseCase).mockImplementation(
-        function (this: RevertOrphanedPreparationUseCase) {
+      jest
+        .mocked(RevertOrphanedPreparationUseCase)
+        .mockImplementation(function (this: RevertOrphanedPreparationUseCase) {
           this.run = mockRevertRun;
           return this;
-        },
-      );
+        });
       const processExitSpy = jest
         .spyOn(process, 'exit')
         .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
@@ -1946,7 +1959,10 @@ mysteryKey: 'value'
 
         expect(handleFatalError).not.toHaveBeenCalled();
         expect(processExitSpy).toHaveBeenCalledWith(1);
-        const errorOutput = consoleErrorSpy.mock.calls.flat().map(String).join('');
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
         expect(errorOutput).toContain('workflowIssueReporter');
         expect(mockRevertRun).not.toHaveBeenCalled();
         expect(mockRun).not.toHaveBeenCalled();
@@ -1977,12 +1993,12 @@ mysteryKey: 'value'
         return this;
       });
       const mockRevertRun = jest.fn().mockResolvedValue(undefined);
-      jest.mocked(RevertOrphanedPreparationUseCase).mockImplementation(
-        function (this: RevertOrphanedPreparationUseCase) {
+      jest
+        .mocked(RevertOrphanedPreparationUseCase)
+        .mockImplementation(function (this: RevertOrphanedPreparationUseCase) {
           this.run = mockRevertRun;
           return this;
-        },
-      );
+        });
       const processExitSpy = jest
         .spyOn(process, 'exit')
         .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
@@ -3134,7 +3150,9 @@ mysteryKey: 'value'
           .mockResolvedValue({ reviewReady: true, rejections: [] });
         jest
           .mocked(CheckIssueReviewReadinessUseCase)
-          .mockImplementation(function (this: CheckIssueReviewReadinessUseCase) {
+          .mockImplementation(function (
+            this: CheckIssueReviewReadinessUseCase,
+          ) {
             this.run = mockRun;
             return this;
           });
@@ -3189,14 +3207,18 @@ mysteryKey: 'value'
         );
         fs.writeFileSync(
           fleetConfigFilePath,
-          YAML.stringify({ errorReportingRepository: 'fleet-owner/fleet-repo' }),
+          YAML.stringify({
+            errorReportingRepository: 'fleet-owner/fleet-repo',
+          }),
         );
         const mockRun = jest
           .fn()
           .mockResolvedValue({ reviewReady: true, rejections: [] });
         jest
           .mocked(CheckIssueReviewReadinessUseCase)
-          .mockImplementation(function (this: CheckIssueReviewReadinessUseCase) {
+          .mockImplementation(function (
+            this: CheckIssueReviewReadinessUseCase,
+          ) {
             this.run = mockRun;
             return this;
           });
