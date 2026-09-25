@@ -479,7 +479,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
     const statuses: FieldOption[] = [
       ...buildCanonicalStatuses(),
-      { id: 'todo-agent-id', name: 'Todo by agent', color: 'BLUE', description: '' },
+      {
+        id: 'todo-agent-id',
+        name: 'Todo by agent',
+        color: 'BLUE',
+        description: '',
+      },
     ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);

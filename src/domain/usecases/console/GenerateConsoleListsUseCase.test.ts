@@ -232,7 +232,6 @@ describe('GenerateConsoleListsUseCase', () => {
       ]);
       expect(result['todo-by-human'].items).toHaveLength(0);
     });
-
   });
 
   describe('workflow-blocker tab', () => {
@@ -1184,6 +1183,4 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result['todo-by-human'].storyOptions).toEqual([]);
     });
   });
-
 });
-

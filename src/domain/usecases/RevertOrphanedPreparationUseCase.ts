@@ -366,7 +366,6 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
-
   };
 
   private createCommentWithDedup = async (
