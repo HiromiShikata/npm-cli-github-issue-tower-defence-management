@@ -13,6 +13,7 @@ export type RelatedPullRequest = {
   mergeable: string | null;
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
+  isCiFailing?: boolean;
   isResolvedAllReviewComments: boolean;
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];

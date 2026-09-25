@@ -5954,6 +5954,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         mergeable: 'MERGEABLE',
         isPassedAllCiJob: true,
         isCiStateSuccess: true,
+        isCiFailing: false,
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],

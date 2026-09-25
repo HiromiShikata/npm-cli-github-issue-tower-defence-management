@@ -2,7 +2,26 @@ import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
-import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from './autoStatusCheckComments';
+import {
+  AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+  AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+} from './autoStatusCheckComments';
+import {
+  AWAITING_OWNER_STATUS_NAME,
+  AWAITING_WORKSPACE_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
+  TODO_STATUS_NAME,
+  PC_TODO_STATUS_NAME,
+  IN_TMUX_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
+  DONE_STATUS_NAME,
+  ICEBOX_STATUS_NAME,
+  DISABLED_STATUS_NAME,
+  LEGACY_TODO_STATUS_NAME,
+  LEGACY_IN_TMUX_STATUS_NAME,
+  LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -42,7 +61,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   number: 1,
   title: 'Test Issue',
   state: 'OPEN',
-  status: 'Preparation',
+  status: AWAITING_OWNER_STATUS_NAME,
   story: null,
   nextActionDate: null,
   nextActionHour: null,
@@ -72,7 +91,7 @@ const createMockPrItem = (overrides: Partial<Issue> = {}): Issue =>
     title: 'Test PR',
     url: 'https://github.com/user/repo/pull/1',
     isPr: true,
-    status: 'Preparation',
+    status: PREPARATION_STATUS_NAME,
     ...overrides,
   });
 
@@ -87,6 +106,7 @@ const createMockRelatedPullRequest = (
   mergeable: 'MERGEABLE',
   isPassedAllCiJob: true,
   isCiStateSuccess: true,
+  isCiFailing: false,
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
@@ -157,15 +177,25 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    const excludedStatuses = [
-      'Done',
-      'Icebox',
-      'Failed Preparation',
-      'In Tmux by human',
+    const nonEligibleStatuses = [
+      AWAITING_WORKSPACE_STATUS_NAME,
+      PREPARATION_STATUS_NAME,
+      FAILED_PREPARATION_STATUS_NAME,
+      TODO_STATUS_NAME,
+      PC_TODO_STATUS_NAME,
+      IN_TMUX_STATUS_NAME,
+      IN_TMUX_BY_AGENT_STATUS_NAME,
+      DONE_STATUS_NAME,
+      ICEBOX_STATUS_NAME,
+      DISABLED_STATUS_NAME,
+      LEGACY_TODO_STATUS_NAME,
+      LEGACY_IN_TMUX_STATUS_NAME,
+      LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+      null,
     ];
 
-    excludedStatuses.forEach((status) => {
-      it(`should not process issues in ${status} status`, async () => {
+    nonEligibleStatuses.forEach((status) => {
+      it(`should not touch an issue in ${status === null ? 'null' : `"${status}"`} status even when its linked PR is conflicted`, async () => {
         const issue = createMockIssue({ status });
         const prItem = createMockPrItem({
           closingIssueReferenceUrls: [issue.url],
@@ -175,6 +205,14 @@ describe('ConflictedIssueRevertUseCase', () => {
           issues: [issue, prItem],
           cacheUsed: false,
         });
+        const conflictedPr = createMockRelatedPullRequest({
+          url: prItem.url,
+          isConflicted: true,
+          mergeable: 'CONFLICTING',
+        });
+        mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+          new Map([[conflictedPr.url, conflictedPr]]),
+        );
 
         await useCase.run({ projectUrl });
 
@@ -183,8 +221,58 @@ describe('ConflictedIssueRevertUseCase', () => {
       });
     });
 
-    it('should process Awaiting Workspace issues when their linked PR is conflicted and update-branch fails', async () => {
-      const issue = createMockIssue({ status: 'Awaiting Workspace' });
+    it('should not touch an Awaiting Owner issue that has no linked open PR', async () => {
+      const issue = createMockIssue({
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.getOpenPullRequests).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should not touch an Awaiting Owner issue whose linked PR is clean (no conflict, CI passing)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const cleanPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[cleanPr.url, cleanPr]]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateBranch).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should process an Awaiting Owner issue whose linked PR is conflicted and update-branch fails', async () => {
+      const issue = createMockIssue({
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
         closingIssueReferenceUrls: [issue.url],
@@ -220,8 +308,10 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
-    it('should not update status or post comment when Awaiting Workspace PR update-branch succeeds', async () => {
-      const issue = createMockIssue({ status: 'Awaiting Workspace' });
+    it('should not update status or post comment when the Awaiting Owner PR update-branch succeeds', async () => {
+      const issue = createMockIssue({
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
         closingIssueReferenceUrls: [issue.url],
@@ -253,12 +343,12 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should skip PR items when scanning for target task issues', async () => {
       const prIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
         isPr: false,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/2',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
         isPr: true,
         closingIssueReferenceUrls: [prIssue.url],
       });
@@ -293,7 +383,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
   describe('conflict detection', () => {
     it('should skip an issue with no linked open PRs', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: AWAITING_OWNER_STATUS_NAME });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
         issues: [issue],
@@ -310,7 +400,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should skip an issue whose linked PR is not conflicted', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -339,7 +429,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should update status and post conflict comment when linked PR is conflicted and update-branch fails', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -379,7 +469,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should propagate errors thrown by updateBranch', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -417,7 +507,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should not update status or post comment when update-branch succeeds for the conflicted PR', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -450,7 +540,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should call update-branch only for conflicted PRs, not for all linked PRs', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -499,7 +589,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should fall back to status update when any conflicted PR update-branch fails', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -552,7 +642,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should post an Auto Status Check CONFLICT message as the comment body', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'In Tmux by agent',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -584,7 +674,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should skip an issue whose linked PR has mergeable UNKNOWN', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -613,7 +703,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should skip when any linked PR has mergeable UNKNOWN even if another is conflicted', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -656,7 +746,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should process an issue when one of multiple linked PRs is conflicted and none is UNKNOWN', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -707,7 +797,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should skip an issue whose linked PR resolved as null (absent/closed)', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -731,7 +821,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should not include closed PR items in the related PR map', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const closedPrItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -755,7 +845,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       const callOrder: string[] = [];
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -800,12 +890,12 @@ describe('ConflictedIssueRevertUseCase', () => {
       const issue1 = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         number: 1,
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const issue2 = createMockIssue({
         url: 'https://github.com/user/repo/issues/2',
         number: 2,
-        status: 'Todo by human',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/10',
@@ -835,16 +925,38 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
+    it('should not fetch pull requests when no issue is in Awaiting Owner status', async () => {
+      const issue1 = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        number: 1,
+        status: PREPARATION_STATUS_NAME,
+      });
+      const prItem1 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/10',
+        number: 10,
+        closingIssueReferenceUrls: [issue1.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue1, prItem1],
+        cacheUsed: false,
+      });
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.getOpenPullRequests).not.toHaveBeenCalled();
+    });
+
     it('should continue processing next issue when createComment throws', async () => {
       const issue1 = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         number: 1,
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const issue2 = createMockIssue({
         url: 'https://github.com/user/repo/issues/2',
         number: 2,
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/10',
@@ -902,12 +1014,12 @@ describe('ConflictedIssueRevertUseCase', () => {
       const issue1 = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         number: 1,
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const issue2 = createMockIssue({
         url: 'https://github.com/user/repo/issues/2',
         number: 2,
-        status: 'In Tmux by agent',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
 
       const prItem1 = createMockPrItem({
@@ -960,11 +1072,280 @@ describe('ConflictedIssueRevertUseCase', () => {
     });
   });
 
+  describe('CI failure detection', () => {
+    it('should process an Awaiting Owner issue whose linked PR has failing CI and is not conflicted', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[ciFailingPr.url, ciFailingPr]]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateBranch).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('should not call update-branch for a CI-failing PR that is not conflicted', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[ciFailingPr.url, ciFailingPr]]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateBranch).not.toHaveBeenCalled();
+    });
+
+    it('should process an issue when one of multiple linked PRs has failing CI and the others are clean', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem1 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        number: 1,
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const prItem2 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/2',
+        number: 2,
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem1, prItem2],
+        cacheUsed: false,
+      });
+      const cleanPr = createMockRelatedPullRequest({
+        url: prItem1.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: false,
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem2.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [cleanPr.url, cleanPr],
+          [ciFailingPr.url, ciFailingPr],
+        ]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('should post the conflict message, not the CI-failure message, when the issue has both a conflicted PR and a separate CI-failing PR', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem1 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        number: 1,
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const prItem2 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/2',
+        number: 2,
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem1, prItem2],
+        cacheUsed: false,
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem1.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem2.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [conflictedPr.url, conflictedPr],
+          [ciFailingPr.url, ciFailingPr],
+        ]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('should not treat a conflicted PR as also CI-failing for the CI-failure message path', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const conflictedAndCiFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedAndCiFailingPr.url, conflictedAndCiFailingPr]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('should skip an issue whose linked PR has CI passing (isCiFailing false, not conflicted)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const passingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[passingPr.url, passingPr]]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should skip an Awaiting Owner issue whose CI-failing PR has mergeable UNKNOWN', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const unknownPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'UNKNOWN',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[unknownPr.url, unknownPr]]),
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+  });
+
   describe('duplicate comment suppression', () => {
     const buildConflictedScenario = () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
       });
       const prItem = createMockPrItem({
         url: 'https://github.com/user/repo/pull/1',
@@ -984,6 +1365,32 @@ describe('ConflictedIssueRevertUseCase', () => {
         new Map([[conflictedPr.url, conflictedPr]]),
       );
       mockIssueRepository.updateBranch.mockResolvedValue(false);
+      return issue;
+    };
+
+    const buildCiFailingScenario = () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[ciFailingPr.url, ciFailingPr]]),
+      );
       return issue;
     };
 
@@ -1060,6 +1467,36 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
+
+    it('should not post CI-failure comment when most recent comment is already the CI-failure message', async () => {
+      const issue = buildCiFailingScenario();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({ projectUrl });
+
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledWith(issue);
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should post CI-failure comment when there are no existing comments', async () => {
+      const issue = buildCiFailingScenario();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
   });
 
   describe('dispatch repetition escalation', () => {
@@ -1135,7 +1572,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     const buildConflictedIssueWithLinkedPr = (project = mockProject) => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
-        status: 'Preparation',
+        status: AWAITING_OWNER_STATUS_NAME,
         author: 'owner',
       });
       const prItem = createMockPrItem({
@@ -1232,7 +1669,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       mockIssueRepository.updateStatus.mockClear();
       mockIssueCommentRepository.createComment.mockClear();
-      issue.status = 'Failed Preparation';
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ...firstRunComments,
         {
