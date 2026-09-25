@@ -1,3 +1,10 @@
+## [2.148.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.13...v2.148.14) (2026-09-25)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** stop excluding Story-unset Awaiting Workspace items from spawn candidates ([#2636](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2636)) ([977150f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/977150fe5ec0e30715d7919986c7763142c301a5)), closes [#2627](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627)
+
 ## [2.148.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.12...v2.148.13) (2026-09-25)
 
 
