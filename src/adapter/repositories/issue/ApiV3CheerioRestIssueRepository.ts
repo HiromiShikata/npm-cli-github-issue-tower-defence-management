@@ -1043,6 +1043,20 @@ export class ApiV3CheerioRestIssueRepository
     return Array.from(mergedIssuesByUrl.values());
   };
 
+  private mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight = (
+    projectPresentInCacheAtMergeTime: Project | null,
+    projectPresentInCacheBeforeFetchStarted: Project | null,
+    fetchedProject: Project,
+  ): Project => {
+    const projectWasChangedInCacheWhileFetchWasInFlight =
+      projectPresentInCacheAtMergeTime !== null &&
+      JSON.stringify(projectPresentInCacheAtMergeTime) !==
+        JSON.stringify(projectPresentInCacheBeforeFetchStarted);
+    return projectWasChangedInCacheWhileFetchWasInFlight
+      ? projectPresentInCacheAtMergeTime
+      : fetchedProject;
+  };
+
   private refreshAllIssues = async (
     projectId: Project['id'],
   ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => {
@@ -1107,7 +1121,12 @@ export class ApiV3CheerioRestIssueRepository
           await this.projectIssuesCacheRepository.write(projectId, {
             lastFetchedAt: nowIso,
             lastFullFetchAt: nowIso,
-            project,
+            project:
+              this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
+                freshCache?.project ?? null,
+                cache?.project ?? null,
+                project,
+              ),
             issues: mergedIssues,
             storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
               mergedIssues,
@@ -1157,7 +1176,12 @@ export class ApiV3CheerioRestIssueRepository
         await this.projectIssuesCacheRepository.write(projectId, {
           lastFetchedAt: nowIso,
           lastFullFetchAt: freshCache?.lastFullFetchAt ?? cache.lastFullFetchAt,
-          project,
+          project:
+            this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
+              freshCache?.project ?? null,
+              cache.project,
+              project,
+            ),
           issues: mergedIssues,
           storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
             mergedIssues,
