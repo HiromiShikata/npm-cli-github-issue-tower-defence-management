@@ -1,3 +1,10 @@
+## [2.148.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.14...v2.148.15) (2026-09-25)
+
+
+### Bug Fixes
+
+* **assertionWeakeningCheck:** recognize full-URL closing keyword form ([#2643](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2643)) ([9ddc75a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ddc75a68f77780eb168c8f9a0d509d59cdbd626)), closes [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [owner/repo#N](https://github.com/owner/repo/issues/N)
+
 ## [2.148.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.13...v2.148.14) (2026-09-25)
 
 
