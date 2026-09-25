@@ -395,4 +395,48 @@ index abc..def 100644
       expect(result.exitStatus).toBe(1);
     });
   });
+
+  describe('closing reference parsing via full GitHub issue URL form', () => {
+    it('passes when the PR body has a same-repo full URL closing ref and the issue has criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/12345',
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+      expect(result.output).toContain('Acceptance criteria found');
+    });
+
+    it('fails when the PR body has a same-repo full URL closing ref but the issue lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/12345',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('does not contain acceptance criteria');
+    });
+
+    it('passes when the PR body has a cross-repo full URL closing ref and the issue has criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes https://github.com/HiromiShikata/secretary/issues/7041',
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+      expect(result.output).toContain('Acceptance criteria found');
+    });
+
+    it('fails when the PR body has a cross-repo full URL closing ref but the issue lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes https://github.com/HiromiShikata/secretary/issues/7041',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('does not contain acceptance criteria');
+    });
+  });
 });
