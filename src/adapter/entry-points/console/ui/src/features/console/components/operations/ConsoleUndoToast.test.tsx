@@ -10,12 +10,6 @@ describe('ConsoleUndoToast', () => {
     onUndo: () => {},
   };
 
-  // Cast to a widened prop type so the failing tests can pass onDismiss at runtime
-  // before the prop exists on ConsoleUndoToastProps.
-  const ConsoleUndoToastLoose = ConsoleUndoToast as unknown as (
-    props: Parameters<typeof ConsoleUndoToast>[0] & { onDismiss?: () => void },
-  ) => ReturnType<typeof ConsoleUndoToast>;
-
   it('shows the action message and the countdown', () => {
     const { getByText } = render(<ConsoleUndoToast {...baseProps} />);
     expect(getByText('Approved — PR #851')).toBeInTheDocument();
@@ -60,7 +54,7 @@ describe('ConsoleUndoToast', () => {
 
   it('renders a ✕ dismiss button', () => {
     const { getByText } = render(
-      <ConsoleUndoToastLoose {...baseProps} onDismiss={() => {}} />,
+      <ConsoleUndoToast {...baseProps} onDismiss={() => {}} />,
     );
     expect(getByText('✕')).toBeInTheDocument();
   });
@@ -69,11 +63,7 @@ describe('ConsoleUndoToast', () => {
     const onDismiss = jest.fn();
     const onUndo = jest.fn();
     const { getByText } = render(
-      <ConsoleUndoToastLoose
-        {...baseProps}
-        onUndo={onUndo}
-        onDismiss={onDismiss}
-      />,
+      <ConsoleUndoToast {...baseProps} onUndo={onUndo} onDismiss={onDismiss} />,
     );
     fireEvent.click(getByText('✕'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
