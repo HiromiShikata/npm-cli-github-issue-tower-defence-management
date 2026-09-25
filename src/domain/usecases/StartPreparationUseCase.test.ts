@@ -125,6 +125,7 @@ describe('StartPreparationUseCase', () => {
       | 'setIssueAgentField'
       | 'removeLabel'
       | 'getIssueByUrl'
+      | 'get'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -153,6 +154,12 @@ describe('StartPreparationUseCase', () => {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
       getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -526,6 +533,90 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
         'developer',
       );
+    });
+
+    it('does not write the Agent field when the live issue already has an agent set after the snapshot', async () => {
+      const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            agent: null,
+          }),
+        ]),
+      );
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'url1',
+          status: 'Awaiting Workspace',
+          agent: 'agent1',
+        }),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('does not write the Agent field when the live issue was removed from the project', async () => {
+      const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            agent: null,
+          }),
+        ]),
+      );
+      mockIssueRepository.get.mockResolvedValue(null);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
 
@@ -6913,6 +7004,229 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
+  it('should not move an authorNotAllowed issue to Todo by human when the live status changed away from Awaiting Workspace after the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Preparation',
+        isClosed: false,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should not move an authorNotAllowed issue to Todo by human when the live issue became closed after the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Awaiting Workspace',
+        isClosed: true,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should not move an authorNotAllowed issue to Todo by human when the live item read returns null because the issue left the project', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(null);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should move an authorNotAllowed issue to Todo by human and re-read the live issue when it still matches the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Awaiting Workspace',
+        isClosed: false,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+      projectWithTodoByHuman,
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/100',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+      'todo-by-human-id',
+    );
+    expect(mockIssueRepository.get.mock.calls[0]).toEqual([
+      'https://github.com/user/repo/issues/100',
+      projectWithTodoByHuman,
+    ]);
+  });
+
   it('selects an issue whose body starts with the agent report prefix as a spawn candidate', () => {
     const agentBody =
       'From: :robot: some-agent (claude-sonnet-4-5)\nSome content.';
@@ -7498,7 +7812,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([awaitingIssue]),
     );
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+    mockIssueRepository.get.mockResolvedValue(
       createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
@@ -7543,7 +7857,7 @@ describe('StartPreparationUseCase', () => {
       }),
     },
     {
-      label: 'does not spawn when getIssueByUrl returns null',
+      label: 'does not spawn when the live item read returns null',
       refetchedIssue: null,
     },
   ])(
@@ -7562,7 +7876,7 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([awaitingIssue]),
       );
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(refetchedIssue);
+      mockIssueRepository.get.mockResolvedValue(refetchedIssue);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -7587,6 +7901,51 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     },
   );
+
+  it('does not move to Preparation or spawn when the live item left Awaiting Workspace after the item snapshot was taken, even though the on-disk cache still shows Awaiting Workspace', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    );
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({ status: 'In Tmux by agent', dependedIssueUrls: [] }),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.get.mock.calls).toEqual([
+      ['https://github.com/user/repo/issues/1', mockProject],
+      ['https://github.com/user/repo/issues/1', mockProject],
+    ]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -7611,7 +7970,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
-      | 'getIssueByUrl'
+      | 'get'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -7625,7 +7984,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
     setIssueAgentField: jest.fn(),
     removeLabel: jest.fn(),
-    getIssueByUrl: jest.fn().mockResolvedValue(null),
+    get: jest.fn().mockResolvedValue(null),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -7924,7 +8283,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
-        getIssueByUrl: jest.fn().mockResolvedValue(null),
+        get: jest.fn().mockResolvedValue(null),
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
@@ -8015,7 +8374,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -8114,7 +8473,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -8199,7 +8558,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -8288,7 +8647,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
-        getIssueByUrl: jest.fn().mockResolvedValue(null),
+        get: jest.fn().mockResolvedValue(null),
         ...issueRepositoryOverrides,
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },

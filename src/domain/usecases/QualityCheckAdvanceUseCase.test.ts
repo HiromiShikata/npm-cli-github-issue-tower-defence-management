@@ -120,11 +120,18 @@ const FIXED_NOW = new Date('2026-01-15T10:00:00Z');
 
 describe('QualityCheckAdvanceUseCase', () => {
   let useCase: QualityCheckAdvanceUseCase;
-  let mockIssueRepository: Mocked<Pick<IssueRepository, 'updateStatus'>>;
+  let mockIssueRepository: Mocked<
+    Pick<IssueRepository, 'updateStatus' | 'get'>
+  >;
 
   beforeEach(() => {
     mockIssueRepository = {
       updateStatus: jest.fn(),
+      get: jest
+        .fn()
+        .mockImplementation((issueUrl: string) =>
+          Promise.resolve(createMockIssue({ url: issueUrl })),
+        ),
     };
     useCase = new QualityCheckAdvanceUseCase(mockIssueRepository);
   });
@@ -228,6 +235,7 @@ describe('QualityCheckAdvanceUseCase', () => {
       color: 'BLUE',
       description: '',
     });
+    mockIssueRepository.get.mockResolvedValue(issue);
 
     await useCase.run({
       project,
@@ -417,5 +425,53 @@ describe('QualityCheckAdvanceUseCase', () => {
       issue,
       'done-id',
     );
+  });
+
+  describe('when the Status changed after the item snapshot was taken', () => {
+    it.each<{
+      label: string;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent set after the snapshot was taken',
+        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        liveIssue: null,
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'writes Done when the live Status is still Awaiting Owner',
+        liveIssue: createMockIssue(),
+        expectedUpdateStatusCallCount: 1,
+      },
+    ])('$label', async ({ liveIssue, expectedUpdateStatusCallCount }) => {
+      const snapshotIssue = createMockIssue();
+      const mergedPr = createMergedPr(snapshotIssue.url);
+      const project = createMockProject();
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const advancedCount = await useCase.run({
+        project,
+        issues: [snapshotIssue, mergedPr],
+        evaluatedAt: FIXED_NOW,
+      });
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [snapshotIssue.url, project],
+      ]);
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+        Array.from({ length: expectedUpdateStatusCallCount }, () => [
+          project,
+          snapshotIssue,
+          'done-id',
+        ]),
+      );
+      expect(advancedCount).toBe(expectedUpdateStatusCallCount);
+    });
   });
 });

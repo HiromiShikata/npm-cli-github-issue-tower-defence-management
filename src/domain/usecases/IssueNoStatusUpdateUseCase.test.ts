@@ -55,6 +55,11 @@ describe('IssueNoStatusUpdateUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIssueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      isClosed: false,
+      status: null,
+    });
     useCase = new IssueNoStatusUpdateUseCase(mockIssueRepository);
   });
 
@@ -160,6 +165,54 @@ describe('IssueNoStatusUpdateUseCase', () => {
       await expect(
         useCase.run({ project: basicProject, issues: [openNullStatusIssue] }),
       ).rejects.toThrow('GraphQL rate limit exceeded');
+    });
+
+    describe('when the Status changed after the item snapshot was taken', () => {
+      const snapshotIssueUrl =
+        'https://github.com/org/repo/issues/snapshot-status-empty';
+      const snapshotIssue: Issue = {
+        ...mock<Issue>(),
+        url: snapshotIssueUrl,
+        isClosed: false,
+        status: null,
+      };
+
+      it.each<{
+        label: string;
+        liveIssue: Issue | null;
+        expectedUpdateStatusCalls: [Project, Issue, string][];
+      }>([
+        {
+          label:
+            'does not overwrite a Status an agent set after the snapshot was taken',
+          liveIssue: { ...snapshotIssue, status: 'In Tmux by agent' },
+          expectedUpdateStatusCalls: [],
+        },
+        {
+          label: 'does not write when the item is no longer on the project',
+          liveIssue: null,
+          expectedUpdateStatusCalls: [],
+        },
+        {
+          label:
+            'writes Awaiting Workspace when the live Status is still empty',
+          liveIssue: { ...snapshotIssue },
+          expectedUpdateStatusCalls: [
+            [basicProject, snapshotIssue, 'status-awaiting'],
+          ],
+        },
+      ])('$label', async ({ liveIssue, expectedUpdateStatusCalls }) => {
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({ project: basicProject, issues: [snapshotIssue] });
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssueUrl, basicProject],
+        ]);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+          expectedUpdateStatusCalls,
+        );
+      });
     });
   });
 });

@@ -5,10 +5,14 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class ReopenedDoneIssueRevertUseCase {
   constructor(
-    private readonly issueRepository: Pick<IssueRepository, 'updateStatus'>,
+    private readonly issueRepository: Pick<
+      IssueRepository,
+      'updateStatus' | 'get'
+    >,
   ) {}
 
   run = async (params: {
@@ -36,6 +40,16 @@ export class ReopenedDoneIssueRevertUseCase {
     const errors: unknown[] = [];
     for (const issue of itemsToRevert) {
       try {
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project: params.project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status', 'stateReason'],
+          skippedWriteDescription: `the ${AWAITING_WORKSPACE_STATUS_NAME} Status write of a reopened ${DONE_STATUS_NAME} item`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
         await this.issueRepository.updateStatus(
           params.project,
           issue,

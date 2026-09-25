@@ -25,6 +25,7 @@ import {
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
@@ -87,7 +88,7 @@ export class StartPreparationUseCase {
       | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
-      | 'getIssueByUrl'
+      | 'get'
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
@@ -643,6 +644,16 @@ export class StartPreparationUseCase {
         ) {
           await this.issueRepository.createCommentByUrl(issue.url, commentBody);
         }
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status', 'isClosed'],
+          skippedWriteDescription: `the Todo by human status write for an author-not-allowed issue`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
         await this.issueRepository.updateStatus(
           project,
           issue,
@@ -707,17 +718,26 @@ export class StartPreparationUseCase {
           : agentNameFromDesignation(issue.agent ?? '')) ||
         params.defaultAgentName;
       if (issue.agent === null && !isNoStory) {
-        const agentOptionId = await ensureAgentOptionAndGetId(
-          this.projectRepository,
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
           project,
-          agent,
-        );
-        if (agentOptionId !== null) {
-          await this.issueRepository.setIssueAgentField(
-            issue.url,
+          snapshotIssue: issue,
+          checkedFieldNames: ['agent'],
+          skippedWriteDescription: `the default Agent write for a spawn candidate`,
+        });
+        if (staleness.type === 'current') {
+          const agentOptionId = await ensureAgentOptionAndGetId(
+            this.projectRepository,
             project,
-            agentOptionId,
+            agent,
           );
+          if (agentOptionId !== null) {
+            await this.issueRepository.setIssueAgentField(
+              issue.url,
+              project,
+              agentOptionId,
+            );
+          }
         }
       }
       const labelModelName = issue.labels
@@ -857,9 +877,7 @@ export class StartPreparationUseCase {
         continue;
       }
 
-      const refetchedIssue = await this.issueRepository.getIssueByUrl(
-        issue.url,
-      );
+      const refetchedIssue = await this.issueRepository.get(issue.url, project);
       if (
         refetchedIssue === null ||
         refetchedIssue.dependedIssueUrls.length > 0 ||

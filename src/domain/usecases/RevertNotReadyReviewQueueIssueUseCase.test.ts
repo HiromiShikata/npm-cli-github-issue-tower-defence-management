@@ -164,6 +164,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     getPullRequestChangedFilePaths: jest.Mock;
     approvePullRequest: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
+    get: jest.Mock;
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock<Promise<void>, [Issue, string]>;
@@ -197,6 +198,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       approvePullRequest: jest.fn().mockResolvedValue(undefined),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
+      get: jest
+        .fn()
+        .mockImplementation((issueUrl: string) =>
+          Promise.resolve(
+            createMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
+          ),
+        ),
     };
 
     mockIssueCommentRepository = {
@@ -2714,5 +2722,93 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
+  });
+
+  describe('when the Status changed after the item snapshot was taken', () => {
+    const snapshotIssueWithoutLinkedPullRequest = createMockIssue({
+      status: 'Awaiting Owner',
+    });
+    const snapshotIssueWithDependedIssue = createMockIssue({
+      status: 'Awaiting Owner',
+      dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+    });
+
+    it.each<{
+      label: string;
+      snapshotIssue: Issue;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCalls: unknown[][];
+      expectedCreateCommentCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent set after the snapshot was taken when the item is rejected',
+        snapshotIssue: snapshotIssueWithoutLinkedPullRequest,
+        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCallCount: 0,
+      },
+      {
+        label:
+          'does not overwrite a Status an agent set after the snapshot was taken when the item has a depended issue',
+        snapshotIssue: snapshotIssueWithDependedIssue,
+        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        snapshotIssue: snapshotIssueWithoutLinkedPullRequest,
+        liveIssue: null,
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCallCount: 0,
+      },
+      {
+        label:
+          'writes Awaiting Workspace when the live Status is still Awaiting Owner',
+        snapshotIssue: snapshotIssueWithoutLinkedPullRequest,
+        liveIssue: createMockIssue({ status: 'Awaiting Owner' }),
+        expectedUpdateStatusCalls: [
+          [
+            createMockProject(),
+            snapshotIssueWithoutLinkedPullRequest,
+            'awaiting-workspace-id',
+          ],
+        ],
+        expectedCreateCommentCallCount: 1,
+      },
+    ])(
+      '$label',
+      async ({
+        snapshotIssue,
+        liveIssue,
+        expectedUpdateStatusCalls,
+        expectedCreateCommentCallCount,
+      }) => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [snapshotIssue],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
+        });
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssue.url, mockProject],
+        ]);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+          expectedUpdateStatusCalls,
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          expectedCreateCommentCallCount,
+        );
+      },
+    );
   });
 });

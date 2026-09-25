@@ -70,6 +70,7 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
   let mockIssueRepository: {
     setIssueAgentField: jest.Mock;
     removeLabel: jest.Mock;
+    get: jest.Mock;
   };
   let useCase: AgentDesignationLabelAdoptUseCase;
 
@@ -83,6 +84,11 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     mockIssueRepository = {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
+      get: jest
+        .fn()
+        .mockImplementation((issueUrl: string) =>
+          Promise.resolve(createIssue({ url: issueUrl, agent: null })),
+        ),
     };
     useCase = new AgentDesignationLabelAdoptUseCase(
       mockProjectRepository,
@@ -395,5 +401,69 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledTimes(2);
     expect(issueChore.agent).toBe('chore');
     expect(issueAccounting.agent).toBe('accounting');
+  });
+
+  describe('when the Agent changed after the item snapshot was taken', () => {
+    it.each<{
+      label: string;
+      liveIssue: Issue | null;
+      expectedSetIssueAgentFieldCalls: unknown[][];
+      expectedInMemoryAgent: string | null;
+    }>([
+      {
+        label:
+          'does not overwrite an Agent an agent set after the snapshot was taken and adopts the live Agent in memory',
+        liveIssue: createIssue({ agent: 'developer' }),
+        expectedSetIssueAgentFieldCalls: [],
+        expectedInMemoryAgent: 'developer',
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        liveIssue: null,
+        expectedSetIssueAgentFieldCalls: [],
+        expectedInMemoryAgent: null,
+      },
+      {
+        label: 'writes defaultAgentName when the live Agent is still empty',
+        liveIssue: createIssue({ agent: null }),
+        expectedSetIssueAgentFieldCalls: [
+          [
+            'https://github.com/user/repo/issues/1',
+            createProject([{ id: 'option-chore-id', name: 'chore' }]),
+            'option-chore-id',
+          ],
+        ],
+        expectedInMemoryAgent: 'chore',
+      },
+    ])(
+      '$label',
+      async ({
+        liveIssue,
+        expectedSetIssueAgentFieldCalls,
+        expectedInMemoryAgent,
+      }) => {
+        const project = createProject([
+          { id: 'option-chore-id', name: 'chore' },
+        ]);
+        const snapshotIssue = createIssue({ labels: [], agent: null });
+        mockProjectRepository.getByUrl.mockResolvedValue(project);
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          project,
+          issues: [snapshotIssue],
+          agents: ['chore'],
+          defaultAgentName: 'chore',
+        });
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          ['https://github.com/user/repo/issues/1', project],
+        ]);
+        expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual(
+          expectedSetIssueAgentFieldCalls,
+        );
+        expect(snapshotIssue.agent).toBe(expectedInMemoryAgent);
+      },
+    );
   });
 });

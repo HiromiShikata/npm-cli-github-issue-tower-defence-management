@@ -2,6 +2,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { AWAITING_WORKSPACE_STATUS_NAME } from '../entities/WorkflowStatus';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 const isArchivedProjectItemError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -10,7 +11,7 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
 
 export class IssueNoStatusUpdateUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'updateStatus'>,
+    readonly issueRepository: Pick<IssueRepository, 'updateStatus' | 'get'>,
   ) {}
 
   run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
@@ -22,6 +23,16 @@ export class IssueNoStatusUpdateUseCase {
     }
     for (const issue of input.issues) {
       if (issue.isClosed || issue.status !== null) {
+        continue;
+      }
+      const staleness = await issueSnapshotStalenessCheck({
+        issueRepository: this.issueRepository,
+        project: input.project,
+        snapshotIssue: issue,
+        checkedFieldNames: ['status', 'isClosed'],
+        skippedWriteDescription: `the ${AWAITING_WORKSPACE_STATUS_NAME} Status write`,
+      });
+      if (staleness.type !== 'current') {
         continue;
       }
       try {
