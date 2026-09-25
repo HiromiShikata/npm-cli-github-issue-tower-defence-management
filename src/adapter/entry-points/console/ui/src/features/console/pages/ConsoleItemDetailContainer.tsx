@@ -379,7 +379,16 @@ export const ConsoleItemDetailContainer = ({
                       cause,
                     );
                   }
-                  await operations.onAfterMoveToAwaitingWorkspace?.();
+                  try {
+                    await operations.onAfterMoveToAwaitingWorkspace?.();
+                  } catch (cause) {
+                    const message = `Comment posted and status set to Awaiting Workspace, but a post-success refresh action failed: ${String(cause)}`;
+                    if (onCommentError !== undefined) {
+                      onCommentError(message, String(cause));
+                    } else {
+                      console.error(message, cause);
+                    }
+                  }
                   return;
                 }
                 try {
