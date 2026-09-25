@@ -1,0 +1,4 @@
+mutation_result=caught
+failing_test=FAIL console-ui src/adapter/entry-points/console/ui/src/features/console/components/operations/ConsoleUndoToast.test.tsx
+patch_file=mutation-patches/pr-2591.patch
+head_commit=7c82bd750d099192a12781914e4478f8497d8a7a

@@ -1,0 +1,20 @@
+diff --git a/src/adapter/entry-points/console/ui/src/features/console/components/operations/ConsoleUndoToast.tsx b/src/adapter/entry-points/console/ui/src/features/console/components/operations/ConsoleUndoToast.tsx
+index b091f3c8d..c6801e0d8 100644
+--- a/src/adapter/entry-points/console/ui/src/features/console/components/operations/ConsoleUndoToast.tsx
++++ b/src/adapter/entry-points/console/ui/src/features/console/components/operations/ConsoleUndoToast.tsx
+@@ -29,15 +29,6 @@ export const ConsoleUndoToast = ({
+     <span className="console-undo-toast-countdown" aria-hidden="true">
+       {remainingSeconds}s
+     </span>
+-    {onDismiss !== undefined && (
+-      <button
+-        type="button"
+-        className="console-undo-toast-dismiss"
+-        onClick={onDismiss}
+-      >
+-        ✕
+-      </button>
+-    )}
+     <span
+       className="console-undo-toast-bar"
+       aria-hidden="true"
