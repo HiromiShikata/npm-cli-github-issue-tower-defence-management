@@ -364,7 +364,10 @@ index abc..def 100644
         issueBody: issueBodyWithoutAcceptanceCriteria,
       });
       expect(result.exitStatus).toBe(1);
-      expect(result.output).toContain('acceptance criteria');
+      expect(result.output).toContain(
+        'the closing issue does not contain acceptance criteria',
+      );
+      expect(result.output).not.toContain('no linked closing issue');
     });
 
     it('passes when the PR body has a same-repo closing ref and the issue has criteria', () => {
@@ -395,6 +398,34 @@ index abc..def 100644
       expect(result.exitStatus).toBe(1);
     });
 
+    it('uses the first closing reference when multiple full-URL closing references are present and the first lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/owner/repo/issues/1\nCloses https://github.com/owner/repo/issues/2',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain(
+        'the closing issue does not contain acceptance criteria',
+      );
+      expect(result.output).not.toContain('no linked closing issue');
+    });
+
+    it('uses the first closing reference when the PR body mixes a full-URL reference followed by a shorthand reference and the first lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/owner/repo/issues/1\nCloses owner/repo#2',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain(
+        'the closing issue does not contain acceptance criteria',
+      );
+      expect(result.output).not.toContain('no linked closing issue');
+    });
+
     it('passes when the PR body has a full-URL closing reference and the issue has criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedAssertion,
@@ -414,7 +445,10 @@ index abc..def 100644
         issueBody: issueBodyWithoutAcceptanceCriteria,
       });
       expect(result.exitStatus).toBe(1);
-      expect(result.output).toContain('acceptance criteria');
+      expect(result.output).toContain(
+        'the closing issue does not contain acceptance criteria',
+      );
+      expect(result.output).not.toContain('no linked closing issue');
     });
 
     it('passes when the PR body has a full-URL pull request closing reference and the issue has criteria', () => {
@@ -426,5 +460,64 @@ index abc..def 100644
       expect(result.exitStatus).toBe(0);
       expect(result.output).toContain('Acceptance criteria found');
     });
+  });
+
+  describe('closing reference URL carrying a trailing fragment or query string', () => {
+    const cases: Array<{
+      description: string;
+      urlSuffix: string;
+      issueBody: string;
+      expectedExitStatus: number;
+      expectedOutputSubstring: string;
+    }> = [
+      {
+        description: 'trailing #issuecomment fragment, issue has criteria',
+        urlSuffix: '#issuecomment-1',
+        issueBody: issueBodyWithSuccessCriteria,
+        expectedExitStatus: 0,
+        expectedOutputSubstring: 'Acceptance criteria found',
+      },
+      {
+        description: 'trailing #issuecomment fragment, issue lacks criteria',
+        urlSuffix: '#issuecomment-1',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+        expectedExitStatus: 1,
+        expectedOutputSubstring:
+          'the closing issue does not contain acceptance criteria',
+      },
+      {
+        description: 'trailing ?query string, issue has criteria',
+        urlSuffix: '?query=1',
+        issueBody: issueBodyWithSuccessCriteria,
+        expectedExitStatus: 0,
+        expectedOutputSubstring: 'Acceptance criteria found',
+      },
+      {
+        description: 'trailing ?query string, issue lacks criteria',
+        urlSuffix: '?query=1',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+        expectedExitStatus: 1,
+        expectedOutputSubstring:
+          'the closing issue does not contain acceptance criteria',
+      },
+    ];
+
+    it.each(cases)(
+      'resolves a valid {owner}/{repo}#{N} reference for $description',
+      ({
+        urlSuffix,
+        issueBody,
+        expectedExitStatus,
+        expectedOutputSubstring,
+      }) => {
+        const result = runCheck({
+          diffContent: diffWithDeletedAssertion,
+          prBody: `Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627${urlSuffix}`,
+          issueBody,
+        });
+        expect(result.exitStatus).toBe(expectedExitStatus);
+        expect(result.output).toContain(expectedOutputSubstring);
+      },
+    );
   });
 });
