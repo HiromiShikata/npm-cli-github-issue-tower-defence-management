@@ -327,6 +327,105 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
     });
 
+    it('includes story-labeled issues with null story field in storyIssueUrlByOptionName when title matches a story option name during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      const projectWithFindMaJob: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'find-ma-job-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/31124',
+            'find ma job',
+          ),
+          labels: ['story'],
+          customFields: [],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'find ma job': 'https://github.com/o/r/issues/31124',
+        },
+      });
+    });
+
+    it('excludes story-labeled issues with null story field and non-matching title from storyIssueUrlByOptionName during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      const projectWithKnownStory: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'known-story-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithKnownStory);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/99999',
+            'some unregistered story',
+          ),
+          labels: ['story'],
+          customFields: [],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).not.toHaveProperty([
+        'storyIssueUrlByOptionName',
+        'some unregistered story',
+      ]);
+    });
+
     it('writes storyOptions derived from project story stories during full fetch', async () => {
       const {
         repository,
@@ -936,6 +1035,61 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(cacheWrite).toMatchObject({
         storyIssueUrlByOptionName: {
           'umino / story beta': 'https://github.com/o/r/issues/50',
+        },
+      });
+    });
+
+    it('includes story-labeled issues with null story field in storyIssueUrlByOptionName when title matches a story option name during incremental fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      const projectWithFindMaJob: Project = {
+        ...buildTestProject('cached-project'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'find-ma-job-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: projectWithFindMaJob,
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/31124',
+              'find ma job',
+            ),
+            labels: ['story'],
+            story: null,
+          },
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'find ma job': 'https://github.com/o/r/issues/31124',
         },
       });
     });
@@ -7131,6 +7285,53 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
     });
+
+    it('includes story-labeled issues with null story field in storyIssueUrlByOptionName when title matches a story option name after cache rebuild', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+
+      const titleMatchIssueUrl = 'https://github.com/user/repo/issues/31124';
+      const existingCache = {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: storyProject,
+        issues: [
+          {
+            ...buildCachedIssueRecord(testIssue.url, testIssue.title),
+            itemId: testIssue.itemId,
+            labels: [],
+            story: null,
+          },
+          {
+            ...buildCachedIssueRecord(
+              titleMatchIssueUrl,
+              'regular / workflow improvement',
+            ),
+            labels: ['story'],
+            story: null,
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.updateStory(storyProject, testIssue, 'story-opt-a');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'regular / workflow improvement': titleMatchIssueUrl,
+        },
+      });
+    });
   });
 
   describe('appendIssueToProjectCache', () => {
@@ -7207,6 +7408,74 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite2).toMatchObject({
         storyIssueUrlByOptionName: { 'feature / NewStory': newIssue.url },
+      });
+    });
+
+    it('includes story-labeled issues with null story field in storyIssueUrlByOptionName when title matches a story option name', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const projectWithStoryOptions: Project = {
+        ...buildTestProject('proj-cache-test'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'find-ma-job-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      const titleMatchIssue: Issue = {
+        nameWithOwner: 'test-org/test-repo',
+        number: 200,
+        title: 'find ma job',
+        state: 'OPEN',
+        status: 'Preparation',
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/test-org/test-repo/issues/200',
+        assignees: [],
+        labels: ['story'],
+        org: 'test-org',
+        repo: 'test-repo',
+        body: '',
+        itemId: 'item-200',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        agent: null,
+        stateReason: null,
+      };
+      const cacheWithProject = {
+        ...baseCache,
+        project: projectWithStoryOptions,
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(cacheWithProject);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.appendIssueToProjectCache(
+        'proj-cache-test',
+        titleMatchIssue,
+      );
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'find ma job': titleMatchIssue.url,
+        },
       });
     });
 
