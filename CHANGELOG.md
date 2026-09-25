@@ -1,3 +1,10 @@
+## [2.148.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.0...v2.148.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **buildStoryIssueUrlByOptionName:** include story-labeled issues whose title matches a story option name when story field is null ([#2594](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2594)) ([2f505ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f505bae9f48de538e0408a07bb94b032b66594f))
+
 # [2.148.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.147.1...v2.148.0) (2026-09-25)
 
 
