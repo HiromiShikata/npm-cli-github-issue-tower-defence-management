@@ -266,6 +266,13 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         minimumPullRequestAgeMs: 1 * HOUR_MS,
       },
       {
+        name: '1 hour old exactly with 1 closed referenced issue and a 1 hour minimumPullRequestAgeMs override',
+        pullRequestAgeMs: 1 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: true,
+        minimumPullRequestAgeMs: 1 * HOUR_MS,
+      },
+      {
         name: '2 hours old with 1 closed referenced issue and a 1 hour minimumPullRequestAgeMs override',
         pullRequestAgeMs: 2 * HOUR_MS,
         referencedIssueIsClosed: true,
