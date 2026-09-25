@@ -7886,6 +7886,249 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getAllIssues concurrent cache refresh writes across two processes (issue 2659 — cache lock)', () => {
+    const wait = (milliseconds: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+    const buildRacyLocalStorageCacheRepository = (): Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle' | 'withLock'
+    > => {
+      const store = new Map<string, string>();
+      const lockTailByKey = new Map<string, Promise<unknown>>();
+      return {
+        getSingle: async (key: string) => {
+          await wait(20);
+          const stored = store.get(key);
+          if (stored === undefined) return null;
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
+        },
+        setSingle: async (key: string, value: unknown) => {
+          await wait(20);
+          store.set(key, JSON.stringify(value));
+        },
+        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+          const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
+          const runResult = previousTail.then(fn, fn);
+          lockTailByKey.set(
+            key,
+            runResult.then(
+              () => undefined,
+              () => undefined,
+            ),
+          );
+          return runResult;
+        },
+      };
+    };
+
+    const buildProcessRepository = (
+      cache: Pick<
+        LocalStorageCacheRepository,
+        'getSingle' | 'setSingle' | 'withLock'
+      >,
+    ) => {
+      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+      const restIssueRepository = mock<RestIssueRepository>();
+      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+      const projectRepository = mock<ProjectRepository>();
+      const dateRepository = mock<DateRepository>();
+      const localStorageRepository = mock<LocalStorageRepository>();
+      const repository = new ApiV3CheerioRestIssueRepository(
+        apiV3IssueRepository,
+        restIssueRepository,
+        graphqlProjectItemRepository,
+        cache,
+        projectRepository,
+        dateRepository,
+        localStorageRepository,
+        'dummy',
+      );
+      return {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      };
+    };
+
+    it('incremental-fetch write path: two concurrent getAllIssues calls for the same project each merging a different changed issue both persist their issue in the final on-disk cache', async () => {
+      const projectId = 'proj-incremental-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'existing issue',
+          ),
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+
+      const processA = buildProcessRepository(cache);
+      processA.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:45:00Z'),
+      );
+      processA.projectRepository.getProject.mockResolvedValue(project);
+      processA.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        [
+          buildLightItem(
+            'item-processA',
+            'https://github.com/o/r/issues/200',
+            '2026-07-07T00:44:00.000Z',
+          ),
+        ],
+      );
+      processA.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [
+          buildProjectItem(
+            'https://github.com/o/r/issues/200',
+            'processA-issue',
+          ),
+        ],
+      );
+
+      const processB = buildProcessRepository(cache);
+      processB.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:45:05Z'),
+      );
+      processB.projectRepository.getProject.mockResolvedValue(project);
+      processB.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        [
+          buildLightItem(
+            'item-processB',
+            'https://github.com/o/r/issues/201',
+            '2026-07-07T00:44:30.000Z',
+          ),
+        ],
+      );
+      processB.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [
+          buildProjectItem(
+            'https://github.com/o/r/issues/201',
+            'processB-issue',
+          ),
+        ],
+      );
+
+      await Promise.all([
+        processA.repository.getAllIssues(projectId),
+        processB.repository.getAllIssues(projectId),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const issuesByUrl = new Map(
+        (finalCache?.issues ?? []).map((issue) => [issue.url, issue.title]),
+      );
+      expect(issuesByUrl.get('https://github.com/o/r/issues/1')).toBe(
+        'existing issue',
+      );
+      expect(issuesByUrl.get('https://github.com/o/r/issues/200')).toBe(
+        'processA-issue',
+      );
+      expect(issuesByUrl.get('https://github.com/o/r/issues/201')).toBe(
+        'processB-issue',
+      );
+    });
+
+    it('full-fetch write path: two concurrent getAllIssues calls for the same project each fetching a different project item both persist their issue in the final on-disk cache', async () => {
+      const projectId = 'proj-full-race';
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+
+      const processA = buildProcessRepository(cache);
+      processA.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:00:00Z'),
+      );
+      processA.projectRepository.getProject.mockResolvedValue(project);
+      processA.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        [
+          buildProjectItem(
+            'https://github.com/o/r/issues/300',
+            'processA-issue',
+          ),
+        ],
+      );
+
+      const processB = buildProcessRepository(cache);
+      processB.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:00:05Z'),
+      );
+      processB.projectRepository.getProject.mockResolvedValue(project);
+      processB.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        [
+          buildProjectItem(
+            'https://github.com/o/r/issues/301',
+            'processB-issue',
+          ),
+        ],
+      );
+
+      await Promise.all([
+        processA.repository.getAllIssues(projectId),
+        processB.repository.getAllIssues(projectId),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const issuesByUrl = new Map(
+        (finalCache?.issues ?? []).map((issue) => [issue.url, issue.title]),
+      );
+      expect(issuesByUrl.get('https://github.com/o/r/issues/300')).toBe(
+        'processA-issue',
+      );
+      expect(issuesByUrl.get('https://github.com/o/r/issues/301')).toBe(
+        'processB-issue',
+      );
+    });
+
+    it('full-fetch write path: does not hold the project cache lock across the GitHub network fetch call', async () => {
+      const projectId = 'proj-lock-ordering-full';
+      const project = buildTestProject(projectId);
+      const callOrder: string[] = [];
+      const racyCache = buildRacyLocalStorageCacheRepository();
+      const instrumentedCache: Pick<
+        LocalStorageCacheRepository,
+        'getSingle' | 'setSingle' | 'withLock'
+      > = {
+        getSingle: racyCache.getSingle,
+        setSingle: racyCache.setSingle,
+        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+          callOrder.push('withLock');
+          return racyCache.withLock(key, fn);
+        },
+      };
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(instrumentedCache);
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
+        async () => {
+          callOrder.push('fetch');
+          return [];
+        },
+      );
+
+      await repository.getAllIssues(projectId);
+
+      expect(callOrder).toEqual(['fetch', 'withLock']);
+    });
+  });
+
   describe('appendIssueToProjectCache', () => {
     const newIssue: Issue = {
       nameWithOwner: 'test-org/test-repo',
