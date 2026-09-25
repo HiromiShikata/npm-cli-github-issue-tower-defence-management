@@ -750,7 +750,7 @@ const createStubIssueRepository = (
   getStoryObjectMap: async (project): Promise<StoryObjectMap> => {
     const map: StoryObjectMap = new Map();
     for (const story of project.story?.stories ?? []) {
-      map.set(story.name, {
+      map.set(story.id, {
         story,
         storyIssue: {
           nameWithOwner: 'example/example',

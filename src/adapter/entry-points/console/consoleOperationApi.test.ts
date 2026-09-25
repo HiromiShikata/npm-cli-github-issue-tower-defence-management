@@ -5085,7 +5085,7 @@ describe('consoleOperationApi', () => {
         title: 'Remove this story',
       };
       const storyObjectMap: StoryObjectMap = new Map([
-        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+        [storyToRemove.id, { story: storyToRemove, storyIssue, issues: [] }],
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
@@ -5111,7 +5111,7 @@ describe('consoleOperationApi', () => {
         throw new Error('test fixture must have opt_remove story');
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [] },
         ],
       ]);
@@ -5155,10 +5155,7 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.getStoryObjectMap.mockResolvedValue(
         new Map([
-          [
-            storyToRemove.name,
-            { story: storyToRemove, storyIssue, issues: [] },
-          ],
+          [storyToRemove.id, { story: storyToRemove, storyIssue, issues: [] }],
         ]),
       );
       issueRepository.closeIssueByUrl.mockRejectedValue(
@@ -5189,7 +5186,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5223,7 +5220,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [closedTask] },
         ],
       ]);
@@ -5253,7 +5250,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5290,7 +5287,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openPr] },
         ],
       ]);
@@ -5319,7 +5316,7 @@ describe('consoleOperationApi', () => {
         title: 'Remove this story',
       };
       const storyObjectMap: StoryObjectMap = new Map([
-        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+        [storyToRemove.id, { story: storyToRemove, storyIssue, issues: [] }],
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
       let resolveCloseIssue!: () => void;
@@ -5409,7 +5406,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5453,7 +5450,7 @@ describe('consoleOperationApi', () => {
         title: 'Remove this story',
       };
       const storyObjectMap: StoryObjectMap = new Map([
-        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+        [storyToRemove.id, { story: storyToRemove, storyIssue, issues: [] }],
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
@@ -5496,7 +5493,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5531,7 +5528,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5569,7 +5566,7 @@ describe('consoleOperationApi', () => {
         title: 'Remove this story',
       };
       const storyObjectMap: StoryObjectMap = new Map([
-        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+        [storyToRemove.id, { story: storyToRemove, storyIssue, issues: [] }],
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
@@ -5601,7 +5598,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -5635,7 +5632,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [closedTask] },
         ],
       ]);
@@ -5666,7 +5663,7 @@ describe('consoleOperationApi', () => {
       };
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRemove.name,
+          storyToRemove.id,
           { story: storyToRemove, storyIssue: null, issues: [openTask] },
         ],
       ]);
@@ -6027,7 +6024,7 @@ describe('consoleOperationApi', () => {
         title: 'Alpha story',
       };
       const storyObjectMap: StoryObjectMap = new Map([
-        [storyToRename.name, { story: storyToRename, storyIssue, issues: [] }],
+        [storyToRename.id, { story: storyToRename, storyIssue, issues: [] }],
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
@@ -6052,7 +6049,7 @@ describe('consoleOperationApi', () => {
         throw new Error('test fixture must have opt_alpha story');
       const storyObjectMap: StoryObjectMap = new Map([
         [
-          storyToRename.name,
+          storyToRename.id,
           { story: storyToRename, storyIssue: null, issues: [] },
         ],
       ]);
