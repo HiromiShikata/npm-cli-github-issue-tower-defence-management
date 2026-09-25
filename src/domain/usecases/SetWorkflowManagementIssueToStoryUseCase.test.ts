@@ -878,8 +878,9 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
+      const rejection = expect(promise).rejects.toBeInstanceOf(AggregateError);
       await jest.runAllTimersAsync();
-      await expect(promise).rejects.toBeInstanceOf(AggregateError);
+      await rejection;
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],
@@ -926,6 +927,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         issues: [failingIssue, succeedingIssue],
         cacheUsed: false,
       });
+      promise.catch(() => {});
       await jest.runAllTimersAsync();
 
       let caughtError: unknown;
@@ -1108,8 +1110,9 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
+      const rejection = expect(promise).rejects.toBeInstanceOf(AggregateError);
       await jest.runAllTimersAsync();
-      await expect(promise).rejects.toBeInstanceOf(AggregateError);
+      await rejection;
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],
@@ -1156,6 +1159,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         issues: [failingIssue, succeedingIssue],
         cacheUsed: false,
       });
+      promise.catch(() => {});
       await jest.runAllTimersAsync();
 
       let caughtError: unknown;
@@ -1223,6 +1227,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         issues: [failingWorkflowIssue, failingMatchedStoryIssue],
         cacheUsed: false,
       });
+      promise.catch(() => {});
       await jest.runAllTimersAsync();
 
       let caughtError: unknown;
