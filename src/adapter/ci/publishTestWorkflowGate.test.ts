@@ -35,9 +35,12 @@ const shellScriptGlob = '*.sh';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const readWorkflow = (fileName: string): Record<string, unknown> => {
+const readWorkflow = (
+  fileName: string,
+  directory: string = workflowDirectory,
+): Record<string, unknown> => {
   const workflow: unknown = parse(
-    fs.readFileSync(path.join(workflowDirectory, fileName), 'utf8'),
+    fs.readFileSync(path.join(directory, fileName), 'utf8'),
   );
   if (!isRecord(workflow)) {
     throw new Error(`${fileName} does not parse to a workflow mapping`);
@@ -47,8 +50,9 @@ const readWorkflow = (fileName: string): Record<string, unknown> => {
 
 const workflowJobs = (
   fileName: string,
+  directory: string = workflowDirectory,
 ): Map<string, Record<string, unknown>> => {
-  const jobs = readWorkflow(fileName)['jobs'];
+  const jobs = readWorkflow(fileName, directory)['jobs'];
   if (!isRecord(jobs)) {
     throw new Error(`${fileName} does not declare a jobs mapping`);
   }
@@ -170,9 +174,9 @@ const prettierIgnorePatterns = (): string[] =>
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-const workflowFileNames = (): string[] =>
+const workflowFileNames = (directory: string = workflowDirectory): string[] =>
   fs
-    .readdirSync(workflowDirectory)
+    .readdirSync(directory)
     .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
     .sort();
 
@@ -182,8 +186,13 @@ const workflowFileNamesRunningTheTestSuite = (): string[] =>
       jobIdsRunningCommand(workflowJobs(fileName), testSuiteCommand).length > 0,
   );
 
-const workflowFileNamesDeclaringJob = (jobId: string): string[] =>
-  workflowFileNames().filter((fileName) => workflowJobs(fileName).has(jobId));
+const workflowFileNamesDeclaringJob = (
+  jobId: string,
+  directory: string = workflowDirectory,
+): string[] =>
+  workflowFileNames(directory).filter((fileName) =>
+    workflowJobs(fileName, directory).has(jobId),
+  );
 
 const publishWorkflowStepsRunning = (
   command: string,
@@ -392,16 +401,44 @@ describe('publish workflow release gate wiring', () => {
   });
 
   it('identifies the test suite by workflow file, which more than one workflow declaring a job of the same name cannot impersonate', () => {
-    const fileNamesDeclaringTheAmbiguousJob =
-      workflowFileNamesDeclaringJob(ambiguousTestJobId);
-    expect(fileNamesDeclaringTheAmbiguousJob.length).toBeGreaterThan(1);
     const verifiedWorkflowFileName = gateEnvironmentValue('TEST_WORKFLOW_FILE');
-    expect(workflowFileNames()).toContain(verifiedWorkflowFileName);
+    const fakeDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'publish-test-workflow-gate-ambiguous-job-'),
+    );
+    fs.copyFileSync(
+      path.join(workflowDirectory, verifiedWorkflowFileName),
+      path.join(fakeDirectory, verifiedWorkflowFileName),
+    );
+    const impostorFileName = 'impostor-same-job-id.yml';
+    fs.writeFileSync(
+      path.join(fakeDirectory, impostorFileName),
+      [
+        'on:',
+        '  push:',
+        'jobs:',
+        `  ${ambiguousTestJobId}:`,
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        "      - run: echo 'not the real test suite'",
+        '',
+      ].join('\n'),
+    );
+    const fileNamesDeclaringTheAmbiguousJob = workflowFileNamesDeclaringJob(
+      ambiguousTestJobId,
+      fakeDirectory,
+    );
+    expect(fileNamesDeclaringTheAmbiguousJob.length).toBeGreaterThan(1);
+    expect(workflowFileNames(fakeDirectory)).toContain(
+      verifiedWorkflowFileName,
+    );
     for (const fileName of fileNamesDeclaringTheAmbiguousJob.filter(
       (candidate) => candidate !== verifiedWorkflowFileName,
     )) {
       expect(
-        jobIdsRunningCommand(workflowJobs(fileName), testSuiteCommand),
+        jobIdsRunningCommand(
+          workflowJobs(fileName, fakeDirectory),
+          testSuiteCommand,
+        ),
       ).toEqual([]);
     }
   });
