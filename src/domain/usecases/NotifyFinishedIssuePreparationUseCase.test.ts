@@ -1702,6 +1702,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.anything(),
       expect.stringContaining('The agent may have crashed or stopped silently'),
     );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('accounting'),
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(' null'),
+    );
   });
 
   it('should escalate to Failed Preparation when story stays unset and the same agent keeps being dispatched up to the dispatch loop threshold', async () => {

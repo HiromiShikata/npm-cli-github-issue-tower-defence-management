@@ -1291,6 +1291,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).toContain('developer');
+      expect(comment).not.toContain(' null');
     });
 
     it('does not escalate through escalateDispatchLoop when a silent dispatch of the currently-assigned agent occurs, even with many prior comments', () => {
