@@ -5,7 +5,6 @@ export const AWAITING_OWNER_STATUS_NAME = 'Awaiting Owner';
 export const PREPARATION_STATUS_NAME = 'Preparation';
 export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
 export const TODO_STATUS_NAME = 'Todo by human';
-export const TODO_BY_AGENT_STATUS_NAME = 'Todo by agent';
 export const PC_TODO_STATUS_NAME = 'PC Todo';
 export const IN_TMUX_STATUS_NAME = 'In Tmux by human';
 export const IN_TMUX_BY_AGENT_STATUS_NAME = 'In Tmux by agent';
@@ -43,10 +42,6 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
   {
     name: TODO_STATUS_NAME,
     color: 'PINK',
-  },
-  {
-    name: TODO_BY_AGENT_STATUS_NAME,
-    color: 'BLUE',
   },
   {
     name: IN_TMUX_STATUS_NAME,

@@ -141,7 +141,6 @@ export type ConsoleTabName =
   | 'prs'
   | 'failed-preparation'
   | 'todo-by-human'
-  | 'todo-by-agent'
   | 'queued'
   | 'stories';
 
@@ -166,7 +165,6 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'prs', label: 'Awaiting Owner' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
-  { name: 'todo-by-agent', label: 'Todo by agent' },
   { name: 'queued', label: 'Queued' },
   { name: 'stories', label: 'Stories', isNavigable: false },
 ];

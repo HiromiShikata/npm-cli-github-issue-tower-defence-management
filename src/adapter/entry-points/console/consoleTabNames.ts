@@ -5,7 +5,6 @@ export const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
   'workflow-blocker',
   'prs',
   'failed-preparation',
-  'todo-by-agent',
   'queued',
   'stories',
 ];

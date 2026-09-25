@@ -68,24 +68,6 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('+1w skip')).toBeInTheDocument();
   });
 
-  it('shows +1w skip on the todo-by-agent tab', () => {
-    const { getByText } = render(
-      <ConsoleOperationMenu
-        tab="todo-by-agent"
-        item={issueItem}
-        hasPullRequest={false}
-        rejectEnabled={false}
-        statusOptions={consoleStatusOptionsFixture}
-        storyOptions={[]}
-        currentStoryName={null}
-        agentOptions={[]}
-        currentAgentName={null}
-        handlers={handlers}
-      />,
-    );
-    expect(getByText('+1w skip')).toBeInTheDocument();
-  });
-
   it('hides the review group when there is no pull request', () => {
     const { queryByText } = render(
       <ConsoleOperationMenu

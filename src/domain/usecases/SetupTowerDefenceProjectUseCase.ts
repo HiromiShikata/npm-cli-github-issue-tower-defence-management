@@ -54,6 +54,7 @@ export class SetupTowerDefenceProjectUseCase {
     PC_TODO_STATUS_NAME,
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
     SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+    'Todo by agent',
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {

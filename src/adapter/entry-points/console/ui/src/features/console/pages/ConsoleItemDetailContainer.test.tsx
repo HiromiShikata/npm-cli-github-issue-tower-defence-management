@@ -763,7 +763,7 @@ describe('ConsoleItemDetailContainer', () => {
     const onQueueAction = jest.fn();
     const { getByText } = render(
       <ConsoleItemDetailContainer
-        tab="todo-by-agent"
+        tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
         operations={operations}
@@ -802,7 +802,7 @@ describe('ConsoleItemDetailContainer', () => {
     const onQueueAction = jest.fn();
     const { getByText } = render(
       <ConsoleItemDetailContainer
-        tab="todo-by-agent"
+        tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
         operations={operations}
@@ -1059,7 +1059,7 @@ describe('ConsoleItemDetailContainer', () => {
     const onQueueAction = jest.fn();
     const { getByRole } = render(
       <ConsoleItemDetailContainer
-        tab="todo-by-agent"
+        tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
         operations={operations}

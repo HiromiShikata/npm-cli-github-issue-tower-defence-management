@@ -428,32 +428,6 @@ test('shows and hides gray stories with the Show archived toggle button on the s
   ).toBeVisible();
 });
 
-test('shows the agent label and value in the list row and the agent chip in the detail view', async ({
-  page,
-}) => {
-  await page.goto(harness.appRootUrl);
-
-  await tabByLabel(page, 'Todo by agent').click();
-
-  const agentItemRow = itemRowByText(
-    page,
-    'Route console items into the Todo by agent manual triage bucket',
-  );
-  await expect(
-    agentItemRow.locator('.console-item-field-label', { hasText: 'Agent' }),
-  ).toBeVisible();
-  await expect(
-    agentItemRow.locator('.console-item-field', { hasText: 'developer' }),
-  ).toBeVisible();
-
-  await agentItemRow.click();
-
-  await expect(page.locator('.console-detail-agent-chip')).toBeVisible();
-  await expect(page.locator('.console-detail-agent-chip')).toHaveText(
-    'developer',
-  );
-});
-
 test('creates an issue for a story when the add-task button and form are used', async ({
   page,
 }) => {
@@ -1289,101 +1263,6 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   await expect(
     itemRowByText(page, 'Clean up stale console UI test fixtures'),
   ).toBeVisible({ timeout: 8000 });
-});
-
-test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel when no next pending item remains', async ({
-  page,
-}) => {
-  await page.goto(harness.appRootUrl);
-
-  await tabByLabel(page, 'Todo by agent').click();
-  await itemRowByText(
-    page,
-    'Publish product documentation site story issue',
-  ).click();
-
-  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
-  await expect(dangerToggle).toBeVisible();
-  await dangerToggle.click();
-
-  const deleteStoryButton = page.locator('.console-op-button', {
-    hasText: 'Delete Story',
-  });
-  await expect(deleteStoryButton).toBeVisible();
-  await deleteStoryButton.click();
-
-  const dialog = page.getByRole('dialog', { name: 'Confirm story deletion' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Publish product documentation site');
-
-  const previousDeleteCount = harness.deleteStoryCalls.length;
-  await dialog.getByRole('button', { name: 'Delete with child tasks' }).click();
-
-  await expect
-    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
-    .toBe(previousDeleteCount + 1);
-  expect(
-    harness.deleteStoryCalls[harness.deleteStoryCalls.length - 1].storyOptionId,
-  ).toBe('f7cd5cbc');
-
-  await expect(page.locator('.console-detail')).toHaveCount(0, {
-    timeout: 8000,
-  });
-});
-
-test('advances to the next pending item after deleting a story from the detail view when a sibling task exists', async ({
-  page,
-}) => {
-  const localHarness = await startConsoleE2eHarness();
-  try {
-    const listPath = path.join(
-      localHarness.consoleDataOutputDir,
-      CONSOLE_E2E_PJCODE,
-      'todo-by-agent',
-      'list.json',
-    );
-    const snapshot = JSON.parse(fs.readFileSync(listPath, 'utf-8')) as {
-      items: { labels: string[] }[];
-    };
-    const storyIdx = snapshot.items.findIndex((i) =>
-      i.labels.includes('story'),
-    );
-    if (storyIdx > 0) {
-      const [storyItem] = snapshot.items.splice(storyIdx, 1);
-      snapshot.items.unshift(storyItem);
-      fs.writeFileSync(listPath, JSON.stringify(snapshot));
-    }
-    await page.goto(localHarness.appRootUrl);
-    await tabByLabel(page, 'Todo by agent').click();
-    await itemRowByText(
-      page,
-      'Publish product documentation site story issue',
-    ).click();
-    const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
-    await expect(dangerToggle).toBeVisible();
-    await dangerToggle.click();
-    const deleteStoryButton = page.locator('.console-op-button', {
-      hasText: 'Delete Story',
-    });
-    await expect(deleteStoryButton).toBeVisible();
-    await deleteStoryButton.click();
-    const dialog = page.getByRole('dialog', {
-      name: 'Confirm story deletion',
-    });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('Publish product documentation site');
-    const previousDeleteCount = localHarness.deleteStoryCalls.length;
-    await dialog.getByRole('button', { name: 'Keep child tasks' }).click();
-    await expect
-      .poll(() => localHarness.deleteStoryCalls.length, { timeout: 10000 })
-      .toBe(previousDeleteCount + 1);
-    await expect(page.locator('.console-detail')).toContainText(
-      'Route console items into the Todo by agent manual triage bucket',
-      { timeout: 8000 },
-    );
-  } finally {
-    await localHarness.stop();
-  }
 });
 
 test('undo toast appears at the bottom-left corner of the viewport', async ({

@@ -56,9 +56,6 @@ describe('actionToastMessage', () => {
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
       'Next Action Date +1w skip',
     );
-    expect(actionToastMessage(kind, 'todo-by-agent')).toBe(
-      'Next Action Date +1w skip',
-    );
   });
 
   it('labels the +1 day snooze the same on every tab', () => {
@@ -252,7 +249,6 @@ describe('actionAdvances', () => {
     };
     expect(actionAdvances(kind, 'prs')).toBe(false);
     expect(actionAdvances(kind, 'todo-by-human')).toBe(true);
-    expect(actionAdvances(kind, 'todo-by-agent')).toBe(true);
   });
 });
 

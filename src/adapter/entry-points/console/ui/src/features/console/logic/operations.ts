@@ -61,4 +61,4 @@ export const STATUS_BUTTON_NAMES: string[] = [
 ];
 
 export const isManualTriageTab = (tab: ConsoleTabName): boolean =>
-  tab === 'todo-by-human' || tab === 'todo-by-agent';
+  tab === 'todo-by-human';

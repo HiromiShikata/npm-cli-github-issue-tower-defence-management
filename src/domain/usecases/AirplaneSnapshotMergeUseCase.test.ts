@@ -76,7 +76,7 @@ describe('airplaneSnapshotMerge', () => {
 
   it('merges tabs from previous and new, new overrides on conflict', () => {
     const previous = makeSnapshot({
-      tabs: { pj1: { 'todo-by-agent': { items: [] } } },
+      tabs: { pj1: { 'queued': { items: [] } } },
       items: { 'https://github.com/o/r/issues/1': { body: 'body' } },
     });
     const newResult = makeSnapshot({

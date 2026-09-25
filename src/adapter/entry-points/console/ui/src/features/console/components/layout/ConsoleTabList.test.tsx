@@ -7,7 +7,6 @@ const counts: Record<ConsoleTabName, number> = {
   prs: 3,
   'failed-preparation': 0,
   'todo-by-human': 2,
-  'todo-by-agent': 3,
   queued: 0,
   stories: 0,
 };
@@ -41,7 +40,6 @@ describe('ConsoleTabList', () => {
     );
     expect(queryByText('Awaiting Owner')).not.toBeNull();
     expect(queryByText('Todo by human')).not.toBeNull();
-    expect(queryByText('Todo by agent')).not.toBeNull();
     expect(queryByText('Triage')).toBeNull();
     expect(queryByText('Failed Preparation')).toBeNull();
   });
@@ -450,9 +448,6 @@ describe('ConsoleTabList', () => {
       'data-active',
     );
     expect(getByText('Todo by human').closest('a')).not.toHaveAttribute(
-      'data-active',
-    );
-    expect(getByText('Todo by agent').closest('a')).not.toHaveAttribute(
       'data-active',
     );
   });
