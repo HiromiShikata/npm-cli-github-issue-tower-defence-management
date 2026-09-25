@@ -1,3 +1,10 @@
+## [2.148.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.6...v2.148.7) (2026-09-25)
+
+
+### Bug Fixes
+
+* **ConflictedIssueRevertUseCase:** replace status exclusion list with Awaiting Owner allowlist and add CI-failure detection ([#2601](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2601)) ([823090c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/823090cba7f80cd9318ba3a144e7926b8720aa0c))
+
 ## [2.148.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.5...v2.148.6) (2026-09-25)
 
 
