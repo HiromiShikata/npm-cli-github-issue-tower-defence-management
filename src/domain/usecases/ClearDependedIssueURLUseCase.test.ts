@@ -1007,10 +1007,16 @@ describe('ClearDependedIssueURLUseCase', () => {
       it('should not remove and should not post Dependency removed comment for a same-repo depended issue URL absent from project issues when a live GitHub check confirms it is still open', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-        mockIssueRepository.getIssueByUrl.mockImplementation(async (url) =>
-          url === sameRepoDependedIssueUrl
-            ? { ...mock<Issue>(), url, isClosed: false }
-            : null,
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'open',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
         );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -1030,8 +1036,8 @@ describe('ClearDependedIssueURLUseCase', () => {
       it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it does not exist', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-        mockIssueRepository.getIssueByUrl.mockImplementation(async () =>
-          Promise.resolve(null),
+        mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+          new Error('HTTP 404 Not Found'),
         );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -1056,10 +1062,16 @@ describe('ClearDependedIssueURLUseCase', () => {
       it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it exists but is closed', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-        mockIssueRepository.getIssueByUrl.mockImplementation(async (url) =>
-          url === sameRepoDependedIssueUrl
-            ? { ...mock<Issue>(), url, isClosed: true }
-            : null,
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'closed',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
         );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -1073,6 +1085,29 @@ describe('ClearDependedIssueURLUseCase', () => {
         expect(
           mockIssueRepository.updateProjectTextField.mock.calls,
         ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssue,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('should still remove a same-repo depended issue URL absent from project issues and not crash when a live GitHub check fails with a transient error unrelated to 404', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+          new Error('HTTP 500 Internal Server Error'),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssue],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'fieldId', sameRepoDependingIssue],
+        ]);
         expect(mockIssueRepository.createComment.mock.calls).toEqual([
           [
             sameRepoDependingIssue,
