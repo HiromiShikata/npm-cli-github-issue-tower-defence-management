@@ -1310,22 +1310,24 @@ export class ApiV3CheerioRestIssueRepository
     projectId: Project['id'],
     issue: Issue,
   ): Promise<void> => {
-    const cached = await this.projectIssuesCacheRepository.read(projectId);
-    if (cached === null) {
-      return;
-    }
-    const alreadyPresent = cached.issues.some((i) => i.url === issue.url);
-    if (alreadyPresent) {
-      return;
-    }
-    const updatedIssues = [...cached.issues, issue];
-    await this.projectIssuesCacheRepository.write(projectId, {
-      ...cached,
-      issues: updatedIssues,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-        updatedIssues,
-        cached.project.story?.stories ?? [],
-      ),
+    await this.projectIssuesCacheRepository.withLock(projectId, async () => {
+      const cached = await this.projectIssuesCacheRepository.read(projectId);
+      if (cached === null) {
+        return;
+      }
+      const alreadyPresent = cached.issues.some((i) => i.url === issue.url);
+      if (alreadyPresent) {
+        return;
+      }
+      const updatedIssues = [...cached.issues, issue];
+      await this.projectIssuesCacheRepository.write(projectId, {
+        ...cached,
+        issues: updatedIssues,
+        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+          updatedIssues,
+          cached.project.story?.stories ?? [],
+        ),
+      });
     });
   };
   updateStoryByProjectItemId = async (
