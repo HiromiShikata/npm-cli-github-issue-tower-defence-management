@@ -371,7 +371,7 @@ The story field is not set on this issue. The designated agent "${params.nextSte
     if (silentRedispatches.hasReportsInCycle) {
       return {
         type: 'escalateReportingLoop',
-        comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
+        comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${effectiveNextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
       };
@@ -379,7 +379,7 @@ The agent has been reporting every cycle but cannot advance — it has been disp
     if (!silentRedispatches.hasReportsInCycle) {
       return {
         type: 'escalateSilentRedispatch',
-        comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${params.nextStepAgent}
+        comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${effectiveNextStepAgent}
 
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
       };
