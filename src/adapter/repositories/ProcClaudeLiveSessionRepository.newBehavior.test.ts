@@ -136,7 +136,9 @@ describe('R1 (regression): process with CLAUDE_CONFIG_DIR keeps config-dir-based
     const sessions = repository.listLiveSessions();
 
     expect(sessions).toHaveLength(1);
-    expect(sessions[0]?.sessionKey).toBe('/home/user/.config/claude-config-only');
+    expect(sessions[0]?.sessionKey).toBe(
+      '/home/user/.config/claude-config-only',
+    );
     expect(sessions[0]?.sessionKey).not.toMatch(/^pid:/);
   });
 });

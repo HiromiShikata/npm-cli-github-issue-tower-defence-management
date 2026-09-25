@@ -20,7 +20,10 @@ import {
   LiveSessionOauthTokenSelectUseCase,
   type LiveSessionOauthTokenSelectionSettings,
 } from './LiveSessionOauthTokenSelectUseCase';
-import type { OauthTokenCandidate, OauthTokenWindowSnapshot } from './OauthTokenSelectUseCase';
+import type {
+  OauthTokenCandidate,
+  OauthTokenWindowSnapshot,
+} from './OauthTokenSelectUseCase';
 import { loadLiveSessionOauthTokenSelectionSettings } from '../../adapter/entry-points/cli/fleetConfig';
 
 const NOW = 1_000_000;
@@ -73,12 +76,15 @@ describe('SC-1: concurrent limit uses time-to-reset', () => {
   it('gives a limit of 2 for fiveHourFreeRatio=0.68 with 4.6 hours until reset', () => {
     const result = useCase.run(
       [
-        candidate('tokenA', snapshot({
-          fiveHourUtilization: 0.32,          // fiveHourFreeRatio = 0.68
-          fiveHourReset: NOW + 4.6 * HOUR,
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 7 * DAY,
-        })),
+        candidate(
+          'tokenA',
+          snapshot({
+            fiveHourUtilization: 0.32, // fiveHourFreeRatio = 0.68
+            fiveHourReset: NOW + 4.6 * HOUR,
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 7 * DAY,
+          }),
+        ),
       ],
       [],
       NOW,
@@ -99,12 +105,15 @@ describe('SC-2: low free ratio limits to 1', () => {
   it('gives a limit of 1 for fiveHourFreeRatio=0.27 with 4.3 hours until reset', () => {
     const result = useCase.run(
       [
-        candidate('tokenB', snapshot({
-          fiveHourUtilization: 0.73,          // fiveHourFreeRatio = 0.27
-          fiveHourReset: NOW + 4.3 * HOUR,
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 7 * DAY,
-        })),
+        candidate(
+          'tokenB',
+          snapshot({
+            fiveHourUtilization: 0.73, // fiveHourFreeRatio = 0.27
+            fiveHourReset: NOW + 4.3 * HOUR,
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 7 * DAY,
+          }),
+        ),
       ],
       [],
       NOW,
@@ -126,7 +135,7 @@ describe('SC-3: unknown five hour reset defaults to 5 hours', () => {
   it('gives a limit of 4 for full free ratio when reset time is unknown', () => {
     const result = useCase.run(
       [
-        candidate('tokenC', null),   // snapshot=null → no known reset time
+        candidate('tokenC', null), // snapshot=null → no known reset time
       ],
       [],
       NOW,
@@ -140,12 +149,15 @@ describe('SC-3: unknown five hour reset defaults to 5 hours', () => {
   it('gives a limit of 4 for full free ratio when fiveHourReset is zero (unset)', () => {
     const result = useCase.run(
       [
-        candidate('tokenD', snapshot({
-          fiveHourUtilization: 0,
-          fiveHourReset: 0,             // zero means unset / unknown
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 7 * DAY,
-        })),
+        candidate(
+          'tokenD',
+          snapshot({
+            fiveHourUtilization: 0,
+            fiveHourReset: 0, // zero means unset / unknown
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 7 * DAY,
+          }),
+        ),
       ],
       [],
       NOW,
@@ -167,24 +179,30 @@ describe('SC-5: overflow token selection uses lowest (count+1)/limit ratio', () 
    * Current behavior: seven-day reset order → Token B wins (resets sooner) → FAILS.
    */
   it('selects the token with the lowest overflow ratio when both are over their concurrent limits', () => {
-    const tokenA = candidate('tokenA', snapshot({
-      fiveHourUtilization: 0.32,            // fiveHourFreeRatio = 0.68
-      fiveHourReset: NOW + 3.4 * HOUR,      // → new limit=4
-      sevenDayUtilization: 0,
-      sevenDayReset: NOW + 6 * DAY,         // further away
-    }));
-    const tokenB = candidate('tokenB', snapshot({
-      fiveHourUtilization: 0.32,            // fiveHourFreeRatio = 0.68
-      fiveHourReset: NOW + 10 * HOUR,       // → new limit=1
-      sevenDayUtilization: 0,
-      sevenDayReset: NOW + 2 * HOUR,        // sooner
-    }));
+    const tokenA = candidate(
+      'tokenA',
+      snapshot({
+        fiveHourUtilization: 0.32, // fiveHourFreeRatio = 0.68
+        fiveHourReset: NOW + 3.4 * HOUR, // → new limit=4
+        sevenDayUtilization: 0,
+        sevenDayReset: NOW + 6 * DAY, // further away
+      }),
+    );
+    const tokenB = candidate(
+      'tokenB',
+      snapshot({
+        fiveHourUtilization: 0.32, // fiveHourFreeRatio = 0.68
+        fiveHourReset: NOW + 10 * HOUR, // → new limit=1
+        sevenDayUtilization: 0,
+        sevenDayReset: NOW + 2 * HOUR, // sooner
+      }),
+    );
 
     const result = useCase.run(
       [tokenA, tokenB],
       [
-        ...sessionsFor('tokenA', 5),         // over the new limit of 4
-        ...sessionsFor('tokenB', 1),         // at the new limit of 1 (not below)
+        ...sessionsFor('tokenA', 5), // over the new limit of 4
+        ...sessionsFor('tokenB', 1), // at the new limit of 1 (not below)
       ],
       NOW,
       SETTINGS,
@@ -220,10 +238,12 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour effect on concurrent limit'
   });
 
   it('loads fiveHourShareConsumedPerSessionHour=0.1 from fleet config and halves the SC-1 limit', () => {
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fiveHourShareConsumedPerSessionHour: 0.1',
-    ].join('\n'));
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fiveHourShareConsumedPerSessionHour: 0.1',
+      ].join('\n'),
+    );
 
     const settings = loadLiveSessionOauthTokenSelectionSettings(
       configPath,
@@ -231,12 +251,15 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour effect on concurrent limit'
 
     const result = useCase.run(
       [
-        candidate('tokenE', snapshot({
-          fiveHourUtilization: 0.32,          // fiveHourFreeRatio = 0.68
-          fiveHourReset: NOW + 4.6 * HOUR,
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 7 * DAY,
-        })),
+        candidate(
+          'tokenE',
+          snapshot({
+            fiveHourUtilization: 0.32, // fiveHourFreeRatio = 0.68
+            fiveHourReset: NOW + 4.6 * HOUR,
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 7 * DAY,
+          }),
+        ),
       ],
       [],
       NOW,
@@ -256,18 +279,24 @@ describe('R2 (regression): seven-day reset order is preserved when both tokens h
   it('selects the token with the sooner seven-day reset when both are under their limits', () => {
     const result = useCase.run(
       [
-        candidate('distantReset', snapshot({
-          fiveHourUtilization: 0,
-          fiveHourReset: NOW + 4 * HOUR,
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 6 * DAY,
-        })),
-        candidate('nearReset', snapshot({
-          fiveHourUtilization: 0,
-          fiveHourReset: NOW + 4 * HOUR,
-          sevenDayUtilization: 0,
-          sevenDayReset: NOW + 2 * HOUR,
-        })),
+        candidate(
+          'distantReset',
+          snapshot({
+            fiveHourUtilization: 0,
+            fiveHourReset: NOW + 4 * HOUR,
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 6 * DAY,
+          }),
+        ),
+        candidate(
+          'nearReset',
+          snapshot({
+            fiveHourUtilization: 0,
+            fiveHourReset: NOW + 4 * HOUR,
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 2 * HOUR,
+          }),
+        ),
       ],
       [],
       NOW,

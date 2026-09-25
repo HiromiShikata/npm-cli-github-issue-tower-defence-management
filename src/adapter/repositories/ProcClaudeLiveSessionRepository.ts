@@ -37,7 +37,6 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     return liveSessions;
   };
 
-
   private listProcessIdDirectories = (): string[] => {
     let entries: string[];
     try {

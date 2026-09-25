@@ -15,9 +15,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {
-  loadLiveSessionOauthTokenSelectionSettings,
-} from './fleetConfig';
+import { loadLiveSessionOauthTokenSelectionSettings } from './fleetConfig';
 
 describe('SC-6b: fiveHourShareConsumedPerSessionHour value of 0 is rejected', () => {
   let tempDir: string;
@@ -41,14 +39,16 @@ describe('SC-6b: fiveHourShareConsumedPerSessionHour value of 0 is rejected', ()
      * A share of 0 would cause division by zero in the new formula; it must be rejected.
      * Currently: no validation exists for this field, so no throw occurs → FAILS.
      */
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fiveHourShareConsumedPerSessionHour: 0',
-    ].join('\n'));
-
-    expect(() => loadLiveSessionOauthTokenSelectionSettings(configPath)).toThrow(
-      'fiveHourShareConsumedPerSessionHour',
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fiveHourShareConsumedPerSessionHour: 0',
+      ].join('\n'),
     );
+
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(configPath),
+    ).toThrow('fiveHourShareConsumedPerSessionHour');
   });
 });
 
@@ -74,14 +74,16 @@ describe('SC-6c: fiveHourShareConsumedPerSessionHour value above 1 is rejected',
      * A share above 1 is nonsensical (a single session would consume more than the full window).
      * Currently: no validation exists for this field, so no throw occurs → FAILS.
      */
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fiveHourShareConsumedPerSessionHour: 1.1',
-    ].join('\n'));
-
-    expect(() => loadLiveSessionOauthTokenSelectionSettings(configPath)).toThrow(
-      'fiveHourShareConsumedPerSessionHour',
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fiveHourShareConsumedPerSessionHour: 1.1',
+      ].join('\n'),
     );
+
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(configPath),
+    ).toThrow('fiveHourShareConsumedPerSessionHour');
   });
 });
 
@@ -107,12 +109,16 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour is loaded from fleet config
      * The loader must read and surface the new field so the use case can consume it.
      * Currently: the field is not parsed and the returned object has no such key → FAILS.
      */
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fiveHourShareConsumedPerSessionHour: 0.1',
-    ].join('\n'));
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fiveHourShareConsumedPerSessionHour: 0.1',
+      ].join('\n'),
+    );
 
-    const settings = loadLiveSessionOauthTokenSelectionSettings(configPath) as Record<string, unknown>;
+    const settings = loadLiveSessionOauthTokenSelectionSettings(
+      configPath,
+    ) as Record<string, unknown>;
 
     expect(settings['fiveHourShareConsumedPerSessionHour']).toBe(0.1);
   });
@@ -122,12 +128,16 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour is loaded from fleet config
      * The default value must be 0.05 (5 % of the 5-hour window per concurrent session).
      * Currently: the field is absent from the returned object, so accessing it yields undefined → FAILS.
      */
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  maxConcurrentSessionCount: 10',
-    ].join('\n'));
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  maxConcurrentSessionCount: 10',
+      ].join('\n'),
+    );
 
-    const settings = loadLiveSessionOauthTokenSelectionSettings(configPath) as Record<string, unknown>;
+    const settings = loadLiveSessionOauthTokenSelectionSettings(
+      configPath,
+    ) as Record<string, unknown>;
 
     expect(settings['fiveHourShareConsumedPerSessionHour']).toBe(0.05);
   });
@@ -151,22 +161,28 @@ describe('R3 (regression): existing fullSpeedFiveHourFreeRatio validation is pre
   });
 
   it('rejects fullSpeedFiveHourFreeRatio of 1.5 (above the valid range of (0, 1])', () => {
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fullSpeedFiveHourFreeRatio: 1.5',
-    ].join('\n'));
-
-    expect(() => loadLiveSessionOauthTokenSelectionSettings(configPath)).toThrow(
-      'fullSpeedFiveHourFreeRatio',
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fullSpeedFiveHourFreeRatio: 1.5',
+      ].join('\n'),
     );
+
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(configPath),
+    ).toThrow('fullSpeedFiveHourFreeRatio');
   });
 
   it('accepts fullSpeedFiveHourFreeRatio of 1.0 (the upper boundary of the valid range)', () => {
-    const configPath = writeFleetConfig([
-      'liveSessionOauthTokenSelection:',
-      '  fullSpeedFiveHourFreeRatio: 1.0',
-    ].join('\n'));
+    const configPath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  fullSpeedFiveHourFreeRatio: 1.0',
+      ].join('\n'),
+    );
 
-    expect(() => loadLiveSessionOauthTokenSelectionSettings(configPath)).not.toThrow();
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(configPath),
+    ).not.toThrow();
   });
 });
