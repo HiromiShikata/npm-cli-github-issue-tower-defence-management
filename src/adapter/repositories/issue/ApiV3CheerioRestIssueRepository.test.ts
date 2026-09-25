@@ -8699,9 +8699,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
-    localStorageCacheRepository.withLock.mockImplementation((_key, fn) =>
-      fn(),
-    );
+    localStorageCacheRepository.withLock.mockImplementation((_key, fn) => fn());
     const projectRepository = mock<ProjectRepository>();
     const dateRepository = mock<DateRepository>();
     const localStorageRepository = mock<LocalStorageRepository>();

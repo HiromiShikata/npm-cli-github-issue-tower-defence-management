@@ -3,7 +3,8 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 
 export type Sleep = (milliseconds: number) => Promise<void>;
 
-const realSleep: Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const realSleep: Sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export const PROJECT_CACHE_LOCK_STALE_TIMEOUT_MS = 30_000;
 

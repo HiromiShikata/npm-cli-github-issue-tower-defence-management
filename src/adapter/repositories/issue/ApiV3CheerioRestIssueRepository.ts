@@ -1591,9 +1591,7 @@ export class ApiV3CheerioRestIssueRepository
     }
     await this.projectIssuesCacheRepository.withLock(project.id, async () => {
       const cached = await this.projectIssuesCacheRepository.read(project.id);
-      const cachedIssue = cached?.issues.find(
-        (i) => i.itemId === issue.itemId,
-      );
+      const cachedIssue = cached?.issues.find((i) => i.itemId === issue.itemId);
       if (cached === null || cachedIssue === undefined) {
         return;
       }

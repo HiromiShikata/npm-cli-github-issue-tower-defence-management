@@ -134,7 +134,10 @@ const buildRacyCacheWithRealLock = (): Pick<
 };
 
 const buildIssueRepository = (
-  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle' | 'withLock'>,
+  cache: Pick<
+    LocalStorageCacheRepository,
+    'getSingle' | 'setSingle' | 'withLock'
+  >,
   localStorageRepository: LocalStorageRepository,
 ): ApiV3CheerioRestIssueRepository =>
   new ApiV3CheerioRestIssueRepository(
@@ -149,7 +152,10 @@ const buildIssueRepository = (
   );
 
 const seedCache = async (
-  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle' | 'withLock'>,
+  cache: Pick<
+    LocalStorageCacheRepository,
+    'getSingle' | 'setSingle' | 'withLock'
+  >,
 ): Promise<void> => {
   await new ProjectIssuesCacheRepository(cache).write(projectId, {
     lastFetchedAt: '2026-01-01T00:00:00.000Z',

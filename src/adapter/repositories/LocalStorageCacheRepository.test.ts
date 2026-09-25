@@ -471,7 +471,8 @@ describe('LocalStorageCacheRepository', () => {
       }
 
       expect(thrown).toBeInstanceOf(Error);
-      if (!(thrown instanceof Error)) throw new Error('Expected Error instance');
+      if (!(thrown instanceof Error))
+        throw new Error('Expected Error instance');
       expect(thrown.message).toMatch(/lock/i);
       expect(thrown.message).toContain('stuck-key');
       expect(fn).not.toHaveBeenCalled();
