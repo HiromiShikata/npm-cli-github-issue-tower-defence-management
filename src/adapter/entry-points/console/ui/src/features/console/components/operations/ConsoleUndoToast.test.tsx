@@ -63,11 +63,7 @@ describe('ConsoleUndoToast', () => {
     const onDismiss = jest.fn();
     const onUndo = jest.fn();
     const { getByText } = render(
-      <ConsoleUndoToast
-        {...baseProps}
-        onUndo={onUndo}
-        onDismiss={onDismiss}
-      />,
+      <ConsoleUndoToast {...baseProps} onUndo={onUndo} onDismiss={onDismiss} />,
     );
     fireEvent.click(getByText('✕'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
