@@ -211,6 +211,13 @@ export class LiveSessionOauthTokenSelectUseCase {
     ) {
       return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for live session selection)`;
     }
+    if (
+      sevenDayDeadlinePassed &&
+      Math.round(sevenDayFreeRatio * 100) <=
+        Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)
+    ) {
+      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (budget exhausted; token ineligible even within 48-hour deadline window)`;
+    }
     return null;
   };
 
