@@ -656,6 +656,118 @@ describe('ConsoleItemDetailContainer', () => {
     },
   );
 
+  it('surfaces a message to onCommentError for the status-set phase failing after the comment already posted that differs from the message shown when the comment POST itself fails', async () => {
+    const commentPostFailureCause = new Error('comment post failed');
+    const statusSetFailureAfterCommentPostedCause = new Error(
+      'status post failed after comment already posted',
+    );
+
+    const commitAndCaptureCommentErrorMessage = async (
+      cause: Error,
+    ): Promise<string> => {
+      const addCommentAndMoveToAwaitingWorkspace = jest.fn(async () => {
+        throw cause;
+      });
+      const operations = buildOperationsWithAtomicAwaitingWorkspace(
+        addCommentAndMoveToAwaitingWorkspace,
+      );
+      const onCommentError = jest.fn();
+      const onQueueAction = jest.fn();
+      const { getByPlaceholderText, getByText, unmount } = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+          onCommentError={onCommentError}
+        />,
+      );
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: 'test comment body' },
+      });
+      fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+      const input = onQueueAction.mock.calls[0][0];
+      await expect(input.commit()).rejects.toBe(cause);
+      expect(onCommentError).toHaveBeenCalledTimes(1);
+      const message = onCommentError.mock.calls[0][0] as string;
+      unmount();
+      return message;
+    };
+
+    const commentPostFailureMessage =
+      await commitAndCaptureCommentErrorMessage(commentPostFailureCause);
+    const statusSetFailureAfterCommentPostedMessage =
+      await commitAndCaptureCommentErrorMessage(
+        statusSetFailureAfterCommentPostedCause,
+      );
+
+    expect(statusSetFailureAfterCommentPostedMessage).not.toBe(
+      commentPostFailureMessage,
+    );
+    expect(statusSetFailureAfterCommentPostedMessage).not.toBe(
+      'Failed to post comment',
+    );
+  });
+
+  it('does not call addCommentAndMoveToAwaitingWorkspace a second time when the operator retries after the status-set phase failed and the comment had already posted', async () => {
+    const statusSetFailureAfterCommentPostedCause = new Error(
+      'status post failed after comment already posted',
+    );
+    const addCommentAndMoveToAwaitingWorkspace = jest
+      .fn()
+      .mockRejectedValueOnce(statusSetFailureAfterCommentPostedCause)
+      .mockResolvedValueOnce({
+        author: 'HiromiShikata',
+        body: 'test comment body',
+        createdAt: '2026-06-19T11:58:00.000Z',
+      });
+    const operations = buildOperationsWithAtomicAwaitingWorkspace(
+      addCommentAndMoveToAwaitingWorkspace,
+    );
+    const onCommentError = jest.fn();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        onCommentError={onCommentError}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'test comment body' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+    const input = onQueueAction.mock.calls[0][0];
+    await expect(input.commit()).rejects.toBe(
+      statusSetFailureAfterCommentPostedCause,
+    );
+    expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+
+    await input.commit();
+
+    expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+  });
+
   it('re-throws the error from addCommentAndMoveToAwaitingWorkspace once commit runs, so the composer shows the error state', async () => {
     const error = new Error('network failure');
     const addCommentAndMoveToAwaitingWorkspace = jest.fn(async () => {
