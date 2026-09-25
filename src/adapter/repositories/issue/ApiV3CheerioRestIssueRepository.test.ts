@@ -7789,8 +7789,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     stateReason: null,
   });
 
-  describe('applyDependedIssueUrlFieldWriteToLaterReads concurrent writes (C3 — hardening lock)', () => {
-    it('C3: two concurrent updateProjectTextField writes for the same project but different issues both persist their dependedIssueUrls cache update', async () => {
+  describe('applyDependedIssueUrlFieldWriteToLaterReads concurrent writes', () => {
+    it('two concurrent updateProjectTextField writes for the same project but different issues both persist their dependedIssueUrls cache update', async () => {
       const projectId = 'proj-lock-race';
       const dependedFieldId = 'depended-field-race';
       const cacheKey = `allIssues-${projectId}`;
