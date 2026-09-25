@@ -4935,8 +4935,8 @@ describe('consoleOperationApi', () => {
       });
       getProject.mockReturnValue(getProjectPromise);
 
-      let resolveStoryObjectMap: (value: StoryObjectMap) => void =
-        () => undefined;
+      let resolveStoryObjectMap: (value: StoryObjectMap) => void = () =>
+        undefined;
       const storyObjectMapPromise = new Promise<StoryObjectMap>((resolve) => {
         resolveStoryObjectMap = resolve;
       });
