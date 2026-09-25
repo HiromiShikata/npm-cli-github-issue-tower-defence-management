@@ -2,6 +2,8 @@ import type { Issue } from '../entities/Issue';
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
+export const DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS = 24 * 60 * 60 * 1000;
+
 export class StaleTaskPullRequestCloseUseCase {
   constructor(
     readonly issueRepository: Pick<
@@ -12,7 +14,14 @@ export class StaleTaskPullRequestCloseUseCase {
     >,
   ) {}
 
-  run = async (input: { issues: Issue[] }): Promise<void> => {
+  run = async (input: {
+    issues: Issue[];
+    evaluatedAt?: Date;
+    minimumPullRequestAgeMs?: number;
+  }): Promise<void> => {
+    const evaluatedAt = input.evaluatedAt ?? new Date();
+    const minimumPullRequestAgeMs =
+      input.minimumPullRequestAgeMs ?? DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS;
     const closedTaskIssueUrls = new Set(
       input.issues
         .filter((issue) => !issue.isPr && issue.isClosed)
@@ -30,6 +39,11 @@ export class StaleTaskPullRequestCloseUseCase {
           closedTaskIssueUrls.has(url),
         );
       if (!everyReferencedTaskIssueClosed) {
+        continue;
+      }
+      const pullRequestAgeMs =
+        evaluatedAt.getTime() - issue.createdAt.getTime();
+      if (pullRequestAgeMs < minimumPullRequestAgeMs) {
         continue;
       }
       const closedRefs = issue.closingIssueReferenceUrls.join(', ');
