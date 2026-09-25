@@ -377,6 +377,52 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
     });
 
+    it('excludes story-labeled issues with null story field and non-matching title from storyIssueUrlByOptionName during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      const projectWithKnownStory: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'known-story-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithKnownStory);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/99999',
+            'some unregistered story',
+          ),
+          labels: ['story'],
+          customFields: [],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1] as Record<string, unknown>;
+      expect(cacheWrite.storyIssueUrlByOptionName).toEqual({});
+    });
+
     it('writes storyOptions derived from project story stories during full fetch', async () => {
       const {
         repository,
