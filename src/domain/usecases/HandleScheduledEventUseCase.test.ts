@@ -22,6 +22,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
@@ -121,6 +122,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
+    const mockNonPreparationWorkerScopeStopUseCase =
+      mock<NonPreparationWorkerScopeStopUseCase>();
     const mockConflictedIssueRevertUseCase =
       mock<ConflictedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
@@ -157,6 +160,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockIssueNoStatusUpdateUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
+      mockNonPreparationWorkerScopeStopUseCase,
       mockConflictedIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockAgentDesignationLabelAdoptUseCase,
@@ -482,6 +486,92 @@ describe('HandleScheduledEventUseCase', () => {
           },
         }),
       );
+    });
+
+    it('should invoke nonPreparationWorkerScopeStopUseCase with the fetched issues when startPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mock<Project>(),
+        cacheUsed: false,
+      });
+      await useCase.run(input);
+
+      expect(
+        mockNonPreparationWorkerScopeStopUseCase.run,
+      ).toHaveBeenCalledWith({ issues: mockIssues });
+    });
+
+    it('should not invoke nonPreparationWorkerScopeStopUseCase when startPreparation is not configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+
+      expect(
+        mockNonPreparationWorkerScopeStopUseCase.run,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('continues the cycle when nonPreparationWorkerScopeStopUseCase.run rejects', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+      mockNonPreparationWorkerScopeStopUseCase.run.mockRejectedValueOnce(
+        new AggregateError(
+          [new Error('systemctl stop failed')],
+          'Failed to stop 1 worker scope unit(s)',
+        ),
+      );
+
+      await useCase.run(input);
+
+      expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
     });
 
     it('should invoke conflictedIssueRevertUseCase on every scheduled run', async () => {
@@ -2502,6 +2592,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<IssueNoStatusUpdateUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
+      mock<NonPreparationWorkerScopeStopUseCase>(),
       mock<ConflictedIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),
