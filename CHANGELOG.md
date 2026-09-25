@@ -1,3 +1,10 @@
+# [2.148.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.147.1...v2.148.0) (2026-09-25)
+
+
+### Features
+
+* **WorkflowStatus:** remove Todo by agent status ([#2582](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2582)) ([95b497f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/95b497feec4c9328934c10e8f1416a574323eb1c))
+
 ## [2.147.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.147.0...v2.147.1) (2026-09-25)
 
 
