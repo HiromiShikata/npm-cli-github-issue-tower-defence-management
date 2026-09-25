@@ -8409,35 +8409,35 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expectedSetSingleCalled: boolean;
     }[] = [
       {
-        name: 'case 1: cache null — no-op',
+        name: 'cache null — no-op',
         cacheValue: null,
         projectId: 'proj-create-test',
         storyOptionName: 'feature / NewStory',
         expectedSetSingleCalled: false,
       },
       {
-        name: 'case 2: cache exists, URL absent — appends issue and updates storyIssueUrlByOptionName, preserves lastFetchedAt',
+        name: 'cache exists, URL absent — appends issue and updates storyIssueUrlByOptionName, preserves lastFetchedAt',
         cacheValue: baseCache,
         projectId: 'proj-create-test',
         storyOptionName: 'feature / NewStory',
         expectedSetSingleCalled: true,
       },
       {
-        name: 'case 3: cache exists, URL already present — no-op',
+        name: 'cache exists, URL already present — no-op',
         cacheValue: cacheWithNewUrlPresent,
         projectId: 'proj-create-test',
         storyOptionName: 'feature / NewStory',
         expectedSetSingleCalled: false,
       },
       {
-        name: 'case 4: cache exists with existing story issues, new story — appends without affecting existing issues',
+        name: 'cache exists with existing story issues, new story — appends without affecting existing issues',
         cacheValue: cacheWithExistingStory,
         projectId: 'proj-create-test',
         storyOptionName: 'feature / NewStory',
         expectedSetSingleCalled: true,
       },
       {
-        name: 'case 5: projectId/storyOptionName not provided — no-op',
+        name: 'projectId/storyOptionName not provided — no-op',
         cacheValue: baseCache,
         projectId: undefined,
         storyOptionName: undefined,
@@ -8477,7 +8477,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       }
     });
 
-    it('case 2 detail: new issue is appended to the issues array', async () => {
+    it('appends the new issue to the issues array when the cache already exists and the URL is absent', async () => {
       const { repository, restIssueRepository, localStorageCacheRepository } =
         createApiV3CheerioRestIssueRepository();
       restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);
@@ -8505,7 +8505,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
     });
 
-    it('case 4 detail: existing issues are preserved when appending', async () => {
+    it('preserves existing issues when appending to a cache that already has issues from another story', async () => {
       const { repository, restIssueRepository, localStorageCacheRepository } =
         createApiV3CheerioRestIssueRepository();
       restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);

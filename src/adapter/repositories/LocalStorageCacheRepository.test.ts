@@ -519,7 +519,7 @@ describe('LocalStorageCacheRepository', () => {
       expect(fakeSleep).not.toHaveBeenCalled();
     });
 
-    test('a slow holder releasing late does not delete a lock file that a later stale-timeout takeover already reclaimed with its own token', async () => {
+    test('a slow holder releasing late does not delete a lock file that a later stale-timeout takeover has already reclaimed and is still actively using', async () => {
       const lockPath = `${cachePath}/race-key/.write.lock`;
       let locked = false;
       const lockFileContents = new Map<string, string>();
@@ -557,27 +557,53 @@ describe('LocalStorageCacheRepository', () => {
         });
         return 'slow-holder-result';
       });
-      const takeoverFn = jest.fn(async () => 'takeover-result');
+      let resolveTakeover: () => void = () => {};
+      const takeoverFn = jest.fn(async () => {
+        await new Promise<void>((resolve) => {
+          resolveTakeover = resolve;
+        });
+        return 'takeover-result';
+      });
 
       const slowHolderCall = repository.withLock('race-key', slowHolderFn);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
       expect(slowHolderFn).toHaveBeenCalled();
-
-      const removeCallsBeforeTakeover = removeCallPaths.length;
+      const tokenWrittenBySlowHolder = lockFileContents.get(lockPath);
+      expect(tokenWrittenBySlowHolder).toBeDefined();
 
       const takeoverCall = repository.withLock('race-key', takeoverFn);
-      const takeoverResult = await takeoverCall;
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(takeoverFn).toHaveBeenCalled();
+      const tokenWrittenByTakeover = lockFileContents.get(lockPath);
+      expect(tokenWrittenByTakeover).toBeDefined();
+      expect(tokenWrittenByTakeover).not.toBe(tokenWrittenBySlowHolder);
+      // one removal so far: the takeover deleting the slow holder's stale lock
+      expect(removeCallPaths).toEqual([lockPath]);
 
-      expect(takeoverResult).toBe('takeover-result');
-      expect(removeCallPaths.length).toBe(removeCallsBeforeTakeover + 2);
-
+      // The dangerous overlap: the slow holder's fn resolves and its
+      // `finally` runs while the takeover holder's own fn is still in
+      // progress, so the takeover holder's lock is still live.
       resolveSlowHolder();
       const slowHolderResult = await slowHolderCall;
 
       expect(slowHolderResult).toBe('slow-holder-result');
-      expect(removeCallPaths.length).toBe(removeCallsBeforeTakeover + 2);
+      // the slow holder's belated release must NOT remove the lock the
+      // takeover holder still legitimately owns and is still using
+      expect(removeCallPaths).toEqual([lockPath]);
+      expect(lockFileContents.get(lockPath)).toBe(tokenWrittenByTakeover);
+
+      resolveTakeover();
+      const takeoverResult = await takeoverCall;
+
+      expect(takeoverResult).toBe('takeover-result');
+      // only the takeover holder's own release removes the lock, once it is
+      // actually done with it
+      expect(removeCallPaths).toEqual([lockPath, lockPath]);
+      expect(lockFileContents.has(lockPath)).toBe(false);
     });
   });
 });
