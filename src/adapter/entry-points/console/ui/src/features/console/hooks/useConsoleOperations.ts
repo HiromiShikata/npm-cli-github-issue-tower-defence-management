@@ -70,6 +70,11 @@ export type ConsoleOperationsApi = {
     option: ConsoleFieldOption,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
+  addCommentAndMoveToAwaitingWorkspace: (
+    item: ConsoleListItem,
+    body: string,
+    option: ConsoleFieldOption,
+  ) => Promise<ConsoleComment>;
   uploadAttachment: (item: ConsoleListItem, file: File) => Promise<string>;
   addInlineReviewComment: (
     prUrl: string,
@@ -84,6 +89,7 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     dependedIssueUrl: string,
   ) => Promise<void>;
+  onAfterMoveToAwaitingWorkspace?: () => Promise<void>;
 };
 
 export const reviewRequest = (
@@ -369,6 +375,38 @@ export const useConsoleOperations = (
     [pjcode, invalidateItemContent],
   );
 
+  const addCommentAndMoveToAwaitingWorkspace = useCallback(
+    async (item: ConsoleListItem, body: string, option: ConsoleFieldOption) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      const commentResult = await postConsoleComment({
+        pjcode,
+        url: item.url,
+        body,
+      });
+      if (!commentResult.posted) {
+        const resetInfo =
+          commentResult.rateLimitResetAt !== null
+            ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
+            : '';
+        throw new Error(`${commentResult.error}.${resetInfo}`);
+      }
+      const request: ConsoleTriageRequest = {
+        pjcode,
+        action: 'set_status',
+        issueUrl: item.url,
+        projectItemId: item.projectItemId,
+        statusName: option.name,
+      };
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
+      await onAfterMoveToAwaitingWorkspace?.();
+      return commentResult.comment;
+    },
+    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
+  );
+
   const uploadAttachment = useCallback(
     async (item: ConsoleListItem, file: File) => {
       if (pjcode === null) {
@@ -449,10 +487,12 @@ export const useConsoleOperations = (
     closeIssue,
     okAndMoveToAwaitingWorkspace,
     addComment,
+    addCommentAndMoveToAwaitingWorkspace,
     uploadAttachment,
     addInlineReviewComment,
     issueRename,
     deleteAllComments,
     setDependedIssueUrl,
+    onAfterMoveToAwaitingWorkspace,
   };
 };
