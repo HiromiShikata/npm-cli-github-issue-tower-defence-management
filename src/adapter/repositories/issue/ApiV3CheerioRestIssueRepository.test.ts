@@ -8129,6 +8129,234 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getAllIssues concurrent cache refresh racing against removeIssueByItemId for the same project (issue 2677 — cache lock)', () => {
+    const wait = (milliseconds: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+    const buildRacyLocalStorageCacheRepository = (): Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle' | 'withLock'
+    > => {
+      const store = new Map<string, string>();
+      const lockTailByKey = new Map<string, Promise<unknown>>();
+      return {
+        getSingle: async (key: string) => {
+          await wait(20);
+          const stored = store.get(key);
+          if (stored === undefined) return null;
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
+        },
+        setSingle: async (key: string, value: unknown) => {
+          await wait(20);
+          store.set(key, JSON.stringify(value));
+        },
+        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+          const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
+          const runResult = previousTail.then(fn, fn);
+          lockTailByKey.set(
+            key,
+            runResult.then(
+              () => undefined,
+              () => undefined,
+            ),
+          );
+          return runResult;
+        },
+      };
+    };
+
+    const buildProcessRepository = (
+      cache: Pick<
+        LocalStorageCacheRepository,
+        'getSingle' | 'setSingle' | 'withLock'
+      >,
+    ) => {
+      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+      const restIssueRepository = mock<RestIssueRepository>();
+      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+      const projectRepository = mock<ProjectRepository>();
+      const dateRepository = mock<DateRepository>();
+      const localStorageRepository = mock<LocalStorageRepository>();
+      const repository = new ApiV3CheerioRestIssueRepository(
+        apiV3IssueRepository,
+        restIssueRepository,
+        graphqlProjectItemRepository,
+        cache,
+        projectRepository,
+        dateRepository,
+        localStorageRepository,
+        'dummy',
+      );
+      return {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      };
+    };
+
+    it('full-fetch write path: a removeIssueByItemId call that fully completes before the stalled fetch resolves is not undone by the refresh write, while the fetch other issue is still persisted', async () => {
+      const projectId = 'proj-full-fetch-remove-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      const staleItemId = 'item-stale-full-fetch';
+      const staleIssueUrl = 'https://github.com/o/r/issues/500';
+      const newIssueUrl = 'https://github.com/o/r/issues/501';
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(staleIssueUrl, 'stale issue'),
+            itemId: staleItemId,
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-07-01T02:00:00.000Z'),
+      );
+      projectRepository.getProject.mockResolvedValue(project);
+      // The fetch already started (with the stale item still on the server
+      // side response) before the removal below is known to this process, so
+      // its resolution is stalled until well after the concurrent removal has
+      // fully completed and released the cache lock.
+      graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
+        async () => {
+          await wait(80);
+          return [
+            {
+              ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
+              id: staleItemId,
+            },
+            buildProjectItem(newIssueUrl, 'new issue'),
+          ];
+        },
+      );
+
+      const removeOnceFetchHasStarted = async (): Promise<void> => {
+        await wait(1);
+        await new ProjectIssuesCacheRepository(cache).removeIssueByItemId(
+          projectId,
+          staleItemId,
+        );
+      };
+
+      await Promise.all([
+        repository.getAllIssues(projectId),
+        removeOnceFetchHasStarted(),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const itemIds = (finalCache?.issues ?? []).map((issue) => issue.itemId);
+      const urls = (finalCache?.issues ?? []).map((issue) => issue.url);
+      expect(itemIds).not.toContain(staleItemId);
+      expect(urls).toContain(newIssueUrl);
+    });
+
+    it('incremental-fetch write path: a removeIssueByItemId call that fully completes before the stalled fetch resolves is not undone by the refresh write, while the fetch other changed issue is still persisted', async () => {
+      const projectId = 'proj-incremental-fetch-remove-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      const staleItemId = 'item-stale-incremental-fetch';
+      const staleIssueUrl = 'https://github.com/o/r/issues/700';
+      const newIssueUrl = 'https://github.com/o/r/issues/701';
+      const untouchedIssueUrl = 'https://github.com/o/r/issues/702';
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(staleIssueUrl, 'stale issue'),
+            itemId: staleItemId,
+          },
+          {
+            ...buildCachedIssueRecord(untouchedIssueUrl, 'untouched issue'),
+            itemId: 'item-untouched-incremental-fetch',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:45:00Z'),
+      );
+      projectRepository.getProject.mockResolvedValue(project);
+      // The light-item scan already started (finding the stale item still
+      // changed server side) before the removal below is known to this
+      // process, so its resolution is stalled until well after the
+      // concurrent removal has fully completed and released the cache lock.
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockImplementation(
+        async () => {
+          await wait(80);
+          return [
+            buildLightItem(
+              staleItemId,
+              staleIssueUrl,
+              '2026-07-07T00:44:00.000Z',
+            ),
+            buildLightItem(
+              'item-new-incremental-fetch',
+              newIssueUrl,
+              '2026-07-07T00:44:30.000Z',
+            ),
+          ];
+        },
+      );
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
+          id: staleItemId,
+        },
+        buildProjectItem(newIssueUrl, 'new issue'),
+      ]);
+
+      const removeOnceFetchHasStarted = async (): Promise<void> => {
+        await wait(1);
+        await new ProjectIssuesCacheRepository(cache).removeIssueByItemId(
+          projectId,
+          staleItemId,
+        );
+      };
+
+      await Promise.all([
+        repository.getAllIssues(projectId),
+        removeOnceFetchHasStarted(),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const itemIds = (finalCache?.issues ?? []).map((issue) => issue.itemId);
+      const urls = (finalCache?.issues ?? []).map((issue) => issue.url);
+      expect(itemIds).not.toContain(staleItemId);
+      expect(urls).toContain(newIssueUrl);
+      expect(urls).toContain(untouchedIssueUrl);
+    });
+  });
+
   describe('appendIssueToProjectCache', () => {
     const newIssue: Issue = {
       nameWithOwner: 'test-org/test-repo',
