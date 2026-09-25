@@ -85,6 +85,7 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         '  fullSpeedFiveHourFreeRatio: 0.4',
         '  minFiveHourFreeRatio: 0.7',
         '  minSevenDayFreeRatio: 0.2',
+        '  fiveHourShareConsumedPerSessionHour: 0.08',
       ].join('\n'),
     );
 
@@ -95,6 +96,7 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
       fullSpeedFiveHourFreeRatio: 0.4,
       minFiveHourFreeRatio: 0.7,
       minSevenDayFreeRatio: 0.2,
+      fiveHourShareConsumedPerSessionHour: 0.08,
     });
   });
 
@@ -116,8 +118,32 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minFiveHourFreeRatio,
       minSevenDayFreeRatio:
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
+      fiveHourShareConsumedPerSessionHour:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
     });
   });
+
+  it('uses 0.05 of the five hour window per session hour when the fleet config omits it', () => {
+    expect(
+      DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
+    ).toBe(0.05);
+  });
+
+  it.each([0, -0.05, 1.5])(
+    'throws naming fiveHourShareConsumedPerSessionHour when it is %p',
+    (fiveHourShareConsumedPerSessionHour) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        [
+          'liveSessionOauthTokenSelection:',
+          `  fiveHourShareConsumedPerSessionHour: ${fiveHourShareConsumedPerSessionHour}`,
+        ].join('\n'),
+      );
+
+      expect(() =>
+        loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
+      ).toThrow('fiveHourShareConsumedPerSessionHour');
+    },
+  );
 
   it('returns the built-in settings when the fleet config carries no live session section', () => {
     const fleetConfigFilePath = writeFleetConfig('inTmuxLauncherCommand: cl\n');

@@ -174,6 +174,15 @@ export const loadLiveSessionOauthTokenSelectionSettings = (
       (value) => value > 0 && value <= 1,
       'above 0 and at most 1',
     ),
+    fiveHourShareConsumedPerSessionHour: readBoundedNumber(
+      section,
+      LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY,
+      'fiveHourShareConsumedPerSessionHour',
+      fleetConfigFilePath,
+      DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
+      (value) => value > 0 && value <= 1,
+      'above 0 and at most 1',
+    ),
   };
 };
 

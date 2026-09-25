@@ -3,6 +3,7 @@ import {
   DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
   LiveSessionOauthTokenSelectUseCase,
   LiveSessionOauthTokenSelectionSettings,
+  fiveHourSustainableSessionCountOf,
   liveSessionConcurrentLimitOf,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
@@ -20,6 +21,17 @@ const MAX_CONCURRENT_SESSION_COUNT = SETTINGS.maxConcurrentSessionCount;
 const settingsWith = (
   overrides: Partial<LiveSessionOauthTokenSelectionSettings>,
 ): LiveSessionOauthTokenSelectionSettings => ({ ...SETTINGS, ...overrides });
+
+const FIVE_HOUR_SHARE_CONSUMED_PER_SESSION_HOUR_THAT_NEVER_BINDS = 0.001;
+
+const settingsWhereFiveHourSustainabilityNeverBindsWith = (
+  overrides: Partial<LiveSessionOauthTokenSelectionSettings>,
+): LiveSessionOauthTokenSelectionSettings =>
+  settingsWith({
+    fiveHourShareConsumedPerSessionHour:
+      FIVE_HOUR_SHARE_CONSUMED_PER_SESSION_HOUR_THAT_NEVER_BINDS,
+    ...overrides,
+  });
 
 const snapshot = (
   overrides: Partial<OauthTokenWindowSnapshot>,
@@ -130,7 +142,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('soonResetFull', MAX_CONCURRENT_SESSION_COUNT),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     expect(result.selected?.name).toBe('distantResetIdle');
@@ -156,7 +168,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('soonResetNarrowFiveHour', 6),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const narrow = result.metrics.find(
@@ -234,7 +246,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('aboutToResetNearlyUsedSevenDay', 5),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const aboutToReset = result.metrics.find(
@@ -261,7 +273,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('aboutToResetNarrowFiveHour', 6),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const aboutToReset = result.metrics.find(
@@ -290,7 +302,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('downWeighted', 5),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
@@ -305,7 +317,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [candidate('onlyToken', snapshot({}))],
       [],
       NOW,
-      settingsWith({ maxConcurrentSessionCount: 24 }),
+      settingsWhereFiveHourSustainabilityNeverBindsWith({
+        maxConcurrentSessionCount: 24,
+      }),
     );
 
     const onlyToken = result.metrics.find((m) => m.name === 'onlyToken');
@@ -325,7 +339,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [],
       NOW,
-      settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
+      settingsWhereFiveHourSustainabilityNeverBindsWith({
+        fullSpeedFiveHourFreeRatio: 0.8,
+      }),
     );
 
     const narrowFiveHour = result.metrics.find(
@@ -879,7 +895,7 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
         ...sessionsFor('distantResetIdle', 7),
       ],
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const nearDeadline = result.metrics.find(
@@ -890,5 +906,193 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
     );
     expect(nearDeadline?.hasConcurrencyHeadroom).toBe(true);
     expect(result.selected?.name).toBe('nearDeadlineDownWeighted');
+  });
+});
+
+describe('fiveHourSustainableSessionCountOf', () => {
+  it.each([
+    {
+      situation: 'two thirds of the window free with 4.6 hours left',
+      fiveHourFreeRatio: 0.68,
+      hoursUntilFiveHourReset: 4.605,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 2,
+    },
+    {
+      situation: 'a quarter of the window free with 4.3 hours left',
+      fiveHourFreeRatio: 0.27,
+      hoursUntilFiveHourReset: 4.294,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 1,
+    },
+    {
+      situation: 'a full window',
+      fiveHourFreeRatio: 1,
+      hoursUntilFiveHourReset: 5,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 4,
+    },
+    {
+      situation: 'a small share left that resets within the hour',
+      fiveHourFreeRatio: 0.14,
+      hoursUntilFiveHourReset: 0.8,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 3,
+    },
+    {
+      situation:
+        'a full window that resets in six minutes, capped at what a new full window carries',
+      fiveHourFreeRatio: 1,
+      hoursUntilFiveHourReset: 0.1,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 4,
+    },
+    {
+      situation: 'a used-up window, never below one',
+      fiveHourFreeRatio: 0,
+      hoursUntilFiveHourReset: 3,
+      fiveHourShareConsumedPerSessionHour: 0.05,
+      expectedSessionCount: 1,
+    },
+    {
+      situation: 'a full window at twice the consumption per session hour',
+      fiveHourFreeRatio: 1,
+      hoursUntilFiveHourReset: 5,
+      fiveHourShareConsumedPerSessionHour: 0.1,
+      expectedSessionCount: 2,
+    },
+  ])(
+    'allows $expectedSessionCount session(s) for $situation',
+    ({
+      fiveHourFreeRatio,
+      hoursUntilFiveHourReset,
+      fiveHourShareConsumedPerSessionHour,
+      expectedSessionCount,
+    }) => {
+      expect(
+        fiveHourSustainableSessionCountOf(
+          fiveHourFreeRatio,
+          hoursUntilFiveHourReset,
+          settingsWith({ fiveHourShareConsumedPerSessionHour }),
+        ),
+      ).toBe(expectedSessionCount);
+    },
+  );
+});
+
+describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it.each([
+    {
+      situation: '68% free with the five hour reset 4.6 hours away',
+      tokenSnapshot: snapshot({
+        fiveHourUtilization: 0.32,
+        fiveHourReset: NOW + 4.6 * HOUR,
+      }),
+      expectedConcurrentSessionLimit: 2,
+    },
+    {
+      situation: '27% free with the five hour reset 4.3 hours away',
+      tokenSnapshot: snapshot({
+        fiveHourUtilization: 0.73,
+        fiveHourReset: NOW + 4.3 * HOUR,
+      }),
+      expectedConcurrentSessionLimit: 1,
+    },
+    {
+      situation: 'no rate limit snapshot yet',
+      tokenSnapshot: null,
+      expectedConcurrentSessionLimit: 4,
+    },
+    {
+      situation: 'a used-up five hour window whose reset has already passed',
+      tokenSnapshot: snapshot({
+        fiveHourUtilization: 1,
+        fiveHourReset: NOW - 60,
+      }),
+      expectedConcurrentSessionLimit: 4,
+    },
+  ])(
+    'limits a token with $situation to $expectedConcurrentSessionLimit concurrent session(s) under the default settings',
+    ({ tokenSnapshot, expectedConcurrentSessionLimit }) => {
+      const result = useCase.run(
+        [candidate('measured', tokenSnapshot)],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const measured = result.metrics.find((m) => m.name === 'measured');
+      expect(measured?.concurrentSessionLimit).toBe(
+        expectedConcurrentSessionLimit,
+      );
+    },
+  );
+
+  it('stops selecting the soonest resetting token once its live sessions use up what its five hour window sustains', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'soonResetTwoThirdsFree',
+          snapshot({
+            fiveHourUtilization: 0.32,
+            fiveHourReset: NOW + 4.6 * HOUR,
+            sevenDayReset: NOW + 2 * DAY,
+          }),
+        ),
+        candidate(
+          'distantResetFresh',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      [
+        session('soonResetTwoThirdsFree', 'pid:201'),
+        session('soonResetTwoThirdsFree', 'pid:202'),
+      ],
+      NOW,
+      SETTINGS,
+    );
+
+    const soonReset = result.metrics.find(
+      (m) => m.name === 'soonResetTwoThirdsFree',
+    );
+    expect(soonReset?.hasConcurrencyHeadroom).toBe(false);
+    expect(result.selected?.name).toBe('distantResetFresh');
+  });
+
+  it('spreads an overflow to the token that is least over its limit when no eligible token has headroom', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'soonResetOneSessionLimit',
+          snapshot({
+            fiveHourUtilization: 0.73,
+            fiveHourReset: NOW + 4.3 * HOUR,
+            sevenDayReset: NOW + 2 * DAY,
+          }),
+        ),
+        candidate(
+          'distantResetFresh',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      [
+        ...sessionsFor('soonResetOneSessionLimit', 1),
+        ...sessionsFor('distantResetFresh', 5),
+      ],
+      NOW,
+      settingsWith({ minFiveHourFreeRatio: 0.25 }),
+    );
+
+    const soonReset = result.metrics.find(
+      (m) => m.name === 'soonResetOneSessionLimit',
+    );
+    const distantReset = result.metrics.find(
+      (m) => m.name === 'distantResetFresh',
+    );
+    expect(soonReset?.concurrentSessionLimit).toBe(1);
+    expect(distantReset?.concurrentSessionLimit).toBe(4);
+    expect(result.selected?.name).toBe('distantResetFresh');
   });
 });

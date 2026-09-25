@@ -1,0 +1,13 @@
+diff --git a/src/domain/usecases/LiveSessionOauthTokenSelectUseCase.ts b/src/domain/usecases/LiveSessionOauthTokenSelectUseCase.ts
+index 641db38d2..982809277 100644
+--- a/src/domain/usecases/LiveSessionOauthTokenSelectUseCase.ts
++++ b/src/domain/usecases/LiveSessionOauthTokenSelectUseCase.ts
+@@ -36,7 +36,7 @@ export const fiveHourSustainableSessionCountOf = (
+   hoursUntilFiveHourReset: number,
+   settings: LiveSessionOauthTokenSelectionSettings,
+ ): number => {
+-  const fiveHourShareSpendablePerHour = Math.min(
++  const fiveHourShareSpendablePerHour = Math.max(
+     fiveHourFreeRatio / hoursUntilFiveHourReset,
+     1 / FIVE_HOUR_WINDOW_LENGTH_HOURS,
+   );

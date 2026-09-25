@@ -3,6 +3,7 @@ import {
   FIVE_HOUR_SPEND_DEADLINE_HOURS,
   type OauthTokenCandidate,
   OauthTokenSelectUseCase,
+  type OauthTokenWindowSnapshot,
   SEVEN_DAY_SPEND_DEADLINE_HOURS,
   selectionWeightOf,
   sevenDayUrgencyFactor,
@@ -15,6 +16,7 @@ export type LiveSessionOauthTokenSelectionSettings = {
   fullSpeedFiveHourFreeRatio: number;
   minFiveHourFreeRatio: number;
   minSevenDayFreeRatio: number;
+  fiveHourShareConsumedPerSessionHour: number;
 };
 
 export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOauthTokenSelectionSettings =
@@ -23,7 +25,43 @@ export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOau
     fullSpeedFiveHourFreeRatio: 0.5,
     minFiveHourFreeRatio: 0.6,
     minSevenDayFreeRatio: 0.14,
+    fiveHourShareConsumedPerSessionHour: 0.05,
   };
+
+const FIVE_HOUR_WINDOW_LENGTH_HOURS = 5;
+const SECONDS_PER_HOUR = 3600;
+
+export const fiveHourSustainableSessionCountOf = (
+  fiveHourFreeRatio: number,
+  hoursUntilFiveHourReset: number,
+  settings: LiveSessionOauthTokenSelectionSettings,
+): number => {
+  const fiveHourShareSpendablePerHour = Math.min(
+    fiveHourFreeRatio / hoursUntilFiveHourReset,
+    1 / FIVE_HOUR_WINDOW_LENGTH_HOURS,
+  );
+  return Math.max(
+    1,
+    Math.floor(
+      fiveHourShareSpendablePerHour /
+        settings.fiveHourShareConsumedPerSessionHour,
+    ),
+  );
+};
+
+const hoursUntilFiveHourResetOf = (
+  snapshot: OauthTokenWindowSnapshot | null,
+  nowEpochSeconds: number,
+): number => {
+  if (snapshot === null || snapshot.fiveHourReset <= nowEpochSeconds) {
+    return FIVE_HOUR_WINDOW_LENGTH_HOURS;
+  }
+  return (snapshot.fiveHourReset - nowEpochSeconds) / SECONDS_PER_HOUR;
+};
+
+const occupancyRatioAfterOneMoreSessionOf = (
+  metric: LiveSessionOauthTokenCandidateMetrics,
+): number => (metric.liveSessionCount + 1) / metric.concurrentSessionLimit;
 
 export const liveSessionConcurrentLimitOf = (
   fiveHourFreeRatio: number,
@@ -97,11 +135,18 @@ export class LiveSessionOauthTokenSelectUseCase {
         rateLimitMetric.sevenDayEndEpoch,
         nowEpochSeconds,
       );
-      const concurrentSessionLimit = liveSessionConcurrentLimitOf(
-        rateLimitMetric.fiveHourFreeRatio,
-        selectionWeightOf(candidate),
-        settings,
-        urgencyBoost,
+      const concurrentSessionLimit = Math.min(
+        liveSessionConcurrentLimitOf(
+          rateLimitMetric.fiveHourFreeRatio,
+          selectionWeightOf(candidate),
+          settings,
+          urgencyBoost,
+        ),
+        fiveHourSustainableSessionCountOf(
+          rateLimitMetric.fiveHourFreeRatio,
+          hoursUntilFiveHourResetOf(candidate.snapshot, nowEpochSeconds),
+          settings,
+        ),
       );
       const snapshot = candidate.snapshot;
       const sevenDayDeadlinePassed =
@@ -223,6 +268,15 @@ export class LiveSessionOauthTokenSelectUseCase {
       incumbentMetric.hasConcurrencyHeadroom
     ) {
       return candidateMetric.hasConcurrencyHeadroom;
+    }
+    if (!candidateMetric.hasConcurrencyHeadroom) {
+      const candidateOccupancyRatio =
+        occupancyRatioAfterOneMoreSessionOf(candidateMetric);
+      const incumbentOccupancyRatio =
+        occupancyRatioAfterOneMoreSessionOf(incumbentMetric);
+      if (candidateOccupancyRatio !== incumbentOccupancyRatio) {
+        return candidateOccupancyRatio < incumbentOccupancyRatio;
+      }
     }
     if (candidateMetric.sevenDayEndEpoch !== incumbentMetric.sevenDayEndEpoch) {
       return (

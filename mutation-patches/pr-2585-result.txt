@@ -1,0 +1,4 @@
+mutation_result=caught
+failing_test=FAIL backend src/domain/usecases/LiveSessionOauthTokenSelectUseCase.test.ts (22.414 s)
+patch_file=mutation-patches/pr-2585.patch
+head_commit=9d18c98b38abc6352a193409c0db866780e0ffb5

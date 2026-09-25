@@ -58,17 +58,19 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     if (token === undefined || token.length === 0) {
       return null;
     }
-    const sessionKey = this.deriveSessionKey(environ);
-    if (sessionKey === null) {
-      return null;
-    }
     if (!this.isClaudeProcess(processIdDirectory)) {
       return null;
     }
-    return { token, sessionKey };
+    return {
+      token,
+      sessionKey: this.deriveSessionKey(environ, processIdDirectory),
+    };
   };
 
-  private deriveSessionKey = (environ: Map<string, string>): string | null => {
+  private deriveSessionKey = (
+    environ: Map<string, string>,
+    processIdDirectory: string,
+  ): string => {
     const configDir = environ.get(CONFIG_DIR_ENVIRON_KEY);
     if (configDir !== undefined && configDir.length > 0) {
       return configDir;
@@ -77,7 +79,7 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     if (sessionId !== undefined && sessionId.length > 0) {
       return sessionId;
     }
-    return null;
+    return `pid:${processIdDirectory}`;
   };
 
   private isClaudeProcess = (processIdDirectory: string): boolean => {

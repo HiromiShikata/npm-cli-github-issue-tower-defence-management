@@ -143,7 +143,7 @@ export class LiveSessionOauthTokenSelectHandler {
         );
       } else {
         lines.push(
-          `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`,
+          `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
         );
       }
     }
