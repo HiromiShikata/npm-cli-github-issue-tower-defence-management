@@ -323,7 +323,9 @@ describe('LocalStorageCacheRepository', () => {
         expect.any(String),
       );
       expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(lockPath);
-      expect(localStorageRepository.remove).toHaveBeenCalledWith(lockPath);
+      expect(localStorageRepository.remove).toHaveBeenCalledWith(
+        `${cachePath}/project-key/.write.lock`,
+      );
     });
 
     test('a second call for the same key does not start fn until the first call finishes and releases the lock', async () => {
@@ -479,7 +481,9 @@ describe('LocalStorageCacheRepository', () => {
         expect.any(String),
       );
       expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(lockPath);
-      expect(localStorageRepository.remove).toHaveBeenCalledWith(lockPath);
+      expect(localStorageRepository.remove).toHaveBeenCalledWith(
+        `${cachePath}/stale-key/.write.lock`,
+      );
       expect(fakeSleep).not.toHaveBeenCalled();
     });
 
