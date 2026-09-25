@@ -419,7 +419,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await repository.getAllIssues('test-project-id');
 
-      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1] as Record<string, unknown>;
+      const cacheWrite = localStorageCacheRepository.setSingle.mock
+        .calls[0][1] as Record<string, unknown>;
       expect(cacheWrite.storyIssueUrlByOptionName).toEqual({});
     });
 
