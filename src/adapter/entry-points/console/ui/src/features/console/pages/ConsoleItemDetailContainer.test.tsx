@@ -703,8 +703,9 @@ describe('ConsoleItemDetailContainer', () => {
       return message;
     };
 
-    const commentPostFailureMessage =
-      await commitAndCaptureCommentErrorMessage(commentPostFailureCause);
+    const commentPostFailureMessage = await commitAndCaptureCommentErrorMessage(
+      commentPostFailureCause,
+    );
     const statusSetFailureAfterCommentPostedMessage =
       await commitAndCaptureCommentErrorMessage(
         statusSetFailureAfterCommentPostedCause,
