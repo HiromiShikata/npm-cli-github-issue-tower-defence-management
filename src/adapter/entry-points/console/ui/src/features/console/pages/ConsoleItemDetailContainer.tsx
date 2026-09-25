@@ -112,6 +112,18 @@ const buildIntmuxOfflinePayload = (
   requestBody: buildIntmuxRequest(pjcode, item),
 });
 
+const notifyCommentError = (
+  onCommentError: ((message: string, reason: string) => void) | undefined,
+  message: string,
+  cause: unknown,
+): void => {
+  if (onCommentError !== undefined) {
+    onCommentError(message, String(cause));
+  } else {
+    console.error(message, cause);
+  }
+};
+
 export type ConsoleItemDetailContainerProps = {
   tab: ConsoleTabName;
   item: ConsoleListItem;
@@ -353,11 +365,7 @@ export const ConsoleItemDetailContainer = ({
           return await new Promise<ConsoleComment>((resolve, reject) => {
             let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
             const rejectWithMessage = (message: string, cause: unknown) => {
-              if (onCommentError !== undefined) {
-                onCommentError(message, String(cause));
-              } else {
-                console.error(message, cause);
-              }
+              notifyCommentError(onCommentError, message, cause);
               reject(cause);
               throw cause;
             };
@@ -383,11 +391,7 @@ export const ConsoleItemDetailContainer = ({
                     await operations.onAfterMoveToAwaitingWorkspace?.();
                   } catch (cause) {
                     const message = `Comment posted and status set to Awaiting Workspace, but a post-success refresh action failed: ${String(cause)}`;
-                    if (onCommentError !== undefined) {
-                      onCommentError(message, String(cause));
-                    } else {
-                      console.error(message, cause);
-                    }
+                    notifyCommentError(onCommentError, message, cause);
                   }
                   return;
                 }
