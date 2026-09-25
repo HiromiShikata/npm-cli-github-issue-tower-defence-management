@@ -24,12 +24,14 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
 jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
+jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({})),
 }));
@@ -102,6 +104,16 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: mockScheduleHandle,
   })),
 }));
+const mockLiveSessionOauthTokenSelectHandlerHandle = jest.fn().mockReturnValue({
+  selectedToken: null,
+  selectedName: null,
+  diagnostics: [],
+});
+jest.mock('../handlers/LiveSessionOauthTokenSelectHandler', () => ({
+  LiveSessionOauthTokenSelectHandler: jest.fn().mockImplementation(() => ({
+    handle: mockLiveSessionOauthTokenSelectHandlerHandle,
+  })),
+}));
 jest.mock('../console/ensureConsoleRunning', () => ({
   ensureConsoleRunning: jest.fn().mockResolvedValue(null),
 }));
@@ -161,6 +173,7 @@ describe('CLI', () => {
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }
+    process.setMaxListeners(1000);
   });
 
   afterAll(() => {
@@ -284,6 +297,90 @@ describe('CLI', () => {
 
       expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe('shell-set-value');
       process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+    });
+  });
+
+  describe('schedule fleet config validation', () => {
+    it('reports an error and exits without calling handleFatalError when errorReportingRepository in fleet config is invalid', async () => {
+      const fleetConfigFilePath = path.join(
+        tmpDir,
+        'fleet-schedule-invalid.config.yaml',
+      );
+      fs.writeFileSync(
+        fleetConfigFilePath,
+        YAML.stringify({ errorReportingRepository: 123 }),
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+      const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+      process.env.TDPM_FLEET_CONFIG = fleetConfigFilePath;
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('errorReportingRepository');
+        expect(mockScheduleHandle).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('proceeds normally when errorReportingRepository in fleet config is valid', async () => {
+      const fleetConfigFilePath = path.join(
+        tmpDir,
+        'fleet-schedule-valid.config.yaml',
+      );
+      fs.writeFileSync(
+        fleetConfigFilePath,
+        YAML.stringify({ errorReportingRepository: 'fleet-owner/fleet-repo' }),
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+      const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+      process.env.TDPM_FLEET_CONFIG = fleetConfigFilePath;
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).not.toHaveBeenCalled();
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(mockScheduleHandle).toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
     });
   });
 
@@ -1609,6 +1706,336 @@ mysteryKey: 'value'
     });
   });
 
+  describe('startDaemon fleet config validation', () => {
+    const writeFleetConfig = (
+      name: string,
+      content: Record<string, unknown>,
+    ): string => {
+      const fleetConfigFilePath = path.join(tmpDir, name);
+      fs.writeFileSync(fleetConfigFilePath, YAML.stringify(content));
+      return fleetConfigFilePath;
+    };
+
+    it('reports an error and exits without calling handleFatalError when errorReportingRepository in fleet config is invalid', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-error-repo-invalid.config.yaml',
+        { errorReportingRepository: 123 },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('errorReportingRepository');
+        expect(mockRun).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('proceeds normally when errorReportingRepository in fleet config is valid', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-error-repo-valid.config.yaml',
+        { errorReportingRepository: 'fleet-owner/fleet-repo' },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).not.toHaveBeenCalled();
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(mockRun).toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('reports an error and exits without calling handleFatalError when preparationWorker settings in fleet config are invalid', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-prep-worker-invalid.config.yaml',
+        { preparationWorker: { normalConcurrentLimit: 0 } },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('normalConcurrentLimit');
+        expect(mockRun).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('proceeds normally when preparationWorker settings in fleet config are valid', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-prep-worker-valid.config.yaml',
+        { preparationWorker: { normalConcurrentLimit: 3 } },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).not.toHaveBeenCalled();
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(mockRun).toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('reports an error and exits without calling handleFatalError when workflowIssueReporter settings in fleet config are invalid and preparationProcessCheckCommand is set', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-workflow-reporter-invalid.config.yaml',
+        { workflowIssueReporter: {} },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const mockRevertRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(RevertOrphanedPreparationUseCase)
+        .mockImplementation(function (this: RevertOrphanedPreparationUseCase) {
+          this.run = mockRevertRun;
+          return this;
+        });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+            '--preparationProcessCheckCommand',
+            'echo {URL}',
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('workflowIssueReporter');
+        expect(mockRevertRun).not.toHaveBeenCalled();
+        expect(mockRun).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('proceeds normally when workflowIssueReporter settings in fleet config are valid and preparationProcessCheckCommand is set', async () => {
+      const fleetConfigFilePath = writeFleetConfig(
+        'fleet-startdaemon-workflow-reporter-valid.config.yaml',
+        {
+          workflowIssueReporter: {
+            owner: 'fleet-owner',
+            repo: 'fleet-repo',
+          },
+        },
+      );
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const mockRevertRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(RevertOrphanedPreparationUseCase)
+        .mockImplementation(function (this: RevertOrphanedPreparationUseCase) {
+          this.run = mockRevertRun;
+          return this;
+        });
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'startDaemon',
+            '--configFilePath',
+            configFilePath,
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+            '--preparationProcessCheckCommand',
+            'echo {URL}',
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).not.toHaveBeenCalled();
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(mockRevertRun).toHaveBeenCalled();
+        expect(mockRun).toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+  });
+
   describe('notifyFinishedIssuePreparation', () => {
     it('should read parameters from config file', async () => {
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
@@ -2214,6 +2641,250 @@ mysteryKey: 'value'
       );
       consoleWarnSpy.mockRestore();
     });
+
+    describe('fleet config validation', () => {
+      const writeFleetConfig = (
+        name: string,
+        content: Record<string, unknown>,
+      ): string => {
+        const fleetConfigFilePath = path.join(tmpDir, name);
+        fs.writeFileSync(fleetConfigFilePath, YAML.stringify(content));
+        return fleetConfigFilePath;
+      };
+
+      it('reports an error and exits without calling handleFatalError when errorReportingRepository in fleet config is invalid', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-error-repo-invalid.config.yaml',
+          { errorReportingRepository: 123 },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).toHaveBeenCalledWith(1);
+          const errorOutput = consoleErrorSpy.mock.calls
+            .flat()
+            .map(String)
+            .join('');
+          expect(errorOutput).toContain('errorReportingRepository');
+          expect(mockRun).not.toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('proceeds normally when errorReportingRepository in fleet config is valid', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-error-repo-valid.config.yaml',
+          { errorReportingRepository: 'fleet-owner/fleet-repo' },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalled();
+          expect(consoleErrorSpy).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('reports an error and exits without calling handleFatalError when workflowIssueReporter settings in fleet config are invalid', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-workflow-reporter-invalid.config.yaml',
+          { workflowIssueReporter: {} },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).toHaveBeenCalledWith(1);
+          const errorOutput = consoleErrorSpy.mock.calls
+            .flat()
+            .map(String)
+            .join('');
+          expect(errorOutput).toContain('workflowIssueReporter');
+          expect(mockRun).not.toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('proceeds normally when workflowIssueReporter settings in fleet config are valid, and still handles GitHubRateLimitError from useCase.run', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-workflow-reporter-valid.config.yaml',
+          {
+            workflowIssueReporter: {
+              owner: 'fleet-owner',
+              repo: 'fleet-repo',
+            },
+          },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalled();
+          expect(consoleErrorSpy).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({
+              workflowIssueReporterSettings: {
+                owner: 'fleet-owner',
+                repo: 'fleet-repo',
+                projectUrl: null,
+              },
+            }),
+          );
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+    });
   });
 
   describe('checkIssueReviewReadiness', () => {
@@ -2460,6 +3131,138 @@ mysteryKey: 'value'
       expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe('shell-set-value');
       process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
       stdoutSpy.mockRestore();
+    });
+
+    describe('fleet config validation', () => {
+      it('reports an error and exits without calling handleFatalError when errorReportingRepository in fleet config is invalid', async () => {
+        const fleetConfigFilePath = path.join(
+          tmpDir,
+          'fleet-check-error-repo-invalid.config.yaml',
+        );
+        fs.writeFileSync(
+          fleetConfigFilePath,
+          YAML.stringify({ errorReportingRepository: 123 }),
+        );
+        const mockRun = jest
+          .fn()
+          .mockResolvedValue({ reviewReady: true, rejections: [] });
+        jest
+          .mocked(CheckIssueReviewReadinessUseCase)
+          .mockImplementation(function (
+            this: CheckIssueReviewReadinessUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+        const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+        process.env.TDPM_FLEET_CONFIG = fleetConfigFilePath;
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'checkIssueReviewReadiness',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).toHaveBeenCalledWith(1);
+          const errorOutput = consoleErrorSpy.mock.calls
+            .flat()
+            .map(String)
+            .join('');
+          expect(errorOutput).toContain('errorReportingRepository');
+          expect(mockRun).not.toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('proceeds normally when errorReportingRepository in fleet config is valid', async () => {
+        const fleetConfigFilePath = path.join(
+          tmpDir,
+          'fleet-check-error-repo-valid.config.yaml',
+        );
+        fs.writeFileSync(
+          fleetConfigFilePath,
+          YAML.stringify({
+            errorReportingRepository: 'fleet-owner/fleet-repo',
+          }),
+        );
+        const mockRun = jest
+          .fn()
+          .mockResolvedValue({ reviewReady: true, rejections: [] });
+        jest
+          .mocked(CheckIssueReviewReadinessUseCase)
+          .mockImplementation(function (
+            this: CheckIssueReviewReadinessUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const stdoutSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation(() => true);
+        const handleFatalError = jest.fn();
+        const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+        process.env.TDPM_FLEET_CONFIG = fleetConfigFilePath;
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'checkIssueReviewReadiness',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalled();
+          expect(consoleErrorSpy).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          stdoutSpy.mockRestore();
+          process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
     });
   });
 
@@ -3314,9 +4117,9 @@ mysteryKey: 'value'
           .mockImplementation(
             jest.fn<never, Parameters<typeof process.exit>>(),
           );
-        const stderrWriteSpy = jest
-          .spyOn(process.stderr, 'write')
-          .mockImplementation(() => true);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
         const stdoutWriteSpy = jest
           .spyOn(process.stdout, 'write')
           .mockImplementation(() => true);
@@ -3347,14 +4150,16 @@ mysteryKey: 'value'
 
           expect(handleFatalError).not.toHaveBeenCalled();
           expect(processExitSpy).toHaveBeenCalledWith(1);
-          const stderrOutput = stderrWriteSpy.mock.calls
+          const consoleErrorOutput = consoleErrorSpy.mock.calls
             .flat()
             .map(String)
             .join('');
-          expect(stderrOutput).toContain('fiveHourShareConsumedPerSessionHour');
+          expect(consoleErrorOutput).toContain(
+            'fiveHourShareConsumedPerSessionHour',
+          );
         } finally {
           processExitSpy.mockRestore();
-          stderrWriteSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
           stdoutWriteSpy.mockRestore();
           if (fs.existsSync(fleetConfigFilePath)) {
             fs.unlinkSync(fleetConfigFilePath);
@@ -3407,6 +4212,65 @@ mysteryKey: 'value'
       } finally {
         processExitSpy.mockRestore();
         stderrWriteSpy.mockRestore();
+        stdoutWriteSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
+    it('reports the error via console.error and runs no code after the try/catch block when fleet config is invalid and process.exit is mocked', async () => {
+      const fleetConfigFilePath = path.join(
+        os.tmpdir(),
+        `test-fleet-config-invalid-console-error-${Date.now()}.yml`,
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const stdoutWriteSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      const handleFatalError = jest.fn();
+      delete process.env['TDPM_FLEET_CONFIG'];
+      delete process.env['CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH'];
+
+      try {
+        fs.writeFileSync(
+          fleetConfigFilePath,
+          YAML.stringify({
+            liveSessionOauthTokenSelection: {
+              fiveHourShareConsumedPerSessionHour: 0,
+            },
+          }),
+        );
+
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'selectLiveSessionOauthToken',
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('fiveHourShareConsumedPerSessionHour');
+        expect(
+          mockLiveSessionOauthTokenSelectHandlerHandle,
+        ).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
         stdoutWriteSpy.mockRestore();
         if (fs.existsSync(fleetConfigFilePath)) {
           fs.unlinkSync(fleetConfigFilePath);
