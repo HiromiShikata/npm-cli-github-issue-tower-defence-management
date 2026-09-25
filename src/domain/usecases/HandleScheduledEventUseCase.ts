@@ -475,6 +475,7 @@ ${JSON.stringify(e)}
         cacheUsed,
         targetDateTimes,
         storyObjectMap,
+        now,
       );
     }
     await this.createNewStoryByLabelUseCase.run({
@@ -609,6 +610,7 @@ ${JSON.stringify(e)}
     cacheUsed: boolean,
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
+    now: Date,
   ): Promise<void> => {
     await this.setWorkflowManagementIssueToStoryUseCase.run({
       targetDates: targetDateTimes,
@@ -649,6 +651,7 @@ ${JSON.stringify(e)}
     });
     await this.staleTaskPullRequestCloseUseCase.run({
       issues,
+      evaluatedAt: now,
     });
     await this.createEstimationIssueUseCase.run({
       targetDates: targetDateTimes,

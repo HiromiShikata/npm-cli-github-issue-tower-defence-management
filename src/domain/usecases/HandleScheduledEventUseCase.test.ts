@@ -1319,6 +1319,33 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('staleTaskPullRequestCloseUseCase evaluatedAt', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('passes now as evaluatedAt to staleTaskPullRequestCloseUseCase.run during slow sweep', async () => {
+        const fixedNow = new Date('2024-06-15T12:00:00Z');
+        mockDateRepository.now.mockResolvedValue(fixedNow);
+
+        await useCase.run(baseInput);
+
+        expect(mockStaleTaskPullRequestCloseUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({ evaluatedAt: fixedNow }),
+        );
+      });
+    });
+
     describe('afterIssuesFetched callback', () => {
       it('calls the callback with project and issues from getAllIssues, before runEachUseCases', async () => {
         const callOrder: string[] = [];
