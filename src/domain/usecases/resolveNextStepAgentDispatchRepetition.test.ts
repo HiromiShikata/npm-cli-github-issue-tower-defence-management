@@ -143,7 +143,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
           isNoStory: false,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -158,7 +158,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
           isNoStory: false,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -172,7 +172,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -191,7 +191,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
           isNoStory: false,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         }).type,
       ).toBe('dispatchAgain');
     });
@@ -209,7 +209,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -224,7 +224,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -246,7 +246,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -267,7 +267,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -286,7 +286,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -307,7 +307,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -325,7 +325,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -344,7 +344,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -365,7 +365,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -388,7 +388,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -409,7 +409,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -431,7 +431,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -450,7 +450,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -472,7 +472,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -497,7 +497,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -521,7 +521,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -540,7 +540,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -563,7 +563,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -581,7 +581,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -596,7 +596,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -619,7 +619,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 3,
           isNoStory: false,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -640,7 +640,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -665,7 +665,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -687,7 +687,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -712,7 +712,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -731,7 +731,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 2,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -751,7 +751,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: 3,
           isNoStory: false,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -771,7 +771,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('notRepeated');
@@ -788,7 +788,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('storyUnset');
@@ -803,7 +803,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
       expect(result.type).toBe('storyUnset');
     });
@@ -817,7 +817,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
       expect(result.type).toBe('storyUnset');
     });
@@ -835,7 +835,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('storyUnset');
@@ -850,7 +850,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       const comment = result.type === 'storyUnset' ? result.comment : '';
@@ -866,7 +866,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       const comment = result.type === 'storyUnset' ? result.comment : '';
@@ -887,7 +887,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -913,7 +913,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: 3,
           isNoStory: true,
-          currentDispatchPostedNoComment: false,
+          currentDispatchHasNoReportRejection: false,
         });
 
         expect(result.type).toBe(expectedType);
@@ -933,7 +933,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateStoryUnsetLoop');
@@ -957,7 +957,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('storyUnset');
@@ -977,7 +977,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: true,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('storyUnset');
@@ -994,7 +994,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('notRepeated');
@@ -1013,7 +1013,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -1032,7 +1032,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       const comment =
@@ -1053,7 +1053,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       const comment =
@@ -1075,7 +1075,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('notRepeated');
@@ -1095,7 +1095,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('notRepeated');
@@ -1112,7 +1112,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -1133,7 +1133,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -1150,7 +1150,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -1177,7 +1177,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateReportingLoop');
@@ -1201,7 +1201,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -1221,14 +1221,14 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
     });
   });
 
-  describe('currentDispatchPostedNoComment (a dispatch that posted zero comments)', () => {
+  describe('currentDispatchHasNoReportRejection (a dispatch for which no agent report was found)', () => {
     it('does not return notRepeated when a silent dispatch of a real agentFieldValue happens with no next-step agent declared and no prior history', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
@@ -1238,10 +1238,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: true,
+        currentDispatchHasNoReportRejection: true,
       });
 
-      expect(result.type).not.toBe('notRepeated');
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it.each([
@@ -1249,17 +1249,17 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         description:
           'agentFieldValue is null so there is nobody to attribute the silent dispatch to',
         agentFieldValue: null,
-        currentDispatchPostedNoComment: true,
+        currentDispatchHasNoReportRejection: true,
       },
       {
         description:
-          'currentDispatchPostedNoComment is false so the flag changes nothing',
+          'currentDispatchHasNoReportRejection is false so the flag changes nothing',
         agentFieldValue: 'developer',
-        currentDispatchPostedNoComment: false,
+        currentDispatchHasNoReportRejection: false,
       },
     ])(
       'returns notRepeated when $description',
-      ({ agentFieldValue, currentDispatchPostedNoComment }) => {
+      ({ agentFieldValue, currentDispatchHasNoReportRejection }) => {
         expect(
           resolveNextStepAgentDispatchRepetition({
             agentFieldValue,
@@ -1269,7 +1269,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
             thresholdForAutoReject: 3,
             thresholdForDispatchLoop: 6,
             isNoStory: false,
-            currentDispatchPostedNoComment,
+            currentDispatchHasNoReportRejection,
           }),
         ).toEqual({ type: 'notRepeated' });
       },
@@ -1287,7 +1287,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
         isNoStory: false,
-        currentDispatchPostedNoComment: true,
+        currentDispatchHasNoReportRejection: true,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -1310,10 +1310,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
         isNoStory: false,
-        currentDispatchPostedNoComment: true,
+        currentDispatchHasNoReportRejection: true,
       });
 
-      expect(result.type).not.toBe('escalateDispatchLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
   });
 });

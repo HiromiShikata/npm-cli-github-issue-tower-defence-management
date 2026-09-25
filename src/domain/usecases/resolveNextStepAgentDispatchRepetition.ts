@@ -331,7 +331,7 @@ export const resolveNextStepAgentDispatchRepetition = <
 >(params: {
   agentFieldValue: string | null;
   nextStepAgent: string | null;
-  currentDispatchPostedNoComment: boolean;
+  currentDispatchHasNoReportRejection: boolean;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
@@ -340,7 +340,9 @@ export const resolveNextStepAgentDispatchRepetition = <
 }): NextStepAgentDispatchRepetition => {
   const effectiveNextStepAgent =
     params.nextStepAgent ??
-    (params.currentDispatchPostedNoComment ? params.agentFieldValue : null);
+    (params.currentDispatchHasNoReportRejection
+      ? params.agentFieldValue
+      : null);
   const isSelfReference =
     effectiveNextStepAgent !== null &&
     params.agentFieldValue !== null &&
