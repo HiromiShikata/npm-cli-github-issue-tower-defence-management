@@ -1,3 +1,10 @@
+## [2.146.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.1...v2.146.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* **live-session-select:** count every token-holding claude process and cap live sessions per token at what its five-hour window can sustain ([#2585](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2585)) ([661599e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/661599e892d37ffc49907f41170b3028448d4d66))
+
 ## [2.146.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.0...v2.146.1) (2026-09-25)
 
 
