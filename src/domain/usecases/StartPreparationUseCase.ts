@@ -710,8 +710,7 @@ export class StartPreparationUseCase {
         this.projectRepository,
         this.issueRepository,
       );
-      const isNoStory =
-        issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
+      const isNoStory = isUnstoriedAwaitingWorkspaceIssue(issue);
       const agent =
         (isNoStory && issue.agent === null
           ? null
