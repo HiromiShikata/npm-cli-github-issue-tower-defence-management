@@ -61,14 +61,20 @@ export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const buildStoryIssueUrlByOptionName = (
   issues: Issue[],
+  storyOptions: readonly FieldOption[],
 ): Record<string, string> => {
   const map: Record<string, string> = {};
   for (const issue of issues) {
-    if (
-      issue.story !== null &&
-      issue.labels.some((l) => l.toLowerCase() === 'story')
-    ) {
+    if (!issue.labels.some((l) => l.toLowerCase() === 'story')) {
+      continue;
+    }
+    if (issue.story !== null) {
       map[issue.story] = issue.url;
+    } else {
+      const matchedOption = storyOptions.find((o) => o.name === issue.title);
+      if (matchedOption !== undefined) {
+        map[matchedOption.name] = issue.url;
+      }
     }
   }
   return map;
@@ -1069,7 +1075,10 @@ export class ApiV3CheerioRestIssueRepository
         lastFullFetchAt: nowIso,
         project,
         issues,
-        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
+        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+          issues,
+          project.story?.stories ?? [],
+        ),
         storyOptions: buildStoryOptions(project),
       });
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
@@ -1108,7 +1117,10 @@ export class ApiV3CheerioRestIssueRepository
       lastFullFetchAt: cache.lastFullFetchAt,
       project,
       issues,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
+      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+        issues,
+        project.story?.stories ?? [],
+      ),
       storyOptions: buildStoryOptions(project),
     });
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
@@ -1305,7 +1317,10 @@ export class ApiV3CheerioRestIssueRepository
     await this.projectIssuesCacheRepository.write(projectId, {
       ...cached,
       issues: updatedIssues,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(updatedIssues),
+      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+        updatedIssues,
+        cached.project.story?.stories ?? [],
+      ),
     });
   };
   updateStoryByProjectItemId = async (
@@ -1463,7 +1478,10 @@ export class ApiV3CheerioRestIssueRepository
     cachedIssue.story = storyName;
     await this.projectIssuesCacheRepository.write(project.id, {
       ...cached,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(cached.issues),
+      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+        cached.issues,
+        project.story.stories,
+      ),
       storyOptions: buildStoryOptions(project),
     });
   };
