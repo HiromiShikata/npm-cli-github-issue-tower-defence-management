@@ -8961,7 +8961,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       awaitingIssueStory: null,
       includeAwaitingIssueInStoryObjectMap: false,
       includeOpenPrIssueInGetAllOpened: false,
-      expectedCallCount: undefined,
+      expectedCallCount: 1,
     },
   ])(
     '$label',
@@ -8974,7 +8974,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       awaitingIssueStory: string | null;
       includeAwaitingIssueInStoryObjectMap: boolean;
       includeOpenPrIssueInGetAllOpened: boolean;
-      expectedCallCount?: number;
+      expectedCallCount: number;
     }) => {
       const mockProject = createMockProject();
       const awaitingIssue = createMockIssue({
@@ -9062,9 +9062,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         labelsAsLlmAgentName: null,
       });
 
-      if (expectedCallCount !== undefined) {
-        expect(findRelatedOpenPRs).toHaveBeenCalledTimes(expectedCallCount);
-      }
+      expect(findRelatedOpenPRs).toHaveBeenCalledTimes(expectedCallCount);
       expect(findRelatedOpenPRs).toHaveBeenCalledWith(awaitingIssue.url);
     },
   );
