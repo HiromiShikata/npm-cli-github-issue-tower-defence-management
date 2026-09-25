@@ -991,6 +991,131 @@ describe('ClearDependedIssueURLUseCase', () => {
         expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
       });
     });
+
+    describe('same-repo depended issue live existence check', () => {
+      const sameRepoDependingIssue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/testowner/testrepo/issues/949',
+        org: 'testowner',
+        repo: 'testrepo',
+        dependedIssueUrls: ['https://github.com/testowner/testrepo/issues/959'],
+        isClosed: false,
+      };
+      const sameRepoDependedIssueUrl =
+        'https://github.com/testowner/testrepo/issues/959';
+
+      it('should not remove and should not post Dependency removed comment for a same-repo depended issue URL absent from project issues when a live GitHub check confirms it is still open', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'open',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssue],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+      });
+
+      it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it does not exist', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+          new Error('HTTP 404 Not Found'),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssue],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'fieldId', sameRepoDependingIssue],
+        ]);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssue,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it exists but is closed', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'closed',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssue],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'fieldId', sameRepoDependingIssue],
+        ]);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssue,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('should still remove a same-repo depended issue URL absent from project issues and not crash when a live GitHub check fails with a transient error unrelated to 404', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+          new Error('HTTP 500 Internal Server Error'),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssue],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'fieldId', sameRepoDependingIssue],
+        ]);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssue,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+    });
   });
 
   describe('removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue', () => {
