@@ -7417,7 +7417,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       localStorageCacheRepository.getSingle.mockResolvedValue(cacheWithProject);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
-      await repository.appendIssueToProjectCache('proj-cache-test', titleMatchIssue);
+      await repository.appendIssueToProjectCache(
+        'proj-cache-test',
+        titleMatchIssue,
+      );
 
       const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite).toMatchObject({
