@@ -1,13 +1,32 @@
 import { act, renderHook } from '@testing-library/react';
 import { ResourceCache } from '../lib/resourceCache';
 import { overlayStorageKey } from '../logic/overlay';
+import type {
+  ConsoleComment,
+  ConsoleFieldOption,
+  ConsoleListItem,
+} from '../logic/types';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
 import type { ConsoleCaches } from './useConsoleCaches';
+import type { ConsoleOperationsApi } from './useConsoleOperations';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
+
+type OperationsWithAtomicAwaitingWorkspace = ConsoleOperationsApi & {
+  addCommentAndMoveToAwaitingWorkspace: (
+    item: ConsoleListItem,
+    body: string,
+    option: ConsoleFieldOption,
+  ) => Promise<ConsoleComment>;
+};
+
+const asAtomicAwaitingWorkspaceOperations = (
+  operations: ConsoleOperationsApi,
+): OperationsWithAtomicAwaitingWorkspace =>
+  operations as OperationsWithAtomicAwaitingWorkspace;
 
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
@@ -581,6 +600,239 @@ describe('useConsoleOperations', () => {
     await act(async () => {
       await result.current.operations.okAndMoveToAwaitingWorkspace(
         issueItem,
+        option,
+      );
+    });
+    expect(onAfterMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+    expect(callbackCalledAfterTriageCount).toBe(1);
+  });
+
+  it('posts the comment then sets the status to Awaiting Workspace in order, resolving with the posted comment', async () => {
+    const calls: Array<[string, unknown]> = [];
+    global.fetch = jest.fn(async (url: unknown, opts: unknown) => {
+      calls.push([url as string, opts]);
+      if ((url as string) === '/api/comment') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'HiromiShikata',
+              body: 'moving to workspace',
+              createdAt: '2026-06-19T11:58:00.000Z',
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    let resolved: ConsoleComment | null = null;
+    await act(async () => {
+      resolved = await asAtomicAwaitingWorkspaceOperations(
+        result.current.operations,
+      ).addCommentAndMoveToAwaitingWorkspace(
+        issueItem,
+        'moving to workspace',
+        option,
+      );
+    });
+    expect(calls[0][0]).toBe('/api/comment');
+    expect(JSON.parse((calls[0][1] as { body: string }).body)).toMatchObject({
+      pjcode: 'acme',
+      url: issueItem.url,
+      body: 'moving to workspace',
+    });
+    expect(calls[1][0]).toBe('/api/triage');
+    expect(JSON.parse((calls[1][1] as { body: string }).body)).toMatchObject({
+      pjcode: 'acme',
+      action: 'set_status',
+      issueUrl: issueItem.url,
+      projectItemId: issueItem.projectItemId,
+      statusName: option.name,
+    });
+    expect(resolved).toEqual({
+      author: 'HiromiShikata',
+      body: 'moving to workspace',
+      createdAt: '2026-06-19T11:58:00.000Z',
+    });
+  });
+
+  it.each<
+    [
+      string,
+      () => {
+        ok: boolean;
+        status: number;
+        text?: () => Promise<string>;
+        json?: () => Promise<unknown>;
+      },
+    ]
+  >([
+    [
+      'a non-ok HTTP response',
+      () => ({ ok: false, status: 500, text: async () => 'upstream refused' }),
+    ],
+    [
+      'a soft ok:false response from the backend',
+      () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: false, error: 'rate limit exceeded' }),
+      }),
+    ],
+  ])(
+    'rejects without ever calling the status endpoint when the comment POST returns %s',
+    async (_label, buildCommentResponse) => {
+      const calledUrls: string[] = [];
+      global.fetch = jest.fn(async (url: unknown) => {
+        calledUrls.push(url as string);
+        if ((url as string) === '/api/comment') {
+          return buildCommentResponse();
+        }
+        return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      }) as unknown as typeof fetch;
+      const { result } = setup();
+      const [option] = consoleStatusOptionsFixture.filter(
+        (o) => o.name.toLowerCase() === 'awaiting workspace',
+      );
+      await expect(
+        asAtomicAwaitingWorkspaceOperations(
+          result.current.operations,
+        ).addCommentAndMoveToAwaitingWorkspace(
+          issueItem,
+          'test comment body',
+          option,
+        ),
+      ).rejects.toThrow();
+      expect(calledUrls).toContain('/api/comment');
+      expect(calledUrls).not.toContain('/api/triage');
+    },
+  );
+
+  it('rejects when the status endpoint fails after the comment was already posted', async () => {
+    const calledUrls: string[] = [];
+    global.fetch = jest.fn(async (url: unknown) => {
+      calledUrls.push(url as string);
+      if ((url as string) === '/api/comment') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'HiromiShikata',
+              body: 'test comment body',
+              createdAt: '2026-06-19T11:58:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: false,
+        status: 500,
+        text: async () => 'triage service down',
+      };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    await expect(
+      asAtomicAwaitingWorkspaceOperations(
+        result.current.operations,
+      ).addCommentAndMoveToAwaitingWorkspace(
+        issueItem,
+        'test comment body',
+        option,
+      ),
+    ).rejects.toThrow();
+    expect(calledUrls).toContain('/api/comment');
+    expect(calledUrls).toContain('/api/triage');
+  });
+
+  it('invalidates the operated item cache after the atomic operation succeeds', async () => {
+    global.fetch = jest.fn(async (url: unknown) => {
+      if ((url as string) === '/api/comment') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: { author: 'a', body: 'b', createdAt: 'c' },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const caches = buildOperationCaches();
+    const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme', caches);
+      return { overlay, operations };
+    });
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    await act(async () => {
+      await asAtomicAwaitingWorkspaceOperations(
+        result.current.operations,
+      ).addCommentAndMoveToAwaitingWorkspace(issueItem, 'hello', option);
+    });
+    expect(commentsInvalidate).toHaveBeenCalledWith(
+      `${issueItem.repo}#${issueItem.number}`,
+    );
+  });
+
+  it('calls onAfterMoveToAwaitingWorkspace after the triage API call completes when using the atomic operation', async () => {
+    const apiCallUrls: string[] = [];
+    let callbackCalledAfterTriageCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      apiCallUrls.push(url as string);
+      if ((url as string).includes('/api/comment')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'bot',
+              body: 'test comment body',
+              createdAt: '2026-01-01T00:00:00Z',
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const onAfterMoveToAwaitingWorkspace = jest.fn(async () => {
+      callbackCalledAfterTriageCount = apiCallUrls.filter((u) =>
+        u.includes('/api/triage'),
+      ).length;
+    });
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations(
+        'acme',
+        undefined,
+        onAfterMoveToAwaitingWorkspace,
+      );
+      return { overlay, operations };
+    });
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    await act(async () => {
+      await asAtomicAwaitingWorkspaceOperations(
+        result.current.operations,
+      ).addCommentAndMoveToAwaitingWorkspace(
+        issueItem,
+        'test comment body',
         option,
       );
     });
