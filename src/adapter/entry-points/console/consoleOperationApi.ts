@@ -236,9 +236,28 @@ const resolveBinding = async (
   return binding;
 };
 
-const isOperationResponse = (
-  value: ConsoleProjectBinding | ConsoleOperationResponse,
+const isOperationResponse = <T extends object>(
+  value: T | ConsoleOperationResponse,
 ): value is ConsoleOperationResponse => Object.hasOwn(value, 'statusCode');
+
+const resolveFreshStoryOption = async (
+  projectRepository: Pick<ProjectRepository, 'updateStoryList' | 'getProject'>,
+  project: Project,
+  cachedStories: FieldOption[],
+  storyOptionId: string,
+  notFoundMessage: string,
+): Promise<
+  | { storyOption: FieldOption; freshStories: FieldOption[] }
+  | ConsoleOperationResponse
+> => {
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? cachedStories;
+  const storyOption = freshStories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(notFoundMessage);
+  }
+  return { storyOption, freshStories };
+};
 
 const resolveConfiguredPjcode = (
   context: ConsoleOperationContext,
@@ -1046,23 +1065,31 @@ export const handleStoryColor = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-
-  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
-  if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
-  }
+  const story = project.story;
+  const notFoundMessage = `story option "${storyOptionId}" not found in project`;
 
   if (context.resolveProjectRepository === null) {
+    const cachedStoryOption = story.stories.find((s) => s.id === storyOptionId);
+    if (cachedStoryOption === undefined) {
+      return badRequest(notFoundMessage);
+    }
     return badGateway('project repository is not configured');
   }
 
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
-  const freshStory = freshProject?.story ?? project.story;
-  const projectWithFreshStory = {
-    ...(freshProject ?? project),
-    story: freshStory,
-  };
+  const resolved = await resolveFreshStoryOption(
+    projectRepository,
+    project,
+    story.stories,
+    storyOptionId,
+    notFoundMessage,
+  );
+  if (isOperationResponse(resolved)) {
+    return resolved;
+  }
+  const { freshStories } = resolved;
+  const freshStory = { ...story, stories: freshStories };
+  const projectWithFreshStory = { ...project, story: freshStory };
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   await context
@@ -1070,7 +1097,7 @@ export const handleStoryColor = async (
     .updateStoryOptionColor(projectWithFreshStory, storyOptionId, newColor);
 
   if (context.updateProjectCacheEntry !== null) {
-    const updatedStories = freshStory.stories.map((s) =>
+    const updatedStories = freshStories.map((s) =>
       s.id === storyOptionId ? { ...s, color: newColor } : s,
     );
     const updatedProject: Project = {
@@ -1148,31 +1175,26 @@ export const handleReorderStory = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const cachedStories = project.story.stories;
-  const cachedIndex = cachedStories.findIndex((s) => s.id === storyOptionId);
-  if (cachedIndex === -1) {
-    return badRequest('story option not found');
-  }
-  const cachedSwapIndex = cachedIndex + (direction === 'up' ? -1 : 1);
-  if (cachedSwapIndex < 0 || cachedSwapIndex >= cachedStories.length) {
-    return badRequest('cannot move in that direction');
-  }
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories;
-  const stories = freshStories ?? cachedStories;
-  const index = stories.findIndex((s) => s.id === storyOptionId);
-  if (index === -1 && freshStories !== undefined) {
-    return badRequest('story option not found');
+  const resolved = await resolveFreshStoryOption(
+    projectRepository,
+    project,
+    project.story.stories,
+    storyOptionId,
+    'story option not found',
+  );
+  if (isOperationResponse(resolved)) {
+    return resolved;
   }
-  const targetIndex = index !== -1 ? index : cachedIndex;
-  const swapIndex = targetIndex + (direction === 'up' ? -1 : 1);
-  const reordered = [...stories];
+  const { freshStories } = resolved;
+  const index = freshStories.findIndex((s) => s.id === storyOptionId);
+  const swapIndex = index + (direction === 'up' ? -1 : 1);
+  const reordered = [...freshStories];
   if (swapIndex < 0 || swapIndex >= reordered.length) {
     return badRequest('cannot move in that direction');
   }
-  const temp = reordered[targetIndex];
-  reordered[targetIndex] = reordered[swapIndex];
+  const temp = reordered[index];
+  reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
   await projectRepository.updateStoryList(project, reordered);
   context.invalidateProject?.(pjcode);
@@ -1332,10 +1354,18 @@ export const handleDeleteStory = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
-  if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const resolved = await resolveFreshStoryOption(
+    projectRepository,
+    project,
+    project.story.stories,
+    storyOptionId,
+    `story option "${storyOptionId}" not found in project`,
+  );
+  if (isOperationResponse(resolved)) {
+    return resolved;
   }
+  const { storyOption, freshStories } = resolved;
   if (project.story.workflowManagementStory.id === storyOptionId) {
     return badRequest('cannot delete the workflow management story');
   }
@@ -1346,12 +1376,7 @@ export const handleDeleteStory = async (
   }
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const projectRepository = context.resolveProjectRepository(project.url);
-  const [freshProject, storyObjectMap] = await Promise.all([
-    projectRepository.getProject(project.id),
-    issueRepository.getStoryObjectMap(project),
-  ]);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
@@ -1416,12 +1441,17 @@ export const handleStoryRename = async (
     return badRequest('project does not have a story field');
   }
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
-  const storyOption = freshStories.find((s) => s.id === storyOptionId);
-  if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
+  const resolved = await resolveFreshStoryOption(
+    projectRepository,
+    project,
+    project.story.stories,
+    storyOptionId,
+    `story option "${storyOptionId}" not found in project`,
+  );
+  if (isOperationResponse(resolved)) {
+    return resolved;
   }
+  const { storyOption, freshStories } = resolved;
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
@@ -1465,12 +1495,17 @@ export const handleStoryUpdateDescription = async (
     return badRequest('project does not have a story field');
   }
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
-  const storyOption = freshStories.find((s) => s.id === storyOptionId);
-  if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
+  const resolved = await resolveFreshStoryOption(
+    projectRepository,
+    project,
+    project.story.stories,
+    storyOptionId,
+    `story option "${storyOptionId}" not found in project`,
+  );
+  if (isOperationResponse(resolved)) {
+    return resolved;
   }
+  const { freshStories } = resolved;
   const updatedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, description } : s,
   );
