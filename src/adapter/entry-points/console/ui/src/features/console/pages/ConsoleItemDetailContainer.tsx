@@ -351,6 +351,17 @@ export const ConsoleItemDetailContainer = ({
       ? async (body: string): Promise<ConsoleComment> => {
           onCommentDraftChange?.('');
           return await new Promise<ConsoleComment>((resolve, reject) => {
+            let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus =
+              false;
+            const rejectWithMessage = (message: string, cause: unknown) => {
+              if (onCommentError !== undefined) {
+                onCommentError(message, String(cause));
+              } else {
+                console.error(message, cause);
+              }
+              reject(cause);
+              throw cause;
+            };
             onQueueAction({
               kind: {
                 type: 'set_status',
@@ -358,6 +369,19 @@ export const ConsoleItemDetailContainer = ({
               },
               item,
               commit: async () => {
+                if (
+                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
+                ) {
+                  try {
+                    await operations.setStatus(item, awaitingWorkspaceOption);
+                  } catch (cause) {
+                    rejectWithMessage(
+                      `Comment already posted, but retrying the move to Awaiting Workspace status failed: ${String(cause)}`,
+                      cause,
+                    );
+                  }
+                  return;
+                }
                 try {
                   const comment =
                     await operations.addCommentAndMoveToAwaitingWorkspace(
@@ -368,13 +392,12 @@ export const ConsoleItemDetailContainer = ({
                   setPostedComments((previous) => [...previous, comment]);
                   resolve(comment);
                 } catch (cause) {
-                  if (onCommentError !== undefined) {
-                    onCommentError('Failed to post comment', String(cause));
-                  } else {
-                    console.error('Failed to post comment', cause);
-                  }
-                  reject(cause);
-                  throw cause;
+                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus =
+                    true;
+                  rejectWithMessage(
+                    `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
+                    cause,
+                  );
                 }
               },
               overlayPatch: {
