@@ -1,3 +1,10 @@
+## [2.148.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.5...v2.148.6) (2026-09-25)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** Depended Issue URL of a task whose blocker closed is cleared only by the 600-second slow sweep ([#2623](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2623)) ([f221546](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f22154681a1a742a7a6ba0b7eb88afa96b235b0d))
+
 ## [2.148.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.4...v2.148.5) (2026-09-25)
 
 
