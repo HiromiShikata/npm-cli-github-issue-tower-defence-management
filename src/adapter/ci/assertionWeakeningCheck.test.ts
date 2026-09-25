@@ -23,7 +23,7 @@ const writeFakeGhExecutableRespondingByRepoIssuePath = (
     .map(([repoIssuePath, body], index) => {
       const bodyFilePath = path.join(tmpDir, `issue-body-${index}.txt`);
       fs.writeFileSync(bodyFilePath, body);
-      return `  *"${repoIssuePath}"*) cat "${bodyFilePath}" ;;`;
+      return `  "api ${repoIssuePath} --jq .body // empty") cat "${bodyFilePath}" ;;`;
     })
     .join('\n');
   const ghScriptContent = `#!/usr/bin/env bash
@@ -442,39 +442,41 @@ index abc..def 100644
       expect(result.exitStatus).toBe(1);
     });
 
-    it('uses the first closing reference when multiple full-URL closing references are present and the first lacks criteria', () => {
-      const result = runCheck({
-        diffContent: diffWithDeletedAssertion,
+    const firstClosingReferenceWinsCases: Array<{
+      description: string;
+      prBody: string;
+    }> = [
+      {
+        description: 'multiple full-URL closing references are present',
         prBody:
           'Closes https://github.com/owner/repo/issues/1\nCloses https://github.com/owner/repo/issues/2',
-        ghApiIssueBodyByRepoIssuePath: {
-          'repos/owner/repo/issues/1': issueBodyWithoutAcceptanceCriteria,
-          'repos/owner/repo/issues/2': issueBodyWithSuccessCriteria,
-        },
-      });
-      expect(result.exitStatus).toBe(1);
-      expect(result.output).toContain(
-        'the closing issue does not contain acceptance criteria',
-      );
-      expect(result.output).not.toContain('no linked closing issue');
-    });
-
-    it('uses the first closing reference when the PR body mixes a full-URL reference followed by a shorthand reference and the first lacks criteria', () => {
-      const result = runCheck({
-        diffContent: diffWithDeletedAssertion,
+      },
+      {
+        description:
+          'the PR body mixes a full-URL reference followed by a shorthand reference',
         prBody:
           'Closes https://github.com/owner/repo/issues/1\nCloses owner/repo#2',
-        ghApiIssueBodyByRepoIssuePath: {
-          'repos/owner/repo/issues/1': issueBodyWithoutAcceptanceCriteria,
-          'repos/owner/repo/issues/2': issueBodyWithSuccessCriteria,
-        },
-      });
-      expect(result.exitStatus).toBe(1);
-      expect(result.output).toContain(
-        'the closing issue does not contain acceptance criteria',
-      );
-      expect(result.output).not.toContain('no linked closing issue');
-    });
+      },
+    ];
+
+    it.each(firstClosingReferenceWinsCases)(
+      'uses the first closing reference when $description and the first lacks criteria',
+      ({ prBody }) => {
+        const result = runCheck({
+          diffContent: diffWithDeletedAssertion,
+          prBody,
+          ghApiIssueBodyByRepoIssuePath: {
+            'repos/owner/repo/issues/1': issueBodyWithoutAcceptanceCriteria,
+            'repos/owner/repo/issues/2': issueBodyWithSuccessCriteria,
+          },
+        });
+        expect(result.exitStatus).toBe(1);
+        expect(result.output).toContain(
+          'the closing issue does not contain acceptance criteria',
+        );
+        expect(result.output).not.toContain('no linked closing issue');
+      },
+    );
 
     it('passes when the PR body has a full-URL closing reference and the issue has criteria', () => {
       const result = runCheck({
@@ -563,7 +565,10 @@ index abc..def 100644
         const result = runCheck({
           diffContent: diffWithDeletedAssertion,
           prBody: `Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627${urlSuffix}`,
-          issueBody,
+          ghApiIssueBodyByRepoIssuePath: {
+            'repos/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627':
+              issueBody,
+          },
         });
         expect(result.exitStatus).toBe(expectedExitStatus);
         expect(result.output).toContain(expectedOutputSubstring);
