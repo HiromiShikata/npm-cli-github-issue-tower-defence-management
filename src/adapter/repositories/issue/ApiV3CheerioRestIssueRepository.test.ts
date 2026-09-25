@@ -4396,6 +4396,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.isCiStateSuccess).toBe(false);
       expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.isCiFailing).toBe(true);
     });
 
     it('returns isCiStateSuccess false when the latest check run per name has null conclusion (still running)', async () => {
