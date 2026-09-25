@@ -104,6 +104,9 @@ const buildProjectCache = () => {
     }),
     getSingle: jest.fn(async () => null),
     setSingle: jest.fn(async () => undefined),
+    withLock: jest.fn(async (_key: string, fn: () => Promise<unknown>) =>
+      fn(),
+    ),
   };
 };
 

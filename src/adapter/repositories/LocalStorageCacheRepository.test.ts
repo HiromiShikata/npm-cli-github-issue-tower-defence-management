@@ -1,4 +1,9 @@
-import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
+import {
+  LocalStorageCacheRepository,
+  PROJECT_CACHE_LOCK_ACQUIRE_TIMEOUT_MS,
+  PROJECT_CACHE_LOCK_STALE_TIMEOUT_MS,
+  Sleep,
+} from './LocalStorageCacheRepository';
 import { localStorageCacheBaseDirectory } from './localStorageCacheDirectory';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
@@ -19,6 +24,8 @@ describe('LocalStorageCacheRepository', () => {
       rename: jest.fn(),
       mkdir: jest.fn(),
       remove: jest.fn(),
+      tryCreateExclusive: jest.fn(),
+      statMtimeMs: jest.fn(),
     };
     repository = new LocalStorageCacheRepository(
       localStorageRepository,
@@ -260,6 +267,214 @@ describe('LocalStorageCacheRepository', () => {
       await repository.setSingle('ordering-key', { ordered: true });
 
       expect(callOrder).toEqual(['write', 'rename']);
+    });
+  });
+
+  describe('withLock', () => {
+    const cachePath = './tmp/cache';
+
+    const buildTrackedLock = () => {
+      const heldLockPaths = new Set<string>();
+      localStorageRepository.tryCreateExclusive.mockImplementation(
+        (path: string) => {
+          if (heldLockPaths.has(path)) {
+            return false;
+          }
+          heldLockPaths.add(path);
+          return true;
+        },
+      );
+      localStorageRepository.remove.mockImplementation((path: string) => {
+        heldLockPaths.delete(path);
+      });
+      return heldLockPaths;
+    };
+
+    test('runs fn and returns its result when the lock is uncontended', async () => {
+      buildTrackedLock();
+      localStorageRepository.statMtimeMs.mockReturnValue(null);
+
+      const result = await repository.withLock(
+        'project-key',
+        async () => 'ran',
+      );
+
+      expect(result).toBe('ran');
+      expect(localStorageRepository.mkdir).toHaveBeenCalledWith(
+        `${cachePath}/project-key`,
+      );
+      expect(localStorageRepository.tryCreateExclusive).toHaveBeenCalledWith(
+        `${cachePath}/project-key/.write.lock`,
+      );
+      expect(localStorageRepository.remove).toHaveBeenCalledWith(
+        `${cachePath}/project-key/.write.lock`,
+      );
+    });
+
+    test('a second call for the same key does not start fn until the first call finishes and releases the lock', async () => {
+      buildTrackedLock();
+      localStorageRepository.statMtimeMs.mockReturnValue(1_000);
+      const fakeSleep: Sleep = jest.fn(async () => {
+        await Promise.resolve();
+      });
+      const fakeNow = () => 1_050;
+      const order: string[] = [];
+      let resolveFirst: () => void = () => {};
+
+      const first = jest.fn(async () => {
+        order.push('first-start');
+        await new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        });
+        order.push('first-end');
+        return 'first-result';
+      });
+      const second = jest.fn(async () => {
+        order.push('second-start');
+        return 'second-result';
+      });
+
+      const firstCall = repository.withLock(
+        'same-key',
+        first,
+        fakeSleep,
+        fakeNow,
+      );
+      const secondCall = repository.withLock(
+        'same-key',
+        second,
+        fakeSleep,
+        fakeNow,
+      );
+
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(second).not.toHaveBeenCalled();
+
+      resolveFirst();
+      const [firstResult, secondResult] = await Promise.all([
+        firstCall,
+        secondCall,
+      ]);
+
+      expect(order).toEqual(['first-start', 'first-end', 'second-start']);
+      expect(firstResult).toBe('first-result');
+      expect(secondResult).toBe('second-result');
+    });
+
+    test('a call for a different key is not blocked by a lock held on another key', async () => {
+      buildTrackedLock();
+      localStorageRepository.statMtimeMs.mockReturnValue(null);
+      const order: string[] = [];
+      let resolveFirst: () => void = () => {};
+
+      const first = jest.fn(async () => {
+        order.push('first-start');
+        await new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        });
+        order.push('first-end');
+        return 'first-result';
+      });
+      const second = jest.fn(async () => {
+        order.push('second-start');
+        return 'second-result';
+      });
+
+      const firstCall = repository.withLock('key-a', first);
+      const secondCall = repository.withLock('key-b', second);
+
+      const secondResult = await secondCall;
+
+      expect(secondResult).toBe('second-result');
+      expect(order).toEqual(['first-start', 'second-start']);
+
+      resolveFirst();
+      await firstCall;
+    });
+
+    test('releases the lock even when fn throws, so a later acquire on the same key still succeeds', async () => {
+      buildTrackedLock();
+      localStorageRepository.statMtimeMs.mockReturnValue(null);
+      const failure = new Error('boom');
+
+      await expect(
+        repository.withLock('throwing-key', async () => {
+          throw failure;
+        }),
+      ).rejects.toThrow(failure);
+
+      expect(localStorageRepository.remove).toHaveBeenCalledWith(
+        `${cachePath}/throwing-key/.write.lock`,
+      );
+
+      const recovered = await repository.withLock(
+        'throwing-key',
+        async () => 'recovered',
+      );
+
+      expect(recovered).toBe('recovered');
+    });
+
+    test('takes over a lock file older than the stale timeout instead of waiting for it to be released', async () => {
+      localStorageRepository.tryCreateExclusive
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+      const now = 1_000_000;
+      localStorageRepository.statMtimeMs.mockReturnValue(
+        now - PROJECT_CACHE_LOCK_STALE_TIMEOUT_MS,
+      );
+      const fakeSleep: Sleep = jest.fn(async () => {
+        await Promise.resolve();
+      });
+      const fakeNow = () => now;
+
+      const result = await repository.withLock(
+        'stale-key',
+        async () => 'ran-after-takeover',
+        fakeSleep,
+        fakeNow,
+      );
+
+      expect(result).toBe('ran-after-takeover');
+      expect(localStorageRepository.tryCreateExclusive).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(localStorageRepository.remove).toHaveBeenCalledWith(
+        `${cachePath}/stale-key/.write.lock`,
+      );
+      expect(fakeSleep).not.toHaveBeenCalled();
+    });
+
+    test('rejects with an Error naming the lock and key when the lock cannot be acquired within the acquire timeout', async () => {
+      localStorageRepository.tryCreateExclusive.mockReturnValue(false);
+      localStorageRepository.statMtimeMs.mockReturnValue(null);
+      const startNow = 2_000_000;
+      let nowCallCount = 0;
+      const fakeNow = jest.fn(() => {
+        nowCallCount += 1;
+        return nowCallCount === 1
+          ? startNow
+          : startNow + PROJECT_CACHE_LOCK_ACQUIRE_TIMEOUT_MS + 1;
+      });
+      const fakeSleep: Sleep = jest.fn(async () => {
+        await Promise.resolve();
+      });
+      const fn = jest.fn(async () => 'never-runs');
+
+      let thrown: unknown;
+      try {
+        await repository.withLock('stuck-key', fn, fakeSleep, fakeNow);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toMatch(/lock/i);
+      expect((thrown as Error).message).toContain('stuck-key');
+      expect(fn).not.toHaveBeenCalled();
+      expect(fakeSleep).not.toHaveBeenCalled();
     });
   });
 });

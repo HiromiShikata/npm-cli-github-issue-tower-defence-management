@@ -7718,6 +7718,176 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('applyDependedIssueUrlFieldWriteToLaterReads concurrent writes (C3 — hardening lock)', () => {
+    const wait = (milliseconds: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+    // Same rationale as ProjectIssuesCacheRepository.test.ts's
+    // buildRacyCacheWithRealLock: getSingle/setSingle each await a short
+    // delay AND round-trip through JSON (as the real disk-backed cache
+    // does), so two concurrent readers never alias the same object; withLock
+    // is a real per-key promise-chain mutex, not a passthrough.
+    const buildRacyLocalStorageCacheRepository = (): Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle' | 'withLock'
+    > => {
+      const store = new Map<string, string>();
+      const lockTailByKey = new Map<string, Promise<unknown>>();
+      return {
+        getSingle: async (key: string) => {
+          await wait(20);
+          const stored = store.get(key);
+          return stored === undefined ? null : (JSON.parse(stored) as unknown);
+        },
+        setSingle: async (key: string, value: unknown) => {
+          await wait(20);
+          store.set(key, JSON.stringify(value));
+        },
+        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+          const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
+          const runResult = previousTail.then(fn, fn);
+          lockTailByKey.set(
+            key,
+            runResult.then(
+              () => undefined,
+              () => undefined,
+            ),
+          );
+          return runResult;
+        },
+      };
+    };
+
+    const buildIssueArgument = (
+      itemId: string,
+      url: string,
+      title: string,
+    ): Issue => ({
+      nameWithOwner: 'o/r',
+      url,
+      title,
+      number: 1,
+      state: 'OPEN',
+      labels: [],
+      assignees: [],
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      status: null,
+      story: null,
+      org: 'o',
+      repo: 'r',
+      body: '',
+      itemId,
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      agent: null,
+      isRepoArchived: false,
+      stateReason: null,
+    });
+
+    it('C3: two concurrent updateProjectTextField writes for the same project but different issues both persist their dependedIssueUrls cache update', async () => {
+      const projectId = 'proj-lock-race';
+      const dependedFieldId = 'depended-field-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const project: Project = {
+        ...buildTestProject(projectId),
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL separated by comma',
+          fieldId: dependedFieldId,
+        },
+      };
+      const cache = buildRacyLocalStorageCacheRepository();
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/201',
+              'Issue A',
+            ),
+            itemId: 'item-race-a',
+          },
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/202',
+              'Issue B',
+            ),
+            itemId: 'item-race-b',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+      const restIssueRepository = mock<RestIssueRepository>();
+      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+      const projectRepository = mock<ProjectRepository>();
+      const dateRepository = mock<DateRepository>();
+      const localStorageRepository = mock<LocalStorageRepository>();
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue(
+        undefined,
+      );
+      const repository = new ApiV3CheerioRestIssueRepository(
+        apiV3IssueRepository,
+        restIssueRepository,
+        graphqlProjectItemRepository,
+        cache,
+        projectRepository,
+        dateRepository,
+        localStorageRepository,
+        'dummy',
+      );
+      const issueA = buildIssueArgument(
+        'item-race-a',
+        'https://github.com/o/r/issues/201',
+        'Issue A',
+      );
+      const issueB = buildIssueArgument(
+        'item-race-b',
+        'https://github.com/o/r/issues/202',
+        'Issue B',
+      );
+
+      await Promise.all([
+        repository.updateProjectTextField(
+          project,
+          dependedFieldId,
+          issueA,
+          'https://github.com/o/r/issues/301',
+        ),
+        repository.updateProjectTextField(
+          project,
+          dependedFieldId,
+          issueB,
+          'https://github.com/o/r/issues/302',
+        ),
+      ]);
+
+      const finalCache = (await cache.getSingle(cacheKey)) as {
+        issues: Array<{ itemId: string; dependedIssueUrls: string[] }>;
+      } | null;
+      const dependedByItemId = new Map(
+        (finalCache?.issues ?? []).map((i) => [i.itemId, i.dependedIssueUrls]),
+      );
+
+      expect(dependedByItemId.get('item-race-a')).toEqual([
+        'https://github.com/o/r/issues/301',
+      ]);
+      expect(dependedByItemId.get('item-race-b')).toEqual([
+        'https://github.com/o/r/issues/302',
+      ]);
+    });
+  });
+
   describe('appendIssueToProjectCache', () => {
     const newIssue: Issue = {
       nameWithOwner: 'test-org/test-repo',
@@ -8526,6 +8696,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
+    localStorageCacheRepository.withLock.mockImplementation((_key, fn) =>
+      fn(),
+    );
     const projectRepository = mock<ProjectRepository>();
     const dateRepository = mock<DateRepository>();
     const localStorageRepository = mock<LocalStorageRepository>();

@@ -16,6 +16,9 @@ describe('LocalStorageRepository', () => {
   let mockMkdirSync: jest.SpyInstance;
   let mockExistsSync: jest.SpyInstance;
   let mockRenameSync: jest.SpyInstance;
+  let mockOpenSync: jest.SpyInstance;
+  let mockCloseSync: jest.SpyInstance;
+  let mockStatSync: jest.SpyInstance;
 
   beforeEach(() => {
     repository = new LocalStorageRepository();
@@ -25,6 +28,9 @@ describe('LocalStorageRepository', () => {
     mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation();
     mockExistsSync = jest.spyOn(fs, 'existsSync').mockImplementation();
     mockRenameSync = jest.spyOn(fs, 'renameSync').mockImplementation();
+    mockOpenSync = jest.spyOn(fs, 'openSync').mockImplementation();
+    mockCloseSync = jest.spyOn(fs, 'closeSync').mockImplementation();
+    mockStatSync = jest.spyOn(fs, 'statSync').mockImplementation();
   });
 
   afterEach(() => {
@@ -168,6 +174,82 @@ describe('LocalStorageRepository', () => {
           recursive: true,
         });
       });
+    });
+  });
+
+  describe('tryCreateExclusive', () => {
+    test('opens the path exclusively, closes the descriptor, and returns true when creation succeeds', () => {
+      mockOpenSync.mockReturnValue(7);
+
+      const result = repository.tryCreateExclusive('/path/to/.write.lock');
+
+      expect(result).toBe(true);
+      expect(mockOpenSync).toHaveBeenCalledWith(
+        '/path/to/.write.lock',
+        fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+      );
+      expect(mockCloseSync).toHaveBeenCalledWith(7);
+    });
+
+    test('returns false without throwing when the path already exists (EEXIST)', () => {
+      const eexistError = Object.assign(new Error('file already exists'), {
+        code: 'EEXIST',
+      });
+      mockOpenSync.mockImplementation(() => {
+        throw eexistError;
+      });
+
+      const result = repository.tryCreateExclusive('/path/to/.write.lock');
+
+      expect(result).toBe(false);
+      expect(mockCloseSync).not.toHaveBeenCalled();
+    });
+
+    test('rethrows an error whose code is not EEXIST', () => {
+      const permissionError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
+      mockOpenSync.mockImplementation(() => {
+        throw permissionError;
+      });
+
+      expect(() =>
+        repository.tryCreateExclusive('/path/to/.write.lock'),
+      ).toThrow(permissionError);
+    });
+  });
+
+  describe('statMtimeMs', () => {
+    test('returns the last-modified time in milliseconds for an existing path', () => {
+      mockStatSync.mockReturnValue({ mtimeMs: 1735689600000 });
+
+      const result = repository.statMtimeMs('/path/to/.write.lock');
+
+      expect(result).toBe(1735689600000);
+      expect(mockStatSync).toHaveBeenCalledWith('/path/to/.write.lock');
+    });
+
+    test('returns null when the path does not exist', () => {
+      const enoentError = Object.assign(new Error('no such file'), {
+        code: 'ENOENT',
+      });
+      mockStatSync.mockImplementation(() => {
+        throw enoentError;
+      });
+
+      const result = repository.statMtimeMs('/path/to/missing.lock');
+
+      expect(result).toBeNull();
+    });
+
+    test('returns null when any other stat error occurs', () => {
+      mockStatSync.mockImplementation(() => {
+        throw new Error('unexpected stat failure');
+      });
+
+      const result = repository.statMtimeMs('/path/to/.write.lock');
+
+      expect(result).toBeNull();
     });
   });
 });

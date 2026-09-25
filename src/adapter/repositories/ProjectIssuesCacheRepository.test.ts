@@ -74,7 +74,7 @@ const savedStoryOptions: FieldOption[] = [
 
 const buildSharedCache = (): Pick<
   LocalStorageCacheRepository,
-  'getLatest' | 'set' | 'getSingle' | 'setSingle'
+  'getLatest' | 'set' | 'getSingle' | 'setSingle' | 'withLock'
 > => {
   const store = new Map<string, unknown>();
   return {
@@ -83,6 +83,50 @@ const buildSharedCache = (): Pick<
     getSingle: async (key: string) => store.get(key) ?? null,
     setSingle: async (key: string, value: unknown) => {
       store.set(key, value);
+    },
+    withLock: async (_key, fn) => fn(),
+  };
+};
+
+const wait = (milliseconds: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+// A fixture that genuinely reproduces the read-modify-write race:
+// getSingle/setSingle each await a short delay AND round-trip the value
+// through JSON (as the real disk-backed cache does via fs.readFileSync /
+// JSON.parse and JSON.stringify / fs.writeFileSync) before touching an
+// in-memory Map, so two concurrent readers never alias the same object and
+// an in-place mutation by one caller cannot leak into the other's snapshot.
+// withLock is a real per-key promise-chain mutex (not a passthrough), so two
+// concurrent callers for the same key are only serialized when the
+// repository under test actually calls withLock.
+const buildRacyCacheWithRealLock = (): Pick<
+  LocalStorageCacheRepository,
+  'getSingle' | 'setSingle' | 'withLock'
+> => {
+  const store = new Map<string, string>();
+  const lockTailByKey = new Map<string, Promise<unknown>>();
+  return {
+    getSingle: async (key: string) => {
+      await wait(20);
+      const stored = store.get(key);
+      return stored === undefined ? null : (JSON.parse(stored) as unknown);
+    },
+    setSingle: async (key: string, value: unknown) => {
+      await wait(20);
+      store.set(key, JSON.stringify(value));
+    },
+    withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+      const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
+      const runResult = previousTail.then(fn, fn);
+      lockTailByKey.set(
+        key,
+        runResult.then(
+          () => undefined,
+          () => undefined,
+        ),
+      );
+      return runResult;
     },
   };
 };
@@ -522,5 +566,101 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       { name: 'story A', description: 'desc A' },
       { name: 'story B', description: '' },
     ]);
+  });
+});
+
+describe('ProjectIssuesCacheRepository concurrent writes on the same on-disk cache file', () => {
+  const buildIssueEntry = (itemId: string, url: string): Issue => ({
+    nameWithOwner: 'o/r',
+    url,
+    title: 'title',
+    number: 1,
+    state: 'OPEN',
+    labels: [],
+    assignees: [],
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    status: null,
+    story: null,
+    org: 'o',
+    repo: 'r',
+    body: '',
+    itemId,
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    author: '',
+    closingIssueReferenceUrls: [],
+    agent: null,
+    isRepoArchived: false,
+    stateReason: null,
+  });
+
+  it('C1: two concurrent removeIssueByItemId calls for the same project but different itemIds both take effect', async () => {
+    const cache = buildRacyCacheWithRealLock();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const issueA = buildIssueEntry(
+      'PVTI_race_a',
+      'https://github.com/o/r/issues/101',
+    );
+    const issueB = buildIssueEntry(
+      'PVTI_race_b',
+      'https://github.com/o/r/issues/102',
+    );
+    const issueKeep = buildIssueEntry(
+      'PVTI_race_keep',
+      'https://github.com/o/r/issues/103',
+    );
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [issueA, issueB, issueKeep],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+
+    await Promise.all([
+      repo.removeIssueByItemId(projectId, 'PVTI_race_a'),
+      repo.removeIssueByItemId(projectId, 'PVTI_race_b'),
+    ]);
+
+    const result = await repo.read(projectId);
+    const remainingItemIds = (result?.issues ?? []).map((i) => i.itemId);
+    expect(remainingItemIds).toEqual(['PVTI_race_keep']);
+  });
+
+  it('C2: two concurrent updateFieldOptions calls for the same project but different fieldIds both take effect', async () => {
+    const cache = buildRacyCacheWithRealLock();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+    const newStoryOptions: FieldOption[] = [
+      { id: 'story1', name: 'First Story', color: 'BLUE', description: '' },
+      { id: 'story2', name: 'Second Story', color: 'GREEN', description: '' },
+    ];
+    const newStatusOptions: FieldOption[] = [
+      { id: 'st1', name: 'Todo', color: 'GRAY', description: '' },
+      { id: 'st2', name: 'In Progress', color: 'BLUE', description: '' },
+    ];
+
+    await Promise.all([
+      repo.updateFieldOptions(projectId, storyFieldId, newStoryOptions),
+      repo.updateFieldOptions(projectId, statusFieldId, newStatusOptions),
+    ]);
+
+    const result = await repo.read(projectId);
+    expect(result?.project.story?.stories).toEqual(newStoryOptions);
+    expect(result?.project.status.statuses).toEqual(newStatusOptions);
   });
 });
