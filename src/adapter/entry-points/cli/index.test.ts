@@ -2298,6 +2298,36 @@ mysteryKey: 'value'
       );
     });
 
+    it('should pass the --dispatchStartedAt timestamp with milliseconds to the use case as a Date', async () => {
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(NotifyFinishedIssuePreparationUseCase)
+        .mockImplementation(function (
+          this: NotifyFinishedIssuePreparationUseCase,
+        ) {
+          this.run = mockRun;
+          return this;
+        });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--dispatchStartedAt',
+        '2026-09-25T10:15:30.123Z',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dispatchStartedAt: new Date('2026-09-25T10:15:30.123Z'),
+        }),
+      );
+    });
+
     it('should pass a null dispatchStartedAt when --dispatchStartedAt is omitted', async () => {
       const mockRun = jest.fn().mockResolvedValue(undefined);
       jest

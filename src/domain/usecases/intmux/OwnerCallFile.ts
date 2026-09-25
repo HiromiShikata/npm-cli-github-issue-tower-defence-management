@@ -1,4 +1,5 @@
 import { toTmuxSessionName } from './InTmuxByHumanSessionReconcileUseCase';
+import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../services/iso8601UtcDateTimePattern';
 
 export const OWNER_CALL_FILE_DIRECTORY_NAME = 'call-to-user';
 
@@ -48,7 +49,9 @@ export const ownerCallProjectCodeOfSession = (
   return owningProject ? owningProject.projectCode : null;
 };
 
-const CALLED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+const CALLED_AT_PATTERN = new RegExp(
+  `^${ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE}Z$`,
+);
 
 export const isOwnerCallCalledAtValid = (calledAt: string): boolean => {
   if (!CALLED_AT_PATTERN.test(calledAt)) {

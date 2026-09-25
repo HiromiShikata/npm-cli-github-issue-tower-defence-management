@@ -20,6 +20,7 @@ import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerC
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -123,8 +124,9 @@ const resolvePositiveIntegerOption = (
   return parsed;
 };
 
-const UTC_TIMESTAMP_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+const UTC_TIMESTAMP_PATTERN = new RegExp(
+  `^${ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE}(\\.\\d{1,3})?Z$`,
+);
 
 const resolveUtcTimestampOption = (
   rawValue: string | undefined,
