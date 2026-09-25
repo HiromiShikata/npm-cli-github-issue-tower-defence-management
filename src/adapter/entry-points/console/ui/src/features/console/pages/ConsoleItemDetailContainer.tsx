@@ -379,6 +379,7 @@ export const ConsoleItemDetailContainer = ({
                       cause,
                     );
                   }
+                  await operations.onAfterMoveToAwaitingWorkspace?.();
                   return;
                 }
                 try {

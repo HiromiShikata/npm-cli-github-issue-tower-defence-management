@@ -89,6 +89,7 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     dependedIssueUrl: string,
   ) => Promise<void>;
+  onAfterMoveToAwaitingWorkspace?: () => Promise<void>;
 };
 
 export const reviewRequest = (
@@ -492,5 +493,6 @@ export const useConsoleOperations = (
     issueRename,
     deleteAllComments,
     setDependedIssueUrl,
+    onAfterMoveToAwaitingWorkspace,
   };
 };
