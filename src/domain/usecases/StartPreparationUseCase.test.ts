@@ -7751,6 +7751,7 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockIssueRepository.get.mock.calls).toEqual([
       ['https://github.com/user/repo/issues/1', mockProject],
+      ['https://github.com/user/repo/issues/1', mockProject],
     ]);
     expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
