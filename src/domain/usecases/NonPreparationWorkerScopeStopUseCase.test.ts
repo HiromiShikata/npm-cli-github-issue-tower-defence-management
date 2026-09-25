@@ -86,9 +86,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
       );
 
       const result = await useCase.run({
-        issues: [
-          buildIssue({ org: 'owner', repo: 'repo', number: 1, status }),
-        ],
+        issues: [buildIssue({ org: 'owner', repo: 'repo', number: 1, status })],
       });
 
       expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
@@ -126,9 +124,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
 
   it('returns an empty result when no worker scopes are running', async () => {
     const tmuxSessionRepository = createMockTmuxSessionRepository();
-    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue(
-      [],
-    );
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([]);
     const useCase = new NonPreparationWorkerScopeStopUseCase(
       tmuxSessionRepository,
     );
@@ -172,9 +168,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
     expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
       'aw-owner-repo-2-200.scope',
     );
-    expect(result.stoppedScopeUnitNames).toEqual([
-      'aw-owner-repo-2-200.scope',
-    ]);
+    expect(result.stoppedScopeUnitNames).toEqual(['aw-owner-repo-2-200.scope']);
   });
 
   it('collects failures into an AggregateError and still stops the scopes that succeed', async () => {

@@ -177,7 +177,8 @@ describe('NodeTmuxSessionRepository', () => {
         if (program === 'systemctl') {
           return {
             stdout: '',
-            stderr: 'Failed to stop aw-owner-repo-1-100.scope: Unit not loaded.',
+            stderr:
+              'Failed to stop aw-owner-repo-1-100.scope: Unit not loaded.',
             exitCode: 5,
           };
         }

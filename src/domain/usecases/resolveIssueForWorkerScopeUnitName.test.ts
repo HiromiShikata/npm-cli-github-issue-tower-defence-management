@@ -58,8 +58,18 @@ describe('resolveIssueForWorkerScopeUnitName', () => {
       name: 'picks the issue whose prefix matches out of several candidates',
       scopeUnitName: 'aw-owner-repo-42-555.scope',
       issues: [
-        buildIssue({ org: 'owner', repo: 'repo', number: 4, url: 'https://github.com/owner/repo/issues/4' }),
-        buildIssue({ org: 'owner', repo: 'repo', number: 42, url: 'https://github.com/owner/repo/issues/42' }),
+        buildIssue({
+          org: 'owner',
+          repo: 'repo',
+          number: 4,
+          url: 'https://github.com/owner/repo/issues/4',
+        }),
+        buildIssue({
+          org: 'owner',
+          repo: 'repo',
+          number: 42,
+          url: 'https://github.com/owner/repo/issues/42',
+        }),
       ],
       expected: 'https://github.com/owner/repo/issues/42',
     },

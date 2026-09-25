@@ -516,9 +516,9 @@ describe('HandleScheduledEventUseCase', () => {
       });
       await useCase.run(input);
 
-      expect(
-        mockNonPreparationWorkerScopeStopUseCase.run,
-      ).toHaveBeenCalledWith({ issues: mockIssues });
+      expect(mockNonPreparationWorkerScopeStopUseCase.run).toHaveBeenCalledWith(
+        { issues: mockIssues },
+      );
     });
 
     it('should not invoke nonPreparationWorkerScopeStopUseCase when startPreparation is not configured', async () => {
