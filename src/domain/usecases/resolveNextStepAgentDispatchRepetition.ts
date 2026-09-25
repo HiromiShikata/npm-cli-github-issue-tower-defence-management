@@ -17,6 +17,8 @@ const REPORTING_LOOP_ESCALATION_PHRASE_LEGACY =
   'Owner judgment is required to break the loop';
 export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
+export const STORY_UNSET_ESCALATION_PHRASE =
+  'the story field must be set by the owner before dispatch can continue';
 
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 
@@ -26,7 +28,8 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'escalateSilentRedispatch'; comment: string }
   | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
-  | { type: 'storyUnset'; comment: string };
+  | { type: 'storyUnset'; comment: string }
+  | { type: 'escalateStoryUnsetLoop'; comment: string };
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
@@ -35,12 +38,19 @@ const DISPATCH_AGAIN_KEYWORD = 'DISPATCH_AGAIN';
 const SILENT_REDISPATCH_ESCALATED_KEYWORD = 'SILENT_REDISPATCH_ESCALATED';
 const REPORTING_LOOP_ESCALATED_KEYWORD = 'REPORTING_LOOP_ESCALATED';
 const DISPATCH_LOOP_ESCALATED_KEYWORD = 'DISPATCH_LOOP_ESCALATED';
+const STORY_UNSET_KEYWORD = 'STORY_UNSET';
+const STORY_UNSET_ESCALATED_KEYWORD = 'STORY_UNSET_ESCALATED';
 
 const DISPATCH_REPETITION_KEYWORDS = new Set([
   DISPATCH_AGAIN_KEYWORD,
   SILENT_REDISPATCH_ESCALATED_KEYWORD,
   REPORTING_LOOP_ESCALATED_KEYWORD,
   DISPATCH_LOOP_ESCALATED_KEYWORD,
+]);
+
+const STORY_UNSET_DISPATCH_REPETITION_KEYWORDS = new Set([
+  STORY_UNSET_KEYWORD,
+  STORY_UNSET_ESCALATED_KEYWORD,
 ]);
 
 const findLastHumanCommentIndex = <
@@ -94,6 +104,26 @@ const isSilentRedispatchCommentForAgent = (
   const firstLine = afterHead.split('\n')[0];
   const parts = firstLine.split(' ');
   if (!DISPATCH_REPETITION_KEYWORDS.has(parts[0])) {
+    return false;
+  }
+  const agentNameInComment = parts.slice(1).join(' ').trim();
+  return (
+    normalizeProjectFieldName(agentNameInComment) ===
+    normalizeProjectFieldName(nextStepAgent)
+  );
+};
+
+const isStoryUnsetCommentForAgent = (
+  content: string,
+  nextStepAgent: string,
+): boolean => {
+  if (!content.startsWith(DISPATCH_REPETITION_PREFIX)) {
+    return false;
+  }
+  const afterHead = content.slice(DISPATCH_REPETITION_PREFIX.length);
+  const firstLine = afterHead.split('\n')[0];
+  const parts = firstLine.split(' ');
+  if (!STORY_UNSET_DISPATCH_REPETITION_KEYWORDS.has(parts[0])) {
     return false;
   }
   const agentNameInComment = parts.slice(1).join(' ').trim();
@@ -244,6 +274,50 @@ const countDispatchesInCurrentCycle = <
   );
 };
 
+const countConsecutiveStoryUnsetDispatches = <
+  CommentLike extends { author: string; content: string },
+>(params: {
+  nextStepAgent: string;
+  comments: CommentLike[];
+  isTrustedAuthor: (author: string) => boolean;
+}): number => {
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
+  const commentsInCurrentCycle = params.comments.slice(
+    lastHumanCommentIndex + 1,
+  );
+  const lastEscalationIndex = commentsInCurrentCycle.reduce(
+    (found, comment, index) => {
+      if (!params.isTrustedAuthor(comment.author)) return found;
+      if (
+        !isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent)
+      ) {
+        return found;
+      }
+      const afterHead = comment.content.slice(
+        DISPATCH_REPETITION_PREFIX.length,
+      );
+      const keyword = afterHead.split(/[ \n]/)[0];
+      if (keyword !== STORY_UNSET_ESCALATED_KEYWORD) return found;
+      return index;
+    },
+    -1,
+  );
+  const commentsAfterLastEscalation =
+    lastEscalationIndex >= 0
+      ? commentsInCurrentCycle.slice(lastEscalationIndex + 1)
+      : commentsInCurrentCycle;
+  return (
+    commentsAfterLastEscalation.filter(
+      (c) =>
+        params.isTrustedAuthor(c.author) &&
+        isStoryUnsetCommentForAgent(c.content, params.nextStepAgent),
+    ).length + 1
+  );
+};
+
 export const resolveNextStepAgentDispatchRepetition = <
   CommentLike extends { author: string; content: string },
 >(params: {
@@ -263,9 +337,24 @@ export const resolveNextStepAgentDispatchRepetition = <
   const silentRedispatches = countSilentRedispatches(params);
   if (params.isNoStory) {
     if (params.nextStepAgent !== null) {
+      const storyUnsetDispatchCount = countConsecutiveStoryUnsetDispatches({
+        nextStepAgent: params.nextStepAgent,
+        comments: params.comments,
+        isTrustedAuthor: params.isTrustedAuthor,
+      });
+      if (storyUnsetDispatchCount >= params.thresholdForDispatchLoop) {
+        return {
+          type: 'escalateStoryUnsetLoop',
+          comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_ESCALATED_KEYWORD} ${params.nextStepAgent}
+
+This issue's story field has been unset for ${params.thresholdForDispatchLoop} consecutive dispatches since the last human comment, so ${STORY_UNSET_ESCALATION_PHRASE} instead of being dispatched again.`,
+        };
+      }
       return {
         type: 'storyUnset',
-        comment: `The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+        comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_KEYWORD} ${params.nextStepAgent}
+
+The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead. (${storyUnsetDispatchCount}/${params.thresholdForDispatchLoop})`,
       };
     }
     return { type: 'notRepeated' };
