@@ -3311,7 +3311,7 @@ mysteryKey: 'value'
         );
         const processExitSpy = jest
           .spyOn(process, 'exit')
-          .mockImplementation(() => undefined as never);
+          .mockImplementation(jest.fn<never, [number?]>());
         const stderrWriteSpy = jest
           .spyOn(process.stderr, 'write')
           .mockImplementation(() => true);
@@ -3368,7 +3368,7 @@ mysteryKey: 'value'
       );
       const processExitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation(() => undefined as never);
+        .mockImplementation(jest.fn<never, [number?]>());
       const stderrWriteSpy = jest
         .spyOn(process.stderr, 'write')
         .mockImplementation(() => true);
