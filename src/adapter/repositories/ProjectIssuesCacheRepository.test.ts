@@ -91,15 +91,6 @@ const buildSharedCache = (): Pick<
 const wait = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-// A fixture that genuinely reproduces the read-modify-write race:
-// getSingle/setSingle each await a short delay AND round-trip the value
-// through JSON (as the real disk-backed cache does via fs.readFileSync /
-// JSON.parse and JSON.stringify / fs.writeFileSync) before touching an
-// in-memory Map, so two concurrent readers never alias the same object and
-// an in-place mutation by one caller cannot leak into the other's snapshot.
-// withLock is a real per-key promise-chain mutex (not a passthrough), so two
-// concurrent callers for the same key are only serialized when the
-// repository under test actually calls withLock.
 const buildRacyCacheWithRealLock = (): Pick<
   LocalStorageCacheRepository,
   'getSingle' | 'setSingle' | 'withLock'

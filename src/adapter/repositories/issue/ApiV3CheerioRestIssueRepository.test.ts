@@ -7723,11 +7723,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const wait = (milliseconds: number): Promise<void> =>
       new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-    // Same rationale as ProjectIssuesCacheRepository.test.ts's
-    // buildRacyCacheWithRealLock: getSingle/setSingle each await a short
-    // delay AND round-trip through JSON (as the real disk-backed cache
-    // does), so two concurrent readers never alias the same object; withLock
-    // is a real per-key promise-chain mutex, not a passthrough.
     const buildRacyLocalStorageCacheRepository = (): Pick<
       LocalStorageCacheRepository,
       'getSingle' | 'setSingle' | 'withLock'
