@@ -872,6 +872,120 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 });
 
+describe('LiveSessionOauthTokenSelectUseCase excludes tokens with depleted 7d budget within 48-hour deadline window', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  const exhaustedWithinDeadlineCases: [string, number, number][] = [
+    [
+      'token at 3% seven day free within 47 hours of reset is not eligible despite deadline bypass',
+      0.97,
+      47,
+    ],
+    [
+      'token at 1% seven day free within 30 hours of reset is not eligible despite deadline bypass',
+      0.99,
+      30,
+    ],
+  ];
+
+  it.each(exhaustedWithinDeadlineCases)(
+    '%s',
+    (_description, sevenDayUtilization, sevenDayResetHours) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'nearlyExhausted',
+            snapshot({
+              sevenDayUtilization,
+              sevenDayReset: NOW + sevenDayResetHours * HOUR,
+            }),
+          ),
+          candidate('fine', snapshot({})),
+        ],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const metric = result.metrics.find((m) => m.name === 'nearlyExhausted');
+      expect(metric?.eligible).toBe(false);
+      expect(metric?.exclusionReason).toContain('7d window');
+      expect(result.selected?.name).toBe('fine');
+    },
+  );
+});
+
+describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h deadline bypass pinning', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  const deadlineBoundaryCases: [
+    string,
+    number,
+    number,
+    number,
+    number,
+    boolean,
+    string | null,
+  ][] = [
+    [
+      'token at 3% seven day free more than 48 hours before reset is not eligible',
+      0.97,
+      50,
+      0,
+      5 * 60,
+      false,
+      '7d window',
+    ],
+    [
+      'token within 1 hour of its five hour reset is eligible for live session selection despite five hour window being below the minimum',
+      0,
+      7 * 24,
+      0.5,
+      30,
+      true,
+      null,
+    ],
+  ];
+
+  it.each(deadlineBoundaryCases)(
+    '%s',
+    (
+      _description,
+      sevenDayUtilization,
+      sevenDayResetHours,
+      fiveHourUtilization,
+      fiveHourResetMinutes,
+      expectedEligible,
+      expectedExclusionReasonSubstring,
+    ) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'subject',
+            snapshot({
+              sevenDayUtilization,
+              sevenDayReset: NOW + sevenDayResetHours * HOUR,
+              fiveHourUtilization,
+              fiveHourReset: NOW + fiveHourResetMinutes * 60,
+            }),
+          ),
+        ],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const metric = result.metrics.find((m) => m.name === 'subject');
+      expect(metric?.eligible).toBe(expectedEligible);
+      if (expectedExclusionReasonSubstring !== null) {
+        expect(metric?.exclusionReason).toContain(
+          expectedExclusionReasonSubstring,
+        );
+      }
+    },
+  );
+});
+
 describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
