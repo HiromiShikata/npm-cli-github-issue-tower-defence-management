@@ -3765,9 +3765,7 @@ describe('consoleOperationApi', () => {
           ...cachedProject,
           story: {
             ...cachedStory,
-            stories: ['opt_a', 'opt_b', 'opt_c', 'opt_d'].map(
-              buildStoryOption,
-            ),
+            stories: ['opt_a', 'opt_b', 'opt_c', 'opt_d'].map(buildStoryOption),
           },
         };
         const localUpdateStoryList = jest.fn().mockResolvedValue([]);
@@ -4506,17 +4504,16 @@ describe('consoleOperationApi', () => {
           );
           expect(response.statusCode).toBe(expectedStatusCode);
           if (expectColorChangeApplied) {
-            expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
-              expect.objectContaining({
-                story: expect.objectContaining({
-                  stories: expect.arrayContaining([
-                    expect.objectContaining({ id: 'opt_target' }),
-                  ]),
-                }),
-              }),
-              'opt_target',
-              'RED',
-            );
+            expect(
+              issueRepository.updateStoryOptionColor,
+            ).toHaveBeenCalledTimes(1);
+            const [calledProject, calledStoryOptionId, calledColor] =
+              issueRepository.updateStoryOptionColor.mock.calls[0];
+            expect(calledStoryOptionId).toBe('opt_target');
+            expect(calledColor).toBe('RED');
+            expect(
+              calledProject.story.stories.some((s) => s.id === 'opt_target'),
+            ).toBe(true);
           } else {
             expect(
               issueRepository.updateStoryOptionColor,
