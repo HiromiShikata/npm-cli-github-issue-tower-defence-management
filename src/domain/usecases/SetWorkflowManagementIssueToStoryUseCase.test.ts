@@ -860,7 +860,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       ).toBe(true);
     });
 
-    it('should not write and should not throw via the workflow management branch when the live re-read rejects', async () => {
+    it('should not write and should re-throw as AggregateError via the workflow management branch when the live re-read rejects', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
         labels: ['story:workflow-management', 'other'],
@@ -879,13 +879,75 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         cacheUsed: false,
       });
       await jest.runAllTimersAsync();
-      await expect(promise).resolves.toBeUndefined();
+      await expect(promise).rejects.toBeInstanceOf(AggregateError);
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],
       ]);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should process the remaining workflow-management issue and collect the rejection into the thrown AggregateError when the live re-read rejects for one issue among several', async () => {
+      const failingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
+      };
+      const succeedingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['daily-routine'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
+      };
+      const rejectionError = new Error('network error');
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === failingIssue.url) {
+          throw rejectionError;
+        }
+        if (issueUrl === succeedingIssue.url) {
+          return { ...succeedingIssue, story: null };
+        }
+        return null;
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [failingIssue, succeedingIssue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+
+      let caughtError: unknown;
+      try {
+        await promise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(AggregateError);
+      if (caughtError instanceof AggregateError) {
+        expect(caughtError.errors).toEqual([rejectionError]);
+      } else {
+        throw caughtError;
+      }
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          succeedingIssue,
+          'workflowManagementStoryId',
+        ],
+      ]);
     });
 
     it('should not overwrite Story via the matched story label branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
@@ -1028,7 +1090,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       ).toBe(true);
     });
 
-    it('should not write and should not throw via the matched story label branch when the live re-read rejects', async () => {
+    it('should not write and should re-throw as AggregateError via the matched story label branch when the live re-read rejects', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
         labels: ['story:high-priority'],
@@ -1047,11 +1109,138 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         cacheUsed: false,
       });
       await jest.runAllTimersAsync();
-      await expect(promise).resolves.toBeUndefined();
+      await expect(promise).rejects.toBeInstanceOf(AggregateError);
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],
       ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should process the remaining matched-story-label issue and collect the rejection into the thrown AggregateError when the live re-read rejects for one issue among several', async () => {
+      const failingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
+      };
+      const succeedingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:middle-bug'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
+      };
+      const rejectionError = new Error('network error');
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === failingIssue.url) {
+          throw rejectionError;
+        }
+        if (issueUrl === succeedingIssue.url) {
+          return { ...succeedingIssue, story: null };
+        }
+        return null;
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [failingIssue, succeedingIssue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+
+      let caughtError: unknown;
+      try {
+        await promise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(AggregateError);
+      if (caughtError instanceof AggregateError) {
+        expect(caughtError.errors).toEqual([rejectionError]);
+      } else {
+        throw caughtError;
+      }
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          succeedingIssue,
+          'middleBugId',
+        ],
+      ]);
+    });
+
+    it('should collect failures from both the workflow-management branch and the matched-story-label branch into one AggregateError', async () => {
+      const failingWorkflowIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
+      };
+      const failingMatchedStoryIssue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
+      };
+      const workflowRejectionError = new Error(
+        'workflow branch network error',
+      );
+      const matchedStoryRejectionError = new Error(
+        'matched story branch network error',
+      );
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === failingWorkflowIssue.url) {
+          throw workflowRejectionError;
+        }
+        if (issueUrl === failingMatchedStoryIssue.url) {
+          throw matchedStoryRejectionError;
+        }
+        return null;
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [failingWorkflowIssue, failingMatchedStoryIssue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+
+      let caughtError: unknown;
+      try {
+        await promise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(AggregateError);
+      if (caughtError instanceof AggregateError) {
+        expect(caughtError.errors).toEqual([
+          workflowRejectionError,
+          matchedStoryRejectionError,
+        ]);
+      } else {
+        throw caughtError;
+      }
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
