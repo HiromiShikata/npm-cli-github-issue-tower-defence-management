@@ -8,6 +8,7 @@ import {
 } from '../entities/WorkflowStatus';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
@@ -656,11 +657,19 @@ export class StartPreparationUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          todoByHumanStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            todoByHumanStatusOption.id,
+          );
+        } catch (error) {
+          if (!(error instanceof StaleProjectItemError)) throw error;
+          console.warn(
+            `Skipping stale project item while writing Todo by human status: ${issue.url}`,
+          );
+          continue;
+        }
       }
     }
 
@@ -890,11 +899,19 @@ export class StartPreparationUseCase {
         continue;
       }
 
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        preparationStatusOption.id,
-      );
+      try {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          preparationStatusOption.id,
+        );
+      } catch (error) {
+        if (!(error instanceof StaleProjectItemError)) throw error;
+        console.warn(
+          `Skipping stale project item while writing Preparation status: ${issue.url}`,
+        );
+        continue;
+      }
       issue.status = PREPARATION_STATUS_NAME;
 
       const revertToAwaitingWorkspace = async (
@@ -909,11 +926,19 @@ export class StartPreparationUseCase {
           );
           return;
         }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        } catch (error) {
+          if (!(error instanceof StaleProjectItemError)) throw error;
+          console.warn(
+            `Skipping stale project item while reverting to ${AWAITING_WORKSPACE_STATUS_NAME}: the revert could not be persisted because the project item is stale: ${issue.url}`,
+          );
+          return;
+        }
         issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       };
 

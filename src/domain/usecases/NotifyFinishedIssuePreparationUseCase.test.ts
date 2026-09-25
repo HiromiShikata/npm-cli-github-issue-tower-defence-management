@@ -1666,6 +1666,52 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('escalates to Failed Preparation when a dispatch that posts zero comments pushes a self-referencing agent to the silent-redispatch threshold', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+      story: 'regular / some story',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('The agent may have crashed or stopped silently'),
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('accounting'),
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(' null'),
+    );
+  });
+
   it('should escalate to Failed Preparation when story stays unset and the same agent keeps being dispatched up to the dispatch loop threshold', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

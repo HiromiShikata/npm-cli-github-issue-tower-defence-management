@@ -1,5 +1,14 @@
 import fs from 'fs';
 
+const isErrorWithCode = (err: unknown, code: string): boolean => {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    err.code === code
+  );
+};
+
 export class LocalStorageRepository {
   write = (path: string, value: string) => {
     const dirPath = path.split('/').slice(0, -1).join('/');
@@ -36,12 +45,7 @@ export class LocalStorageRepository {
       fs.closeSync(fileDescriptor);
       return true;
     } catch (err) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        err.code === 'EEXIST'
-      ) {
+      if (isErrorWithCode(err, 'EEXIST')) {
         return false;
       }
       throw err;
@@ -50,7 +54,28 @@ export class LocalStorageRepository {
   statMtimeMs = (path: string): number | null => {
     try {
       return fs.statSync(path).mtimeMs;
-    } catch {
+    } catch (err) {
+      if (isErrorWithCode(err, 'ENOENT')) {
+        return null;
+      }
+      console.warn(
+        `LocalStorageRepository.statMtimeMs: failed to stat ${path}`,
+        err,
+      );
+      return null;
+    }
+  };
+  readOrNull = (path: string): string | null => {
+    try {
+      return fs.readFileSync(path, 'utf8');
+    } catch (err) {
+      if (isErrorWithCode(err, 'ENOENT')) {
+        return null;
+      }
+      console.warn(
+        `LocalStorageRepository.readOrNull: failed to read ${path}`,
+        err,
+      );
       return null;
     }
   };

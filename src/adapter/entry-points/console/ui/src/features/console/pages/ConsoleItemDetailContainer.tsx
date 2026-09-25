@@ -350,17 +350,73 @@ export const ConsoleItemDetailContainer = ({
     awaitingWorkspaceOption !== null
       ? async (body: string): Promise<ConsoleComment> => {
           onCommentDraftChange?.('');
-          handlers.onSetStatus(awaitingWorkspaceOption);
-          try {
-            return await addComment(body);
-          } catch (cause) {
-            if (onCommentError !== undefined) {
-              onCommentError('Failed to post comment', String(cause));
-            } else {
-              console.error('Failed to post comment', cause);
-            }
-            throw cause;
-          }
+          return await new Promise<ConsoleComment>((resolve, reject) => {
+            let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
+            const rejectWithMessage = (message: string, cause: unknown) => {
+              if (onCommentError !== undefined) {
+                onCommentError(message, String(cause));
+              } else {
+                console.error(message, cause);
+              }
+              reject(cause);
+              throw cause;
+            };
+            onQueueAction({
+              kind: {
+                type: 'set_status',
+                optionName: awaitingWorkspaceOption.name,
+              },
+              item,
+              commit: async () => {
+                if (
+                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
+                ) {
+                  try {
+                    await operations.setStatus(item, awaitingWorkspaceOption);
+                  } catch (cause) {
+                    rejectWithMessage(
+                      `Comment already posted, but retrying the move to Awaiting Workspace status failed: ${String(cause)}`,
+                      cause,
+                    );
+                  }
+                  try {
+                    await operations.onAfterMoveToAwaitingWorkspace?.();
+                  } catch (cause) {
+                    const message = `Comment posted and status set to Awaiting Workspace, but a post-success refresh action failed: ${String(cause)}`;
+                    if (onCommentError !== undefined) {
+                      onCommentError(message, String(cause));
+                    } else {
+                      console.error(message, cause);
+                    }
+                  }
+                  return;
+                }
+                try {
+                  const comment =
+                    await operations.addCommentAndMoveToAwaitingWorkspace(
+                      item,
+                      body,
+                      awaitingWorkspaceOption,
+                    );
+                  setPostedComments((previous) => [...previous, comment]);
+                  resolve(comment);
+                } catch (cause) {
+                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = true;
+                  rejectWithMessage(
+                    `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
+                    cause,
+                  );
+                }
+              },
+              overlayPatch: {
+                done: true,
+                status: {
+                  name: awaitingWorkspaceOption.name,
+                  color: awaitingWorkspaceOption.color,
+                },
+              },
+            });
+          });
         }
       : undefined;
 

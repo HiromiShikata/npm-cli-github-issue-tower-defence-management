@@ -12,6 +12,7 @@ import type {
 import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import {
   SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
   StartPreparationUseCase,
@@ -7987,6 +7988,215 @@ describe('StartPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
+
+  describe('StaleProjectItemError handling in updateStatus calls', () => {
+    it('continues processing further authorNotAllowed issues after a StaleProjectItemError on the Todo by human status write', async () => {
+      const projectWithTodoByHuman: Project = {
+        ...createMockProject(),
+        status: {
+          ...createMockProject().status,
+          statuses: [
+            ...createMockProject().status.statuses,
+            {
+              id: 'todo-by-human-id',
+              name: 'Todo by human',
+              color: 'PINK',
+              description: '',
+            },
+          ],
+        },
+      };
+      const firstAuthorNotAllowedIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        title: 'Stale Author Issue',
+        status: 'Awaiting Workspace',
+        number: 100,
+        author: 'not-allowed-user',
+      });
+      const secondAuthorNotAllowedIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/101',
+        title: 'Later Author Issue',
+        status: 'Awaiting Workspace',
+        number: 101,
+        author: 'not-allowed-user',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          firstAuthorNotAllowedIssue,
+          secondAuthorNotAllowedIssue,
+        ]),
+      );
+      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      mockIssueRepository.updateStatus.mockImplementation(
+        async (_project, issue) => {
+          if (issue.url === firstAuthorNotAllowedIssue.url) {
+            throw new StaleProjectItemError('PVTI_stale_todo_by_human');
+          }
+          return undefined;
+        },
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(2);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+        url: secondAuthorNotAllowedIssue.url,
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe(
+        'todo-by-human-id',
+      );
+    });
+
+    it('does not spawn a worker for an issue whose Preparation status write hits a StaleProjectItemError, but still spawns a later candidate', async () => {
+      const staleIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        number: 1,
+        title: 'Stale Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      });
+      const laterIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/2',
+        number: 2,
+        title: 'Later Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([staleIssue, laterIssue]),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        async (_project, issue, statusId) => {
+          if (issue.url === staleIssue.url && statusId === '2') {
+            throw new StaleProjectItemError('PVTI_stale_preparation');
+          }
+          return undefined;
+        },
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+        laterIssue.url,
+      );
+    });
+
+    it('resolves run() when the revert-to-Awaiting-Workspace status write hits a StaleProjectItemError after the aw command exits non-zero', async () => {
+      const awaitingIssues: Issue[] = [
+        createMockIssue({
+          url: 'url1',
+          title: 'Issue 1',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+        }),
+      ];
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(awaitingIssues),
+      );
+      mockIssueRepository.updateStatus
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new StaleProjectItemError('PVTI_lADODxwUyc4BU85azg8zlIU'),
+        );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: 'The URL includes test-repository. Exiting.',
+        stderr: '',
+        exitCode: 1,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+      expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('1');
+    });
+
+    it('rejects run() when updateStatus fails with an ordinary error unrelated to a stale project item', async () => {
+      const awaitingIssues: Issue[] = [
+        createMockIssue({
+          url: 'url1',
+          title: 'Issue 1',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+        }),
+      ];
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap(awaitingIssues),
+      );
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('GitHub API rate limit exceeded'),
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        }),
+      ).rejects.toThrow('GitHub API rate limit exceeded');
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    });
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -8682,6 +8892,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
       getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],

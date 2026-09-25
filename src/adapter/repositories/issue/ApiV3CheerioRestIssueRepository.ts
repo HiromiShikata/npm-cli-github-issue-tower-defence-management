@@ -1067,25 +1067,34 @@ export class ApiV3CheerioRestIssueRepository
     if (effectiveIsFullFetch) {
       const items =
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-      const issuesByUrl = new Map<string, Issue>(
-        cache !== null ? cache.issues.map((issue) => [issue.url, issue]) : [],
-      );
-      for (const item of items) {
-        issuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
-      }
-      const issues = Array.from(issuesByUrl.values());
       const nowIso = now.toISOString();
-      await this.projectIssuesCacheRepository.write(projectId, {
-        lastFetchedAt: nowIso,
-        lastFullFetchAt: nowIso,
-        project,
-        issues,
-        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-          issues,
-          project.story?.stories ?? [],
-        ),
-        storyOptions: buildStoryOptions(project),
-      });
+      const issues = await this.projectIssuesCacheRepository.withLock(
+        projectId,
+        async () => {
+          const freshCache = await this.readCachedProjectIssues(projectId);
+          const issuesByUrl = new Map<string, Issue>(
+            freshCache !== null
+              ? freshCache.issues.map((issue) => [issue.url, issue])
+              : [],
+          );
+          for (const item of items) {
+            issuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
+          }
+          const mergedIssues = Array.from(issuesByUrl.values());
+          await this.projectIssuesCacheRepository.write(projectId, {
+            lastFetchedAt: nowIso,
+            lastFullFetchAt: nowIso,
+            project,
+            issues: mergedIssues,
+            storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+              mergedIssues,
+              project.story?.stories ?? [],
+            ),
+            storyOptions: buildStoryOptions(project),
+          });
+          return mergedIssues;
+        },
+      );
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
       return { issues, project, cacheUsed: false };
     }
@@ -1102,32 +1111,39 @@ export class ApiV3CheerioRestIssueRepository
     const changedItemIds = lightItems
       .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
       .map((item) => item.id);
-    const issuesByUrl = new Map<string, Issue>(
-      cache.issues.map((issue) => [issue.url, issue]),
-    );
-    if (changedItemIds.length > 0) {
-      const changedItems =
-        await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
-          changedItemIds,
-        );
-      for (const item of changedItems) {
-        const issue = this.convertProjectItemToIssue(item);
-        issuesByUrl.set(issue.url, issue);
-      }
-    }
-    const issues = Array.from(issuesByUrl.values());
+    const changedItems =
+      changedItemIds.length > 0
+        ? await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+            changedItemIds,
+          )
+        : [];
     const nowIso = now.toISOString();
-    await this.projectIssuesCacheRepository.write(projectId, {
-      lastFetchedAt: nowIso,
-      lastFullFetchAt: cache.lastFullFetchAt,
-      project,
-      issues,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-        issues,
-        project.story?.stories ?? [],
-      ),
-      storyOptions: buildStoryOptions(project),
-    });
+    const issues = await this.projectIssuesCacheRepository.withLock(
+      projectId,
+      async () => {
+        const freshCache = await this.readCachedProjectIssues(projectId);
+        const issuesByUrl = new Map<string, Issue>(
+          (freshCache ?? cache).issues.map((issue) => [issue.url, issue]),
+        );
+        for (const item of changedItems) {
+          const issue = this.convertProjectItemToIssue(item);
+          issuesByUrl.set(issue.url, issue);
+        }
+        const mergedIssues = Array.from(issuesByUrl.values());
+        await this.projectIssuesCacheRepository.write(projectId, {
+          lastFetchedAt: nowIso,
+          lastFullFetchAt: freshCache?.lastFullFetchAt ?? cache.lastFullFetchAt,
+          project,
+          issues: mergedIssues,
+          storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+            mergedIssues,
+            project.story?.stories ?? [],
+          ),
+          storyOptions: buildStoryOptions(project),
+        });
+        return mergedIssues;
+      },
+    );
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
     return { issues, project, cacheUsed: true };
   };
@@ -1310,22 +1326,24 @@ export class ApiV3CheerioRestIssueRepository
     projectId: Project['id'],
     issue: Issue,
   ): Promise<void> => {
-    const cached = await this.projectIssuesCacheRepository.read(projectId);
-    if (cached === null) {
-      return;
-    }
-    const alreadyPresent = cached.issues.some((i) => i.url === issue.url);
-    if (alreadyPresent) {
-      return;
-    }
-    const updatedIssues = [...cached.issues, issue];
-    await this.projectIssuesCacheRepository.write(projectId, {
-      ...cached,
-      issues: updatedIssues,
-      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-        updatedIssues,
-        cached.project.story?.stories ?? [],
-      ),
+    await this.projectIssuesCacheRepository.withLock(projectId, async () => {
+      const cached = await this.projectIssuesCacheRepository.read(projectId);
+      if (cached === null) {
+        return;
+      }
+      const alreadyPresent = cached.issues.some((i) => i.url === issue.url);
+      if (alreadyPresent) {
+        return;
+      }
+      const updatedIssues = [...cached.issues, issue];
+      await this.projectIssuesCacheRepository.write(projectId, {
+        ...cached,
+        issues: updatedIssues,
+        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+          updatedIssues,
+          cached.project.story?.stories ?? [],
+        ),
+      });
     });
   };
   updateStoryByProjectItemId = async (

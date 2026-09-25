@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { localStorageCacheBaseDirectory } from './localStorageCacheDirectory';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
@@ -97,8 +98,11 @@ export class LocalStorageCacheRepository {
     const lockPath = `${dirPath}/.write.lock`;
     this.localStorageRepository.mkdir(dirPath);
     const deadline = now() + PROJECT_CACHE_LOCK_ACQUIRE_TIMEOUT_MS;
+    let fencingToken: string;
     for (;;) {
       if (this.localStorageRepository.tryCreateExclusive(lockPath)) {
+        fencingToken = randomUUID();
+        this.localStorageRepository.write(lockPath, fencingToken);
         break;
       }
       const mtimeMs = this.localStorageRepository.statMtimeMs(lockPath);
@@ -117,7 +121,11 @@ export class LocalStorageCacheRepository {
     try {
       return await fn();
     } finally {
-      this.localStorageRepository.remove(lockPath);
+      const currentLockContent =
+        this.localStorageRepository.readOrNull(lockPath);
+      if (currentLockContent === fencingToken) {
+        this.localStorageRepository.remove(lockPath);
+      }
     }
   };
 }

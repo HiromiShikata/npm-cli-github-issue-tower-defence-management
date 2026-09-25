@@ -3,10 +3,44 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { issueReactivationTriggerStartOfTomorrow } from './issueReactivationTriggerIsPending';
 
+const isSameNextActionDate = (a: Date | null, b: Date | null): boolean => {
+  if (a === null || b === null) {
+    return a === b;
+  }
+  return a.getTime() === b.getTime();
+};
+
 export class ClearPastNextActionDateHourUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'clearProjectField'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'clearProjectField' | 'get'
+    >,
   ) {}
+
+  private isLiveNextActionDateHourUnchanged = async (
+    snapshotIssue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(snapshotIssue.url, project);
+    } catch (error) {
+      console.error(
+        `[ClearPastNextActionDateHourUseCase] Failed to re-read the live Next Action Date/Hour before clearing. issueUrl: ${snapshotIssue.url}`,
+        error,
+      );
+      return false;
+    }
+    return (
+      liveIssue !== null &&
+      liveIssue.nextActionHour === snapshotIssue.nextActionHour &&
+      isSameNextActionDate(
+        liveIssue.nextActionDate,
+        snapshotIssue.nextActionDate,
+      )
+    );
+  };
 
   run = async (input: {
     targetDates: Date[];
@@ -38,6 +72,11 @@ export class ClearPastNextActionDateHourUseCase {
         if (scheduledTime.getTime() > now.getTime()) {
           continue;
         }
+        if (
+          !(await this.isLiveNextActionDateHourUnchanged(issue, input.project))
+        ) {
+          continue;
+        }
         await this.issueRepository.clearProjectField(
           input.project,
           nextActionHourField.fieldId,
@@ -67,6 +106,11 @@ export class ClearPastNextActionDateHourUseCase {
         (issue.nextActionDate?.getTime() ?? Infinity) >=
           startOfTomorrow.getTime() ||
         issue.state !== 'OPEN'
+      ) {
+        continue;
+      }
+      if (
+        !(await this.isLiveNextActionDateHourUnchanged(issue, input.project))
       ) {
         continue;
       }

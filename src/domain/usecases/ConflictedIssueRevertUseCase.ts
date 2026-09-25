@@ -154,6 +154,7 @@ export class ConflictedIssueRevertUseCase {
           const repetition = resolveNextStepAgentDispatchRepetition({
             agentFieldValue: issue.agent,
             nextStepAgent,
+            currentDispatchPostedNoComment: false,
             comments: existingComments,
             isTrustedAuthor: (author) =>
               isAuthorAuthorizedForAutoStatusCheck(

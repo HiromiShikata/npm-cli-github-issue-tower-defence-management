@@ -52,6 +52,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
         cacheUsed: boolean;
       };
       expectedClearProjectFieldCalls: [Project, string, Issue][];
+      liveIssuesReturnedByGetInCallOrder?: (Issue | null)[];
     }[] = [
       {
         name: 'should not clear anything when targetDates is empty',
@@ -108,6 +109,12 @@ describe('ClearPastNextActionDateHourUseCase', () => {
             },
           ],
         ],
+        liveIssuesReturnedByGetInCallOrder: [
+          {
+            ...openIssueWithDateOnly,
+            nextActionDate: new Date('2026-04-01T00:00:00'),
+          },
+        ],
       },
       {
         name: 'should clear nextActionDate when date is today',
@@ -139,6 +146,12 @@ describe('ClearPastNextActionDateHourUseCase', () => {
               nextActionDate: new Date('2026-04-02T00:00:00'),
             },
           ],
+        ],
+        liveIssuesReturnedByGetInCallOrder: [
+          {
+            ...openIssueWithDateOnly,
+            nextActionDate: new Date('2026-04-02T00:00:00'),
+          },
         ],
       },
       {
@@ -248,6 +261,13 @@ describe('ClearPastNextActionDateHourUseCase', () => {
             },
           ],
         ],
+        liveIssuesReturnedByGetInCallOrder: [
+          {
+            ...openIssueWithHour,
+            nextActionHour: 10,
+            nextActionDate: null,
+          },
+        ],
       },
       {
         name: 'should not clear nextActionDate when nextActionDate is null and hour trigger fires',
@@ -276,6 +296,13 @@ describe('ClearPastNextActionDateHourUseCase', () => {
               nextActionDate: null,
             },
           ],
+        ],
+        liveIssuesReturnedByGetInCallOrder: [
+          {
+            ...openIssueWithHour,
+            nextActionHour: 1,
+            nextActionDate: null,
+          },
         ],
       },
       {
@@ -337,20 +364,42 @@ describe('ClearPastNextActionDateHourUseCase', () => {
             },
           ],
         ],
+        liveIssuesReturnedByGetInCallOrder: [
+          {
+            ...openIssueWithHour,
+            nextActionHour: 9,
+            nextActionDate: null,
+          },
+          {
+            ...openIssueWithDateOnly,
+            nextActionDate: new Date('2026-04-01T00:00:00'),
+          },
+        ],
       },
     ];
 
-    testCases.forEach(({ name, input, expectedClearProjectFieldCalls }) => {
-      it(name, async () => {
-        jest.clearAllMocks();
-        const useCase = new ClearPastNextActionDateHourUseCase(
-          mockIssueRepository,
-        );
-        await useCase.run(input);
-        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
-          expectedClearProjectFieldCalls,
-        );
-      });
-    });
+    testCases.forEach(
+      ({
+        name,
+        input,
+        expectedClearProjectFieldCalls,
+        liveIssuesReturnedByGetInCallOrder,
+      }) => {
+        it(name, async () => {
+          jest.clearAllMocks();
+          mockIssueRepository.get.mockReset();
+          (liveIssuesReturnedByGetInCallOrder ?? []).forEach((liveIssue) => {
+            mockIssueRepository.get.mockResolvedValueOnce(liveIssue);
+          });
+          const useCase = new ClearPastNextActionDateHourUseCase(
+            mockIssueRepository,
+          );
+          await useCase.run(input);
+          expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
+            expectedClearProjectFieldCalls,
+          );
+        });
+      },
+    );
   });
 });
