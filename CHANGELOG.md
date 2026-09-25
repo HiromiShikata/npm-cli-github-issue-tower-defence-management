@@ -1,3 +1,10 @@
+## [2.148.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.7...v2.148.8) (2026-09-25)
+
+
+### Bug Fixes
+
+* **notify:** notifyFinishedIssuePreparation reuses an earlier agent report for a session that posted nothing, so the issue loops between Awaiting Workspace and Preparation ([#2624](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2624)) ([5210821](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/521082107cf6be5e542a7639a5ccb20cb97304cd))
+
 ## [2.148.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.6...v2.148.7) (2026-09-25)
 
 
