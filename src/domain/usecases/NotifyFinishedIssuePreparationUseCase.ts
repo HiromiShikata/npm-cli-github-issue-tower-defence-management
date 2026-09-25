@@ -625,6 +625,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
     if (
       repetition.type === 'escalateReportingLoop' ||
+      repetition.type === 'escalateStoryUnsetLoop' ||
       (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
     ) {
       issue.status = FAILED_PREPARATION_STATUS_NAME;

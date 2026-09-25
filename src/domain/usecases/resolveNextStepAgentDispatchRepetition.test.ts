@@ -1,4 +1,5 @@
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import * as ResolveNextStepAgentDispatchRepetitionModule from './resolveNextStepAgentDispatchRepetition';
 import {
   countConsecutiveNoReportDispatches,
   NO_REPORT_REDISPATCH_COUNT_PREFIX,
@@ -7,6 +8,17 @@ import {
   REPORTING_LOOP_ESCALATION_PHRASE,
   DISPATCH_LOOP_ESCALATION_PHRASE,
 } from './resolveNextStepAgentDispatchRepetition';
+
+const resolveNextStepAgentDispatchRepetitionModuleExports: Record<
+  string,
+  unknown
+> = ResolveNextStepAgentDispatchRepetitionModule;
+const rawStoryUnsetEscalationPhrase =
+  resolveNextStepAgentDispatchRepetitionModuleExports.STORY_UNSET_ESCALATION_PHRASE;
+const STORY_UNSET_ESCALATION_PHRASE =
+  typeof rawStoryUnsetEscalationPhrase === 'string'
+    ? rawStoryUnsetEscalationPhrase
+    : undefined;
 
 const trustAll = (): boolean => true;
 
@@ -74,6 +86,26 @@ const dispatchLoopEscalationComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_LOOP_ESCALATED ${nextStepAgent}
 
 This agent has been dispatched 3 times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
+});
+
+const storyUnsetMarkerComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET ${nextStepAgent}
+
+The story field is not set on this issue. The designated agent "${nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+});
+
+const storyUnsetEscalatedMarkerComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET_ESCALATED ${nextStepAgent}
+
+This task has been dispatched repeatedly with no story assigned since the last human comment, so it has been escalated for a decision instead of being dispatched again.`,
 });
 
 const humanComment = (author = 'bot'): TestComment => ({
@@ -820,6 +852,92 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
+    });
+  });
+
+  describe('no-story guard dispatch loop circuit breaker', () => {
+    it.each([
+      { priorStoryUnsetComments: 1, expectedType: 'storyUnset' },
+      { priorStoryUnsetComments: 2, expectedType: 'escalateStoryUnsetLoop' },
+    ])(
+      'returns $expectedType when $priorStoryUnsetComments prior STORY_UNSET comment(s) exist against a dispatch loop threshold of 3',
+      ({ priorStoryUnsetComments, expectedType }) => {
+        const priorMarkers = Array.from(
+          { length: priorStoryUnsetComments },
+          () => storyUnsetMarkerComment('developer'),
+        );
+        const result = resolveNextStepAgentDispatchRepetition({
+          agentFieldValue: 'developer',
+          nextStepAgent: 'developer',
+          comments: [report('developer'), ...priorMarkers],
+          isTrustedAuthor: trustAll,
+          thresholdForAutoReject: 99,
+          thresholdForDispatchLoop: 3,
+          isNoStory: true,
+        });
+
+        expect(result.type).toBe(expectedType);
+      },
+    );
+
+    it('escalateStoryUnsetLoop comment contains the escalation phrase and the agent name', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          storyUnsetMarkerComment('developer'),
+          storyUnsetMarkerComment('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+        isNoStory: true,
+      });
+
+      expect(result.type).toBe('escalateStoryUnsetLoop');
+      const comment = 'comment' in result ? result.comment : '';
+      expect(comment).toContain('developer');
+      expect(STORY_UNSET_ESCALATION_PHRASE).toEqual(expect.any(String));
+      expect(comment).toContain(STORY_UNSET_ESCALATION_PHRASE);
+    });
+
+    it('resets the count after a human comment so the loop does not escalate immediately', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          storyUnsetMarkerComment('developer'),
+          storyUnsetMarkerComment('developer'),
+          humanComment(),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+        isNoStory: true,
+      });
+
+      expect(result.type).toBe('storyUnset');
+    });
+
+    it('resets the count after its own STORY_UNSET_ESCALATED comment so one new dispatch does not re-trigger the loop', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          storyUnsetMarkerComment('developer'),
+          storyUnsetMarkerComment('developer'),
+          storyUnsetEscalatedMarkerComment('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+        isNoStory: true,
+      });
+
+      expect(result.type).toBe('storyUnset');
     });
   });
 
