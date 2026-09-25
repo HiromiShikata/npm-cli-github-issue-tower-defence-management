@@ -1,3 +1,10 @@
+## [2.148.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.10...v2.148.11) (2026-09-25)
+
+
+### Bug Fixes
+
+* **console:** fix consoleOperationApi story-resolution regressions and close test coverage gaps ([#2630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2630)) ([7daa7e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7daa7e42535de87631fab6e8d7d9fee6c1ee819e)), closes [#2619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2619) [#2619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2619)
+
 ## [2.148.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.9...v2.148.10) (2026-09-25)
 
 
