@@ -25,6 +25,7 @@ import {
 } from './StartPreparationUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
@@ -42,6 +43,7 @@ import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -136,6 +138,7 @@ export class HandleScheduledEventUseCase {
     readonly issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+    readonly nonPreparationWorkerScopeStopUseCase: NonPreparationWorkerScopeStopUseCase,
     readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
@@ -564,6 +567,14 @@ ${JSON.stringify(e)}
           workflowIssueReporterSettings:
             input.workflowIssueReporterSettings ?? null,
         });
+      }
+      try {
+        await this.nonPreparationWorkerScopeStopUseCase.run({ issues });
+      } catch (stopError) {
+        console.error(
+          `[HandleScheduledEvent] Failed to stop non-${PREPARATION_STATUS_NAME} worker scopes for project ${project.url}: ${stopError instanceof Error ? stopError.message : String(stopError)}`,
+          stopError,
+        );
       }
       if (input.startPreparation.autoRevertReopenedDoneEnabled) {
         try {

@@ -67,6 +67,8 @@ import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeT
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { NonPreparationWorkerScopeStopUseCase } from '../../../domain/usecases/NonPreparationWorkerScopeStopUseCase';
+import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from '../../../domain/usecases/AgentDesignationLabelAdoptUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -507,6 +509,10 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         nodeLocalCommandRunner,
       );
+    const nonPreparationWorkerScopeStopUseCase =
+      new NonPreparationWorkerScopeStopUseCase(
+        new NodeTmuxSessionRepository(nodeLocalCommandRunner),
+      );
     const conflictedIssueRevertUseCase = new ConflictedIssueRevertUseCase(
       projectRepository,
       issueRepository,
@@ -560,6 +566,7 @@ export class HandleScheduledEventUseCaseHandler {
       issueNoStatusUpdateUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
+      nonPreparationWorkerScopeStopUseCase,
       conflictedIssueRevertUseCase,
       revertNotReadyReviewQueueIssueUseCase,
       agentDesignationLabelAdoptUseCase,
