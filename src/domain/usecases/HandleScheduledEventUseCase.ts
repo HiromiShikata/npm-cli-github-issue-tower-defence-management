@@ -1,7 +1,10 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
+import {
+  buildStoryObjectMap,
+  StoryObjectMap,
+} from '../entities/StoryObjectMap';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { Member } from '../entities/Member';
 import { DateRepository } from './adapter-interfaces/DateRepository';
@@ -906,24 +909,6 @@ ${JSON.stringify(e)}
     project: Project;
     issues: Issue[];
   }): Promise<StoryObjectMap> => {
-    const summaryStoryIssue: StoryObjectMap = new Map();
-    const targetStory = input.project.story?.stories || [];
-    for (const story of targetStory) {
-      const storyIssue = input.issues.find(
-        (issue) => story.name.startsWith(issue.title) && !issue.isClosed,
-      );
-      summaryStoryIssue.set(story.name, {
-        story,
-        storyIssue: storyIssue || null,
-        issues: [],
-      });
-      for (const issue of input.issues) {
-        if (issue.story !== story.name) {
-          continue;
-        }
-        summaryStoryIssue.get(story.name)?.issues.push(issue);
-      }
-    }
-    return summaryStoryIssue;
+    return buildStoryObjectMap(input);
   };
 }

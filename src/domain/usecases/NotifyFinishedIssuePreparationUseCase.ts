@@ -1167,9 +1167,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       const storyObjectMap =
         await this.issueRepository.getStoryObjectMap(project);
 
-      const isWorkflowBlocker = Array.from(storyObjectMap.entries()).some(
-        ([storyName, storyObject]) =>
-          storyName.toLowerCase().includes('workflow blocker') &&
+      const isWorkflowBlocker = Array.from(storyObjectMap.values()).some(
+        (storyObject) =>
+          storyObject.story.name.toLowerCase().includes('workflow blocker') &&
           storyObject.issues.some((issue) => issue.url === issueUrl),
       );
 
