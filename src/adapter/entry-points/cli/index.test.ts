@@ -104,13 +104,11 @@ jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
     handle: mockScheduleHandle,
   })),
 }));
-const mockLiveSessionOauthTokenSelectHandlerHandle = jest
-  .fn()
-  .mockReturnValue({
-    selectedToken: null,
-    selectedName: null,
-    diagnostics: [],
-  });
+const mockLiveSessionOauthTokenSelectHandlerHandle = jest.fn().mockReturnValue({
+  selectedToken: null,
+  selectedName: null,
+  diagnostics: [],
+});
 jest.mock('../handlers/LiveSessionOauthTokenSelectHandler', () => ({
   LiveSessionOauthTokenSelectHandler: jest.fn().mockImplementation(() => ({
     handle: mockLiveSessionOauthTokenSelectHandlerHandle,
