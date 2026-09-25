@@ -490,7 +490,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected).toBeNull();
   });
 
-  it('selects the token with the highest five hour free ratio among non-excluded tokens with at least 3% seven day free when no token meets the live session thresholds', () => {
+  it('selects the token with the highest five hour free ratio among non-excluded tokens with more than 3% seven day free when no token meets the live session thresholds', () => {
     const rejected = Array.from({ length: 7 }, (_unused, index) =>
       candidate(`rejected${index}`, snapshot({}), false, true),
     );
@@ -503,7 +503,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         ),
         candidate(
           'dev9',
-          snapshot({ sevenDayUtilization: 0.97, fiveHourUtilization: 0.02 }),
+          snapshot({ sevenDayUtilization: 0.96, fiveHourUtilization: 0.02 }),
         ),
         candidate(
           'main',
