@@ -25,6 +25,7 @@ import {
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
@@ -612,6 +613,16 @@ export class StartPreparationUseCase {
           )
         ) {
           await this.issueRepository.createCommentByUrl(issue.url, commentBody);
+        }
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status', 'isClosed'],
+          skippedWriteDescription: `the Todo by human status write for an author-not-allowed issue`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
         }
         await this.issueRepository.updateStatus(
           project,
