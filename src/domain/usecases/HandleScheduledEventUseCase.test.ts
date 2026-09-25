@@ -2481,6 +2481,56 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
       });
     });
+
+    describe('setWorkflowManagementIssueToStoryUseCase and setNoStoryIssueToStoryUseCase caller resilience', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('continues to startPreparationUseCase when setWorkflowManagementIssueToStoryUseCase.run rejects', async () => {
+        mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValue(
+          new Error('GitHub API rate limit'),
+        );
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+          },
+        });
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+
+      it('continues to startPreparationUseCase when setNoStoryIssueToStoryUseCase.run rejects', async () => {
+        mockSetNoStoryIssueToStoryUseCase.run.mockRejectedValue(
+          new Error('GitHub API rate limit'),
+        );
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+          },
+        });
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('storyIssues', () => {

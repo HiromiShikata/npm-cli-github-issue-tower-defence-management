@@ -623,18 +623,32 @@ ${JSON.stringify(e)}
     storyObjectMap: StoryObjectMap,
     now: Date,
   ): Promise<void> => {
-    await this.setWorkflowManagementIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-    await this.setNoStoryIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
+    try {
+      await this.setWorkflowManagementIssueToStoryUseCase.run({
+        targetDates: targetDateTimes,
+        project,
+        issues,
+        cacheUsed,
+      });
+    } catch (workflowManagementStoryError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${workflowManagementStoryError instanceof Error ? workflowManagementStoryError.message : String(workflowManagementStoryError)}`,
+        workflowManagementStoryError,
+      );
+    }
+    try {
+      await this.setNoStoryIssueToStoryUseCase.run({
+        targetDates: targetDateTimes,
+        project,
+        issues,
+        cacheUsed,
+      });
+    } catch (noStoryError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${noStoryError instanceof Error ? noStoryError.message : String(noStoryError)}`,
+        noStoryError,
+      );
+    }
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
       project,

@@ -621,7 +621,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       ).toBe(true);
     });
 
-    it('should not write and should not throw when the live re-read rejects', async () => {
+    it('should not write and should re-throw as AggregateError when the live re-read rejects', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
         labels: [],
@@ -638,13 +638,75 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
+      const rejection = expect(promise).rejects.toBeInstanceOf(AggregateError);
       await jest.runAllTimersAsync();
-      await expect(promise).resolves.toBeUndefined();
+      await rejection;
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],
       ]);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('should process the remaining issue and collect the rejection into the thrown AggregateError when the live re-read rejects for one issue among several', async () => {
+      const failingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        url: 'https://github.com/user/repo/issues/1',
+      };
+      const succeedingIssue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        url: 'https://github.com/user/repo/issues/2',
+      };
+      const rejectionError = new Error('network error');
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === failingIssue.url) {
+          throw rejectionError;
+        }
+        if (issueUrl === succeedingIssue.url) {
+          return { ...succeedingIssue, story: null };
+        }
+        return null;
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [failingIssue, succeedingIssue],
+        cacheUsed: false,
+      });
+      promise.catch(() => {});
+      await jest.runAllTimersAsync();
+
+      let caughtError: unknown;
+      try {
+        await promise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(AggregateError);
+      if (caughtError instanceof AggregateError) {
+        expect(caughtError.errors).toEqual([rejectionError]);
+      } else {
+        throw caughtError;
+      }
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          succeedingIssue,
+          'noStoryId',
+        ],
+      ]);
     });
   });
 });

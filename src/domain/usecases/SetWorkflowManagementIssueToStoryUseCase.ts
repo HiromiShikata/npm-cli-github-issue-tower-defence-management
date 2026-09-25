@@ -29,6 +29,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     if (!story) {
       return;
     }
+    const errors: unknown[] = [];
     for (const issue of input.issues) {
       if (!this.isEligibleIssue(issue, input.targetDates)) {
         continue;
@@ -56,10 +57,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
             continue;
           }
         } catch (error) {
-          console.error(
-            `Failed to re-read the live Story value before writing the workflow-management Story. issueUrl: ${issue.url}`,
-            error,
-          );
+          errors.push(error);
           continue;
         }
         await this.issueRepository.updateStory(
@@ -134,10 +132,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
           continue;
         }
       } catch (error) {
-        console.error(
-          `Failed to re-read the live Story value before writing the matched-story-label Story. issueUrl: ${issue.url}`,
-          error,
-        );
+        errors.push(error);
         continue;
       }
 
@@ -148,6 +143,12 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       );
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    if (errors.length > 0) {
+      throw new AggregateError(
+        errors,
+        `Failed to re-read the live Story value for ${errors.length} issue(s) before writing the workflow-management or matched-story-label Story`,
+      );
     }
   };
 
