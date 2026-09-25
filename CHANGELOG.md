@@ -1,3 +1,10 @@
+## [2.148.17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.16...v2.148.17) (2026-09-25)
+
+
+### Bug Fixes
+
+* **scheduled-cycle:** re-read the live item before writing Story, Status or Agent chosen from the item snapshot ([#2621](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2621)) ([3a2470f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3a2470f80c4c4cad8642e4e27a36b8210e3e6c14)), closes [#2617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2617) [#2617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2617) [#2617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2617) [#2617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2617) [#2617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2617) [#2633](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2633)
+
 ## [2.148.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.15...v2.148.16) (2026-09-25)
 
 
