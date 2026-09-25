@@ -581,28 +581,36 @@ describe('LocalStorageCacheRepository', () => {
       const tokenWrittenByTakeover = lockFileContents.get(lockPath);
       expect(tokenWrittenByTakeover).toBeDefined();
       expect(tokenWrittenByTakeover).not.toBe(tokenWrittenBySlowHolder);
-      // one removal so far: the takeover deleting the slow holder's stale lock
-      expect(removeCallPaths).toEqual([lockPath]);
+      const removeCallPathsAfterTakeoverReclaimsTheStaleLock = [
+        ...removeCallPaths,
+      ];
+      expect(removeCallPathsAfterTakeoverReclaimsTheStaleLock).toEqual([
+        lockPath,
+      ]);
 
-      // The dangerous overlap: the slow holder's fn resolves and its
-      // `finally` runs while the takeover holder's own fn is still in
-      // progress, so the takeover holder's lock is still live.
       resolveSlowHolder();
       const slowHolderResult = await slowHolderCall;
 
       expect(slowHolderResult).toBe('slow-holder-result');
-      // the slow holder's belated release must NOT remove the lock the
-      // takeover holder still legitimately owns and is still using
-      expect(removeCallPaths).toEqual([lockPath]);
+      const removeCallPathsAfterSlowHolderReleasesWhileTakeoverStillRuns = [
+        ...removeCallPaths,
+      ];
+      expect(
+        removeCallPathsAfterSlowHolderReleasesWhileTakeoverStillRuns,
+      ).toEqual([lockPath]);
       expect(lockFileContents.get(lockPath)).toBe(tokenWrittenByTakeover);
 
       resolveTakeover();
       const takeoverResult = await takeoverCall;
 
       expect(takeoverResult).toBe('takeover-result');
-      // only the takeover holder's own release removes the lock, once it is
-      // actually done with it
-      expect(removeCallPaths).toEqual([lockPath, lockPath]);
+      const removeCallPathsAfterTakeoverReleasesItsOwnCompletedLock = [
+        ...removeCallPaths,
+      ];
+      expect(removeCallPathsAfterTakeoverReleasesItsOwnCompletedLock).toEqual([
+        lockPath,
+        lockPath,
+      ]);
       expect(lockFileContents.has(lockPath)).toBe(false);
     });
   });
