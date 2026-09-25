@@ -1666,6 +1666,52 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should escalate to Failed Preparation when story stays unset and the same agent keeps being dispatched up to the dispatch loop threshold', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('developer'),
+    );
+  });
+
   it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -8535,5 +8581,211 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         consoleLogSpy.mockRestore();
       },
     );
+  });
+
+  describe('agent report posted before the dispatch start of the finished session', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const minutesAgo = (minutes: number): Date =>
+      new Date(Date.now() - minutes * 60 * 1000);
+    const reportWithoutRoutingSignal = (createdAt: Date): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content:
+          'From: :robot: chore (model)\n\nCompleted the task.\n\n```json\n{}\n```',
+        createdAt,
+      });
+    const noReportCounterComment = (
+      dispatchCount: number,
+      createdAt: Date,
+    ): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content: `Auto Status Check: NO_REPORT_AGAIN ${dispatchCount}/3\n\nNo completion comment was posted. Dispatch ${dispatchCount} of 3 before escalation.`,
+        createdAt,
+      });
+    const noReportRejectionComment = (createdAt: Date): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+        createdAt,
+      });
+
+    beforeEach(() => {
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: issueUrl,
+          status: 'Preparation',
+          agent: 'chore',
+        }),
+      );
+    });
+
+    it('treats a report posted before the dispatch start as no report and posts the first no-report counter', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithoutRoutingSignal(minutesAgo(180)),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_AGAIN 1/3'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('increments the no-report counter on the second dispatch that posts nothing after an earlier report', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithoutRoutingSignal(minutesAgo(600)),
+        noReportCounterComment(1, minutesAgo(300)),
+        noReportRejectionComment(minutesAgo(300)),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_AGAIN 2/3'),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('moves the issue to Failed Preparation on the third dispatch that posts nothing after an earlier report', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithoutRoutingSignal(minutesAgo(600)),
+        noReportCounterComment(1, minutesAgo(500)),
+        noReportRejectionComment(minutesAgo(500)),
+        noReportCounterComment(2, minutesAgo(300)),
+        noReportRejectionComment(minutesAgo(300)),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('3 consecutive dispatches'),
+      );
+    });
+
+    it('honors a report posted after the dispatch start', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithoutRoutingSignal(minutesAgo(600)),
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: minutesAgo(30),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT'),
+      );
+    });
+
+    it('honors a report posted exactly at the dispatch start', async () => {
+      const dispatchStartedAt = minutesAgo(60);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: new Date(dispatchStartedAt.getTime()),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+    });
+
+    it('honors the latest report whatever its age when no dispatch start is given', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithoutRoutingSignal(minutesAgo(180)),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT'),
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+    });
   });
 });

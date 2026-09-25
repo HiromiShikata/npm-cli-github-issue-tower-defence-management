@@ -13,6 +13,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -1316,6 +1317,231 @@ describe('HandleScheduledEventUseCase', () => {
           (call) => call[2] === 1 && call[3] === 4,
         );
         expect(slowSweepValueCall).toBeUndefined();
+      });
+    });
+
+    describe('depended issue URL removal cadence', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'test-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+      const issues: Issue[] = [mock<Issue>()];
+      const storyObjectMap: StoryObjectMap = new Map();
+      const scheduleSlowSweep = (): void => {
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['2024-01-01T00:00:00Z'],
+        ]);
+        mockDateRepository.now.mockResolvedValue(
+          new Date('2024-01-01T00:10:00Z'),
+        );
+      };
+      const skipSlowSweep = (): void => {
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          [
+            '2024-01-01T00:00:00Z',
+            '',
+            '',
+            'LastSlowSweepDateTime',
+            '2024-01-01T00:05:00Z',
+          ],
+        ]);
+        mockDateRepository.now.mockResolvedValue(
+          new Date('2024-01-01T00:10:00Z'),
+        );
+      };
+      const recordCallOrder = (): string[] => {
+        const callOrder: string[] = [];
+        mockClearDependedIssueURLUseCase.run.mockImplementation(async () => {
+          callOrder.push('run');
+        });
+        mockClearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue.mockImplementation(
+          async () => {
+            callOrder.push(
+              'removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue',
+            );
+          },
+        );
+        mockStartPreparationUseCase.run.mockImplementation(async () => {
+          callOrder.push('startPreparation');
+          return { rotationOrder: null };
+        });
+        return callOrder;
+      };
+      const resetDependedIssueUrlRemovalMocks = (): void => {
+        mockClearDependedIssueURLUseCase.run.mockReset();
+        mockClearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue.mockReset();
+      };
+
+      beforeEach(() => {
+        resetDependedIssueUrlRemovalMocks();
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues,
+          project,
+          cacheUsed: false,
+        });
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+      });
+
+      afterEach(() => {
+        resetDependedIssueUrlRemovalMocks();
+      });
+
+      it('removes the resolved depended issue URLs of issues with a closed depended issue from the issue list the cycle fetched once, before start preparation, when the slow sweep is skipped', async () => {
+        skipSlowSweep();
+        const callOrder = recordCallOrder();
+
+        await useCase.run(baseInput);
+
+        expect(callOrder).toEqual([
+          'removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue',
+          'startPreparation',
+        ]);
+        const removalCalls =
+          mockClearDependedIssueURLUseCase
+            .removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue
+            .mock.calls;
+        expect(removalCalls).toHaveLength(1);
+        expect(removalCalls[0][0].project).toBe(project);
+        expect(removalCalls[0][0].issues).toBe(issues);
+        expect(mockIssueRepository.getAllIssues).toHaveBeenCalledTimes(1);
+      });
+
+      it('runs the full depended issue URL clear once with the cycle issue list before start preparation, and not the closed depended issue removal, when the slow sweep runs', async () => {
+        scheduleSlowSweep();
+        const callOrder = recordCallOrder();
+
+        await useCase.run({
+          ...baseInput,
+          allowedDependencyRepoNameWithOwner: 'some-org/some-repo',
+        });
+
+        expect(callOrder).toEqual(['run', 'startPreparation']);
+        const runCalls = mockClearDependedIssueURLUseCase.run.mock.calls;
+        expect(runCalls).toHaveLength(1);
+        expect(runCalls[0][0].project).toBe(project);
+        expect(runCalls[0][0].issues).toBe(issues);
+        expect(runCalls[0][0].cacheUsed).toBe(false);
+        expect(runCalls[0][0].allowedExternalRepoNameWithOwner).toBe(
+          'some-org/some-repo',
+        );
+        expect(mockIssueRepository.getAllIssues).toHaveBeenCalledTimes(1);
+      });
+
+      it('removes the resolved depended issue URLs of issues with a closed depended issue when start preparation is not configured and the slow sweep is skipped', async () => {
+        await useCase.runEachUseCases(
+          { ...baseInput, startPreparation: null },
+          project,
+          issues,
+          true,
+          [],
+          storyObjectMap,
+          false,
+          new Date('2024-01-01T00:10:00Z'),
+        );
+
+        expect(
+          mockClearDependedIssueURLUseCase
+            .removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue
+            .mock.calls,
+        ).toHaveLength(1);
+        expect(mockClearDependedIssueURLUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('logs the failure and still starts preparation, without reporting a workflow incident, when the removal fails while the slow sweep is skipped', async () => {
+        const removalError = new Error(
+          'Failed to remove resolved depended issue URLs from 1 issue(s): https://github.com/test-org/test-repo/issues/1: clear mutation failed',
+        );
+        mockClearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue.mockRejectedValueOnce(
+          removalError,
+        );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+        skipSlowSweep();
+        try {
+          const result = await useCase.run(baseInput);
+
+          expect(result?.issues).toBe(issues);
+          expect(consoleErrorSpy.mock.calls).toEqual([
+            [
+              '[HandleScheduledEvent] Failed to remove resolved depended issue URLs for project https://github.com/orgs/test-org/projects/1: Failed to remove resolved depended issue URLs from 1 issue(s): https://github.com/test-org/test-repo/issues/1: clear mutation failed',
+              removalError,
+            ],
+          ]);
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
+          expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it('logs a failure that is not an Error instance as text and still starts preparation when the slow sweep is skipped', async () => {
+        mockClearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue.mockRejectedValueOnce(
+          'unexpected rejection value',
+        );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+        try {
+          await useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            true,
+            [],
+            storyObjectMap,
+            false,
+            new Date('2024-01-01T00:10:00Z'),
+          );
+
+          expect(consoleErrorSpy.mock.calls).toEqual([
+            [
+              '[HandleScheduledEvent] Failed to remove resolved depended issue URLs for project https://github.com/orgs/test-org/projects/1: unexpected rejection value',
+              'unexpected rejection value',
+            ],
+          ]);
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it('rejects, reports the workflow incident and starts no preparation when the full depended issue URL clear fails during the slow sweep', async () => {
+        scheduleSlowSweep();
+        const clearError = new Error('clear mutation failed');
+        mockClearDependedIssueURLUseCase.run.mockRejectedValueOnce(clearError);
+
+        await expect(useCase.run(baseInput)).rejects.toBe(clearError);
+
+        expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+          'test-org',
+          'test-repo',
+          'Error in HandleScheduledEvent / workflow incident',
+          expect.stringContaining('clear mutation failed'),
+          ['test-manager'],
+          ['error'],
+        );
       });
     });
 

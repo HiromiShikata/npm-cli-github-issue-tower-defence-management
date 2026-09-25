@@ -1,3 +1,80 @@
+## [2.148.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.14...v2.148.15) (2026-09-25)
+
+
+### Bug Fixes
+
+* **assertionWeakeningCheck:** recognize full-URL closing keyword form ([#2643](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2643)) ([9ddc75a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ddc75a68f77780eb168c8f9a0d509d59cdbd626)), closes [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [owner/repo#N](https://github.com/owner/repo/issues/N)
+
+## [2.148.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.13...v2.148.14) (2026-09-25)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** stop excluding Story-unset Awaiting Workspace items from spawn candidates ([#2636](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2636)) ([977150f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/977150fe5ec0e30715d7919986c7763142c301a5)), closes [#2627](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627)
+
+## [2.148.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.12...v2.148.13) (2026-09-25)
+
+
+### Bug Fixes
+
+* **rate-limit:** A token rejected on its seven-day window stays excluded after that reset passes, until an unrelated probe runs ([#2651](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2651)) ([e02e9d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e02e9d4887099f6044bbe81641313eda0a2893ac))
+
+## [2.148.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.11...v2.148.12) (2026-09-25)
+
+
+### Bug Fixes
+
+* **tdpm:** add circuit breaker for story-unset dispatch loop ([#2641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2641)) ([a6eed0b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6eed0b53e5828fea9bde23c2e6fca1216abea99))
+
+## [2.148.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.10...v2.148.11) (2026-09-25)
+
+
+### Bug Fixes
+
+* **console:** fix consoleOperationApi story-resolution regressions and close test coverage gaps ([#2630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2630)) ([7daa7e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7daa7e42535de87631fab6e8d7d9fee6c1ee819e)), closes [#2619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2619) [#2619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2619)
+
+## [2.148.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.9...v2.148.10) (2026-09-25)
+
+
+### Bug Fixes
+
+* **story-usecases:** re-check live Story before scheduled-cycle overwrite ([#2633](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2633)) ([bc9df5f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bc9df5f44286e72e98e1bc3f09683fa5cfefa042))
+
+## [2.148.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.8...v2.148.9) (2026-09-25)
+
+
+### Bug Fixes
+
+* **ClearDependedIssueURLUseCase:** confirm same-repo depended issue existence via live GitHub check before treating as not-found ([#2615](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2615)) ([f8a2091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f8a20917b502ba9efbb2ac1eba361146fb081f3a))
+
+## [2.148.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.7...v2.148.8) (2026-09-25)
+
+
+### Bug Fixes
+
+* **notify:** notifyFinishedIssuePreparation reuses an earlier agent report for a session that posted nothing, so the issue loops between Awaiting Workspace and Preparation ([#2624](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2624)) ([5210821](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/521082107cf6be5e542a7639a5ccb20cb97304cd))
+
+## [2.148.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.6...v2.148.7) (2026-09-25)
+
+
+### Bug Fixes
+
+* **ConflictedIssueRevertUseCase:** replace status exclusion list with Awaiting Owner allowlist and add CI-failure detection ([#2601](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2601)) ([823090c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/823090cba7f80cd9318ba3a144e7926b8720aa0c))
+
+## [2.148.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.5...v2.148.6) (2026-09-25)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** Depended Issue URL of a task whose blocker closed is cleared only by the 600-second slow sweep ([#2623](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2623)) ([f221546](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f22154681a1a742a7a6ba0b7eb88afa96b235b0d))
+
+## [2.148.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.4...v2.148.5) (2026-09-25)
+
+
+### Bug Fixes
+
+* **cli:** guard fleet-config loaders in schedule/startDaemon/notifyFinishedIssuePreparation/checkIssueReviewReadiness/selectLiveSessionOauthToken handlers ([#2616](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2616)) ([8ab0ce6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ab0ce6c79103685d55f44d861a76748411446f3))
+
 ## [2.148.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.3...v2.148.4) (2026-09-25)
 
 

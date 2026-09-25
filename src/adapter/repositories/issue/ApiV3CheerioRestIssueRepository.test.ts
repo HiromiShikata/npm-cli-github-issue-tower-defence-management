@@ -11,6 +11,7 @@ import {
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import type {
@@ -4395,6 +4396,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.isCiStateSuccess).toBe(false);
       expect(result?.isPassedAllCiJob).toBe(false);
+      expect(result?.isCiFailing).toBe(true);
     });
 
     it('returns isCiStateSuccess false when the latest check run per name has null conclusion (still running)', async () => {
@@ -5953,6 +5955,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         mergeable: 'MERGEABLE',
         isPassedAllCiJob: true,
         isCiStateSuccess: true,
+        isCiFailing: false,
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
@@ -7330,6 +7333,387 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         storyIssueUrlByOptionName: {
           'regular / workflow improvement': titleMatchIssueUrl,
         },
+      });
+    });
+  });
+
+  describe('depended issue URL field writes', () => {
+    const dependentIssueUrl = 'https://github.com/o/r/issues/1';
+    const blockerIssueUrl = 'https://github.com/o/r/issues/2';
+    const otherBlockerIssueUrl = 'https://github.com/o/r/issues/3';
+    const dependedFieldName = 'Depended Issue URL separated by comma';
+    const dependedFieldId = 'depended-field-id';
+    const storyName = 'regular / workflow management';
+    const cacheKey = 'allIssues-proj-dep';
+    const project: Project = {
+      ...buildTestProject('proj-dep'),
+      story: {
+        name: 'Story',
+        fieldId: 'f-story',
+        databaseId: 2,
+        stories: [
+          {
+            id: 'story-option',
+            name: storyName,
+            color: 'GRAY',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'story-option', name: storyName },
+      },
+      dependedIssueUrlSeparatedByComma: {
+        name: dependedFieldName,
+        fieldId: dependedFieldId,
+      },
+    };
+
+    const setUpRepositoryWithDependentIssue = (
+      blockerState: ProjectItem['state'],
+      cacheStore: Map<string, string> = new Map<string, string>(),
+    ) => {
+      const created = createApiV3CheerioRestIssueRepository();
+      created.localStorageCacheRepository.getSingle.mockImplementation(
+        async (key: string) => {
+          const stored = cacheStore.get(key);
+          if (stored === undefined) {
+            return null;
+          }
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
+        },
+      );
+      created.localStorageCacheRepository.setSingle.mockImplementation(
+        async (key: string, value: unknown) => {
+          cacheStore.set(key, JSON.stringify(value));
+        },
+      );
+      created.localStorageRepository.listFiles.mockImplementation(
+        (dirPath: string) => {
+          if (dirPath.endsWith(`/${cacheKey}`)) {
+            return ['latest.json'];
+          }
+          if (dirPath.endsWith('/test-project')) {
+            return [cacheKey];
+          }
+          return ['test-project'];
+        },
+      );
+      created.localStorageRepository.read.mockImplementation(
+        (filePath: string) =>
+          filePath.endsWith(`/${cacheKey}/latest.json`)
+            ? (cacheStore.get(cacheKey) ?? null)
+            : null,
+      );
+      created.projectRepository.getProject.mockResolvedValue(project);
+      created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(dependentIssueUrl, 'Dependent'),
+          customFields: [
+            { name: 'Status', value: 'Awaiting Workspace' },
+            { name: 'Story', value: storyName },
+            { name: dependedFieldName, value: blockerIssueUrl },
+          ],
+        },
+        {
+          ...buildProjectItem(blockerIssueUrl, 'Blocker'),
+          state: blockerState,
+          customFields: [
+            { name: 'Status', value: 'Done' },
+            { name: 'Story', value: storyName },
+          ],
+        },
+      ]);
+      created.graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
+      created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+      created.restIssueRepository.createComment.mockImplementation(
+        async (_issueUrl: string, comment: string) => ({
+          author: 'bot',
+          body: comment,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          url: `${dependentIssueUrl}#issuecomment-1`,
+        }),
+      );
+      return { ...created, cacheStore };
+    };
+    const findDependent = (issues: Issue[]): Issue => {
+      const dependent = issues.find((i) => i.url === dependentIssueUrl);
+      if (dependent === undefined) {
+        throw new Error('dependent issue is missing from the issue list');
+      }
+      return dependent;
+    };
+    const dependedIssueUrlsSeenByStartPreparation = async (
+      repository: ApiV3CheerioRestIssueRepository,
+    ) => ({
+      storyObjectMap: (await repository.getStoryObjectMap(project))
+        .get(storyName)
+        ?.issues.find((i) => i.url === dependentIssueUrl)?.dependedIssueUrls,
+      allOpened: (await repository.getAllOpened(project)).find(
+        (i) => i.url === dependentIssueUrl,
+      )?.dependedIssueUrls,
+      refetched: (await repository.getIssueByUrl(dependentIssueUrl))
+        ?.dependedIssueUrls,
+    });
+
+    it('shows the cleared field to every later read of this cycle and in the issue cache without fetching project items again, and leaves the issue objects handed out before the write unchanged', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = setUpRepositoryWithDependentIssue('OPEN');
+      const { issues } = await repository.getAllIssues('proj-dep');
+      const dependent = findDependent(issues);
+
+      await repository.clearProjectField(project, dependedFieldId, dependent);
+
+      expect(await dependedIssueUrlsSeenByStartPreparation(repository)).toEqual(
+        { storyObjectMap: [], allOpened: [], refetched: [] },
+      );
+      expect(
+        findDependent((await repository.getAllIssues('proj-dep')).issues)
+          .dependedIssueUrls,
+      ).toEqual([]);
+      expect(dependent.dependedIssueUrls).toEqual([blockerIssueUrl]);
+      expect(findDependent(issues)).toBe(dependent);
+      expect(graphqlProjectItemRepository.clearProjectField.mock.calls).toEqual(
+        [['proj-dep', dependedFieldId, 'item-Dependent']],
+      );
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows the remaining depended issue URLs parsed from the written text to every later read of this cycle and in the issue cache when the field text is updated', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        setUpRepositoryWithDependentIssue('OPEN');
+      const { issues } = await repository.getAllIssues('proj-dep');
+      const dependent = findDependent(issues);
+
+      await repository.updateProjectTextField(
+        project,
+        dependedFieldId,
+        dependent,
+        ` ${otherBlockerIssueUrl} ,`,
+      );
+
+      expect(await dependedIssueUrlsSeenByStartPreparation(repository)).toEqual(
+        {
+          storyObjectMap: [otherBlockerIssueUrl],
+          allOpened: [otherBlockerIssueUrl],
+          refetched: [otherBlockerIssueUrl],
+        },
+      );
+      expect(dependent.dependedIssueUrls).toEqual([blockerIssueUrl]);
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField.mock.calls,
+      ).toEqual([
+        [
+          'proj-dep',
+          dependedFieldId,
+          'item-Dependent',
+          ` ${otherBlockerIssueUrl} ,`,
+        ],
+      ]);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('leaves every read of this cycle and the issue cache unchanged when a different field is cleared', async () => {
+      const { repository, cacheStore } =
+        setUpRepositoryWithDependentIssue('OPEN');
+      const { issues } = await repository.getAllIssues('proj-dep');
+      const dependent = findDependent(issues);
+      const cacheBeforeClear = cacheStore.get(cacheKey);
+
+      await repository.clearProjectField(project, 'other-field-id', dependent);
+
+      expect(await dependedIssueUrlsSeenByStartPreparation(repository)).toEqual(
+        {
+          storyObjectMap: [blockerIssueUrl],
+          allOpened: [blockerIssueUrl],
+          refetched: [blockerIssueUrl],
+        },
+      );
+      expect(cacheStore.get(cacheKey)).toBe(cacheBeforeClear);
+    });
+
+    it('shows the cleared field to later reads of the issue list and writes no issue cache when the cache holds no entry for the project', async () => {
+      const { repository, localStorageCacheRepository, cacheStore } =
+        setUpRepositoryWithDependentIssue('OPEN');
+      const { issues } = await repository.getAllIssues('proj-dep');
+      const dependent = findDependent(issues);
+      cacheStore.delete(cacheKey);
+      localStorageCacheRepository.setSingle.mockClear();
+
+      await repository.clearProjectField(project, dependedFieldId, dependent);
+
+      expect(
+        findDependent((await repository.getAllIssues('proj-dep')).issues)
+          .dependedIssueUrls,
+      ).toEqual([]);
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      expect(cacheStore.has(cacheKey)).toBe(false);
+    });
+
+    it('updates the issue cache and fetches nothing when this process read no issue list before the write', async () => {
+      const earlierProcess = setUpRepositoryWithDependentIssue('OPEN');
+      const dependent = findDependent(
+        (await earlierProcess.repository.getAllIssues('proj-dep')).issues,
+      );
+      const laterProcess = setUpRepositoryWithDependentIssue(
+        'OPEN',
+        earlierProcess.cacheStore,
+      );
+
+      await laterProcess.repository.clearProjectField(
+        project,
+        dependedFieldId,
+        dependent,
+      );
+
+      expect(
+        (await laterProcess.repository.getIssueByUrl(dependentIssueUrl))
+          ?.dependedIssueUrls,
+      ).toEqual([]);
+      expect(
+        laterProcess.graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+      expect(
+        laterProcess.graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+      expect(laterProcess.projectRepository.getProject).not.toHaveBeenCalled();
+    });
+
+    it('rejects with the GitHub error and leaves every read of this cycle and the issue cache unchanged when clearing the field fails', async () => {
+      const { repository, graphqlProjectItemRepository, cacheStore } =
+        setUpRepositoryWithDependentIssue('OPEN');
+      const { issues } = await repository.getAllIssues('proj-dep');
+      const dependent = findDependent(issues);
+      const cacheBeforeClear = cacheStore.get(cacheKey);
+      const clearError = new Error('Something went wrong while executing');
+      graphqlProjectItemRepository.clearProjectField.mockRejectedValueOnce(
+        clearError,
+      );
+
+      await expect(
+        repository.clearProjectField(project, dependedFieldId, dependent),
+      ).rejects.toBe(clearError);
+
+      expect(await dependedIssueUrlsSeenByStartPreparation(repository)).toEqual(
+        {
+          storyObjectMap: [blockerIssueUrl],
+          allOpened: [blockerIssueUrl],
+          refetched: [blockerIssueUrl],
+        },
+      );
+      expect(cacheStore.get(cacheKey)).toBe(cacheBeforeClear);
+    });
+
+    describe('with the closed depended issue removal of a fast cycle', () => {
+      const runFastCycleRemoval = async (
+        blockerState: ProjectItem['state'],
+      ) => {
+        const setUp = setUpRepositoryWithDependentIssue(blockerState);
+        const getIssueOrPullRequestCommentsSpy = jest
+          .spyOn(setUp.repository, 'getIssueOrPullRequestComments')
+          .mockResolvedValue([]);
+        const { issues } = await setUp.repository.getAllIssues('proj-dep');
+        await new ClearDependedIssueURLUseCase(
+          setUp.repository,
+        ).removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue({
+          project,
+          issues,
+        });
+        return {
+          ...setUp,
+          commentReadUrls: getIssueOrPullRequestCommentsSpy.mock.calls.map(
+            ([url]) => url,
+          ),
+        };
+      };
+
+      it('makes the dependent of a blocker closed before this cycle dispatchable in the same cycle with one field clear, one comment read and one comment post as its only GitHub calls after the issue list fetch', async () => {
+        const {
+          repository,
+          commentReadUrls,
+          graphqlProjectItemRepository,
+          restIssueRepository,
+          projectRepository,
+        } = await runFastCycleRemoval('CLOSED');
+
+        expect(
+          await dependedIssueUrlsSeenByStartPreparation(repository),
+        ).toEqual({ storyObjectMap: [], allOpened: [], refetched: [] });
+        expect(projectRepository.getProject).toHaveBeenCalledTimes(1);
+        expect(
+          graphqlProjectItemRepository.fetchProjectItems,
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          graphqlProjectItemRepository.clearProjectField.mock.calls,
+        ).toEqual([['proj-dep', dependedFieldId, 'item-Dependent']]);
+        expect(
+          graphqlProjectItemRepository.updateProjectTextField,
+        ).not.toHaveBeenCalled();
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).not.toHaveBeenCalled();
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemsLight,
+        ).not.toHaveBeenCalled();
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemsByIds,
+        ).not.toHaveBeenCalled();
+        expect(commentReadUrls).toEqual([dependentIssueUrl]);
+        expect(restIssueRepository.createComment.mock.calls).toEqual([
+          [
+            dependentIssueUrl,
+            `All depended issues are already closed, dependency field cleared:\n- ${blockerIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('makes no GitHub call after the issue list fetch and keeps the dependent blocked when its blocker is still open', async () => {
+        const {
+          repository,
+          commentReadUrls,
+          graphqlProjectItemRepository,
+          restIssueRepository,
+          projectRepository,
+        } = await runFastCycleRemoval('OPEN');
+
+        expect(
+          await dependedIssueUrlsSeenByStartPreparation(repository),
+        ).toEqual({
+          storyObjectMap: [blockerIssueUrl],
+          allOpened: [blockerIssueUrl],
+          refetched: [blockerIssueUrl],
+        });
+        expect(projectRepository.getProject).toHaveBeenCalledTimes(1);
+        expect(
+          graphqlProjectItemRepository.fetchProjectItems,
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          graphqlProjectItemRepository.clearProjectField,
+        ).not.toHaveBeenCalled();
+        expect(
+          graphqlProjectItemRepository.updateProjectTextField,
+        ).not.toHaveBeenCalled();
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).not.toHaveBeenCalled();
+        expect(commentReadUrls).toEqual([]);
+        expect(restIssueRepository.createComment).not.toHaveBeenCalled();
       });
     });
   });

@@ -247,7 +247,11 @@ const resolveFreshStoryOption = async (
   storyOptionId: string,
   notFoundMessage: string,
 ): Promise<
-  | { storyOption: FieldOption; freshStories: FieldOption[] }
+  | {
+      storyOption: FieldOption;
+      freshStories: FieldOption[];
+      freshProject: Project | null;
+    }
   | ConsoleOperationResponse
 > => {
   const freshProject = await projectRepository.getProject(project.id);
@@ -256,7 +260,7 @@ const resolveFreshStoryOption = async (
   if (storyOption === undefined) {
     return badRequest(notFoundMessage);
   }
-  return { storyOption, freshStories };
+  return { storyOption, freshStories, freshProject };
 };
 
 const resolveConfiguredPjcode = (
@@ -1087,7 +1091,7 @@ export const handleStoryColor = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories } = resolved;
+  const { freshStories, freshProject } = resolved;
   const freshStory = { ...story, stories: freshStories };
   const projectWithFreshStory = { ...project, story: freshStory };
 
@@ -1100,10 +1104,19 @@ export const handleStoryColor = async (
     const updatedStories = freshStories.map((s) =>
       s.id === storyOptionId ? { ...s, color: newColor } : s,
     );
-    const updatedProject: Project = {
-      ...projectWithFreshStory,
-      story: { ...freshStory, stories: updatedStories },
-    };
+    const updatedProject: Project =
+      freshProject !== null
+        ? {
+            ...freshProject,
+            story:
+              freshProject.story !== null
+                ? { ...freshProject.story, stories: updatedStories }
+                : { ...freshStory, stories: updatedStories },
+          }
+        : {
+            ...projectWithFreshStory,
+            story: { ...freshStory, stories: updatedStories },
+          };
     context.updateProjectCacheEntry(pjcode, updatedProject);
   }
 
@@ -1354,29 +1367,32 @@ export const handleDeleteStory = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const projectRepository = context.resolveProjectRepository(project.url);
-  const resolved = await resolveFreshStoryOption(
-    projectRepository,
-    project,
-    project.story.stories,
-    storyOptionId,
-    `story option "${storyOptionId}" not found in project`,
-  );
-  if (isOperationResponse(resolved)) {
-    return resolved;
-  }
-  const { storyOption, freshStories } = resolved;
-  if (project.story.workflowManagementStory.id === storyOptionId) {
+  const projectStory = project.story;
+  if (projectStory.workflowManagementStory.id === storyOptionId) {
     return badRequest('cannot delete the workflow management story');
   }
-  const deleteChildTasks = body.deleteChildTasks !== false;
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
   }
+  const projectRepository = context.resolveProjectRepository(project.url);
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
+  const [resolved, storyObjectMap] = await Promise.all([
+    resolveFreshStoryOption(
+      projectRepository,
+      project,
+      projectStory.stories,
+      storyOptionId,
+      `story option "${storyOptionId}" not found in project`,
+    ),
+    issueRepository.getStoryObjectMap(project),
+  ]);
+  if (isOperationResponse(resolved)) {
+    return resolved;
+  }
+  const { storyOption, freshStories } = resolved;
+  const deleteChildTasks = body.deleteChildTasks !== false;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);

@@ -31,7 +31,7 @@ import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfir
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
-import { findLastAgentReport } from './findLastAgentReport';
+import { findLastAgentReportPostedSince } from './findLastAgentReport';
 
 import {
   extractAgentNameFromReportBody,
@@ -104,6 +104,7 @@ type NotifyFinishedIssuePreparationParams = {
   workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
   projectName?: string | null;
+  dispatchStartedAt?: Date | null;
 };
 
 const parseOrgRepo = (
@@ -403,7 +404,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
 
-    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+    const lastAgentReport = findLastAgentReportPostedSince(
+      comments,
+      isTrustedAuthor,
+      params.dispatchStartedAt ?? null,
+    );
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
@@ -489,8 +494,7 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     const { rejections, approvedPrUrl } = await this.collectRejections(
       issue,
-      comments,
-      isTrustedAuthor,
+      lastAgentReport,
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
       params.developerAgentNames,
@@ -621,6 +625,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
     if (
       repetition.type === 'escalateReportingLoop' ||
+      repetition.type === 'escalateStoryUnsetLoop' ||
       (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
     ) {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
@@ -1046,8 +1051,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       body?: string | null;
       agent: string | null;
     },
-    comments: { author: string; content: string }[],
-    isTrustedAuthor: (author: string) => boolean,
+    lastAgentReport: { content: string } | null,
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
@@ -1058,7 +1062,6 @@ export class NotifyFinishedIssuePreparationUseCase {
   }> => {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
-    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     if (!lastAgentReport) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',

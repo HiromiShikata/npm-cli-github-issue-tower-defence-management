@@ -18,6 +18,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-expired',
         unifiedReset: pastReset,
+        sevenDayReset: 0,
         lastProbeEpoch: nowEpochSeconds,
       },
     ]);
@@ -38,6 +39,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-active',
         unifiedReset: futureReset,
+        sevenDayReset: 0,
         lastProbeEpoch: tenMinutesAgo,
       },
     ]);
@@ -55,11 +57,13 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-expired',
         unifiedReset: pastReset,
+        sevenDayReset: 0,
         lastProbeEpoch: nowEpochSeconds,
       },
       {
         token: 'token-active',
         unifiedReset: futureReset,
+        sevenDayReset: 0,
         lastProbeEpoch: nowEpochSeconds,
       },
     ]);
@@ -80,6 +84,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-expired',
         unifiedReset: pastReset,
+        sevenDayReset: 0,
         lastProbeEpoch: nowEpochSeconds,
       },
     ]);
@@ -108,6 +113,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-stale-probe',
         unifiedReset: futureReset,
+        sevenDayReset: 0,
         lastProbeEpoch: sixtyOneMinutesAgo,
       },
     ]);
@@ -128,6 +134,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-fresh-probe',
         unifiedReset: futureReset,
+        sevenDayReset: 0,
         lastProbeEpoch: tenMinutesAgo,
       },
     ]);
@@ -145,6 +152,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-expired-recent-probe',
         unifiedReset: pastReset,
+        sevenDayReset: 0,
         lastProbeEpoch: oneMinuteAgo,
       },
     ]);
@@ -164,6 +172,7 @@ describe('UpdateRateLimitCacheUseCase', () => {
       {
         token: 'token-never-probed',
         unifiedReset: futureReset,
+        sevenDayReset: 0,
         lastProbeEpoch: 0,
       },
     ]);
@@ -174,5 +183,65 @@ describe('UpdateRateLimitCacheUseCase', () => {
     expect(mockRateLimitCacheRepository.probeToken).toHaveBeenCalledWith(
       'token-never-probed',
     );
+  });
+
+  it('should probe a token whose seven-day reset passed after its last probe even when unifiedReset is in the future and the last probe was within the last hour', async () => {
+    const nowEpochSeconds = 1000000000;
+    const futureReset = nowEpochSeconds + 4 * 3600;
+    const sevenDayResetTwoMinutesAgo = nowEpochSeconds - 2 * 60;
+    const fiveMinutesAgo = nowEpochSeconds - 5 * 60;
+    mockRateLimitCacheRepository.getTokenRateLimitCaches.mockReturnValue([
+      {
+        token: 'token-seven-day-reset-passed',
+        unifiedReset: futureReset,
+        sevenDayReset: sevenDayResetTwoMinutesAgo,
+        lastProbeEpoch: fiveMinutesAgo,
+      },
+    ]);
+    mockRateLimitCacheRepository.probeToken.mockResolvedValue(undefined);
+
+    await useCase.run({ nowEpochSeconds });
+
+    expect(mockRateLimitCacheRepository.probeToken).toHaveBeenCalledWith(
+      'token-seven-day-reset-passed',
+    );
+  });
+
+  it('should not probe a token whose seven-day reset passed before its last probe within the last hour', async () => {
+    const nowEpochSeconds = 1000000000;
+    const futureReset = nowEpochSeconds + 4 * 3600;
+    const sevenDayResetTenMinutesAgo = nowEpochSeconds - 10 * 60;
+    const fiveMinutesAgo = nowEpochSeconds - 5 * 60;
+    mockRateLimitCacheRepository.getTokenRateLimitCaches.mockReturnValue([
+      {
+        token: 'token-probed-after-seven-day-reset',
+        unifiedReset: futureReset,
+        sevenDayReset: sevenDayResetTenMinutesAgo,
+        lastProbeEpoch: fiveMinutesAgo,
+      },
+    ]);
+
+    await useCase.run({ nowEpochSeconds });
+
+    expect(mockRateLimitCacheRepository.probeToken).not.toHaveBeenCalled();
+  });
+
+  it('should not probe a token whose seven-day reset is in the future and was probed within the last hour', async () => {
+    const nowEpochSeconds = 1000000000;
+    const futureReset = nowEpochSeconds + 4 * 3600;
+    const sevenDayResetInOneDay = nowEpochSeconds + 86400;
+    const fiveMinutesAgo = nowEpochSeconds - 5 * 60;
+    mockRateLimitCacheRepository.getTokenRateLimitCaches.mockReturnValue([
+      {
+        token: 'token-seven-day-reset-in-future',
+        unifiedReset: futureReset,
+        sevenDayReset: sevenDayResetInOneDay,
+        lastProbeEpoch: fiveMinutesAgo,
+      },
+    ]);
+
+    await useCase.run({ nowEpochSeconds });
+
+    expect(mockRateLimitCacheRepository.probeToken).not.toHaveBeenCalled();
   });
 });

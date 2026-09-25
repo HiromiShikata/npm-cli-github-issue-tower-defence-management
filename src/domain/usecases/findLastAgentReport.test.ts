@@ -1,4 +1,7 @@
-import { findLastAgentReport } from './findLastAgentReport';
+import {
+  findLastAgentReport,
+  findLastAgentReportPostedSince,
+} from './findLastAgentReport';
 
 const trustEveryAuthor = (): boolean => true;
 
@@ -117,5 +120,64 @@ describe('findLastAgentReport', () => {
 
   it('returns null when no comment carries an agent report', () => {
     expect(findLastAgentReport([], trustEveryAuthor)).toBeNull();
+  });
+});
+
+describe('findLastAgentReportPostedSince', () => {
+  const postedAt = (isoTimestamp: string): Date => new Date(isoTimestamp);
+  const earlierReport = {
+    author: 'bot',
+    content: report('impl'),
+    createdAt: postedAt('2026-09-25T08:00:00Z'),
+  };
+  const laterReport = {
+    author: 'bot',
+    content: report('pr-reviewer'),
+    createdAt: postedAt('2026-09-25T10:00:00Z'),
+  };
+  const laterPlainComment = {
+    author: 'bot',
+    content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+    createdAt: postedAt('2026-09-25T11:00:00Z'),
+  };
+
+  it.each([
+    {
+      description: 'the latest report when no start time is given',
+      comments: [earlierReport, laterReport],
+      postedSince: null,
+      expectedContent: report('pr-reviewer'),
+    },
+    {
+      description: 'the latest report when it was posted after the start time',
+      comments: [earlierReport, laterReport],
+      postedSince: postedAt('2026-09-25T09:00:00Z'),
+      expectedContent: report('pr-reviewer'),
+    },
+    {
+      description:
+        'the latest report when it was posted exactly at the start time',
+      comments: [earlierReport, laterReport],
+      postedSince: postedAt('2026-09-25T10:00:00Z'),
+      expectedContent: report('pr-reviewer'),
+    },
+    {
+      description:
+        'null when only a plain comment was posted after the start time',
+      comments: [earlierReport, laterReport, laterPlainComment],
+      postedSince: postedAt('2026-09-25T10:30:00Z'),
+      expectedContent: null,
+    },
+    {
+      description: 'null when the only report was posted before the start time',
+      comments: [earlierReport],
+      postedSince: postedAt('2026-09-25T09:00:00Z'),
+      expectedContent: null,
+    },
+  ])('returns $description', ({ comments, postedSince, expectedContent }) => {
+    expect(
+      findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince)
+        ?.content ?? null,
+    ).toBe(expectedContent);
   });
 });

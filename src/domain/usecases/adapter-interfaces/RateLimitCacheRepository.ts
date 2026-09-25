@@ -1,6 +1,7 @@
 export interface TokenRateLimitCache {
   token: string;
   unifiedReset: number;
+  sevenDayReset: number;
   lastProbeEpoch: number;
 }
 

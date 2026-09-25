@@ -86,6 +86,14 @@ const buildStoryOptions = (project: Project): StoryOptionEntry[] =>
     description: s.description ?? '',
   })) ?? [];
 
+const parseDependedIssueUrls = (
+  dependedIssueUrlFieldText: string | null | undefined,
+): Issue['dependedIssueUrls'] =>
+  dependedIssueUrlFieldText
+    ?.split(',')
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0) ?? [];
+
 type CachedRelatedOpenPrs = {
   fetchedAtMs: number;
   prs: Array<Omit<RelatedPullRequest, 'createdAt'> & { createdAt: string }>;
@@ -841,14 +849,11 @@ export class ApiV3CheerioRestIssueRepository
     const estimationMinutes = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'estimationminutes',
     )?.value;
-    const dependedIssueUrls =
-      item.customFields
-        .find((field) =>
-          normalizeFieldName(field.name).startsWith('dependedissueurls'),
-        )
-        ?.value?.split(',')
-        .map((url) => url.trim())
-        .filter((url) => url.length > 0) || [];
+    const dependedIssueUrls = parseDependedIssueUrls(
+      item.customFields.find((field) =>
+        normalizeFieldName(field.name).startsWith('dependedissueurls'),
+      )?.value,
+    );
     const completionDate50PercentConfidence = item.customFields.find((field) =>
       normalizeFieldName(field.name).startsWith('completiondate50'),
     )?.value;
@@ -1532,7 +1537,12 @@ export class ApiV3CheerioRestIssueRepository
       fieldId,
       issue.itemId,
     );
-    return;
+    await this.applyDependedIssueUrlFieldWriteToLaterReads(
+      project,
+      fieldId,
+      issue,
+      [],
+    );
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
@@ -1549,6 +1559,43 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       text,
     );
+    await this.applyDependedIssueUrlFieldWriteToLaterReads(
+      project,
+      fieldId,
+      issue,
+      parseDependedIssueUrls(text),
+    );
+  };
+  private applyDependedIssueUrlFieldWriteToLaterReads = async (
+    project: Project,
+    fieldId: string,
+    issue: Issue,
+    writtenDependedIssueUrls: Issue['dependedIssueUrls'],
+  ): Promise<void> => {
+    if (project.dependedIssueUrlSeparatedByComma?.fieldId !== fieldId) {
+      return;
+    }
+    const memoized = this.getAllIssuesRefreshMemo.get(project.id);
+    if (memoized) {
+      this.getAllIssuesRefreshMemo.set(project.id, {
+        ...memoized,
+        issues: memoized.issues.map((memoizedIssue) =>
+          memoizedIssue.itemId === issue.itemId
+            ? {
+                ...memoizedIssue,
+                dependedIssueUrls: [...writtenDependedIssueUrls],
+              }
+            : memoizedIssue,
+        ),
+      });
+    }
+    const cached = await this.projectIssuesCacheRepository.read(project.id);
+    const cachedIssue = cached?.issues.find((i) => i.itemId === issue.itemId);
+    if (cached === null || cachedIssue === undefined) {
+      return;
+    }
+    cachedIssue.dependedIssueUrls = [...writtenDependedIssueUrls];
+    await this.projectIssuesCacheRepository.write(project.id, cached);
   };
 
   updateLabels = (issue: Issue, labels: Issue['labels']): Promise<void> => {
@@ -1657,25 +1704,25 @@ export class ApiV3CheerioRestIssueRepository
       'STARTUP_FAILURE',
       'STALE',
     ]);
+    const latestRuns = [...latestCheckRunByName.values()];
+    const statusContexts = contexts.filter(
+      (
+        ctx,
+      ): ctx is {
+        __typename: 'StatusContext';
+        context: string;
+        state: string;
+      } => ctx.__typename === 'StatusContext',
+    );
+    const hasFailure =
+      latestRuns.some(
+        (r) => r.conclusion !== null && failureConclusions.has(r.conclusion),
+      ) ||
+      statusContexts.some(
+        (ctx) => ctx.state === 'FAILURE' || ctx.state === 'ERROR',
+      );
     const isCiStateSuccess = (() => {
       if (!hasStatusCheckRollup) return false;
-      const latestRuns = [...latestCheckRunByName.values()];
-      const statusContexts = contexts.filter(
-        (
-          ctx,
-        ): ctx is {
-          __typename: 'StatusContext';
-          context: string;
-          state: string;
-        } => ctx.__typename === 'StatusContext',
-      );
-      const hasFailure =
-        latestRuns.some(
-          (r) => r.conclusion !== null && failureConclusions.has(r.conclusion),
-        ) ||
-        statusContexts.some(
-          (ctx) => ctx.state === 'FAILURE' || ctx.state === 'ERROR',
-        );
       if (hasFailure) return false;
       const hasPending =
         latestRuns.some((r) => r.conclusion === null) ||
@@ -1683,6 +1730,7 @@ export class ApiV3CheerioRestIssueRepository
       return !hasPending;
     })();
     const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+    const isCiFailing = hasStatusCheckRollup && hasFailure;
 
     const reviewThreads = data.reviewThreads;
     const isResolvedAllReviewComments =
@@ -1698,6 +1746,7 @@ export class ApiV3CheerioRestIssueRepository
       mergeable: data.mergeable ?? null,
       isPassedAllCiJob,
       isCiStateSuccess,
+      isCiFailing,
       isResolvedAllReviewComments,
       isBranchOutOfDate: false,
       missingRequiredCheckNames,

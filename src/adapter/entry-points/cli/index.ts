@@ -20,6 +20,7 @@ import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerC
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
@@ -123,6 +124,31 @@ const resolvePositiveIntegerOption = (
   return parsed;
 };
 
+const UTC_TIMESTAMP_PATTERN = new RegExp(
+  `^${ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE}(\\.\\d{1,3})?Z$`,
+);
+
+const resolveUtcTimestampOption = (
+  rawValue: string | undefined,
+  optionName: string,
+): Date | null => {
+  if (rawValue === undefined) {
+    return null;
+  }
+  const parsed = new Date(rawValue);
+  if (
+    !UTC_TIMESTAMP_PATTERN.test(rawValue) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 19) !== rawValue.slice(0, 19)
+  ) {
+    console.error(
+      `Invalid value for --${optionName}: "${rawValue}". It must be an ISO-8601 UTC timestamp such as 2026-01-31T09:00:00Z.`,
+    );
+    process.exit(1);
+  }
+  return parsed;
+};
+
 type NotifyFinishedOptions = {
   issueUrl: string;
   projectUrl?: string;
@@ -136,6 +162,7 @@ type NotifyFinishedOptions = {
   deferPreparation?: boolean;
   rateLimitRejected?: boolean;
   moveToFailedPreparation?: boolean;
+  dispatchStartedAt?: string;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -294,8 +321,17 @@ program
     }
     if (options.trigger === 'schedule') {
       const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
+      let scheduleErrorReportingRepository: string | null;
+      try {
+        scheduleErrorReportingRepository = loadErrorReportingRepository(
+          scheduleFleetConfigFilePath,
+        );
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        return process.exit(1);
+      }
       process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
+        scheduleErrorReportingRepository ??
         loadConfigFile(options.config).errorReportingRepository ??
         process.env.TDPM_ERROR_REPORT_REPOSITORY ??
         '';
@@ -395,8 +431,16 @@ program
     const fleetConfigFilePath = resolveFleetConfigFilePath(
       options.fleetConfigFilePath ?? null,
     );
+    let daemonErrorReportingRepository: string | null;
+    try {
+      daemonErrorReportingRepository =
+        loadErrorReportingRepository(fleetConfigFilePath);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
-      loadErrorReportingRepository(fleetConfigFilePath) ??
+      daemonErrorReportingRepository ??
       config.errorReportingRepository ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
@@ -445,8 +489,16 @@ program
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
 
-    const preparationWorkerSettings =
-      loadPreparationWorkerSettings(fleetConfigFilePath);
+    let preparationWorkerSettings: ReturnType<
+      typeof loadPreparationWorkerSettings
+    >;
+    try {
+      preparationWorkerSettings =
+        loadPreparationWorkerSettings(fleetConfigFilePath);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     const fleetConfigSource =
       fleetConfigFilePath !== null
         ? ' (source: fleetConfig)'
@@ -514,6 +566,16 @@ program
         revertIssueCommentRepository,
         localCommandRunner,
       );
+      let workflowIssueReporterSettingsForRevert: ReturnType<
+        typeof loadWorkflowIssueReporterSettings
+      >;
+      try {
+        workflowIssueReporterSettingsForRevert =
+          loadWorkflowIssueReporterSettings(fleetConfigFilePath);
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        return process.exit(1);
+      }
       await revertUseCase.run({
         projectUrl,
         preparationProcessCheckCommand,
@@ -524,8 +586,7 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
-        workflowIssueReporterSettings:
-          loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+        workflowIssueReporterSettings: workflowIssueReporterSettingsForRevert,
       });
     }
 
@@ -644,6 +705,10 @@ program
     '--fleetConfigFilePath <path>',
     'Path to fleet config YAML file (also read from TDPM_FLEET_CONFIG env var)',
   )
+  .option(
+    '--dispatchStartedAt <timestamp>',
+    "ISO-8601 UTC timestamp (for example 2026-01-31T09:00:00Z) at which the item entered Preparation for the session that just ended; an agent report posted before it is not counted as that session's report, so a session that posts nothing is counted toward the consecutive-no-report threshold",
+  )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -685,8 +750,17 @@ program
     const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
       options.fleetConfigFilePath ?? null,
     );
+    let notifyLoadedErrorReportingRepository: string | null;
+    try {
+      notifyLoadedErrorReportingRepository = loadErrorReportingRepository(
+        notifyFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     const notifyEffectiveErrorReportingRepo =
-      loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+      notifyLoadedErrorReportingRepository ??
       config.errorReportingRepository ??
       null;
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
@@ -712,6 +786,10 @@ program
       config.thresholdForDispatchLoop,
       'thresholdForDispatchLoop',
       DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+    );
+    const dispatchStartedAt = resolveUtcTimestampOption(
+      options.dispatchStartedAt,
+      'dispatchStartedAt',
     );
 
     const workflowBlockerResolvedWebhookUrl: string | null =
@@ -783,6 +861,18 @@ program
           .filter(Boolean)
       : null;
 
+    let notifyWorkflowIssueReporterSettings: ReturnType<
+      typeof loadWorkflowIssueReporterSettings
+    >;
+    try {
+      notifyWorkflowIssueReporterSettings = loadWorkflowIssueReporterSettings(
+        notifyFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
+
     try {
       await useCase.run({
         projectUrl,
@@ -804,11 +894,10 @@ program
         deferPreparation: options.deferPreparation ?? null,
         rateLimitRejected: options.rateLimitRejected ?? null,
         moveToFailedPreparation: options.moveToFailedPreparation ?? null,
-        workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
-          notifyFleetConfigFilePath,
-        ),
+        workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
         tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
         projectName: config.projectName ?? null,
+        dispatchStartedAt,
       });
     } catch (e) {
       if (e instanceof GitHubRateLimitError) {
@@ -864,8 +953,17 @@ program
 
     const checkIssueReviewFleetConfigFilePath =
       resolveFleetConfigFilePath(null);
+    let checkIssueReviewErrorReportingRepository: string | null;
+    try {
+      checkIssueReviewErrorReportingRepository = loadErrorReportingRepository(
+        checkIssueReviewFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
-      loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
+      checkIssueReviewErrorReportingRepository ??
       config.errorReportingRepository ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
@@ -1305,10 +1403,9 @@ program
         resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
       );
     } catch (error) {
-      process.stderr.write(
-        `${error instanceof Error ? error.message : String(error)}\n`,
-      );
-      process.exit(1);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      return process.exit(1);
     }
     const handler = new LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({

@@ -158,6 +158,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -191,6 +192,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [nonHourDate],
@@ -223,6 +225,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -255,6 +258,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -285,6 +289,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: true,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -315,6 +320,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -347,6 +353,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -379,6 +386,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -543,6 +551,12 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         isPr: false,
       };
       mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === matchedIssue.url) {
+          return { ...matchedIssue, story: null };
+        }
+        return null;
+      });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -674,6 +688,15 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === issue1.url) {
+          return { ...issue1, story: null };
+        }
+        if (issueUrl === issue2.url) {
+          return { ...issue2, story: null };
+        }
+        return null;
+      });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -809,6 +832,44 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
           );
         },
       );
+
+      it('does not write and does not throw via the workflow management branch when the live re-read rejects', async () => {
+        mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [pullRequestSnapshotIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await expect(promise).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssueUrl, basicProject],
+        ]);
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      });
+
+      it('does not write and does not throw via the matched story label branch when the live re-read rejects', async () => {
+        mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [labelledSnapshotIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await expect(promise).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssueUrl, basicProject],
+        ]);
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      });
     });
   });
 });

@@ -3,11 +3,9 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
-  DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
-  ICEBOX_STATUS_NAME,
-  IN_TMUX_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
@@ -16,14 +14,10 @@ import {
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
-import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from './autoStatusCheckComments';
-
-const EXCLUDED_STATUSES = new Set([
-  DONE_STATUS_NAME,
-  ICEBOX_STATUS_NAME,
-  FAILED_PREPARATION_STATUS_NAME,
-  IN_TMUX_STATUS_NAME,
-]);
+import {
+  AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+  AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+} from './autoStatusCheckComments';
 
 export class ConflictedIssueRevertUseCase {
   constructor(
@@ -80,9 +74,7 @@ export class ConflictedIssueRevertUseCase {
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const targetIssues = issues.filter(
-      (issue) =>
-        !issue.isPr &&
-        (issue.status === null || !EXCLUDED_STATUSES.has(issue.status)),
+      (issue) => !issue.isPr && issue.status === AWAITING_OWNER_STATUS_NAME,
     );
 
     const relatedOpenPrUrlsByIssueUrl =
@@ -121,18 +113,31 @@ export class ConflictedIssueRevertUseCase {
       }
 
       const conflictedPrs = relatedPrs.filter((pr) => pr.isConflicted);
-      if (conflictedPrs.length === 0) {
+      const ciFailingPrs = relatedPrs.filter(
+        (pr) => !pr.isConflicted && pr.isCiFailing === true,
+      );
+      if (conflictedPrs.length === 0 && ciFailingPrs.length === 0) {
         continue;
       }
 
-      const allBranchesUpdated = (
-        await Promise.all(
-          conflictedPrs.map((pr) => this.issueRepository.updateBranch(pr.url)),
-        )
-      ).every(Boolean);
-      if (allBranchesUpdated) {
+      let hasUnresolvedConflict = false;
+      if (conflictedPrs.length > 0) {
+        const allBranchesUpdated = (
+          await Promise.all(
+            conflictedPrs.map((pr) =>
+              this.issueRepository.updateBranch(pr.url),
+            ),
+          )
+        ).every(Boolean);
+        hasUnresolvedConflict = !allBranchesUpdated;
+      }
+      const hasCiFailure = ciFailingPrs.length > 0;
+      if (!hasUnresolvedConflict && !hasCiFailure) {
         continue;
       }
+      const commentMessage = hasUnresolvedConflict
+        ? AUTO_STATUS_CHECK_CONFLICT_MESSAGE
+        : AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE;
 
       const existingComments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
@@ -197,7 +202,7 @@ export class ConflictedIssueRevertUseCase {
       );
       if (
         isDuplicateWithinWindow(
-          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+          commentMessage,
           existingComments.map((c) => ({
             text: c.content,
             createdAt: c.createdAt,
@@ -208,10 +213,7 @@ export class ConflictedIssueRevertUseCase {
         continue;
       }
       try {
-        await this.issueCommentRepository.createComment(
-          issue,
-          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
-        );
+        await this.issueCommentRepository.createComment(issue, commentMessage);
       } catch (error) {
         console.error(
           `Failed to post conflict comment on ${issue.url}: ${String(error)}`,

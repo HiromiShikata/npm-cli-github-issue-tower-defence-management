@@ -14,7 +14,14 @@ export class UpdateRateLimitCacheUseCase {
       const hourlyProbeDue =
         params.nowEpochSeconds - cache.lastProbeEpoch >=
         HOURLY_PROBE_INTERVAL_SECONDS;
-      if (unifiedResetExpired || hourlyProbeDue) {
+      const sevenDayResetPassedAfterLastProbe =
+        cache.lastProbeEpoch < cache.sevenDayReset &&
+        cache.sevenDayReset < params.nowEpochSeconds;
+      if (
+        unifiedResetExpired ||
+        hourlyProbeDue ||
+        sevenDayResetPassedAfterLastProbe
+      ) {
         await this.rateLimitCacheRepository.probeToken(cache.token);
       }
     }

@@ -22,6 +22,7 @@ export class ClearDependedIssueURLUseCase {
       | 'createComment'
       | 'updateProjectTextField'
       | 'getIssueOrPullRequestComments'
+      | 'getIssueOrPullRequestState'
     >,
   ) {}
 
@@ -36,36 +37,107 @@ export class ClearDependedIssueURLUseCase {
     if (!dependedIssueUrlSeparatedByComma) {
       return;
     }
-    const absentDependedIssueIsResolvable = !input.cacheUsed;
     for (const issue of input.issues) {
       if (issue.dependedIssueUrls.length <= 0 || issue.isClosed) {
         continue;
       }
-      const circularDependedIssueUrls = absentDependedIssueIsResolvable
-        ? this.findCircularDependedIssueUrls(issue, input.issues)
-        : [];
-      if (circularDependedIssueUrls.length > 0) {
-        await this.issueRepository.clearProjectField(
-          input.project,
-          dependedIssueUrlSeparatedByComma.fieldId,
-          issue,
-        );
-        await this.createCommentWithDedup(
-          issue,
-          `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
-        );
-        continue;
+      await this.removeResolvedDependedIssueUrlsFromIssue({
+        project: input.project,
+        issues: input.issues,
+        allowedExternalRepoNameWithOwner:
+          input.allowedExternalRepoNameWithOwner,
+        dependedIssueUrlSeparatedByComma,
+        issue,
+        absentDependedIssueIsResolvable: !input.cacheUsed,
+      });
+    }
+  };
+
+  removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue =
+    async (input: { project: Project; issues: Issue[] }): Promise<void> => {
+      const dependedIssueUrlSeparatedByComma =
+        input.project.dependedIssueUrlSeparatedByComma;
+      if (!dependedIssueUrlSeparatedByComma) {
+        return;
       }
-      const allowedExternalDependedIssueUrls = absentDependedIssueIsResolvable
-        ? issue.dependedIssueUrls.filter(
-            (url) =>
-              this.isFromAllowedExternalRepo(
-                url,
-                input.allowedExternalRepoNameWithOwner,
-              ) && !input.issues.some((depIssue) => depIssue.url === url),
+      const closedIssueUrls = new Set(
+        input.issues
+          .filter((issue) => issue.isClosed)
+          .map((issue) => issue.url),
+      );
+      const failedIssueDescriptions: string[] = [];
+      for (const issue of input.issues) {
+        if (
+          issue.isClosed ||
+          !issue.dependedIssueUrls.some((dependedIssueUrl) =>
+            closedIssueUrls.has(dependedIssueUrl),
           )
-        : [];
-      const rawNotFoundDependedIssueUrls = absentDependedIssueIsResolvable
+        ) {
+          continue;
+        }
+        try {
+          await this.removeResolvedDependedIssueUrlsFromIssue({
+            project: input.project,
+            issues: input.issues,
+            allowedExternalRepoNameWithOwner: null,
+            dependedIssueUrlSeparatedByComma,
+            issue,
+            absentDependedIssueIsResolvable: false,
+          });
+        } catch (error) {
+          failedIssueDescriptions.push(
+            `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      if (failedIssueDescriptions.length > 0) {
+        throw new Error(
+          `Failed to remove resolved depended issue URLs from ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+        );
+      }
+    };
+
+  private removeResolvedDependedIssueUrlsFromIssue = async (input: {
+    project: Project;
+    issues: Issue[];
+    allowedExternalRepoNameWithOwner?: string | null;
+    dependedIssueUrlSeparatedByComma: NonNullable<
+      Project['dependedIssueUrlSeparatedByComma']
+    >;
+    issue: Issue;
+    absentDependedIssueIsResolvable: boolean;
+  }): Promise<void> => {
+    const {
+      dependedIssueUrlSeparatedByComma,
+      issue,
+      absentDependedIssueIsResolvable,
+    } = input;
+    const circularDependedIssueUrls = absentDependedIssueIsResolvable
+      ? this.findCircularDependedIssueUrls(issue, input.issues)
+      : [];
+    if (circularDependedIssueUrls.length > 0) {
+      await this.issueRepository.clearProjectField(
+        input.project,
+        dependedIssueUrlSeparatedByComma.fieldId,
+        issue,
+      );
+      await this.createCommentWithDedup(
+        issue,
+        `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+      );
+      return;
+    }
+    const allowedExternalDependedIssueUrls = absentDependedIssueIsResolvable
+      ? issue.dependedIssueUrls.filter(
+          (url) =>
+            this.isFromAllowedExternalRepo(
+              url,
+              input.allowedExternalRepoNameWithOwner,
+            ) && !input.issues.some((depIssue) => depIssue.url === url),
+        )
+      : [];
+    const absentFromProjectIssuesDependedIssueUrls =
+      absentDependedIssueIsResolvable
         ? issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !input.issues.some(
@@ -77,98 +149,151 @@ export class ClearDependedIssueURLUseCase {
               ),
           )
         : [];
-      const iterationsExhaustedPreservesNotFound =
-        rawNotFoundDependedIssueUrls.length > 0 &&
-        (await this.lastAgentReportHasIterationsExhausted(issue.url));
-      const notFoundDependedIssueUrls = iterationsExhaustedPreservesNotFound
-        ? []
-        : rawNotFoundDependedIssueUrls;
-      const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
+    const liveConfirmedOpenSameRepoDependedIssueUrls =
+      absentDependedIssueIsResolvable
+        ? await this.findLiveConfirmedOpenSameRepoDependedIssueUrls(
+            issue,
+            absentFromProjectIssuesDependedIssueUrls,
+          )
+        : [];
+    const rawNotFoundDependedIssueUrls =
+      absentFromProjectIssuesDependedIssueUrls.filter(
         (dependedIssueUrl) =>
-          input.issues.some(
-            (depIssue) =>
-              depIssue.url === dependedIssueUrl &&
-              !depIssue.isClosed &&
-              depIssue.status === ICEBOX_STATUS_NAME,
+          !liveConfirmedOpenSameRepoDependedIssueUrls.includes(
+            dependedIssueUrl,
           ),
       );
-      const openDependedIssueUrls = issue.dependedIssueUrls.filter(
-        (dependedIssueUrl) =>
-          input.issues.some(
-            (depIssue) =>
-              depIssue.url === dependedIssueUrl &&
-              !depIssue.isClosed &&
-              depIssue.status !== ICEBOX_STATUS_NAME,
-          ),
-      );
-      const closedDependedIssueUrls = issue.dependedIssueUrls.filter(
-        (dependedIssueUrl) =>
-          input.issues.some(
-            (depIssue) =>
-              depIssue.url === dependedIssueUrl && depIssue.isClosed,
-          ),
-      );
-      if (
-        notFoundDependedIssueUrls.length === 0 &&
-        closedDependedIssueUrls.length === 0 &&
-        iceboxDependedIssueUrls.length === 0
-      ) {
-        continue;
-      }
-      const remainingDependedIssueUrls = absentDependedIssueIsResolvable
-        ? [
-            ...openDependedIssueUrls,
-            ...allowedExternalDependedIssueUrls,
-            ...(iterationsExhaustedPreservesNotFound
-              ? rawNotFoundDependedIssueUrls
-              : []),
-          ]
-        : issue.dependedIssueUrls.filter(
-            (dependedIssueUrl) =>
-              !closedDependedIssueUrls.includes(dependedIssueUrl) &&
-              !iceboxDependedIssueUrls.includes(dependedIssueUrl),
-          );
-      if (remainingDependedIssueUrls.length === 0) {
-        await this.issueRepository.clearProjectField(
-          input.project,
-          dependedIssueUrlSeparatedByComma.fieldId,
-          issue,
-        );
-      } else {
-        await this.issueRepository.updateProjectTextField(
-          input.project,
-          dependedIssueUrlSeparatedByComma.fieldId,
-          issue,
-          remainingDependedIssueUrls.join(','),
-        );
-      }
-      if (closedDependedIssueUrls.length > 0) {
-        const allCleared =
-          remainingDependedIssueUrls.length === 0 &&
-          notFoundDependedIssueUrls.length === 0 &&
-          iceboxDependedIssueUrls.length === 0;
-        await this.createCommentWithDedup(
-          issue,
-          `${allCleared ? ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD : SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
-        );
-      }
-      if (notFoundDependedIssueUrls.length > 0) {
-        await this.createCommentWithDedup(
-          issue,
-          `${DEPENDENCY_REMOVED_COMMENT_HEAD}\n${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
-        );
-      }
-      if (iceboxDependedIssueUrls.length > 0) {
-        const iceboxAllCleared =
-          remainingDependedIssueUrls.length === 0 &&
-          closedDependedIssueUrls.length === 0 &&
-          notFoundDependedIssueUrls.length === 0;
-        await this.createCommentWithDedup(
-          issue,
-          `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
-        );
-      }
+    const iterationsExhaustedPreservesNotFound =
+      rawNotFoundDependedIssueUrls.length > 0 &&
+      (await this.lastAgentReportHasIterationsExhausted(issue.url));
+    const notFoundDependedIssueUrls = iterationsExhaustedPreservesNotFound
+      ? []
+      : rawNotFoundDependedIssueUrls;
+    const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
+      (dependedIssueUrl) =>
+        input.issues.some(
+          (depIssue) =>
+            depIssue.url === dependedIssueUrl &&
+            !depIssue.isClosed &&
+            depIssue.status === ICEBOX_STATUS_NAME,
+        ),
+    );
+    const openDependedIssueUrls = issue.dependedIssueUrls.filter(
+      (dependedIssueUrl) =>
+        input.issues.some(
+          (depIssue) =>
+            depIssue.url === dependedIssueUrl &&
+            !depIssue.isClosed &&
+            depIssue.status !== ICEBOX_STATUS_NAME,
+        ),
+    );
+    const closedDependedIssueUrls = issue.dependedIssueUrls.filter(
+      (dependedIssueUrl) =>
+        input.issues.some(
+          (depIssue) => depIssue.url === dependedIssueUrl && depIssue.isClosed,
+        ),
+    );
+    if (
+      notFoundDependedIssueUrls.length === 0 &&
+      closedDependedIssueUrls.length === 0 &&
+      iceboxDependedIssueUrls.length === 0
+    ) {
+      return;
     }
+    const remainingDependedIssueUrls = absentDependedIssueIsResolvable
+      ? [
+          ...openDependedIssueUrls,
+          ...allowedExternalDependedIssueUrls,
+          ...liveConfirmedOpenSameRepoDependedIssueUrls,
+          ...(iterationsExhaustedPreservesNotFound
+            ? rawNotFoundDependedIssueUrls
+            : []),
+        ]
+      : issue.dependedIssueUrls.filter(
+          (dependedIssueUrl) =>
+            !closedDependedIssueUrls.includes(dependedIssueUrl) &&
+            !iceboxDependedIssueUrls.includes(dependedIssueUrl),
+        );
+    if (remainingDependedIssueUrls.length === 0) {
+      await this.issueRepository.clearProjectField(
+        input.project,
+        dependedIssueUrlSeparatedByComma.fieldId,
+        issue,
+      );
+    } else {
+      await this.issueRepository.updateProjectTextField(
+        input.project,
+        dependedIssueUrlSeparatedByComma.fieldId,
+        issue,
+        remainingDependedIssueUrls.join(','),
+      );
+    }
+    if (closedDependedIssueUrls.length > 0) {
+      const allCleared =
+        remainingDependedIssueUrls.length === 0 &&
+        notFoundDependedIssueUrls.length === 0 &&
+        iceboxDependedIssueUrls.length === 0;
+      await this.createCommentWithDedup(
+        issue,
+        `${allCleared ? ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD : SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+      );
+    }
+    if (notFoundDependedIssueUrls.length > 0) {
+      await this.createCommentWithDedup(
+        issue,
+        `${DEPENDENCY_REMOVED_COMMENT_HEAD}\n${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+      );
+    }
+    if (iceboxDependedIssueUrls.length > 0) {
+      const iceboxAllCleared =
+        remainingDependedIssueUrls.length === 0 &&
+        closedDependedIssueUrls.length === 0 &&
+        notFoundDependedIssueUrls.length === 0;
+      await this.createCommentWithDedup(
+        issue,
+        `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+      );
+    }
+  };
+
+  private isSameRepoDependedIssueUrl = (
+    issue: Issue,
+    dependedIssueUrl: string,
+  ): boolean =>
+    dependedIssueUrl.startsWith(
+      `https://github.com/${issue.org}/${issue.repo}/`,
+    );
+
+  private findLiveConfirmedOpenSameRepoDependedIssueUrls = async (
+    issue: Issue,
+    absentFromProjectIssuesDependedIssueUrls: string[],
+  ): Promise<string[]> => {
+    const sameRepoDependedIssueUrls =
+      absentFromProjectIssuesDependedIssueUrls.filter((dependedIssueUrl) =>
+        this.isSameRepoDependedIssueUrl(issue, dependedIssueUrl),
+      );
+    if (sameRepoDependedIssueUrls.length === 0) {
+      return [];
+    }
+    const liveConfirmedOpenFlags = await Promise.all(
+      sameRepoDependedIssueUrls.map(async (dependedIssueUrl) => {
+        try {
+          const liveState =
+            await this.issueRepository.getIssueOrPullRequestState(
+              dependedIssueUrl,
+            );
+          return liveState.state.toLowerCase() === 'open';
+        } catch (error) {
+          console.warn(
+            `Failed to live-check depended issue state for ${dependedIssueUrl}, treating as not live-confirmed-open: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return false;
+        }
+      }),
+    );
+    return sameRepoDependedIssueUrls.filter(
+      (_dependedIssueUrl, index) => liveConfirmedOpenFlags[index],
+    );
   };
 
   private lastAgentReportHasIterationsExhausted = async (

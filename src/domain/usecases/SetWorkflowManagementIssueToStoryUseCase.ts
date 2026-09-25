@@ -1,7 +1,10 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import {
+  IssueSnapshotStaleness,
+  issueSnapshotStalenessCheck,
+} from './issueSnapshotStalenessCheck';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
@@ -137,13 +140,22 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     issue: Issue,
     plannedStoryName: string,
   ): Promise<boolean> => {
-    const staleness = await issueSnapshotStalenessCheck({
-      issueRepository: this.issueRepository,
-      project,
-      snapshotIssue: issue,
-      checkedFieldNames: ['story'],
-      skippedWriteDescription: `the ${plannedStoryName} Story write`,
-    });
+    let staleness: IssueSnapshotStaleness;
+    try {
+      staleness = await issueSnapshotStalenessCheck({
+        issueRepository: this.issueRepository,
+        project,
+        snapshotIssue: issue,
+        checkedFieldNames: ['story'],
+        skippedWriteDescription: `the ${plannedStoryName} Story write`,
+      });
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live Story value before writing a Story. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
     return staleness.type === 'current';
   };
 
