@@ -11,7 +11,6 @@ const counts = (
   prs: 0,
   'failed-preparation': 0,
   'todo-by-human': 0,
-  'todo-by-agent': 0,
   queued: 0,
   stories: 0,
   ...overrides,
@@ -42,15 +41,6 @@ describe('findNextNonEmptyTabToRight', () => {
     ).toBe('workflow-blocker');
   });
 
-  it('advances from todo-by-human to todo-by-agent when workflow-blocker is empty', () => {
-    expect(
-      findNextNonEmptyTabToRight(
-        'todo-by-human',
-        counts({ 'todo-by-agent': 2 }),
-      ),
-    ).toBe('todo-by-agent');
-  });
-
   it('returns the immediately adjacent tab when it is non-empty', () => {
     expect(
       findNextNonEmptyTabToRight('prs', counts({ 'failed-preparation': 12 })),
@@ -60,12 +50,6 @@ describe('findNextNonEmptyTabToRight', () => {
   it('returns null when no tab to the right has any items', () => {
     expect(
       findNextNonEmptyTabToRight('prs', counts({ 'todo-by-human': 35 })),
-    ).toBeNull();
-  });
-
-  it('returns null when the active tab is the last tab', () => {
-    expect(
-      findNextNonEmptyTabToRight('todo-by-agent', counts({ prs: 35 })),
     ).toBeNull();
   });
 

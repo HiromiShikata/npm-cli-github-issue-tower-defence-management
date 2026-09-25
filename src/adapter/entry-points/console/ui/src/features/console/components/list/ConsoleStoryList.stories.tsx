@@ -13,7 +13,7 @@ const sampleItems = [
     itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb101',
     isPr: false,
     story: 'TDPM Console port',
-    status: 'Todo by agent',
+    status: 'Awaiting Workspace',
     agent: 'developer',
     nextActionDate: '2026-09-10',
     nextActionHour: 10,

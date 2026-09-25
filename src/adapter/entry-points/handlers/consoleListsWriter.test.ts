@@ -106,7 +106,6 @@ describe('writeConsoleLists', () => {
       'prs',
       'failed-preparation',
       'todo-by-human',
-      'todo-by-agent',
     ]) {
       expect(fs.existsSync(tabFile(tab))).toBe(true);
     }
@@ -168,25 +167,6 @@ describe('writeConsoleLists', () => {
 
     const raw: unknown = JSON.parse(
       fs.readFileSync(tabFile('todo-by-human'), 'utf8'),
-    );
-    expect(isRecord(raw)).toBe(true);
-    const items: unknown = isRecord(raw) ? raw.items : undefined;
-    expect(isUnknownArray(items)).toBe(true);
-    expect(isUnknownArray(items) ? items.length : 0).toBe(1);
-  });
-
-  it('writes todo-by-agent items selected by the Todo by agent status', () => {
-    writeConsoleLists({
-      consoleDataOutputDir: outDir,
-      pjcode: 'demo',
-      assigneeLogin: ASSIGNEE,
-      project,
-      issues: [makeIssue({ status: 'Todo by agent' })],
-      generatedAt: '2026-06-14T07:22:33Z',
-    });
-
-    const raw: unknown = JSON.parse(
-      fs.readFileSync(tabFile('todo-by-agent'), 'utf8'),
     );
     expect(isRecord(raw)).toBe(true);
     const items: unknown = isRecord(raw) ? raw.items : undefined;

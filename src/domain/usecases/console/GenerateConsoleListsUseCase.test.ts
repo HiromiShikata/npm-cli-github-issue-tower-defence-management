@@ -22,7 +22,6 @@ const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-failed', 'Failed Preparation', 'RED'),
   storyOption('st-aqc', 'Awaiting Owner', 'GREEN'),
   storyOption('st-todo', 'Todo by human', 'PINK'),
-  storyOption('st-todo-agent', 'Todo by agent', 'BLUE'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
   storyOption('st-tmux-agent', 'In Tmux by agent', 'YELLOW'),
   storyOption('st-done', 'Done', 'PURPLE'),
@@ -232,25 +231,6 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Todo by human', nextActionHour: 9 }),
       ]);
       expect(result['todo-by-human'].items).toHaveLength(0);
-    });
-
-    it('selects todo-by-agent items for the exact status only', () => {
-      const result = run([
-        makeIssue({ status: 'Todo by agent' }),
-        makeIssue({ status: 'todo by agent' }),
-        makeIssue({ status: 'Todo by human' }),
-        makeIssue({ status: 'Awaiting Workspace' }),
-      ]);
-      expect(result['todo-by-agent'].items.map((item) => item.number)).toEqual([
-        1,
-      ]);
-    });
-
-    it('rejects a non-actionable todo-by-agent issue', () => {
-      const result = run([
-        makeIssue({ status: 'Todo by agent', nextActionHour: 9 }),
-      ]);
-      expect(result['todo-by-agent'].items).toHaveLength(0);
     });
   });
 
@@ -548,7 +528,6 @@ describe('GenerateConsoleListsUseCase', () => {
         'Icebox',
         'In Tmux by human',
         'In Tmux by agent',
-        'Todo by agent',
       ]) {
         expect(names).not.toContain(excluded);
       }
@@ -558,13 +537,6 @@ describe('GenerateConsoleListsUseCase', () => {
     it('includes todo by human but excludes done from todo-by-human status options', () => {
       const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
       expect(names).toContain('Todo by human');
-      expect(names).not.toContain('Done');
-      expect(names).toContain('Awaiting Workspace');
-    });
-
-    it('excludes todo by agent and done from todo-by-agent status options', () => {
-      const names = run([])['todo-by-agent'].statusOptions.map((o) => o.name);
-      expect(names).not.toContain('Todo by agent');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });
@@ -1209,20 +1181,6 @@ describe('GenerateConsoleListsUseCase', () => {
     it('provides empty storyOptions for todo-by-human tab when project.story is null', () => {
       const result = run([], baseProject(null));
       expect(result['todo-by-human'].storyOptions).toEqual([]);
-    });
-  });
-
-  describe('todo-by-agent storyOptions', () => {
-    it('propagates storyOptions from project.story field to todo-by-agent tab', () => {
-      const result = run([]);
-      expect(result['todo-by-agent'].storyOptions).toEqual(
-        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
-      );
-    });
-
-    it('provides empty storyOptions for todo-by-agent tab when project.story is null', () => {
-      const result = run([], baseProject(null));
-      expect(result['todo-by-agent'].storyOptions).toEqual([]);
     });
   });
 });

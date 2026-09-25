@@ -14,7 +14,6 @@ import {
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
-  TODO_BY_AGENT_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
@@ -365,34 +364,6 @@ export class RevertOrphanedPreparationUseCase {
       await this.issueCommentRepository.createComment(
         issue,
         rejectionStatusMessage,
-      );
-    }
-
-    const todoByAgentIssues = issues.filter(
-      (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME && !issue.isClosed,
-    );
-    for (const issue of todoByAgentIssues) {
-      const isOrphaned = await this.isOrphanedIssue(issue, params);
-      if (!isOrphaned) {
-        continue;
-      }
-      const isStillTodoByAgent = await this.isStillInStatus(
-        issue,
-        project,
-        TODO_BY_AGENT_STATUS_NAME,
-        'stray Todo by agent issue',
-      );
-      if (!isStillTodoByAgent) {
-        continue;
-      }
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.createCommentWithDedup(
-        issue,
-        'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
       );
     }
   };

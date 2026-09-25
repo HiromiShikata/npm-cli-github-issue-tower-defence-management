@@ -7,7 +7,6 @@ import {
   IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
-  TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from '../issueReactivationTriggerIsPending';
@@ -68,7 +67,6 @@ export type ConsoleTabName =
   | 'prs'
   | 'failed-preparation'
   | 'todo-by-human'
-  | 'todo-by-agent'
   | 'queued'
   | 'stories';
 
@@ -96,7 +94,6 @@ export type ConsoleLists = {
   prs: ConsoleStatusTab;
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
-  'todo-by-agent': ConsoleStatusTab;
   queued: ConsoleQueuedTab;
   stories: ConsoleStoriesTab;
 };
@@ -255,7 +252,6 @@ export class GenerateConsoleListsUseCase {
           'icebox',
           'in tmux by human',
           'in tmux by agent',
-          'todo by agent',
         ],
       ),
       'todo-by-human': buildStatusTab(
@@ -263,10 +259,6 @@ export class GenerateConsoleListsUseCase {
           issue.status === TODO_STATUS_NAME ||
           issue.status === LEGACY_TODO_STATUS_NAME,
         ['done'],
-      ),
-      'todo-by-agent': buildStatusTab(
-        (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
-        [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
       queued: {
         pjcode,

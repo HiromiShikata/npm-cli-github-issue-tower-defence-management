@@ -83,7 +83,6 @@ export const CONSOLE_DONE_TAB_NAMES: string[] = [
   'prs',
   'failed-preparation',
   'todo-by-human',
-  'todo-by-agent',
   'in-tmux-by-human',
 ];
 
@@ -91,7 +90,6 @@ export const CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES: string[] = [
   'prs',
   'failed-preparation',
   'todo-by-human',
-  'todo-by-agent',
   'in-tmux-by-human',
 ];
 

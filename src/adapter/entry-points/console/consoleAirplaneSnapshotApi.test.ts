@@ -70,7 +70,7 @@ describe('handleAirplaneSync', () => {
     const prUrl1 = 'https://github.com/o/r/pull/10';
     const prUrl2 = 'https://github.com/o/r/pull/11';
 
-    writeListJson(tmpDir, 'pj1', 'todo-by-agent', {
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
       items: [
         {
           url: issueUrl,
@@ -146,7 +146,7 @@ describe('handleAirplaneSync', () => {
     const prUrlOpen = 'https://github.com/o/r/pull/20';
     const prUrlClosed = 'https://github.com/o/r/pull/21';
 
-    writeListJson(tmpDir, 'pj1', 'todo-by-agent', {
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
       items: [
         {
           url: issueUrl,
@@ -206,7 +206,7 @@ describe('handleAirplaneSync', () => {
   it('produces an empty relatedPrs array when no cached PR URLs are present', async () => {
     const issueUrl = 'https://github.com/o/r/issues/3';
 
-    writeListJson(tmpDir, 'pj1', 'todo-by-agent', {
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
       items: [
         {
           url: issueUrl,
@@ -245,7 +245,7 @@ describe('handleAirplaneSync', () => {
 
   it('emits progress events then a done event containing snapshot data', async () => {
     const issueUrl = 'https://github.com/o/r/issues/4';
-    writeListJson(tmpDir, 'pj1', 'todo-by-agent', {
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
       items: [{ url: issueUrl, isPr: false, relatedOpenPullRequestUrls: [] }],
     });
 

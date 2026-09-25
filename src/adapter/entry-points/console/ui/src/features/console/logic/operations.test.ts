@@ -41,7 +41,6 @@ describe('operation constants', () => {
 describe('isManualTriageTab', () => {
   it('is true for the manual triage tabs and false otherwise', () => {
     expect(isManualTriageTab('todo-by-human')).toBe(true);
-    expect(isManualTriageTab('todo-by-agent')).toBe(true);
     expect(isManualTriageTab('prs')).toBe(false);
   });
 });

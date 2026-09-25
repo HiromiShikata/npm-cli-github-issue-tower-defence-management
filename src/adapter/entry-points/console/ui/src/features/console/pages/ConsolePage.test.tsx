@@ -2280,17 +2280,6 @@ describe('ConsolePage airplane mode write guard', () => {
           fromCache: false,
           storyOrder: [],
         },
-        'todo-by-agent': {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
         stories: {
           items: [],
           generatedAt: '',

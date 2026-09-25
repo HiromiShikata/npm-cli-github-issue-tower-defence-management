@@ -23,12 +23,6 @@ describe('parseConsoleDataRoute', () => {
     ).toEqual({ kind: 'list', pjcode: 'acme', tab: 'todo-by-human' });
   });
 
-  it('parses a list route for todo-by-agent', () => {
-    expect(
-      parseConsoleDataRoute('/projects/acme/todo-by-agent/list.json'),
-    ).toEqual({ kind: 'list', pjcode: 'acme', tab: 'todo-by-agent' });
-  });
-
   it('parses a detail route', () => {
     expect(parseConsoleDataRoute('/projects/acme/prs/detail/123.json')).toEqual(
       {

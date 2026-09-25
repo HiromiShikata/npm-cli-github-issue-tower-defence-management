@@ -270,7 +270,7 @@ describe('FileSystemConsoleTabsRepository', () => {
 
     it('is a no-op when queued/list.json does not exist', () => {
       const existingItem = makeItem({ projectItemId: 'item-nq' });
-      writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [existingItem]));
+      writeTabFile('todo-by-human', makeStatusTab(PJCODE, [existingItem]));
       const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
 
       expect(() =>
@@ -284,15 +284,15 @@ describe('FileSystemConsoleTabsRepository', () => {
     it('adds the item to the queued tab without removing it from the source tab', () => {
       const existingItem = makeItem({
         projectItemId: 'item-r',
-        status: 'Todo by agent',
+        status: 'Awaiting Workspace',
       });
-      writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [existingItem]));
+      writeTabFile('todo-by-human', makeStatusTab(PJCODE, [existingItem]));
       writeTabFile('queued', makeStatusTab(PJCODE, []));
       const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
 
       repo.moveItemToQueuedTab('item-r', 'Preparation');
 
-      expect(readTabFile('todo-by-agent')).toMatchObject({
+      expect(readTabFile('todo-by-human')).toMatchObject({
         items: [{ projectItemId: 'item-r' }],
       });
       expect(readTabFile('queued')).toMatchObject({

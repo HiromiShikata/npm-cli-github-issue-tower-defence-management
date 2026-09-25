@@ -22,7 +22,6 @@ import {
   PC_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   REQUIRED_WORKFLOW_STATUSES,
-  TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
@@ -84,14 +83,13 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 });
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 9 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
       { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
       { name: AWAITING_OWNER_STATUS_NAME, color: 'GREEN' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
-      { name: TODO_BY_AGENT_STATUS_NAME, color: 'BLUE' },
       { name: IN_TMUX_STATUS_NAME, color: 'RED' },
       { name: IN_TMUX_BY_AGENT_STATUS_NAME, color: 'YELLOW' },
       { name: DONE_STATUS_NAME, color: 'PURPLE' },
@@ -268,12 +266,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
-          name: TODO_BY_AGENT_STATUS_NAME,
-          color: 'BLUE',
-          description: '',
-        },
-        {
-          id: null,
           name: IN_TMUX_STATUS_NAME,
           color: 'RED',
           description: '',
@@ -345,7 +337,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
-      TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
       IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
@@ -475,20 +466,26 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
     expect(inTmuxEntry).toBeDefined();
-    expect(inTmuxEntry?.id).toBe('id-6');
+    expect(inTmuxEntry?.id).toBe('id-5');
     expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
       false,
     );
   });
 
-  it('should create the "Todo by agent" status with blue color when it is missing', async () => {
+  it('should remove "Todo by agent" from the status list when it is present', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    const statuses = buildCanonicalStatuses().filter(
-      (s) => s.name !== TODO_BY_AGENT_STATUS_NAME,
-    );
+    const statuses: FieldOption[] = [
+      ...buildCanonicalStatuses(),
+      {
+        id: 'todo-agent-id',
+        name: 'Todo by agent',
+        color: 'BLUE',
+        description: '',
+      },
+    ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
@@ -509,60 +506,18 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const todoByAgentEntry = payload.find(
-      (s) => s.name === TODO_BY_AGENT_STATUS_NAME,
-    );
-    expect(todoByAgentEntry).toBeDefined();
-    expect(todoByAgentEntry?.id).toBeNull();
-    expect(todoByAgentEntry?.color).toBe('BLUE');
-    const names = payload.map((s) => s.name);
-    expect(names.indexOf(TODO_BY_AGENT_STATUS_NAME)).toBe(
-      names.indexOf(TODO_STATUS_NAME) + 1,
-    );
-  });
-
-  it('should leave an already-present "Todo by agent" option unchanged by reusing its existing option ID', async () => {
-    const mockProjectRepository =
-      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
-    const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    const statuses = buildCanonicalStatuses().map((s) => {
-      if (s.name === TODO_BY_AGENT_STATUS_NAME) {
-        return { ...s, id: 'preexisting-todo-agent-id' };
-      }
-      if (s.name === AWAITING_WORKSPACE_STATUS_NAME) {
-        return { ...s, description: 'stale description' };
-      }
-      return s;
-    });
-    const project = buildProject(statuses);
-    mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mock<Project>(),
-      issues: [],
-      cacheUsed: false,
-    });
-
-    const mockStatusDefaultRepository =
-      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
-    const useCase = new SetupTowerDefenceProjectUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockStatusDefaultRepository,
-    );
-    await useCase.run({ projectUrl: project.url });
-
-    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
-    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const todoByAgentEntry = payload.find(
-      (s) => s.name === TODO_BY_AGENT_STATUS_NAME,
-    );
-    expect(todoByAgentEntry?.id).toBe('preexisting-todo-agent-id');
-    expect(todoByAgentEntry?.color).toBe('BLUE');
-    expect(
-      payload.filter((s) => s.name === TODO_BY_AGENT_STATUS_NAME),
-    ).toHaveLength(1);
+    expect(payload.some((s) => s.name === 'Todo by agent')).toBe(false);
+    expect(payload.map((s) => s.name)).toEqual([
+      AWAITING_WORKSPACE_STATUS_NAME,
+      PREPARATION_STATUS_NAME,
+      FAILED_PREPARATION_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
+      TODO_STATUS_NAME,
+      IN_TMUX_STATUS_NAME,
+      IN_TMUX_BY_AGENT_STATUS_NAME,
+      DONE_STATUS_NAME,
+      ICEBOX_STATUS_NAME,
+    ]);
   });
 
   it('should create the "In Tmux by agent" status with yellow color when it is missing', async () => {
@@ -759,7 +714,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
-      TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
       IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
@@ -893,7 +847,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
-      TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
       IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
@@ -1049,7 +1002,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
-      TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
       IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,

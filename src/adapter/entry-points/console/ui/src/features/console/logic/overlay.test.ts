@@ -359,7 +359,6 @@ describe('computeEffectiveOverlay', () => {
     prs: null,
     'failed-preparation': null,
     'todo-by-human': null,
-    'todo-by-agent': null,
     queued: null,
     stories: null,
   });
