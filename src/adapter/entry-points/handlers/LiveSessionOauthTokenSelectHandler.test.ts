@@ -198,7 +198,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('idle');
     expect(output.selectedToken).toBe('fake-idle');
     expect(output.diagnostics.join('\n')).toContain(
-      'busy: 1/10 live session(s)',
+      'busy: 1/4 live session(s)',
     );
   });
 

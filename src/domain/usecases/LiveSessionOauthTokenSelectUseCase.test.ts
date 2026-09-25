@@ -22,6 +22,17 @@ const settingsWith = (
   overrides: Partial<LiveSessionOauthTokenSelectionSettings>,
 ): LiveSessionOauthTokenSelectionSettings => ({ ...SETTINGS, ...overrides });
 
+const FIVE_HOUR_SHARE_CONSUMED_PER_SESSION_HOUR_THAT_NEVER_BINDS = 0.001;
+
+const settingsWhereFiveHourSustainabilityNeverBindsWith = (
+  overrides: Partial<LiveSessionOauthTokenSelectionSettings>,
+): LiveSessionOauthTokenSelectionSettings =>
+  settingsWith({
+    fiveHourShareConsumedPerSessionHour:
+      FIVE_HOUR_SHARE_CONSUMED_PER_SESSION_HOUR_THAT_NEVER_BINDS,
+    ...overrides,
+  });
+
 const snapshot = (
   overrides: Partial<OauthTokenWindowSnapshot>,
 ): OauthTokenWindowSnapshot => ({
@@ -131,7 +142,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('soonResetFull', MAX_CONCURRENT_SESSION_COUNT),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     expect(result.selected?.name).toBe('distantResetIdle');
@@ -157,7 +168,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('soonResetNarrowFiveHour', 6),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const narrow = result.metrics.find(
@@ -235,7 +246,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('aboutToResetNearlyUsedSevenDay', 5),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const aboutToReset = result.metrics.find(
@@ -262,7 +273,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('aboutToResetNarrowFiveHour', 6),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const aboutToReset = result.metrics.find(
@@ -291,7 +302,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       sessionsFor('downWeighted', 5),
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
@@ -306,7 +317,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [candidate('onlyToken', snapshot({}))],
       [],
       NOW,
-      settingsWith({ maxConcurrentSessionCount: 24 }),
+      settingsWhereFiveHourSustainabilityNeverBindsWith({
+        maxConcurrentSessionCount: 24,
+      }),
     );
 
     const onlyToken = result.metrics.find((m) => m.name === 'onlyToken');
@@ -326,7 +339,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [],
       NOW,
-      settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
+      settingsWhereFiveHourSustainabilityNeverBindsWith({
+        fullSpeedFiveHourFreeRatio: 0.8,
+      }),
     );
 
     const narrowFiveHour = result.metrics.find(
@@ -880,7 +895,7 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
         ...sessionsFor('distantResetIdle', 7),
       ],
       NOW,
-      SETTINGS,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
     );
 
     const nearDeadline = result.metrics.find(
@@ -925,7 +940,8 @@ describe('fiveHourSustainableSessionCountOf', () => {
       expectedSessionCount: 3,
     },
     {
-      situation: 'a full window that resets in six minutes, capped at what a new full window carries',
+      situation:
+        'a full window that resets in six minutes, capped at what a new full window carries',
       fiveHourFreeRatio: 1,
       hoursUntilFiveHourReset: 0.1,
       fiveHourShareConsumedPerSessionHour: 0.05,
@@ -1025,7 +1041,10 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
             sevenDayReset: NOW + 2 * DAY,
           }),
         ),
-        candidate('distantResetFresh', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetFresh',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
       ],
       [
         session('soonResetTwoThirdsFree', 'pid:201'),
@@ -1053,7 +1072,10 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
             sevenDayReset: NOW + 2 * DAY,
           }),
         ),
-        candidate('distantResetFresh', snapshot({ sevenDayReset: NOW + 6 * DAY })),
+        candidate(
+          'distantResetFresh',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
       ],
       [
         ...sessionsFor('soonResetOneSessionLimit', 1),

@@ -139,8 +139,8 @@ describe('ProcClaudeLiveSessionRepository', () => {
 
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
-    const liveSessions = [...repository.listLiveSessions()].sort((left, right) =>
-      left.sessionKey.localeCompare(right.sessionKey),
+    const liveSessions = [...repository.listLiveSessions()].sort(
+      (left, right) => left.sessionKey.localeCompare(right.sessionKey),
     );
     expect(liveSessions).toEqual([
       { token: 'token-no-key', sessionKey: 'pid:113' },
