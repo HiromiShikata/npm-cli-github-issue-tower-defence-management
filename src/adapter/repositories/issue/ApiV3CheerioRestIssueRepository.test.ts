@@ -8364,6 +8364,76 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(finalIssueUrls).toContain(issueA.url);
       expect(finalIssueUrls).toContain(issueB.url);
     });
+
+    it('two concurrent appendIssueToProjectCache calls for the same project and the same issue URL leave exactly one copy of that issue in the final on-disk cache', async () => {
+      const projectId = 'proj-append-lock-race-same-url';
+      const cacheKey = `allIssues-${projectId}`;
+      const project: Project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/101',
+              'Existing Issue',
+            ),
+            itemId: 'item-append-race-existing',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+      const restIssueRepository = mock<RestIssueRepository>();
+      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+      const projectRepository = mock<ProjectRepository>();
+      const dateRepository = mock<DateRepository>();
+      const localStorageRepository = mock<LocalStorageRepository>();
+      const repository = new ApiV3CheerioRestIssueRepository(
+        apiV3IssueRepository,
+        restIssueRepository,
+        graphqlProjectItemRepository,
+        cache,
+        projectRepository,
+        dateRepository,
+        localStorageRepository,
+        'dummy',
+      );
+      const sameUrl = 'https://github.com/o/r/issues/303';
+      const issueFromProcessA = buildIssueArgument(
+        'item-append-race-same-url-a',
+        sameUrl,
+        'Same Issue (seen by process A)',
+      );
+      const issueFromProcessB = buildIssueArgument(
+        'item-append-race-same-url-b',
+        sameUrl,
+        'Same Issue (seen by process B)',
+      );
+
+      await Promise.all([
+        repository.appendIssueToProjectCache(projectId, issueFromProcessA),
+        repository.appendIssueToProjectCache(projectId, issueFromProcessB),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const finalIssues = finalCache?.issues ?? [];
+      const matchingSameUrlIssues = finalIssues.filter(
+        (i) => i.url === sameUrl,
+      );
+
+      expect(matchingSameUrlIssues).toHaveLength(1);
+      expect(
+        finalIssues.some(
+          (i) => i.url === 'https://github.com/o/r/issues/101',
+        ),
+      ).toBe(true);
+    });
   });
 
   describe('createNewIssue', () => {
