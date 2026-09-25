@@ -351,8 +351,7 @@ export const ConsoleItemDetailContainer = ({
       ? async (body: string): Promise<ConsoleComment> => {
           onCommentDraftChange?.('');
           return await new Promise<ConsoleComment>((resolve, reject) => {
-            let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus =
-              false;
+            let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
             const rejectWithMessage = (message: string, cause: unknown) => {
               if (onCommentError !== undefined) {
                 onCommentError(message, String(cause));
@@ -392,8 +391,7 @@ export const ConsoleItemDetailContainer = ({
                   setPostedComments((previous) => [...previous, comment]);
                   resolve(comment);
                 } catch (cause) {
-                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus =
-                    true;
+                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = true;
                   rejectWithMessage(
                     `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
                     cause,
