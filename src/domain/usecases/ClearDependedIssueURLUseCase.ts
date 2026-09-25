@@ -22,6 +22,7 @@ export class ClearDependedIssueURLUseCase {
       | 'createComment'
       | 'updateProjectTextField'
       | 'getIssueOrPullRequestComments'
+      | 'getIssueByUrl'
     >,
   ) {}
 
@@ -135,18 +136,33 @@ export class ClearDependedIssueURLUseCase {
             ) && !input.issues.some((depIssue) => depIssue.url === url),
         )
       : [];
-    const rawNotFoundDependedIssueUrls = absentDependedIssueIsResolvable
-      ? issue.dependedIssueUrls.filter(
-          (dependedIssueUrl) =>
-            !input.issues.some(
-              (depIssue) => depIssue.url === dependedIssueUrl,
-            ) &&
-            !this.isFromAllowedExternalRepo(
-              dependedIssueUrl,
-              input.allowedExternalRepoNameWithOwner,
-            ),
-        )
-      : [];
+    const absentFromProjectIssuesDependedIssueUrls =
+      absentDependedIssueIsResolvable
+        ? issue.dependedIssueUrls.filter(
+            (dependedIssueUrl) =>
+              !input.issues.some(
+                (depIssue) => depIssue.url === dependedIssueUrl,
+              ) &&
+              !this.isFromAllowedExternalRepo(
+                dependedIssueUrl,
+                input.allowedExternalRepoNameWithOwner,
+              ),
+          )
+        : [];
+    const liveConfirmedOpenSameRepoDependedIssueUrls =
+      absentDependedIssueIsResolvable
+        ? await this.findLiveConfirmedOpenSameRepoDependedIssueUrls(
+            issue,
+            absentFromProjectIssuesDependedIssueUrls,
+          )
+        : [];
+    const rawNotFoundDependedIssueUrls =
+      absentFromProjectIssuesDependedIssueUrls.filter(
+        (dependedIssueUrl) =>
+          !liveConfirmedOpenSameRepoDependedIssueUrls.includes(
+            dependedIssueUrl,
+          ),
+      );
     const iterationsExhaustedPreservesNotFound =
       rawNotFoundDependedIssueUrls.length > 0 &&
       (await this.lastAgentReportHasIterationsExhausted(issue.url));
@@ -188,6 +204,7 @@ export class ClearDependedIssueURLUseCase {
       ? [
           ...openDependedIssueUrls,
           ...allowedExternalDependedIssueUrls,
+          ...liveConfirmedOpenSameRepoDependedIssueUrls,
           ...(iterationsExhaustedPreservesNotFound
             ? rawNotFoundDependedIssueUrls
             : []),
@@ -237,6 +254,36 @@ export class ClearDependedIssueURLUseCase {
         `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
     }
+  };
+
+  private isSameRepoDependedIssueUrl = (
+    issue: Issue,
+    dependedIssueUrl: string,
+  ): boolean =>
+    dependedIssueUrl.startsWith(
+      `https://github.com/${issue.org}/${issue.repo}/`,
+    );
+
+  private findLiveConfirmedOpenSameRepoDependedIssueUrls = async (
+    issue: Issue,
+    absentFromProjectIssuesDependedIssueUrls: string[],
+  ): Promise<string[]> => {
+    const sameRepoDependedIssueUrls =
+      absentFromProjectIssuesDependedIssueUrls.filter((dependedIssueUrl) =>
+        this.isSameRepoDependedIssueUrl(issue, dependedIssueUrl),
+      );
+    if (sameRepoDependedIssueUrls.length === 0) {
+      return [];
+    }
+    const liveCheckedIssues = await Promise.all(
+      sameRepoDependedIssueUrls.map((dependedIssueUrl) =>
+        this.issueRepository.getIssueByUrl(dependedIssueUrl),
+      ),
+    );
+    return sameRepoDependedIssueUrls.filter((_dependedIssueUrl, index) => {
+      const liveCheckedIssue = liveCheckedIssues[index];
+      return liveCheckedIssue !== null && !liveCheckedIssue.isClosed;
+    });
   };
 
   private lastAgentReportHasIterationsExhausted = async (
