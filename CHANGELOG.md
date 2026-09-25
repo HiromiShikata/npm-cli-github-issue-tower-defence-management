@@ -1,3 +1,10 @@
+## [2.148.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.2...v2.148.3) (2026-09-25)
+
+
+### Bug Fixes
+
+* **StaleTaskPullRequestCloseUseCase:** add minimum PR-age guard to prevent premature auto-close of fresh pull requests ([#2604](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2604)) ([401f1a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/401f1a8b2f4404989a1e22410eb6719107282b5f))
+
 ## [2.148.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.1...v2.148.2) (2026-09-25)
 
 
