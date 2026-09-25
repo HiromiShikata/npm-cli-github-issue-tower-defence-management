@@ -24,9 +24,7 @@ export const buildStoryObjectMap = (input: {
     storyObjectMap.set(story.id, {
       story,
       storyIssue: storyIssue ?? null,
-      issues: input.issues.filter(
-        (issue) => issue.storyOptionId === story.id,
-      ),
+      issues: input.issues.filter((issue) => issue.storyOptionId === story.id),
     });
   }
   return storyObjectMap;
