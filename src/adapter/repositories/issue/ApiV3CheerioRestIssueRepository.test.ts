@@ -7719,77 +7719,77 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
-  describe('applyDependedIssueUrlFieldWriteToLaterReads concurrent writes (C3 — hardening lock)', () => {
-    const wait = (milliseconds: number): Promise<void> =>
-      new Promise((resolve) => setTimeout(resolve, milliseconds));
+  const wait = (milliseconds: number): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-    const buildRacyLocalStorageCacheRepository = (): Pick<
-      LocalStorageCacheRepository,
-      'getSingle' | 'setSingle' | 'withLock'
-    > => {
-      const store = new Map<string, string>();
-      const lockTailByKey = new Map<string, Promise<unknown>>();
-      return {
-        getSingle: async (key: string) => {
-          await wait(20);
-          const stored = store.get(key);
-          if (stored === undefined) return null;
-          const parsed: unknown = JSON.parse(stored);
-          return parsed;
-        },
-        setSingle: async (key: string, value: unknown) => {
-          await wait(20);
-          store.set(key, JSON.stringify(value));
-        },
-        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
-          const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
-          const runResult = previousTail.then(fn, fn);
-          lockTailByKey.set(
-            key,
-            runResult.then(
-              () => undefined,
-              () => undefined,
-            ),
-          );
-          return runResult;
-        },
-      };
+  const buildRacyLocalStorageCacheRepository = (): Pick<
+    LocalStorageCacheRepository,
+    'getSingle' | 'setSingle' | 'withLock'
+  > => {
+    const store = new Map<string, string>();
+    const lockTailByKey = new Map<string, Promise<unknown>>();
+    return {
+      getSingle: async (key: string) => {
+        await wait(20);
+        const stored = store.get(key);
+        if (stored === undefined) return null;
+        const parsed: unknown = JSON.parse(stored);
+        return parsed;
+      },
+      setSingle: async (key: string, value: unknown) => {
+        await wait(20);
+        store.set(key, JSON.stringify(value));
+      },
+      withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+        const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
+        const runResult = previousTail.then(fn, fn);
+        lockTailByKey.set(
+          key,
+          runResult.then(
+            () => undefined,
+            () => undefined,
+          ),
+        );
+        return runResult;
+      },
     };
+  };
 
-    const buildIssueArgument = (
-      itemId: string,
-      url: string,
-      title: string,
-    ): Issue => ({
-      nameWithOwner: 'o/r',
-      url,
-      title,
-      number: 1,
-      state: 'OPEN',
-      labels: [],
-      assignees: [],
-      nextActionDate: null,
-      nextActionHour: null,
-      estimationMinutes: null,
-      dependedIssueUrls: [],
-      completionDate50PercentConfidence: null,
-      status: null,
-      story: null,
-      org: 'o',
-      repo: 'r',
-      body: '',
-      itemId,
-      isPr: false,
-      isInProgress: false,
-      isClosed: false,
-      createdAt: new Date('2026-01-01T00:00:00.000Z'),
-      author: '',
-      closingIssueReferenceUrls: [],
-      agent: null,
-      isRepoArchived: false,
-      stateReason: null,
-    });
+  const buildIssueArgument = (
+    itemId: string,
+    url: string,
+    title: string,
+  ): Issue => ({
+    nameWithOwner: 'o/r',
+    url,
+    title,
+    number: 1,
+    state: 'OPEN',
+    labels: [],
+    assignees: [],
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    status: null,
+    story: null,
+    org: 'o',
+    repo: 'r',
+    body: '',
+    itemId,
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    author: '',
+    closingIssueReferenceUrls: [],
+    agent: null,
+    isRepoArchived: false,
+    stateReason: null,
+  });
 
+  describe('applyDependedIssueUrlFieldWriteToLaterReads concurrent writes (C3 — hardening lock)', () => {
     it('C3: two concurrent updateProjectTextField writes for the same project but different issues both persist their dependedIssueUrls cache update', async () => {
       const projectId = 'proj-lock-race';
       const dependedFieldId = 'depended-field-race';
@@ -8056,6 +8056,70 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       await repository.appendIssueToProjectCache('proj-cache-test', newIssue);
 
       expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('appendIssueToProjectCache concurrent writes (hardening lock)', () => {
+    it('two concurrent appendIssueToProjectCache calls for the same project but different issues both persist their appended issue in the final on-disk cache', async () => {
+      const projectId = 'proj-append-lock-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const project: Project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/101',
+              'Existing Issue',
+            ),
+            itemId: 'item-append-race-existing',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+      const restIssueRepository = mock<RestIssueRepository>();
+      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+      const projectRepository = mock<ProjectRepository>();
+      const dateRepository = mock<DateRepository>();
+      const localStorageRepository = mock<LocalStorageRepository>();
+      const repository = new ApiV3CheerioRestIssueRepository(
+        apiV3IssueRepository,
+        restIssueRepository,
+        graphqlProjectItemRepository,
+        cache,
+        projectRepository,
+        dateRepository,
+        localStorageRepository,
+        'dummy',
+      );
+      const issueA = buildIssueArgument(
+        'item-append-race-a',
+        'https://github.com/o/r/issues/301',
+        'Issue A',
+      );
+      const issueB = buildIssueArgument(
+        'item-append-race-b',
+        'https://github.com/o/r/issues/302',
+        'Issue B',
+      );
+
+      await Promise.all([
+        repository.appendIssueToProjectCache(projectId, issueA),
+        repository.appendIssueToProjectCache(projectId, issueB),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const finalIssueUrls = (finalCache?.issues ?? []).map((i) => i.url);
+
+      expect(finalIssueUrls).toContain(issueA.url);
+      expect(finalIssueUrls).toContain(issueB.url);
     });
   });
 
