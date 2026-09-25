@@ -72,6 +72,16 @@ describe('LocalStorageRepository', () => {
         expect(result).toBe(expected);
       });
     });
+
+    test('throws when the file does not exist', () => {
+      const missingPath =
+        'tmp/test/LocalStorageRepository/does-not-exist-read.txt';
+      if (fs.existsSync(missingPath)) {
+        fs.unlinkSync(missingPath);
+      }
+
+      expect(() => repository.read(missingPath)).toThrow();
+    });
   });
 
   describe('listFiles', () => {
