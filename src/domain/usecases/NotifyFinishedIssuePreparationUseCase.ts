@@ -590,7 +590,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const repetition = resolveNextStepAgentDispatchRepetition({
       agentFieldValue: issue.agent,
       nextStepAgent,
-      currentDispatchPostedNoComment: hasNoReportRejection,
+      currentDispatchHasNoReportRejection: hasNoReportRejection,
       comments,
       isTrustedAuthor,
       thresholdForAutoReject: params.thresholdForAutoReject,
