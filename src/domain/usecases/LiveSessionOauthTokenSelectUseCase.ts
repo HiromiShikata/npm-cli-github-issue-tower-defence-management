@@ -193,8 +193,8 @@ export class LiveSessionOauthTokenSelectUseCase {
           !entry.candidate.subscriptionDisabled &&
           !entry.candidate.unifiedRejected &&
           !entry.candidate.fableRejected &&
-          entry.metric.sevenDayFreeRatio >=
-            LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO,
+          Math.round(entry.metric.sevenDayFreeRatio * 100) >
+            Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100),
       );
 
       if (fallbackEligible.length === 0) {
