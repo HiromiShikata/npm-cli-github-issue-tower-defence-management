@@ -116,11 +116,9 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour is loaded from fleet config
       ].join('\n'),
     );
 
-    const settings = loadLiveSessionOauthTokenSelectionSettings(
-      configPath,
-    ) as Record<string, unknown>;
+    const settings = loadLiveSessionOauthTokenSelectionSettings(configPath);
 
-    expect(settings['fiveHourShareConsumedPerSessionHour']).toBe(0.1);
+    expect(settings.fiveHourShareConsumedPerSessionHour).toBe(0.1);
   });
 
   it('uses the built-in default of 0.05 when fiveHourShareConsumedPerSessionHour is omitted from fleet config', () => {
@@ -135,11 +133,9 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour is loaded from fleet config
       ].join('\n'),
     );
 
-    const settings = loadLiveSessionOauthTokenSelectionSettings(
-      configPath,
-    ) as Record<string, unknown>;
+    const settings = loadLiveSessionOauthTokenSelectionSettings(configPath);
 
-    expect(settings['fiveHourShareConsumedPerSessionHour']).toBe(0.05);
+    expect(settings.fiveHourShareConsumedPerSessionHour).toBe(0.05);
   });
 });
 

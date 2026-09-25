@@ -18,7 +18,6 @@ import type { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRe
 import {
   DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
   LiveSessionOauthTokenSelectUseCase,
-  type LiveSessionOauthTokenSelectionSettings,
 } from './LiveSessionOauthTokenSelectUseCase';
 import type {
   OauthTokenCandidate,
@@ -247,7 +246,7 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour effect on concurrent limit'
 
     const settings = loadLiveSessionOauthTokenSelectionSettings(
       configPath,
-    ) as LiveSessionOauthTokenSelectionSettings;
+    );
 
     const result = useCase.run(
       [
