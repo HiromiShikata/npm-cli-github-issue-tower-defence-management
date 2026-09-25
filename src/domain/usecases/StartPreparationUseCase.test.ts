@@ -8271,9 +8271,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
     const findRelatedOpenPRs = jest.fn().mockResolvedValue([]);
     const mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
-      getAllOpened: jest
-        .fn()
-        .mockResolvedValue([awaitingIssue, openPrIssue]),
+      getAllOpened: jest.fn().mockResolvedValue([awaitingIssue, openPrIssue]),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs,
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
