@@ -3288,6 +3288,133 @@ mysteryKey: 'value'
     });
   });
 
+  describe('selectLiveSessionOauthToken fleet config validation', () => {
+    it.each([
+      {
+        description: 'zero (0)',
+        fiveHourShareConsumedPerSessionHour: 0,
+      },
+      {
+        description: 'negative (-0.05)',
+        fiveHourShareConsumedPerSessionHour: -0.05,
+      },
+      {
+        description: 'greater than 1 (1.5)',
+        fiveHourShareConsumedPerSessionHour: 1.5,
+      },
+    ])(
+      'calls process.exit(1) without calling handleFatalError when fiveHourShareConsumedPerSessionHour is $description',
+      async ({ fiveHourShareConsumedPerSessionHour }) => {
+        const fleetConfigFilePath = path.join(
+          os.tmpdir(),
+          `test-fleet-config-invalid-${Date.now()}.yml`,
+        );
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const stderrWriteSpy = jest
+          .spyOn(process.stderr, 'write')
+          .mockImplementation(() => true);
+        const stdoutWriteSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation(() => true);
+        const handleFatalError = jest.fn();
+        delete process.env['TDPM_FLEET_CONFIG'];
+        delete process.env['CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH'];
+
+        try {
+          fs.writeFileSync(
+            fleetConfigFilePath,
+            YAML.stringify({
+              liveSessionOauthTokenSelection: {
+                fiveHourShareConsumedPerSessionHour,
+              },
+            }),
+          );
+
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'selectLiveSessionOauthToken',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).toHaveBeenCalledWith(1);
+          const stderrOutput = stderrWriteSpy.mock.calls
+            .flat()
+            .map(String)
+            .join('');
+          expect(stderrOutput).toContain('fiveHourShareConsumedPerSessionHour');
+        } finally {
+          processExitSpy.mockRestore();
+          stderrWriteSpy.mockRestore();
+          stdoutWriteSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      },
+    );
+
+    it('calls process.exit(1) without calling handleFatalError for valid fiveHourShareConsumedPerSessionHour of 0.05 when no token list is available', async () => {
+      const fleetConfigFilePath = path.join(
+        os.tmpdir(),
+        `test-fleet-config-valid-${Date.now()}.yml`,
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const stderrWriteSpy = jest
+        .spyOn(process.stderr, 'write')
+        .mockImplementation(() => true);
+      const stdoutWriteSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      const handleFatalError = jest.fn();
+      delete process.env['TDPM_FLEET_CONFIG'];
+      delete process.env['CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH'];
+
+      try {
+        fs.writeFileSync(
+          fleetConfigFilePath,
+          YAML.stringify({
+            liveSessionOauthTokenSelection: {
+              fiveHourShareConsumedPerSessionHour: 0.05,
+            },
+          }),
+        );
+
+        await runCliProgram(
+          [
+            'node',
+            'test',
+            'selectLiveSessionOauthToken',
+            '--fleetConfigFilePath',
+            fleetConfigFilePath,
+          ],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      } finally {
+        processExitSpy.mockRestore();
+        stderrWriteSpy.mockRestore();
+        stdoutWriteSpy.mockRestore();
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+  });
+
   describe('extractOwnerRepoFromGithubUrl', () => {
     it('extracts owner and repo from a GitHub issue URL', () => {
       expect(

@@ -1297,14 +1297,25 @@ program
     'Path to the fleet-wide YAML config file holding the liveSessionOauthTokenSelection mapping (maxConcurrentSessionCount, fullSpeedFiveHourFreeRatio, minFiveHourFreeRatio, minSevenDayFreeRatio, fiveHourShareConsumedPerSessionHour). Falls back to the TDPM_FLEET_CONFIG environment variable; when neither is set the built-in values are used. A key the file omits keeps its built-in value, and an unreadable file or an out-of-range value is reported as an error instead of being ignored.',
   )
   .action((options: SelectLiveSessionOauthTokenOptions) => {
+    let selectionSettings: ReturnType<
+      typeof loadLiveSessionOauthTokenSelectionSettings
+    >;
+    try {
+      selectionSettings = loadLiveSessionOauthTokenSelectionSettings(
+        resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
+      );
+    } catch (error) {
+      process.stderr.write(
+        `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      process.exit(1);
+    }
     const handler = new LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
       tokenListJsonPath: options.tokenListJsonPath ?? null,
       cacheDirectory: options.cacheDir ?? null,
       nowEpochSeconds: Date.now() / 1000,
-      selectionSettings: loadLiveSessionOauthTokenSelectionSettings(
-        resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
-      ),
+      selectionSettings,
     });
 
     for (const line of output.diagnostics) {
