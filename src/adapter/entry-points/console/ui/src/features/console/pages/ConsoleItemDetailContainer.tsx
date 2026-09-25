@@ -41,6 +41,11 @@ import type {
 } from '../logic/types';
 import { ConsoleReferenceLinkContainer } from './ConsoleReferenceLinkContainer';
 
+export type ConsoleCommentErrorHandler = (
+  message: string,
+  reason: string,
+) => void;
+
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
@@ -113,7 +118,7 @@ const buildIntmuxOfflinePayload = (
 });
 
 const notifyCommentError = (
-  onCommentError: ((message: string, reason: string) => void) | undefined,
+  onCommentError: ConsoleCommentErrorHandler | undefined,
   message: string,
   cause: unknown,
 ): void => {
@@ -140,7 +145,7 @@ export type ConsoleItemDetailContainerProps = {
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
-  onCommentError?: (message: string, reason: string) => void;
+  onCommentError?: ConsoleCommentErrorHandler;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
   storyEntries?: ConsoleStoryEntry[];
