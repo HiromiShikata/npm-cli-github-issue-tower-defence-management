@@ -1,3 +1,10 @@
+## [2.148.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.9...v2.148.10) (2026-09-25)
+
+
+### Bug Fixes
+
+* **story-usecases:** re-check live Story before scheduled-cycle overwrite ([#2633](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2633)) ([bc9df5f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bc9df5f44286e72e98e1bc3f09683fa5cfefa042))
+
 ## [2.148.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.8...v2.148.9) (2026-09-25)
 
 
