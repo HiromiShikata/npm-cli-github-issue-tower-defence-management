@@ -7,6 +7,15 @@ export type StoryObject = {
   issues: Issue[];
 };
 export type StoryObjectMap = Map<
-  NonNullable<Project['story']>['stories'][0]['name'],
+  NonNullable<Project['story']>['stories'][0]['id'],
   StoryObject
 >;
+
+export const buildStoryObjectMap = (input: {
+  project: Project;
+  issues: Issue[];
+}): StoryObjectMap => {
+  throw new Error(
+    `buildStoryObjectMap not yet implemented. input: ${JSON.stringify(input)}`,
+  );
+};

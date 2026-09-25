@@ -7,6 +7,7 @@ export type Issue = {
   state: 'OPEN' | 'CLOSED' | 'MERGED';
   status: string | null;
   story: string | null;
+  storyOptionId?: string | null;
   nextActionDate: Date | null;
   nextActionHour: number | null;
   estimationMinutes: number | null;
