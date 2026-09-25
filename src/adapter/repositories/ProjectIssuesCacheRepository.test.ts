@@ -601,7 +601,7 @@ describe('ProjectIssuesCacheRepository concurrent writes on the same on-disk cac
     stateReason: null,
   });
 
-  it('C1: two concurrent removeIssueByItemId calls for the same project but different itemIds both take effect', async () => {
+  it('two concurrent removeIssueByItemId calls for the same project but different itemIds both take effect', async () => {
     const cache = buildRacyCacheWithRealLock();
     const repo = new ProjectIssuesCacheRepository(cache);
     const issueA = buildIssueEntry(
@@ -635,7 +635,7 @@ describe('ProjectIssuesCacheRepository concurrent writes on the same on-disk cac
     expect(remainingItemIds).toEqual(['PVTI_race_keep']);
   });
 
-  it('C2: two concurrent updateFieldOptions calls for the same project but different fieldIds both take effect', async () => {
+  it('two concurrent updateFieldOptions calls for the same project but different fieldIds both take effect', async () => {
     const cache = buildRacyCacheWithRealLock();
     const repo = new ProjectIssuesCacheRepository(cache);
     await repo.write(projectId, {

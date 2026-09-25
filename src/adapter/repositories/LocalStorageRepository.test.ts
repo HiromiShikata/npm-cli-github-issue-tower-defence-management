@@ -253,5 +253,109 @@ describe('LocalStorageRepository', () => {
 
       expect(result).toBeNull();
     });
+
+    test('logs a warning when any other stat error occurs', () => {
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const unexpectedError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
+      mockStatSync.mockImplementation(() => {
+        throw unexpectedError;
+      });
+
+      repository.statMtimeMs('/path/to/.write.lock');
+
+      expect(mockConsoleWarn).toHaveBeenCalled();
+
+      mockConsoleWarn.mockRestore();
+    });
+
+    test('does not log a warning when the path does not exist (ENOENT)', () => {
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const enoentError = Object.assign(new Error('no such file'), {
+        code: 'ENOENT',
+      });
+      mockStatSync.mockImplementation(() => {
+        throw enoentError;
+      });
+
+      repository.statMtimeMs('/path/to/missing.lock');
+
+      expect(mockConsoleWarn).not.toHaveBeenCalled();
+
+      mockConsoleWarn.mockRestore();
+    });
+  });
+
+  describe('readOrNull', () => {
+    test('returns the file content as utf8 text when the file exists', () => {
+      mockReadFileSync.mockReturnValue('file content');
+
+      const result = repository.readOrNull('/path/to/file.txt');
+
+      expect(result).toBe('file content');
+      expect(mockReadFileSync).toHaveBeenCalledWith(
+        '/path/to/file.txt',
+        'utf8',
+      );
+    });
+
+    test('returns null without throwing when the file does not exist (ENOENT)', () => {
+      const enoentError = Object.assign(new Error('no such file'), {
+        code: 'ENOENT',
+      });
+      mockReadFileSync.mockImplementation(() => {
+        throw enoentError;
+      });
+
+      const result = repository.readOrNull('/path/to/missing.txt');
+
+      expect(result).toBeNull();
+    });
+
+    test('does not log a warning when the file does not exist (ENOENT)', () => {
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const enoentError = Object.assign(new Error('no such file'), {
+        code: 'ENOENT',
+      });
+      mockReadFileSync.mockImplementation(() => {
+        throw enoentError;
+      });
+
+      repository.readOrNull('/path/to/missing.txt');
+
+      expect(mockConsoleWarn).not.toHaveBeenCalled();
+
+      mockConsoleWarn.mockRestore();
+    });
+
+    test('returns null without throwing when any other read error occurs', () => {
+      const permissionError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
+      mockReadFileSync.mockImplementation(() => {
+        throw permissionError;
+      });
+
+      const result = repository.readOrNull('/path/to/file.txt');
+
+      expect(result).toBeNull();
+    });
+
+    test('logs a warning when any other read error occurs', () => {
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const permissionError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
+      mockReadFileSync.mockImplementation(() => {
+        throw permissionError;
+      });
+
+      repository.readOrNull('/path/to/file.txt');
+
+      expect(mockConsoleWarn).toHaveBeenCalled();
+
+      mockConsoleWarn.mockRestore();
+    });
   });
 });
