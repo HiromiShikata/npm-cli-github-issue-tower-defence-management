@@ -490,7 +490,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected).toBeNull();
   });
 
-  it('selects the token with the highest five hour free ratio among non-excluded tokens with at least 3% seven day free when no token meets the live session thresholds', () => {
+  it('selects the token with the highest five hour free ratio among non-excluded tokens with more than 3% seven day free when no token meets the live session thresholds', () => {
     const rejected = Array.from({ length: 7 }, (_unused, index) =>
       candidate(`rejected${index}`, snapshot({}), false, true),
     );
@@ -503,7 +503,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
         ),
         candidate(
           'dev9',
-          snapshot({ sevenDayUtilization: 0.97, fiveHourUtilization: 0.02 }),
+          snapshot({ sevenDayUtilization: 0.96, fiveHourUtilization: 0.02 }),
         ),
         candidate(
           'main',
@@ -869,6 +869,143 @@ describe('liveSessionConcurrentLimitOf', () => {
         3.5,
       ),
     ).toBeGreaterThan(1);
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase excludes tokens with depleted 7d budget within 48-hour deadline window', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  const exhaustedWithinDeadlineCases: [string, number, number][] = [
+    [
+      'token at 3% seven day free within 47 hours of reset is not eligible despite deadline bypass',
+      0.97,
+      47,
+    ],
+    [
+      'token at 1% seven day free within 30 hours of reset is not eligible despite deadline bypass',
+      0.99,
+      30,
+    ],
+  ];
+
+  it.each(exhaustedWithinDeadlineCases)(
+    '%s',
+    (_description, sevenDayUtilization, sevenDayResetHours) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'nearlyExhausted',
+            snapshot({
+              sevenDayUtilization,
+              sevenDayReset: NOW + sevenDayResetHours * HOUR,
+            }),
+          ),
+          candidate('fine', snapshot({})),
+        ],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const metric = result.metrics.find((m) => m.name === 'nearlyExhausted');
+      expect(metric?.eligible).toBe(false);
+      expect(metric?.exclusionReason).toContain('7d window');
+      expect(result.selected?.name).toBe('fine');
+    },
+  );
+});
+
+describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h deadline bypass pinning', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  const deadlineBoundaryCases: [
+    string,
+    number,
+    number,
+    number,
+    number,
+    boolean,
+    string | null,
+  ][] = [
+    [
+      'token at 3% seven day free more than 48 hours before reset is not eligible',
+      0.97,
+      50,
+      0,
+      5 * 60,
+      false,
+      '7d window',
+    ],
+    [
+      'token within 1 hour of its five hour reset is eligible for live session selection despite five hour window being below the minimum',
+      0,
+      7 * 24,
+      0.5,
+      30,
+      true,
+      null,
+    ],
+  ];
+
+  it.each(deadlineBoundaryCases)(
+    '%s',
+    (
+      _description,
+      sevenDayUtilization,
+      sevenDayResetHours,
+      fiveHourUtilization,
+      fiveHourResetMinutes,
+      expectedEligible,
+      expectedExclusionReasonSubstring,
+    ) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'subject',
+            snapshot({
+              sevenDayUtilization,
+              sevenDayReset: NOW + sevenDayResetHours * HOUR,
+              fiveHourUtilization,
+              fiveHourReset: NOW + fiveHourResetMinutes * 60,
+            }),
+          ),
+        ],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const metric = result.metrics.find((m) => m.name === 'subject');
+      expect(metric?.eligible).toBe(expectedEligible);
+      if (expectedExclusionReasonSubstring !== null) {
+        expect(metric?.exclusionReason).toContain(
+          expectedExclusionReasonSubstring,
+        );
+      }
+    },
+  );
+});
+
+describe('LiveSessionOauthTokenSelectUseCase does not fall back to a depleted-budget token within the 48-hour deadline window', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('returns null when the only candidate has 3% seven-day-window free within 47 hours of reset', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'depletedSoleCandidateWithinDeadlineWindow',
+          snapshot({
+            sevenDayUtilization: 0.97,
+            sevenDayReset: NOW + 47 * HOUR,
+          }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected).toBeNull();
   });
 });
 
