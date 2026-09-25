@@ -758,4 +758,52 @@ describe('useConsoleActionQueue', () => {
       ),
     ).toBeNull();
   });
+
+  it('dismiss commits the pending action once', () => {
+    type ConsoleActionQueueWithDismiss = ReturnType<
+      typeof useConsoleActionQueue
+    > & { dismiss: () => void };
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      (result.current as ConsoleActionQueueWithDismiss).dismiss();
+    });
+    expect(action.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.pending).toBeNull();
+  });
+
+  it('dismiss then timer firing does not double-commit', () => {
+    type ConsoleActionQueueWithDismiss = ReturnType<
+      typeof useConsoleActionQueue
+    > & { dismiss: () => void };
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      (result.current as ConsoleActionQueueWithDismiss).dismiss();
+    });
+    expect(action.commit).toHaveBeenCalledTimes(1);
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+    expect(action.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('dismiss with no pending action is a no-op', () => {
+    type ConsoleActionQueueWithDismiss = ReturnType<
+      typeof useConsoleActionQueue
+    > & { dismiss: () => void };
+    const { result } = renderHook(() => useConsoleActionQueue());
+    expect(() => {
+      act(() => {
+        (result.current as ConsoleActionQueueWithDismiss).dismiss();
+      });
+    }).not.toThrow();
+    expect(result.current.pending).toBeNull();
+  });
 });

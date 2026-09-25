@@ -10,6 +10,7 @@ const meta: Meta<typeof ConsoleUndoToast> = {
     remainingSeconds: 5,
     progress: 1,
     onUndo: () => {},
+    onDismiss: () => {},
   },
 };
 

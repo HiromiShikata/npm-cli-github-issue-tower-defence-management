@@ -1963,6 +1963,7 @@ body {
 }
 
 .console-undo-toast-undo,
+.console-undo-toast-dismiss,
 .console-error-toast-dismiss,
 .console-error-toast-retry {
   flex: 0 0 auto;
@@ -1977,6 +1978,7 @@ body {
 }
 
 .console-undo-toast-undo:hover,
+.console-undo-toast-dismiss:hover,
 .console-error-toast-dismiss:hover,
 .console-error-toast-retry:hover {
   background: rgba(255, 255, 255, 0.22);

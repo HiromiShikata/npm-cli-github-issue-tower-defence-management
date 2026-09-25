@@ -6,6 +6,7 @@ export type ConsoleUndoToastProps = {
   remainingSeconds: number;
   progress: number;
   onUndo: () => void;
+  onDismiss?: () => void;
 };
 
 export const ConsoleUndoToast = ({
@@ -14,6 +15,7 @@ export const ConsoleUndoToast = ({
   remainingSeconds,
   progress,
   onUndo,
+  onDismiss,
 }: ConsoleUndoToastProps) => (
   <div
     className={`console-undo-toast console-undo-toast-${color}`}
@@ -27,6 +29,15 @@ export const ConsoleUndoToast = ({
     <span className="console-undo-toast-countdown" aria-hidden="true">
       {remainingSeconds}s
     </span>
+    {onDismiss !== undefined && (
+      <button
+        type="button"
+        className="console-undo-toast-dismiss"
+        onClick={onDismiss}
+      >
+        ✕
+      </button>
+    )}
     <span
       className="console-undo-toast-bar"
       aria-hidden="true"
