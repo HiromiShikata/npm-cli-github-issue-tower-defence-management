@@ -8052,15 +8052,11 @@ describe('StartPreparationUseCase', () => {
         labelsAsLlmAgentName: null,
       });
 
-      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(
-        2,
-      );
+      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(2);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject(
-        {
-          url: secondAuthorNotAllowedIssue.url,
-        },
-      );
+      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+        url: secondAuthorNotAllowedIssue.url,
+      });
       expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe(
         'todo-by-human-id',
       );
@@ -8136,9 +8132,7 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.updateStatus
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(
-          new StaleProjectItemError(
-            'PVTI_lADODxwUyc4BU85azg8zlIU',
-          ),
+          new StaleProjectItemError('PVTI_lADODxwUyc4BU85azg8zlIU'),
         );
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: 'The URL includes test-repository. Exiting.',
