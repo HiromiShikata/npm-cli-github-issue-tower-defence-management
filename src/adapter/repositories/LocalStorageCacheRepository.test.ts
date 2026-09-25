@@ -322,9 +322,7 @@ describe('LocalStorageCacheRepository', () => {
         lockPath,
         expect.any(String),
       );
-      expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(
-        lockPath,
-      );
+      expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(lockPath);
       expect(localStorageRepository.remove).toHaveBeenCalledWith(lockPath);
     });
 
@@ -480,9 +478,7 @@ describe('LocalStorageCacheRepository', () => {
         lockPath,
         expect.any(String),
       );
-      expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(
-        lockPath,
-      );
+      expect(localStorageRepository.readOrNull).toHaveBeenCalledWith(lockPath);
       expect(localStorageRepository.remove).toHaveBeenCalledWith(lockPath);
       expect(fakeSleep).not.toHaveBeenCalled();
     });

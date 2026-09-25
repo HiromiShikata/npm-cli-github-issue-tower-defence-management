@@ -255,13 +255,10 @@ describe('LocalStorageRepository', () => {
     });
 
     test('logs a warning when any other stat error occurs', () => {
-      const mockConsoleWarn = jest
-        .spyOn(console, 'warn')
-        .mockImplementation();
-      const unexpectedError = Object.assign(
-        new Error('permission denied'),
-        { code: 'EACCES' },
-      );
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const unexpectedError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
       mockStatSync.mockImplementation(() => {
         throw unexpectedError;
       });
@@ -274,9 +271,7 @@ describe('LocalStorageRepository', () => {
     });
 
     test('does not log a warning when the path does not exist (ENOENT)', () => {
-      const mockConsoleWarn = jest
-        .spyOn(console, 'warn')
-        .mockImplementation();
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
       const enoentError = Object.assign(new Error('no such file'), {
         code: 'ENOENT',
       });
@@ -319,9 +314,7 @@ describe('LocalStorageRepository', () => {
     });
 
     test('does not log a warning when the file does not exist (ENOENT)', () => {
-      const mockConsoleWarn = jest
-        .spyOn(console, 'warn')
-        .mockImplementation();
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
       const enoentError = Object.assign(new Error('no such file'), {
         code: 'ENOENT',
       });
@@ -337,10 +330,9 @@ describe('LocalStorageRepository', () => {
     });
 
     test('returns null without throwing when any other read error occurs', () => {
-      const permissionError = Object.assign(
-        new Error('permission denied'),
-        { code: 'EACCES' },
-      );
+      const permissionError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
       mockReadFileSync.mockImplementation(() => {
         throw permissionError;
       });
@@ -351,13 +343,10 @@ describe('LocalStorageRepository', () => {
     });
 
     test('logs a warning when any other read error occurs', () => {
-      const mockConsoleWarn = jest
-        .spyOn(console, 'warn')
-        .mockImplementation();
-      const permissionError = Object.assign(
-        new Error('permission denied'),
-        { code: 'EACCES' },
-      );
+      const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const permissionError = Object.assign(new Error('permission denied'), {
+        code: 'EACCES',
+      });
       mockReadFileSync.mockImplementation(() => {
         throw permissionError;
       });
