@@ -104,7 +104,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -129,7 +129,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses = [
       ...buildCanonicalStatuses(),
       {
@@ -163,7 +163,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses = buildCanonicalStatuses();
     statuses[0] = { ...statuses[0], description: 'stale description' };
     const project = buildProject(statuses);
@@ -197,7 +197,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       {
         id: 'aws-id',
@@ -302,7 +302,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const reversedStatuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.slice()
       .reverse()
       .map((required, index) => ({
@@ -348,7 +348,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses = buildCanonicalStatuses();
     statuses[1] = { ...statuses[1], color: 'RED' };
     const project = buildProject(statuses);
@@ -378,7 +378,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       {
         id: 'template-todo',
@@ -432,7 +432,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = REQUIRED_WORKFLOW_STATUSES.map(
       (required, index) => ({
         id: `id-${index}`,
@@ -476,7 +476,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       ...buildCanonicalStatuses(),
       {
@@ -524,7 +524,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses = buildCanonicalStatuses().filter(
       (s) => s.name !== IN_TMUX_BY_AGENT_STATUS_NAME,
     );
@@ -564,7 +564,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses = buildCanonicalStatuses().map((s) => {
       if (s.name === IN_TMUX_BY_AGENT_STATUS_NAME) {
         return { ...s, id: 'preexisting-agent-id' };
@@ -608,7 +608,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       ...buildCanonicalStatuses(),
       {
@@ -645,7 +645,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       {
         id: 'id-0',
@@ -735,7 +735,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const todoStatusId = 'todo-status-id';
     const statuses: FieldOption[] = [
       {
@@ -858,7 +858,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -884,7 +884,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       ...buildCanonicalStatuses(),
       {
@@ -926,7 +926,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       {
         id: 'id-0',
@@ -1028,7 +1028,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const awaitingWorkspaceId = canonicalStatuses[0].id;
     const project = buildProject(canonicalStatuses);
@@ -1069,7 +1069,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const awaitingWorkspaceId = canonicalStatuses[0].id;
     const project = buildProject(canonicalStatuses);
@@ -1110,7 +1110,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     const closedDoneIssue = buildIssue({
@@ -1144,7 +1144,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const project = buildProject(buildCanonicalStatuses());
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     const closedNullStatusIssue = buildIssue({
@@ -1178,7 +1178,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const awaitingWorkspaceId = 'aws-status-id';
     const statuses: FieldOption[] = [
       { id: 'unread-id', name: 'Unread', color: 'ORANGE', description: '' },
@@ -1247,7 +1247,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const project = buildProject(canonicalStatuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
@@ -1279,7 +1279,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const awaitingWorkspaceId = 'existing-aws-id';
     const statuses: FieldOption[] = [
       {
@@ -1320,7 +1320,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const project = buildProject(canonicalStatuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
@@ -1354,7 +1354,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const statuses: FieldOption[] = [
       {
         id: 'aws-id',
@@ -1399,7 +1399,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const project = buildProject(canonicalStatuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
@@ -1437,7 +1437,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
     const canonicalStatuses = buildCanonicalStatuses();
     const project = buildProject(canonicalStatuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
@@ -1467,6 +1467,110 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     await expect(useCase.run({ projectUrl: project.url })).rejects.toThrow(
       'Network timeout',
+    );
+  });
+  describe('when the Status or state of a limbo item changed after the item snapshot was taken', () => {
+    const snapshotNullStatusIssue = buildIssue({
+      number: 12,
+      url: 'https://github.com/test-org/test-repo/issues/12',
+      itemId: 'item-12',
+      state: 'OPEN',
+      status: null,
+    });
+    const snapshotOpenDoneIssue = buildIssue({
+      number: 13,
+      url: 'https://github.com/test-org/test-repo/issues/13',
+      itemId: 'item-13',
+      state: 'OPEN',
+      status: DONE_STATUS_NAME,
+    });
+
+    it.each<{
+      label: string;
+      snapshotIssue: Issue;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent set on an item whose snapshot Status was empty',
+        snapshotIssue: snapshotNullStatusIssue,
+        liveIssue: {
+          ...snapshotNullStatusIssue,
+          status: IN_TMUX_BY_AGENT_STATUS_NAME,
+        },
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label:
+          'does not write Awaiting Workspace to an item that was closed after the snapshot was taken',
+        snapshotIssue: snapshotOpenDoneIssue,
+        liveIssue: {
+          ...snapshotOpenDoneIssue,
+          state: 'CLOSED',
+          isClosed: true,
+        },
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        snapshotIssue: snapshotNullStatusIssue,
+        liveIssue: null,
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label:
+          'writes Awaiting Workspace when the live Status is still empty on an open item',
+        snapshotIssue: snapshotNullStatusIssue,
+        liveIssue: { ...snapshotNullStatusIssue },
+        expectedUpdateStatusCallCount: 1,
+      },
+      {
+        label:
+          'writes Awaiting Workspace when the live item is still open with Status Done',
+        snapshotIssue: snapshotOpenDoneIssue,
+        liveIssue: { ...snapshotOpenDoneIssue },
+        expectedUpdateStatusCallCount: 1,
+      },
+    ])(
+      '$label',
+      async ({ snapshotIssue, liveIssue, expectedUpdateStatusCallCount }) => {
+        const mockProjectRepository =
+          mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+        const mockIssueRepository =
+          mock<
+            Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>
+          >();
+        const canonicalStatuses = buildCanonicalStatuses();
+        const awaitingWorkspaceId = canonicalStatuses[0].id;
+        const project = buildProject(canonicalStatuses);
+        mockProjectRepository.getByUrl.mockResolvedValue(project);
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mock<Project>(),
+          issues: [snapshotIssue],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+        mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+        const useCase = new SetupTowerDefenceProjectUseCase(
+          mockProjectRepository,
+          mockIssueRepository,
+          mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>(),
+        );
+
+        await useCase.run({ projectUrl: project.url });
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssue.url, project],
+        ]);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+          Array.from({ length: expectedUpdateStatusCallCount }, () => [
+            project,
+            snapshotIssue,
+            awaitingWorkspaceId,
+          ]),
+        );
+      },
     );
   });
 });

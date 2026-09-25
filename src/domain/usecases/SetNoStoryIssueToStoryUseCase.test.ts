@@ -43,6 +43,14 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockIssueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      labels: [],
+      story: null,
+      state: 'OPEN',
+      nextActionDate: null,
+      nextActionHour: null,
+    });
     useCase = new SetNoStoryIssueToStoryUseCase(mockIssueRepository);
   });
 
@@ -471,6 +479,76 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       await promise;
 
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    describe('when the Story changed after the item snapshot was taken', () => {
+      const snapshotIssueUrl =
+        'https://github.com/org/repo/issues/snapshot-story-empty';
+      const snapshotIssue: Issue = {
+        ...mock<Issue>(),
+        url: snapshotIssueUrl,
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      const liveIssueWithStory = (story: string | null): Issue => ({
+        ...snapshotIssue,
+        story,
+      });
+
+      it.each<{
+        label: string;
+        liveIssue: Issue | null;
+        expectedUpdateStoryCalls: unknown[][];
+      }>([
+        {
+          label:
+            'does not overwrite a Story an agent set after the snapshot was taken',
+          liveIssue: liveIssueWithStory('regular / high priority'),
+          expectedUpdateStoryCalls: [],
+        },
+        {
+          label: 'does not write when the live Story is already NO STORY',
+          liveIssue: liveIssueWithStory('regular / NO STORY'),
+          expectedUpdateStoryCalls: [],
+        },
+        {
+          label: 'does not write when the item is no longer on the project',
+          liveIssue: null,
+          expectedUpdateStoryCalls: [],
+        },
+        {
+          label: 'writes NO STORY when the live Story is still empty',
+          liveIssue: liveIssueWithStory(null),
+          expectedUpdateStoryCalls: [
+            [
+              { ...basicProject, story: basicProject.story },
+              snapshotIssue,
+              'noStoryId',
+            ],
+          ],
+        },
+      ])('$label', async ({ liveIssue, expectedUpdateStoryCalls }) => {
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [snapshotIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await promise;
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssueUrl, basicProject],
+        ]);
+        expect(mockIssueRepository.updateStory.mock.calls).toEqual(
+          expectedUpdateStoryCalls,
+        );
+      });
     });
   });
 });

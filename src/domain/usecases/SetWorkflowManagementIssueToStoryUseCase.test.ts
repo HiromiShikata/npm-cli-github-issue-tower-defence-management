@@ -53,6 +53,10 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockIssueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      story: null,
+    });
     useCase = new SetWorkflowManagementIssueToStoryUseCase(mockIssueRepository);
   });
 
@@ -692,6 +696,119 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         [issue1, 'story:high-priority'],
         [issue2, 'story:middle-bug'],
       ]);
+    });
+
+    describe('when the Story changed after the item snapshot was taken', () => {
+      const snapshotIssueUrl =
+        'https://github.com/org/repo/issues/snapshot-story-empty';
+      const labelledSnapshotIssue: Issue = {
+        ...mock<Issue>(),
+        url: snapshotIssueUrl,
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      const pullRequestSnapshotIssue: Issue = {
+        ...labelledSnapshotIssue,
+        labels: [],
+        isPr: true,
+      };
+
+      it.each<{
+        label: string;
+        snapshotIssue: Issue;
+        liveIssue: Issue | null;
+        expectedUpdateStoryCalls: unknown[][];
+        expectedRemoveLabelCalls: unknown[][];
+      }>([
+        {
+          label:
+            'does not overwrite a Story an agent set on a story-labelled item after the snapshot was taken',
+          snapshotIssue: labelledSnapshotIssue,
+          liveIssue: {
+            ...labelledSnapshotIssue,
+            story: 'regular / middle bug',
+          },
+          expectedUpdateStoryCalls: [],
+          expectedRemoveLabelCalls: [],
+        },
+        {
+          label:
+            'does not overwrite a Story an agent set on a pull request after the snapshot was taken',
+          snapshotIssue: pullRequestSnapshotIssue,
+          liveIssue: { ...pullRequestSnapshotIssue, story: 'workflow board' },
+          expectedUpdateStoryCalls: [],
+          expectedRemoveLabelCalls: [],
+        },
+        {
+          label: 'does not write when the item is no longer on the project',
+          snapshotIssue: labelledSnapshotIssue,
+          liveIssue: null,
+          expectedUpdateStoryCalls: [],
+          expectedRemoveLabelCalls: [],
+        },
+        {
+          label: 'writes the labelled Story when the live Story is still empty',
+          snapshotIssue: labelledSnapshotIssue,
+          liveIssue: { ...labelledSnapshotIssue },
+          expectedUpdateStoryCalls: [
+            [
+              { ...basicProject, story: basicProject.story },
+              labelledSnapshotIssue,
+              'highPriorityId',
+            ],
+          ],
+          expectedRemoveLabelCalls: [
+            [labelledSnapshotIssue, 'story:high-priority'],
+          ],
+        },
+        {
+          label:
+            'writes the workflow management Story to a pull request whose live Story is still empty',
+          snapshotIssue: pullRequestSnapshotIssue,
+          liveIssue: { ...pullRequestSnapshotIssue },
+          expectedUpdateStoryCalls: [
+            [
+              { ...basicProject, story: basicProject.story },
+              pullRequestSnapshotIssue,
+              'workflowManagementStoryId',
+            ],
+          ],
+          expectedRemoveLabelCalls: [],
+        },
+      ])(
+        '$label',
+        async ({
+          snapshotIssue,
+          liveIssue,
+          expectedUpdateStoryCalls,
+          expectedRemoveLabelCalls,
+        }) => {
+          mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+          const promise = useCase.run({
+            targetDates: [targetDate],
+            project: basicProject,
+            issues: [snapshotIssue],
+            cacheUsed: false,
+          });
+          await jest.runAllTimersAsync();
+          await promise;
+
+          expect(mockIssueRepository.get.mock.calls).toEqual([
+            [snapshotIssueUrl, basicProject],
+          ]);
+          expect(mockIssueRepository.updateStory.mock.calls).toEqual(
+            expectedUpdateStoryCalls,
+          );
+          expect(mockIssueRepository.removeLabel.mock.calls).toEqual(
+            expectedRemoveLabelCalls,
+          );
+        },
+      );
     });
   });
 });

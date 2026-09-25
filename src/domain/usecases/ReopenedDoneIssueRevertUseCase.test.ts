@@ -79,11 +79,18 @@ const createMockProject = (): Project => ({
 
 describe('ReopenedDoneIssueRevertUseCase', () => {
   let useCase: ReopenedDoneIssueRevertUseCase;
-  let mockIssueRepository: Mocked<Pick<IssueRepository, 'updateStatus'>>;
+  let mockIssueRepository: Mocked<
+    Pick<IssueRepository, 'updateStatus' | 'get'>
+  >;
 
   beforeEach(() => {
     mockIssueRepository = {
       updateStatus: jest.fn(),
+      get: jest
+        .fn()
+        .mockImplementation((issueUrl: string) =>
+          Promise.resolve(createMockIssue({ url: issueUrl })),
+        ),
     };
     useCase = new ReopenedDoneIssueRevertUseCase(mockIssueRepository);
   });
@@ -184,5 +191,51 @@ describe('ReopenedDoneIssueRevertUseCase', () => {
       issue2,
       'awaiting-workspace-id',
     );
+  });
+
+  describe('when the Status changed after the item snapshot was taken', () => {
+    it.each<{
+      label: string;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent set after the snapshot was taken',
+        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        liveIssue: null,
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'writes Awaiting Workspace when the live Status is still Done',
+        liveIssue: createMockIssue(),
+        expectedUpdateStatusCallCount: 1,
+      },
+    ])('$label', async ({ liveIssue, expectedUpdateStatusCallCount }) => {
+      const snapshotIssue = createMockIssue();
+      const project = createMockProject();
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const revertedCount = await useCase.run({
+        project,
+        issues: [snapshotIssue],
+      });
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [snapshotIssue.url, project],
+      ]);
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+        Array.from({ length: expectedUpdateStatusCallCount }, () => [
+          project,
+          snapshotIssue,
+          'awaiting-workspace-id',
+        ]),
+      );
+      expect(revertedCount).toBe(expectedUpdateStatusCallCount);
+    });
   });
 });

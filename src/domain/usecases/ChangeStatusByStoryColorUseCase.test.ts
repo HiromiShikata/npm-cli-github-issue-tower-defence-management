@@ -218,6 +218,11 @@ describe('ChangeStatusByStoryColorUseCase', () => {
     jest.clearAllMocks();
     mockDateRepository.now.mockResolvedValue(new Date('2000-01-01T00:00:00Z'));
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      status: null,
+      story: 'Story 1',
+    });
   });
 
   describe('run', () => {
@@ -434,5 +439,152 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         'This issue status is changed because the story is enabled.',
       );
     });
+  });
+
+  describe('when the Story or Status changed after the item snapshot was taken', () => {
+    const snapshotIssueUrl = 'https://github.com/org/repo/issues/snapshot';
+    const storyObjectMapFor = (
+      color: StoryOption['color'],
+      issue: Issue,
+    ): StoryObjectMap =>
+      new Map([
+        [
+          'Story 1',
+          {
+            ...basicStoryObject1,
+            story: { ...basicStoryObject1.story, color },
+            issues: [issue],
+          },
+        ],
+      ]);
+    const enabledStorySnapshotIssue: Issue = {
+      ...basicIssue1,
+      url: snapshotIssueUrl,
+      story: 'Story 1',
+      status: null,
+      assignees: [manager],
+    };
+    const disabledStorySnapshotIssue: Issue = {
+      ...enabledStorySnapshotIssue,
+      status: 'Awaiting Workspace',
+    };
+
+    it.each<{
+      label: string;
+      storyColor: StoryOption['color'];
+      snapshotIssue: Issue;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCalls: [unknown, unknown, string][];
+      expectedCreateCommentCalls: [unknown, string][];
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent set after the snapshot was taken on an item of an enabled story',
+        storyColor: 'RED',
+        snapshotIssue: enabledStorySnapshotIssue,
+        liveIssue: {
+          ...enabledStorySnapshotIssue,
+          status: 'In Tmux by agent',
+        },
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCalls: [],
+      },
+      {
+        label:
+          'does not write the first status when the live Story is no longer the enabled story',
+        storyColor: 'RED',
+        snapshotIssue: enabledStorySnapshotIssue,
+        liveIssue: { ...enabledStorySnapshotIssue, story: 'Story 2' },
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCalls: [],
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        storyColor: 'RED',
+        snapshotIssue: enabledStorySnapshotIssue,
+        liveIssue: null,
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCalls: [],
+      },
+      {
+        label:
+          'writes the first status when the live Status is still empty and the live Story is still the enabled story',
+        storyColor: 'RED',
+        snapshotIssue: enabledStorySnapshotIssue,
+        liveIssue: { ...enabledStorySnapshotIssue },
+        expectedUpdateStatusCalls: [
+          [basicProject, enabledStorySnapshotIssue, 'status1'],
+        ],
+        expectedCreateCommentCalls: [
+          [
+            enabledStorySnapshotIssue,
+            'This issue status is changed because the story is enabled.',
+          ],
+        ],
+      },
+      {
+        label:
+          'does not write Icebox when the live Story is no longer the disabled story',
+        storyColor: 'GRAY',
+        snapshotIssue: disabledStorySnapshotIssue,
+        liveIssue: { ...disabledStorySnapshotIssue, story: 'Story 2' },
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCalls: [],
+      },
+      {
+        label: 'does not write Icebox when the live Status is already Icebox',
+        storyColor: 'GRAY',
+        snapshotIssue: disabledStorySnapshotIssue,
+        liveIssue: { ...disabledStorySnapshotIssue, status: 'Icebox' },
+        expectedUpdateStatusCalls: [],
+        expectedCreateCommentCalls: [],
+      },
+      {
+        label:
+          'writes Icebox when the live Story is still the disabled story and the live Status is not Icebox',
+        storyColor: 'GRAY',
+        snapshotIssue: disabledStorySnapshotIssue,
+        liveIssue: { ...disabledStorySnapshotIssue },
+        expectedUpdateStatusCalls: [
+          [basicProject, disabledStorySnapshotIssue, 'status3'],
+        ],
+        expectedCreateCommentCalls: [
+          [
+            disabledStorySnapshotIssue,
+            'This issue status is changed because the story is disabled.',
+          ],
+        ],
+      },
+    ])(
+      '$label',
+      async ({
+        storyColor,
+        snapshotIssue,
+        liveIssue,
+        expectedUpdateStatusCalls,
+        expectedCreateCommentCalls,
+      }) => {
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          project: basicProject,
+          cacheUsed: false,
+          org: 'testOrg',
+          repo: 'testRepo',
+          storyObjectMap: storyObjectMapFor(storyColor, snapshotIssue),
+          manager,
+        });
+
+        expect(mockIssueRepository.get.mock.calls).toEqual([
+          [snapshotIssueUrl, basicProject],
+        ]);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+          expectedUpdateStatusCalls,
+        );
+        expect(mockIssueRepository.createComment.mock.calls).toEqual(
+          expectedCreateCommentCalls,
+        );
+      },
+    );
   });
 });

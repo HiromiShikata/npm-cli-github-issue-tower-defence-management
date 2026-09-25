@@ -125,6 +125,7 @@ describe('StartPreparationUseCase', () => {
       | 'setIssueAgentField'
       | 'removeLabel'
       | 'getIssueByUrl'
+      | 'get'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -153,6 +154,12 @@ describe('StartPreparationUseCase', () => {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
       getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      get: jest.fn().mockResolvedValue(
         createMockIssue({
           status: 'Awaiting Workspace',
           dependedIssueUrls: [],
@@ -7396,6 +7403,50 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     },
   );
+
+  it('does not move to Preparation or spawn when the live item left Awaiting Workspace after the item snapshot was taken, even though the on-disk cache still shows Awaiting Workspace', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    );
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({ status: 'In Tmux by agent', dependedIssueUrls: [] }),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.get.mock.calls).toEqual([
+      ['https://github.com/user/repo/issues/1', mockProject],
+    ]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
