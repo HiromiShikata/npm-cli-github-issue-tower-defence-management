@@ -1657,25 +1657,25 @@ export class ApiV3CheerioRestIssueRepository
       'STARTUP_FAILURE',
       'STALE',
     ]);
+    const latestRuns = [...latestCheckRunByName.values()];
+    const statusContexts = contexts.filter(
+      (
+        ctx,
+      ): ctx is {
+        __typename: 'StatusContext';
+        context: string;
+        state: string;
+      } => ctx.__typename === 'StatusContext',
+    );
+    const hasFailure =
+      latestRuns.some(
+        (r) => r.conclusion !== null && failureConclusions.has(r.conclusion),
+      ) ||
+      statusContexts.some(
+        (ctx) => ctx.state === 'FAILURE' || ctx.state === 'ERROR',
+      );
     const isCiStateSuccess = (() => {
       if (!hasStatusCheckRollup) return false;
-      const latestRuns = [...latestCheckRunByName.values()];
-      const statusContexts = contexts.filter(
-        (
-          ctx,
-        ): ctx is {
-          __typename: 'StatusContext';
-          context: string;
-          state: string;
-        } => ctx.__typename === 'StatusContext',
-      );
-      const hasFailure =
-        latestRuns.some(
-          (r) => r.conclusion !== null && failureConclusions.has(r.conclusion),
-        ) ||
-        statusContexts.some(
-          (ctx) => ctx.state === 'FAILURE' || ctx.state === 'ERROR',
-        );
       if (hasFailure) return false;
       const hasPending =
         latestRuns.some((r) => r.conclusion === null) ||
@@ -1683,6 +1683,7 @@ export class ApiV3CheerioRestIssueRepository
       return !hasPending;
     })();
     const isPassedAllCiJob = isCiStateSuccess && allRequiredChecksPassed;
+    const isCiFailing = hasStatusCheckRollup && hasFailure;
 
     const reviewThreads = data.reviewThreads;
     const isResolvedAllReviewComments =
@@ -1698,6 +1699,7 @@ export class ApiV3CheerioRestIssueRepository
       mergeable: data.mergeable ?? null,
       isPassedAllCiJob,
       isCiStateSuccess,
+      isCiFailing,
       isResolvedAllReviewComments,
       isBranchOutOfDate: false,
       missingRequiredCheckNames,
