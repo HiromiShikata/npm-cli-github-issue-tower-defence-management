@@ -86,6 +86,16 @@ export class SetupTowerDefenceProjectUseCase {
           SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
       );
       for (const issue of unreadIssues) {
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
+          project,
+          snapshotIssue: issue,
+          checkedFieldNames: ['status'],
+          skippedWriteDescription: `the ${AWAITING_WORKSPACE_STATUS_NAME} Status write during Unread migration`,
+        });
+        if (staleness.type !== 'current') {
+          continue;
+        }
         try {
           await this.issueRepository.updateStatus(
             project,
@@ -113,6 +123,16 @@ export class SetupTowerDefenceProjectUseCase {
             issue.status === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
         );
         for (const issue of awaitingTaskBreakdownIssues) {
+          const staleness = await issueSnapshotStalenessCheck({
+            issueRepository: this.issueRepository,
+            project,
+            snapshotIssue: issue,
+            checkedFieldNames: ['status'],
+            skippedWriteDescription: `the ${TODO_STATUS_NAME} Status write during Awaiting Task Breakdown migration`,
+          });
+          if (staleness.type !== 'current') {
+            continue;
+          }
           try {
             await this.issueRepository.updateStatus(
               project,
