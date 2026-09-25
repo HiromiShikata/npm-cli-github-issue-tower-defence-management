@@ -420,11 +420,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       await repository.getAllIssues('test-project-id');
 
       const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
-      expect(cacheWrite).not.toMatchObject({
-        storyIssueUrlByOptionName: {
-          'some unregistered story': expect.anything(),
-        },
-      });
+      expect(cacheWrite).not.toHaveProperty([
+        'storyIssueUrlByOptionName',
+        'some unregistered story',
+      ]);
     });
 
     it('writes storyOptions derived from project story stories during full fetch', async () => {
