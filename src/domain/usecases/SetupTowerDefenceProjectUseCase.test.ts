@@ -810,6 +810,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [atbIssue1, atbIssue2, otherIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockImplementation((url) =>
+      Promise.resolve(
+        [atbIssue1, atbIssue2, otherIssue].find((issue) => issue.url === url) ??
+          null,
+      ),
+    );
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const mockStatusDefaultRepository =
@@ -852,6 +858,89 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
+  });
+
+  describe('when the Status of an Awaiting Task Breakdown item changed after the item snapshot was taken', () => {
+    const snapshotAtbIssue = buildIssue({
+      number: 21,
+      url: 'https://github.com/test-org/test-repo/issues/21',
+      itemId: 'item-21',
+      status: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+    });
+
+    it.each<{
+      label: string;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent moved off Awaiting Task Breakdown after the snapshot was taken',
+        liveIssue: {
+          ...snapshotAtbIssue,
+          status: AWAITING_OWNER_STATUS_NAME,
+        },
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        liveIssue: null,
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label:
+          'writes Todo when the live Status is still Awaiting Task Breakdown',
+        liveIssue: { ...snapshotAtbIssue },
+        expectedUpdateStatusCallCount: 1,
+      },
+    ])('$label', async ({ liveIssue, expectedUpdateStatusCallCount }) => {
+      const mockProjectRepository =
+        mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+      const mockIssueRepository =
+        mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
+      const todoStatusId = 'todo-status-id';
+      const statuses: FieldOption[] = [
+        {
+          id: 'atb-id',
+          name: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+          color: 'ORANGE',
+          description: '',
+        },
+        ...buildCanonicalStatuses().map((s) =>
+          s.name === TODO_STATUS_NAME ? { ...s, id: todoStatusId } : s,
+        ),
+      ];
+      const project = buildProject(statuses);
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockProjectRepository.updateStatusList.mockResolvedValue([]);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
+        issues: [snapshotAtbIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+      mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+      const mockStatusDefaultRepository =
+        mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+      const useCase = new SetupTowerDefenceProjectUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockStatusDefaultRepository,
+      );
+      await useCase.run({ projectUrl: project.url });
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [snapshotAtbIssue.url, project],
+      ]);
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+        Array.from({ length: expectedUpdateStatusCallCount }, () => [
+          project,
+          snapshotAtbIssue,
+          todoStatusId,
+        ]),
+      );
+    });
   });
 
   it('should skip issue migration when "Awaiting Task Breakdown" status does not exist', async () => {
@@ -1221,6 +1310,13 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       issues: [unreadIssue1, unreadIssue2, awsIssue],
       cacheUsed: false,
     });
+    mockIssueRepository.get.mockImplementation((url) =>
+      Promise.resolve(
+        [unreadIssue1, unreadIssue2, awsIssue].find(
+          (issue) => issue.url === url,
+        ) ?? null,
+      ),
+    );
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
     const mockStatusDefaultRepository =
@@ -1243,6 +1339,89 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       unreadIssue2,
       awaitingWorkspaceId,
     );
+  });
+
+  describe('when the Status of an Unread item changed after the item snapshot was taken', () => {
+    const snapshotUnreadIssue = buildIssue({
+      number: 20,
+      url: 'https://github.com/test-org/test-repo/issues/20',
+      itemId: 'item-20',
+      status: 'Unread',
+    });
+
+    it.each<{
+      label: string;
+      liveIssue: Issue | null;
+      expectedUpdateStatusCallCount: number;
+    }>([
+      {
+        label:
+          'does not overwrite a Status an agent moved off Unread after the snapshot was taken',
+        liveIssue: {
+          ...snapshotUnreadIssue,
+          status: AWAITING_OWNER_STATUS_NAME,
+        },
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'does not write when the item is no longer on the project',
+        liveIssue: null,
+        expectedUpdateStatusCallCount: 0,
+      },
+      {
+        label: 'writes Awaiting Workspace when the live Status is still Unread',
+        liveIssue: { ...snapshotUnreadIssue },
+        expectedUpdateStatusCallCount: 1,
+      },
+    ])('$label', async ({ liveIssue, expectedUpdateStatusCallCount }) => {
+      const mockProjectRepository =
+        mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+      const mockIssueRepository =
+        mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'get'>>();
+      const awaitingWorkspaceId = 'aws-status-id';
+      const statuses: FieldOption[] = [
+        { id: 'unread-id', name: 'Unread', color: 'ORANGE', description: '' },
+        {
+          id: awaitingWorkspaceId,
+          name: AWAITING_WORKSPACE_STATUS_NAME,
+          color: 'BLUE',
+          description: '',
+        },
+        ...buildCanonicalStatuses().filter(
+          (s) => s.name !== AWAITING_WORKSPACE_STATUS_NAME,
+        ),
+      ];
+      const project = buildProject(statuses);
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockProjectRepository.updateStatusList.mockResolvedValue([]);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mock<Project>(),
+        issues: [snapshotUnreadIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+      mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+      const mockStatusDefaultRepository =
+        mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+      const useCase = new SetupTowerDefenceProjectUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockStatusDefaultRepository,
+      );
+      await useCase.run({ projectUrl: project.url });
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [snapshotUnreadIssue.url, project],
+      ]);
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+        Array.from({ length: expectedUpdateStatusCallCount }, () => [
+          project,
+          snapshotUnreadIssue,
+          awaitingWorkspaceId,
+        ]),
+      );
+    });
   });
 
   it('should call setStatusFieldDefault with Awaiting Workspace option id when statuses are already in canonical order', async () => {
