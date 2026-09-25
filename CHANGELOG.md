@@ -1,3 +1,10 @@
+## [2.148.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.4...v2.148.5) (2026-09-25)
+
+
+### Bug Fixes
+
+* **cli:** guard fleet-config loaders in schedule/startDaemon/notifyFinishedIssuePreparation/checkIssueReviewReadiness/selectLiveSessionOauthToken handlers ([#2616](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2616)) ([8ab0ce6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ab0ce6c79103685d55f44d861a76748411446f3))
+
 ## [2.148.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.3...v2.148.4) (2026-09-25)
 
 
