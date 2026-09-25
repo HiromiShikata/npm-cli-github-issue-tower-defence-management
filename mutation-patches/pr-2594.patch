@@ -1,0 +1,16 @@
+diff --git a/src/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.ts b/src/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.ts
+index 9d2cca31..9d3a20bf 100644
+--- a/src/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.ts
++++ b/src/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.ts
+@@ -70,11 +70,6 @@ const buildStoryIssueUrlByOptionName = (
+     }
+     if (issue.story !== null) {
+       map[issue.story] = issue.url;
+-    } else {
+-      const matchedOption = storyOptions.find((o) => o.name === issue.title);
+-      if (matchedOption !== undefined) {
+-        map[matchedOption.name] = issue.url;
+-      }
+     }
+   }
+   return map;

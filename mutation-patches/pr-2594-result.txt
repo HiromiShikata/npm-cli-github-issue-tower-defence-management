@@ -1,0 +1,4 @@
+mutation_result=caught
+failing_test=FAIL backend src/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.test.ts (7.074 s)
+patch_file=mutation-patches/pr-2594.patch
+head_commit=518408bd3efd78c618184698698898d5e61efe86
