@@ -34,7 +34,7 @@ get_issue_body() {
   fi
 
   local closing_ref
-  closing_ref=$(printf '%s' "${pr_body}" | grep -oiP '(?i)(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+\K([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+#[0-9]+|#[0-9]+)' | head -1 || true)
+  closing_ref=$(printf '%s' "${pr_body}" | grep -oiP '(?i)(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+\K(https://github\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+/issues/[0-9]+|[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+#[0-9]+|#[0-9]+)' | head -1 || true)
 
   if [ -z "${closing_ref}" ]; then
     printf ''
@@ -42,12 +42,13 @@ get_issue_body() {
   fi
 
   local repo issue_number
-  if [[ "${closing_ref}" == */* ]]; then
+  issue_number=$(printf '%s' "${closing_ref}" | grep -oP '[0-9]+$')
+  if [[ "${closing_ref}" == https://github.com/* ]]; then
+    repo=$(printf '%s' "${closing_ref}" | grep -oP '(?<=github\.com/)[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+(?=/issues/)')
+  elif [[ "${closing_ref}" == */* ]]; then
     repo=$(printf '%s' "${closing_ref}" | grep -oP '^[^#]+')
-    issue_number=$(printf '%s' "${closing_ref}" | grep -oP '[0-9]+$')
   else
     repo="${GITHUB_REPOSITORY:-}"
-    issue_number=$(printf '%s' "${closing_ref}" | grep -oP '[0-9]+$')
   fi
 
   if [ -n "${TEST_ISSUE_BODY+x}" ]; then
