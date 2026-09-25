@@ -618,7 +618,6 @@ describe('StartPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
-
   });
 
   it('keeps an issue out of Preparation when the aw command exits non-zero', async () => {
