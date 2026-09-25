@@ -39,6 +39,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     isClosed: false,
     state: 'OPEN',
     closingIssueReferenceUrls: [closedTaskIssue.url],
+    createdAt: new Date('2020-01-01T00:00:00Z'),
   };
   const openPrWithOpenTaskIssue: Issue = {
     ...mock<Issue>(),
@@ -87,6 +88,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     isClosed: false,
     state: 'OPEN',
     closingIssueReferenceUrls: [anotherClosedTaskIssue.url],
+    createdAt: new Date('2020-01-01T00:00:00Z'),
   };
 
   beforeEach(() => {
@@ -200,5 +202,105 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     });
 
     expect(callOrder).toEqual(['comment', 'close']);
+  });
+
+  describe('minimum pull request age guard', () => {
+    const evaluatedAt = new Date('2026-01-02T00:00:00Z');
+    const MINUTE_MS = 60 * 1000;
+    const HOUR_MS = 60 * MINUTE_MS;
+
+    const testCases: {
+      name: string;
+      pullRequestAgeMs: number;
+      referencedIssueIsClosed: boolean | null;
+      expectClosePullRequestCalled: boolean;
+    }[] = [
+      {
+        name: '10 minutes old with 1 closed referenced issue',
+        pullRequestAgeMs: 10 * MINUTE_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: false,
+      },
+      {
+        name: '23 hours 59 minutes old with 1 closed referenced issue',
+        pullRequestAgeMs: 23 * HOUR_MS + 59 * MINUTE_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: false,
+      },
+      {
+        name: '24 hours old exactly with 1 closed referenced issue',
+        pullRequestAgeMs: 24 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: true,
+      },
+      {
+        name: '48 hours old with 1 closed referenced issue',
+        pullRequestAgeMs: 48 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: true,
+      },
+      {
+        name: '10 minutes old with 1 open referenced issue',
+        pullRequestAgeMs: 10 * MINUTE_MS,
+        referencedIssueIsClosed: false,
+        expectClosePullRequestCalled: false,
+      },
+      {
+        name: '48 hours old with 1 open referenced issue',
+        pullRequestAgeMs: 48 * HOUR_MS,
+        referencedIssueIsClosed: false,
+        expectClosePullRequestCalled: false,
+      },
+      {
+        name: '48 hours old with 0 referenced issues',
+        pullRequestAgeMs: 48 * HOUR_MS,
+        referencedIssueIsClosed: null,
+        expectClosePullRequestCalled: false,
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should ${testCase.expectClosePullRequestCalled ? '' : 'not '}call closePullRequest when the pull request is ${testCase.name}`, async () => {
+        const referencedTaskIssue: Issue | null =
+          testCase.referencedIssueIsClosed === null
+            ? null
+            : {
+                ...mock<Issue>(),
+                url: 'https://github.com/owner/repo/issues/200',
+                isPr: false,
+                isClosed: testCase.referencedIssueIsClosed,
+                state: testCase.referencedIssueIsClosed ? 'CLOSED' : 'OPEN',
+                closingIssueReferenceUrls: [],
+              };
+        const targetPullRequest: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/owner/repo/pull/200',
+          isPr: true,
+          isClosed: false,
+          state: 'OPEN',
+          closingIssueReferenceUrls: referencedTaskIssue
+            ? [referencedTaskIssue.url]
+            : [],
+          createdAt: new Date(
+            evaluatedAt.getTime() - testCase.pullRequestAgeMs,
+          ),
+        };
+
+        await useCase.run({
+          issues: referencedTaskIssue
+            ? [referencedTaskIssue, targetPullRequest]
+            : [targetPullRequest],
+          evaluatedAt,
+        });
+
+        if (testCase.expectClosePullRequestCalled) {
+          expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+            targetPullRequest.url,
+          );
+        } else {
+          expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+        }
+      });
+    });
   });
 });
