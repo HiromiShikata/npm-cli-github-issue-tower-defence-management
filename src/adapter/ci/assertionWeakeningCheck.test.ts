@@ -1,5 +1,6 @@
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 const repositoryRoot = path.resolve(__dirname, '..', '..', '..');
@@ -14,10 +15,35 @@ type CheckResult = {
   readonly output: string;
 };
 
+const writeFakeGhExecutableRespondingByRepoIssuePath = (
+  tmpDir: string,
+  issueBodyByRepoIssuePath: Readonly<Record<string, string>>,
+): void => {
+  const caseBranches = Object.entries(issueBodyByRepoIssuePath)
+    .map(([repoIssuePath, body], index) => {
+      const bodyFilePath = path.join(tmpDir, `issue-body-${index}.txt`);
+      fs.writeFileSync(bodyFilePath, body);
+      return `  *"${repoIssuePath}"*) cat "${bodyFilePath}" ;;`;
+    })
+    .join('\n');
+  const ghScriptContent = `#!/usr/bin/env bash
+set -euo pipefail
+args="$*"
+case "\${args}" in
+${caseBranches}
+  *) printf '' ;;
+esac
+`;
+  const ghPath = path.join(tmpDir, 'gh');
+  fs.writeFileSync(ghPath, ghScriptContent);
+  fs.chmodSync(ghPath, 0o755);
+};
+
 const runCheck = (options: {
   readonly diffContent: string;
   readonly issueBody?: string;
   readonly prBody?: string;
+  readonly ghApiIssueBodyByRepoIssuePath?: Readonly<Record<string, string>>;
 }): CheckResult => {
   const parentEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -36,15 +62,33 @@ const runCheck = (options: {
     env['TEST_PR_BODY'] = options.prBody;
   }
 
-  const result = spawnSync('bash', [scriptPath], {
-    encoding: 'utf8',
-    env,
-  });
+  let fakeGhDir: string | undefined;
+  if (options.ghApiIssueBodyByRepoIssuePath !== undefined) {
+    fakeGhDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'assertion-weakening-check-fake-gh-'),
+    );
+    writeFakeGhExecutableRespondingByRepoIssuePath(
+      fakeGhDir,
+      options.ghApiIssueBodyByRepoIssuePath,
+    );
+    env['PATH'] = `${fakeGhDir}${path.delimiter}${env['PATH'] ?? ''}`;
+  }
 
-  return {
-    exitStatus: result.status,
-    output: `${result.stdout}${result.stderr}`,
-  };
+  try {
+    const result = spawnSync('bash', [scriptPath], {
+      encoding: 'utf8',
+      env,
+    });
+
+    return {
+      exitStatus: result.status,
+      output: `${result.stdout}${result.stderr}`,
+    };
+  } finally {
+    if (fakeGhDir !== undefined) {
+      fs.rmSync(fakeGhDir, { recursive: true, force: true });
+    }
+  }
 };
 
 const diffWithDeletedAssertion = `diff --git a/src/example.test.ts b/src/example.test.ts
@@ -403,7 +447,10 @@ index abc..def 100644
         diffContent: diffWithDeletedAssertion,
         prBody:
           'Closes https://github.com/owner/repo/issues/1\nCloses https://github.com/owner/repo/issues/2',
-        issueBody: issueBodyWithoutAcceptanceCriteria,
+        ghApiIssueBodyByRepoIssuePath: {
+          'repos/owner/repo/issues/1': issueBodyWithoutAcceptanceCriteria,
+          'repos/owner/repo/issues/2': issueBodyWithSuccessCriteria,
+        },
       });
       expect(result.exitStatus).toBe(1);
       expect(result.output).toContain(
@@ -417,7 +464,10 @@ index abc..def 100644
         diffContent: diffWithDeletedAssertion,
         prBody:
           'Closes https://github.com/owner/repo/issues/1\nCloses owner/repo#2',
-        issueBody: issueBodyWithoutAcceptanceCriteria,
+        ghApiIssueBodyByRepoIssuePath: {
+          'repos/owner/repo/issues/1': issueBodyWithoutAcceptanceCriteria,
+          'repos/owner/repo/issues/2': issueBodyWithSuccessCriteria,
+        },
       });
       expect(result.exitStatus).toBe(1);
       expect(result.output).toContain(
