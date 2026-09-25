@@ -3647,6 +3647,28 @@ describe('consoleOperationApi', () => {
       expect(localUpdateStoryList).not.toHaveBeenCalled();
     });
 
+    it('falls back to the cached story list when the fresh project fetch does not find the project (getProject resolves null) (issue #2634)', async () => {
+      const cachedProject = projectWithOrderedStories();
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const localGetProject = jest.fn().mockResolvedValue(null);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(
+          () => ({
+            updateStoryList: localUpdateStoryList,
+            getProject: localGetProject,
+          }),
+          cachedProject,
+        ),
+        { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+      );
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(localUpdateStoryList).toHaveBeenCalledWith(expect.anything(), [
+        expect.objectContaining({ id: 'opt_b' }),
+        expect.objectContaining({ id: 'opt_a' }),
+        expect.objectContaining({ id: 'opt_c' }),
+      ]);
+    });
+
     describe('storyOptionId existence in cached vs. freshly-fetched data (issue #2603)', () => {
       const buildStoryOption = (id: string) => ({
         id,
@@ -3737,6 +3759,48 @@ describe('consoleOperationApi', () => {
           }
         },
       );
+
+      it('row 2 down: storyOptionId absent from cached data but present in fresh data (recently added/renamed story), direction "down" -> succeeds (issue #2634)', async () => {
+        const cachedProject: Project = {
+          ...project,
+          story: {
+            name: 'Story',
+            fieldId: 'storyField',
+            databaseId: 1,
+            stories: ['opt_x', 'opt_y'].map(buildStoryOption),
+            workflowManagementStory: { id: 'wms', name: 'workflow' },
+          },
+        };
+        const cachedStory = cachedProject.story;
+        if (cachedStory === null)
+          throw new Error('cachedStory must not be null');
+        const freshProject: Project = {
+          ...cachedProject,
+          story: {
+            ...cachedStory,
+            stories: ['opt_x', 'opt_target', 'opt_y'].map(buildStoryOption),
+          },
+        };
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const localGetProject = jest.fn().mockResolvedValue(freshProject);
+        const response = await handleReorderStory(
+          contextWithProjectRepository(
+            () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: localGetProject,
+            }),
+            cachedProject,
+          ),
+          { pjcode: 'acme', storyOptionId: 'opt_target', direction: 'down' },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
+        expect(localUpdateStoryList).toHaveBeenCalledWith(expect.anything(), [
+          expect.objectContaining({ id: 'opt_x' }),
+          expect.objectContaining({ id: 'opt_y' }),
+          expect.objectContaining({ id: 'opt_target' }),
+        ]);
+      });
     });
 
     describe('reorder boundary check uses the freshly-fetched list length (issue #2603)', () => {
@@ -3821,6 +3885,90 @@ describe('consoleOperationApi', () => {
             cachedProject,
           ),
           { pjcode: 'acme', storyOptionId: 'opt_c', direction: 'down' },
+        );
+        expect(response).toEqual({
+          statusCode: 400,
+          body: { error: 'cannot move in that direction' },
+        });
+        expect(localUpdateStoryList).not.toHaveBeenCalled();
+      });
+
+      it('row 5 up: fresh list is longer than cached list because a story was prepended after the cache snapshot was taken -> the newly possible move up succeeds', async () => {
+        const cachedProject: Project = {
+          ...project,
+          story: {
+            name: 'Story',
+            fieldId: 'storyField',
+            databaseId: 1,
+            stories: ['opt_a', 'opt_b', 'opt_c'].map(buildStoryOption),
+            workflowManagementStory: { id: 'wms', name: 'workflow' },
+          },
+        };
+        const cachedStory = cachedProject.story;
+        if (cachedStory === null)
+          throw new Error('cachedStory must not be null');
+        const freshProject: Project = {
+          ...cachedProject,
+          story: {
+            ...cachedStory,
+            stories: ['opt_new', 'opt_a', 'opt_b', 'opt_c'].map(
+              buildStoryOption,
+            ),
+          },
+        };
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const localGetProject = jest.fn().mockResolvedValue(freshProject);
+        const response = await handleReorderStory(
+          contextWithProjectRepository(
+            () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: localGetProject,
+            }),
+            cachedProject,
+          ),
+          { pjcode: 'acme', storyOptionId: 'opt_a', direction: 'up' },
+        );
+        expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+        expect(localUpdateStoryList).toHaveBeenCalledWith(expect.anything(), [
+          expect.objectContaining({ id: 'opt_a' }),
+          expect.objectContaining({ id: 'opt_new' }),
+          expect.objectContaining({ id: 'opt_b' }),
+          expect.objectContaining({ id: 'opt_c' }),
+        ]);
+      });
+
+      it('row 6 up: fresh and cached list lengths are unchanged, target already first -> the existing boundary rejection is unaffected', async () => {
+        const cachedProject: Project = {
+          ...project,
+          story: {
+            name: 'Story',
+            fieldId: 'storyField',
+            databaseId: 1,
+            stories: ['opt_a', 'opt_b', 'opt_c'].map(buildStoryOption),
+            workflowManagementStory: { id: 'wms', name: 'workflow' },
+          },
+        };
+        const cachedStory = cachedProject.story;
+        if (cachedStory === null)
+          throw new Error('cachedStory must not be null');
+        const freshProject: Project = {
+          ...cachedProject,
+          story: {
+            ...cachedStory,
+            stories: ['opt_a', 'opt_b', 'opt_c'].map(buildStoryOption),
+          },
+        };
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const localGetProject = jest.fn().mockResolvedValue(freshProject);
+        const response = await handleReorderStory(
+          contextWithProjectRepository(
+            () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: localGetProject,
+            }),
+            cachedProject,
+          ),
+          { pjcode: 'acme', storyOptionId: 'opt_a', direction: 'up' },
         );
         expect(response).toEqual({
           statusCode: 400,
@@ -4522,6 +4670,83 @@ describe('consoleOperationApi', () => {
         },
       );
     });
+
+    it('writes the complete freshly-fetched project into updateProjectCacheEntry when the fresh project fetch succeeds and a non-story field changed since caching (issue #2634)', async () => {
+      const cachedProject: Project = {
+        ...projectWithStory(),
+        databaseId: 111,
+        name: 'Cached project name',
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        databaseId: 222,
+        name: 'Fresh project name',
+      };
+      const updatedEntries: { pjcode: string; project: Project }[] = [];
+      const contextWithCache: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn().mockResolvedValue([]),
+          getProject: jest.fn().mockResolvedValue(freshProject),
+        }),
+        updateProjectCacheEntry: (pjcode, updatedProject) => {
+          updatedEntries.push({ pjcode, project: updatedProject });
+        },
+      };
+
+      await handleStoryColor(contextWithCache, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'RED',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(updatedEntries).toHaveLength(1);
+      expect(updatedEntries[0].project.databaseId).toBe(222);
+      expect(updatedEntries[0].project.name).toBe('Fresh project name');
+      expect(updatedEntries[0].project.story?.stories).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_blue', color: 'RED' }),
+          expect.objectContaining({ id: 'opt_green', color: 'GREEN' }),
+        ]),
+      );
+    });
+
+    it('combines the previously-cached project with the resolved story list in updateProjectCacheEntry when the fresh project fetch fails (getProject resolves null) (issue #2634)', async () => {
+      const cachedProject: Project = {
+        ...projectWithStory(),
+        databaseId: 111,
+        name: 'Cached project name',
+      };
+      const updatedEntries: { pjcode: string; project: Project }[] = [];
+      const contextWithCache: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn().mockResolvedValue([]),
+          getProject: jest.fn().mockResolvedValue(null),
+        }),
+        updateProjectCacheEntry: (pjcode, updatedProject) => {
+          updatedEntries.push({ pjcode, project: updatedProject });
+        },
+      };
+
+      await handleStoryColor(contextWithCache, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'RED',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(updatedEntries).toHaveLength(1);
+      expect(updatedEntries[0].project.databaseId).toBe(111);
+      expect(updatedEntries[0].project.name).toBe('Cached project name');
+      expect(updatedEntries[0].project.story?.stories).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_blue', color: 'RED' }),
+          expect.objectContaining({ id: 'opt_green', color: 'GREEN' }),
+        ]),
+      );
+    });
   });
 
   describe('handleDeleteAllComments', () => {
@@ -4699,6 +4924,79 @@ describe('consoleOperationApi', () => {
       issueRepository.getStoryObjectMap.mockResolvedValue(new Map());
       issueRepository.closeIssueByUrl.mockResolvedValue(undefined);
       issueRepository.clearProjectField.mockResolvedValue(undefined);
+    });
+
+    it('starts resolving the fresh story option and fetching the story object map concurrently, not sequentially (issue #2634)', async () => {
+      const p = projectWithStoriesToDelete();
+
+      let resolveGetProject: (value: Project | null) => void = () => undefined;
+      const getProjectPromise = new Promise<Project | null>((resolve) => {
+        resolveGetProject = resolve;
+      });
+      getProject.mockReturnValue(getProjectPromise);
+
+      let resolveStoryObjectMap: (value: StoryObjectMap) => void =
+        () => undefined;
+      const storyObjectMapPromise = new Promise<StoryObjectMap>((resolve) => {
+        resolveStoryObjectMap = resolve;
+      });
+      issueRepository.getStoryObjectMap.mockReturnValue(storyObjectMapPromise);
+
+      const resultPromise = handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      const flushPendingMicrotasks = async (tickCount: number) => {
+        for (let i = 0; i < tickCount; i += 1) {
+          await Promise.resolve();
+        }
+      };
+      await flushPendingMicrotasks(10);
+
+      expect(getProject).toHaveBeenCalled();
+      expect(issueRepository.getStoryObjectMap).toHaveBeenCalled();
+      expect(updateStoryList).not.toHaveBeenCalled();
+
+      resolveGetProject(p);
+      await flushPendingMicrotasks(5);
+      resolveStoryObjectMap(new Map());
+
+      const response = await resultPromise;
+      expect(response.statusCode).toBe(200);
+      expect(updateStoryList).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call updateStoryList when resolving the fresh story option fails, isolated from other tests calls to the shared updateStoryList mock', async () => {
+      updateStoryList.mockClear();
+      const p = projectWithStoriesToDelete();
+      getProject.mockRejectedValue(new Error('network error'));
+
+      await expect(
+        handleDeleteStory(deleteStoryContext(p), {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+        }),
+      ).rejects.toThrow('network error');
+
+      expect(updateStoryList).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateStoryList when fetching the story object map fails, isolated from other tests calls to the shared updateStoryList mock', async () => {
+      updateStoryList.mockClear();
+      const p = projectWithStoriesToDelete();
+      issueRepository.getStoryObjectMap.mockRejectedValue(
+        new Error('story object map error'),
+      );
+
+      await expect(
+        handleDeleteStory(deleteStoryContext(p), {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+        }),
+      ).rejects.toThrow('story object map error');
+
+      expect(updateStoryList).not.toHaveBeenCalled();
     });
 
     it('calls updateStoryList with the filtered list and returns 200', async () => {
