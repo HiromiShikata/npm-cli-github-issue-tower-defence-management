@@ -22,7 +22,7 @@ export class ClearDependedIssueURLUseCase {
       | 'createComment'
       | 'updateProjectTextField'
       | 'getIssueOrPullRequestComments'
-      | 'getIssueByUrl'
+      | 'getIssueOrPullRequestState'
     >,
   ) {}
 
@@ -275,15 +275,25 @@ export class ClearDependedIssueURLUseCase {
     if (sameRepoDependedIssueUrls.length === 0) {
       return [];
     }
-    const liveCheckedIssues = await Promise.all(
-      sameRepoDependedIssueUrls.map((dependedIssueUrl) =>
-        this.issueRepository.getIssueByUrl(dependedIssueUrl),
-      ),
+    const liveConfirmedOpenFlags = await Promise.all(
+      sameRepoDependedIssueUrls.map(async (dependedIssueUrl) => {
+        try {
+          const liveState =
+            await this.issueRepository.getIssueOrPullRequestState(
+              dependedIssueUrl,
+            );
+          return liveState.state.toLowerCase() === 'open';
+        } catch (error) {
+          console.warn(
+            `Failed to live-check depended issue state for ${dependedIssueUrl}, treating as not live-confirmed-open: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return false;
+        }
+      }),
     );
-    return sameRepoDependedIssueUrls.filter((_dependedIssueUrl, index) => {
-      const liveCheckedIssue = liveCheckedIssues[index];
-      return liveCheckedIssue !== null && !liveCheckedIssue.isClosed;
-    });
+    return sameRepoDependedIssueUrls.filter(
+      (_dependedIssueUrl, index) => liveConfirmedOpenFlags[index],
+    );
   };
 
   private lastAgentReportHasIterationsExhausted = async (
