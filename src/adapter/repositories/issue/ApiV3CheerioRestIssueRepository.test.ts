@@ -8429,9 +8429,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(matchingSameUrlIssues).toHaveLength(1);
       expect(
-        finalIssues.some(
-          (i) => i.url === 'https://github.com/o/r/issues/101',
-        ),
+        finalIssues.some((i) => i.url === 'https://github.com/o/r/issues/101'),
       ).toBe(true);
     });
   });
