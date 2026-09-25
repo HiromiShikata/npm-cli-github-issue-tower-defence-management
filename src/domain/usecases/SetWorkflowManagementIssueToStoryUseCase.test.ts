@@ -1205,9 +1205,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         isPr: false,
         url: 'https://github.com/user/repo/issues/2',
       };
-      const workflowRejectionError = new Error(
-        'workflow branch network error',
-      );
+      const workflowRejectionError = new Error('workflow branch network error');
       const matchedStoryRejectionError = new Error(
         'matched story branch network error',
       );
