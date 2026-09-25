@@ -214,6 +214,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
       pullRequestAgeMs: number;
       referencedIssueIsClosed: boolean | null;
       expectClosePullRequestCalled: boolean;
+      minimumPullRequestAgeMs?: number;
     }[] = [
       {
         name: '10 minutes old with 1 closed referenced issue',
@@ -257,6 +258,34 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         referencedIssueIsClosed: null,
         expectClosePullRequestCalled: false,
       },
+      {
+        name: '30 minutes old with 1 closed referenced issue and a 1 hour minimumPullRequestAgeMs override',
+        pullRequestAgeMs: 30 * MINUTE_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: false,
+        minimumPullRequestAgeMs: 1 * HOUR_MS,
+      },
+      {
+        name: '2 hours old with 1 closed referenced issue and a 1 hour minimumPullRequestAgeMs override',
+        pullRequestAgeMs: 2 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: true,
+        minimumPullRequestAgeMs: 1 * HOUR_MS,
+      },
+      {
+        name: '30 hours old with 1 closed referenced issue and a 48 hour minimumPullRequestAgeMs override',
+        pullRequestAgeMs: 30 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: false,
+        minimumPullRequestAgeMs: 48 * HOUR_MS,
+      },
+      {
+        name: '50 hours old with 1 closed referenced issue and a 48 hour minimumPullRequestAgeMs override',
+        pullRequestAgeMs: 50 * HOUR_MS,
+        referencedIssueIsClosed: true,
+        expectClosePullRequestCalled: true,
+        minimumPullRequestAgeMs: 48 * HOUR_MS,
+      },
     ];
 
     testCases.forEach((testCase) => {
@@ -291,6 +320,9 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
             ? [referencedTaskIssue, targetPullRequest]
             : [targetPullRequest],
           evaluatedAt,
+          ...(testCase.minimumPullRequestAgeMs !== undefined
+            ? { minimumPullRequestAgeMs: testCase.minimumPullRequestAgeMs }
+            : {}),
         });
 
         if (testCase.expectClosePullRequestCalled) {
