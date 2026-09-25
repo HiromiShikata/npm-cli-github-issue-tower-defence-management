@@ -1,3 +1,10 @@
+## [2.146.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.0...v2.146.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** adopt the pull request whose head branch the latest agent session has checked out ([#2586](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2586)) ([8d013c3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d013c3ebf6a74b6a486edf288501873728a38d5))
+
 # [2.146.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.145.1...v2.146.0) (2026-09-24)
 
 
