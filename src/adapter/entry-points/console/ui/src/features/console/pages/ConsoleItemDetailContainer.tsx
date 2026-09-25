@@ -350,17 +350,42 @@ export const ConsoleItemDetailContainer = ({
     awaitingWorkspaceOption !== null
       ? async (body: string): Promise<ConsoleComment> => {
           onCommentDraftChange?.('');
-          handlers.onSetStatus(awaitingWorkspaceOption);
-          try {
-            return await addComment(body);
-          } catch (cause) {
-            if (onCommentError !== undefined) {
-              onCommentError('Failed to post comment', String(cause));
-            } else {
-              console.error('Failed to post comment', cause);
-            }
-            throw cause;
-          }
+          return await new Promise<ConsoleComment>((resolve, reject) => {
+            onQueueAction({
+              kind: {
+                type: 'set_status',
+                optionName: awaitingWorkspaceOption.name,
+              },
+              item,
+              commit: async () => {
+                try {
+                  const comment =
+                    await operations.addCommentAndMoveToAwaitingWorkspace(
+                      item,
+                      body,
+                      awaitingWorkspaceOption,
+                    );
+                  setPostedComments((previous) => [...previous, comment]);
+                  resolve(comment);
+                } catch (cause) {
+                  if (onCommentError !== undefined) {
+                    onCommentError('Failed to post comment', String(cause));
+                  } else {
+                    console.error('Failed to post comment', cause);
+                  }
+                  reject(cause);
+                  throw cause;
+                }
+              },
+              overlayPatch: {
+                done: true,
+                status: {
+                  name: awaitingWorkspaceOption.name,
+                  color: awaitingWorkspaceOption.color,
+                },
+              },
+            });
+          });
         }
       : undefined;
 
