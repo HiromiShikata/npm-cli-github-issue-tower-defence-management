@@ -11,6 +11,7 @@ import {
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { ProjectIssuesCacheRepository } from '../ProjectIssuesCacheRepository';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
@@ -7737,7 +7738,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         getSingle: async (key: string) => {
           await wait(20);
           const stored = store.get(key);
-          return stored === undefined ? null : (JSON.parse(stored) as unknown);
+          if (stored === undefined) return null;
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
         },
         setSingle: async (key: string, value: unknown) => {
           await wait(20);
@@ -7872,9 +7875,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ]);
 
-      const finalCache = (await cache.getSingle(cacheKey)) as {
-        issues: Array<{ itemId: string; dependedIssueUrls: string[] }>;
-      } | null;
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
       const dependedByItemId = new Map(
         (finalCache?.issues ?? []).map((i) => [i.itemId, i.dependedIssueUrls]),
       );

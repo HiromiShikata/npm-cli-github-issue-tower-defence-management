@@ -110,7 +110,9 @@ const buildRacyCacheWithRealLock = (): Pick<
     getSingle: async (key: string) => {
       await wait(20);
       const stored = store.get(key);
-      return stored === undefined ? null : (JSON.parse(stored) as unknown);
+      if (stored === undefined) return null;
+      const parsed: unknown = JSON.parse(stored);
+      return parsed;
     },
     setSingle: async (key: string, value: unknown) => {
       await wait(20);
@@ -132,7 +134,7 @@ const buildRacyCacheWithRealLock = (): Pick<
 };
 
 const buildIssueRepository = (
-  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>,
+  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle' | 'withLock'>,
   localStorageRepository: LocalStorageRepository,
 ): ApiV3CheerioRestIssueRepository =>
   new ApiV3CheerioRestIssueRepository(
@@ -147,7 +149,7 @@ const buildIssueRepository = (
   );
 
 const seedCache = async (
-  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>,
+  cache: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle' | 'withLock'>,
 ): Promise<void> => {
   await new ProjectIssuesCacheRepository(cache).write(projectId, {
     lastFetchedAt: '2026-01-01T00:00:00.000Z',
@@ -302,12 +304,13 @@ describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
     });
     const legacyCache: Pick<
       LocalStorageCacheRepository,
-      'getSingle' | 'setSingle'
+      'getSingle' | 'setSingle' | 'withLock'
     > = {
       getSingle: async (key: string) => store.get(key) ?? null,
       setSingle: async (key: string, value: unknown) => {
         store.set(key, value);
       },
+      withLock: async (_key, fn) => fn(),
     };
     const repo = new ProjectIssuesCacheRepository(legacyCache);
 
@@ -350,12 +353,13 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
     });
     const legacyCache: Pick<
       LocalStorageCacheRepository,
-      'getSingle' | 'setSingle'
+      'getSingle' | 'setSingle' | 'withLock'
     > = {
       getSingle: async (key: string) => store.get(key) ?? null,
       setSingle: async (key: string, value: unknown) => {
         store.set(key, value);
       },
+      withLock: async (_key, fn) => fn(),
     };
     const repo = new ProjectIssuesCacheRepository(legacyCache);
 

@@ -23,7 +23,9 @@ describe('LocalStorageRepository', () => {
   beforeEach(() => {
     repository = new LocalStorageRepository();
     mockWriteFileSync = jest.spyOn(fs, 'writeFileSync').mockImplementation();
-    mockReadFileSync = jest.spyOn(fs, 'readFileSync').mockImplementation();
+    mockReadFileSync = jest
+      .spyOn(fs, 'readFileSync')
+      .mockImplementation(() => '');
     mockReaddirSync = jest.spyOn(fs, 'readdirSync').mockImplementation();
     mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation();
     mockExistsSync = jest.spyOn(fs, 'existsSync').mockImplementation();

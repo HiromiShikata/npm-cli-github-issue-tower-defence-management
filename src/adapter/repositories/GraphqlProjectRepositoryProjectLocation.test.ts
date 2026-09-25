@@ -22,6 +22,7 @@ jest.mock('./githubGraphqlClient', () => ({
 
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import type { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { GITHUB_REST_REQUEST_TIMEOUT_MS } from './RestProjectRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
@@ -88,6 +89,11 @@ const graphqlProjectResponse = {
   },
 };
 
+const projectCacheWithLock: LocalStorageCacheRepository['withLock'] = async (
+  _key,
+  fn,
+) => fn();
+
 const buildProjectCache = () => {
   const stored = new Map<string, unknown>();
   return {
@@ -104,9 +110,7 @@ const buildProjectCache = () => {
     }),
     getSingle: jest.fn(async () => null),
     setSingle: jest.fn(async () => undefined),
-    withLock: jest.fn(async (_key: string, fn: () => Promise<unknown>) =>
-      fn(),
-    ),
+    withLock: projectCacheWithLock,
   };
 };
 
