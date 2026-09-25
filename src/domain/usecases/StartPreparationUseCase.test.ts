@@ -7211,20 +7211,20 @@ describe('StartPreparationUseCase', () => {
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
       [0, 1, 2].forEach((slotIndex) => {
-        expect(
-          mockLocalCommandRunner.runCommand.mock.calls[slotIndex],
-        ).toEqual([
-          'aw',
+        expect(mockLocalCommandRunner.runCommand.mock.calls[slotIndex]).toEqual(
           [
-            tierBIssues[slotIndex].url,
-            'agent1',
-            'claude-opus',
-            '--configFilePath',
-            '/path/to/config.yml',
-            '--branch',
-            `i${tierBIssues[slotIndex].number}`,
+            'aw',
+            [
+              tierBIssues[slotIndex].url,
+              'agent1',
+              'claude-opus',
+              '--configFilePath',
+              '/path/to/config.yml',
+              '--branch',
+              `i${tierBIssues[slotIndex].number}`,
+            ],
           ],
-        ]);
+        );
       });
     });
   });
