@@ -1,3 +1,10 @@
+## [2.148.19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.18...v2.148.19) (2026-09-25)
+
+
+### Bug Fixes
+
+* **cache-lock:** drop sequential test-name prefixes, log non-ENOENT statMtimeMs errors, add a fencing token to stale-lock takeover ([#2678](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2678)) ([023eef4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/023eef4e1cf3f8f39bedc32bd4fd24096ea22399))
+
 ## [2.148.18](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.17...v2.148.18) (2026-09-25)
 
 
