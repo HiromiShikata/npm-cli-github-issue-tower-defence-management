@@ -1150,9 +1150,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
           0,
         );
-        expect(
-          mockIssueRepository.updateProjectTextField.mock.calls,
-        ).toEqual([
+        expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual([
           [
             basicProject,
             'fieldId',
@@ -1202,9 +1200,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
           0,
         );
-        expect(
-          mockIssueRepository.updateProjectTextField.mock.calls,
-        ).toEqual([
+        expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual([
           [
             basicProject,
             'fieldId',
