@@ -6912,6 +6912,229 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
+  it('should not move an authorNotAllowed issue to Todo by human when the live status changed away from Awaiting Workspace after the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Preparation',
+        isClosed: false,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should not move an authorNotAllowed issue to Todo by human when the live issue became closed after the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Awaiting Workspace',
+        isClosed: true,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should not move an authorNotAllowed issue to Todo by human when the live item read returns null because the issue left the project', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(null);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should move an authorNotAllowed issue to Todo by human and re-read the live issue when it still matches the snapshot', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/100',
+        status: 'Awaiting Workspace',
+        isClosed: false,
+      }),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+      projectWithTodoByHuman,
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/100',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+      'todo-by-human-id',
+    );
+    expect(mockIssueRepository.get.mock.calls[0]).toEqual([
+      'https://github.com/user/repo/issues/100',
+      projectWithTodoByHuman,
+    ]);
+  });
+
   it('selects an issue whose body starts with the agent report prefix as a spawn candidate', () => {
     const agentBody =
       'From: :robot: some-agent (claude-sonnet-4-5)\nSome content.';
