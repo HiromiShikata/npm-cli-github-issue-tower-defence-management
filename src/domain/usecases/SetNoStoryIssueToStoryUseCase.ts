@@ -4,7 +4,9 @@ import { Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 
 export class SetNoStoryIssueToStoryUseCase {
-  constructor(readonly issueRepository: Pick<IssueRepository, 'updateStory'>) {}
+  constructor(
+    readonly issueRepository: Pick<IssueRepository, 'updateStory' | 'get'>,
+  ) {}
 
   run = async (input: {
     targetDates: Date[];
@@ -38,6 +40,13 @@ export class SetNoStoryIssueToStoryUseCase {
     }
     for (const issue of input.issues) {
       if (!isTargetIssue(issue)) {
+        continue;
+      }
+      const liveIssue = await this.issueRepository.get(
+        issue.url,
+        input.project,
+      );
+      if (liveIssue === null || liveIssue.story !== null) {
         continue;
       }
       await this.issueRepository.updateStory(

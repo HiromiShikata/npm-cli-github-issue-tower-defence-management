@@ -6,7 +6,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue'
+      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue' | 'get'
     >,
   ) {}
 
@@ -43,6 +43,16 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
+        const liveIssueForWorkflowManagement = await this.issueRepository.get(
+          issue.url,
+          input.project,
+        );
+        if (
+          liveIssueForWorkflowManagement === null ||
+          liveIssueForWorkflowManagement.story !== null
+        ) {
+          continue;
+        }
         await this.issueRepository.updateStory(
           { ...input.project, story },
           issue,
@@ -100,6 +110,17 @@ export class SetWorkflowManagementIssueToStoryUseCase {
 
       if (!matchingStory) {
         await this.notifyUnmatchedStoryLabel(issue, storyLabel, labelSuffix);
+        continue;
+      }
+
+      const liveIssueForStoryLabel = await this.issueRepository.get(
+        issue.url,
+        input.project,
+      );
+      if (
+        liveIssueForStoryLabel === null ||
+        liveIssueForStoryLabel.story !== null
+      ) {
         continue;
       }
 
