@@ -776,6 +776,34 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
 
+    it('should not write and should not throw via the workflow management branch when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
     it('should not overwrite Story via the matched story label branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
       const issue: Issue = {
         ...mock<Issue>(),
@@ -827,6 +855,34 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       });
       await jest.runAllTimersAsync();
       await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write and should not throw via the matched story label branch when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
 
       expect(mockIssueRepository.get.mock.calls).toEqual([
         [issue.url, basicProject],

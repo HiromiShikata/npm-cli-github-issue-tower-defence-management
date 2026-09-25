@@ -42,11 +42,11 @@ export class SetNoStoryIssueToStoryUseCase {
       if (!isTargetIssue(issue)) {
         continue;
       }
-      const liveIssue = await this.issueRepository.get(
-        issue.url,
+      const storyStillUnset = await this.isStoryStillUnset(
+        issue,
         input.project,
       );
-      if (liveIssue === null || liveIssue.story !== null) {
+      if (!storyStillUnset) {
         continue;
       }
       await this.issueRepository.updateStory(
@@ -56,5 +56,22 @@ export class SetNoStoryIssueToStoryUseCase {
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+
+  private isStoryStillUnset = async (
+    issue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(issue.url, project);
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live Story value before writing NO STORY. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
+    return liveIssue !== null && liveIssue.story === null;
   };
 }

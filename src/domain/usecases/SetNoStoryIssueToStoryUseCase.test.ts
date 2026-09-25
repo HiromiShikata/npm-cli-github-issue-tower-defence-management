@@ -538,5 +538,31 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       ]);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
+
+    it('should not write and should not throw when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
   });
 });
