@@ -39,7 +39,7 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
     const result = resolveNextStepAgentDispatchRepetition({
       agentFieldValue: null,
       nextStepAgent: 'media-patrol',
-      currentDispatchPostedNoComment: false,
+      currentDispatchHasNoReportRejection: false,
       comments,
       isTrustedAuthor: trustAll,
       thresholdForAutoReject: 99,
@@ -62,7 +62,7 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
     const result = resolveNextStepAgentDispatchRepetition({
       agentFieldValue: null,
       nextStepAgent: 'media-patrol',
-      currentDispatchPostedNoComment: false,
+      currentDispatchHasNoReportRejection: false,
       comments,
       isTrustedAuthor: trustAll,
       thresholdForAutoReject: 99,
