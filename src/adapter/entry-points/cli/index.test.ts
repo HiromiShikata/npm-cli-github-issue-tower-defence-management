@@ -4117,9 +4117,9 @@ mysteryKey: 'value'
           .mockImplementation(
             jest.fn<never, Parameters<typeof process.exit>>(),
           );
-        const stderrWriteSpy = jest
-          .spyOn(process.stderr, 'write')
-          .mockImplementation(() => true);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
         const stdoutWriteSpy = jest
           .spyOn(process.stdout, 'write')
           .mockImplementation(() => true);
@@ -4150,14 +4150,16 @@ mysteryKey: 'value'
 
           expect(handleFatalError).not.toHaveBeenCalled();
           expect(processExitSpy).toHaveBeenCalledWith(1);
-          const stderrOutput = stderrWriteSpy.mock.calls
+          const consoleErrorOutput = consoleErrorSpy.mock.calls
             .flat()
             .map(String)
             .join('');
-          expect(stderrOutput).toContain('fiveHourShareConsumedPerSessionHour');
+          expect(consoleErrorOutput).toContain(
+            'fiveHourShareConsumedPerSessionHour',
+          );
         } finally {
           processExitSpy.mockRestore();
-          stderrWriteSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
           stdoutWriteSpy.mockRestore();
           if (fs.existsSync(fleetConfigFilePath)) {
             fs.unlinkSync(fleetConfigFilePath);

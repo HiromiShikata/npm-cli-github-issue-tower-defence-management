@@ -1369,7 +1369,6 @@ program
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(message);
-      process.stderr.write(`${message}\n`);
       return process.exit(1);
     }
     const handler = new LiveSessionOauthTokenSelectHandler();
