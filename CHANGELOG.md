@@ -1,3 +1,10 @@
+## [2.148.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.3...v2.148.4) (2026-09-25)
+
+
+### Bug Fixes
+
+* **console:** extract shared story-validation helper and fix cache consistency bugs ([#2608](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2608)) ([45075f2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/45075f2abfe43e73e27bd6039b9fad77f83ff522))
+
 ## [2.148.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.2...v2.148.3) (2026-09-25)
 
 
