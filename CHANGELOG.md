@@ -1,3 +1,10 @@
+## [2.149.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.149.0...v2.149.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **error-propagation:** SetNoStoryIssueToStoryUseCase and SetWorkflowManagementIssueToStoryUseCase swallow live re-read failures ([#2707](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2707)) ([0ea571a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ea571a3eefc299d15f86225c626c448ee8e96fc)), closes [#2695](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2695) [#2695](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2695)
+
 # [2.149.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.19...v2.149.0) (2026-09-25)
 
 
