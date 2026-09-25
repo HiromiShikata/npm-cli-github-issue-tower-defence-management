@@ -1,3 +1,10 @@
+# [2.149.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.19...v2.149.0) (2026-09-25)
+
+
+### Features
+
+* **entities:** add Issue.storyOptionId and re-key StoryObjectMap by story option id ([#2705](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2705)) ([37d2589](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/37d2589320f889651f09e168b6af02dbdb3fe090))
+
 ## [2.148.19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.18...v2.148.19) (2026-09-25)
 
 
