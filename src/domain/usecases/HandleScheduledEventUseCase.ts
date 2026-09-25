@@ -569,7 +569,13 @@ ${JSON.stringify(e)}
         });
       }
       try {
-        await this.nonPreparationWorkerScopeStopUseCase.run({ issues });
+        const { stoppedScopeUnitNames } =
+          await this.nonPreparationWorkerScopeStopUseCase.run({ issues });
+        if (stoppedScopeUnitNames.length > 0) {
+          console.log(
+            `[HandleScheduledEvent] Stopped ${stoppedScopeUnitNames.length} worker scope(s) whose issue Status is not ${PREPARATION_STATUS_NAME} for project ${project.url}: ${stoppedScopeUnitNames.join(', ')}`,
+          );
+        }
       } catch (stopError) {
         console.error(
           `[HandleScheduledEvent] Failed to stop non-${PREPARATION_STATUS_NAME} worker scopes for project ${project.url}: ${stopError instanceof Error ? stopError.message : String(stopError)}`,

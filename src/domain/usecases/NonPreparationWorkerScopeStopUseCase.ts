@@ -18,7 +18,6 @@ export class NonPreparationWorkerScopeStopUseCase {
       await this.tmuxSessionRepository.listRunningWorkerScopeUnitNames();
 
     const stoppedScopeUnitNames: string[] = [];
-    const errors: unknown[] = [];
     for (const scopeUnitName of runningScopeUnitNames) {
       const resolvedIssue = resolveIssueForWorkerScopeUnitName(
         scopeUnitName,
@@ -30,18 +29,8 @@ export class NonPreparationWorkerScopeStopUseCase {
       if (resolvedIssue.status === PREPARATION_STATUS_NAME) {
         continue;
       }
-      try {
-        await this.tmuxSessionRepository.stopWorkerScopeUnit(scopeUnitName);
-        stoppedScopeUnitNames.push(scopeUnitName);
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    if (errors.length > 0) {
-      throw new AggregateError(
-        errors,
-        `Failed to stop ${errors.length} worker scope unit(s) whose issue Status is not ${PREPARATION_STATUS_NAME}`,
-      );
+      await this.tmuxSessionRepository.stopWorkerScopeUnit(scopeUnitName);
+      stoppedScopeUnitNames.push(scopeUnitName);
     }
     return { stoppedScopeUnitNames };
   };

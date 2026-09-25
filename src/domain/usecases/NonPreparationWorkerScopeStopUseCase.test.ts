@@ -170,46 +170,4 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
     );
     expect(result.stoppedScopeUnitNames).toEqual(['aw-owner-repo-2-200.scope']);
   });
-
-  it('collects failures into an AggregateError and still stops the scopes that succeed', async () => {
-    const tmuxSessionRepository = createMockTmuxSessionRepository();
-    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
-      'aw-owner-repo-1-100.scope',
-      'aw-owner-repo-2-200.scope',
-    ]);
-    tmuxSessionRepository.stopWorkerScopeUnit.mockImplementation(
-      async (scopeUnitName: string) => {
-        if (scopeUnitName === 'aw-owner-repo-1-100.scope') {
-          throw new Error('stop failed');
-        }
-      },
-    );
-    const useCase = new NonPreparationWorkerScopeStopUseCase(
-      tmuxSessionRepository,
-    );
-
-    await expect(
-      useCase.run({
-        issues: [
-          buildIssue({
-            org: 'owner',
-            repo: 'repo',
-            number: 1,
-            status: DONE_STATUS_NAME,
-            url: 'https://github.com/owner/repo/issues/1',
-          }),
-          buildIssue({
-            org: 'owner',
-            repo: 'repo',
-            number: 2,
-            status: DONE_STATUS_NAME,
-            url: 'https://github.com/owner/repo/issues/2',
-          }),
-        ],
-      }),
-    ).rejects.toThrow(AggregateError);
-    expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
-      'aw-owner-repo-2-200.scope',
-    );
-  });
 });
