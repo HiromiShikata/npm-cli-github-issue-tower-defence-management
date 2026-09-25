@@ -294,8 +294,17 @@ program
     }
     if (options.trigger === 'schedule') {
       const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
+      let scheduleErrorReportingRepository: string | null;
+      try {
+        scheduleErrorReportingRepository = loadErrorReportingRepository(
+          scheduleFleetConfigFilePath,
+        );
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        return process.exit(1);
+      }
       process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
+        scheduleErrorReportingRepository ??
         loadConfigFile(options.config).errorReportingRepository ??
         process.env.TDPM_ERROR_REPORT_REPOSITORY ??
         '';
@@ -395,8 +404,16 @@ program
     const fleetConfigFilePath = resolveFleetConfigFilePath(
       options.fleetConfigFilePath ?? null,
     );
+    let daemonErrorReportingRepository: string | null;
+    try {
+      daemonErrorReportingRepository =
+        loadErrorReportingRepository(fleetConfigFilePath);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
-      loadErrorReportingRepository(fleetConfigFilePath) ??
+      daemonErrorReportingRepository ??
       config.errorReportingRepository ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
@@ -445,8 +462,16 @@ program
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
 
-    const preparationWorkerSettings =
-      loadPreparationWorkerSettings(fleetConfigFilePath);
+    let preparationWorkerSettings: ReturnType<
+      typeof loadPreparationWorkerSettings
+    >;
+    try {
+      preparationWorkerSettings =
+        loadPreparationWorkerSettings(fleetConfigFilePath);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     const fleetConfigSource =
       fleetConfigFilePath !== null
         ? ' (source: fleetConfig)'
@@ -514,6 +539,16 @@ program
         revertIssueCommentRepository,
         localCommandRunner,
       );
+      let workflowIssueReporterSettingsForRevert: ReturnType<
+        typeof loadWorkflowIssueReporterSettings
+      >;
+      try {
+        workflowIssueReporterSettingsForRevert =
+          loadWorkflowIssueReporterSettings(fleetConfigFilePath);
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        return process.exit(1);
+      }
       await revertUseCase.run({
         projectUrl,
         preparationProcessCheckCommand,
@@ -524,8 +559,7 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
-        workflowIssueReporterSettings:
-          loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+        workflowIssueReporterSettings: workflowIssueReporterSettingsForRevert,
       });
     }
 
@@ -685,8 +719,17 @@ program
     const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
       options.fleetConfigFilePath ?? null,
     );
+    let notifyLoadedErrorReportingRepository: string | null;
+    try {
+      notifyLoadedErrorReportingRepository = loadErrorReportingRepository(
+        notifyFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     const notifyEffectiveErrorReportingRepo =
-      loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+      notifyLoadedErrorReportingRepository ??
       config.errorReportingRepository ??
       null;
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
@@ -783,6 +826,18 @@ program
           .filter(Boolean)
       : null;
 
+    let notifyWorkflowIssueReporterSettings: ReturnType<
+      typeof loadWorkflowIssueReporterSettings
+    >;
+    try {
+      notifyWorkflowIssueReporterSettings = loadWorkflowIssueReporterSettings(
+        notifyFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
+
     try {
       await useCase.run({
         projectUrl,
@@ -804,9 +859,7 @@ program
         deferPreparation: options.deferPreparation ?? null,
         rateLimitRejected: options.rateLimitRejected ?? null,
         moveToFailedPreparation: options.moveToFailedPreparation ?? null,
-        workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
-          notifyFleetConfigFilePath,
-        ),
+        workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
         tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
         projectName: config.projectName ?? null,
       });
@@ -864,8 +917,17 @@ program
 
     const checkIssueReviewFleetConfigFilePath =
       resolveFleetConfigFilePath(null);
+    let checkIssueReviewErrorReportingRepository: string | null;
+    try {
+      checkIssueReviewErrorReportingRepository = loadErrorReportingRepository(
+        checkIssueReviewFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
-      loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
+      checkIssueReviewErrorReportingRepository ??
       config.errorReportingRepository ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
@@ -1305,10 +1367,10 @@ program
         resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
       );
     } catch (error) {
-      process.stderr.write(
-        `${error instanceof Error ? error.message : String(error)}\n`,
-      );
-      process.exit(1);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      process.stderr.write(`${message}\n`);
+      return process.exit(1);
     }
     const handler = new LiveSessionOauthTokenSelectHandler();
     const output = handler.handle({
