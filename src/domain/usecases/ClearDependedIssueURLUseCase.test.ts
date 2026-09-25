@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock, MockProxy } from 'jest-mock-extended';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { Project } from '../entities/Project';
@@ -990,6 +990,395 @@ describe('ClearDependedIssueURLUseCase', () => {
         ).toBe(notFoundUrl);
         expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
       });
+    });
+  });
+
+  describe('removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue', () => {
+    const projectWithDependedIssueUrlField: Project = {
+      ...mock<Project>(),
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL Separated By Comma',
+        fieldId: 'fieldId',
+      },
+    };
+    const buildIssue = (
+      url: string,
+      dependedIssueUrls: string[],
+      isClosed: boolean,
+      status: string | null,
+    ): Issue => ({
+      ...mock<Issue>(),
+      url,
+      dependedIssueUrls,
+      isClosed,
+      status,
+    });
+    const recordIssueRepositoryCalls = (
+      issueRepository: MockProxy<IssueRepository>,
+    ) => ({
+      clearProjectField: issueRepository.clearProjectField.mock.calls.map(
+        ([, fieldId, issue]) => [fieldId, issue.url],
+      ),
+      updateProjectTextField:
+        issueRepository.updateProjectTextField.mock.calls.map(
+          ([, fieldId, issue, text]) => [fieldId, issue.url, text],
+        ),
+      createComment: issueRepository.createComment.mock.calls.map(
+        ([issue, body]) => [issue.url, body],
+      ),
+      getIssueOrPullRequestComments:
+        issueRepository.getIssueOrPullRequestComments.mock.calls.map(
+          ([url]) => url,
+        ),
+    });
+    const noCalls: ReturnType<typeof recordIssueRepositoryCalls> = {
+      clearProjectField: [],
+      updateProjectTextField: [],
+      createComment: [],
+      getIssueOrPullRequestComments: [],
+    };
+    const createIssueRepository = (): MockProxy<IssueRepository> => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      return issueRepository;
+    };
+
+    const testCases: {
+      name: string;
+      project: Project;
+      issues: Issue[];
+      expectedCalls: ReturnType<typeof recordIssueRepositoryCalls>;
+    }[] = [
+      {
+        name: 'clears the field and posts the all-closed comment when the only depended issue is closed',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('blocker', [], true, 'Done'),
+          buildIssue('dependent', ['blocker'], false, 'Awaiting Workspace'),
+        ],
+        expectedCalls: {
+          ...noCalls,
+          clearProjectField: [['fieldId', 'dependent']],
+          createComment: [
+            [
+              'dependent',
+              'All depended issues are already closed, dependency field cleared:\n- blocker',
+            ],
+          ],
+          getIssueOrPullRequestComments: ['dependent'],
+        },
+      },
+      {
+        name: 'keeps the open depended issue URL and posts the some-closed comment when one depended issue is closed and another is open',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue('open-blocker', [], false, 'In Progress'),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'open-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+        expectedCalls: {
+          ...noCalls,
+          updateProjectTextField: [['fieldId', 'dependent', 'open-blocker']],
+          createComment: [
+            [
+              'dependent',
+              'Some depended issues are already closed, removed from dependency field:\n- closed-blocker',
+            ],
+          ],
+          getIssueOrPullRequestComments: ['dependent'],
+        },
+      },
+      {
+        name: 'clears the field with one write and posts the closed and Icebox comments when one depended issue is closed and another is in Icebox',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue('icebox-blocker', [], false, ICEBOX_STATUS_NAME),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'icebox-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+        expectedCalls: {
+          ...noCalls,
+          clearProjectField: [['fieldId', 'dependent']],
+          createComment: [
+            [
+              'dependent',
+              'Some depended issues are already closed, removed from dependency field:\n- closed-blocker',
+            ],
+            [
+              'dependent',
+              'Some depended issues are in Icebox, removed from dependency field:\n- icebox-blocker',
+            ],
+          ],
+          getIssueOrPullRequestComments: ['dependent', 'dependent'],
+        },
+      },
+      {
+        name: 'keeps a depended issue URL that is absent from the issue list next to the removed closed one and reads no agent report',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'absent-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+        expectedCalls: {
+          ...noCalls,
+          updateProjectTextField: [['fieldId', 'dependent', 'absent-blocker']],
+          createComment: [
+            [
+              'dependent',
+              'Some depended issues are already closed, removed from dependency field:\n- closed-blocker',
+            ],
+          ],
+          getIssueOrPullRequestComments: ['dependent'],
+        },
+      },
+      {
+        name: 'calls no repository method when the only depended issue is open and in Icebox',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('blocker', [], false, ICEBOX_STATUS_NAME),
+          buildIssue('dependent', ['blocker'], false, 'Awaiting Workspace'),
+        ],
+        expectedCalls: noCalls,
+      },
+      {
+        name: 'calls no repository method when the depended issue is open and not in Icebox',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('blocker', [], false, 'In Progress'),
+          buildIssue('dependent', ['blocker'], false, 'Awaiting Workspace'),
+        ],
+        expectedCalls: noCalls,
+      },
+      {
+        name: 'calls no repository method when the depended issue is absent from the issue list',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue(
+            'dependent',
+            ['absent-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+        expectedCalls: noCalls,
+      },
+      {
+        name: 'calls no repository method when two open issues depend on each other',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('first', ['second'], false, 'Awaiting Workspace'),
+          buildIssue('second', ['first'], false, 'Awaiting Workspace'),
+        ],
+        expectedCalls: noCalls,
+      },
+      {
+        name: 'calls no repository method when the dependent issue itself is closed',
+        project: projectWithDependedIssueUrlField,
+        issues: [
+          buildIssue('blocker', [], true, 'Done'),
+          buildIssue('dependent', ['blocker'], true, 'Done'),
+        ],
+        expectedCalls: noCalls,
+      },
+      {
+        name: 'calls no repository method when the project has no depended issue URL field',
+        project: {
+          ...projectWithDependedIssueUrlField,
+          dependedIssueUrlSeparatedByComma: null,
+        },
+        issues: [
+          buildIssue('blocker', [], true, 'Done'),
+          buildIssue('dependent', ['blocker'], false, 'Awaiting Workspace'),
+        ],
+        expectedCalls: noCalls,
+      },
+    ];
+    it.each(testCases)('$name', async ({ project, issues, expectedCalls }) => {
+      const issueRepository = createIssueRepository();
+      const useCase = new ClearDependedIssueURLUseCase(issueRepository);
+
+      await useCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+        { project, issues },
+      );
+
+      expect(recordIssueRepositoryCalls(issueRepository)).toEqual(
+        expectedCalls,
+      );
+    });
+
+    const issueListsWithClosedDependedIssue: {
+      name: string;
+      issues: Issue[];
+    }[] = [
+      {
+        name: 'the only depended issue is closed',
+        issues: [
+          buildIssue('blocker', [], true, 'Done'),
+          buildIssue('dependent', ['blocker'], false, 'Awaiting Workspace'),
+        ],
+      },
+      {
+        name: 'one depended issue is closed and another is open',
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue('open-blocker', [], false, 'In Progress'),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'open-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+      },
+      {
+        name: 'one depended issue is closed and another is in Icebox',
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue('icebox-blocker', [], false, ICEBOX_STATUS_NAME),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'icebox-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+      },
+      {
+        name: 'one depended issue is closed and another is absent from the issue list',
+        issues: [
+          buildIssue('closed-blocker', [], true, 'Done'),
+          buildIssue(
+            'dependent',
+            ['closed-blocker', 'absent-blocker'],
+            false,
+            'Awaiting Workspace',
+          ),
+        ],
+      },
+    ];
+    it.each(issueListsWithClosedDependedIssue)(
+      'makes exactly the repository calls that run makes with a cached issue list when $name',
+      async ({ issues }) => {
+        const fastCycleRepository = createIssueRepository();
+        const slowSweepRepository = createIssueRepository();
+
+        await new ClearDependedIssueURLUseCase(
+          fastCycleRepository,
+        ).removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue({
+          project: projectWithDependedIssueUrlField,
+          issues,
+        });
+        await new ClearDependedIssueURLUseCase(slowSweepRepository).run({
+          project: projectWithDependedIssueUrlField,
+          issues,
+          cacheUsed: true,
+        });
+
+        expect(recordIssueRepositoryCalls(fastCycleRepository)).toEqual(
+          recordIssueRepositoryCalls(slowSweepRepository),
+        );
+      },
+    );
+
+    it('still removes the closed depended issue URL of the next issue and then rejects naming the issue whose removal failed when one field write fails', async () => {
+      const issueRepository = createIssueRepository();
+      issueRepository.clearProjectField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === 'first-dependent') {
+            throw new Error('clear mutation failed');
+          }
+        },
+      );
+      const useCase = new ClearDependedIssueURLUseCase(issueRepository);
+
+      await expect(
+        useCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+          {
+            project: projectWithDependedIssueUrlField,
+            issues: [
+              buildIssue('blocker', [], true, 'Done'),
+              buildIssue(
+                'first-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+              buildIssue(
+                'second-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+            ],
+          },
+        ),
+      ).rejects.toThrow(
+        'Failed to remove resolved depended issue URLs from 1 issue(s): first-dependent: clear mutation failed',
+      );
+
+      expect(recordIssueRepositoryCalls(issueRepository)).toEqual({
+        ...noCalls,
+        clearProjectField: [
+          ['fieldId', 'first-dependent'],
+          ['fieldId', 'second-dependent'],
+        ],
+        createComment: [
+          [
+            'second-dependent',
+            'All depended issues are already closed, dependency field cleared:\n- blocker',
+          ],
+        ],
+        getIssueOrPullRequestComments: ['second-dependent'],
+      });
+    });
+
+    it('names every issue whose removal failed, with a failure that is not an Error instance written as text', async () => {
+      const issueRepository = createIssueRepository();
+      issueRepository.clearProjectField
+        .mockRejectedValueOnce(new Error('clear mutation failed'))
+        .mockRejectedValueOnce('unexpected rejection value');
+      const useCase = new ClearDependedIssueURLUseCase(issueRepository);
+
+      await expect(
+        useCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+          {
+            project: projectWithDependedIssueUrlField,
+            issues: [
+              buildIssue('blocker', [], true, 'Done'),
+              buildIssue(
+                'first-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+              buildIssue(
+                'second-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+            ],
+          },
+        ),
+      ).rejects.toThrow(
+        'Failed to remove resolved depended issue URLs from 2 issue(s): first-dependent: clear mutation failed; second-dependent: unexpected rejection value',
+      );
+      expect(issueRepository.createComment).not.toHaveBeenCalled();
     });
   });
 });
