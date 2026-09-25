@@ -5795,14 +5795,8 @@ describe('consoleOperationApi', () => {
           storyOptionId: 'opt_remove',
         });
 
-        // Flush the microtask queue by yielding to a macrotask: every promise
-        // reaction chained so far has a chance to run, but neither
-        // getProjectPromise nor storyObjectMapPromise has been resolved yet.
         await new Promise((resolve) => setImmediate(resolve));
 
-        // Both reads must already be in flight even though neither has
-        // resolved -- only possible if they were started concurrently rather
-        // than one awaited before the other begins.
         expect(localGetProject).toHaveBeenCalledTimes(1);
         expect(issueRepository.getStoryObjectMap).toHaveBeenCalledTimes(1);
         expect(localUpdateStoryList).not.toHaveBeenCalled();
