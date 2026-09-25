@@ -1020,6 +1020,29 @@ export class ApiV3CheerioRestIssueRepository
     return result;
   };
 
+  private mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight = (
+    issuesPresentInCacheAtMergeTime: Issue[],
+    itemIdsPresentInCacheBeforeFetchStarted: ReadonlySet<Issue['itemId']>,
+    fetchedItems: ProjectItem[],
+  ): Issue[] => {
+    const mergedIssuesByUrl = new Map<string, Issue>(
+      issuesPresentInCacheAtMergeTime.map((issue) => [issue.url, issue]),
+    );
+    const itemIdsStillPresentInCacheAtMergeTime = new Set(
+      issuesPresentInCacheAtMergeTime.map((issue) => issue.itemId),
+    );
+    for (const item of fetchedItems) {
+      const itemWasRemovedFromCacheWhileThisFetchWasInFlight =
+        itemIdsPresentInCacheBeforeFetchStarted.has(item.id) &&
+        !itemIdsStillPresentInCacheAtMergeTime.has(item.id);
+      if (itemWasRemovedFromCacheWhileThisFetchWasInFlight) {
+        continue;
+      }
+      mergedIssuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
+    }
+    return Array.from(mergedIssuesByUrl.values());
+  };
+
   private refreshAllIssues = async (
     projectId: Project['id'],
   ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => {
@@ -1065,6 +1088,9 @@ export class ApiV3CheerioRestIssueRepository
     const effectiveIsFullFetch = isFullFetch || storyOptionsChanged;
 
     if (effectiveIsFullFetch) {
+      const itemIdsKnownBeforeFetch = new Set(
+        cache?.issues.map((issue) => issue.itemId) ?? [],
+      );
       const items =
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
       const nowIso = now.toISOString();
@@ -1072,15 +1098,12 @@ export class ApiV3CheerioRestIssueRepository
         projectId,
         async () => {
           const freshCache = await this.readCachedProjectIssues(projectId);
-          const issuesByUrl = new Map<string, Issue>(
-            freshCache !== null
-              ? freshCache.issues.map((issue) => [issue.url, issue])
-              : [],
-          );
-          for (const item of items) {
-            issuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
-          }
-          const mergedIssues = Array.from(issuesByUrl.values());
+          const mergedIssues =
+            this.mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight(
+              freshCache?.issues ?? [],
+              itemIdsKnownBeforeFetch,
+              items,
+            );
           await this.projectIssuesCacheRepository.write(projectId, {
             lastFetchedAt: nowIso,
             lastFullFetchAt: nowIso,
@@ -1099,6 +1122,9 @@ export class ApiV3CheerioRestIssueRepository
       return { issues, project, cacheUsed: false };
     }
 
+    const itemIdsKnownBeforeFetch = new Set(
+      cache.issues.map((issue) => issue.itemId),
+    );
     const lastFetchedAt = new Date(cache.lastFetchedAt);
     const cutoff = new Date(
       lastFetchedAt.getTime() - INCREMENTAL_FETCH_SKEW_BUFFER_MS,
@@ -1122,14 +1148,12 @@ export class ApiV3CheerioRestIssueRepository
       projectId,
       async () => {
         const freshCache = await this.readCachedProjectIssues(projectId);
-        const issuesByUrl = new Map<string, Issue>(
-          (freshCache ?? cache).issues.map((issue) => [issue.url, issue]),
-        );
-        for (const item of changedItems) {
-          const issue = this.convertProjectItemToIssue(item);
-          issuesByUrl.set(issue.url, issue);
-        }
-        const mergedIssues = Array.from(issuesByUrl.values());
+        const mergedIssues =
+          this.mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight(
+            (freshCache ?? cache).issues,
+            itemIdsKnownBeforeFetch,
+            changedItems,
+          );
         await this.projectIssuesCacheRepository.write(projectId, {
           lastFetchedAt: nowIso,
           lastFullFetchAt: freshCache?.lastFullFetchAt ?? cache.lastFullFetchAt,
