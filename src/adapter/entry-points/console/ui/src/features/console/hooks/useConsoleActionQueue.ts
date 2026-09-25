@@ -120,6 +120,7 @@ export type ConsoleActionQueue = {
   enqueue: (action: ConsoleQueuedAction) => void;
   showError: (message: string, reason: string) => void;
   undo: () => void;
+  dismiss: () => void;
   dismissError: () => void;
   confirmOfflineAction: (id: string) => Promise<void>;
   discardOfflineAction: (id: string) => void;
@@ -202,6 +203,10 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     action?.revertAdvance?.();
     action?.revertOptimistic?.();
   }, [clearTimer]);
+
+  const dismiss = useCallback((): void => {
+    commitPending();
+  }, [commitPending]);
 
   const dismissError = useCallback((): void => {
     setError(null);
@@ -287,6 +292,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     enqueue,
     showError,
     undo,
+    dismiss,
     dismissError,
     confirmOfflineAction,
     discardOfflineAction,

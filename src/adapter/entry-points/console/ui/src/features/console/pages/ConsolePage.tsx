@@ -1019,6 +1019,7 @@ export const ConsolePage = () => {
           remainingSeconds={actionQueue.pending.remainingSeconds}
           progress={actionQueue.pending.progress}
           onUndo={actionQueue.undo}
+          onDismiss={actionQueue.dismiss}
         />
       )}
       {actionQueue.error !== null && (
