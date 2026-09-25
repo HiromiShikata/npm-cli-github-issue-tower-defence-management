@@ -866,6 +866,7 @@ describe('ConsoleItemDetailContainer', () => {
     await expect(input.commit()).rejects.toBe(
       statusSetFailureAfterCommentPostedCause,
     );
+    onCommentError.mockClear();
 
     await expect(input.commit()).resolves.toBeUndefined();
 
