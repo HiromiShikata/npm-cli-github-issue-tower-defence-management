@@ -119,18 +119,33 @@ describe('ProcClaudeLiveSessionRepository', () => {
     ]);
   });
 
-  it('ignores a claude process with a token but neither config dir nor session id', () => {
+  it('keys each claude process with a token but neither config dir nor session id by its process id', () => {
     writeProcess({
       pid: 113,
-      cmdline: '/usr/local/bin/claude\0',
+      cmdline: '/usr/local/bin/claude\0-p\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-no-key',
+      },
+    });
+    writeProcess({
+      pid: 114,
+      cmdline: '/home/user/.local/share/claude/versions/2.1.0\0-p\0',
+      environ: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-no-key',
+        CLAUDE_CONFIG_DIR: '',
+        CLAUDE_CODE_SESSION_ID: '',
       },
     });
 
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
-    expect(repository.listLiveSessions()).toEqual([]);
+    const liveSessions = [...repository.listLiveSessions()].sort((left, right) =>
+      left.sessionKey.localeCompare(right.sessionKey),
+    );
+    expect(liveSessions).toEqual([
+      { token: 'token-no-key', sessionKey: 'pid:113' },
+      { token: 'token-no-key', sessionKey: 'pid:114' },
+    ]);
   });
 
   it('ignores a process without an oauth token (for example an api-key session)', () => {
