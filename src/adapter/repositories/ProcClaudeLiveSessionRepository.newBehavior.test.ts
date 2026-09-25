@@ -54,7 +54,6 @@ describe('SC-4: process without CLAUDE_CONFIG_DIR or SESSION_ID is listed with p
       cmdline: '/usr/local/bin/claude\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-pid-only',
-        // deliberately absent: CLAUDE_CONFIG_DIR, CLAUDE_CODE_SESSION_ID
       },
     });
 
@@ -72,7 +71,6 @@ describe('SC-4: process without CLAUDE_CONFIG_DIR or SESSION_ID is listed with p
       cmdline: '/usr/local/bin/claude\0',
       environ: {
         CLAUDE_CODE_SESSION_ID: 'some-session',
-        // no CLAUDE_CODE_OAUTH_TOKEN
       },
     });
 
@@ -80,8 +78,6 @@ describe('SC-4: process without CLAUDE_CONFIG_DIR or SESSION_ID is listed with p
     expect(repository.listLiveSessions()).toEqual([]);
   });
 });
-
-// ─── Regression tests ────────────────────────────────────────────────────────
 
 describe('R1 (regression): process with CLAUDE_CONFIG_DIR keeps config-dir-based session key', () => {
   let procDirectory: string;

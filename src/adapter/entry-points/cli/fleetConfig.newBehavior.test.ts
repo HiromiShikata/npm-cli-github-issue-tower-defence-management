@@ -133,8 +133,6 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour is loaded from fleet config
   });
 });
 
-// ─── Regression tests ────────────────────────────────────────────────────────
-
 describe('R3 (regression): existing fullSpeedFiveHourFreeRatio validation is preserved', () => {
   let tempDir: string;
 

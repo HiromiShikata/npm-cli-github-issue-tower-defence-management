@@ -244,12 +244,9 @@ describe('SC-6a: fiveHourShareConsumedPerSessionHour effect on concurrent limit'
     );
 
     const metric = result.metrics.find((m) => m.name === 'tokenE');
-    // With share=0.1 (double the default 0.05), the limit halves from SC-1's 2 to 1.
     expect(metric?.concurrentSessionLimit).toBe(1);
   });
 });
-
-// ─── Regression tests ────────────────────────────────────────────────────────
 
 describe('R2 (regression): seven-day reset order is preserved when both tokens have headroom', () => {
   /**
