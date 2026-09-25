@@ -39,6 +39,7 @@ export class SetNoStoryIssueToStoryUseCase {
     if (!noStoryOption) {
       return;
     }
+    const errors: unknown[] = [];
     for (const issue of input.issues) {
       if (!isTargetIssue(issue)) {
         continue;
@@ -55,10 +56,7 @@ export class SetNoStoryIssueToStoryUseCase {
           continue;
         }
       } catch (error) {
-        console.error(
-          `Failed to re-read the live Story value before writing NO STORY. issueUrl: ${issue.url}`,
-          error,
-        );
+        errors.push(error);
         continue;
       }
       await this.issueRepository.updateStory(
@@ -67,6 +65,12 @@ export class SetNoStoryIssueToStoryUseCase {
         noStoryOption.id,
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    if (errors.length > 0) {
+      throw new AggregateError(
+        errors,
+        `Failed to re-read the live Story value for ${errors.length} issue(s) before writing NO STORY`,
+      );
     }
   };
 }
