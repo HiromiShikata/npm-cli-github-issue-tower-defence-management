@@ -1,3 +1,10 @@
+## [2.148.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.8...v2.148.9) (2026-09-25)
+
+
+### Bug Fixes
+
+* **ClearDependedIssueURLUseCase:** confirm same-repo depended issue existence via live GitHub check before treating as not-found ([#2615](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2615)) ([f8a2091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f8a20917b502ba9efbb2ac1eba361146fb081f3a))
+
 ## [2.148.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.7...v2.148.8) (2026-09-25)
 
 
