@@ -1,5 +1,3 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import {
   CONSOLE_E2E_AWAITING_OWNER_PR_URL,
