@@ -3849,9 +3849,7 @@ describe('consoleOperationApi', () => {
           ...cachedProject,
           story: {
             ...cachedStory,
-            stories: ['opt_z', 'opt_a', 'opt_b', 'opt_c'].map(
-              buildStoryOption,
-            ),
+            stories: ['opt_z', 'opt_a', 'opt_b', 'opt_c'].map(buildStoryOption),
           },
         };
         const localUpdateStoryList = jest.fn().mockResolvedValue([]);
@@ -5785,11 +5783,9 @@ describe('consoleOperationApi', () => {
         };
 
         let resolveStoryObjectMap!: (value: StoryObjectMap) => void;
-        const storyObjectMapPromise = new Promise<StoryObjectMap>(
-          (resolve) => {
-            resolveStoryObjectMap = resolve;
-          },
-        );
+        const storyObjectMapPromise = new Promise<StoryObjectMap>((resolve) => {
+          resolveStoryObjectMap = resolve;
+        });
         issueRepository.getStoryObjectMap.mockReturnValue(
           storyObjectMapPromise,
         );
