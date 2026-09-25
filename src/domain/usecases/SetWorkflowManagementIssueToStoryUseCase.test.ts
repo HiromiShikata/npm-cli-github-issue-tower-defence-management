@@ -154,6 +154,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -187,6 +188,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [nonHourDate],
@@ -219,6 +221,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -251,6 +254,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -281,6 +285,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: true,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -311,6 +316,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -343,6 +349,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -375,6 +382,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -539,6 +547,12 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         isPr: false,
       };
       mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === matchedIssue.url) {
+          return { ...matchedIssue, story: null };
+        }
+        return null;
+      });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -670,6 +684,15 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === issue1.url) {
+          return { ...issue1, story: null };
+        }
+        if (issueUrl === issue2.url) {
+          return { ...issue2, story: null };
+        }
+        return null;
+      });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -692,6 +715,124 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         [issue1, 'story:high-priority'],
         [issue2, 'story:middle-bug'],
       ]);
+    });
+
+    it('should not overwrite Story via the workflow management branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / high priority',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write via the workflow management branch when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue(null);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not overwrite Story via the matched story label branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / middle bug',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write via the matched story label branch when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue(null);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
   });
 });
