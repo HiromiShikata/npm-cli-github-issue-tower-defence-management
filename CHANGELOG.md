@@ -1,3 +1,10 @@
+## [2.148.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.11...v2.148.12) (2026-09-25)
+
+
+### Bug Fixes
+
+* **tdpm:** add circuit breaker for story-unset dispatch loop ([#2641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2641)) ([a6eed0b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6eed0b53e5828fea9bde23c2e6fca1216abea99))
+
 ## [2.148.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.10...v2.148.11) (2026-09-25)
 
 
