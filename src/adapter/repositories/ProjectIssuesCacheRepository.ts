@@ -85,11 +85,14 @@ export class ProjectIssuesCacheRepository {
   constructor(
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
-      'getSingle' | 'setSingle'
+      'getSingle' | 'setSingle' | 'withLock'
     >,
   ) {}
 
   cacheKey = (projectId: Project['id']): string => `allIssues-${projectId}`;
+
+  withLock = <T>(projectId: Project['id'], fn: () => Promise<T>): Promise<T> =>
+    this.localStorageCacheRepository.withLock(this.cacheKey(projectId), fn);
 
   readRaw = async (projectId: Project['id']): Promise<unknown> =>
     this.localStorageCacheRepository.getSingle(this.cacheKey(projectId));
@@ -148,63 +151,75 @@ export class ProjectIssuesCacheRepository {
   removeIssueByItemId = async (
     projectId: Project['id'],
     itemId: Issue['itemId'],
-  ): Promise<void> => {
-    const raw = await this.readRaw(projectId);
-    if (
-      typeof raw !== 'object' ||
-      raw === null ||
-      !('issues' in raw) ||
-      !Array.isArray(raw.issues)
-    ) {
-      return;
-    }
-    const hasItemId = (value: object): value is { itemId: unknown } =>
-      'itemId' in value;
-    const filteredIssues = raw.issues.filter(
-      (issue: unknown) =>
-        typeof issue !== 'object' ||
-        issue === null ||
-        !hasItemId(issue) ||
-        issue.itemId !== itemId,
-    );
-    if (filteredIssues.length === raw.issues.length) {
-      return;
-    }
-    await this.localStorageCacheRepository.setSingle(this.cacheKey(projectId), {
-      ...raw,
-      issues: filteredIssues,
+  ): Promise<void> =>
+    this.withLock(projectId, async () => {
+      const raw = await this.readRaw(projectId);
+      if (
+        typeof raw !== 'object' ||
+        raw === null ||
+        !('issues' in raw) ||
+        !Array.isArray(raw.issues)
+      ) {
+        return;
+      }
+      const hasItemId = (value: object): value is { itemId: unknown } =>
+        'itemId' in value;
+      const filteredIssues = raw.issues.filter(
+        (issue: unknown) =>
+          typeof issue !== 'object' ||
+          issue === null ||
+          !hasItemId(issue) ||
+          issue.itemId !== itemId,
+      );
+      if (filteredIssues.length === raw.issues.length) {
+        return;
+      }
+      await this.localStorageCacheRepository.setSingle(
+        this.cacheKey(projectId),
+        {
+          ...raw,
+          issues: filteredIssues,
+        },
+      );
     });
-  };
 
   updateFieldOptions = async (
     projectId: Project['id'],
     fieldId: string,
     options: FieldOption[],
-  ): Promise<void> => {
-    const raw = await this.readRaw(projectId);
-    if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
-      return;
-    }
-    if (!isProject(raw.project)) {
-      return;
-    }
-    const project = this.projectWithFieldOptions(raw.project, fieldId, options);
-    if (project === null) {
-      return;
-    }
-    const storyOptions =
-      project.story !== null && project.story.fieldId === fieldId
-        ? project.story.stories.map((s) => ({
-            name: s.name,
-            description: s.description ?? '',
-          }))
-        : deserializeStoryOptions(raw);
-    await this.localStorageCacheRepository.setSingle(this.cacheKey(projectId), {
-      ...raw,
-      project,
-      storyOptions,
+  ): Promise<void> =>
+    this.withLock(projectId, async () => {
+      const raw = await this.readRaw(projectId);
+      if (typeof raw !== 'object' || raw === null || !('project' in raw)) {
+        return;
+      }
+      if (!isProject(raw.project)) {
+        return;
+      }
+      const project = this.projectWithFieldOptions(
+        raw.project,
+        fieldId,
+        options,
+      );
+      if (project === null) {
+        return;
+      }
+      const storyOptions =
+        project.story !== null && project.story.fieldId === fieldId
+          ? project.story.stories.map((s) => ({
+              name: s.name,
+              description: s.description ?? '',
+            }))
+          : deserializeStoryOptions(raw);
+      await this.localStorageCacheRepository.setSingle(
+        this.cacheKey(projectId),
+        {
+          ...raw,
+          project,
+          storyOptions,
+        },
+      );
     });
-  };
 
   private projectWithFieldOptions = (
     project: Project,

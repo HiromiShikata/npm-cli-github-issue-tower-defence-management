@@ -58,7 +58,7 @@ export class GraphqlProjectRepository
     ghToken: string = process.env.GH_TOKEN || 'dummy',
     projectCache?: Pick<
       LocalStorageCacheRepository,
-      'getLatest' | 'set' | 'getSingle' | 'setSingle'
+      'getLatest' | 'set' | 'getSingle' | 'setSingle' | 'withLock'
     >,
     readGhTokens: string[] = [],
   ) {
