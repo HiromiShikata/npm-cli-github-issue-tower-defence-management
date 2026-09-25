@@ -8228,10 +8228,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         new Date('2026-07-01T02:00:00.000Z'),
       );
       projectRepository.getProject.mockResolvedValue(project);
-      // The fetch already started (with the stale item still on the server
-      // side response) before the removal below is known to this process, so
-      // its resolution is stalled until well after the concurrent removal has
-      // fully completed and released the cache lock.
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           await wait(80);
@@ -8300,14 +8296,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         projectRepository,
         dateRepository,
       } = buildProcessRepository(cache);
-      dateRepository.now.mockResolvedValue(
-        new Date('2026-07-07T00:45:00Z'),
-      );
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
       projectRepository.getProject.mockResolvedValue(project);
-      // The light-item scan already started (finding the stale item still
-      // changed server side) before the removal below is known to this
-      // process, so its resolution is stalled until well after the
-      // concurrent removal has fully completed and released the cache lock.
       graphqlProjectItemRepository.fetchProjectItemsLight.mockImplementation(
         async () => {
           await wait(80);
