@@ -2268,6 +2268,113 @@ mysteryKey: 'value'
       processExitSpy.mockRestore();
     });
 
+    it('should pass the --dispatchStartedAt timestamp to the use case as a Date', async () => {
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(NotifyFinishedIssuePreparationUseCase)
+        .mockImplementation(function (
+          this: NotifyFinishedIssuePreparationUseCase,
+        ) {
+          this.run = mockRun;
+          return this;
+        });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--dispatchStartedAt',
+        '2026-09-25T10:15:30Z',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dispatchStartedAt: new Date('2026-09-25T10:15:30.000Z'),
+        }),
+      );
+    });
+
+    it('should pass a null dispatchStartedAt when --dispatchStartedAt is omitted', async () => {
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(NotifyFinishedIssuePreparationUseCase)
+        .mockImplementation(function (
+          this: NotifyFinishedIssuePreparationUseCase,
+        ) {
+          this.run = mockRun;
+          return this;
+        });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ dispatchStartedAt: null }),
+      );
+    });
+
+    it.each([
+      { rawValue: 'yesterday' },
+      { rawValue: '2026-09-25' },
+      { rawValue: '2026-09-25T10:15:30' },
+      { rawValue: '2026-13-45T10:15:30Z' },
+    ])(
+      'should exit with error for the invalid --dispatchStartedAt value $rawValue',
+      async ({ rawValue }) => {
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation();
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(() => {
+            throw new Error('process.exit called');
+          });
+
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'notifyFinishedIssuePreparation',
+            '--configFilePath',
+            configFilePath,
+            '--issueUrl',
+            'https://github.com/test/repo/issues/1',
+            '--dispatchStartedAt',
+            rawValue,
+          ]),
+        ).rejects.toThrow('process.exit called');
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          `Invalid value for --dispatchStartedAt: "${rawValue}". It must be an ISO-8601 UTC timestamp such as 2026-01-31T09:00:00Z.`,
+        );
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        expect(mockRun).not.toHaveBeenCalled();
+
+        consoleErrorSpy.mockRestore();
+        processExitSpy.mockRestore();
+      },
+    );
+
     it('should exit with error when GH_TOKEN is missing', async () => {
       delete process.env.GH_TOKEN;
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
