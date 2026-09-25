@@ -1,3 +1,10 @@
+# [2.147.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.2...v2.147.0) (2026-09-25)
+
+
+### Features
+
+* **ConsoleUndoToast:** add dismiss button and dismiss() hook method ([#2591](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2591)) ([2fff05b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2fff05b655a47b505fc7061e16d7b3f807e58a4a))
+
 ## [2.146.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.1...v2.146.2) (2026-09-25)
 
 
