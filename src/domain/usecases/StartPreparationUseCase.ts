@@ -688,17 +688,26 @@ export class StartPreparationUseCase {
           : agentNameFromDesignation(issue.agent ?? '')) ||
         params.defaultAgentName;
       if (issue.agent === null && !isNoStory) {
-        const agentOptionId = await ensureAgentOptionAndGetId(
-          this.projectRepository,
+        const staleness = await issueSnapshotStalenessCheck({
+          issueRepository: this.issueRepository,
           project,
-          agent,
-        );
-        if (agentOptionId !== null) {
-          await this.issueRepository.setIssueAgentField(
-            issue.url,
+          snapshotIssue: issue,
+          checkedFieldNames: ['agent'],
+          skippedWriteDescription: `the default Agent write for a spawn candidate`,
+        });
+        if (staleness.type === 'current') {
+          const agentOptionId = await ensureAgentOptionAndGetId(
+            this.projectRepository,
             project,
-            agentOptionId,
+            agent,
           );
+          if (agentOptionId !== null) {
+            await this.issueRepository.setIssueAgentField(
+              issue.url,
+              project,
+              agentOptionId,
+            );
+          }
         }
       }
       const labelModelName = issue.labels
