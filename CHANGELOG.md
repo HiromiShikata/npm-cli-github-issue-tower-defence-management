@@ -1,3 +1,10 @@
+## [2.148.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.1...v2.148.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* **selectLiveSessionOauthToken:** validate fiveHourShareConsumedPerSessionHour and catch config errors locally ([#2596](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2596)) ([e69eadd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e69eadd01e89d6267da163a5c6cd4a1c6093561b))
+
 ## [2.148.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.0...v2.148.1) (2026-09-25)
 
 
