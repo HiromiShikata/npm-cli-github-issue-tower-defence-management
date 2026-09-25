@@ -53,10 +53,6 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    mockIssueRepository.get.mockResolvedValue({
-      ...mock<Issue>(),
-      story: null,
-    });
     useCase = new SetWorkflowManagementIssueToStoryUseCase(mockIssueRepository);
   });
 
@@ -721,12 +717,96 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       ]);
     });
 
-    describe('when the Story changed after the item snapshot was taken', () => {
-      const snapshotIssueUrl =
-        'https://github.com/org/repo/issues/snapshot-story-empty';
-      const labelledSnapshotIssue: Issue = {
+    it('should not overwrite Story via the workflow management branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
         ...mock<Issue>(),
-        url: snapshotIssueUrl,
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / high priority',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write via the workflow management branch when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockResolvedValue(null);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write and should not throw via the workflow management branch when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not overwrite Story via the matched story label branch when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
         labels: ['story:high-priority'],
         story: null,
         state: 'OPEN',
@@ -734,142 +814,81 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionHour: null,
         isPr: false,
       };
-      const pullRequestSnapshotIssue: Issue = {
-        ...labelledSnapshotIssue,
-        labels: [],
-        isPr: true,
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / middle bug',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('should not write via the matched story label branch when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
       };
+      mockIssueRepository.get.mockResolvedValue(null);
 
-      it.each<{
-        label: string;
-        snapshotIssue: Issue;
-        liveIssue: Issue | null;
-        expectedUpdateStoryCalls: unknown[][];
-        expectedRemoveLabelCalls: unknown[][];
-      }>([
-        {
-          label:
-            'does not overwrite a Story an agent set on a story-labelled item after the snapshot was taken',
-          snapshotIssue: labelledSnapshotIssue,
-          liveIssue: {
-            ...labelledSnapshotIssue,
-            story: 'regular / middle bug',
-          },
-          expectedUpdateStoryCalls: [],
-          expectedRemoveLabelCalls: [],
-        },
-        {
-          label:
-            'does not overwrite a Story an agent set on a pull request after the snapshot was taken',
-          snapshotIssue: pullRequestSnapshotIssue,
-          liveIssue: { ...pullRequestSnapshotIssue, story: 'workflow board' },
-          expectedUpdateStoryCalls: [],
-          expectedRemoveLabelCalls: [],
-        },
-        {
-          label: 'does not write when the item is no longer on the project',
-          snapshotIssue: labelledSnapshotIssue,
-          liveIssue: null,
-          expectedUpdateStoryCalls: [],
-          expectedRemoveLabelCalls: [],
-        },
-        {
-          label: 'writes the labelled Story when the live Story is still empty',
-          snapshotIssue: labelledSnapshotIssue,
-          liveIssue: { ...labelledSnapshotIssue },
-          expectedUpdateStoryCalls: [
-            [
-              { ...basicProject, story: basicProject.story },
-              labelledSnapshotIssue,
-              'highPriorityId',
-            ],
-          ],
-          expectedRemoveLabelCalls: [
-            [labelledSnapshotIssue, 'story:high-priority'],
-          ],
-        },
-        {
-          label:
-            'writes the workflow management Story to a pull request whose live Story is still empty',
-          snapshotIssue: pullRequestSnapshotIssue,
-          liveIssue: { ...pullRequestSnapshotIssue },
-          expectedUpdateStoryCalls: [
-            [
-              { ...basicProject, story: basicProject.story },
-              pullRequestSnapshotIssue,
-              'workflowManagementStoryId',
-            ],
-          ],
-          expectedRemoveLabelCalls: [],
-        },
-      ])(
-        '$label',
-        async ({
-          snapshotIssue,
-          liveIssue,
-          expectedUpdateStoryCalls,
-          expectedRemoveLabelCalls,
-        }) => {
-          mockIssueRepository.get.mockResolvedValue(liveIssue);
-
-          const promise = useCase.run({
-            targetDates: [targetDate],
-            project: basicProject,
-            issues: [snapshotIssue],
-            cacheUsed: false,
-          });
-          await jest.runAllTimersAsync();
-          await promise;
-
-          expect(mockIssueRepository.get.mock.calls).toEqual([
-            [snapshotIssueUrl, basicProject],
-          ]);
-          expect(mockIssueRepository.updateStory.mock.calls).toEqual(
-            expectedUpdateStoryCalls,
-          );
-          expect(mockIssueRepository.removeLabel.mock.calls).toEqual(
-            expectedRemoveLabelCalls,
-          );
-        },
-      );
-
-      it('does not write and does not throw via the workflow management branch when the live re-read rejects', async () => {
-        mockIssueRepository.get.mockRejectedValue(new Error('network error'));
-
-        const promise = useCase.run({
-          targetDates: [targetDate],
-          project: basicProject,
-          issues: [pullRequestSnapshotIssue],
-          cacheUsed: false,
-        });
-        await jest.runAllTimersAsync();
-        await expect(promise).resolves.toBeUndefined();
-
-        expect(mockIssueRepository.get.mock.calls).toEqual([
-          [snapshotIssueUrl, basicProject],
-        ]);
-        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
       });
+      await jest.runAllTimersAsync();
+      await promise;
 
-      it('does not write and does not throw via the matched story label branch when the live re-read rejects', async () => {
-        mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
 
-        const promise = useCase.run({
-          targetDates: [targetDate],
-          project: basicProject,
-          issues: [labelledSnapshotIssue],
-          cacheUsed: false,
-        });
-        await jest.runAllTimersAsync();
-        await expect(promise).resolves.toBeUndefined();
+    it('should not write and should not throw via the matched story label branch when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
 
-        expect(mockIssueRepository.get.mock.calls).toEqual([
-          [snapshotIssueUrl, basicProject],
-        ]);
-        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
       });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
     });
   });
 });

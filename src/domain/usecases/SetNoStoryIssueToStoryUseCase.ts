@@ -2,10 +2,6 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
-import {
-  IssueSnapshotStaleness,
-  issueSnapshotStalenessCheck,
-} from './issueSnapshotStalenessCheck';
 
 export class SetNoStoryIssueToStoryUseCase {
   constructor(
@@ -46,23 +42,11 @@ export class SetNoStoryIssueToStoryUseCase {
       if (!isTargetIssue(issue)) {
         continue;
       }
-      let staleness: IssueSnapshotStaleness;
-      try {
-        staleness = await issueSnapshotStalenessCheck({
-          issueRepository: this.issueRepository,
-          project: input.project,
-          snapshotIssue: issue,
-          checkedFieldNames: ['story'],
-          skippedWriteDescription: `the ${NO_STORY_STORY_NAME} Story write`,
-        });
-      } catch (error) {
-        console.error(
-          `Failed to re-read the live Story value before writing ${NO_STORY_STORY_NAME}. issueUrl: ${issue.url}`,
-          error,
-        );
-        continue;
-      }
-      if (staleness.type !== 'current') {
+      const storyStillUnset = await this.isStoryStillUnset(
+        issue,
+        input.project,
+      );
+      if (!storyStillUnset) {
         continue;
       }
       await this.issueRepository.updateStory(
@@ -72,5 +56,22 @@ export class SetNoStoryIssueToStoryUseCase {
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  };
+
+  private isStoryStillUnset = async (
+    issue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(issue.url, project);
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live Story value before writing NO STORY. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
+    return liveIssue !== null && liveIssue.story === null;
   };
 }

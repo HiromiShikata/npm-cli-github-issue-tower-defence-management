@@ -1,10 +1,6 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import {
-  IssueSnapshotStaleness,
-  issueSnapshotStalenessCheck,
-} from './issueSnapshotStalenessCheck';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
@@ -47,13 +43,11 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
-        if (
-          !(await this.isSnapshotStoryStillCurrent(
-            input.project,
-            issue,
-            story.workflowManagementStory.name,
-          ))
-        ) {
+        const storyStillUnset = await this.isStoryStillUnset(
+          issue,
+          input.project,
+        );
+        if (!storyStillUnset) {
           continue;
         }
         await this.issueRepository.updateStory(
@@ -115,13 +109,12 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         await this.notifyUnmatchedStoryLabel(issue, storyLabel, labelSuffix);
         continue;
       }
-      if (
-        !(await this.isSnapshotStoryStillCurrent(
-          input.project,
-          issue,
-          matchingStory.name,
-        ))
-      ) {
+
+      const storyStillUnsetForLabel = await this.isStoryStillUnset(
+        issue,
+        input.project,
+      );
+      if (!storyStillUnsetForLabel) {
         continue;
       }
 
@@ -135,20 +128,13 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     }
   };
 
-  private isSnapshotStoryStillCurrent = async (
-    project: Project,
+  private isStoryStillUnset = async (
     issue: Issue,
-    plannedStoryName: string,
+    project: Project,
   ): Promise<boolean> => {
-    let staleness: IssueSnapshotStaleness;
+    let liveIssue: Issue | null;
     try {
-      staleness = await issueSnapshotStalenessCheck({
-        issueRepository: this.issueRepository,
-        project,
-        snapshotIssue: issue,
-        checkedFieldNames: ['story'],
-        skippedWriteDescription: `the ${plannedStoryName} Story write`,
-      });
+      liveIssue = await this.issueRepository.get(issue.url, project);
     } catch (error) {
       console.error(
         `Failed to re-read the live Story value before writing a Story. issueUrl: ${issue.url}`,
@@ -156,7 +142,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       );
       return false;
     }
-    return staleness.type === 'current';
+    return liveIssue !== null && liveIssue.story === null;
   };
 
   static buildUnmatchedStoryLabelTitle = (
