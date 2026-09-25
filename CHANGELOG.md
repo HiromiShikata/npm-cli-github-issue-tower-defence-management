@@ -1,3 +1,10 @@
+## [2.148.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.15...v2.148.16) (2026-09-25)
+
+
+### Bug Fixes
+
+* **ProjectIssuesCacheRepository:** serialize cache read-modify-write with a per-project file lock ([#2657](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2657)) ([a37f47a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a37f47a60d0ca0992d04fbf0c1a554fa86115487))
+
 ## [2.148.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.14...v2.148.15) (2026-09-25)
 
 
