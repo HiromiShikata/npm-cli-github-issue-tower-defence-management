@@ -95,6 +95,7 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
       fullSpeedFiveHourFreeRatio: 0.4,
       minFiveHourFreeRatio: 0.7,
       minSevenDayFreeRatio: 0.2,
+      fiveHourShareConsumedPerSessionHour: 0.05,
     });
   });
 
@@ -116,6 +117,8 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minFiveHourFreeRatio,
       minSevenDayFreeRatio:
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
+      fiveHourShareConsumedPerSessionHour:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
     });
   });
 

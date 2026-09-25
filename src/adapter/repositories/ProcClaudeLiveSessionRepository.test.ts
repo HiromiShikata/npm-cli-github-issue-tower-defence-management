@@ -119,7 +119,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     ]);
   });
 
-  it('ignores a claude process with a token but neither config dir nor session id', () => {
+  it('lists a claude process with a token but neither config dir nor session id using a pid key', () => {
     writeProcess({
       pid: 113,
       cmdline: '/usr/local/bin/claude\0',
@@ -130,7 +130,9 @@ describe('ProcClaudeLiveSessionRepository', () => {
 
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
-    expect(repository.listLiveSessions()).toEqual([]);
+    expect(repository.listLiveSessions()).toEqual([
+      { token: 'token-no-key', sessionKey: 'pid:113' },
+    ]);
   });
 
   it('ignores a process without an oauth token (for example an api-key session)', () => {

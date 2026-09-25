@@ -5,7 +5,6 @@ import {
   OauthTokenSelectUseCase,
   SEVEN_DAY_SPEND_DEADLINE_HOURS,
   selectionWeightOf,
-  sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
 
 export const LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO = 0.03;
@@ -15,6 +14,7 @@ export type LiveSessionOauthTokenSelectionSettings = {
   fullSpeedFiveHourFreeRatio: number;
   minFiveHourFreeRatio: number;
   minSevenDayFreeRatio: number;
+  fiveHourShareConsumedPerSessionHour: number;
 };
 
 export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOauthTokenSelectionSettings =
@@ -23,6 +23,7 @@ export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOau
     fullSpeedFiveHourFreeRatio: 0.5,
     minFiveHourFreeRatio: 0.6,
     minSevenDayFreeRatio: 0.14,
+    fiveHourShareConsumedPerSessionHour: 0.05,
   };
 
 export const liveSessionConcurrentLimitOf = (
@@ -92,16 +93,24 @@ export class LiveSessionOauthTokenSelectUseCase {
       const rateLimitMetric = rateLimitResult.metrics[index];
       const liveSessionCount =
         liveSessionCountByToken.get(candidate.token) ?? 0;
-      const urgencyBoost = sevenDayUrgencyFactor(
-        rateLimitMetric.sevenDayFreeRatio,
-        rateLimitMetric.sevenDayEndEpoch,
-        nowEpochSeconds,
+      const fiveHourReset = candidate.snapshot?.fiveHourReset;
+      const hoursUntilFiveHourReset =
+        fiveHourReset !== undefined &&
+        fiveHourReset > 0 &&
+        fiveHourReset > nowEpochSeconds
+          ? (fiveHourReset - nowEpochSeconds) / 3600
+          : 5;
+      const rateCapPerHour = 1 / 5;
+      const effectiveRatePerHour =
+        rateLimitMetric.fiveHourFreeRatio >= hoursUntilFiveHourReset / 5
+          ? rateCapPerHour
+          : rateLimitMetric.fiveHourFreeRatio / hoursUntilFiveHourReset;
+      const sustainableLimit = Math.floor(
+        effectiveRatePerHour / settings.fiveHourShareConsumedPerSessionHour,
       );
-      const concurrentSessionLimit = liveSessionConcurrentLimitOf(
-        rateLimitMetric.fiveHourFreeRatio,
-        selectionWeightOf(candidate),
-        settings,
-        urgencyBoost,
+      const concurrentSessionLimit = Math.max(
+        1,
+        Math.min(settings.maxConcurrentSessionCount, sustainableLimit),
       );
       const snapshot = candidate.snapshot;
       const sevenDayDeadlinePassed =
@@ -223,6 +232,17 @@ export class LiveSessionOauthTokenSelectUseCase {
       incumbentMetric.hasConcurrencyHeadroom
     ) {
       return candidateMetric.hasConcurrencyHeadroom;
+    }
+    if (!candidateMetric.hasConcurrencyHeadroom) {
+      const candidateOverflowRatio =
+        (candidateMetric.liveSessionCount + 1) /
+        candidateMetric.concurrentSessionLimit;
+      const incumbentOverflowRatio =
+        (incumbentMetric.liveSessionCount + 1) /
+        incumbentMetric.concurrentSessionLimit;
+      if (candidateOverflowRatio !== incumbentOverflowRatio) {
+        return candidateOverflowRatio < incumbentOverflowRatio;
+      }
     }
     if (candidateMetric.sevenDayEndEpoch !== incumbentMetric.sevenDayEndEpoch) {
       return (

@@ -136,10 +136,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
     const full = result.metrics.find((m) => m.name === 'soonResetFull');
     expect(full?.hasConcurrencyHeadroom).toBe(false);
-    expect(full?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(full?.concurrentSessionLimit).toBe(4);
   });
 
-  it('boosts the concurrent session limit toward maxConcurrentSessionCount when the seven day reset is imminent', () => {
+  it('lowers the concurrent session limit toward 1 when the five hour window is nearly exhausted', () => {
     const result = useCase.run(
       [
         candidate(
@@ -162,7 +162,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const narrow = result.metrics.find(
       (m) => m.name === 'soonResetNarrowFiveHour',
     );
-    expect(narrow?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(narrow?.concurrentSessionLimit).toBe(1);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
@@ -217,7 +217,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('earlyDrainSevenDay');
   });
 
-  it('prefers the token within the 48-hour deadline window over a token with a distant reset', () => {
+  it('does not give special preference to a near-deadline token over one with concurrency headroom', () => {
     const result = useCase.run(
       [
         candidate(
@@ -241,10 +241,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       (m) => m.name === 'aboutToResetNearlyUsedSevenDay',
     );
     expect(aboutToReset?.eligible).toBe(true);
-    expect(result.selected?.name).toBe('aboutToResetNearlyUsedSevenDay');
+    expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
+  it('restricts the concurrent session limit when the five hour window is nearly full even when the seven day deadline is imminent', () => {
     const result = useCase.run(
       [
         candidate(
@@ -267,13 +267,11 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const aboutToReset = result.metrics.find(
       (m) => m.name === 'aboutToResetNarrowFiveHour',
     );
-    expect(aboutToReset?.concurrentSessionLimit).toBe(
-      MAX_CONCURRENT_SESSION_COUNT,
-    );
+    expect(aboutToReset?.concurrentSessionLimit).toBe(1);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('scales the concurrent session limit down by the configured selection weight', () => {
+  it('does not scale the concurrent session limit by selection weight', () => {
     const result = useCase.run(
       [
         withSelectionWeight(
@@ -294,13 +292,11 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
-    expect(downWeighted?.concurrentSessionLimit).toBe(
-      MAX_CONCURRENT_SESSION_COUNT,
-    );
-    expect(result.selected?.name).toBe('downWeighted');
+    expect(downWeighted?.concurrentSessionLimit).toBe(4);
+    expect(result.selected?.name).toBe('lowerFreeRatioIdle');
   });
 
-  it('honours a fleet supplied maximum concurrent session count', () => {
+  it('uses the fleet supplied maximum concurrent session count as an upper bound', () => {
     const result = useCase.run(
       [candidate('onlyToken', snapshot({}))],
       [],
@@ -309,10 +305,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     );
 
     const onlyToken = result.metrics.find((m) => m.name === 'onlyToken');
-    expect(onlyToken?.concurrentSessionLimit).toBe(24);
+    expect(onlyToken?.concurrentSessionLimit).toBe(4);
   });
 
-  it('honours a fleet supplied five hour free ratio for the full concurrent session limit', () => {
+  it('lowers the concurrent session limit proportionally when the five hour window has less free capacity', () => {
     const result = useCase.run(
       [
         candidate(
@@ -325,16 +321,16 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       ],
       [],
       NOW,
-      settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
+      settingsWith({ fiveHourShareConsumedPerSessionHour: 0.05 }),
     );
 
     const narrowFiveHour = result.metrics.find(
       (m) => m.name === 'narrowFiveHour',
     );
-    expect(narrowFiveHour?.concurrentSessionLimit).toBe(5);
+    expect(narrowFiveHour?.concurrentSessionLimit).toBe(1);
   });
 
-  it('never starves a sole eligible token whose selection weight rounds its limit below one', () => {
+  it('never starves a sole eligible token even when the selection weight is tiny', () => {
     const result = useCase.run(
       [
         withSelectionWeight(candidate('tinyWeight', snapshot({})), 0.01),
@@ -347,7 +343,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
 
     expect(result.selected?.name).toBe('tinyWeight');
     const tiny = result.metrics.find((m) => m.name === 'tinyWeight');
-    expect(tiny?.concurrentSessionLimit).toBe(1);
+    expect(tiny?.concurrentSessionLimit).toBe(4);
   });
 
   it('selects the first eligible token when every token is at its concurrent session limit and all other tie-breakers are equal', () => {
@@ -856,10 +852,10 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration', () => {
+describe('LiveSessionOauthTokenSelectUseCase overflow selection', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('raises the concurrent session limit for a near-deadline token with a fractional selection weight', () => {
+  it('prefers the token with the lower overflow ratio when both tokens exceed their concurrent session limit', () => {
     const result = useCase.run(
       [
         withSelectionWeight(
@@ -885,10 +881,8 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
     const nearDeadline = result.metrics.find(
       (m) => m.name === 'nearDeadlineDownWeighted',
     );
-    expect(nearDeadline?.concurrentSessionLimit).toBe(
-      MAX_CONCURRENT_SESSION_COUNT,
-    );
-    expect(nearDeadline?.hasConcurrencyHeadroom).toBe(true);
+    expect(nearDeadline?.concurrentSessionLimit).toBe(4);
+    expect(nearDeadline?.hasConcurrencyHeadroom).toBe(false);
     expect(result.selected?.name).toBe('nearDeadlineDownWeighted');
   });
 });

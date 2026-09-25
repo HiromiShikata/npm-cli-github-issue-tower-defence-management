@@ -37,6 +37,7 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     return liveSessions;
   };
 
+
   private listProcessIdDirectories = (): string[] => {
     let entries: string[];
     try {
@@ -58,13 +59,11 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     if (token === undefined || token.length === 0) {
       return null;
     }
-    const sessionKey = this.deriveSessionKey(environ);
-    if (sessionKey === null) {
-      return null;
-    }
     if (!this.isClaudeProcess(processIdDirectory)) {
       return null;
     }
+    const sessionKey =
+      this.deriveSessionKey(environ) ?? `pid:${processIdDirectory}`;
     return { token, sessionKey };
   };
 
