@@ -8687,6 +8687,12 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           dependedIssueUrls: [],
         }),
       ),
+      get: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
