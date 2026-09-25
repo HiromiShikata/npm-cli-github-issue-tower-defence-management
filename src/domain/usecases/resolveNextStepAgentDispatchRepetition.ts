@@ -321,18 +321,25 @@ export const resolveNextStepAgentDispatchRepetition = <
 >(params: {
   agentFieldValue: string | null;
   nextStepAgent: string | null;
+  currentDispatchPostedNoComment: boolean;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
   isNoStory: boolean;
 }): NextStepAgentDispatchRepetition => {
+  const effectiveNextStepAgent =
+    params.nextStepAgent ??
+    (params.currentDispatchPostedNoComment ? params.agentFieldValue : null);
   const isSelfReference =
-    params.nextStepAgent !== null &&
+    effectiveNextStepAgent !== null &&
     params.agentFieldValue !== null &&
     normalizeProjectFieldName(params.agentFieldValue) ===
-      normalizeProjectFieldName(params.nextStepAgent);
-  const silentRedispatches = countSilentRedispatches(params);
+      normalizeProjectFieldName(effectiveNextStepAgent);
+  const silentRedispatches = countSilentRedispatches({
+    ...params,
+    nextStepAgent: effectiveNextStepAgent,
+  });
   if (params.isNoStory) {
     if (params.nextStepAgent !== null) {
       const storyUnsetDispatchCount = countConsecutiveStoryUnsetDispatches({
@@ -378,14 +385,17 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
       };
     }
   }
-  const dispatchesInCycle = countDispatchesInCurrentCycle(params);
+  const dispatchesInCycle = countDispatchesInCurrentCycle({
+    ...params,
+    nextStepAgent: effectiveNextStepAgent,
+  });
   if (
     !isSelfReference &&
     dispatchesInCycle >= params.thresholdForDispatchLoop
   ) {
-    const agentLabel = params.nextStepAgent ?? '(no next-step agent)';
+    const agentLabel = effectiveNextStepAgent ?? '(no next-step agent)';
     const dispatchLoopBody =
-      params.nextStepAgent === null
+      effectiveNextStepAgent === null
         ? `This no-next-step-agent task has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`
         : `This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`;
     return {
@@ -395,15 +405,15 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
 ${dispatchLoopBody}`,
     };
   }
-  if (params.nextStepAgent === null) {
+  if (effectiveNextStepAgent === null) {
     return { type: 'notRepeated' };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
     const comment = silentRedispatches.hasReportsInCycle
-      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
+      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
 
 The agent completed its session and nominated itself to continue the task in the next session. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
+      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
     return { type: 'dispatchAgain', comment };
@@ -411,17 +421,17 @@ No report has been received from the dispatched agent since the last human comme
   if (dispatchesInCycle > 1) {
     return {
       type: 'dispatchAgain',
-      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
 
 The latest agent report names this agent as the next step and it has already been dispatched on this issue since the last human comment. Dispatching it again (${dispatchesInCycle}/${params.thresholdForDispatchLoop}).`,
     };
   }
   if (silentRedispatches !== null) {
     const comment = silentRedispatches.hasReportsInCycle
-      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
+      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
 
 The agent completed its session and nominated itself to continue the task in the next session. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
+      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
     return { type: 'dispatchAgain', comment };

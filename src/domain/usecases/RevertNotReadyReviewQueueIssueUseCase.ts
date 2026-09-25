@@ -235,6 +235,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               const repetition = resolveNextStepAgentDispatchRepetition({
                 agentFieldValue: issue.agent,
                 nextStepAgent,
+                currentDispatchPostedNoComment: false,
                 comments,
                 isTrustedAuthor: (author) =>
                   isAuthorAuthorizedForAutoStatusCheck(

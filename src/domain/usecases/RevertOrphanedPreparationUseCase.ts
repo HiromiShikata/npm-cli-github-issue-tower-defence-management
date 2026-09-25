@@ -178,6 +178,7 @@ export class RevertOrphanedPreparationUseCase {
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
+        currentDispatchPostedNoComment: false,
         comments,
         isTrustedAuthor: (author) =>
           isAuthorAuthorizedForAutoStatusCheck(
