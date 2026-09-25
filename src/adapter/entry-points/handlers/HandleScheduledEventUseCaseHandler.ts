@@ -61,6 +61,7 @@ import { IssueNoStatusUpdateUseCase } from '../../../domain/usecases/IssueNoStat
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
+import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
@@ -489,6 +490,9 @@ export class HandleScheduledEventUseCaseHandler {
       claudeTokenUsageRepository,
       new ProcTakeOwnershipSpawnRepository(),
       new CliGitHubGraphqlRateLimitRepository(nodeLocalCommandRunner),
+      new AwLogIssueLatestSessionBranchRepository(
+        mergedInput.startPreparation?.awLogDirectoryPath ?? null,
+      ),
     );
     const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(
       mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
