@@ -62,7 +62,39 @@ describe('ProxyRateLimitCacheRepository', () => {
         {
           token: 'token-a',
           unifiedReset: futureReset,
+          sevenDayReset: futureReset,
           lastProbeEpoch: recentEpoch,
+        },
+      ]);
+    });
+
+    it('should return the snapshot sevenDayReset for a token with a cached snapshot', () => {
+      const fiveHourReset = Math.floor(Date.now() / 1000) + 3600;
+      const sevenDayReset = Math.floor(Date.now() / 1000) - 120;
+      mockLoadTokens.mockReturnValue(['token-a']);
+      mockReadRateLimit.mockReturnValue({
+        fiveHourUtilization: 0,
+        fiveHourReset,
+        sevenDayUtilization: 1,
+        sevenDayReset,
+        blocked: false,
+        rejected: true,
+        unifiedRejected: true,
+        fiveHourRejected: false,
+        sevenDayRejected: true,
+        modelWeeklyLimits: {},
+        lastUpdatedEpoch: sevenDayReset - 180,
+      });
+      const repository = new ProxyRateLimitCacheRepository('/tokens.json');
+
+      const result = repository.getTokenRateLimitCaches();
+
+      expect(result).toEqual([
+        {
+          token: 'token-a',
+          unifiedReset: fiveHourReset,
+          sevenDayReset,
+          lastProbeEpoch: sevenDayReset - 180,
         },
       ]);
     });
@@ -75,7 +107,12 @@ describe('ProxyRateLimitCacheRepository', () => {
       const result = repository.getTokenRateLimitCaches();
 
       expect(result).toEqual([
-        { token: 'token-a', unifiedReset: 0, lastProbeEpoch: 0 },
+        {
+          token: 'token-a',
+          unifiedReset: 0,
+          sevenDayReset: 0,
+          lastProbeEpoch: 0,
+        },
       ]);
     });
 
@@ -107,9 +144,15 @@ describe('ProxyRateLimitCacheRepository', () => {
         {
           token: 'token-a',
           unifiedReset: futureReset,
+          sevenDayReset: futureReset,
           lastProbeEpoch: recentEpoch,
         },
-        { token: 'token-b', unifiedReset: 0, lastProbeEpoch: 0 },
+        {
+          token: 'token-b',
+          unifiedReset: 0,
+          sevenDayReset: 0,
+          lastProbeEpoch: 0,
+        },
       ]);
     });
   });
