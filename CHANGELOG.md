@@ -1,3 +1,10 @@
+## [2.147.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.147.0...v2.147.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **LiveSessionOauthTokenSelectUseCase:** exclude depleted 7d tokens within 48-hour deadline window ([#2592](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2592)) ([188e611](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/188e6110a119d37ff5caa5ef7ad2902656c519a0))
+
 # [2.147.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.146.2...v2.147.0) (2026-09-25)
 
 
