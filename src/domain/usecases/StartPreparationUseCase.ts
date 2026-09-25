@@ -10,6 +10,7 @@ import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
+import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
 import type {
   IssueRepository,
   RelatedPullRequest,
@@ -17,6 +18,10 @@ import type {
 import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
+import {
+  CanonicalPullRequestSelection,
+  canonicalPullRequestSelect,
+} from './canonicalPullRequestSelect';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
@@ -55,6 +60,14 @@ export type RotationOrderEntry = {
   cooldownExcluded: boolean;
 };
 
+const canonicalPullRequestAdoptionReasonSentence = ({
+  canonicalPullRequest,
+  adoptionReason,
+}: CanonicalPullRequestSelection): string | null =>
+  adoptionReason === 'LATEST_SESSION_BRANCH'
+    ? `It was adopted because the latest agent session for this issue has its head branch \`${canonicalPullRequest.branchName}\` checked out.`
+    : null;
+
 export class StartPreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<
@@ -80,6 +93,7 @@ export class StartPreparationUseCase {
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
     private readonly takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository,
     private readonly gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository,
+    private readonly issueLatestSessionBranchRepository: IssueLatestSessionBranchRepository,
   ) {}
 
   private isWithinCooldown = (
@@ -712,11 +726,22 @@ export class StartPreparationUseCase {
           return match === null || match[1] === issue.nameWithOwner;
         });
         if (sameRepoRelatedPRs.length > 1) {
-          const sortedPRs = [...sameRepoRelatedPRs].sort(
-            (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+          const latestSessionBranchName =
+            await this.issueLatestSessionBranchRepository.findBranchNameByIssue(
+              issue,
+            );
+          const canonicalPullRequestSelection = canonicalPullRequestSelect(
+            [sameRepoRelatedPRs[0], ...sameRepoRelatedPRs.slice(1)],
+            latestSessionBranchName,
           );
-          const canonicalPR = sortedPRs[0];
-          const duplicatePRs = sortedPRs.slice(1);
+          const canonicalPR =
+            canonicalPullRequestSelection.canonicalPullRequest;
+          const duplicatePRs =
+            canonicalPullRequestSelection.duplicatePullRequests;
+          const adoptionReasonSentence =
+            canonicalPullRequestAdoptionReasonSentence(
+              canonicalPullRequestSelection,
+            );
           for (const duplicatePR of duplicatePRs) {
             await this.issueRepository.closePullRequest(duplicatePR.url);
             if (duplicatePR.branchName !== null) {
@@ -725,7 +750,12 @@ export class StartPreparationUseCase {
                 duplicatePR.branchName,
               );
             }
-            const duplicatePrCommentBody = `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`;
+            const duplicatePrCommentBody = [
+              `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`,
+              ...(adoptionReasonSentence === null
+                ? []
+                : [adoptionReasonSentence]),
+            ].join(' ');
             const duplicatePrExistingComments =
               await this.issueRepository.getIssueOrPullRequestComments(
                 duplicatePR.url,
@@ -747,7 +777,12 @@ export class StartPreparationUseCase {
             }
           }
           const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
-          const issueCommentBody = `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`;
+          const issueCommentBody = [
+            `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
+            ...(adoptionReasonSentence === null
+              ? []
+              : [adoptionReasonSentence]),
+          ].join('\n');
           const issueExistingComments =
             await this.issueRepository.getIssueOrPullRequestComments(issue.url);
           if (

@@ -35,6 +35,7 @@ import { LocalStorageRepository } from '../../repositories/LocalStorageRepositor
 import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
+import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
@@ -538,6 +539,9 @@ program
       claudeTokenUsageRepository,
       new ProcTakeOwnershipSpawnRepository(),
       new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
+      new AwLogIssueLatestSessionBranchRepository(
+        config.awLogDirectoryPath ?? null,
+      ),
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;

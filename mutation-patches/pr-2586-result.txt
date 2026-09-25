@@ -1,0 +1,4 @@
+mutation_result=caught
+failing_test=FAIL backend src/domain/usecases/canonicalPullRequestSelect.test.ts (16.505 s)
+patch_file=mutation-patches/pr-2586.patch
+head_commit=be697315dd46582f11dd11b690cbc9551d07651b
