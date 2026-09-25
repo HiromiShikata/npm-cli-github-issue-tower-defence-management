@@ -1,3 +1,10 @@
+## [2.148.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.12...v2.148.13) (2026-09-25)
+
+
+### Bug Fixes
+
+* **rate-limit:** A token rejected on its seven-day window stays excluded after that reset passes, until an unrelated probe runs ([#2651](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2651)) ([e02e9d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e02e9d4887099f6044bbe81641313eda0a2893ac))
+
 ## [2.148.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.148.11...v2.148.12) (2026-09-25)
 
 
