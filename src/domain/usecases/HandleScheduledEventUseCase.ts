@@ -477,6 +477,17 @@ ${JSON.stringify(e)}
         storyObjectMap,
         now,
       );
+    } else {
+      try {
+        await this.clearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+          { project, issues },
+        );
+      } catch (removalError) {
+        console.error(
+          `[HandleScheduledEvent] Failed to remove resolved depended issue URLs for project ${project.url}: ${removalError instanceof Error ? removalError.message : String(removalError)}`,
+          removalError,
+        );
+      }
     }
     await this.createNewStoryByLabelUseCase.run({
       project,
