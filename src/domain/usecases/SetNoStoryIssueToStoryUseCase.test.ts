@@ -541,16 +541,19 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
 
       expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
       expect(
-        warnSpy.mock.calls.some(
-          (call) =>
-            typeof call[0] === 'string' &&
-            call[0].includes('story changed from'),
-        ),
+        warnSpy.mock.calls.some((call: unknown[]) => {
+          const message = call[0];
+          return (
+            typeof message === 'string' &&
+            message.includes('story changed from')
+          );
+        }),
       ).toBe(true);
       expect(
-        warnSpy.mock.calls.every(
-          (call) => typeof call[0] === 'string' && call[0].includes(issue.url),
-        ),
+        warnSpy.mock.calls.every((call: unknown[]) => {
+          const message = call[0];
+          return typeof message === 'string' && message.includes(issue.url);
+        }),
       ).toBe(true);
     });
 
@@ -602,16 +605,19 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
 
       expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
       expect(
-        warnSpy.mock.calls.some(
-          (call) =>
-            typeof call[0] === 'string' &&
-            call[0].includes('is no longer on project'),
-        ),
+        warnSpy.mock.calls.some((call: unknown[]) => {
+          const message = call[0];
+          return (
+            typeof message === 'string' &&
+            message.includes('is no longer on project')
+          );
+        }),
       ).toBe(true);
       expect(
-        warnSpy.mock.calls.every(
-          (call) => typeof call[0] === 'string' && call[0].includes(issue.url),
-        ),
+        warnSpy.mock.calls.every((call: unknown[]) => {
+          const message = call[0];
+          return typeof message === 'string' && message.includes(issue.url);
+        }),
       ).toBe(true);
     });
 
