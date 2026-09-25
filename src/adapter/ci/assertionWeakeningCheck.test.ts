@@ -394,5 +394,37 @@ index abc..def 100644
       });
       expect(result.exitStatus).toBe(1);
     });
+
+    it('passes when the PR body has a full-URL closing reference and the issue has criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627',
+        issueBody: issueBodyWithSuccessCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+      expect(result.output).toContain('Acceptance criteria found');
+    });
+
+    it('fails when the PR body has a full-URL closing reference but the issue lacks criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody:
+          'Closes https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2627',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('acceptance criteria');
+    });
+
+    it('passes when the PR body has a full-URL pull request closing reference and the issue has criteria', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Fixes https://github.com/HiromiShikata/secretary/pull/7041',
+        issueBody: issueBodyWithAcceptanceCriteria,
+      });
+      expect(result.exitStatus).toBe(0);
+      expect(result.output).toContain('Acceptance criteria found');
+    });
   });
 });
