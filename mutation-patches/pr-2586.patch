@@ -1,0 +1,14 @@
+diff --git a/src/domain/usecases/canonicalPullRequestSelect.ts b/src/domain/usecases/canonicalPullRequestSelect.ts
+index 05a31f788..c2377d08c 100644
+--- a/src/domain/usecases/canonicalPullRequestSelect.ts
++++ b/src/domain/usecases/canonicalPullRequestSelect.ts
+@@ -22,8 +22,7 @@ export const canonicalPullRequestSelect = (
+       : (pullRequestsOldestCreatedFirst.find(
+           (pullRequest) => pullRequest.branchName === latestSessionBranchName,
+         ) ?? null);
+-  const canonicalPullRequest =
+-    latestSessionPullRequest ?? pullRequestsOldestCreatedFirst[0];
++  const canonicalPullRequest = pullRequestsOldestCreatedFirst[0];
+   return {
+     canonicalPullRequest,
+     duplicatePullRequests: pullRequestsOldestCreatedFirst.filter(
