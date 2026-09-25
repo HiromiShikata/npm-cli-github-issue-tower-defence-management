@@ -291,9 +291,7 @@ const countConsecutiveStoryUnsetDispatches = <
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) => {
       if (!params.isTrustedAuthor(comment.author)) return found;
-      if (
-        !isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent)
-      ) {
+      if (!isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent)) {
         return found;
       }
       const afterHead = comment.content.slice(
