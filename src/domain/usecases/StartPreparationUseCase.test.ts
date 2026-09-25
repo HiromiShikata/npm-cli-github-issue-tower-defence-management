@@ -4,6 +4,7 @@ import type { FieldOption, Project } from '../entities/Project';
 import type { StoryObjectMap } from '../entities/StoryObjectMap';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
+import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
 import type {
   IssueRepository,
   RelatedPullRequest,
@@ -17,6 +18,22 @@ import {
 } from './StartPreparationUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
+
+class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
+  constructor(
+    private readonly latestSessionBranchNameByIssueUrl: ReadonlyMap<
+      string,
+      string
+    >,
+  ) {}
+
+  findBranchNameByIssue = async (
+    issue: Pick<Issue, 'org' | 'repo' | 'number'>,
+  ): Promise<string | null> =>
+    this.latestSessionBranchNameByIssueUrl.get(
+      `https://github.com/${issue.org}/${issue.repo}/issues/${issue.number}`,
+    ) ?? null;
+}
 
 const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
   const map: StoryObjectMap = new Map();
@@ -166,6 +183,7 @@ describe('StartPreparationUseCase', () => {
       mockClaudeTokenUsageRepository,
       mockTakeOwnershipSpawnRepository,
       mockGitHubGraphqlRateLimitRepository,
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
   });
   it('should run aw command for awaiting workspace issues', async () => {
@@ -1194,6 +1212,180 @@ describe('StartPreparationUseCase', () => {
         'i1',
       ],
     ]);
+  });
+  describe('multiple related open PRs while the latest agent session works on the newer PR head branch', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const createRelatedPullRequest = (
+      overrides: Pick<RelatedPullRequest, 'url' | 'branchName' | 'createdAt'>,
+    ): RelatedPullRequest => ({
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+      ...overrides,
+    });
+    const firstOpenedPullRequest = createRelatedPullRequest({
+      url: 'https://github.com/user/repo/pull/2169',
+      branchName: 'impl/i2161-signal-annotation-prisma-repos',
+      createdAt: new Date('2026-09-24T21:45:55Z'),
+    });
+    const pullRequestOnLatestSessionBranch = createRelatedPullRequest({
+      url: 'https://github.com/user/repo/pull/2186',
+      branchName: 'impl-i2161-signal-annotation-prisma-repos',
+      createdAt: new Date('2026-09-25T01:14:37Z'),
+    });
+    const runWithLatestSessionBranch = async (
+      relatedOpenPullRequests: RelatedPullRequest[],
+      issueLatestSessionBranchRepository: IssueLatestSessionBranchRepository,
+    ): Promise<void> => {
+      const awaitingIssue = createMockIssue({
+        url: issueUrl,
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      });
+      const pullRequestIssues = relatedOpenPullRequests.map(
+        (pullRequest, index) =>
+          createMockIssue({
+            url: pullRequest.url,
+            number: 100 + index,
+            isPr: true,
+            isClosed: false,
+            closingIssueReferenceUrls: [issueUrl],
+          }),
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue, ...pullRequestIssues]),
+      );
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue(
+        relatedOpenPullRequests,
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const useCaseWithLatestSessionBranch = new StartPreparationUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockLocalCommandRunner,
+        mockClaudeTokenUsageRepository,
+        mockTakeOwnershipSpawnRepository,
+        mockGitHubGraphqlRateLimitRepository,
+        issueLatestSessionBranchRepository,
+      );
+      await useCaseWithLatestSessionBranch.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+    };
+
+    it('adopts the newer PR on the branch the latest agent session has checked out, closes the first-opened PR and deletes only its branch', async () => {
+      await runWithLatestSessionBranch(
+        [firstOpenedPullRequest, pullRequestOnLatestSessionBranch],
+        new InMemoryIssueLatestSessionBranchRepository(
+          new Map([[issueUrl, 'impl-i2161-signal-annotation-prisma-repos']]),
+        ),
+      );
+
+      expect(mockIssueRepository.closePullRequest.mock.calls).toEqual([
+        [firstOpenedPullRequest.url],
+      ]);
+      expect(mockIssueRepository.deletePullRequestBranch.mock.calls).toEqual([
+        [
+          firstOpenedPullRequest.url,
+          'impl/i2161-signal-annotation-prisma-repos',
+        ],
+      ]);
+      expect(mockIssueRepository.createCommentByUrl.mock.calls).toEqual([
+        [
+          firstOpenedPullRequest.url,
+          `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issueUrl}. The adopted canonical PR is ${pullRequestOnLatestSessionBranch.url}. It was adopted because the latest agent session for this issue has its head branch \`impl-i2161-signal-annotation-prisma-repos\` checked out.`,
+        ],
+        [
+          issueUrl,
+          `1 duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${firstOpenedPullRequest.url}\nAdopted PR: ${pullRequestOnLatestSessionBranch.url}\nIt was adopted because the latest agent session for this issue has its head branch \`impl-i2161-signal-annotation-prisma-repos\` checked out.`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+        [
+          'aw',
+          [
+            issueUrl,
+            'agent1',
+            'claude-opus',
+            '--configFilePath',
+            '/path/to/config.yml',
+            '--branch',
+            'impl-i2161-signal-annotation-prisma-repos',
+          ],
+        ],
+      ]);
+    });
+
+    it('keeps adopting the first-opened PR when the latest agent session has a branch checked out that no open PR uses', async () => {
+      await runWithLatestSessionBranch(
+        [pullRequestOnLatestSessionBranch, firstOpenedPullRequest],
+        new InMemoryIssueLatestSessionBranchRepository(
+          new Map([[issueUrl, 'i1-unpushed']]),
+        ),
+      );
+
+      expect(mockIssueRepository.closePullRequest.mock.calls).toEqual([
+        [pullRequestOnLatestSessionBranch.url],
+      ]);
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        issueUrl,
+        `1 duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${pullRequestOnLatestSessionBranch.url}\nAdopted PR: ${firstOpenedPullRequest.url}`,
+      );
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+        issueUrl,
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'impl/i2161-signal-annotation-prisma-repos',
+      ]);
+    });
+
+    it('does not look up the latest agent session branch when the issue has only one related open PR', async () => {
+      const issueLatestSessionBranchRepository =
+        new InMemoryIssueLatestSessionBranchRepository(
+          new Map([[issueUrl, 'impl/i2161-signal-annotation-prisma-repos']]),
+        );
+      const findBranchNameByIssueSpy = jest.spyOn(
+        issueLatestSessionBranchRepository,
+        'findBranchNameByIssue',
+      );
+
+      await runWithLatestSessionBranch(
+        [pullRequestOnLatestSessionBranch],
+        issueLatestSessionBranchRepository,
+      );
+
+      expect(findBranchNameByIssueSpy).not.toHaveBeenCalled();
+      expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+        'impl-i2161-signal-annotation-prisma-repos',
+      );
+    });
   });
   it('should not treat a cross-repository PR as duplicate when a same-repository PR exists', async () => {
     const awaitingIssues: Issue[] = [
@@ -7266,6 +7458,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       listRunningIssueUrls: jest.fn().mockReturnValue([]),
     },
     { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+    new InMemoryIssueLatestSessionBranchRepository(new Map()),
   );
 
   it('lists selected tokens first in ascending 7-day reset deadline order then excluded tokens', () => {
@@ -7554,6 +7747,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
   });
 
@@ -7673,6 +7867,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       mockClaudeTokenUsageRepository,
       mockTakeOwnershipSpawnRepository,
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
 
     await useCase.run({
@@ -7756,6 +7951,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
 
     await useCase.run({
@@ -7840,6 +8036,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
 
     await useCase.run({
@@ -7915,6 +8112,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
     );
 
   it('looks up related open pull requests for issue urls concurrently up to the configured limit', async () => {

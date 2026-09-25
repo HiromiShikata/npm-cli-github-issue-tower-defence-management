@@ -429,6 +429,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           spawnMockClaudeTokenUsageRepository,
           spawnMockTakeOwnershipSpawnRepository,
           { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+          { findBranchNameByIssue: jest.fn().mockResolvedValue(null) },
         );
 
         const notifyProject = createNotifyMockProject();
