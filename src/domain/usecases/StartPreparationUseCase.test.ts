@@ -2475,6 +2475,7 @@ describe('StartPreparationUseCase', () => {
       labels: [],
       status: 'Awaiting Workspace',
       state: 'OPEN',
+      story: 'Workflow blocker',
     });
 
     const issueInBlockedRepo = createMockIssue({
@@ -2483,6 +2484,7 @@ describe('StartPreparationUseCase', () => {
       labels: [],
       status: 'Awaiting Workspace',
       state: 'OPEN',
+      story: 'Default Story',
     });
 
     const workflowBlockerMap: StoryObjectMap = new Map();
@@ -6127,19 +6129,21 @@ describe('StartPreparationUseCase', () => {
         'agent-option-systems-analyst',
         'systems-analyst',
       );
+      const noStoryIssueWithAgentSet = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: 'systems-analyst',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: 'systems-analyst',
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithAgentSet]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithAgentSet,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -6170,19 +6174,21 @@ describe('StartPreparationUseCase', () => {
 
     it('dispatches the explicitly designated agent even when story is NO STORY', async () => {
       const project = projectWithAgentOption('agent-option-liaison', 'liaison');
+      const noStoryIssueWithLiaisonAgent = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: 'liaison',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: 'liaison',
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithLiaisonAgent]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithLiaisonAgent,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -6212,19 +6218,21 @@ describe('StartPreparationUseCase', () => {
 
     it('dispatches to defaultAgentName without setting the Agent field when story is NO STORY and agent field is null', async () => {
       const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      const noStoryIssueWithNoAgent = createMockIssue({
+        url: 'url1',
+        status: 'Awaiting Workspace',
+        labels: [],
+        story:
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        agent: null,
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: null,
-          }),
-        ]),
+        createMockStoryObjectMap([noStoryIssueWithNoAgent]),
       );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        noStoryIssueWithNoAgent,
+      ]);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
