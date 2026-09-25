@@ -1279,7 +1279,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: null,
-        comments: [repetitionComment('developer')],
+        comments: [
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+        ],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
