@@ -589,8 +589,10 @@ export class StartPreparationUseCase {
       }
     }
 
-    const issueUrlsWithOpenPrs =
-      this.buildIssueUrlsWithOpenPrs(allOpenedIssues);
+    const issueUrlsWithOpenPrs = this.buildIssueUrlsWithOpenPrs([
+      ...allOpenedIssues,
+      ...allProjectOpenIssues,
+    ]);
     const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(
       awaitingWorkspaceIssues
         .filter(
