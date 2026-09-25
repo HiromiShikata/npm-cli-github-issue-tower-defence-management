@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { Issue } from '../../../domain/entities/Issue';
-import type { Project } from '../../../domain/entities/Project';
+import type { FieldOption, Project } from '../../../domain/entities/Project';
 import type { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import type { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
@@ -8129,73 +8129,37 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
-  describe('getAllIssues concurrent cache refresh racing against removeIssueByItemId for the same project (issue 2677 — cache lock)', () => {
-    const wait = (milliseconds: number): Promise<void> =>
-      new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-    const buildRacyLocalStorageCacheRepository = (): Pick<
+  const buildProcessRepository = (
+    cache: Pick<
       LocalStorageCacheRepository,
       'getSingle' | 'setSingle' | 'withLock'
-    > => {
-      const store = new Map<string, string>();
-      const lockTailByKey = new Map<string, Promise<unknown>>();
-      return {
-        getSingle: async (key: string) => {
-          await wait(20);
-          const stored = store.get(key);
-          if (stored === undefined) return null;
-          const parsed: unknown = JSON.parse(stored);
-          return parsed;
-        },
-        setSingle: async (key: string, value: unknown) => {
-          await wait(20);
-          store.set(key, JSON.stringify(value));
-        },
-        withLock: <T>(key: string, fn: () => Promise<T>): Promise<T> => {
-          const previousTail = lockTailByKey.get(key) ?? Promise.resolve();
-          const runResult = previousTail.then(fn, fn);
-          lockTailByKey.set(
-            key,
-            runResult.then(
-              () => undefined,
-              () => undefined,
-            ),
-          );
-          return runResult;
-        },
-      };
+    >,
+  ) => {
+    const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+    const restIssueRepository = mock<RestIssueRepository>();
+    const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+    const projectRepository = mock<ProjectRepository>();
+    const dateRepository = mock<DateRepository>();
+    const localStorageRepository = mock<LocalStorageRepository>();
+    const repository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      cache,
+      projectRepository,
+      dateRepository,
+      localStorageRepository,
+      'dummy',
+    );
+    return {
+      repository,
+      graphqlProjectItemRepository,
+      projectRepository,
+      dateRepository,
     };
+  };
 
-    const buildProcessRepository = (
-      cache: Pick<
-        LocalStorageCacheRepository,
-        'getSingle' | 'setSingle' | 'withLock'
-      >,
-    ) => {
-      const apiV3IssueRepository = mock<ApiV3IssueRepository>();
-      const restIssueRepository = mock<RestIssueRepository>();
-      const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
-      const projectRepository = mock<ProjectRepository>();
-      const dateRepository = mock<DateRepository>();
-      const localStorageRepository = mock<LocalStorageRepository>();
-      const repository = new ApiV3CheerioRestIssueRepository(
-        apiV3IssueRepository,
-        restIssueRepository,
-        graphqlProjectItemRepository,
-        cache,
-        projectRepository,
-        dateRepository,
-        localStorageRepository,
-        'dummy',
-      );
-      return {
-        repository,
-        graphqlProjectItemRepository,
-        projectRepository,
-        dateRepository,
-      };
-    };
-
+  describe('getAllIssues concurrent cache refresh racing against removeIssueByItemId for the same project (issue 2677 — cache lock)', () => {
     it('full-fetch write path: a removeIssueByItemId call that fully completes before the stalled fetch resolves is not undone by the refresh write, while the fetch other issue is still persisted', async () => {
       const projectId = 'proj-full-fetch-remove-race';
       const cacheKey = `allIssues-${projectId}`;
@@ -8343,6 +8307,178 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const urls = (finalCache?.issues ?? []).map((issue) => issue.url);
       expect(itemIds).not.toContain(staleItemId);
       expect(urls).toContain(newIssueUrl);
+      expect(urls).toContain(untouchedIssueUrl);
+    });
+  });
+
+  describe('getAllIssues concurrent cache refresh racing against updateFieldOptions for the same project (issue 2677 — cache lock)', () => {
+    it('full-fetch write path: an updateFieldOptions call that fully completes before the stalled project fetch resolves is not undone by the refresh write', async () => {
+      const projectId = 'proj-full-fetch-update-field-options-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const oldStatusOptions: FieldOption[] = [
+        {
+          id: 'opt-old-full-fetch',
+          name: 'Old Status',
+          color: 'GRAY',
+          description: '',
+        },
+      ];
+      const newStatusOptions: FieldOption[] = [
+        {
+          id: 'opt-new-full-fetch',
+          name: 'New Status',
+          color: 'GREEN',
+          description: '',
+        },
+      ];
+      const project: Project = {
+        ...buildTestProject(projectId),
+        status: {
+          name: 'Status',
+          fieldId: 'f-status',
+          statuses: oldStatusOptions,
+        },
+      };
+      const cache = buildRacyLocalStorageCacheRepository();
+      const existingIssueUrl = 'https://github.com/o/r/issues/600';
+      const existingItemId = 'item-existing-full-fetch-field-options';
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(existingIssueUrl, 'existing issue'),
+            itemId: existingItemId,
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-07-01T02:00:00.000Z'),
+      );
+      projectRepository.getProject.mockImplementation(async () => {
+        await wait(80);
+        return project;
+      });
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(existingIssueUrl, 'existing issue'),
+          id: existingItemId,
+        },
+      ]);
+
+      const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
+        await wait(1);
+        await new ProjectIssuesCacheRepository(cache).updateFieldOptions(
+          projectId,
+          project.status.fieldId,
+          newStatusOptions,
+        );
+      };
+
+      await Promise.all([
+        repository.getAllIssues(projectId),
+        updateFieldOptionsOnceFetchHasStarted(),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const finalStatusOptionIds = (
+        finalCache?.project.status.statuses ?? []
+      ).map((option) => option.id);
+      expect(finalStatusOptionIds).toContain(newStatusOptions[0].id);
+      expect(finalCache?.project.status.statuses).not.toEqual(oldStatusOptions);
+    });
+
+    it('incremental-fetch write path: an updateFieldOptions call that fully completes before the stalled project fetch resolves is not undone by the refresh write', async () => {
+      const projectId = 'proj-incremental-fetch-update-field-options-race';
+      const cacheKey = `allIssues-${projectId}`;
+      const oldStatusOptions: FieldOption[] = [
+        {
+          id: 'opt-old-incremental-fetch',
+          name: 'Old Status',
+          color: 'GRAY',
+          description: '',
+        },
+      ];
+      const newStatusOptions: FieldOption[] = [
+        {
+          id: 'opt-new-incremental-fetch',
+          name: 'New Status',
+          color: 'GREEN',
+          description: '',
+        },
+      ];
+      const project: Project = {
+        ...buildTestProject(projectId),
+        status: {
+          name: 'Status',
+          fieldId: 'f-status',
+          statuses: oldStatusOptions,
+        },
+      };
+      const cache = buildRacyLocalStorageCacheRepository();
+      const untouchedIssueUrl = 'https://github.com/o/r/issues/800';
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(untouchedIssueUrl, 'untouched issue'),
+            itemId: 'item-untouched-incremental-fetch-field-options',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      projectRepository.getProject.mockImplementation(async () => {
+        await wait(80);
+        return project;
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+
+      const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
+        await wait(1);
+        await new ProjectIssuesCacheRepository(cache).updateFieldOptions(
+          projectId,
+          project.status.fieldId,
+          newStatusOptions,
+        );
+      };
+
+      await Promise.all([
+        repository.getAllIssues(projectId),
+        updateFieldOptionsOnceFetchHasStarted(),
+      ]);
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const finalStatusOptionIds = (
+        finalCache?.project.status.statuses ?? []
+      ).map((option) => option.id);
+      expect(finalStatusOptionIds).toContain(newStatusOptions[0].id);
+      expect(finalCache?.project.status.statuses).not.toEqual(oldStatusOptions);
+      const urls = (finalCache?.issues ?? []).map((issue) => issue.url);
       expect(urls).toContain(untouchedIssueUrl);
     });
   });
