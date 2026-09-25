@@ -160,4 +160,33 @@ describe('ClearPastNextActionDateHourUseCase - stale snapshot re-read', () => {
       snapshotIssue,
     );
   });
+
+  it('fails safe and does not clear when the live re-read rejects', async () => {
+    const snapshotIssue = buildIssue({
+      nextActionHour: 9,
+      nextActionDate: null,
+    });
+    const clearProjectField = jest.fn<
+      Promise<void>,
+      [Project, string, Issue]
+    >();
+    const get = jest
+      .fn<Promise<Issue | null>, [string, Project]>()
+      .mockRejectedValue(new Error('network error'));
+    const issueRepository: Pick<IssueRepository, 'clearProjectField' | 'get'> =
+      {
+        clearProjectField,
+        get,
+      };
+    const useCase = new ClearPastNextActionDateHourUseCase(issueRepository);
+
+    await useCase.run({
+      targetDates,
+      project: basicProject,
+      issues: [snapshotIssue],
+      cacheUsed: false,
+    });
+
+    expect(clearProjectField).not.toHaveBeenCalled();
+  });
 });
