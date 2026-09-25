@@ -9,6 +9,10 @@ const isErrorWithCode = (err: unknown, code: string): boolean => {
   );
 };
 
+const readFileUtf8 = (path: string): string => {
+  return fs.readFileSync(path, 'utf8');
+};
+
 export class LocalStorageRepository {
   write = (path: string, value: string) => {
     const dirPath = path.split('/').slice(0, -1).join('/');
@@ -16,7 +20,7 @@ export class LocalStorageRepository {
     fs.writeFileSync(path, value, 'utf8');
   };
   read = (path: string): string | null => {
-    return fs.readFileSync(path, 'utf8');
+    return readFileUtf8(path);
   };
   rename = (oldPath: string, newPath: string) => {
     fs.renameSync(oldPath, newPath);
@@ -67,7 +71,7 @@ export class LocalStorageRepository {
   };
   readOrNull = (path: string): string | null => {
     try {
-      return fs.readFileSync(path, 'utf8');
+      return readFileUtf8(path);
     } catch (err) {
       if (isErrorWithCode(err, 'ENOENT')) {
         return null;

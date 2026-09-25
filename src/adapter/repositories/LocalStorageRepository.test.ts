@@ -108,6 +108,23 @@ describe('LocalStorageRepository', () => {
         expect(mockReadFileSync).toHaveBeenCalledWith(params[0], 'utf8');
       });
     });
+
+    test('throws the underlying error without catching when the file does not exist (ENOENT)', () => {
+      const enoentError = Object.assign(new Error('no such file'), {
+        code: 'ENOENT',
+      });
+      mockReadFileSync.mockImplementation(() => {
+        throw enoentError;
+      });
+
+      expect(() => repository.read('/path/to/missing.txt')).toThrow(
+        enoentError,
+      );
+      expect(mockReadFileSync).toHaveBeenCalledWith(
+        '/path/to/missing.txt',
+        'utf8',
+      );
+    });
   });
 
   describe('listFiles', () => {
