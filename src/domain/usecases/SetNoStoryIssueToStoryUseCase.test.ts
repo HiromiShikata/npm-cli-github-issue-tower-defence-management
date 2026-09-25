@@ -103,6 +103,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -128,6 +129,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [nonHourDate],
@@ -180,6 +182,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -346,6 +349,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: pastDate,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -378,6 +382,12 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
+        if (issueUrl === eligibleIssue.url) {
+          return { ...eligibleIssue, story: null };
+        }
+        return null;
+      });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -424,6 +434,7 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
       };
+      mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
 
       const promise = useCase.run({
         targetDates: [targetDate],
@@ -470,6 +481,87 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       await jest.runAllTimersAsync();
       await promise;
 
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('should not overwrite Story when the live re-read shows a Story was already set since the snapshot was taken', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockResolvedValue({
+        ...issue,
+        story: 'regular / high priority',
+      });
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('should not write when the live re-read returns null (issue not found)', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockResolvedValue(null);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('should not write and should not throw when the live re-read rejects', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+      mockIssueRepository.get.mockRejectedValue(new Error('network error'));
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.get.mock.calls).toEqual([
+        [issue.url, basicProject],
+      ]);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
   });
