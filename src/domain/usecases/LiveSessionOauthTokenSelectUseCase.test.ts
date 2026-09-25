@@ -986,6 +986,29 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
   );
 });
 
+describe('LiveSessionOauthTokenSelectUseCase does not fall back to a depleted-budget token within the 48-hour deadline window', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('returns null when the only candidate has 3% seven-day-window free within 47 hours of reset', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'depletedSoleCandidateWithinDeadlineWindow',
+          snapshot({
+            sevenDayUtilization: 0.97,
+            sevenDayReset: NOW + 47 * HOUR,
+          }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected).toBeNull();
+  });
+});
+
 describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
