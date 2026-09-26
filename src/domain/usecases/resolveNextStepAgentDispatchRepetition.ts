@@ -20,8 +20,6 @@ export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
 export const STORY_UNSET_ESCALATION_PHRASE =
   'the story field must be set by the owner before dispatch can continue';
-export const NO_NEXT_STEP_AGENT_ESCALATION_PHRASE =
-  'the issue is now waiting on the owner';
 
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 
@@ -32,8 +30,7 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
   | { type: 'storyUnset'; comment: string }
-  | { type: 'escalateStoryUnsetLoop'; comment: string }
-  | { type: 'escalateNoNextStepAgent'; comment: string };
+  | { type: 'escalateStoryUnsetLoop'; comment: string };
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
@@ -44,7 +41,6 @@ const REPORTING_LOOP_ESCALATED_KEYWORD = 'REPORTING_LOOP_ESCALATED';
 const DISPATCH_LOOP_ESCALATED_KEYWORD = 'DISPATCH_LOOP_ESCALATED';
 const STORY_UNSET_KEYWORD = 'STORY_UNSET';
 const STORY_UNSET_ESCALATED_KEYWORD = 'STORY_UNSET_ESCALATED';
-const NO_NEXT_STEP_AGENT_ESCALATED_KEYWORD = 'NO_NEXT_STEP_AGENT_ESCALATED';
 
 const DISPATCH_REPETITION_KEYWORDS = new Set([
   DISPATCH_AGAIN_KEYWORD,
@@ -379,17 +375,6 @@ The story field is not set on this issue. The designated agent "${params.nextSte
       };
     }
     return { type: 'notRepeated' };
-  }
-  if (
-    params.nextStepAgent === null &&
-    !params.currentDispatchHasNoReportRejection
-  ) {
-    return {
-      type: 'escalateNoNextStepAgent',
-      comment: `${DISPATCH_REPETITION_PREFIX}${NO_NEXT_STEP_AGENT_ESCALATED_KEYWORD}
-
-This is a no-next-step-agent completion report, so ${NO_NEXT_STEP_AGENT_ESCALATION_PHRASE} instead of being dispatched again.`,
-    };
   }
   if (
     silentRedispatches !== null &&
