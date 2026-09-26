@@ -1380,6 +1380,117 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result.cacheUsed).toBe(false);
     });
 
+    it('escalates to full fetch when a cached issue has a story but no storyOptionId (stale cache schema)', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const freshProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const staleSchemaIssue = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/1',
+          'Stale schema issue',
+        ),
+        story: 'Story A',
+      };
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [staleSchemaIssue],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        [],
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledWith('cached-project');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).not.toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(false);
+    });
+
+    it('proceeds with incremental fetch when every cached issue already carries a storyOptionId or has no story', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const freshProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const issueWithNoStory = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/2',
+          'No story issue',
+        ),
+        story: null,
+      };
+      const issueWithBoundStoryOption = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/3',
+          'Bound story issue',
+        ),
+        story: 'Story A',
+        storyOptionId: 'opt-1',
+      };
+      const issueWithConfirmedNoStoryOption = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/4',
+          'Unmatched story text issue',
+        ),
+        story: 'Unmatched story text',
+        storyOptionId: null,
+      };
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [
+          issueWithNoStory,
+          issueWithBoundStoryOption,
+          issueWithConfirmedNoStoryOption,
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        [],
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(true);
+    });
+
     it('escalates to full fetch when a story option is removed in the fresh project', async () => {
       const {
         repository,
