@@ -1,3 +1,10 @@
+## [2.152.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.6...v2.152.7) (2026-09-26)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** stop STORY_UNSET Auto Status Check comment spam ([#2766](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2766)) ([4589008](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4589008bfdf32b7658107a7413ba6036571116f7)), closes [#2655](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2655)
+
 ## [2.152.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.5...v2.152.6) (2026-09-26)
 
 
