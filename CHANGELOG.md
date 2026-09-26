@@ -1,3 +1,10 @@
+## [2.150.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.2...v2.150.3) (2026-09-26)
+
+
+### Bug Fixes
+
+* **TokenExhaustionHandoverUseCase:** stop force-killing a leader session whose pid changed since the stale handover signal ([#2724](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2724)) ([f0376cb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f0376cbcaf724e5287fd950813c1fe5587561c82))
+
 ## [2.150.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.1...v2.150.2) (2026-09-26)
 
 
