@@ -1092,7 +1092,7 @@ export const handleStoryColor = async (
     return resolved;
   }
   const { freshStories, freshProject } = resolved;
-  const freshStory = { ...story, stories: freshStories };
+  const freshStory = freshProject?.story ?? story;
   const projectWithFreshStory = { ...project, story: freshStory };
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
@@ -1199,7 +1199,9 @@ export const handleReorderStory = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories } = resolved;
+  const { freshStories, freshProject } = resolved;
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...project, story: freshStory };
   const index = freshStories.findIndex((s) => s.id === storyOptionId);
   const swapIndex = index + (direction === 'up' ? -1 : 1);
   const reordered = [...freshStories];
@@ -1209,7 +1211,7 @@ export const handleReorderStory = async (
   const temp = reordered[index];
   reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
-  await projectRepository.updateStoryList(project, reordered);
+  await projectRepository.updateStoryList(projectWithFreshStory, reordered);
   context.invalidateProject?.(pjcode);
   return ok();
 };
@@ -1235,10 +1237,12 @@ export const handleStoryAdd = async (
   }
   const projectRepository = context.resolveProjectRepository(project.url);
   const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...project, story: freshStory };
+  const freshStories = freshStory.stories;
   const newStoryList = buildStoryListWithNew(freshStories, storyName);
   const savedStories = await projectRepository.updateStoryList(
-    project,
+    projectWithFreshStory,
     newStoryList,
   );
   context.invalidateProject?.(pjcode);
@@ -1391,17 +1395,22 @@ export const handleDeleteStory = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { storyOption, freshStories } = resolved;
+  const { storyOption, freshStories, freshProject } = resolved;
+  const freshStory = freshProject?.story ?? projectStory;
+  const projectWithFreshStory = { ...project, story: freshStory };
   const deleteChildTasks = body.deleteChildTasks !== false;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
-  await projectRepository.updateStoryList(project, filteredStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStory,
+    filteredStories,
+  );
   context.invalidateProject?.(pjcode);
   const backgroundTask = handleDeletedStoryItemsInBackground(
     context,
     pjcode,
     storyOption,
-    project,
-    project.story.fieldId,
+    projectWithFreshStory,
+    freshStory.fieldId,
     issueRepository,
     storyObjectMap,
     deleteChildTasks,
@@ -1467,7 +1476,9 @@ export const handleStoryRename = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { storyOption, freshStories } = resolved;
+  const { storyOption, freshStories, freshProject } = resolved;
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...project, story: freshStory };
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
@@ -1479,7 +1490,10 @@ export const handleStoryRename = async (
   const renamedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, name: newName } : s,
   );
-  await projectRepository.updateStoryList(project, renamedStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStory,
+    renamedStories,
+  );
   context.invalidateProject?.(pjcode);
   if (storyIssue !== null) {
     await issueRepository.updateIssue({ ...storyIssue, title: newName });
@@ -1521,11 +1535,16 @@ export const handleStoryUpdateDescription = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories } = resolved;
+  const { freshStories, freshProject } = resolved;
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...project, story: freshStory };
   const updatedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, description } : s,
   );
-  await projectRepository.updateStoryList(project, updatedStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStory,
+    updatedStories,
+  );
   context.invalidateProject?.(pjcode);
   return ok();
 };
