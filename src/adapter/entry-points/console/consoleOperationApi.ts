@@ -240,10 +240,22 @@ const isOperationResponse = <T extends object>(
   value: T | ConsoleOperationResponse,
 ): value is ConsoleOperationResponse => Object.hasOwn(value, 'statusCode');
 
+const buildProjectWithFreshStoryFieldId = (
+  staleProject: Project,
+  staleStory: NonNullable<Project['story']>,
+  freshProject: Project | null,
+  freshStories: FieldOption[],
+): Project & { story: NonNullable<Project['story']> } => {
+  const freshStory = freshProject?.story ?? null;
+  return freshProject !== null && freshStory !== null
+    ? { ...freshProject, story: freshStory }
+    : { ...staleProject, story: { ...staleStory, stories: freshStories } };
+};
+
 const resolveFreshStoryOption = async (
   projectRepository: Pick<ProjectRepository, 'updateStoryList' | 'getProject'>,
   project: Project,
-  cachedStories: FieldOption[],
+  story: NonNullable<Project['story']>,
   storyOptionId: string,
   notFoundMessage: string,
 ): Promise<
@@ -251,16 +263,30 @@ const resolveFreshStoryOption = async (
       storyOption: FieldOption;
       freshStories: FieldOption[];
       freshProject: Project | null;
+      projectWithFreshStoryFieldId: Project & {
+        story: NonNullable<Project['story']>;
+      };
     }
   | ConsoleOperationResponse
 > => {
   const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? cachedStories;
+  const freshStories = freshProject?.story?.stories ?? story.stories;
   const storyOption = freshStories.find((s) => s.id === storyOptionId);
   if (storyOption === undefined) {
     return badRequest(notFoundMessage);
   }
-  return { storyOption, freshStories, freshProject };
+  const projectWithFreshStoryFieldId = buildProjectWithFreshStoryFieldId(
+    project,
+    story,
+    freshProject,
+    freshStories,
+  );
+  return {
+    storyOption,
+    freshStories,
+    freshProject,
+    projectWithFreshStoryFieldId,
+  };
 };
 
 const resolveConfiguredPjcode = (
@@ -1084,21 +1110,25 @@ export const handleStoryColor = async (
   const resolved = await resolveFreshStoryOption(
     projectRepository,
     project,
-    story.stories,
+    story,
     storyOptionId,
     notFoundMessage,
   );
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories, freshProject } = resolved;
+  const { freshStories, freshProject, projectWithFreshStoryFieldId } = resolved;
   const freshStory = { ...story, stories: freshStories };
   const projectWithFreshStory = { ...project, story: freshStory };
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   await context
     .resolveIssueRepository(proxyUrl)
-    .updateStoryOptionColor(projectWithFreshStory, storyOptionId, newColor);
+    .updateStoryOptionColor(
+      projectWithFreshStoryFieldId,
+      storyOptionId,
+      newColor,
+    );
 
   if (context.updateProjectCacheEntry !== null) {
     const updatedStories = freshStories.map((s) =>
@@ -1192,14 +1222,14 @@ export const handleReorderStory = async (
   const resolved = await resolveFreshStoryOption(
     projectRepository,
     project,
-    project.story.stories,
+    project.story,
     storyOptionId,
     'story option not found',
   );
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories } = resolved;
+  const { freshStories, projectWithFreshStoryFieldId } = resolved;
   const index = freshStories.findIndex((s) => s.id === storyOptionId);
   const swapIndex = index + (direction === 'up' ? -1 : 1);
   const reordered = [...freshStories];
@@ -1209,7 +1239,10 @@ export const handleReorderStory = async (
   const temp = reordered[index];
   reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
-  await projectRepository.updateStoryList(project, reordered);
+  await projectRepository.updateStoryList(
+    projectWithFreshStoryFieldId,
+    reordered,
+  );
   context.invalidateProject?.(pjcode);
   return ok();
 };
@@ -1237,8 +1270,14 @@ export const handleStoryAdd = async (
   const freshProject = await projectRepository.getProject(project.id);
   const freshStories = freshProject?.story?.stories ?? project.story.stories;
   const newStoryList = buildStoryListWithNew(freshStories, storyName);
-  const savedStories = await projectRepository.updateStoryList(
+  const projectWithFreshStoryFieldId = buildProjectWithFreshStoryFieldId(
     project,
+    project.story,
+    freshProject,
+    freshStories,
+  );
+  const savedStories = await projectRepository.updateStoryList(
+    projectWithFreshStoryFieldId,
     newStoryList,
   );
   context.invalidateProject?.(pjcode);
@@ -1382,7 +1421,7 @@ export const handleDeleteStory = async (
     resolveFreshStoryOption(
       projectRepository,
       project,
-      projectStory.stories,
+      projectStory,
       storyOptionId,
       `story option "${storyOptionId}" not found in project`,
     ),
@@ -1391,10 +1430,13 @@ export const handleDeleteStory = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { storyOption, freshStories } = resolved;
+  const { storyOption, freshStories, projectWithFreshStoryFieldId } = resolved;
   const deleteChildTasks = body.deleteChildTasks !== false;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
-  await projectRepository.updateStoryList(project, filteredStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStoryFieldId,
+    filteredStories,
+  );
   context.invalidateProject?.(pjcode);
   const backgroundTask = handleDeletedStoryItemsInBackground(
     context,
@@ -1460,14 +1502,14 @@ export const handleStoryRename = async (
   const resolved = await resolveFreshStoryOption(
     projectRepository,
     project,
-    project.story.stories,
+    project.story,
     storyOptionId,
     `story option "${storyOptionId}" not found in project`,
   );
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { storyOption, freshStories } = resolved;
+  const { storyOption, freshStories, projectWithFreshStoryFieldId } = resolved;
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
@@ -1479,7 +1521,10 @@ export const handleStoryRename = async (
   const renamedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, name: newName } : s,
   );
-  await projectRepository.updateStoryList(project, renamedStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStoryFieldId,
+    renamedStories,
+  );
   context.invalidateProject?.(pjcode);
   if (storyIssue !== null) {
     await issueRepository.updateIssue({ ...storyIssue, title: newName });
@@ -1514,18 +1559,21 @@ export const handleStoryUpdateDescription = async (
   const resolved = await resolveFreshStoryOption(
     projectRepository,
     project,
-    project.story.stories,
+    project.story,
     storyOptionId,
     `story option "${storyOptionId}" not found in project`,
   );
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { freshStories } = resolved;
+  const { freshStories, projectWithFreshStoryFieldId } = resolved;
   const updatedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, description } : s,
   );
-  await projectRepository.updateStoryList(project, updatedStories);
+  await projectRepository.updateStoryList(
+    projectWithFreshStoryFieldId,
+    updatedStories,
+  );
   context.invalidateProject?.(pjcode);
   return ok();
 };
