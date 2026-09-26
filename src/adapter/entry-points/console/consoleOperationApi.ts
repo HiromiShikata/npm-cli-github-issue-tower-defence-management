@@ -1237,10 +1237,12 @@ export const handleStoryAdd = async (
   }
   const projectRepository = context.resolveProjectRepository(project.url);
   const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...project, story: freshStory };
+  const freshStories = freshStory.stories;
   const newStoryList = buildStoryListWithNew(freshStories, storyName);
   const savedStories = await projectRepository.updateStoryList(
-    project,
+    projectWithFreshStory,
     newStoryList,
   );
   context.invalidateProject?.(pjcode);
