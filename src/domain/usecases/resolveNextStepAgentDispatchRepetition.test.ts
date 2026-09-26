@@ -928,8 +928,11 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     const markerCommentWithId = (
       nextStepAgent: string,
       id: string,
+      embeddedCount: number,
+      threshold: number,
     ): TestComment & { id: string } => ({
-      ...storyUnsetMarkerComment(nextStepAgent),
+      author: 'bot',
+      content: `${storyUnsetMarkerComment(nextStepAgent).content} (${embeddedCount}/${threshold})`,
       id,
     });
 
@@ -939,7 +942,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         nextStepAgent: 'code-reviewer',
         comments: [
           report('developer'),
-          markerCommentWithId('developer', 'existing-comment-id'),
+          markerCommentWithId('developer', 'existing-comment-id', 1, 6),
         ],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
