@@ -126,6 +126,23 @@ describe('OauthTokenSelectUseCase', () => {
     }
   });
 
+  it('excludes a token whose 5h window is below the CL script 5h free-ratio threshold', () => {
+    const result = useCase.run(
+      [
+        candidate('busy5h', snapshot({ fiveHourUtilization: 0.76 })),
+        candidate('ok', snapshot({ fiveHourUtilization: 0.4 })),
+      ],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('ok');
+    const busy = result.metrics.find((m) => m.name === 'busy5h');
+    expect(busy?.eligible).toBe(false);
+    expect(busy?.exclusionReason).toContain('5h window');
+  });
+
   it('treats exactly 75% used 5h utilization as eligible (boundary)', () => {
     const result = useCase.run(
       [candidate('boundary', snapshot({ fiveHourUtilization: 0.75 }))],
@@ -146,6 +163,23 @@ describe('OauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('nearFull');
     const nearFull = result.metrics.find((m) => m.name === 'nearFull');
     expect(nearFull?.eligible).toBe(true);
+  });
+
+  it('excludes a token whose 7d window is below the CL script 7d free-ratio threshold', () => {
+    const result = useCase.run(
+      [
+        candidate('busy7d', snapshot({ sevenDayUtilization: 0.995 })),
+        candidate('ok', snapshot({ sevenDayUtilization: 0.8 })),
+      ],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('ok');
+    const busy = result.metrics.find((m) => m.name === 'busy7d');
+    expect(busy?.eligible).toBe(false);
+    expect(busy?.exclusionReason).toContain('7d window');
   });
 
   it('treats exactly 99% used 7d utilization as eligible (boundary)', () => {
@@ -519,14 +553,16 @@ describe('OauthTokenCandidateMetrics drawWeight', () => {
   it('reports draw weight zero for an ineligible candidate', () => {
     const result = useCase.run(
       [
-        candidate('rejected', snapshot({}), false, true),
+        candidate('busy5h', snapshot({ fiveHourUtilization: 0.9 })),
         candidate('ok', snapshot({})),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
-    const rejected = result.metrics.find((m) => m.name === 'rejected');
-    expect(rejected?.drawWeight).toBe(0);
+    const busy = result.metrics.find((m) => m.name === 'busy5h');
+    expect(busy?.drawWeight).toBe(0);
   });
 
   it('reports a positive draw weight for an eligible candidate', () => {
