@@ -2560,6 +2560,151 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
   });
 
+  it('places a just-handed-over task first in its story candidate order, ahead of an untouched task positioned earlier', async () => {
+    const untouchedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/30',
+      number: 30,
+      title: 'Untouched task',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+      story: 'Shared Story',
+    });
+    const handedOverIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/31',
+      number: 31,
+      title: 'Handed-over task',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+      story: 'Shared Story',
+    });
+    const storyObjectMap: StoryObjectMap = new Map();
+    storyObjectMap.set('story-shared', {
+      story: {
+        id: 'story-shared',
+        name: 'Shared Story',
+        color: 'GRAY',
+        description: '',
+      },
+      storyIssue: null,
+      issues: [untouchedIssue, handedOverIssue],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+    mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+      async (url: string) =>
+        url === handedOverIssue.url
+          ? [
+              {
+                author: 'testuser',
+                body: 'From: :robot: developer (claude-sonnet)\n\nHanded the task over.\n\n```json\n{"nextStepAgent": "developer"}\n```',
+                createdAt: new Date(),
+              },
+            ]
+          : [],
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 1,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+      handedOverIssue.url,
+    );
+  });
+
+  it('spawns a later candidate needing no rotation token when an earlier candidate cannot be placed because every token is at its concurrent-worker limit', async () => {
+    const rotationDependentIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/20',
+      number: 20,
+      title: 'Rotation-dependent task',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+      labels: [],
+    });
+    const labeledModelIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/21',
+      number: 21,
+      title: 'Explicit-model task',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+      labels: ['llm-model:claude-haiku'],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([rotationDependentIssue, labeledModelIssue]),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+      {
+        name: 'token-a',
+        token: 'token-a',
+        fiveHourUtilization: 0,
+        sevenDayUtilization: 0,
+        blocked: false,
+        rejected: false,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {},
+      },
+    ]);
+    mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+      'token-a': 6,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-4-6',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 12,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    const awCallUrls = mockLocalCommandRunner.runCommand.mock.calls
+      .filter((call) => call[0] === 'aw')
+      .map((call) => call[1][0]);
+    expect(awCallUrls).not.toContain(rotationDependentIssue.url);
+    expect(awCallUrls).toContain(labeledModelIssue.url);
+    expect(
+      mockIssueRepository.updateStatus.mock.calls.some(
+        (call) =>
+          call[1].url === rotationDependentIssue.url && call[2] === '1',
+      ),
+    ).toBe(true);
+    expect(
+      mockIssueRepository.updateStatus.mock.calls.some(
+        (call) => call[1].url === labeledModelIssue.url && call[2] === '2',
+      ),
+    ).toBe(true);
+  });
+
   it('should not skip issues from repositories with workflow blockers', async () => {
     const blockerIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/100',
