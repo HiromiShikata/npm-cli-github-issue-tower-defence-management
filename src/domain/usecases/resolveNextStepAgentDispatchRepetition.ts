@@ -118,24 +118,14 @@ const isSilentRedispatchCommentForAgent = (
   );
 };
 
-const isStoryUnsetCommentForAgent = (
-  content: string,
-  nextStepAgent: string,
-): boolean => {
+const isStoryUnsetMarkerComment = (content: string): boolean => {
   if (!content.startsWith(DISPATCH_REPETITION_PREFIX)) {
     return false;
   }
   const afterHead = content.slice(DISPATCH_REPETITION_PREFIX.length);
   const firstLine = afterHead.split('\n')[0];
   const parts = firstLine.split(' ');
-  if (!STORY_UNSET_DISPATCH_REPETITION_KEYWORDS.has(parts[0])) {
-    return false;
-  }
-  const agentNameInComment = parts.slice(1).join(' ').trim();
-  return (
-    normalizeProjectFieldName(agentNameInComment) ===
-    normalizeProjectFieldName(nextStepAgent)
-  );
+  return STORY_UNSET_DISPATCH_REPETITION_KEYWORDS.has(parts[0]);
 };
 
 const isEscalationDispatchComment = (content: string): boolean =>
@@ -307,7 +297,6 @@ const resolveStoryUnsetDispatchState = <
     id?: string;
   },
 >(params: {
-  nextStepAgent: string;
   comments: StoryUnsetCommentLike[];
   isTrustedAuthor: (author: string) => boolean;
 }): StoryUnsetDispatchState => {
@@ -321,7 +310,7 @@ const resolveStoryUnsetDispatchState = <
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) => {
       if (!params.isTrustedAuthor(comment.author)) return found;
-      if (!isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent)) {
+      if (!isStoryUnsetMarkerComment(comment.content)) {
         return found;
       }
       const afterHead = comment.content.slice(
@@ -343,7 +332,7 @@ const resolveStoryUnsetDispatchState = <
       .find(
         (comment) =>
           params.isTrustedAuthor(comment.author) &&
-          isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent),
+          isStoryUnsetMarkerComment(comment.content),
       ) ?? null;
   if (lastStoryUnsetComment === null) {
     return { count: 1, existingCommentId: null };
@@ -384,7 +373,6 @@ export const resolveNextStepAgentDispatchRepetition = <
   if (params.isNoStory) {
     if (params.nextStepAgent !== null) {
       const storyUnsetDispatchState = resolveStoryUnsetDispatchState({
-        nextStepAgent: params.nextStepAgent,
         comments: params.comments,
         isTrustedAuthor: params.isTrustedAuthor,
       });

@@ -35,9 +35,12 @@ The following markers are always posted as GitHub Issue comments when applicable
 
 - The `Auto Status Check: STORY_UNSET` interim notification is edited in place on
   every repeat dispatch instead of being posted as a new comment: GitHub's issue
-  timeline never grows past one visible `STORY_UNSET` entry per next-step agent
-  while the issue's story field stays unset, because an edit does not add a row to
-  the timeline.
+  timeline never grows past one visible `STORY_UNSET` entry per issue while its
+  story field stays unset, because an edit does not add a row to the timeline. The
+  comment is matched by marker keyword alone, not by the next-step agent name it
+  mentions, so this holds even when the computed next-step agent changes between
+  consecutive dispatch cycles — the prior cycle's comment is still found and edited
+  rather than left behind as a new one.
 - The comment text still embeds its own dispatch counter (`(N/threshold)`), and
   that same counter is what `resolveNextStepAgentDispatchRepetition` reads back
   from the single existing comment's text to compute the next dispatch count —
