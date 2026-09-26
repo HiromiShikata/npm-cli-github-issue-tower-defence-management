@@ -201,6 +201,8 @@ describe('CLI', () => {
       GH_TOKEN: 'test-token',
       XDG_CACHE_HOME: cacheHomeDir,
     };
+    delete process.env.TDPM_ERROR_REPORT_REPOSITORY;
+    delete process.env.TDPM_FLEET_CONFIG;
     writeConfig(defaultConfig);
   });
 
@@ -3416,6 +3418,21 @@ mysteryKey: 'value'
     it('should start the server on the default port 9980 when --port is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
+      const actualFsModule: typeof fs = jest.requireActual('fs');
+      const expectedUiDistIndexHtmlPath = path.join(
+        __dirname,
+        '..',
+        'console',
+        'ui-dist',
+        'index.html',
+      );
+      jest
+        .mocked(fs.existsSync)
+        .mockImplementation((checkedPath) =>
+          checkedPath === expectedUiDistIndexHtmlPath
+            ? true
+            : actualFsModule.existsSync(checkedPath),
+        );
 
       await program.parseAsync([
         'node',
@@ -3440,6 +3457,7 @@ mysteryKey: 'value'
         true,
       );
 
+      jest.mocked(fs.existsSync).mockImplementation(actualFsModule.existsSync);
       logSpy.mockRestore();
     });
 

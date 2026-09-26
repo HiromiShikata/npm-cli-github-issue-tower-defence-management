@@ -1,11 +1,13 @@
 import { mock } from 'jest-mock-extended';
 import { Project } from '../../../domain/entities/Project';
+import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCacheRepository';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
   createConsoleProjectResolver,
   createConsoleProjectUrlToPjcodeResolver,
   createPjcodeConfigChecker,
+  createProjectIssuesCacheRepositoryResolver,
 } from './consoleProjectResolver';
 
 describe('buildPjcodeToProjectUrl', () => {
@@ -293,5 +295,82 @@ describe('createConsoleProjectUrlToPjcodeResolver', () => {
     ).toThrow(
       'No pjcode is configured for projectUrl https://github.com/orgs/unknown/projects/9',
     );
+  });
+
+  it('throws synchronously when two pjcodes are configured with the identical projectUrl', () => {
+    expect(() =>
+      createConsoleProjectUrlToPjcodeResolver({
+        acme: 'https://github.com/orgs/acme/projects/1',
+        globex: 'https://github.com/orgs/acme/projects/1',
+      }),
+    ).toThrow('https://github.com/orgs/acme/projects/1');
+  });
+});
+
+describe('createProjectIssuesCacheRepositoryResolver', () => {
+  it('returns the exact default repository instance for the default projectName without building a new one', () => {
+    const defaultProjectIssuesCacheRepository =
+      mock<ProjectIssuesCacheRepository>();
+    const buildProjectIssuesCacheRepositoryForPjcode = jest.fn(
+      (_pjcode: string) => mock<ProjectIssuesCacheRepository>(),
+    );
+    const resolveProjectIssuesCacheRepository =
+      createProjectIssuesCacheRepositoryResolver(
+        'acme',
+        defaultProjectIssuesCacheRepository,
+        buildProjectIssuesCacheRepositoryForPjcode,
+      );
+
+    const result = resolveProjectIssuesCacheRepository('acme');
+
+    expect(result).toBe(defaultProjectIssuesCacheRepository);
+    expect(buildProjectIssuesCacheRepositoryForPjcode).not.toHaveBeenCalled();
+  });
+
+  it('builds and returns a repository for a non-default pjcode', () => {
+    const defaultProjectIssuesCacheRepository =
+      mock<ProjectIssuesCacheRepository>();
+    const globexProjectIssuesCacheRepository =
+      mock<ProjectIssuesCacheRepository>();
+    const buildProjectIssuesCacheRepositoryForPjcode = jest.fn(
+      (_pjcode: string) => globexProjectIssuesCacheRepository,
+    );
+    const resolveProjectIssuesCacheRepository =
+      createProjectIssuesCacheRepositoryResolver(
+        'acme',
+        defaultProjectIssuesCacheRepository,
+        buildProjectIssuesCacheRepositoryForPjcode,
+      );
+
+    const result = resolveProjectIssuesCacheRepository('globex');
+
+    expect(result).toBe(globexProjectIssuesCacheRepository);
+    expect(buildProjectIssuesCacheRepositoryForPjcode).toHaveBeenCalledTimes(1);
+    expect(buildProjectIssuesCacheRepositoryForPjcode).toHaveBeenCalledWith(
+      'globex',
+    );
+  });
+
+  it('memoizes the built repository for the same non-default pjcode across calls', () => {
+    const defaultProjectIssuesCacheRepository =
+      mock<ProjectIssuesCacheRepository>();
+    const globexProjectIssuesCacheRepository =
+      mock<ProjectIssuesCacheRepository>();
+    const buildProjectIssuesCacheRepositoryForPjcode = jest.fn(
+      (_pjcode: string) => globexProjectIssuesCacheRepository,
+    );
+    const resolveProjectIssuesCacheRepository =
+      createProjectIssuesCacheRepositoryResolver(
+        'acme',
+        defaultProjectIssuesCacheRepository,
+        buildProjectIssuesCacheRepositoryForPjcode,
+      );
+
+    const firstResult = resolveProjectIssuesCacheRepository('globex');
+    const secondResult = resolveProjectIssuesCacheRepository('globex');
+
+    expect(firstResult).toBe(globexProjectIssuesCacheRepository);
+    expect(secondResult).toBe(globexProjectIssuesCacheRepository);
+    expect(buildProjectIssuesCacheRepositoryForPjcode).toHaveBeenCalledTimes(1);
   });
 });
