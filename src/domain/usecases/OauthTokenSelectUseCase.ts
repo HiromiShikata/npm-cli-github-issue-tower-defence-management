@@ -110,6 +110,13 @@ const drainOrderComparison = (
   if (firstPromoted !== secondPromoted) {
     return firstPromoted ? -1 : 1;
   }
+  if (!firstPromoted && !secondPromoted) {
+    if (first.secondsUntilSevenDayReset !== second.secondsUntilSevenDayReset) {
+      return first.secondsUntilSevenDayReset < second.secondsUntilSevenDayReset
+        ? -1
+        : 1;
+    }
+  }
   if (first.sevenDayFreeRatio !== second.sevenDayFreeRatio) {
     return first.sevenDayFreeRatio < second.sevenDayFreeRatio ? -1 : 1;
   }
