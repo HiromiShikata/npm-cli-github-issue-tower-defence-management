@@ -1,3 +1,10 @@
+## [2.152.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.2...v2.152.3) (2026-09-26)
+
+
+### Bug Fixes
+
+* **console:** key story-option groupings by option id instead of display name ([#2739](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2739)) ([b9f9d60](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b9f9d609b5c1e4e9e8f8c9eecc5de46658b57208))
+
 ## [2.152.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.1...v2.152.2) (2026-09-26)
 
 
