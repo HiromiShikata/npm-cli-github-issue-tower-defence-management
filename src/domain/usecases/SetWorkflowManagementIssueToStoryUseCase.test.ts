@@ -939,7 +939,15 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
 
       expect(caughtError).toBeInstanceOf(AggregateError);
       if (caughtError instanceof AggregateError) {
-        expect(caughtError.errors).toEqual([rejectionError]);
+        expect(caughtError.errors).toHaveLength(1);
+        const wrappedError: unknown = caughtError.errors[0];
+        if (!(wrappedError instanceof Error)) {
+          throw new Error('Expected wrappedError to be an Error instance');
+        }
+        expect(wrappedError.message).toBe(
+          `Failed to re-read the live Story value before writing the workflow-management Story. issueUrl: ${failingIssue.url}: ${rejectionError.message}`,
+        );
+        expect(wrappedError.cause).toBe(rejectionError);
       } else {
         throw caughtError;
       }
@@ -1171,7 +1179,15 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
 
       expect(caughtError).toBeInstanceOf(AggregateError);
       if (caughtError instanceof AggregateError) {
-        expect(caughtError.errors).toEqual([rejectionError]);
+        expect(caughtError.errors).toHaveLength(1);
+        const wrappedError: unknown = caughtError.errors[0];
+        if (!(wrappedError instanceof Error)) {
+          throw new Error('Expected wrappedError to be an Error instance');
+        }
+        expect(wrappedError.message).toBe(
+          `Failed to re-read the live Story value before writing the matched-story-label Story. issueUrl: ${failingIssue.url}: ${rejectionError.message}`,
+        );
+        expect(wrappedError.cause).toBe(rejectionError);
       } else {
         throw caughtError;
       }
@@ -1237,10 +1253,27 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
 
       expect(caughtError).toBeInstanceOf(AggregateError);
       if (caughtError instanceof AggregateError) {
-        expect(caughtError.errors).toEqual([
-          workflowRejectionError,
-          matchedStoryRejectionError,
-        ]);
+        expect(caughtError.errors).toHaveLength(2);
+        const wrappedWorkflowError: unknown = caughtError.errors[0];
+        const wrappedMatchedStoryError: unknown = caughtError.errors[1];
+        if (!(wrappedWorkflowError instanceof Error)) {
+          throw new Error(
+            'Expected wrappedWorkflowError to be an Error instance',
+          );
+        }
+        if (!(wrappedMatchedStoryError instanceof Error)) {
+          throw new Error(
+            'Expected wrappedMatchedStoryError to be an Error instance',
+          );
+        }
+        expect(wrappedWorkflowError.message).toBe(
+          `Failed to re-read the live Story value before writing the workflow-management Story. issueUrl: ${failingWorkflowIssue.url}: ${workflowRejectionError.message}`,
+        );
+        expect(wrappedWorkflowError.cause).toBe(workflowRejectionError);
+        expect(wrappedMatchedStoryError.message).toBe(
+          `Failed to re-read the live Story value before writing the matched-story-label Story. issueUrl: ${failingMatchedStoryIssue.url}: ${matchedStoryRejectionError.message}`,
+        );
+        expect(wrappedMatchedStoryError.cause).toBe(matchedStoryRejectionError);
       } else {
         throw caughtError;
       }

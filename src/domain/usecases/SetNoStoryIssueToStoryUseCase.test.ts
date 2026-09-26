@@ -696,7 +696,15 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
 
       expect(caughtError).toBeInstanceOf(AggregateError);
       if (caughtError instanceof AggregateError) {
-        expect(caughtError.errors).toEqual([rejectionError]);
+        expect(caughtError.errors).toHaveLength(1);
+        const wrappedError: unknown = caughtError.errors[0];
+        if (!(wrappedError instanceof Error)) {
+          throw new Error('Expected wrappedError to be an Error instance');
+        }
+        expect(wrappedError.message).toBe(
+          `Failed to re-read the live Story value before writing NO STORY. issueUrl: ${failingIssue.url}: ${rejectionError.message}`,
+        );
+        expect(wrappedError.cause).toBe(rejectionError);
       } else {
         throw caughtError;
       }
