@@ -239,6 +239,46 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
       });
       expect(result.v2.map((group) => group.story)).toEqual(['whatever']);
     });
+
+    describe('duplicate-named Story options keyed by storyOptionId (bug: HiromiShikata/secretary#7370)', () => {
+      const duplicateNamedOptions: FieldOption[] = [
+        storyOption('dup-1', 'Duplicate Name', 'RED'),
+        storyOption('dup-2', 'Duplicate Name', 'YELLOW'),
+      ];
+      const projectWithDuplicateNames: Project = baseProject({
+        name: 'story',
+        fieldId: 'story-field',
+        databaseId: 2,
+        stories: duplicateNamedOptions,
+        workflowManagementStory: { id: 'wm', name: 'workflow management' },
+      });
+
+      it('produces two separate groups for two issues sharing the same story display name but different story option ids', () => {
+        const result = run(
+          [
+            makeIssue({ story: 'Duplicate Name', storyOptionId: 'dup-1' }),
+            makeIssue({ story: 'Duplicate Name', storyOptionId: 'dup-2' }),
+          ],
+          { project: projectWithDuplicateNames },
+        );
+        expect(result.v1).toHaveLength(2);
+        expect(
+          result.v1.reduce((total, group) => total + group.urls.length, 0),
+        ).toBe(2);
+      });
+
+      it('keeps two issues with the same story option id in the same group even when their story display name text differs', () => {
+        const result = run(
+          [
+            makeIssue({ story: 'Stale Cached Name', storyOptionId: 'dup-1' }),
+            makeIssue({ story: 'Fresh Actual Name', storyOptionId: 'dup-1' }),
+          ],
+          { project: projectWithDuplicateNames },
+        );
+        expect(result.v1).toHaveLength(1);
+        expect(result.v1[0].urls).toHaveLength(2);
+      });
+    });
   });
 
   describe('v3 document', () => {

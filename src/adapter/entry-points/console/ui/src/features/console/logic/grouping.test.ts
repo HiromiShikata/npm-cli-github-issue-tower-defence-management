@@ -4,6 +4,7 @@ import {
   resolveItemStory,
   resolveStoryColorEnum,
 } from './grouping';
+import * as groupingModule from './grouping';
 import type { ConsoleListItem, ConsoleOverlay } from './types';
 
 const item = (
@@ -225,5 +226,93 @@ describe('buildConsoleListRows', () => {
     );
     const header = rows[0];
     expect(header.kind === 'group-header' && header.story).toBe('ItemStory');
+  });
+
+  describe('storyOptionId grouping (bug: HiromiShikata/secretary#7370)', () => {
+    const itemWithStoryOptionId = (
+      numberValue: number,
+      story: string,
+      storyOptionId: string | null,
+    ): ConsoleListItem =>
+      ({
+        ...item({ number: numberValue, story }),
+        storyOptionId,
+      }) as unknown as ConsoleListItem;
+
+    it('produces two separate group-header rows, each with its own storyOptionId and count, for items sharing the same story display name but different story option ids', () => {
+      const items = [
+        itemWithStoryOptionId(1, 'Duplicate Name', 'dup-1'),
+        itemWithStoryOptionId(2, 'Duplicate Name', 'dup-2'),
+      ];
+      const rows = buildConsoleListRows(items, {}, []);
+      const headers = rows.filter(
+        (row) => row.kind === 'group-header',
+      ) as unknown as {
+        kind: 'group-header';
+        story: string;
+        storyOptionId: string | null;
+        count: number;
+      }[];
+      expect(headers).toHaveLength(2);
+      expect(headers[0]?.storyOptionId).toBe('dup-1');
+      expect(headers[0]?.count).toBe(1);
+      expect(headers[1]?.storyOptionId).toBe('dup-2');
+      expect(headers[1]?.count).toBe(1);
+    });
+  });
+});
+
+describe('resolveItemStoryOptionId (bug: HiromiShikata/secretary#7370)', () => {
+  const resolveFn = (
+    groupingModule as unknown as {
+      resolveItemStoryOptionId?: (
+        target: ConsoleListItem,
+        overlay: ConsoleOverlay,
+        snapshotGeneratedAt?: string | null,
+      ) => string | null;
+    }
+  ).resolveItemStoryOptionId;
+
+  const itemWithStoryOptionId = (
+    numberValue: number,
+    story: string,
+    storyOptionId: string | null,
+  ): ConsoleListItem =>
+    ({
+      ...item({ number: numberValue, story }),
+      storyOptionId,
+    }) as unknown as ConsoleListItem;
+
+  it('prefers the overlay story option id when the overlay carries one', () => {
+    const overlay = {
+      PVTI_1: {
+        ts: 1,
+        mode: 'todo-by-human',
+        story: { name: 'Overlay', color: 'BLUE', id: 'overlay-id' },
+      },
+    } as unknown as ConsoleOverlay;
+    const target = itemWithStoryOptionId(1, 'Original', 'item-id');
+    expect(resolveFn?.(target, overlay)).toBe('overlay-id');
+  });
+
+  it('falls back to the item storyOptionId when no overlay entry exists', () => {
+    const target = itemWithStoryOptionId(2, 'Original', 'item-id-2');
+    expect(resolveFn?.(target, {})).toBe('item-id-2');
+  });
+
+  it('returns null when neither the overlay nor the item carries a story option id', () => {
+    const target = itemWithStoryOptionId(3, 'Original', null);
+    expect(resolveFn?.(target, {})).toBeNull();
+  });
+});
+
+describe('resolveStoryColorEnum with an id-shaped key', () => {
+  it('resolves a color using a story option id string as the lookup key', () => {
+    const storyColorsById: Record<string, { color: 'RED' | 'YELLOW' }> = {
+      'dup-1': { color: 'RED' },
+      'dup-2': { color: 'YELLOW' },
+    };
+    expect(resolveStoryColorEnum(storyColorsById, 'dup-1')).toBe('RED');
+    expect(resolveStoryColorEnum(storyColorsById, 'dup-2')).toBe('YELLOW');
   });
 });

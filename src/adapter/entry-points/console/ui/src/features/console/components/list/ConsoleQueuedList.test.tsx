@@ -1,5 +1,9 @@
 import { fireEvent, render } from '@testing-library/react';
-import { buildConsoleListRows } from '../../logic/grouping';
+import {
+  buildConsoleListRows,
+  type ConsoleListRow,
+} from '../../logic/grouping';
+import type { ConsoleColor } from '../../logic/types';
 import {
   consoleAgentOptionsFixture,
   consoleListItemsFixture,
@@ -97,5 +101,45 @@ describe('ConsoleQueuedList', () => {
       />,
     );
     expect(getByRole('alert')).toHaveTextContent('HTTP 503');
+  });
+
+  it('renders each group header with its own distinct color when two rows share a display name but have different story option ids (bug: HiromiShikata/secretary#7370)', () => {
+    const duplicateNamedRows = [
+      {
+        kind: 'group-header',
+        story: 'Duplicate Name',
+        storyOptionId: 'dup-1',
+        count: 1,
+      },
+      {
+        kind: 'group-header',
+        story: 'Duplicate Name',
+        storyOptionId: 'dup-2',
+        count: 1,
+      },
+    ] as unknown as ConsoleListRow[];
+    const storyColorsById: Record<string, { color: ConsoleColor }> = {
+      'dup-1': { color: 'RED' },
+      'dup-2': { color: 'YELLOW' },
+    };
+    const { container } = render(
+      <ConsoleQueuedList
+        rows={duplicateNamedRows}
+        storyColors={storyColorsById}
+        statusOptions={[]}
+        agentOptions={[]}
+        activeItemId={null}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
+    const dots = Array.from(
+      container.querySelectorAll('.console-story-dot'),
+    ) as HTMLElement[];
+    expect(dots).toHaveLength(2);
+    expect(dots[0]?.style.backgroundColor).not.toBe(
+      dots[1]?.style.backgroundColor,
+    );
   });
 });

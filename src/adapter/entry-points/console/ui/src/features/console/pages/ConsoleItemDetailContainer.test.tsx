@@ -16,11 +16,23 @@ import {
   consoleStoryColorsFixture,
   consoleStoryOptionsFixture,
 } from '../testing/fixtures';
-import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
+import { resolveStoryColorEnum } from '../logic/grouping';
+import {
+  ConsoleItemDetailContainer,
+  type ConsoleItemDetailContainerProps,
+} from './ConsoleItemDetailContainer';
 
 jest.mock('../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
 }));
+
+jest.mock('../logic/grouping', () => {
+  const actual = jest.requireActual('../logic/grouping');
+  return {
+    ...actual,
+    resolveStoryColorEnum: jest.fn(actual.resolveStoryColorEnum),
+  };
+});
 
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
@@ -1174,6 +1186,62 @@ describe('ConsoleItemDetailContainer', () => {
       id: '28415d6c',
       name: 'regular / workflow improvement',
       color: 'GRAY',
+    });
+  });
+
+  it('includes the selected story option id in the overlayPatch when a story option is selected (bug: HiromiShikata/secretary#7370)', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole, getByTitle } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    const storySelect = getByRole('combobox', { name: 'Set story' });
+    fireEvent.change(storySelect, { target: { value: '28415d6c' } });
+    const input = onQueueAction.mock.calls[0][0];
+    const overlayPatch = input.overlayPatch as unknown as {
+      story: { name: string; color: string; id: string };
+    };
+    expect(overlayPatch.story.id).toBe('28415d6c');
+  });
+
+  describe('resolvedStoryOptionId used for color resolution (bug: HiromiShikata/secretary#7370)', () => {
+    it('resolves the story color using the storyOptionId prop rather than the display name, when the prop is provided', () => {
+      const mockedResolveStoryColorEnum = jest.mocked(resolveStoryColorEnum);
+      mockedResolveStoryColorEnum.mockClear();
+      const props = {
+        tab: 'todo-by-human',
+        item: issueItem,
+        caches: buildCaches(),
+        operations: buildOperations(),
+        statusOptions: consoleStatusOptionsFixture,
+        storyOptions: [],
+        agentOptions: [],
+        storyColors: consoleStoryColorsFixture,
+        storyName: 'TDPM Console port',
+        storyOptionId: 'story-option-id-value',
+        overlayStatus: null,
+        now: Date.parse('2026-06-19T12:00:00.000Z'),
+        onQueueAction: jest.fn(),
+      } as unknown as ConsoleItemDetailContainerProps;
+      render(<ConsoleItemDetailContainer {...props} />);
+      expect(mockedResolveStoryColorEnum).toHaveBeenCalledWith(
+        consoleStoryColorsFixture,
+        'story-option-id-value',
+      );
     });
   });
 

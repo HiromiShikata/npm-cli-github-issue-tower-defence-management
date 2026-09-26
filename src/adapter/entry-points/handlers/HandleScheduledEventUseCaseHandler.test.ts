@@ -147,6 +147,16 @@ jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
 }));
 
+const mockGenerateDashboardRowUseCaseRun = jest.fn();
+jest.mock(
+  '../../../domain/usecases/dashboard/GenerateDashboardRowUseCase',
+  () => ({
+    GenerateDashboardRowUseCase: jest.fn().mockImplementation(() => ({
+      run: mockGenerateDashboardRowUseCaseRun,
+    })),
+  }),
+);
+
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
@@ -995,5 +1005,64 @@ defaultAgentName: readme-agent
       'test-token',
       expect.any(LocalStorageCacheRepository),
     );
+  });
+
+  describe('story color map keyed by story option id', () => {
+    it('keeps both colors distinguishable by story option id when two Story options share the same display name', async () => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          dashboardDataDir: '/tmp/dashboard-data-test',
+        }),
+      );
+      const duplicateNamedOptionsProject = mock<Project>({
+        id: 'PVT_kwHOtest123',
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 2,
+          stories: [
+            {
+              id: 's1',
+              name: 'Duplicate Name',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 's2',
+              name: 'Duplicate Name',
+              color: 'YELLOW',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wm', name: 'workflow management' },
+        },
+      });
+      mockRun.mockImplementationOnce(async (...args: Parameters<RunFn>) => {
+        capturedRunInputs.push(args);
+        const input = args[0];
+        if (input.afterIssuesFetched) {
+          await input.afterIssuesFetched(duplicateNamedOptionsProject, []);
+        }
+        return {
+          project: duplicateNamedOptionsProject,
+          issues: [],
+          cacheUsed: false,
+          targetDateTimes: [],
+          rotationOrder: null,
+        };
+      });
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(mockGenerateDashboardRowUseCaseRun).toHaveBeenCalledTimes(1);
+      const callArg = mockGenerateDashboardRowUseCaseRun.mock
+        .calls[0][0] as unknown as {
+        storyColorMapByStoryOptionId: Map<string, string>;
+      };
+      expect(callArg.storyColorMapByStoryOptionId.get('s1')).toBe('RED');
+      expect(callArg.storyColorMapByStoryOptionId.get('s2')).toBe('YELLOW');
+    });
   });
 });

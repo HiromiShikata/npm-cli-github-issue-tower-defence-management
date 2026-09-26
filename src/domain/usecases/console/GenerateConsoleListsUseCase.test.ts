@@ -899,6 +899,62 @@ describe('GenerateConsoleListsUseCase', () => {
     });
   });
 
+  describe('duplicate-named Story options keyed by storyOptionId (bug: HiromiShikata/secretary#7370)', () => {
+    const duplicateNamedOptions: FieldOption[] = [
+      storyOption('dup-1', 'Duplicate Name', 'RED'),
+      storyOption('dup-2', 'Duplicate Name', 'YELLOW'),
+    ];
+    const projectWithDuplicateNames: Project = baseProject({
+      name: 'story',
+      fieldId: 'story-field',
+      databaseId: 2,
+      stories: duplicateNamedOptions,
+      workflowManagementStory: { id: 'wm', name: 'workflow management' },
+    });
+
+    it('keeps openItemCount, items and storyColors independent per story option id when two Story options share the same display name', () => {
+      const issueA = makeIssue({
+        story: 'Duplicate Name',
+        storyOptionId: 'dup-1',
+        isClosed: false,
+      });
+      const issueB = makeIssue({
+        story: 'Duplicate Name',
+        storyOptionId: 'dup-2',
+        isClosed: false,
+      });
+      const result = run([issueA, issueB], projectWithDuplicateNames, null);
+
+      const entryA = result.stories.stories.find(
+        (s) => s.storyOptionId === 'dup-1',
+      );
+      const entryB = result.stories.stories.find(
+        (s) => s.storyOptionId === 'dup-2',
+      );
+
+      expect(entryA?.openItemCount).toBe(1);
+      expect(entryB?.openItemCount).toBe(1);
+      expect(entryA?.items).toHaveLength(1);
+      expect(entryB?.items).toHaveLength(1);
+      expect(
+        (
+          entryA?.items[0] as unknown as
+            | { storyOptionId: string | null }
+            | undefined
+        )?.storyOptionId,
+      ).toBe('dup-1');
+      expect(
+        (
+          entryB?.items[0] as unknown as
+            | { storyOptionId: string | null }
+            | undefined
+        )?.storyOptionId,
+      ).toBe('dup-2');
+      expect(result.stories.storyColors['dup-1']).toEqual({ color: 'RED' });
+      expect(result.stories.storyColors['dup-2']).toEqual({ color: 'YELLOW' });
+    });
+  });
+
   describe('agent field propagation', () => {
     it('copies the agent value from the issue into the list item', () => {
       const result = run([

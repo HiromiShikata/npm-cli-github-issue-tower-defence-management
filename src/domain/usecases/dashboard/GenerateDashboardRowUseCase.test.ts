@@ -49,7 +49,7 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({
         issues: [],
         assigneeLogin: ASSIGNEE,
-        storyColorMap: new Map(),
+        storyColorMapByStoryOptionId: new Map(),
       }),
     ).toEqual({
       todo: 0,
@@ -76,7 +76,7 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({
         issues,
         assigneeLogin: ASSIGNEE,
-        storyColorMap: new Map(),
+        storyColorMapByStoryOptionId: new Map(),
       }),
     ).toEqual({
       todo: 1,
@@ -106,7 +106,7 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({
         issues,
         assigneeLogin: ASSIGNEE,
-        storyColorMap: new Map(),
+        storyColorMapByStoryOptionId: new Map(),
       }),
     ).toEqual({
       todo: 0,
@@ -137,7 +137,7 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({
         issues,
         assigneeLogin: ASSIGNEE,
-        storyColorMap: new Map(),
+        storyColorMapByStoryOptionId: new Map(),
       }),
     ).toEqual({
       todo: 0,
@@ -166,7 +166,7 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({
         issues,
         assigneeLogin: ASSIGNEE,
-        storyColorMap: new Map(),
+        storyColorMapByStoryOptionId: new Map(),
       }),
     ).toMatchObject({
       ws: 1,
@@ -198,8 +198,11 @@ describe('GenerateDashboardRowUseCase', () => {
     ];
 
     expect(
-      usecase.run({ issues, assigneeLogin: ASSIGNEE, storyColorMap: new Map() })
-        .blocker,
+      usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMapByStoryOptionId: new Map(),
+      }).blocker,
     ).toBe(2);
   });
 
@@ -231,7 +234,7 @@ describe('GenerateDashboardRowUseCase', () => {
     const result = usecase.run({
       issues,
       assigneeLogin: ASSIGNEE,
-      storyColorMap,
+      storyColorMapByStoryOptionId: storyColorMap,
     });
     expect(result.humanPendingRed).toBe(2);
     expect(result.humanPendingYellow).toBe(1);
@@ -247,7 +250,7 @@ describe('GenerateDashboardRowUseCase', () => {
     const result = usecase.run({
       issues,
       assigneeLogin: ASSIGNEE,
-      storyColorMap: new Map(),
+      storyColorMapByStoryOptionId: new Map(),
     });
     expect(result.humanPendingRed).toBe(0);
     expect(result.humanPendingYellow).toBe(0);
@@ -265,8 +268,11 @@ describe('GenerateDashboardRowUseCase', () => {
     ];
 
     expect(
-      usecase.run({ issues, assigneeLogin: ASSIGNEE, storyColorMap })
-        .humanPendingRed,
+      usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMapByStoryOptionId: storyColorMap,
+      }).humanPendingRed,
     ).toBe(0);
   });
 
@@ -281,8 +287,40 @@ describe('GenerateDashboardRowUseCase', () => {
     ];
 
     expect(
-      usecase.run({ issues, assigneeLogin: ASSIGNEE, storyColorMap })
-        .humanPendingRed,
+      usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMapByStoryOptionId: storyColorMap,
+      }).humanPendingRed,
     ).toBe(1);
+  });
+
+  describe('story option id keyed color matching (bug: HiromiShikata/secretary#7370)', () => {
+    it('counts each issue under its own color by storyOptionId even when both issues share the same story display name', () => {
+      const storyColorMapByStoryOptionId = new Map([
+        ['dup-1', 'RED'],
+        ['dup-2', 'YELLOW'],
+      ]);
+      const issues = [
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Duplicate Name',
+          storyOptionId: 'dup-1',
+        }),
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Duplicate Name',
+          storyOptionId: 'dup-2',
+        }),
+      ];
+
+      const result = usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMapByStoryOptionId,
+      });
+      expect(result.humanPendingRed).toBe(1);
+      expect(result.humanPendingYellow).toBe(1);
+    });
   });
 });

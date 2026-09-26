@@ -566,6 +566,105 @@ describe('buildComposeDashboardInput', () => {
     }
   });
 
+  it('keeps colors distinguishable by story option id when two story options share the same display name (bug: HiromiShikata/secretary#7370)', () => {
+    const dataDir = makeDataDir();
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-cache-'));
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T12:00:00.000Z',
+        assigneeLogin: 'HiromiShikata',
+        allIssuesCacheDir: cacheDir,
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 0,
+        humanPendingYellow: 0,
+        humanPendingBlue: 0,
+      });
+      const baseIssue = {
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        assignees: ['HiromiShikata'],
+        labels: [],
+        org: 'demo',
+        repo: 'repo',
+        body: '',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: '2026-06-13T08:18:45.000Z',
+        author: 'someone',
+        closingIssueReferenceUrls: [],
+        agent: null,
+        stateReason: null,
+      };
+      fs.writeFileSync(
+        path.join(cacheDir, 'latest.json'),
+        JSON.stringify({
+          lastFetchedAt: '2026-06-26T12:05:00.000Z',
+          issues: [
+            {
+              ...baseIssue,
+              nameWithOwner: 'demo/repo',
+              number: 1,
+              title: 'Issue 1',
+              status: 'Awaiting Owner',
+              story: 'Duplicate Name',
+              storyOptionId: 'dup-1',
+              url: 'https://github.com/demo/repo/issues/1',
+              itemId: 'item-1',
+            },
+            {
+              ...baseIssue,
+              nameWithOwner: 'demo/repo',
+              number: 2,
+              title: 'Issue 2',
+              status: 'Awaiting Owner',
+              story: 'Duplicate Name',
+              storyOptionId: 'dup-2',
+              url: 'https://github.com/demo/repo/issues/2',
+              itemId: 'item-2',
+            },
+          ],
+          project: {
+            story: {
+              stories: [
+                {
+                  id: 'dup-1',
+                  name: 'Duplicate Name',
+                  color: 'RED',
+                },
+                {
+                  id: 'dup-2',
+                  name: 'Duplicate Name',
+                  color: 'YELLOW',
+                },
+              ],
+            },
+          },
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].row?.humanPendingRed).toBe(1);
+      expect(input.projects[0].row?.humanPendingYellow).toBe(1);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+    }
+  });
+
   it('marks the row as fallback when the cache lastFetchedAt is not newer than capturedAt', () => {
     const dataDir = makeDataDir();
     const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-cache-'));
