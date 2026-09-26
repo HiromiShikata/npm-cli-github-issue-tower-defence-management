@@ -1607,14 +1607,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Owner',
+        status: 'Awaiting Workspace',
       }),
       mockProject,
     );
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
-      'awaiting-owner-id',
+      'awaiting-workspace-id',
     );
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
       expect.anything(),
@@ -3151,7 +3151,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and route to Awaiting Owner when issue has non-developer agent field', async () => {
+  it('should skip PR checks and route to Awaiting Workspace when issue has non-developer agent field', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -3175,12 +3175,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
   });
 
-  it('should skip PR checks and route to Awaiting Owner when issue has non-developer agent field value', async () => {
+  it('should skip PR checks and route to Awaiting Workspace when issue has non-developer agent field value', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -3204,12 +3204,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
   });
 
-  it('should route non-developer agent completing with no routing signal to Awaiting Owner', async () => {
+  it('should route non-developer agent completing with no routing signal to Awaiting Workspace', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -3233,11 +3233,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -6663,9 +6663,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6736,9 +6736,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6836,9 +6836,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6875,9 +6875,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6914,9 +6914,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -6953,9 +6953,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Owner',
+          status: 'Awaiting Workspace',
         }),
-        'awaiting-owner-id',
+        'awaiting-workspace-id',
       );
     });
 
@@ -7067,7 +7067,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should route to Awaiting Owner when chore agent has exactly one linked PR where all CI passes', async () => {
+    it('should route to Awaiting Workspace when chore agent has exactly one linked PR where all CI passes', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -7100,7 +7100,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -7130,7 +7130,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
     });
@@ -8188,12 +8188,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         story: 'regular / some story',
-        agent: 'chore',
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
         createMockComment({
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
@@ -8213,7 +8220,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        'awaiting-owner-id',
+        'failed-preparation-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
