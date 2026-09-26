@@ -6,6 +6,7 @@ import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
 import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import {
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
   CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
@@ -3415,6 +3416,52 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryList', async () => {
+      const staleProject: Project = {
+        ...projectWithOrderedStories(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(() => projectRepository, staleProject),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
+    });
+
     it('calls invalidateProject with pjcode after successful reorder', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const getProject = jest
@@ -4088,6 +4135,72 @@ describe('consoleOperationApi', () => {
       expect(projectRepositoryResolver).toHaveBeenCalledWith(p.url);
     });
 
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryList', async () => {
+      const staleProject: Project = {
+        ...buildProjectWithStories(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_first',
+              name: 'First story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_second',
+              name: 'Second story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_first',
+              name: 'First story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_second',
+              name: 'Second story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleStoryAdd(
+        {
+          ...addStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyName: 'Brand new story',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
+    });
+
     it('returns 502 when resolveProjectRepository is null', async () => {
       const response = await handleStoryAdd(
         {
@@ -4362,6 +4475,77 @@ describe('consoleOperationApi', () => {
         'opt_blue',
         'RED',
       );
+    });
+
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryOptionColor', async () => {
+      const staleProject: Project = {
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_green',
+              name: 'Move to Okinawa',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_green',
+              name: 'Move to Okinawa',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const response = await handleStoryColor(
+        {
+          ...contextForProject(staleProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: jest.fn().mockResolvedValue([]),
+            getProject: jest.fn().mockResolvedValue(freshProject),
+          }),
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      const [colorCalledProject, colorCalledOptionId, colorCalledColor] =
+        issueRepository.updateStoryOptionColor.mock.calls[0];
+      expect(colorCalledProject.story?.fieldId).toBe('fresh_field_id');
+      expect(colorCalledOptionId).toBe('opt_blue');
+      expect(colorCalledColor).toBe('RED');
     });
 
     it('resolves the issue repository from a proxy url of the target repo', async () => {
@@ -4961,6 +5145,199 @@ describe('consoleOperationApi', () => {
         storyOptionId: 'opt_remove',
       });
       expect(projectRepositoryResolver).toHaveBeenCalledWith(p.url);
+    });
+
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryList', async () => {
+      const staleProject: Project = {
+        ...projectWithStoriesToDelete(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'opt_also_keep',
+              name: 'Also keep',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'opt_also_keep',
+              name: 'Also keep',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleDeleteStory(
+        {
+          ...deleteStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
+    });
+
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when clearing the story field on open tasks in the background with deleteChildTasks false', async () => {
+      const staleProject: Project = {
+        ...projectWithStoriesToDelete(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const { story } = staleProject;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/100',
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.id,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(
+        {
+          ...deleteStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+          deleteChildTasks: false,
+        },
+      );
+      await response.backgroundTask;
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
+        expect.anything(),
+        'fresh_field_id',
+        openTask,
+      );
     });
 
     it('calls invalidateProject after a successful delete', async () => {
@@ -5906,6 +6283,73 @@ describe('consoleOperationApi', () => {
       ]);
     });
 
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryList', async () => {
+      const staleProject: Project = {
+        ...projectWithStoriesToRename(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleStoryRename(
+        {
+          ...renameStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          newName: 'Alpha renamed',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
+    });
+
     it('calls invalidateProject after a successful rename', async () => {
       const p = projectWithStoriesToRename();
       const invalidateProject = jest.fn();
@@ -6191,6 +6635,73 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_alpha', description: '' }),
         ]),
       );
+    });
+
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when calling updateStoryList', async () => {
+      const staleProject: Project = {
+        ...projectWithStoriesToUpdateDescription(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: 'Original description',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: 'Original description',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleStoryUpdateDescription(
+        {
+          ...descriptionContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'Updated description',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('calls invalidateProject after a successful update', async () => {
