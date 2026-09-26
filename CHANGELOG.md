@@ -1,3 +1,10 @@
+# [2.150.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.149.1...v2.150.0) (2026-09-26)
+
+
+### Features
+
+* **scheduler:** stop worker scopes whose issue Status is not Preparation ([#2700](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2700)) ([488a5f3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/488a5f37c18a17c2d5a272540c347596586e0009))
+
 ## [2.149.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.149.0...v2.149.1) (2026-09-25)
 
 
