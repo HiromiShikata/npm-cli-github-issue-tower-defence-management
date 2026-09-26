@@ -2670,39 +2670,80 @@ describe('HandleScheduledEventUseCase', () => {
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
       };
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+
+      beforeEach(() => {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project,
+          cacheUsed: false,
+        });
+        mockClosedStoryIssueReopenUseCase.run.mockResolvedValue(0);
+      });
 
       it('continues to startPreparationUseCase when setWorkflowManagementIssueToStoryUseCase.run rejects', async () => {
-        mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValue(
-          new Error('GitHub API rate limit'),
+        const rejectionError = new Error('GitHub API rate limit');
+        mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValueOnce(
+          rejectionError,
         );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
 
-        await useCase.run({
-          ...baseInput,
-          startPreparation: {
-            defaultAgentName: 'agent1',
-            configFilePath: '/path/to/config.yml',
-            maximumPreparingIssuesCount: null,
-          },
-        });
+        try {
+          await useCase.run({
+            ...baseInput,
+            startPreparation: {
+              defaultAgentName: 'agent1',
+              configFilePath: '/path/to/config.yml',
+              maximumPreparingIssuesCount: null,
+            },
+          });
 
-        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(consoleErrorSpy.mock.calls).toEqual([
+            [
+              `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${rejectionError.message}`,
+              expect.any(Error),
+            ],
+          ]);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
       });
 
       it('continues to startPreparationUseCase when setNoStoryIssueToStoryUseCase.run rejects', async () => {
-        mockSetNoStoryIssueToStoryUseCase.run.mockRejectedValue(
-          new Error('GitHub API rate limit'),
+        const rejectionError = new Error('GitHub API rate limit');
+        mockSetNoStoryIssueToStoryUseCase.run.mockRejectedValueOnce(
+          rejectionError,
         );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
 
-        await useCase.run({
-          ...baseInput,
-          startPreparation: {
-            defaultAgentName: 'agent1',
-            configFilePath: '/path/to/config.yml',
-            maximumPreparingIssuesCount: null,
-          },
-        });
+        try {
+          await useCase.run({
+            ...baseInput,
+            startPreparation: {
+              defaultAgentName: 'agent1',
+              configFilePath: '/path/to/config.yml',
+              maximumPreparingIssuesCount: null,
+            },
+          });
 
-        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(consoleErrorSpy.mock.calls).toEqual([
+            [
+              `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${rejectionError.message}`,
+              expect.any(Error),
+            ],
+          ]);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
       });
     });
   });
