@@ -1103,7 +1103,15 @@ export class ApiV3CheerioRestIssueRepository
           project.story?.stories.find((s) => s.id === id)?.name !== name,
       ) ??
         false);
-    const effectiveIsFullFetch = isFullFetch || storyOptionsChanged;
+    const cacheHasIssuesMissingStoryOptionIdSchema =
+      cache !== null &&
+      cache.issues.some(
+        (issue) => issue.story !== null && issue.storyOptionId === undefined,
+      );
+    const effectiveIsFullFetch =
+      isFullFetch ||
+      storyOptionsChanged ||
+      cacheHasIssuesMissingStoryOptionIdSchema;
 
     if (effectiveIsFullFetch) {
       const itemIdsKnownBeforeFetch = new Set(
