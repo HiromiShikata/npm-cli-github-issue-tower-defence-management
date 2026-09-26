@@ -1488,6 +1488,43 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should not post a duplicate storyUnset comment when an identical STORY_UNSET comment for the same agent already exists within the 2-hour dedup window', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+        createdAt: fiveMinutesAgo,
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: STORY_UNSET developer'),
+    );
+  });
+
   it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

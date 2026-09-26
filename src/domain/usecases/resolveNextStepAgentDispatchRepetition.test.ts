@@ -874,6 +874,37 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('silently');
     });
 
+    it('produces byte-identical storyUnset comment text across consecutive dispatches, so the existing 2-hour dedup mechanism can catch a repeat', () => {
+      const firstDispatch = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+      const secondDispatch = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer'), storyUnsetMarkerComment('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      expect(firstDispatch.type).toBe('storyUnset');
+      expect(secondDispatch.type).toBe('storyUnset');
+      const firstComment =
+        firstDispatch.type === 'storyUnset' ? firstDispatch.comment : '';
+      const secondComment =
+        secondDispatch.type === 'storyUnset' ? secondDispatch.comment : '';
+      expect(secondComment).toEqual(firstComment);
+    });
+
     it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
