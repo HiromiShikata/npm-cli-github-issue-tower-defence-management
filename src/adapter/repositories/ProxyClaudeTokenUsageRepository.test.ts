@@ -1160,6 +1160,164 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
       expect(result).toEqual({});
     });
+
+    type MockedProcess = {
+      pid: number;
+      parentPid: number;
+      comm: string;
+      cmdline: string;
+      environ: string;
+    };
+    const mockProcessTable = (mockedProcesses: MockedProcess[]): void => {
+      mockFsReaddirSync.mockReturnValue(
+        mockedProcesses.map((mockedProcess) => String(mockedProcess.pid)),
+      );
+      mockFsReadFileSync.mockImplementation((filePath: string) => {
+        const match = filePath.match(/^\/proc\/(\d+)\/(environ|cmdline|stat)$/);
+        const mockedProcess =
+          match === null
+            ? undefined
+            : mockedProcesses.find(
+                (candidate) => String(candidate.pid) === match[1],
+              );
+        if (match === null || mockedProcess === undefined) {
+          throw new Error('ENOENT');
+        }
+        if (match[2] === 'environ') {
+          return mockedProcess.environ;
+        }
+        if (match[2] === 'cmdline') {
+          return mockedProcess.cmdline;
+        }
+        return `${mockedProcess.pid} (${mockedProcess.comm}) S ${mockedProcess.parentPid} ${mockedProcess.pid} ${mockedProcess.pid} 0 -1 4194304`;
+      });
+    };
+    const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
+    const workerPrompt = 'Take ownership of https://github.com/o/r/issues/1';
+    const wrapperCommandLine = (logName: string): string =>
+      argv(
+        'bash',
+        '-c',
+        `timeout 3h claude-agent -p "${workerPrompt}" | tee /home/user/logs-aw/${logName}.log`,
+      );
+    const workerTree = (tree: {
+      wrapperPid: number;
+      wrapperToken: string;
+      logName: string;
+      claudeToken: string | null;
+    }): MockedProcess[] => {
+      const wrapperProcesses: MockedProcess[] = [
+        {
+          pid: tree.wrapperPid,
+          parentPid: 1,
+          comm: 'bash',
+          cmdline: wrapperCommandLine(tree.logName),
+          environ: `CLAUDE_CODE_OAUTH_TOKEN=${tree.wrapperToken}\0`,
+        },
+        {
+          pid: tree.wrapperPid + 1,
+          parentPid: tree.wrapperPid,
+          comm: 'bash',
+          cmdline: wrapperCommandLine(tree.logName),
+          environ: `CLAUDE_CODE_OAUTH_TOKEN=${tree.wrapperToken}\0`,
+        },
+      ];
+      if (tree.claudeToken === null) {
+        return wrapperProcesses;
+      }
+      return [
+        ...wrapperProcesses,
+        {
+          pid: tree.wrapperPid + 2,
+          parentPid: tree.wrapperPid,
+          comm: 'timeout',
+          cmdline: argv(
+            'timeout',
+            '--kill-after=60s',
+            '3h',
+            'claude-agent',
+            '-p',
+            workerPrompt,
+          ),
+          environ: `CLAUDE_CODE_OAUTH_TOKEN=${tree.claudeToken}\0`,
+        },
+        {
+          pid: tree.wrapperPid + 3,
+          parentPid: tree.wrapperPid + 2,
+          comm: 'claude-agent',
+          cmdline: argv('claude-agent', '-p', workerPrompt),
+          environ: `CLAUDE_CODE_OAUTH_TOKEN=${tree.claudeToken}\0`,
+        },
+        {
+          pid: tree.wrapperPid + 4,
+          parentPid: tree.wrapperPid + 3,
+          comm: 'claude',
+          cmdline: argv('claude', '--verbose', '-p', workerPrompt),
+          environ: `CLAUDE_CODE_OAUTH_TOKEN=${tree.claudeToken}\0`,
+        },
+      ];
+    };
+
+    it('should count the token of the claude descendant when the worker wrapper and its claude child hold different tokens', async () => {
+      mockProcessTable([
+        ...workerTree({
+          wrapperPid: 500,
+          wrapperToken: 'sk-ant-wrapper',
+          logName: 'worker-a',
+          claudeToken: 'sk-ant-claude',
+        }),
+        {
+          pid: 505,
+          parentPid: 500,
+          comm: 'tee',
+          cmdline: argv('tee', '/home/user/logs-aw/worker-a.log'),
+          environ: 'CLAUDE_CODE_OAUTH_TOKEN=sk-ant-wrapper\0',
+        },
+      ]);
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-claude': 1 });
+    });
+
+    it('should count the wrapper token when the worker wrapper has no claude descendant yet', async () => {
+      mockProcessTable(
+        workerTree({
+          wrapperPid: 600,
+          wrapperToken: 'sk-ant-wrapper',
+          logName: 'worker-b',
+          claudeToken: null,
+        }),
+      );
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-wrapper': 1 });
+    });
+
+    it('should count two sessions on the shared token when two worker wrappers have claude children on the same token', async () => {
+      mockProcessTable([
+        ...workerTree({
+          wrapperPid: 700,
+          wrapperToken: 'sk-ant-wrapper-1',
+          logName: 'worker-c',
+          claudeToken: 'sk-ant-shared',
+        }),
+        ...workerTree({
+          wrapperPid: 800,
+          wrapperToken: 'sk-ant-wrapper-2',
+          logName: 'worker-d',
+          claudeToken: 'sk-ant-shared',
+        }),
+      ]);
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getTokenInFlightCounts();
+
+      expect(result).toEqual({ 'sk-ant-shared': 2 });
+    });
   });
 });
 

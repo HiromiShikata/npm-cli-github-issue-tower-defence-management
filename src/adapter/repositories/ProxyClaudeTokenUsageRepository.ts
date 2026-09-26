@@ -1,14 +1,16 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
 import { ensureProxyRunning } from '../proxy/ensureProxyRunning';
 import { PROXY_PORT, readRateLimit } from '../proxy/RateLimitCache';
 import { loadTokenEntries } from '../proxy/TokenListLoader';
+import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerSessionReader';
 
-const TAKE_OWNERSHIP_COMMAND_MARKER = 'Take ownership';
+const PROC_DIRECTORY = '/proc';
 
 export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageRepository {
+  private readonly workerSessionReader =
+    new ProcTakeOwnershipWorkerSessionReader(PROC_DIRECTORY);
+
   constructor(
     private readonly tokenListJsonPath: string | null,
     private readonly port: number = PROXY_PORT,
@@ -122,63 +124,10 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
 
   getTokenInFlightCounts = async (): Promise<Record<string, number>> => {
     const counts: Record<string, number> = {};
-    let procEntries: string[];
-    try {
-      procEntries = fs.readdirSync('/proc');
-    } catch {
-      return counts;
-    }
-    const tokenByPid = new Map<number, string>();
-    for (const entry of procEntries) {
-      if (!/^\d+$/.test(entry)) continue;
-      const environPath = path.join('/proc', entry, 'environ');
-      let environ: string;
-      try {
-        environ = fs.readFileSync(environPath, 'utf8');
-      } catch {
-        continue;
-      }
-      const vars = environ.split('\0');
-      const tokenEntry = vars.find((v) =>
-        v.startsWith('CLAUDE_CODE_OAUTH_TOKEN='),
-      );
-      if (tokenEntry === undefined) continue;
-      const token = tokenEntry.slice('CLAUDE_CODE_OAUTH_TOKEN='.length);
-      if (token.length === 0) continue;
-      if (!this.isPreparationWorkerProcess(entry)) continue;
-      tokenByPid.set(Number(entry), token);
-    }
-    for (const [pid, token] of tokenByPid) {
-      const parentPid = this.readParentPid(pid);
-      if (parentPid !== null && tokenByPid.has(parentPid)) continue;
-      counts[token] = (counts[token] ?? 0) + 1;
+    for (const session of this.workerSessionReader.listWorkerSessions()) {
+      counts[session.sessionToken] = (counts[session.sessionToken] ?? 0) + 1;
     }
     return counts;
-  };
-
-  private isPreparationWorkerProcess = (procEntry: string): boolean => {
-    const commandLinePath = path.join('/proc', procEntry, 'cmdline');
-    let commandLine: string;
-    try {
-      commandLine = fs.readFileSync(commandLinePath, 'utf8');
-    } catch {
-      return false;
-    }
-    return commandLine.includes(TAKE_OWNERSHIP_COMMAND_MARKER);
-  };
-
-  private readParentPid = (pid: number): number | null => {
-    let stat: string;
-    try {
-      stat = fs.readFileSync(path.join('/proc', String(pid), 'stat'), 'utf8');
-    } catch {
-      return null;
-    }
-    const afterComm = stat.slice(stat.lastIndexOf(') ') + 2);
-    const fields = afterComm.trim().split(/\s+/);
-    const parentPid = Number(fields[1]);
-    if (!Number.isInteger(parentPid)) return null;
-    return parentPid;
   };
 
   proxyBaseUrl = (): string => `http://127.0.0.1:${this.port}`;

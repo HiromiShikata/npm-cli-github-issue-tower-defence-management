@@ -1,12 +1,14 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { TakeOwnershipSpawn } from '../../domain/usecases/adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ProcTakeOwnershipSpawnRepository } from './ProcTakeOwnershipSpawnRepository';
 
 type FakeProcess = {
   pid: number;
   cmdline: string;
   environ: Record<string, string>;
+  stat?: { parentPid: number; comm: string };
 };
 
 const issueUrl = 'https://github.com/HiromiShikata/example/issues/1';
@@ -34,7 +36,136 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       .map(([key, value]) => `${key}=${value}\0`)
       .join('');
     fs.writeFileSync(path.join(processDirectory, 'environ'), environBuffer);
+    if (fakeProcess.stat !== undefined) {
+      fs.writeFileSync(
+        path.join(processDirectory, 'stat'),
+        `${fakeProcess.pid} (${fakeProcess.stat.comm}) S ${fakeProcess.stat.parentPid} ${fakeProcess.pid} ${fakeProcess.pid} 0 -1 4194304`,
+      );
+    }
   };
+
+  const wrapperCommandLine = (logName: string): string =>
+    argv(
+      'bash',
+      '-c',
+      `timeout 3h claude-agent -p "Take ownership of ${issueUrl}" | tee /home/user/logs-aw/${logName}.log`,
+    );
+
+  const writeWorkerTree = (tree: {
+    wrapperPid: number;
+    wrapperToken: string;
+    logName: string;
+    claudeToken: string | null;
+  }): void => {
+    writeProcess({
+      pid: tree.wrapperPid,
+      cmdline: wrapperCommandLine(tree.logName),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: tree.wrapperToken },
+      stat: { parentPid: 1, comm: 'bash' },
+    });
+    writeProcess({
+      pid: tree.wrapperPid + 1,
+      cmdline: wrapperCommandLine(tree.logName),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: tree.wrapperToken },
+      stat: { parentPid: tree.wrapperPid, comm: 'bash' },
+    });
+    if (tree.claudeToken === null) {
+      return;
+    }
+    writeProcess({
+      pid: tree.wrapperPid + 2,
+      cmdline: argv(
+        'timeout',
+        '--kill-after=60s',
+        '3h',
+        'claude-agent',
+        '-p',
+        `Take ownership of ${issueUrl}`,
+      ),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: tree.claudeToken },
+      stat: { parentPid: tree.wrapperPid, comm: 'timeout' },
+    });
+    writeProcess({
+      pid: tree.wrapperPid + 3,
+      cmdline: argv('claude-agent', '-p', `Take ownership of ${issueUrl}`),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: tree.claudeToken },
+      stat: { parentPid: tree.wrapperPid + 2, comm: 'claude-agent' },
+    });
+    writeProcess({
+      pid: tree.wrapperPid + 4,
+      cmdline: argv(
+        'claude',
+        '--verbose',
+        '-p',
+        `Take ownership of ${issueUrl}`,
+      ),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: tree.claudeToken },
+      stat: { parentPid: tree.wrapperPid + 3, comm: 'claude' },
+    });
+  };
+
+  const sortSpawns = (spawns: TakeOwnershipSpawn[]): TakeOwnershipSpawn[] =>
+    [...spawns].sort((left, right) =>
+      `${left.logPath}\0${left.token}`.localeCompare(
+        `${right.logPath}\0${right.token}`,
+      ),
+    );
+
+  it('reports the token of the claude descendant when the worker wrapper and its claude child hold different tokens', () => {
+    writeWorkerTree({
+      wrapperPid: 310,
+      wrapperToken: 'wrapper-token',
+      logName: 'worker-a',
+      claudeToken: 'claude-token',
+    });
+
+    const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+    expect(repository.listSpawns()).toEqual([
+      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
+      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
+    ]);
+  });
+
+  it('reports the wrapper token when the worker wrapper has no claude descendant yet', () => {
+    writeWorkerTree({
+      wrapperPid: 320,
+      wrapperToken: 'wrapper-token',
+      logName: 'worker-b',
+      claudeToken: null,
+    });
+
+    const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+    expect(repository.listSpawns()).toEqual([
+      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
+      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
+    ]);
+  });
+
+  it('reports each worker on the shared token when two worker wrappers have claude children on the same token', () => {
+    writeWorkerTree({
+      wrapperPid: 330,
+      wrapperToken: 'wrapper-token-1',
+      logName: 'worker-c',
+      claudeToken: 'shared-claude-token',
+    });
+    writeWorkerTree({
+      wrapperPid: 340,
+      wrapperToken: 'wrapper-token-2',
+      logName: 'worker-d',
+      claudeToken: 'shared-claude-token',
+    });
+
+    const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+    expect(sortSpawns(repository.listSpawns())).toEqual([
+      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
+      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
+      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
+      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
+    ]);
+  });
 
   it('reads the token and log path of a Take ownership spawn', () => {
     writeProcess({
