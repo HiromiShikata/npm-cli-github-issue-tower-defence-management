@@ -1,3 +1,10 @@
+## [2.152.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.0...v2.152.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **live-session:** drain the token with the least 7-day budget first and drop the 7d/5h free-ratio cutoffs ([#2748](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2748)) ([adfb663](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/adfb66358f73f75fff2e1ac24c63d352413ef7b8))
+
 # [2.152.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.6...v2.152.0) (2026-09-26)
 
 
