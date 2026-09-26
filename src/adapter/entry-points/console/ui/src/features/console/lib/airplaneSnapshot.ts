@@ -152,6 +152,8 @@ const parseListItem = (item: unknown): ConsoleListItem | null => {
     itemId: getString(item.itemId),
     isPr: getBoolean(item.isPr),
     story: getString(item.story),
+    storyOptionId:
+      typeof item.storyOptionId === 'string' ? item.storyOptionId : null,
     status: typeof item.status === 'string' ? item.status : null,
     nextActionDate:
       typeof item.nextActionDate === 'string' ? item.nextActionDate : null,

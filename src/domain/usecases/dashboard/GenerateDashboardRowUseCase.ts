@@ -55,8 +55,8 @@ export class GenerateDashboardRowUseCase {
           issue.isClosed === false &&
           (issue.status === AWAITING_OWNER_STATUS_NAME ||
             issue.status === TODO_STATUS_NAME) &&
-          issue.story !== null &&
-          storyColorMap.get(issue.story) === color,
+          issue.storyOptionId != null &&
+          storyColorMap.get(issue.storyOptionId) === color,
       ).length;
 
     return {

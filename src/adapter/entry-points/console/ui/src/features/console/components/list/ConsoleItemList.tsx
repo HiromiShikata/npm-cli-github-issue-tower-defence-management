@@ -60,11 +60,15 @@ export const ConsoleItemList = ({
       {rows.map((row) => {
         if (row.kind === 'group-header') {
           return (
-            <li key={`group:${row.story}`} className="console-list-group">
+            <li key={`group:${row.groupKey}`} className="console-list-group">
               <ConsoleStorySummary
                 story={row.story}
                 count={row.count}
-                colorEnum={resolveStoryColorEnum(storyColors, row.story)}
+                colorEnum={
+                  row.storyOptionId !== null
+                    ? resolveStoryColorEnum(storyColors, row.storyOptionId)
+                    : null
+                }
               />
             </li>
           );

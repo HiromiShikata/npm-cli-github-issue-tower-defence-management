@@ -1233,6 +1233,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       itemId: issue.itemId,
       isPr: issue.isPr,
       story: issue.story ?? '',
+      storyOptionId: issue.storyOptionId ?? null,
       status: issue.status,
       agent: issue.agent,
       nextActionDate:

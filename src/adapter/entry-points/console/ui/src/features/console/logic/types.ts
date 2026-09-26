@@ -11,6 +11,7 @@ export type ConsoleListItem = {
   itemId: string;
   isPr: boolean;
   story: string;
+  storyOptionId?: string | null;
   status: string | null;
   agent: string | null;
   nextActionDate: string | null;
@@ -122,6 +123,7 @@ export type ConsoleOverlayStatus = {
 };
 
 export type ConsoleOverlayStory = {
+  id?: string;
   name: string;
   color: ConsoleColor;
 };

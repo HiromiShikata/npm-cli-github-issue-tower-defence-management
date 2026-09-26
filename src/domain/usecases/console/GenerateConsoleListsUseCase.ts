@@ -24,6 +24,7 @@ export type ConsoleListItem = {
   itemId: string;
   isPr: boolean;
   story: string;
+  storyOptionId?: string | null;
   status: string | null;
   agent: string | null;
   nextActionDate: string | null;
@@ -180,22 +181,23 @@ export class GenerateConsoleListsUseCase {
     ): ConsoleStatusTab =>
       buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
 
-    const openItemCountByStory = new Map<string, number>();
-    const itemsByStory = new Map<string, ConsoleListItem[]>();
+    const openItemCountByStoryOptionId = new Map<string, number>();
+    const itemsByStoryOptionId = new Map<string, ConsoleListItem[]>();
     for (const issue of issues) {
-      if (!issue.isClosed && issue.story !== null) {
-        openItemCountByStory.set(
-          issue.story,
-          (openItemCountByStory.get(issue.story) ?? 0) + 1,
+      const storyOptionId = issue.storyOptionId;
+      if (!issue.isClosed && storyOptionId != null) {
+        openItemCountByStoryOptionId.set(
+          storyOptionId,
+          (openItemCountByStoryOptionId.get(storyOptionId) ?? 0) + 1,
         );
-        const storyItems = itemsByStory.get(issue.story) ?? [];
+        const storyItems = itemsByStoryOptionId.get(storyOptionId) ?? [];
         storyItems.push(
           this.projectItem(
             issue,
             relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
           ),
         );
-        itemsByStory.set(issue.story, storyItems);
+        itemsByStoryOptionId.set(storyOptionId, storyItems);
       }
     }
 
@@ -210,11 +212,11 @@ export class GenerateConsoleListsUseCase {
       storyOptionId: option.id,
       color: option.color,
       description: option.description,
-      openItemCount: openItemCountByStory.get(option.name) ?? 0,
+      openItemCount: openItemCountByStoryOptionId.get(option.id) ?? 0,
       storyViewUrl: urlOfStoryView
         ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`
         : null,
-      items: itemsByStory.get(option.name) ?? [],
+      items: itemsByStoryOptionId.get(option.id) ?? [],
     }));
 
     return {
@@ -352,6 +354,7 @@ export class GenerateConsoleListsUseCase {
     itemId: issue.itemId,
     isPr: issue.isPr,
     story: issue.story ?? '',
+    storyOptionId: issue.storyOptionId ?? null,
     status: issue.status,
     agent: issue.agent,
     nextActionDate:
@@ -382,7 +385,7 @@ export class GenerateConsoleListsUseCase {
   ): Record<string, { color: ConsoleColor }> => {
     const result: Record<string, { color: ConsoleColor }> = {};
     for (const option of options) {
-      result[option.name] = { color: option.color };
+      result[option.id] = { color: option.color };
     }
     return result;
   };

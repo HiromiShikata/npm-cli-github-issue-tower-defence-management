@@ -51,11 +51,15 @@ export const ConsoleQueuedList = ({
     <ul className="console-list">
       {rows.map((row) =>
         row.kind === 'group-header' ? (
-          <li key={`group:${row.story}`} className="console-list-group">
+          <li key={`group:${row.groupKey}`} className="console-list-group">
             <ConsoleStorySummary
               story={row.story}
               count={row.count}
-              colorEnum={resolveStoryColorEnum(storyColors, row.story)}
+              colorEnum={
+                row.storyOptionId !== null
+                  ? resolveStoryColorEnum(storyColors, row.storyOptionId)
+                  : null
+              }
             />
           </li>
         ) : (
