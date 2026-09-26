@@ -27,7 +27,11 @@ import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
-import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
+import {
+  DEFAULT_SELECTION_WEIGHT,
+  oauthTokenFillTargetSelect,
+  windowFreeRatioOfUtilization,
+} from './OauthTokenSelectUseCase';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -294,6 +298,7 @@ export class StartPreparationUseCase {
       model: string;
       limit: number;
       secondsUntilSevenDayReset: number;
+      sevenDayFreeRatio: number;
     }>;
   } => {
     const nowEpochSeconds = Date.now() / 1000;
@@ -338,6 +343,9 @@ export class StartPreparationUseCase {
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
         nowEpochSeconds,
+      ),
+      sevenDayFreeRatio: windowFreeRatioOfUtilization(
+        usage.sevenDayUtilization,
       ),
     }));
 
@@ -435,6 +443,7 @@ export class StartPreparationUseCase {
       model: string;
       limit: number;
       secondsUntilSevenDayReset: number;
+      sevenDayFreeRatio: number;
     }> = [];
     let tokenInFlightCounts: Record<string, number> = {};
     const rotationOrder: RotationOrderEntry[] | null =
@@ -946,47 +955,37 @@ export class StartPreparationUseCase {
       let routedModelName: string | null = null;
       let selectedTokenName: string | null = null;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
-        const tokenWithSoonestResetAmongAvailableOf = ():
-          { token: string; model: string } | undefined =>
-          selectedTokensWithLimits
-            .map((t) => ({
+        const tokenToFillOf = (): {
+          token: string;
+          model: string;
+        } | null =>
+          oauthTokenFillTargetSelect(
+            selectedTokensWithLimits.map((t) => ({
               token: t.token,
               model: t.model,
-              remaining:
+              sevenDayFreeRatio: t.sevenDayFreeRatio,
+              secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
+              remainingConcurrentSlotCount:
                 t.limit -
                 (tokenInFlightCounts[t.token] ?? 0) -
                 (spawnedInThisRunByToken[t.token] ?? 0),
-              secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
-            }))
-            .filter((t) => t.remaining > 0)
-            .sort((a, b) => {
-              if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
-                return (
-                  a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset
-                );
-              }
-              return b.remaining - a.remaining;
-            })[0];
-        let tokenWithSoonestResetAmongAvailable =
-          tokenWithSoonestResetAmongAvailableOf();
-        if (
-          tokenWithSoonestResetAmongAvailable === undefined &&
-          !tokenInFlightCountsRefreshed
-        ) {
+            })),
+          );
+        let tokenToFill = tokenToFillOf();
+        if (tokenToFill === null && !tokenInFlightCountsRefreshed) {
           tokenInFlightCountsRefreshed = true;
           tokenInFlightCounts =
             await this.claudeTokenUsageRepository.getTokenInFlightCounts();
-          tokenWithSoonestResetAmongAvailable =
-            tokenWithSoonestResetAmongAvailableOf();
+          tokenToFill = tokenToFillOf();
         }
-        if (tokenWithSoonestResetAmongAvailable === undefined) {
+        if (tokenToFill === null) {
           await revertToAwaitingWorkspace(
             'every Claude OAuth token reached its concurrent worker limit',
           );
           break;
         }
-        const selected = tokenWithSoonestResetAmongAvailable.token;
-        routedModelName = tokenWithSoonestResetAmongAvailable.model;
+        const selected = tokenToFill.token;
+        routedModelName = tokenToFill.model;
         selectedTokenName = selected;
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,
