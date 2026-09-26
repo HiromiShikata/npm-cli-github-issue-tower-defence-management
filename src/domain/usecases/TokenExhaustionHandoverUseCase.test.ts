@@ -27,6 +27,7 @@ const ISSUE_URL_SESSION = ISSUE_URL.replace(/[.:]/g, '_');
 const BARE_NAME = 'app';
 const IMPL_PID = 4242;
 const LEADER_PID = 1111;
+const RELAUNCHED_PID = 2222;
 
 const now = new Date('2026-01-01T12:00:00Z');
 const nowEpochSeconds = Math.floor(now.getTime() / 1000);
@@ -564,6 +565,43 @@ describe('TokenExhaustionHandoverUseCase', () => {
       tmuxSessionRepository.launchBareNameLeaderSession,
     ).not.toHaveBeenCalled();
     expect(result.killedSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
+  });
+
+  it('does not force-kill a session whose live pid differs from the stale grace-period entry (a relaunch already replaced the signaled process)', async () => {
+    const relaunchedSession: ClaudeHandoverSession = {
+      ...issueUrlLeaderSession(),
+      pid: RELAUNCHED_PID,
+    };
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      relaunchedSession,
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      ISSUE_URL_SESSION,
+    ]);
+
+    const result = await useCase.run(
+      defaultInput({
+        state: {
+          entries: {
+            [ISSUE_URL_SESSION]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: LEADER_PID,
+            },
+          },
+        },
+      }),
+    );
+
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(result.killedSessionNames).not.toContain(ISSUE_URL_SESSION);
     expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
   });
 
