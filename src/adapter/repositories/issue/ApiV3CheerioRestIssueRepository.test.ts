@@ -94,6 +94,16 @@ const buildLightItem = (
   number: 1,
 });
 
+const buildCustomFieldWithOptionId = (
+  name: string,
+  value: string | null,
+  optionId: string | null,
+): { name: string; value: string | null; optionId: string | null } => ({
+  name,
+  value,
+  optionId,
+});
+
 describe('ApiV3CheerioRestIssueRepository', () => {
   describe('convertProjectItemToIssue', () => {
     const testCases: {
@@ -228,11 +238,147 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           stateReason: null,
         },
       },
+      {
+        name: 'sets storyOptionId from the Story custom field optionId',
+        params: [
+          {
+            id: 'test-id-3',
+            nameWithOwner: 'HiromiShikata/test-repository',
+            number: 40,
+            title: 'test-title-3',
+            state: 'OPEN',
+            url: 'https://github.com/HiromiShikata/test-repository/issues/40',
+            body: 'test-body',
+            labels: [],
+            assignees: [],
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
+            author: '',
+            closingIssueReferenceUrls: [],
+            isRepoArchived: false,
+            stateReason: null,
+            customFields: [
+              buildCustomFieldWithOptionId(
+                'story',
+                'test-story-3',
+                'STORY_OPTION_ID_A',
+              ),
+            ],
+          },
+        ],
+        expected: {
+          assignees: [],
+          body: 'test-body',
+          estimationMinutes: null,
+          isPr: false,
+          itemId: 'test-id-3',
+          labels: [],
+          nameWithOwner: 'HiromiShikata/test-repository',
+          nextActionDate: null,
+          nextActionHour: null,
+          number: 40,
+          org: 'HiromiShikata',
+          repo: 'test-repository',
+          state: 'OPEN',
+          status: null,
+          story: 'test-story-3',
+          storyOptionId: 'STORY_OPTION_ID_A',
+          title: 'test-title-3',
+          url: 'https://github.com/HiromiShikata/test-repository/issues/40',
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          agent: null,
+          isRepoArchived: false,
+          stateReason: null,
+        },
+      },
     ];
     test.each(testCases)('%s', (arg) => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = repository.convertProjectItemToIssue(...arg.params);
       expect(result).toEqual(arg.expected);
+    });
+  });
+  describe('getStoryObjectMap', () => {
+    it('keeps two story option instances separate when they share the same display name but have different ids', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'f-story',
+          databaseId: 3,
+          stories: [
+            {
+              id: 'story-option-a',
+              name: 'Duplicate Name',
+              color: 'GRAY',
+              description: '',
+            },
+            {
+              id: 'story-option-b',
+              name: 'Duplicate Name',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'story-option-a',
+            name: 'Duplicate Name',
+          },
+        },
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/1',
+            'Issue for option A',
+          ),
+          customFields: [
+            buildCustomFieldWithOptionId(
+              'Story',
+              'Duplicate Name',
+              'story-option-a',
+            ),
+          ],
+        },
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/2',
+            'Issue for option B',
+          ),
+          customFields: [
+            buildCustomFieldWithOptionId(
+              'Story',
+              'Duplicate Name',
+              'story-option-b',
+            ),
+          ],
+        },
+      ]);
+
+      const storyObjectMap = await repository.getStoryObjectMap(project);
+
+      expect(storyObjectMap.size).toBe(2);
+      expect(
+        storyObjectMap.get('story-option-a')?.issues.map((issue) => issue.url),
+      ).toEqual(['https://github.com/o/r/issues/1']);
+      expect(
+        storyObjectMap.get('story-option-b')?.issues.map((issue) => issue.url),
+      ).toEqual(['https://github.com/o/r/issues/2']);
     });
   });
   describe('getAllIssues full fetch', () => {
@@ -1014,6 +1160,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             labels: ['story'],
             story: 'umino / story beta',
+            storyOptionId: 'umino-story-beta',
           },
           {
             ...buildCachedIssueRecord(
@@ -1022,6 +1169,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             labels: [],
             story: 'umino / story beta',
+            storyOptionId: 'umino-story-beta',
           },
         ],
       });
@@ -1232,6 +1380,113 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItemsLight,
       ).not.toHaveBeenCalled();
       expect(result.cacheUsed).toBe(false);
+    });
+
+    it('escalates to full fetch when a cached issue has a story but no storyOptionId (stale cache schema)', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const freshProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const staleSchemaIssue = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/1',
+          'Stale schema issue',
+        ),
+        story: 'Story A',
+      };
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [staleSchemaIssue],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledWith('cached-project');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).not.toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(false);
+    });
+
+    it('proceeds with incremental fetch when every cached issue already carries a storyOptionId or has no story', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const freshProject = buildProjectWithStories('cached-project', [
+        { id: 'opt-1', name: 'Story A' },
+      ]);
+      const issueWithNoStory = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/2',
+          'No story issue',
+        ),
+        story: null,
+      };
+      const issueWithBoundStoryOption = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/3',
+          'Bound story issue',
+        ),
+        story: 'Story A',
+        storyOptionId: 'opt-1',
+      };
+      const issueWithConfirmedNoStoryOption = {
+        ...buildCachedIssueRecord(
+          'https://github.com/o/r/issues/4',
+          'Unmatched story text issue',
+        ),
+        story: 'Unmatched story text',
+        storyOptionId: null,
+      };
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [
+          issueWithNoStory,
+          issueWithBoundStoryOption,
+          issueWithConfirmedNoStoryOption,
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(true);
     });
 
     it('escalates to full fetch when a story option is removed in the fresh project', async () => {
@@ -7345,6 +7600,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const dependedFieldName = 'Depended Issue URL separated by comma';
     const dependedFieldId = 'depended-field-id';
     const storyName = 'regular / workflow management';
+    const storyOptionId = 'story-option';
     const cacheKey = 'allIssues-proj-dep';
     const project: Project = {
       ...buildTestProject('proj-dep'),
@@ -7354,13 +7610,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         databaseId: 2,
         stories: [
           {
-            id: 'story-option',
+            id: storyOptionId,
             name: storyName,
             color: 'GRAY',
             description: '',
           },
         ],
-        workflowManagementStory: { id: 'story-option', name: storyName },
+        workflowManagementStory: { id: storyOptionId, name: storyName },
       },
       dependedIssueUrlSeparatedByComma: {
         name: dependedFieldName,
@@ -7411,7 +7667,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ...buildProjectItem(dependentIssueUrl, 'Dependent'),
           customFields: [
             { name: 'Status', value: 'Awaiting Workspace' },
-            { name: 'Story', value: storyName },
+            buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
             { name: dependedFieldName, value: blockerIssueUrl },
           ],
         },
@@ -7420,7 +7676,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           state: blockerState,
           customFields: [
             { name: 'Status', value: 'Done' },
-            { name: 'Story', value: storyName },
+            buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
           ],
         },
       ]);
@@ -7447,7 +7703,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       repository: ApiV3CheerioRestIssueRepository,
     ) => ({
       storyObjectMap: (await repository.getStoryObjectMap(project))
-        .get(storyName)
+        .get(storyOptionId)
         ?.issues.find((i) => i.url === dependentIssueUrl)?.dependedIssueUrls,
       allOpened: (await repository.getAllOpened(project)).find(
         (i) => i.url === dependentIssueUrl,

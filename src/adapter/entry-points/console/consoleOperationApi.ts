@@ -1312,7 +1312,7 @@ const handleDeletedStoryItemsInBackground = async (
   storyObjectMap: StoryObjectMap,
   deleteChildTasks: boolean,
 ): Promise<void> => {
-  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
+  const storyIssue = storyObjectMap.get(storyOption.id)?.storyIssue ?? null;
   if (storyIssue !== null) {
     try {
       await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
@@ -1321,7 +1321,7 @@ const handleDeletedStoryItemsInBackground = async (
     }
     removeFromConsoleLists(context, pjcode, storyIssue.itemId);
   }
-  const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
+  const storyTasks = storyObjectMap.get(storyOption.id)?.issues ?? [];
   for (const task of storyTasks) {
     if (!task.isClosed && !task.isPr) {
       if (deleteChildTasks) {
@@ -1475,7 +1475,7 @@ export const handleStoryRename = async (
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const storyObjectMap = await issueRepository.getStoryObjectMap(project);
-  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
+  const storyIssue = storyObjectMap.get(storyOption.id)?.storyIssue ?? null;
   const renamedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, name: newName } : s,
   );

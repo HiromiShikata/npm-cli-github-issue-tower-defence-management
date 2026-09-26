@@ -13,7 +13,10 @@ import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenc
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
-import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
+import {
+  StoryObjectMap,
+  buildStoryObjectMap,
+} from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { normalizeGitHubRawUrl } from './gitHubRawUrl';
 import { RestIssueRepository } from './RestIssueRepository';
@@ -857,9 +860,9 @@ export class ApiV3CheerioRestIssueRepository
     const completionDate50PercentConfidence = item.customFields.find((field) =>
       normalizeFieldName(field.name).startsWith('completiondate50'),
     )?.value;
-    const story = item.customFields.find(
+    const storyField = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'story',
-    )?.value;
+    );
     const status = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
@@ -885,7 +888,8 @@ export class ApiV3CheerioRestIssueRepository
         ? new Date(completionDate50PercentConfidence)
         : null,
       status: status || null,
-      story: story || null,
+      story: storyField?.value || null,
+      storyOptionId: storyField?.optionId,
       org: owner,
       repo: repo,
       body: item.body ?? '',
@@ -1099,7 +1103,15 @@ export class ApiV3CheerioRestIssueRepository
           project.story?.stories.find((s) => s.id === id)?.name !== name,
       ) ??
         false);
-    const effectiveIsFullFetch = isFullFetch || storyOptionsChanged;
+    const cacheHasIssuesMissingStoryOptionIdSchema =
+      cache !== null &&
+      cache.issues.some(
+        (issue) => issue.story !== null && issue.storyOptionId === undefined,
+      );
+    const effectiveIsFullFetch =
+      isFullFetch ||
+      storyOptionsChanged ||
+      cacheHasIssuesMissingStoryOptionIdSchema;
 
     if (effectiveIsFullFetch) {
       const itemIdsKnownBeforeFetch = new Set(
@@ -3020,23 +3032,7 @@ export class ApiV3CheerioRestIssueRepository
 
   getStoryObjectMap = async (project: Project): Promise<StoryObjectMap> => {
     const { issues } = await this.getAllIssues(project.id);
-    const storyObjectMap: StoryObjectMap = new Map();
-    const targetStories = project.story?.stories || [];
-    for (const story of targetStories) {
-      const storyIssue = issues.find((issue) =>
-        story.name.startsWith(issue.title),
-      );
-      storyObjectMap.set(story.name, {
-        story,
-        storyIssue: storyIssue || null,
-        issues: [],
-      });
-      for (const issue of issues) {
-        if (issue.story !== story.name) continue;
-        storyObjectMap.get(story.name)?.issues.push(issue);
-      }
-    }
-    return storyObjectMap;
+    return buildStoryObjectMap({ project, issues });
   };
 
   getOpenPullRequest = async (

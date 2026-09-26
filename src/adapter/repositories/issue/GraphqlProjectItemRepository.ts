@@ -22,6 +22,7 @@ export type ProjectItem = {
   customFields: {
     name: string;
     value: string | null;
+    optionId?: string | null;
   }[];
 };
 export type ProjectItemLight = {
@@ -35,6 +36,7 @@ type ProjectV2ItemFieldValueNode = {
   number?: number;
   date?: string;
   name?: string;
+  optionId?: string;
   field: {
     name: string;
   };
@@ -102,6 +104,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               }
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
+                optionId
                 field {
                   ... on ProjectV2SingleSelectField {
                     name
@@ -716,6 +719,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               field.number?.toString() ??
               field.date ??
               null,
+            optionId: field.optionId,
           };
         }),
     };
@@ -1000,6 +1004,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
               }
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
+                optionId
                 field {
                   ... on ProjectV2SingleSelectField {
                     name
@@ -1193,6 +1198,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
               }
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
+                optionId
                 field {
                   ... on ProjectV2SingleSelectField {
                     name
@@ -1277,6 +1283,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
               }
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
+                optionId
                 field {
                   ... on ProjectV2SingleSelectField {
                     name
@@ -1330,6 +1337,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
               number: number;
               date: string;
               name: string;
+              optionId?: string;
               field: {
                 name: string;
               };
@@ -1424,6 +1432,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             field.number?.toString() ??
             field.date ??
             null,
+          optionId: field.optionId,
         })),
     );
   };

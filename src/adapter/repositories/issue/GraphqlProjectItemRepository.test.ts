@@ -226,6 +226,61 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result[0].body).toBe('body');
     });
 
+    it('maps optionId from a ProjectV2ItemFieldSingleSelectValue node onto the matching ProjectItem.customFields entry', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-cursor-1',
+                    fieldValues: {
+                      nodes: [
+                        {
+                          name: 'Feature A',
+                          optionId: 'STORY_OPTION_ID_1',
+                          field: { name: 'Story' },
+                        },
+                      ],
+                    },
+                    content: {
+                      repository: { nameWithOwner: 'owner/repo' },
+                      number: 1,
+                      title: 'Test Issue',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: 'body',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].customFields).toEqual([
+        { name: 'Story', value: 'Feature A', optionId: 'STORY_OPTION_ID_1' },
+      ]);
+    });
+
     it('sets ProjectItem.body to null when content node has no body', async () => {
       const repository = new GraphqlProjectItemRepository(
         new LocalStorageRepository(),
