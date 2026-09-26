@@ -518,9 +518,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
       IMPL_PID,
     );
-    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
-      IMPL_PID,
-    );
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
     expect(result.terminatedPids).toEqual([IMPL_PID]);
     expect(result.killedSessionNames).toEqual([]);
     expect(result.relaunchedLeaderNames).toEqual([]);
