@@ -1,6 +1,5 @@
 import type { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import {
-  LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO,
   type LiveSessionOauthTokenSelectionSettings,
   type LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
@@ -124,12 +123,12 @@ export class LiveSessionOauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, weight ${metric.selectionWeight} -> ${status}`;
+      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, 7d budget drainable by 48h before reset: ${metric.sevenDayBudgetUndrainableBeforeSpendDeadline ? 'no' : 'yes'}, weight ${metric.selectionWeight} -> ${status}`;
     });
 
     if (result.selected === null) {
       lines.push(
-        `No eligible token: all tokens are below the live session thresholds (5h >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% free, 7d >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% free) and no token met the ${Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)}% 7d fallback condition either.`,
+        'No eligible token: every token is disabled for Claude Code subscription access or rejected by the API (unified status rejected or fable weekly limit exhausted), so no token can take a live session.',
       );
     } else {
       const selectedMetric = result.metrics.find(
@@ -139,11 +138,11 @@ export class LiveSessionOauthTokenSelectHandler {
         selectedMetric !== undefined && !selectedMetric.eligible;
       if (usedFallback) {
         lines.push(
-          `Selected ${result.selected.name} via fallback (highest 5h free ratio among non-excluded tokens with 7d >= ${Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)}% free; no token met the live session thresholds of 5h >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% and 7d >= ${Math.round(settings.minSevenDayFreeRatio * 100)}%).`,
+          `Selected ${result.selected.name} via fallback (every token is excluded; ${result.selected.name} has the highest 5h free ratio among the tokens excluded only by an HTTP 401 auth failure).`,
         );
       } else {
         lines.push(
-          `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
+          `Selected ${result.selected.name} (eligible tokens are ordered with the tokens whose remaining 7d budget cannot be spent by 48h before the 7d reset at maxConcurrentSessionCount (${settings.maxConcurrentSessionCount}) sessions, one fully spent 5h window consuming 14% of the 7d window, moved to the front, then by 7d free ratio ascending; the first token still under its concurrent session limit is chosen, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
         );
       }
     }

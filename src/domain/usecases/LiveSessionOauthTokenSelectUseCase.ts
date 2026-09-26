@@ -1,15 +1,21 @@
 import type { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
-  FIVE_HOUR_SPEND_DEADLINE_HOURS,
   type OauthTokenCandidate,
   OauthTokenSelectUseCase,
+  type OauthTokenSelectionThresholds,
   type OauthTokenWindowSnapshot,
   SEVEN_DAY_SPEND_DEADLINE_HOURS,
   selectionWeightOf,
   sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
 
-export const LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+export const SEVEN_DAY_SHARE_CONSUMED_PER_FULLY_SPENT_FIVE_HOUR_WINDOW = 0.14;
+
+const RATE_LIMIT_SELECTION_THRESHOLDS_THAT_EXCLUDE_NO_FREE_RATIO: OauthTokenSelectionThresholds =
+  {
+    fiveHourMinFreeRatio: 0,
+    sevenDayMinFreeRatio: 0,
+  };
 
 export type LiveSessionOauthTokenSelectionSettings = {
   maxConcurrentSessionCount: number;
@@ -90,11 +96,47 @@ export const liveSessionConcurrentLimitOf = (
   );
 };
 
+export const sevenDayShareDrainableBeforeSpendDeadlineOf = (
+  sevenDayEndEpoch: number,
+  nowEpochSeconds: number,
+  settings: LiveSessionOauthTokenSelectionSettings,
+): number => {
+  const hoursUntilSevenDaySpendDeadline = Math.max(
+    (sevenDayEndEpoch - nowEpochSeconds) / SECONDS_PER_HOUR -
+      SEVEN_DAY_SPEND_DEADLINE_HOURS,
+    0,
+  );
+  const fiveHourShareSpentPerHourAtMaxConcurrency = Math.min(
+    settings.maxConcurrentSessionCount *
+      settings.fiveHourShareConsumedPerSessionHour,
+    1 / FIVE_HOUR_WINDOW_LENGTH_HOURS,
+  );
+  return (
+    hoursUntilSevenDaySpendDeadline *
+    fiveHourShareSpentPerHourAtMaxConcurrency *
+    SEVEN_DAY_SHARE_CONSUMED_PER_FULLY_SPENT_FIVE_HOUR_WINDOW
+  );
+};
+
+export const sevenDayBudgetUndrainableBeforeSpendDeadlineOf = (
+  sevenDayFreeRatio: number,
+  sevenDayEndEpoch: number,
+  nowEpochSeconds: number,
+  settings: LiveSessionOauthTokenSelectionSettings,
+): boolean =>
+  sevenDayFreeRatio >
+  sevenDayShareDrainableBeforeSpendDeadlineOf(
+    sevenDayEndEpoch,
+    nowEpochSeconds,
+    settings,
+  );
+
 export type LiveSessionOauthTokenCandidateMetrics = {
   name: string;
   fiveHourFreeRatio: number;
   sevenDayFreeRatio: number;
   sevenDayEndEpoch: number;
+  sevenDayBudgetUndrainableBeforeSpendDeadline: boolean;
   liveSessionCount: number;
   concurrentSessionLimit: number;
   hasConcurrencyHeadroom: boolean;
@@ -102,6 +144,25 @@ export type LiveSessionOauthTokenCandidateMetrics = {
   exclusionReason: string | null;
   selectionWeight: number;
 };
+
+export const liveSessionOauthTokenCandidateMetricsInSelectionOrder = (
+  metrics: LiveSessionOauthTokenCandidateMetrics[],
+): LiveSessionOauthTokenCandidateMetrics[] =>
+  [...metrics].sort((left, right) => {
+    if (
+      left.sevenDayBudgetUndrainableBeforeSpendDeadline !==
+      right.sevenDayBudgetUndrainableBeforeSpendDeadline
+    ) {
+      return left.sevenDayBudgetUndrainableBeforeSpendDeadline ? -1 : 1;
+    }
+    if (left.sevenDayFreeRatio !== right.sevenDayFreeRatio) {
+      return left.sevenDayFreeRatio - right.sevenDayFreeRatio;
+    }
+    if (left.sevenDayEndEpoch !== right.sevenDayEndEpoch) {
+      return left.sevenDayEndEpoch - right.sevenDayEndEpoch;
+    }
+    return left.liveSessionCount - right.liveSessionCount;
+  });
 
 export type LiveSessionOauthTokenSelectResult = {
   selected: OauthTokenCandidate | null;
@@ -123,6 +184,7 @@ export class LiveSessionOauthTokenSelectUseCase {
       candidates,
       nowEpochSeconds,
       () => 0,
+      RATE_LIMIT_SELECTION_THRESHOLDS_THAT_EXCLUDE_NO_FREE_RATIO,
     );
     const liveSessionCountByToken = this.liveSessionCountByToken(liveSessions);
 
@@ -148,25 +210,7 @@ export class LiveSessionOauthTokenSelectUseCase {
           settings,
         ),
       );
-      const snapshot = candidate.snapshot;
-      const sevenDayDeadlinePassed =
-        snapshot !== null &&
-        snapshot.sevenDayReset > 0 &&
-        nowEpochSeconds >=
-          snapshot.sevenDayReset - SEVEN_DAY_SPEND_DEADLINE_HOURS * 3600;
-      const fiveHourDeadlinePassed =
-        snapshot !== null &&
-        snapshot.fiveHourReset > 0 &&
-        nowEpochSeconds >=
-          snapshot.fiveHourReset - FIVE_HOUR_SPEND_DEADLINE_HOURS * 3600;
-      const exclusionReason = this.liveSessionExclusionReason(
-        rateLimitMetric.exclusionReason,
-        rateLimitMetric.fiveHourFreeRatio,
-        rateLimitMetric.sevenDayFreeRatio,
-        settings,
-        fiveHourDeadlinePassed,
-        sevenDayDeadlinePassed,
-      );
+      const exclusionReason = rateLimitMetric.exclusionReason;
       return {
         candidate,
         metric: {
@@ -174,6 +218,13 @@ export class LiveSessionOauthTokenSelectUseCase {
           fiveHourFreeRatio: rateLimitMetric.fiveHourFreeRatio,
           sevenDayFreeRatio: rateLimitMetric.sevenDayFreeRatio,
           sevenDayEndEpoch: rateLimitMetric.sevenDayEndEpoch,
+          sevenDayBudgetUndrainableBeforeSpendDeadline:
+            sevenDayBudgetUndrainableBeforeSpendDeadlineOf(
+              rateLimitMetric.sevenDayFreeRatio,
+              rateLimitMetric.sevenDayEndEpoch,
+              nowEpochSeconds,
+              settings,
+            ),
           liveSessionCount,
           concurrentSessionLimit,
           hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
@@ -185,16 +236,20 @@ export class LiveSessionOauthTokenSelectUseCase {
     });
 
     const metrics = evaluated.map((entry) => entry.metric);
-    const eligible = evaluated.filter((entry) => entry.metric.eligible);
+    const candidateByMetric = new Map(
+      evaluated.map((entry) => [entry.metric, entry.candidate]),
+    );
+    const eligibleMetricsInSelectionOrder =
+      liveSessionOauthTokenCandidateMetricsInSelectionOrder(
+        metrics.filter((metric) => metric.eligible),
+      );
 
-    if (eligible.length === 0) {
+    if (eligibleMetricsInSelectionOrder.length === 0) {
       const fallbackEligible = evaluated.filter(
         (entry) =>
           !entry.candidate.subscriptionDisabled &&
           !entry.candidate.unifiedRejected &&
-          !entry.candidate.fableRejected &&
-          Math.round(entry.metric.sevenDayFreeRatio * 100) >
-            Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100),
+          !entry.candidate.fableRejected,
       );
 
       if (fallbackEligible.length === 0) {
@@ -224,73 +279,21 @@ export class LiveSessionOauthTokenSelectUseCase {
       return { selected: fallbackSelected.candidate, metrics };
     }
 
-    const selected = eligible.reduce((bestEntry, currentEntry) =>
-      this.preferred(currentEntry.metric, bestEntry.metric)
-        ? currentEntry
-        : bestEntry,
-    );
-
-    return { selected: selected.candidate, metrics };
-  };
-
-  private liveSessionExclusionReason = (
-    rateLimitExclusionReason: string | null,
-    fiveHourFreeRatio: number,
-    sevenDayFreeRatio: number,
-    settings: LiveSessionOauthTokenSelectionSettings,
-    fiveHourDeadlinePassed: boolean,
-    sevenDayDeadlinePassed: boolean,
-  ): string | null => {
-    if (rateLimitExclusionReason !== null) {
-      return rateLimitExclusionReason;
-    }
-    if (
-      !fiveHourDeadlinePassed &&
-      fiveHourFreeRatio < settings.minFiveHourFreeRatio
-    ) {
-      return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for live session selection)`;
-    }
-    if (
-      !sevenDayDeadlinePassed &&
-      sevenDayFreeRatio < settings.minSevenDayFreeRatio
-    ) {
-      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for live session selection)`;
-    }
-    if (
-      sevenDayDeadlinePassed &&
-      Math.round(sevenDayFreeRatio * 100) <=
-        Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)
-    ) {
-      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (budget exhausted; token ineligible even within 48-hour deadline window)`;
-    }
-    return null;
-  };
-
-  private preferred = (
-    candidateMetric: LiveSessionOauthTokenCandidateMetrics,
-    incumbentMetric: LiveSessionOauthTokenCandidateMetrics,
-  ): boolean => {
-    if (
-      candidateMetric.hasConcurrencyHeadroom !==
-      incumbentMetric.hasConcurrencyHeadroom
-    ) {
-      return candidateMetric.hasConcurrencyHeadroom;
-    }
-    if (!candidateMetric.hasConcurrencyHeadroom) {
-      const candidateOccupancyRatio =
-        occupancyRatioAfterOneMoreSessionOf(candidateMetric);
-      const incumbentOccupancyRatio =
-        occupancyRatioAfterOneMoreSessionOf(incumbentMetric);
-      if (candidateOccupancyRatio !== incumbentOccupancyRatio) {
-        return candidateOccupancyRatio < incumbentOccupancyRatio;
-      }
-    }
-    if (candidateMetric.sevenDayEndEpoch !== incumbentMetric.sevenDayEndEpoch) {
-      return (
-        candidateMetric.sevenDayEndEpoch < incumbentMetric.sevenDayEndEpoch
+    const selectedMetric =
+      eligibleMetricsInSelectionOrder.find(
+        (metric) => metric.hasConcurrencyHeadroom,
+      ) ??
+      eligibleMetricsInSelectionOrder.reduce((leastOccupied, current) =>
+        occupancyRatioAfterOneMoreSessionOf(current) <
+        occupancyRatioAfterOneMoreSessionOf(leastOccupied)
+          ? current
+          : leastOccupied,
       );
-    }
-    return candidateMetric.liveSessionCount < incumbentMetric.liveSessionCount;
+
+    return {
+      selected: candidateByMetric.get(selectedMetric) ?? null,
+      metrics,
+    };
   };
 
   private liveSessionCountByToken = (
