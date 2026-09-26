@@ -1,3 +1,10 @@
+## [2.151.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.5...v2.151.6) (2026-09-26)
+
+
+### Bug Fixes
+
+* **token-usage:** count in-flight sessions per token from the claude descendant process ([#2744](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2744)) ([dd62e6a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd62e6af3b4143401d0855e676f68b9e5f2ed4f1))
+
 ## [2.151.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.4...v2.151.5) (2026-09-26)
 
 
