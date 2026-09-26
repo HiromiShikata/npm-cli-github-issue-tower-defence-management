@@ -94,6 +94,114 @@ describe('NodeTmuxSessionRepository', () => {
     });
   });
 
+  describe('listRunningWorkerScopeUnitNames', () => {
+    it('parses aw-*.scope unit names from systemctl list-units output', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout:
+          'aw-owner-repo-1-100.scope loaded active running Aw worker\naw-owner-repo-2-200.scope loaded active running Aw worker\n\n',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      const result = await repository.listRunningWorkerScopeUnitNames();
+
+      expect(result).toEqual([
+        'aw-owner-repo-1-100.scope',
+        'aw-owner-repo-2-200.scope',
+      ]);
+      expect(runner.runCommand.mock.calls[0][0]).toBe('systemctl');
+      expect(runner.runCommand.mock.calls[0][1]).toEqual([
+        '--user',
+        'list-units',
+        '--type=scope',
+        '--no-legend',
+        '--plain',
+        'aw-*.scope',
+      ]);
+    });
+
+    it('returns an empty list when systemctl exits non-zero', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: 'Failed to list units: no such unit type',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      const result = await repository.listRunningWorkerScopeUnitNames();
+
+      expect(result).toEqual([]);
+    });
+
+    it('drops blank lines and any unit not matching the aw-*.scope shape', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout:
+          'aw-owner-repo-1-100.scope loaded active running Aw worker\n\ncl-some-session.scope loaded active running Cl session\n',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      const result = await repository.listRunningWorkerScopeUnitNames();
+
+      expect(result).toEqual(['aw-owner-repo-1-100.scope']);
+    });
+  });
+
+  describe('stopWorkerScopeUnit', () => {
+    it('stops the given scope unit by name, wrapping the stop with reset-failed', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.stopWorkerScopeUnit('aw-owner-repo-1-100.scope');
+
+      expect(runner.runCommand.mock.calls).toEqual([
+        ['systemctl', ['--user', 'reset-failed', 'aw-owner-repo-1-100.scope']],
+        ['systemctl', ['--user', 'stop', 'aw-owner-repo-1-100.scope']],
+        ['systemctl', ['--user', 'reset-failed', 'aw-owner-repo-1-100.scope']],
+      ]);
+    });
+
+    it('logs an error but does not throw when stopping the scope unit fails', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockImplementation(async (program: string) => {
+        if (program === 'systemctl') {
+          return {
+            stdout: '',
+            stderr:
+              'Failed to stop aw-owner-repo-1-100.scope: Unit not loaded.',
+            exitCode: 5,
+          };
+        }
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await expect(
+        repository.stopWorkerScopeUnit('aw-owner-repo-1-100.scope'),
+      ).resolves.toBeUndefined();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Failed to stop systemd user scope "aw-owner-repo-1-100.scope"',
+        ),
+      );
+      errorSpy.mockRestore();
+    });
+  });
+
   describe('killSession', () => {
     it('kills the tmux session by exact name', async () => {
       const runner = createMockRunner();

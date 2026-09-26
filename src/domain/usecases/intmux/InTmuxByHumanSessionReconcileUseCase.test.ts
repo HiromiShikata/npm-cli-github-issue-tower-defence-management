@@ -69,6 +69,8 @@ const createFakeTmuxSessionRepository = (state: {
         activityEpochSeconds: 0,
       })),
     listInteractiveProcessCommandLines: async () => state.processCommandLines,
+    listRunningWorkerScopeUnitNames: async () => [],
+    stopWorkerScopeUnit: async () => undefined,
     launchDetachedSession: async (sessionName, launcherCommand, issueUrl) => {
       launches.push({ sessionName, launcherCommand, issueUrl });
     },

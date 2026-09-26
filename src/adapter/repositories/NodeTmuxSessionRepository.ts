@@ -54,6 +54,35 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       });
   };
 
+  listRunningWorkerScopeUnitNames = async (): Promise<string[]> => {
+    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+      'systemctl',
+      [
+        '--user',
+        'list-units',
+        '--type=scope',
+        '--no-legend',
+        '--plain',
+        'aw-*.scope',
+      ],
+    );
+    if (exitCode !== 0) {
+      return [];
+    }
+    return stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => line.split(/\s+/)[0])
+      .filter(
+        (unitName) => unitName.startsWith('aw-') && unitName.endsWith('.scope'),
+      );
+  };
+
+  stopWorkerScopeUnit = async (scopeUnitName: string): Promise<void> => {
+    await this.stopScopeUnit(scopeUnitName);
+  };
+
   listInteractiveProcessCommandLines = async (): Promise<string[]> => {
     const { stdout, exitCode } = await this.localCommandRunner.runCommand(
       'ps',

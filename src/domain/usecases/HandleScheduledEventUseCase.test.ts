@@ -22,6 +22,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
@@ -32,6 +33,7 @@ import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
+import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -121,6 +123,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
+    const mockNonPreparationWorkerScopeStopUseCase =
+      mock<NonPreparationWorkerScopeStopUseCase>();
     const mockConflictedIssueRevertUseCase =
       mock<ConflictedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
@@ -157,6 +161,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockIssueNoStatusUpdateUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
+      mockNonPreparationWorkerScopeStopUseCase,
       mockConflictedIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockAgentDesignationLabelAdoptUseCase,
@@ -190,6 +195,9 @@ describe('HandleScheduledEventUseCase', () => {
       ]);
       mockStartPreparationUseCase.run.mockResolvedValue({
         rotationOrder: null,
+      });
+      mockNonPreparationWorkerScopeStopUseCase.run.mockResolvedValue({
+        stoppedScopeUnitNames: [],
       });
     });
 
@@ -482,6 +490,171 @@ describe('HandleScheduledEventUseCase', () => {
           },
         }),
       );
+    });
+
+    it('should invoke nonPreparationWorkerScopeStopUseCase with the fetched issues when startPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mock<Project>(),
+        cacheUsed: false,
+      });
+      await useCase.run(input);
+
+      expect(mockNonPreparationWorkerScopeStopUseCase.run).toHaveBeenCalledWith(
+        { issues: mockIssues },
+      );
+    });
+
+    it('should not invoke nonPreparationWorkerScopeStopUseCase when startPreparation is not configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+
+      expect(
+        mockNonPreparationWorkerScopeStopUseCase.run,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('logs the stopped worker scope unit names when nonPreparationWorkerScopeStopUseCase stops worker scopes', async () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: {
+            ...mock<Project>(),
+            url: 'https://github.com/orgs/test-org/projects/1',
+          },
+          cacheUsed: false,
+        });
+        mockNonPreparationWorkerScopeStopUseCase.run.mockResolvedValue({
+          stoppedScopeUnitNames: [
+            'aw-owner-repo-1-100.scope',
+            'aw-owner-repo-2-200.scope',
+          ],
+        });
+        const input = {
+          projectName: 'test-project',
+          org: 'test-org',
+          projectUrl: 'https://github.com/orgs/test-org/projects/1',
+          manager: 'test-manager',
+          workingReport: {
+            repo: 'test-repo',
+            members: ['member1'],
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+          },
+          urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+          disabled: false,
+          startPreparation: {
+            defaultAgentName: 'aw',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+          },
+        };
+
+        await useCase.run(input);
+
+        expect(logSpy).toHaveBeenCalledWith(
+          `[HandleScheduledEvent] Stopped 2 worker scope(s) whose issue Status is not ${PREPARATION_STATUS_NAME} for project https://github.com/orgs/test-org/projects/1: aw-owner-repo-1-100.scope, aw-owner-repo-2-200.scope`,
+        );
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('does not log when nonPreparationWorkerScopeStopUseCase stops no worker scopes', async () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        mockNonPreparationWorkerScopeStopUseCase.run.mockResolvedValue({
+          stoppedScopeUnitNames: [],
+        });
+        const input = {
+          projectName: 'test-project',
+          org: 'test-org',
+          projectUrl: 'https://github.com/orgs/test-org/projects/1',
+          manager: 'test-manager',
+          workingReport: {
+            repo: 'test-repo',
+            members: ['member1'],
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+          },
+          urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+          disabled: false,
+          startPreparation: {
+            defaultAgentName: 'aw',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+          },
+        };
+
+        await useCase.run(input);
+
+        expect(logSpy).not.toHaveBeenCalled();
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('continues the cycle when nonPreparationWorkerScopeStopUseCase.run rejects', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+      mockNonPreparationWorkerScopeStopUseCase.run.mockRejectedValueOnce(
+        new AggregateError(
+          [new Error('systemctl stop failed')],
+          'Failed to stop 1 worker scope unit(s)',
+        ),
+      );
+
+      await useCase.run(input);
+
+      expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
     });
 
     it('should invoke conflictedIssueRevertUseCase on every scheduled run', async () => {
@@ -2552,6 +2725,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<IssueNoStatusUpdateUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
+      mock<NonPreparationWorkerScopeStopUseCase>(),
       mock<ConflictedIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),

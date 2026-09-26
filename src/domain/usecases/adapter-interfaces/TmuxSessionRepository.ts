@@ -4,6 +4,8 @@ export interface TmuxSessionRepository {
   listLiveSessionNames: () => Promise<string[]>;
   listLiveSessionsWithActivity: () => Promise<LiveTmuxSession[]>;
   listInteractiveProcessCommandLines: () => Promise<string[]>;
+  listRunningWorkerScopeUnitNames: () => Promise<string[]>;
+  stopWorkerScopeUnit: (scopeUnitName: string) => Promise<void>;
   launchDetachedSession: (
     sessionName: string,
     launcherCommand: string,
