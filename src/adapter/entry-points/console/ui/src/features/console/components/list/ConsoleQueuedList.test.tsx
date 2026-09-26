@@ -1,5 +1,10 @@
 import { fireEvent, render } from '@testing-library/react';
+import { colorFromEnum } from '../../logic/colors';
 import { buildConsoleListRows } from '../../logic/grouping';
+import type {
+  ConsoleListItem,
+  ConsoleStoryColorSource,
+} from '../../logic/types';
 import {
   consoleAgentOptionsFixture,
   consoleListItemsFixture,
@@ -14,6 +19,29 @@ const queuedItems = consoleListItemsFixture.filter(
     item.dependedIssueUrls.length === 0,
 );
 const rows = buildConsoleListRows(queuedItems, {}, []);
+
+const buildStoryOptionIdKeyingQueuedItem = (
+  overrides: Partial<ConsoleListItem>,
+): ConsoleListItem => ({
+  number: 1,
+  title: 'Story option id keying queued fixture item',
+  url: 'https://github.com/o/r/issues/1',
+  repo: 'o/r',
+  nameWithOwner: 'o/r',
+  projectItemId: 'PVTI_queued-story-option-id-keying',
+  itemId: 'PVTI_queued-story-option-id-keying',
+  isPr: false,
+  relatedOpenPullRequestUrls: [],
+  story: 'Duplicate Queued Story Name',
+  status: 'Awaiting Workspace',
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-06-19T00:00:00.000Z',
+  ...overrides,
+});
 
 describe('ConsoleQueuedList', () => {
   it('renders group headers and queued item rows', () => {
@@ -97,5 +125,91 @@ describe('ConsoleQueuedList', () => {
       />,
     );
     expect(getByRole('alert')).toHaveTextContent('HTTP 503');
+  });
+
+  it('renders a distinct, correctly-resolved color for each group header when two story options share the same display name', () => {
+    const itemForOptionA = buildStoryOptionIdKeyingQueuedItem({
+      itemId: 'queued-item-a',
+      projectItemId: 'queued-item-a',
+      title: 'Queued item under story option A',
+      storyOptionId: 'queued-story-option-a',
+    });
+    const itemForOptionB = buildStoryOptionIdKeyingQueuedItem({
+      itemId: 'queued-item-b',
+      projectItemId: 'queued-item-b',
+      title: 'Queued item under story option B',
+      storyOptionId: 'queued-story-option-b',
+    });
+    const collidingRows = buildConsoleListRows(
+      [itemForOptionA, itemForOptionB],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'queued-story-option-a': { color: 'GREEN' },
+      'queued-story-option-b': { color: 'ORANGE' },
+    };
+    const { container } = render(
+      <ConsoleQueuedList
+        rows={collidingRows}
+        storyColors={storyColorsById}
+        statusOptions={consoleStatusOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        activeItemId={null}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
+    const headers = container.querySelectorAll('.console-list-group');
+    expect(headers.length).toBe(2);
+    const headerTexts = Array.from(headers).map(
+      (header) => header.textContent ?? '',
+    );
+    expect(headerTexts[0]).toContain('Duplicate Queued Story Name');
+    expect(headerTexts[1]).toContain('Duplicate Queued Story Name');
+    const counts = Array.from(headers).map(
+      (header) => header.querySelector('.console-group-count')?.textContent,
+    );
+    expect(counts).toEqual(['1', '1']);
+    const dotA = headers[0].querySelector('.console-story-dot') as HTMLElement;
+    const dotB = headers[1].querySelector('.console-story-dot') as HTMLElement;
+    expect(dotA).toHaveStyle({ backgroundColor: colorFromEnum('GREEN').dot });
+    expect(dotB).toHaveStyle({ backgroundColor: colorFromEnum('ORANGE').dot });
+    expect(dotA.style.backgroundColor).not.toBe(dotB.style.backgroundColor);
+  });
+
+  it('renders the group header with no color when the item has no resolvable storyOptionId', () => {
+    const itemWithoutStoryOptionId = buildStoryOptionIdKeyingQueuedItem({
+      itemId: 'queued-item-without-story-option-id',
+      projectItemId: 'queued-item-without-story-option-id',
+      title: 'Queued item without a resolvable story option id',
+      storyOptionId: null,
+    });
+    const rowsWithNullStoryOptionId = buildConsoleListRows(
+      [itemWithoutStoryOptionId],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'queued-story-option-a': { color: 'GREEN' },
+      'Duplicate Queued Story Name': { color: 'YELLOW' },
+    };
+    const { container } = render(
+      <ConsoleQueuedList
+        rows={rowsWithNullStoryOptionId}
+        storyColors={storyColorsById}
+        statusOptions={consoleStatusOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        activeItemId={null}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
+    const header = container.querySelector('.console-list-group');
+    expect(header).not.toBeNull();
+    const dot = header?.querySelector('.console-story-dot') as HTMLElement;
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum(null).dot });
   });
 });

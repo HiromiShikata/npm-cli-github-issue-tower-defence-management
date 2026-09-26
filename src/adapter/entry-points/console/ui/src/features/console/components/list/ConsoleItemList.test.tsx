@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fireEvent, render } from '@testing-library/react';
+import { colorFromEnum } from '../../logic/colors';
 import { buildConsoleListRows } from '../../logic/grouping';
+import type {
+  ConsoleListItem,
+  ConsoleStoryColorSource,
+} from '../../logic/types';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
@@ -11,6 +16,29 @@ import { ConsoleItemList } from './ConsoleItemList';
 
 const rows = buildConsoleListRows(consoleListItemsFixture, {}, []);
 const now = Date.parse('2026-06-19T12:00:00.000Z');
+
+const buildStoryOptionIdKeyingItem = (
+  overrides: Partial<ConsoleListItem>,
+): ConsoleListItem => ({
+  number: 1,
+  title: 'Story option id keying fixture item',
+  url: 'https://github.com/o/r/issues/1',
+  repo: 'o/r',
+  nameWithOwner: 'o/r',
+  projectItemId: 'PVTI_story-option-id-keying',
+  itemId: 'PVTI_story-option-id-keying',
+  isPr: false,
+  relatedOpenPullRequestUrls: [],
+  story: 'Duplicate Story Name',
+  status: null,
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-06-19T00:00:00.000Z',
+  ...overrides,
+});
 
 describe('ConsoleItemList', () => {
   it('renders group headers and items in array order', () => {
@@ -196,5 +224,89 @@ describe('ConsoleItemList', () => {
     expect(ruleBlock?.trim().replace(/\s+/g, ' ')).toBe(
       'border-bottom: 1px solid #21262d;',
     );
+  });
+
+  it('renders a distinct, correctly-resolved color for each group header when two story options share the same display name', () => {
+    const itemForOptionA = buildStoryOptionIdKeyingItem({
+      itemId: 'item-a',
+      projectItemId: 'item-a',
+      title: 'Item under story option A',
+      storyOptionId: 'story-option-a',
+    });
+    const itemForOptionB = buildStoryOptionIdKeyingItem({
+      itemId: 'item-b',
+      projectItemId: 'item-b',
+      title: 'Item under story option B',
+      storyOptionId: 'story-option-b',
+    });
+    const collidingRows = buildConsoleListRows(
+      [itemForOptionA, itemForOptionB],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'story-option-a': { color: 'BLUE' },
+      'story-option-b': { color: 'RED' },
+    };
+    const { container } = render(
+      <ConsoleItemList
+        rows={collidingRows}
+        storyColors={storyColorsById}
+        activeItemId={null}
+        now={now}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
+    const headers = container.querySelectorAll('.console-list-group');
+    expect(headers.length).toBe(2);
+    const headerTexts = Array.from(headers).map(
+      (header) => header.textContent ?? '',
+    );
+    expect(headerTexts[0]).toContain('Duplicate Story Name');
+    expect(headerTexts[1]).toContain('Duplicate Story Name');
+    const counts = Array.from(headers).map(
+      (header) => header.querySelector('.console-group-count')?.textContent,
+    );
+    expect(counts).toEqual(['1', '1']);
+    const dotA = headers[0].querySelector('.console-story-dot') as HTMLElement;
+    const dotB = headers[1].querySelector('.console-story-dot') as HTMLElement;
+    expect(dotA).toHaveStyle({ backgroundColor: colorFromEnum('BLUE').dot });
+    expect(dotB).toHaveStyle({ backgroundColor: colorFromEnum('RED').dot });
+    expect(dotA.style.backgroundColor).not.toBe(dotB.style.backgroundColor);
+  });
+
+  it('renders the group header with no color when the item has no resolvable storyOptionId', () => {
+    const itemWithoutStoryOptionId = buildStoryOptionIdKeyingItem({
+      itemId: 'item-without-story-option-id',
+      projectItemId: 'item-without-story-option-id',
+      title: 'Item without a resolvable story option id',
+      storyOptionId: null,
+    });
+    const rowsWithNullStoryOptionId = buildConsoleListRows(
+      [itemWithoutStoryOptionId],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'story-option-a': { color: 'BLUE' },
+      'Duplicate Story Name': { color: 'YELLOW' },
+    };
+    const { container } = render(
+      <ConsoleItemList
+        rows={rowsWithNullStoryOptionId}
+        storyColors={storyColorsById}
+        activeItemId={null}
+        now={now}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
+    const header = container.querySelector('.console-list-group');
+    expect(header).not.toBeNull();
+    const dot = header?.querySelector('.console-story-dot') as HTMLElement;
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum(null).dot });
   });
 });

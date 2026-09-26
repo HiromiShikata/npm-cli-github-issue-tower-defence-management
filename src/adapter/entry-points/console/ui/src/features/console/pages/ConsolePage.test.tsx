@@ -6,6 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
+import { colorFromEnum } from '../logic/colors';
 import { ConsolePage } from './ConsolePage';
 
 const tabBar = (): HTMLElement => {
@@ -3805,5 +3806,84 @@ describe('ConsolePage stale cache snapshot tab lock', () => {
     });
     await act(async () => {});
     expect(window.location.pathname).toBe('/projects/acme/todo-by-human');
+  });
+});
+
+describe('ConsolePage selected item story color threading', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+  });
+
+  it('threads the resolved story option id of the selected item into the detail color lookup instead of the colliding display name', async () => {
+    const collidingTodoByHumanPayload = {
+      pjcode: 'acme',
+      generatedAt: '2026-06-19T00:00:00.000Z',
+      statusOptions: [{ id: 's1', name: 'Todo by human', color: 'BLUE' }],
+      agentOptions: [],
+      storyOptions: [
+        { id: 'story-option-xyz', name: 'Collision Story', color: 'PURPLE' },
+      ],
+      storyColors: {
+        'Collision Story': { color: 'RED' },
+        'story-option-xyz': { color: 'PURPLE' },
+      },
+      stories: [],
+      items: [
+        {
+          number: 900,
+          title: 'Item with colliding story name',
+          url: 'https://github.com/o/r/issues/900',
+          repo: 'o/r',
+          nameWithOwner: 'o/r',
+          projectItemId: 'PVTI_900',
+          itemId: 'PVTI_900',
+          isPr: false,
+          relatedOpenPullRequestUrls: [],
+          story: 'Collision Story',
+          storyOptionId: 'story-option-xyz',
+          status: 'Todo by human',
+          nextActionDate: null,
+          nextActionHour: null,
+          dependedIssueUrls: [],
+          labels: [],
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      ],
+    };
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'todo-by-human') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => collidingTodoByHumanPayload,
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByText, container } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Item with colliding story name')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Item with colliding story name'));
+    await waitFor(() => {
+      expect(container.querySelector('.console-story-dot')).not.toBeNull();
+    });
+    const dot = container.querySelector('.console-story-dot') as HTMLElement;
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
   });
 });
