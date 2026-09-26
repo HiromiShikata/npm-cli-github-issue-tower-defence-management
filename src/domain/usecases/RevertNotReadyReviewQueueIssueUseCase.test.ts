@@ -311,7 +311,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should keep sweeping without calling findRelatedOpenPRs when an Awaiting Owner item is itself a pull request', async () => {
+    it('should keep sweeping without calling findRelatedOpenPRs or mutating the item when an Awaiting Owner item is itself a pull request', async () => {
       const pullRequestItem = createMockPullRequest({
         status: 'Awaiting Owner',
         url: 'https://github.com/user/repo/pull/9',
@@ -348,10 +348,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      expect(mockIssueRepository.getOpenPullRequests).not.toHaveBeenCalledWith(
+        expect.arrayContaining(['https://github.com/user/repo/pull/9']),
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         mockProject,
         pullRequestItem,
-        'awaiting-workspace-id',
+        expect.anything(),
       );
     });
 
@@ -398,12 +401,12 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(
         mockIssueRepository.updateStatus.mock.calls.some(
-          (call) => call[1] === pullRequestItem,
+          (call: [Project, Issue, string]) => call[1] === pullRequestItem,
         ),
       ).toBe(false);
       expect(
         mockIssueRepository.updateStatus.mock.calls.some(
-          (call) => call[1] === taskIssue,
+          (call: [Project, Issue, string]) => call[1] === taskIssue,
         ),
       ).toBe(true);
     });
@@ -1520,42 +1523,20 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip an archived Awaiting Owner pull request on updateStatus failure and continue with remaining pull requests', async () => {
-      const archivedPullRequest = createMockPullRequest({
+    it('should never reach updateStatus for a PR-type Awaiting Owner item, so the archived-item containment path is never exercised for it', async () => {
+      const pullRequestItem = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
-        itemId: 'archived-pr-item',
-        status: 'Awaiting Owner',
-      });
-      const normalPullRequest = createMockPullRequest({
-        number: 2,
-        url: 'https://github.com/user/repo/pull/2',
-        itemId: 'normal-pr-item',
+        itemId: 'pr-item',
         status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: [archivedPullRequest, normalPullRequest],
+        issues: [pullRequestItem],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequests.mockImplementation(
-        (prUrls: string[]) =>
-          Promise.resolve(
-            new Map(
-              prUrls.map((prUrl) => [
-                prUrl,
-                { ...createReadyPr(prUrl), isConflicted: true },
-              ]),
-            ),
-          ),
-      );
-      mockIssueRepository.updateStatus.mockImplementation(
-        (_project: Project, issue: Issue) =>
-          issue.url === archivedPullRequest.url
-            ? Promise.reject(
-                new Error('The item is archived and cannot be updated'),
-              )
-            : Promise.resolve(undefined),
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        new Error('The item is archived and cannot be updated'),
       );
 
       await useCase.run({
@@ -1565,69 +1546,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        archivedPullRequest,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
-        expect.anything(),
-        archivedPullRequest,
-        expect.anything(),
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        archivedPullRequest,
-        expect.anything(),
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        normalPullRequest,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        normalPullRequest,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(archivedPullRequest.url),
-      );
-    });
-
-    it('should propagate a non-archived updateStatus error for Awaiting Owner pull requests unchanged', async () => {
-      const pullRequest = createMockPullRequest({
-        status: 'Awaiting Owner',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [pullRequest],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
-        new Map([
-          [
-            'https://github.com/user/repo/pull/1',
-            {
-              ...createReadyPr('https://github.com/user/repo/pull/1'),
-              isConflicted: true,
-            },
-          ],
-        ]),
-      );
-      mockIssueRepository.updateStatus.mockRejectedValue(
-        new Error('Something went wrong'),
-      );
-
-      await expect(
-        useCase.run({
-          manager: 'manager-user',
-          projectUrl: 'https://github.com/users/user/projects/1',
-          allowedIssueAuthors: ['owner'],
-          developerAgentNames: ['developer'],
-        }),
-      ).rejects.toThrow('Something went wrong');
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1746,40 +1667,20 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should skip an Awaiting Owner pull request whose updateStatus times out and continue with remaining pull requests', async () => {
-      const timedOutPullRequest = createMockPullRequest({
+    it('should never reach updateStatus for a PR-type Awaiting Owner item, so the ky TimeoutError containment path is never exercised for it', async () => {
+      const pullRequestItem = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
-        itemId: 'timed-out-pr-item',
-        status: 'Awaiting Owner',
-      });
-      const normalPullRequest = createMockPullRequest({
-        number: 2,
-        url: 'https://github.com/user/repo/pull/2',
-        itemId: 'normal-pr-item',
+        itemId: 'pr-item',
         status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: [timedOutPullRequest, normalPullRequest],
+        issues: [pullRequestItem],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequests.mockImplementation(
-        (prUrls: string[]) =>
-          Promise.resolve(
-            new Map(
-              prUrls.map((prUrl) => [
-                prUrl,
-                { ...createReadyPr(prUrl), isConflicted: true },
-              ]),
-            ),
-          ),
-      );
-      mockIssueRepository.updateStatus.mockImplementation(
-        (_project: Project, issue: Issue) =>
-          issue.url === timedOutPullRequest.url
-            ? Promise.reject(createKyTimeoutError())
-            : Promise.resolve(undefined),
+      mockIssueRepository.updateStatus.mockRejectedValue(
+        createKyTimeoutError(),
       );
 
       await useCase.run({
@@ -1789,32 +1690,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        timedOutPullRequest,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
-        expect.anything(),
-        timedOutPullRequest,
-        expect.anything(),
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        timedOutPullRequest,
-        expect.anything(),
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        normalPullRequest,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        normalPullRequest,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(timedOutPullRequest.url),
-      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
     });
 
     it('should propagate a non-timeout non-archived error from createComment unchanged', async () => {
@@ -1927,7 +1805,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should revert a rejected Awaiting Owner pull request that is assigned to the manager', async () => {
+    it('should not revert a PR-type Awaiting Owner item even when it is assigned to the manager, since it is excluded from the sweep before manager gating is reached', async () => {
       const pullRequest = createMockPullRequest({
         status: 'Awaiting Owner',
         assignees: ['manager-user'],
@@ -1956,15 +1834,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        pullRequest,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        pullRequest,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('should revert Awaiting Owner issue with pending nextActionDate to Awaiting Workspace', async () => {
@@ -2216,7 +2087,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('includes a PR item own URL in the pre-cycle batch and never calls getOpenPullRequest for it', async () => {
+    it('excludes a lone PR-type Awaiting Owner item from the pre-cycle batch entirely, since it never contributes its own URL once it is filtered out upstream', async () => {
       const prUrl = 'https://github.com/user/repo/pull/42';
       const pullRequestItem = createMockPullRequest({
         status: 'Awaiting Owner',
@@ -2229,9 +2100,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [pullRequestItem],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
-        new Map([[prUrl, createReadyPr(prUrl)]]),
-      );
 
       await useCase.run({
         projectUrl,
@@ -2240,9 +2108,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
-        expect.arrayContaining([prUrl]),
-      );
+      expect(mockIssueRepository.getOpenPullRequests).not.toHaveBeenCalled();
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
@@ -2290,25 +2156,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it('splits getOpenPullRequests into separate calls when there are more than 100 PR item URLs', async () => {
-      const pullRequestItems = Array.from({ length: 101 }, (_, index) =>
-        createMockPullRequest({
-          status: 'Awaiting Owner',
-          url: `https://github.com/user/repo/pull/${1000 + index}`,
-          number: 1000 + index,
-          itemId: `item-pr-${index}`,
-          assignees: ['manager-user'],
-        }),
-      );
+    it('splits getOpenPullRequests into separate calls when there are more than 100 related PR URLs to resolve for Awaiting Owner task issues', async () => {
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(101);
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: pullRequestItems,
+        issues: boardIssues,
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequests.mockImplementation(
-        (prUrls: string[]) =>
-          Promise.resolve(new Map(prUrls.map((url) => [url, null]))),
-      );
+      resolveBatchFrom(relatedPrs);
 
       await useCase.run({
         projectUrl,
@@ -2328,25 +2183,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
     });
 
-    it('fetches exactly 100 PR item URLs in a single getOpenPullRequests call', async () => {
-      const pullRequestItems = Array.from({ length: 100 }, (_, index) =>
-        createMockPullRequest({
-          status: 'Awaiting Owner',
-          url: `https://github.com/user/repo/pull/${2000 + index}`,
-          number: 2000 + index,
-          itemId: `item-pr-boundary-${index}`,
-          assignees: ['manager-user'],
-        }),
-      );
+    it('fetches exactly 100 related PR URLs in a single getOpenPullRequests call for Awaiting Owner task issues', async () => {
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(100);
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: pullRequestItems,
+        issues: boardIssues,
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequests.mockImplementation(
-        (prUrls: string[]) =>
-          Promise.resolve(new Map(prUrls.map((url) => [url, null]))),
-      );
+      resolveBatchFrom(relatedPrs);
 
       await useCase.run({
         projectUrl,

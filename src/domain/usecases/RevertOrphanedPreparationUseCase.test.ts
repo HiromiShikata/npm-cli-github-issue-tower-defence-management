@@ -661,45 +661,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
-  it('currently resolves the related PR for a PR-type Preparation item via getOpenPullRequest directly on its own URL (pins the existing behavior that treats a PR project-board item as its own standalone card, to be removed)', async () => {
-    const stuckPrIssue = createMockIssue({
-      url: 'https://github.com/user/repo/pull/10',
-      status: 'Preparation',
-      isPr: true,
-    });
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mockProject,
-      issues: [stuckPrIssue],
-      cacheUsed: false,
-    });
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 1,
-    });
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      {
-        author: 'bot',
-        content: '```json\n{"nextStep": null}\n```',
-        createdAt: new Date(),
-      },
-    ]);
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue(createPassingPr());
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
-      thresholdForAutoReject: 3,
-    });
-
-    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/10',
-    );
-    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
-  });
-
   it('should exclude a PR-type Preparation item from the orphaned-preparation sweep entirely after the fix, while a sibling task issue in the same status is still evaluated via findRelatedOpenPRs', async () => {
     const stuckPrIssue = createMockIssue({
       url: 'https://github.com/user/repo/pull/10',
