@@ -1,3 +1,11 @@
+## [2.150.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.0...v2.150.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency dotenv to v18 ([#2714](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2714)) ([444f49c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/444f49cde7303efcd48881cbf7c1d4dfdca0cfa1))
+* **domain:** switch domain use cases to id-based StoryObjectMap and add regression test ([#2711](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2711)) ([8dba063](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8dba063641384aca0c4eb841b3a3d2d3195b6475))
+
 # [2.150.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.149.1...v2.150.0) (2026-09-26)
 
 
