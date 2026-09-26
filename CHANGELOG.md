@@ -1,3 +1,10 @@
+## [2.152.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.4...v2.152.5) (2026-09-26)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** continue spawn cycle past token exhaustion and prioritize handed-over tasks per story ([#2762](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2762)) ([1ca803e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1ca803e956c771eca55a4daf7192288b332bd237))
+
 ## [2.152.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.3...v2.152.4) (2026-09-26)
 
 
