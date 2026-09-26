@@ -1,3 +1,10 @@
+## [2.151.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.3...v2.151.4) (2026-09-26)
+
+
+### Bug Fixes
+
+* **domain:** escalate no-next-step-agent completion reports to Awaiting Owner immediately ([#2725](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2725)) ([c523151](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c523151c6ad8fd6a77d09c6b3da3bc079a81a916))
+
 ## [2.151.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.2...v2.151.3) (2026-09-26)
 
 
