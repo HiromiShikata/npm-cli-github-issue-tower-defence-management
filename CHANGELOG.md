@@ -1,3 +1,10 @@
+# [2.151.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.3...v2.151.0) (2026-09-26)
+
+
+### Features
+
+* **story-object-map:** propagate story option id through adapters for StoryObjectMap ([#2712](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2712)) ([ecc18c8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ecc18c8d5847f1d096a875fac01b6572eea9bf99))
+
 ## [2.150.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.2...v2.150.3) (2026-09-26)
 
 
