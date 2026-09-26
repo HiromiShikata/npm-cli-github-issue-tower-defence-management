@@ -1,3 +1,10 @@
+## [2.152.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.7...v2.152.8) (2026-09-26)
+
+
+### Reverts
+
+* remove per-cycle hand-over comment fetch that exhausts the GitHub REST quota ([#2779](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2779)) ([c95bede](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c95bede0ab194993fb92e38a23b649bec2608834))
+
 ## [2.152.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.6...v2.152.7) (2026-09-26)
 
 
