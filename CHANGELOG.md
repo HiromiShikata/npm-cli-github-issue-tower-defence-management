@@ -1,3 +1,10 @@
+## [2.150.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.1...v2.150.2) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** return the persisted project value from refreshAllIssues ([#2717](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2717)) ([95a83b8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/95a83b8b71139b27415d8ce0ae8527c2157d4ea0))
+
 ## [2.150.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.0...v2.150.1) (2026-09-26)
 
 
