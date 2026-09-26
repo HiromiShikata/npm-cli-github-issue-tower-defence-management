@@ -29,3 +29,18 @@ The following markers are always posted as GitHub Issue comments when applicable
 
 - `Auto Status Check: REJECTED`
 - `Auto Status Check: DISPATCH_AGAIN`
+- `Auto Status Check: STORY_UNSET_ESCALATED`
+
+## Deduplicated: `Auto Status Check: STORY_UNSET` (fixed text within the 2-hour window)
+
+- The `Auto Status Check: STORY_UNSET` interim notification's text no longer varies
+  per dispatch: it does not embed an incrementing dispatch counter, so the text is
+  identical for a given next-step agent across consecutive dispatches while the
+  issue's story field stays unset.
+- Because the text is fixed, the existing 2-hour comment-deduplication window
+  (`isDuplicateWithinWindow` in `src/domain/services/commentDeduplication.ts`)
+  catches it: a repeat dispatch within that window, while the story remains
+  unset, does NOT post a new GitHub Issue comment.
+- `Auto Status Check: STORY_UNSET_ESCALATED` is unaffected by this: it fires once,
+  when the real (non-deduped) `STORY_UNSET` dispatch count reaches the
+  dispatch-loop threshold, and always posts.
