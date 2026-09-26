@@ -24,6 +24,8 @@ import {
   canonicalPullRequestSelect,
 } from './canonicalPullRequestSelect';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
+import { handOverIssuesMoveToStoryFront } from './handOverIssuesMoveToStoryFront';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
@@ -39,6 +41,7 @@ const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
+export const STORIED_HANDOVER_ISSUE_COMMENT_FETCH_CONCURRENCY = 8;
 
 export type SpawnCandidateExclusionReason =
   | 'dependedIssueUrls'
@@ -281,6 +284,45 @@ export class StartPreparationUseCase {
       ),
     );
     return branchSourceByIssueUrl;
+  };
+
+  fetchStoriedHandOverIssueUrls = async (
+    storiedAwaitingWorkspaceIssues: Issue[],
+    allowedIssueAuthors: string[] | null,
+  ): Promise<Set<string>> => {
+    const handOverIssueUrls = new Set<string>();
+    let nextIndex = 0;
+    const fetchSequentially = async (): Promise<void> => {
+      while (nextIndex < storiedAwaitingWorkspaceIssues.length) {
+        const issue = storiedAwaitingWorkspaceIssues[nextIndex];
+        nextIndex += 1;
+        const comments =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        const nextStepAgent = extractNextStepAgentFromComments(
+          comments.map((comment) => ({
+            author: comment.author,
+            content: comment.body,
+          })),
+          (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+        );
+        if (nextStepAgent !== null) {
+          handOverIssueUrls.add(issue.url);
+        }
+      }
+    };
+    await Promise.all(
+      Array.from(
+        {
+          length: Math.min(
+            STORIED_HANDOVER_ISSUE_COMMENT_FETCH_CONCURRENCY,
+            storiedAwaitingWorkspaceIssues.length,
+          ),
+        },
+        fetchSequentially,
+      ),
+    );
+    return handOverIssueUrls;
   };
 
   private selectRotationTokens = (
@@ -534,11 +576,19 @@ export class StartPreparationUseCase {
     const isUnstoriedAwaitingWorkspaceIssue = (issue: Issue): boolean =>
       issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
 
-    const storiedAwaitingWorkspaceIssues = allOpenedIssues.filter(
+    const storiedAwaitingWorkspaceIssuesInStoryOrder = allOpenedIssues.filter(
       (issue) =>
         issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
         !issue.isClosed &&
         !isUnstoriedAwaitingWorkspaceIssue(issue),
+    );
+    const storiedHandOverIssueUrls = await this.fetchStoriedHandOverIssueUrls(
+      storiedAwaitingWorkspaceIssuesInStoryOrder,
+      params.allowedIssueAuthors,
+    );
+    const storiedAwaitingWorkspaceIssues = handOverIssuesMoveToStoryFront(
+      storiedAwaitingWorkspaceIssuesInStoryOrder,
+      storiedHandOverIssueUrls,
     );
     const unstoriedAwaitingWorkspaceIssuesOldestFirst = allProjectOpenIssues
       .filter(
@@ -979,18 +1029,21 @@ export class StartPreparationUseCase {
           tokenToFill = tokenToFillOf();
         }
         if (tokenToFill === null) {
-          await revertToAwaitingWorkspace(
-            'every Claude OAuth token reached its concurrent worker limit',
-          );
-          break;
+          if (!labelModelName) {
+            await revertToAwaitingWorkspace(
+              'every Claude OAuth token reached its concurrent worker limit',
+            );
+            continue;
+          }
+        } else {
+          const selected = tokenToFill.token;
+          routedModelName = tokenToFill.model;
+          selectedTokenName = selected;
+          spawnEnv = {
+            CLAUDE_CODE_OAUTH_TOKEN: selected,
+            ANTHROPIC_BASE_URL: proxyBaseUrl,
+          };
         }
-        const selected = tokenToFill.token;
-        routedModelName = tokenToFill.model;
-        selectedTokenName = selected;
-        spawnEnv = {
-          CLAUDE_CODE_OAUTH_TOKEN: selected,
-          ANTHROPIC_BASE_URL: proxyBaseUrl,
-        };
       }
       const model =
         labelModelName || routedModelName || params.defaultLlmModelName;
