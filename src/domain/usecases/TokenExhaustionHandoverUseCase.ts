@@ -197,7 +197,8 @@ export class TokenExhaustionHandoverUseCase {
 
         const alive = hasTmux
           ? session.sessionName !== null &&
-            liveSessionNames.has(session.sessionName)
+            liveSessionNames.has(session.sessionName) &&
+            session.pid === entry.pid
           : this.processSignalRepository.isProcessAlive(entry.pid);
         if (!alive) {
           if (input.enabled && this.needsRelaunch(session)) {
