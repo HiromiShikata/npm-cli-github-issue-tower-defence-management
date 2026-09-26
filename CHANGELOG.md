@@ -1,3 +1,10 @@
+## [2.152.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.5...v2.152.6) (2026-09-26)
+
+
+### Bug Fixes
+
+* **preparation:** TDPM spends the only free umino spawn slot every cycle on a Failed Preparation issue it still lists as Awaiting Workspace ([#2763](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2763)) ([76c598a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76c598a252fb1554d58f1955beceb19e08962804))
+
 ## [2.152.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.4...v2.152.5) (2026-09-26)
 
 
