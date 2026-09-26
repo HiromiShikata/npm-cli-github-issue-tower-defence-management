@@ -1001,4 +1001,134 @@ describe('GitHubIssueCommentRepository', () => {
       });
     });
   });
+
+  describe('updateComment', () => {
+    it('sends a PATCH to the correct REST endpoint with correct headers and body', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 300 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/300',
+      );
+      await repository.updateComment(issue, '9001', 'updated hello world');
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/9001',
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: 'Bearer test-token',
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ body: 'updated hello world' }),
+        },
+      );
+    });
+
+    it('throws an error when the PATCH response is not 2xx', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Not Found', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/301',
+      );
+
+      await expect(
+        repository.updateComment(issue, '9002', 'hello world'),
+      ).rejects.toThrow('404');
+    });
+
+    it('issues exactly one PATCH per call', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 302 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/302',
+      );
+      await repository.updateComment(issue, '9003', 'single request');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    describe('circuit breaker', () => {
+      it('issues the PATCH when the circuit breaker is not blocked', async () => {
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 303 }), { status: 200 }),
+          );
+
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/303',
+        );
+        await repository.updateComment(
+          issue,
+          '9004',
+          'hello from open breaker',
+        );
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+          expect.stringContaining('/comments/9004'),
+          expect.objectContaining({ method: 'PATCH' }),
+        );
+      });
+
+      it('throws GitHubRateLimitError and does not issue the PATCH when the circuit breaker is open', async () => {
+        const resetTimeMs = Date.now() + 90_000;
+        mockCheckSecondaryRateLimitBreaker.mockReturnValue({
+          isBlocked: true,
+          resetTimeMs,
+        });
+
+        const fetchSpy = jest.spyOn(global, 'fetch');
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/304',
+        );
+        await expect(
+          repository.updateComment(issue, '9005', 'blocked by breaker'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+
+      it('writes to the breaker state file and throws GitHubRateLimitError when the PATCH returns a secondary rate limit response', async () => {
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response(
+            'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+            {
+              status: 403,
+              headers: { 'retry-after': '60' },
+            },
+          ),
+        );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/305',
+        );
+        await expect(
+          repository.updateComment(issue, '9006', 'will be rate limited'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
 });
