@@ -1160,6 +1160,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             labels: ['story'],
             story: 'umino / story beta',
+            storyOptionId: 'umino-story-beta',
           },
           {
             ...buildCachedIssueRecord(
@@ -1168,6 +1169,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             labels: [],
             story: 'umino / story beta',
+            storyOptionId: 'umino-story-beta',
           },
         ],
       });
