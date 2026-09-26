@@ -1,3 +1,10 @@
+## [2.151.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.0...v2.151.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **console:** resolve project cache reads per pjcode instead of the default project ([#2719](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2719)) ([b6e44c8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b6e44c8afc8fac3d1392a2acb857581c91f8d53a))
+
 # [2.151.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.150.3...v2.151.0) (2026-09-26)
 
 
