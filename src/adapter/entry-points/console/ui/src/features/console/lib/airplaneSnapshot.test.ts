@@ -402,9 +402,12 @@ describe('airplaneSnapshot', () => {
         ['a number instead of a string', 42, null],
         ['an explicit null', null, null],
         ['an explicit undefined', undefined, null],
-      ])('extracts storyOptionId when the raw value is %s', (_label, rawValue, expected) => {
-        expect(parseSingleItemStoryOptionId(rawValue)).toBe(expected);
-      });
+      ])(
+        'extracts storyOptionId when the raw value is %s',
+        (_label, rawValue, expected) => {
+          expect(parseSingleItemStoryOptionId(rawValue)).toBe(expected);
+        },
+      );
     });
   });
 
