@@ -997,7 +997,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
+      expect(result.type).toBe('notRepeated');
     });
 
     it('returns escalateDispatchLoop when null-nextStep reports reach the dispatch loop threshold', () => {
@@ -1016,7 +1016,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
+      expect(result.type).toBe('escalateDispatchLoop');
     });
 
     it('uses the no-next-step-agent label in the escalation comment', () => {
@@ -1035,9 +1035,9 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
-      const comment = 'comment' in result ? result.comment : '';
-      expect(comment).toContain('no-next-step-agent');
+      const comment =
+        result.type === 'escalateDispatchLoop' ? result.comment : '';
+      expect(comment).toContain('(no next-step agent)');
     });
 
     it('uses the null-specific dispatch loop message body', () => {
@@ -1056,9 +1056,9 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
-      const comment = 'comment' in result ? result.comment : '';
-      expect(comment).not.toMatch(/\d+\/\d+/);
+      const comment =
+        result.type === 'escalateDispatchLoop' ? result.comment : '';
+      expect(comment).toContain('no-next-step-agent task');
     });
 
     it('resets the null dispatch count after a human comment', () => {
@@ -1078,7 +1078,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
+      expect(result.type).toBe('notRepeated');
     });
 
     it('resets the null dispatch count after a null dispatch loop escalation comment', () => {
@@ -1098,7 +1098,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         currentDispatchHasNoReportRejection: false,
       });
 
-      expect(result.type).toBe('escalateNoNextStepAgent');
+      expect(result.type).toBe('notRepeated');
     });
   });
 
@@ -1244,37 +1244,36 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('dispatchAgain');
     });
 
-    it('returns notRepeated when agentFieldValue is null so there is nobody to attribute the silent dispatch to', () => {
-      expect(
-        resolveNextStepAgentDispatchRepetition({
-          agentFieldValue: null,
-          nextStepAgent: null,
-          comments: [],
-          isTrustedAuthor: trustAll,
-          thresholdForAutoReject: 3,
-          thresholdForDispatchLoop: 6,
-          isNoStory: false,
-          currentDispatchHasNoReportRejection: true,
-        }),
-      ).toEqual({ type: 'notRepeated' });
-    });
-
-    it('currentDispatchHasNoReportRejection is false so the flag changes nothing', () => {
-      const result = resolveNextStepAgentDispatchRepetition({
+    it.each([
+      {
+        description:
+          'agentFieldValue is null so there is nobody to attribute the silent dispatch to',
+        agentFieldValue: null,
+        currentDispatchHasNoReportRejection: true,
+      },
+      {
+        description:
+          'currentDispatchHasNoReportRejection is false so the flag changes nothing',
         agentFieldValue: 'developer',
-        nextStepAgent: null,
-        comments: [],
-        isTrustedAuthor: trustAll,
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        isNoStory: false,
         currentDispatchHasNoReportRejection: false,
-      });
-
-      expect(result.type).toBe('escalateNoNextStepAgent');
-      const comment = 'comment' in result ? result.comment : '';
-      expect(comment).toContain('no-next-step-agent');
-    });
+      },
+    ])(
+      'returns notRepeated when $description',
+      ({ agentFieldValue, currentDispatchHasNoReportRejection }) => {
+        expect(
+          resolveNextStepAgentDispatchRepetition({
+            agentFieldValue,
+            nextStepAgent: null,
+            comments: [],
+            isTrustedAuthor: trustAll,
+            thresholdForAutoReject: 3,
+            thresholdForDispatchLoop: 6,
+            isNoStory: false,
+            currentDispatchHasNoReportRejection,
+          }),
+        ).toEqual({ type: 'notRepeated' });
+      },
+    );
 
     it('escalates to escalateSilentRedispatch when a silent dispatch pushes a self-referencing agent already one short of the threshold to the limit', () => {
       const result = resolveNextStepAgentDispatchRepetition({

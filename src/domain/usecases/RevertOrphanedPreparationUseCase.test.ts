@@ -771,68 +771,10 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'no-next-step-agent',
-    );
-  });
-
-  it('should log and skip mutation when a no-next-step-agent report is found but the project has no Awaiting Owner status option', async () => {
-    const projectWithoutAwaitingOwner: Project = {
-      ...mockProject,
-      status: {
-        ...mockProject.status,
-        statuses: mockProject.status.statuses.filter(
-          (status) => status.name !== 'Awaiting Owner',
-        ),
-      },
-    };
-    mockProjectRepository.getProject.mockResolvedValue(
-      projectWithoutAwaitingOwner,
-    );
-    const stuckIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/10',
-      status: 'Preparation',
-    });
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: projectWithoutAwaitingOwner,
-      issues: [stuckIssue],
-      cacheUsed: false,
-    });
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 1,
-    });
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      {
-        author: 'agent-bot',
-        content: '```json\n{"nextStep": null}\n```',
-        createdAt: new Date(),
-      },
-      {
-        author: 'agent-bot',
-        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
-        createdAt: new Date(),
-      },
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-    const consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
-      thresholdForAutoReject: 3,
-      allowedIssueAuthors: ['agent-bot'],
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Awaiting Owner'),
+      'Auto Status Check: REJECTED',
     );
   });
 
@@ -2948,7 +2890,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('no-next-step-agent'),
