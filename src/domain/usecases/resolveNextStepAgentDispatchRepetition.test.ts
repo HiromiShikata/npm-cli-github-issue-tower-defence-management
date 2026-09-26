@@ -108,6 +108,36 @@ const storyUnsetEscalatedMarkerComment = (
 This task has been dispatched repeatedly with no story assigned since the last human comment, so it has been escalated for a decision instead of being dispatched again.`,
 });
 
+const buildStoryUnsetCommentsAfterPriorDispatches = (
+  nextStepAgent: string,
+  priorDispatchCount: number,
+): TestComment[] => {
+  let history: TestComment[] = [report(nextStepAgent)];
+  for (
+    let dispatchNumber = 1;
+    dispatchNumber <= priorDispatchCount;
+    dispatchNumber += 1
+  ) {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: nextStepAgent,
+      nextStepAgent,
+      comments: history,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: priorDispatchCount + 1,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+    if (result.type !== 'storyUnset') {
+      throw new Error(
+        `Expected storyUnset while building the fixture at prior dispatch ${dispatchNumber}, got ${result.type}`,
+      );
+    }
+    history = [history[0], { author: 'bot', content: result.comment }];
+  }
+  return history;
+};
+
 const humanComment = (author = 'bot'): TestComment => ({
   author,
   content: 'Please carry on with the second option.',
@@ -894,6 +924,43 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     });
   });
 
+  describe('no-story guard existing comment id tracking across a next-step-agent name change', () => {
+    const markerCommentWithId = (
+      nextStepAgent: string,
+      id: string,
+      embeddedCount: number,
+      threshold: number,
+    ): TestComment & { id: string } => ({
+      author: 'bot',
+      content: `${storyUnsetMarkerComment(nextStepAgent).content} (${embeddedCount}/${threshold})`,
+      id,
+    });
+
+    it('surfaces the prior STORY_UNSET comment id and increments its embedded count even when the newly reported nextStepAgent differs from the agent name embedded in that comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'code-reviewer',
+        comments: [
+          report('developer'),
+          markerCommentWithId('developer', 'existing-comment-id', 1, 6),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      expect(result.type).toBe('storyUnset');
+      if (result.type !== 'storyUnset') {
+        throw new Error('Expected storyUnset');
+      }
+      expect(result.existingCommentId).toBe('existing-comment-id');
+      expect(result.comment).toContain('code-reviewer');
+      expect(result.comment).toContain('(2/6)');
+    });
+  });
+
   describe('no-story guard dispatch loop circuit breaker', () => {
     it.each([
       { priorStoryUnsetComments: 1, expectedType: 'storyUnset' },
@@ -901,14 +968,14 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     ])(
       'returns $expectedType when $priorStoryUnsetComments prior STORY_UNSET comment(s) exist against a dispatch loop threshold of 3',
       ({ priorStoryUnsetComments, expectedType }) => {
-        const priorMarkers = Array.from(
-          { length: priorStoryUnsetComments },
-          () => storyUnsetMarkerComment('developer'),
+        const comments = buildStoryUnsetCommentsAfterPriorDispatches(
+          'developer',
+          priorStoryUnsetComments,
         );
         const result = resolveNextStepAgentDispatchRepetition({
           agentFieldValue: 'developer',
           nextStepAgent: 'developer',
-          comments: [report('developer'), ...priorMarkers],
+          comments,
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: 3,
@@ -921,14 +988,14 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     );
 
     it('escalateStoryUnsetLoop comment contains the escalation phrase and the agent name', () => {
+      const comments = buildStoryUnsetCommentsAfterPriorDispatches(
+        'developer',
+        2,
+      );
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
-        comments: [
-          report('developer'),
-          storyUnsetMarkerComment('developer'),
-          storyUnsetMarkerComment('developer'),
-        ],
+        comments,
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,

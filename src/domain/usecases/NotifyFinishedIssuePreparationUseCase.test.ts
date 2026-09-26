@@ -127,6 +127,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
     createComment: jest.Mock;
+    updateComment: jest.Mock;
   };
   let mockWebhookRepository: {
     sendGetRequest: jest.Mock;
@@ -191,6 +192,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
       createComment: jest.fn(),
+      updateComment: jest.fn(),
     };
 
     mockWebhookRepository = {
@@ -1488,6 +1490,88 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should not create a second, additional STORY_UNSET comment when a repeat dispatch for the same agent happens shortly after one was already posted', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        id: 'story-unset-comment-id',
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+        createdAt: fiveMinutesAgo,
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
+      expect.anything(),
+      'story-unset-comment-id',
+      expect.stringContaining('Auto Status Check: STORY_UNSET developer'),
+    );
+  });
+
+  it('should edit the existing STORY_UNSET comment in place, naming the new agent, when the reported next-step-agent changes between story-unset cycles', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        id: 'story-unset-comment-id',
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+      }),
+      createMockComment({
+        content:
+          'From: :robot: developer\n```json\n{"nextStepAgent": "code-reviewer", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
+      expect.anything(),
+      'story-unset-comment-id',
+      expect.stringContaining('Auto Status Check: STORY_UNSET code-reviewer'),
+    );
+  });
+
   it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -1728,12 +1812,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
       }),
       createMockComment({
+        id: 'story-unset-comment-id',
         content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
-      }),
-      createMockComment({
-        content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead. (2/3)',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1755,6 +1836,114 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining('developer'),
+    );
+  });
+
+  it('escalates to Failed Preparation by the thresholdForDispatchLoop-th consecutive story-unset dispatch cycle even when every cycle happens minutes apart within the comment dedup window', async () => {
+    const thresholdForDispatchLoop = 3;
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    const triagerReport = createMockComment({
+      content:
+        'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      createdAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    let commentHistory: Comment[] = [triagerReport];
+    let escalatedOnThisCycle = false;
+    let updateCommentCalledAtLeastOnce = false;
+    const storyUnsetCommentId = 'story-unset-comment-id';
+    const requireStringValue = (
+      value: unknown,
+      describedSubject: string,
+    ): string => {
+      if (typeof value !== 'string') {
+        throw new Error(`Expected ${describedSubject} to be a string.`);
+      }
+      return value;
+    };
+
+    for (let cycle = 1; cycle <= thresholdForDispatchLoop; cycle += 1) {
+      issue.status = 'Preparation';
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ...commentHistory,
+      ]);
+      mockIssueCommentRepository.createComment.mockClear();
+      mockIssueCommentRepository.updateComment.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 10,
+        thresholdForDispatchLoop,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      const dispatchCreatedAt = new Date(
+        Date.now() - (thresholdForDispatchLoop - cycle) * 5 * 60 * 1000,
+      );
+      for (const [, createdCommentContent] of mockIssueCommentRepository
+        .createComment.mock.calls) {
+        commentHistory = [
+          ...commentHistory,
+          createMockComment({
+            id: storyUnsetCommentId,
+            content: requireStringValue(
+              createdCommentContent,
+              'a createComment call body',
+            ),
+            createdAt: dispatchCreatedAt,
+          }),
+        ];
+      }
+
+      if (mockIssueCommentRepository.updateComment.mock.calls.length > 0) {
+        updateCommentCalledAtLeastOnce = true;
+      }
+      for (const [
+        ,
+        updatedCommentId,
+        updatedCommentContent,
+      ] of mockIssueCommentRepository.updateComment.mock.calls) {
+        const targetCommentId = requireStringValue(
+          updatedCommentId,
+          'an updateComment call id',
+        );
+        const targetCommentContent = requireStringValue(
+          updatedCommentContent,
+          'an updateComment call body',
+        );
+        commentHistory = commentHistory.map((comment) =>
+          comment.id === targetCommentId
+            ? {
+                ...comment,
+                content: targetCommentContent,
+                createdAt: dispatchCreatedAt,
+              }
+            : comment,
+        );
+      }
+
+      escalatedOnThisCycle = mockIssueRepository.updateStatus.mock.calls.some(
+        ([, , statusOptionId]) => statusOptionId === 'failed-preparation-id',
+      );
+    }
+
+    expect(escalatedOnThisCycle).toBe(true);
+    expect(updateCommentCalledAtLeastOnce).toBe(true);
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: STORY_UNSET_ESCALATED'),
     );
   });
 

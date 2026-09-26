@@ -23,6 +23,7 @@ export const FETCH_COMMENTS_TRANSIENT_ERROR_MAX_RETRIES = 3;
 export const FETCH_COMMENTS_TRANSIENT_ERROR_BASE_BACKOFF_MS = 1000;
 
 type RestCommentPayload = {
+  id: number;
   user: { login: string } | null;
   body: string;
   created_at: string;
@@ -32,6 +33,7 @@ type SerializedComment = {
   author: string;
   content: string;
   createdAt: string;
+  id?: string;
 };
 
 type PageCacheEntry = {
@@ -71,7 +73,8 @@ function isPageCacheEntry(value: unknown): value is PageCacheEntry {
       'content' in c &&
       typeof c.content === 'string' &&
       'createdAt' in c &&
-      typeof c.createdAt === 'string',
+      typeof c.createdAt === 'string' &&
+      (!('id' in c) || typeof c.id === 'string'),
   );
 }
 
@@ -208,6 +211,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             author: c.author,
             content: c.content,
             createdAt: new Date(c.createdAt),
+            id: c.id,
           });
         }
         hasNextPage =
@@ -233,6 +237,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         author: payload.user?.login ?? '',
         content: payload.body,
         createdAt: new Date(payload.created_at),
+        id: String(payload.id),
       }));
 
       for (const c of pageComments) {
@@ -250,6 +255,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             author: c.author,
             content: c.content,
             createdAt: c.createdAt.toISOString(),
+            id: c.id,
           })),
           hasNextPage,
         };
@@ -315,6 +321,64 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     logGithubRestRateLimit({
       headers: response.headers,
       method: 'POST',
+      path: sanitizeRestPath(commentUrl),
+      caller,
+    });
+  }
+
+  async updateComment(
+    issue: Issue,
+    commentId: string,
+    commentContent: string,
+  ): Promise<void> {
+    const { owner, repo } = this.parseIssueUrl(issue);
+
+    const caller = captureRestCallSite();
+    const stateFilePath = secondaryRateLimitStateFilePath();
+    const nowMsBeforePost = Date.now();
+    const breaker = checkSecondaryRateLimitBreaker(
+      nowMsBeforePost,
+      stateFilePath,
+    );
+    if (breaker.isBlocked && breaker.resetTimeMs !== null) {
+      throw new GitHubRateLimitError(
+        `GitHub secondary rate limit is active until ${new Date(breaker.resetTimeMs).toISOString()}`,
+        new Date(breaker.resetTimeMs).toISOString(),
+      );
+    }
+
+    const commentUrl = `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}`;
+    const response = await fetch(commentUrl, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ body: commentContent }),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      const nowMs = Date.now();
+      if (isSecondaryRateLimit(response.headers, bodyText)) {
+        const backoffMs = computeSecondaryRateLimitBackoffMs(
+          response.headers,
+          nowMs,
+        );
+        writeSecondaryRateLimitState(nowMs + backoffMs, nowMs, stateFilePath);
+        throw new GitHubRateLimitError(
+          `HTTP ${response.status} GitHub API secondary rate limit exceeded`,
+          new Date(nowMs + backoffMs).toISOString(),
+        );
+      }
+      throw new Error(
+        `Failed to update comment via GitHub REST API: ${response.status} ${response.statusText}`,
+      );
+    }
+    logGithubRestRateLimit({
+      headers: response.headers,
+      method: 'PATCH',
       path: sanitizeRestPath(commentUrl),
       caller,
     });
