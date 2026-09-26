@@ -2,7 +2,7 @@ import fs from 'fs';
 import YAML from 'yaml';
 import { mock } from 'jest-mock-extended';
 import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
-import type { Project } from '../../../domain/entities/Project';
+import type { FieldOption, Project } from '../../../domain/entities/Project';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 
@@ -994,6 +994,193 @@ defaultAgentName: readme-agent
     expect(MockedGitHubIssueCommentRepository).toHaveBeenCalledWith(
       'test-token',
       expect.any(LocalStorageCacheRepository),
+    );
+  });
+
+  describe('dashboard row human pending story colors', () => {
+    const DASHBOARD_DATA_DIR = '/dashboard-data';
+    const DASHBOARD_ROW_TEMPORARY_FILE_PATH = `${DASHBOARD_DATA_DIR}/projects/${validConfig.projectName}.json.tmp`;
+
+    const storyOption = (
+      id: string,
+      name: string,
+      color: FieldOption['color'],
+    ): FieldOption => ({ id, name, color, description: '' });
+
+    const projectWithStoryOptions = (stories: FieldOption[]): Project => ({
+      id: 'PVT_kwHOtest123',
+      url: 'https://github.com/users/TestOrg/projects/1',
+      databaseId: 1,
+      name: 'test-project',
+      status: {
+        name: 'Status',
+        fieldId: 'status-field',
+        statuses: [],
+      },
+      nextActionDate: null,
+      nextActionHour: null,
+      story: {
+        name: 'story',
+        fieldId: 'story-field',
+        databaseId: 2,
+        stories,
+        workflowManagementStory: { id: 'wm', name: 'workflow management' },
+      },
+      remainingEstimationMinutes: null,
+      dependedIssueUrlSeparatedByComma: null,
+      completionDate50PercentConfidence: null,
+      agent: null,
+    });
+
+    const pendingIssue = (
+      number: number,
+      status: string,
+      story: string,
+      storyOptionId: string | null | undefined,
+    ): Issue => ({
+      nameWithOwner: 'TestOrg/test-repo',
+      number,
+      title: `Issue ${number}`,
+      state: 'OPEN',
+      status,
+      story,
+      storyOptionId,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      url: `https://github.com/TestOrg/test-repo/issues/${number}`,
+      assignees: ['TestManager'],
+      labels: [],
+      org: 'TestOrg',
+      repo: 'test-repo',
+      body: '',
+      itemId: `item-${number}`,
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-06-13T08:18:45.000Z'),
+      author: 'someone',
+      closingIssueReferenceUrls: [],
+      agent: null,
+      stateReason: null,
+    });
+
+    const readDashboardRowWrittenByHandler = async (
+      project: Project,
+      issues: Issue[],
+    ): Promise<unknown> => {
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          dashboardDataDir: DASHBOARD_DATA_DIR,
+        }),
+      );
+      mockRun.mockImplementationOnce(async (...args: Parameters<RunFn>) => {
+        await args[0].afterIssuesFetched?.(project, issues);
+        return null;
+      });
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      const dashboardRowTexts = jest
+        .mocked(fs.writeFileSync)
+        .mock.calls.filter(
+          ([filePath]) => filePath === DASHBOARD_ROW_TEMPORARY_FILE_PATH,
+        )
+        .map(([, writtenContent]) => writtenContent)
+        .filter(
+          (writtenContent): writtenContent is string =>
+            typeof writtenContent === 'string',
+        );
+      expect(dashboardRowTexts).toHaveLength(1);
+      const dashboardRow: unknown = JSON.parse(dashboardRowTexts[0]);
+      return dashboardRow;
+    };
+
+    it('counts pending issues of uniquely named stories under the color of their story', async () => {
+      const dashboardRow = await readDashboardRowWrittenByHandler(
+        projectWithStoryOptions([
+          storyOption('opt-red-story', 'Red Story', 'RED'),
+          storyOption('opt-yellow-story', 'Yellow Story', 'YELLOW'),
+          storyOption('opt-blue-story', 'Blue Story', 'BLUE'),
+        ]),
+        [
+          pendingIssue(1, 'Awaiting Owner', 'Red Story', 'opt-red-story'),
+          pendingIssue(2, 'Todo by human', 'Red Story', 'opt-red-story'),
+          pendingIssue(3, 'Awaiting Owner', 'Yellow Story', 'opt-yellow-story'),
+          pendingIssue(4, 'Todo by human', 'Blue Story', 'opt-blue-story'),
+          pendingIssue(5, 'Preparation', 'Blue Story', 'opt-blue-story'),
+        ],
+      );
+
+      expect(dashboardRow).toMatchObject({
+        humanPendingRed: 2,
+        humanPendingYellow: 1,
+        humanPendingBlue: 1,
+      });
+    });
+
+    it('counts pending issues of two same-named stories under the color of the option each issue references', async () => {
+      const dashboardRow = await readDashboardRowWrittenByHandler(
+        projectWithStoryOptions([
+          storyOption('opt-duplicate-red', 'Duplicate Story', 'RED'),
+          storyOption('opt-duplicate-blue', 'Duplicate Story', 'BLUE'),
+        ]),
+        [
+          pendingIssue(
+            1,
+            'Awaiting Owner',
+            'Duplicate Story',
+            'opt-duplicate-red',
+          ),
+          pendingIssue(
+            2,
+            'Awaiting Owner',
+            'Duplicate Story',
+            'opt-duplicate-blue',
+          ),
+          pendingIssue(
+            3,
+            'Todo by human',
+            'Duplicate Story',
+            'opt-duplicate-blue',
+          ),
+        ],
+      );
+
+      expect(dashboardRow).toMatchObject({
+        humanPendingRed: 1,
+        humanPendingYellow: 0,
+        humanPendingBlue: 2,
+      });
+    });
+
+    it.each([
+      { storyOptionIdDescription: 'null', storyOptionId: null },
+      { storyOptionIdDescription: 'undefined', storyOptionId: undefined },
+    ])(
+      'never counts a pending issue whose story option id is $storyOptionIdDescription even when its story name has a color',
+      async ({ storyOptionId }) => {
+        const dashboardRow = await readDashboardRowWrittenByHandler(
+          projectWithStoryOptions([
+            storyOption('opt-red-story', 'Red Story', 'RED'),
+            storyOption('opt-blue-story', 'Blue Story', 'BLUE'),
+          ]),
+          [
+            pendingIssue(1, 'Awaiting Owner', 'Red Story', storyOptionId),
+            pendingIssue(2, 'Todo by human', 'Blue Story', storyOptionId),
+          ],
+        );
+
+        expect(dashboardRow).toMatchObject({
+          humanPendingRed: 0,
+          humanPendingYellow: 0,
+          humanPendingBlue: 0,
+        });
+      },
     );
   });
 });

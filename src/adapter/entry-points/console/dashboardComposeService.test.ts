@@ -607,6 +607,226 @@ describe('buildComposeDashboardInput', () => {
   });
 });
 
+describe('buildComposeDashboardInput human pending story colors recomputed from a fresher cache', () => {
+  type CacheStoryOption = { id: string; name: string; color: string };
+  type CacheIssueFields = {
+    number: number;
+    status: string;
+    story: string;
+    storyOptionId: string | null | undefined;
+  };
+
+  const cacheIssue = ({
+    number,
+    status,
+    story,
+    storyOptionId,
+  }: CacheIssueFields) => ({
+    nameWithOwner: 'demo/repo',
+    number,
+    title: `Issue ${number}`,
+    state: 'OPEN',
+    status,
+    story,
+    storyOptionId,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: `https://github.com/demo/repo/issues/${number}`,
+    assignees: ['HiromiShikata'],
+    labels: [],
+    org: 'demo',
+    repo: 'repo',
+    body: '',
+    itemId: `item-${number}`,
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: '2026-06-13T08:18:45.000Z',
+    author: 'someone',
+    closingIssueReferenceUrls: [],
+    agent: null,
+    stateReason: null,
+  });
+
+  const readHumanPendingFromFresherCache = (
+    stories: CacheStoryOption[],
+    issues: CacheIssueFields[],
+  ) => {
+    const dataDir = makeDataDir();
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-cache-'));
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T12:00:00.000Z',
+        assigneeLogin: 'HiromiShikata',
+        allIssuesCacheDir: cacheDir,
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 9,
+        humanPendingYellow: 9,
+        humanPendingBlue: 9,
+      });
+      fs.writeFileSync(
+        path.join(cacheDir, 'latest.json'),
+        JSON.stringify({
+          lastFetchedAt: '2026-06-26T12:05:00.000Z',
+          project: {
+            story: {
+              stories: stories.map((story) => ({
+                ...story,
+                description: '',
+              })),
+            },
+          },
+          issues: issues.map(cacheIssue),
+        }),
+      );
+      const [project] = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      }).projects;
+      return {
+        rowCapturedAt: project.rowCapturedAt,
+        humanPendingRed: project.row?.humanPendingRed,
+        humanPendingYellow: project.row?.humanPendingYellow,
+        humanPendingBlue: project.row?.humanPendingBlue,
+      };
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+    }
+  };
+
+  it('counts pending issues of uniquely named stories under the color of their story', () => {
+    expect(
+      readHumanPendingFromFresherCache(
+        [
+          { id: 'opt-red-story', name: 'Red Story', color: 'RED' },
+          { id: 'opt-yellow-story', name: 'Yellow Story', color: 'YELLOW' },
+          { id: 'opt-blue-story', name: 'Blue Story', color: 'BLUE' },
+        ],
+        [
+          {
+            number: 1,
+            status: 'Awaiting Owner',
+            story: 'Red Story',
+            storyOptionId: 'opt-red-story',
+          },
+          {
+            number: 2,
+            status: 'Todo by human',
+            story: 'Red Story',
+            storyOptionId: 'opt-red-story',
+          },
+          {
+            number: 3,
+            status: 'Awaiting Owner',
+            story: 'Yellow Story',
+            storyOptionId: 'opt-yellow-story',
+          },
+          {
+            number: 4,
+            status: 'Todo by human',
+            story: 'Blue Story',
+            storyOptionId: 'opt-blue-story',
+          },
+          {
+            number: 5,
+            status: 'Preparation',
+            story: 'Blue Story',
+            storyOptionId: 'opt-blue-story',
+          },
+        ],
+      ),
+    ).toEqual({
+      rowCapturedAt: '2026-06-26T12:05:00.000Z',
+      humanPendingRed: 2,
+      humanPendingYellow: 1,
+      humanPendingBlue: 1,
+    });
+  });
+
+  it('counts pending issues of two same-named stories under the color of the option each issue references', () => {
+    expect(
+      readHumanPendingFromFresherCache(
+        [
+          { id: 'opt-duplicate-red', name: 'Duplicate Story', color: 'RED' },
+          { id: 'opt-duplicate-blue', name: 'Duplicate Story', color: 'BLUE' },
+        ],
+        [
+          {
+            number: 1,
+            status: 'Awaiting Owner',
+            story: 'Duplicate Story',
+            storyOptionId: 'opt-duplicate-red',
+          },
+          {
+            number: 2,
+            status: 'Awaiting Owner',
+            story: 'Duplicate Story',
+            storyOptionId: 'opt-duplicate-blue',
+          },
+          {
+            number: 3,
+            status: 'Todo by human',
+            story: 'Duplicate Story',
+            storyOptionId: 'opt-duplicate-blue',
+          },
+        ],
+      ),
+    ).toEqual({
+      rowCapturedAt: '2026-06-26T12:05:00.000Z',
+      humanPendingRed: 1,
+      humanPendingYellow: 0,
+      humanPendingBlue: 2,
+    });
+  });
+
+  it.each([
+    { storyOptionIdDescription: 'null', storyOptionId: null },
+    { storyOptionIdDescription: 'absent', storyOptionId: undefined },
+  ])(
+    'never counts a pending issue whose story option id is $storyOptionIdDescription even when its story name has a color',
+    ({ storyOptionId }) => {
+      expect(
+        readHumanPendingFromFresherCache(
+          [
+            { id: 'opt-red-story', name: 'Red Story', color: 'RED' },
+            { id: 'opt-blue-story', name: 'Blue Story', color: 'BLUE' },
+          ],
+          [
+            {
+              number: 1,
+              status: 'Awaiting Owner',
+              story: 'Red Story',
+              storyOptionId,
+            },
+            {
+              number: 2,
+              status: 'Todo by human',
+              story: 'Blue Story',
+              storyOptionId,
+            },
+          ],
+        ),
+      ).toEqual({
+        rowCapturedAt: '2026-06-26T12:05:00.000Z',
+        humanPendingRed: 0,
+        humanPendingYellow: 0,
+        humanPendingBlue: 0,
+      });
+    },
+  );
+});
+
 describe('composeDashboardText', () => {
   it('composes the full byte-identical dashboard text from the data files', () => {
     const dataDir = makeDataDir();

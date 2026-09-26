@@ -4923,6 +4923,87 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
     });
 
+    const tabTransitions = [
+      {
+        targetTabName: 'prs',
+        lastCommentContent: '```json\n{"nextStep": null}\n```',
+      },
+      {
+        targetTabName: 'failed-preparation',
+        lastCommentContent:
+          'From: :robot: developer (model)\n```json\n{"workflowError": "fatal", "nextStep": null}\n```',
+      },
+    ];
+    const storyOptionIdCases = [
+      {
+        storyOptionIdDescription: 'present',
+        storyOptionId: 'opt-story-alpha',
+        expectedItemStoryOptionId: 'opt-story-alpha',
+      },
+      {
+        storyOptionIdDescription: 'null',
+        storyOptionId: null,
+        expectedItemStoryOptionId: null,
+      },
+      {
+        storyOptionIdDescription: 'undefined',
+        storyOptionId: undefined,
+        expectedItemStoryOptionId: null,
+      },
+    ];
+
+    it.each(
+      tabTransitions.flatMap((tabTransition) =>
+        storyOptionIdCases.map((storyOptionIdCase) => ({
+          ...tabTransition,
+          ...storyOptionIdCase,
+        })),
+      ),
+    )(
+      'copies the issue story option id ($storyOptionIdDescription) into the $targetTabName tab item as $expectedItemStoryOptionId',
+      async ({
+        targetTabName,
+        lastCommentContent,
+        storyOptionId,
+        expectedItemStoryOptionId,
+      }) => {
+        const issue = createMockIssue({
+          status: 'Preparation',
+          itemId: 'item-1',
+          story: 'Story Alpha',
+          storyOptionId,
+        });
+        mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+        mockIssueRepository.get.mockResolvedValue(issue);
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          createMockComment({ content: lastCommentContent }),
+        ]);
+        let capturedArg: unknown = undefined;
+        mockConsoleTabsRepository.patchIssueTabTransition.mockImplementation(
+          (arg: unknown) => {
+            capturedArg = arg;
+          },
+        );
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          issueUrl: 'https://github.com/user/repo/issues/1',
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: ['test-user'],
+        });
+
+        expect(capturedArg).toMatchObject({
+          projectItemId: 'item-1',
+          targetTabName,
+          item: {
+            story: 'Story Alpha',
+            storyOptionId: expectedItemStoryOptionId,
+          },
+        });
+      },
+    );
+
     it('does not call patchIssueTabTransition when consoleTabsRepository is not provided', async () => {
       useCase = new NotifyFinishedIssuePreparationUseCase(
         mockProjectRepository,

@@ -241,6 +241,126 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
     });
   });
 
+  describe('story grouping by story option id', () => {
+    const projectWithDuplicateStoryNames: Project = baseProject({
+      name: 'story',
+      fieldId: 'story-field',
+      databaseId: 2,
+      stories: [
+        storyOption('s1', 'Story Alpha', 'BLUE'),
+        storyOption('dup-first', 'Duplicate Story', 'YELLOW'),
+        storyOption('dup-second', 'Duplicate Story', 'RED'),
+      ],
+      workflowManagementStory: { id: 'wm', name: 'workflow management' },
+    });
+
+    it('groups issues of uniquely named stories under their story in story option display order', () => {
+      const result = run([
+        makeIssue({ story: 'Story Beta', storyOptionId: 's2' }),
+        makeIssue({ story: 'Story Alpha', storyOptionId: 's1' }),
+        makeIssue({ story: 'Story Alpha', storyOptionId: 's1' }),
+      ]);
+      expect(result.v1).toEqual([
+        {
+          story: 'Story Alpha',
+          urls: [
+            'https://github.com/demo/repo/issues/2',
+            'https://github.com/demo/repo/issues/3',
+          ],
+        },
+        {
+          story: 'Story Beta',
+          urls: ['https://github.com/demo/repo/issues/1'],
+        },
+      ]);
+      expect(result.v4?.groups).toEqual([
+        {
+          story: 'Story Alpha',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/2',
+              description: 'Issue 2',
+            },
+            {
+              name: 'https://github.com/demo/repo/issues/3',
+              description: 'Issue 3',
+            },
+          ],
+        },
+        {
+          story: 'Story Beta',
+          sessions: [
+            {
+              name: 'https://github.com/demo/repo/issues/1',
+              description: 'Issue 1',
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('keeps issues of two same-named stories in separate groups, one per story option', () => {
+      const result = run(
+        [
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-first' }),
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-second' }),
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-first' }),
+        ],
+        { project: projectWithDuplicateStoryNames },
+      );
+      expect(result.v1).toHaveLength(2);
+      expect(result.v1).toEqual(
+        expect.arrayContaining([
+          {
+            story: 'Duplicate Story',
+            urls: [
+              'https://github.com/demo/repo/issues/1',
+              'https://github.com/demo/repo/issues/3',
+            ],
+          },
+          {
+            story: 'Duplicate Story',
+            urls: ['https://github.com/demo/repo/issues/2'],
+          },
+        ]),
+      );
+    });
+
+    it.each([
+      { storyOptionIdDescription: 'null', storyOptionId: null },
+      { storyOptionIdDescription: 'undefined', storyOptionId: undefined },
+    ])(
+      'never merges an issue whose story option id is $storyOptionIdDescription into the group of a story option, including a same-named one',
+      ({ storyOptionId }) => {
+        const result = run(
+          [
+            makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-first' }),
+            makeIssue({
+              story: 'Duplicate Story',
+              storyOptionId: 'dup-second',
+            }),
+            makeIssue({ story: 'Duplicate Story', storyOptionId }),
+            makeIssue({ story: 'Story Alpha', storyOptionId: 's1' }),
+            makeIssue({ story: 'Story Alpha', storyOptionId }),
+          ],
+          { project: projectWithDuplicateStoryNames },
+        );
+        const urlListsOfGroupsContaining = (issueNumber: number) => {
+          const issueUrl = `https://github.com/demo/repo/issues/${issueNumber}`;
+          return result.v1
+            .filter((group) => group.urls.includes(issueUrl))
+            .map((group) => group.urls);
+        };
+        expect(urlListsOfGroupsContaining(3)).toEqual([
+          ['https://github.com/demo/repo/issues/3'],
+        ]);
+        expect(urlListsOfGroupsContaining(5)).toEqual([
+          ['https://github.com/demo/repo/issues/5'],
+        ]);
+      },
+    );
+  });
+
   describe('v3 document', () => {
     it('builds version 3 with overviewUrl from the project and a token-free console url', () => {
       const result = run([makeIssue({ story: 'Story Alpha' })]);
