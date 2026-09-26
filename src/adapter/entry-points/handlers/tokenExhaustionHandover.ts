@@ -1,10 +1,5 @@
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import {
-  TokenExhaustionHandoverUseCase,
-  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
-  DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
-} from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
+import { TokenExhaustionHandoverUseCase } from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
 import { GitHubIssueCheckpointRepository } from '../../repositories/GitHubIssueCheckpointRepository';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { RateLimitSnapshotRepository } from '../../repositories/RateLimitSnapshotRepository';
@@ -33,10 +28,7 @@ export const handleTokenExhaustionHandover = async (
   const {
     enabled,
     tokenListJsonPath,
-    handoverMessage,
-    bareNameLeaderHandoverMessage,
     tokenRateLimitSnapshotBaseDir,
-    gracePeriodSeconds,
     stateFilePath,
     localCommandRunner,
     now,
@@ -66,13 +58,6 @@ export const handleTokenExhaustionHandover = async (
 
   const result = await useCase.run({
     enabled,
-    issueUrlLeaderMessage:
-      handoverMessage ?? DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,
-    bareNameLeaderMessage:
-      bareNameLeaderHandoverMessage ??
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
-    gracePeriodSeconds:
-      gracePeriodSeconds ?? DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
     state: stateRepository.load(),
     now,
   });

@@ -13,17 +13,8 @@ import {
   TokenRateLimitSnapshotRepository,
 } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
 
-export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE =
-  'TOKEN NEAR EXHAUSTION. Within 2 minutes, write a CHECKPOINT to your assigned task issue: the in-flight subagents and what each is doing, their durable refs (branch and pull request URLs), the working directory and branch, the single concrete next action to resume, and the reason (token near exhaustion). Do this WITHOUT waiting for long-running or CI-watching subagents. Then self-kill your own tmux session with `tmux kill-session`.';
-
-export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER =
-  'TOKEN NEAR EXHAUSTION. You are a resident leader with no assigned task issue. Within 2 minutes, write a CHECKPOINT for every in-flight subagent (what each is doing and its durable refs = branch and pull request URLs, plus the single concrete next action to resume and the working directory and branch) into the GitHub issue that each subagent is working on, WITHOUT waiting for long-running or CI-watching subagents. Then stop and stay idle; do NOT self-kill. This session will be terminated and relaunched on a token that still has quota so its work is preserved.';
-
-export const DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS = 180;
 export const TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS = 900;
 export const TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS = 3600;
-export const TOKEN_EXHAUSTION_FIVE_HOUR_FREE_THRESHOLD = 0.1;
-export const TOKEN_EXHAUSTION_SEVEN_DAY_FREE_THRESHOLD = 0.05;
 export const TOKEN_EXHAUSTION_FIVE_HOUR_WARNING_FREE_THRESHOLD = 0.25;
 export const TOKEN_EXHAUSTION_SEVEN_DAY_WARNING_FREE_THRESHOLD = 0.15;
 
@@ -39,15 +30,11 @@ type SnapshotVerdict = {
 
 export type TokenExhaustionHandoverInput = {
   enabled: boolean;
-  issueUrlLeaderMessage: string;
-  bareNameLeaderMessage: string;
-  gracePeriodSeconds: number;
   state: TokenExhaustionHandoverState;
   now: Date;
 };
 
 export type TokenExhaustionHandoverResult = {
-  newlyHandoverSentSessionNames: string[];
   killedSessionNames: string[];
   terminatedPids: number[];
   relaunchedLeaderNames: string[];
@@ -89,14 +76,10 @@ export class TokenExhaustionHandoverUseCase {
     const snapshotByToken = new Map(
       snapshots.map((snapshot) => [snapshot.token, snapshot]),
     );
-    const liveSessionNames = new Set(
-      await this.tmuxSessionRepository.listLiveSessionNames(),
-    );
 
     const nextEntries: Record<string, TokenExhaustionHandoverStateEntry> = {
       ...input.state.entries,
     };
-    const newlyHandoverSentSessionNames: string[] = [];
     const killedSessionNames: string[] = [];
     const terminatedPids: number[] = [];
     const relaunchedLeaderNames: string[] = [];
@@ -120,11 +103,7 @@ export class TokenExhaustionHandoverUseCase {
           continue;
         }
         const hasTmux = session.kind !== 'implSubagent';
-        const verdict = this.evaluateSnapshot(
-          snapshot,
-          nowEpochSeconds,
-          hasTmux,
-        );
+        const verdict = this.evaluateSnapshot(snapshot, nowEpochSeconds);
         const stateKey = this.stateKeyFor(session);
 
         if (verdict.stale) {
@@ -148,86 +127,28 @@ export class TokenExhaustionHandoverUseCase {
           continue;
         }
 
-        if (session.kind === 'bareNameLeader') {
-          if (!input.enabled) {
-            console.log(
-              `Token exhaustion handover: would kill and relaunch ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
-            );
-            delete nextEntries[stateKey];
-            continue;
-          }
-          await this.forceKill(session, {
-            signaledAtEpoch: nowEpochSeconds,
-            pid: session.pid,
-          });
-          await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
-          killedSessionNames.push(this.displayName(session));
-          console.log(
-            `Token exhaustion handover: killed and relaunched ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
-          );
-          delete nextEntries[stateKey];
-          continue;
-        }
-
-        const entry = nextEntries[stateKey];
-        if (entry === undefined) {
-          if (input.enabled) {
-            await this.sendHandover(session, input);
-          }
-          console.log(
-            `Token exhaustion handover: signaled ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
-          );
-          nextEntries[stateKey] = {
-            signaledAtEpoch: nowEpochSeconds,
-            pid: session.pid,
-          };
-          newlyHandoverSentSessionNames.push(this.displayName(session));
-          continue;
-        }
-
-        if (
-          nowEpochSeconds - entry.signaledAtEpoch <
-          input.gracePeriodSeconds
-        ) {
-          console.log(
-            `Token exhaustion handover: waiting for grace period for ${this.displayName(session)} remainingSeconds=${input.gracePeriodSeconds - (nowEpochSeconds - entry.signaledAtEpoch)}`,
-          );
-          continue;
-        }
-
-        const alive = hasTmux
-          ? session.sessionName !== null &&
-            liveSessionNames.has(session.sessionName) &&
-            session.pid === entry.pid
-          : this.processSignalRepository.isProcessAlive(entry.pid);
-        if (!alive) {
-          if (input.enabled && this.needsRelaunch(session)) {
-            await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
-          }
-          delete nextEntries[stateKey];
-          continue;
-        }
-
         if (!input.enabled) {
           console.log(
-            `Token exhaustion handover: would force-kill ${this.displayName(session)} kind=${session.kind} (dry-run, enabled=false)`,
+            `Token exhaustion handover: would kill${this.needsRelaunch(session) ? ' and relaunch' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
           );
           delete nextEntries[stateKey];
           continue;
         }
-
-        await this.forceKill(session, entry);
+        await this.forceKill(session, {
+          signaledAtEpoch: nowEpochSeconds,
+          pid: session.pid,
+        });
         if (this.needsRelaunch(session)) {
           await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
         }
-        console.log(
-          `Token exhaustion handover: force-killed ${this.displayName(session)} kind=${session.kind}`,
-        );
         if (hasTmux) {
           killedSessionNames.push(this.displayName(session));
         } else {
-          terminatedPids.push(entry.pid);
+          terminatedPids.push(session.pid);
         }
+        console.log(
+          `Token exhaustion handover: killed${this.needsRelaunch(session) ? ' and relaunched' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
+        );
         delete nextEntries[stateKey];
       } catch (error) {
         console.error(
@@ -239,11 +160,10 @@ export class TokenExhaustionHandoverUseCase {
     }
 
     console.log(
-      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`,
+      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`,
     );
 
     return {
-      newlyHandoverSentSessionNames,
       killedSessionNames,
       terminatedPids,
       relaunchedLeaderNames,
@@ -265,31 +185,6 @@ export class TokenExhaustionHandoverUseCase {
     }
     await this.tmuxSessionRepository.launchBareNameLeaderSession(session.name);
     relaunchedLeaderNames.push(session.name);
-  };
-
-  private sendHandover = async (
-    session: ClaudeHandoverSession,
-    input: TokenExhaustionHandoverInput,
-  ): Promise<void> => {
-    if (session.kind === 'implSubagent') {
-      if (session.issueUrl !== null) {
-        await this.issueCheckpointRepository.postCheckpoint(session.issueUrl);
-      } else {
-        console.log(
-          `Token exhaustion handover: sending SIGTERM to impl subagent pid=${session.pid} (no issue URL, cannot post checkpoint)`,
-        );
-        this.processSignalRepository.terminateProcess(session.pid);
-      }
-      return;
-    }
-    if (session.sessionName === null) {
-      return;
-    }
-    const message =
-      session.kind === 'issueUrlLeader'
-        ? input.issueUrlLeaderMessage
-        : input.bareNameLeaderMessage;
-    await this.tmuxSessionRepository.sendKeys(session.sessionName, message);
   };
 
   private forceKill = async (
@@ -332,7 +227,7 @@ export class TokenExhaustionHandoverUseCase {
       if (snapshot.token === currentToken) {
         continue;
       }
-      const verdict = this.evaluateSnapshot(snapshot, nowEpochSeconds, true);
+      const verdict = this.evaluateSnapshot(snapshot, nowEpochSeconds);
       if (!verdict.stale && !verdict.exhausted) {
         return true;
       }
@@ -343,7 +238,6 @@ export class TokenExhaustionHandoverUseCase {
   private evaluateSnapshot = (
     snapshot: TokenRateLimitSnapshot,
     nowEpochSeconds: number,
-    hasTmux: boolean,
   ): SnapshotVerdict => {
     const age = nowEpochSeconds - snapshot.lastUpdatedEpoch;
     const fiveHourFree = this.freeRatio(
@@ -397,20 +291,12 @@ export class TokenExhaustionHandoverUseCase {
       };
     }
 
-    const exhausted =
-      fiveHourFree < TOKEN_EXHAUSTION_FIVE_HOUR_FREE_THRESHOLD ||
-      (hasTmux && sevenDayFree < TOKEN_EXHAUSTION_SEVEN_DAY_FREE_THRESHOLD) ||
-      blocked ||
-      weeklyCapped;
+    const exhausted = blocked || weeklyCapped;
     const reason = weeklyCapped
       ? 'weekly_hard_cap_rejected'
-      : fiveHourFree < TOKEN_EXHAUSTION_FIVE_HOUR_FREE_THRESHOLD
-        ? 'five_hour_free_below_threshold'
-        : hasTmux && sevenDayFree < TOKEN_EXHAUSTION_SEVEN_DAY_FREE_THRESHOLD
-          ? 'seven_day_free_below_threshold'
-          : blocked
-            ? 'blocked_or_rejected'
-            : 'healthy';
+      : blocked
+        ? 'blocked_or_rejected'
+        : 'healthy';
     return {
       stale: false,
       exhausted,
