@@ -1,3 +1,10 @@
+## [2.152.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.1...v2.152.2) (2026-09-26)
+
+
+### Bug Fixes
+
+* **live-session:** restart sessions only when rejected with HTTP 429, drop near-exhaustion notice and grace period ([#2756](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2756)) ([b7954a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7954a8f12a83b25f0082b59c495d74ed26aa6ba))
+
 ## [2.152.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.0...v2.152.1) (2026-09-26)
 
 
