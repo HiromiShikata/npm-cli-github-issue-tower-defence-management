@@ -230,6 +230,13 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
+    if (issue.isPr) {
+      console.warn(
+        `notifyFinishedIssuePreparation skipped: ${params.issueUrl} is a pull request, not a standalone task card`,
+      );
+      return;
+    }
+
     if (params.moveToFailedPreparation) {
       await this.handleConsecutiveFailureMaxReached(
         issue,
