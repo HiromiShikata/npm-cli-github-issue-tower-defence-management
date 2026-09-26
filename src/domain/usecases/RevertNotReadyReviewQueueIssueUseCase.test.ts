@@ -355,6 +355,59 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
+    it('should exclude a PR-type Awaiting Owner item from the review-queue sweep entirely after the fix, while a sibling task issue in the same status is still processed via findRelatedOpenPRs', async () => {
+      const pullRequestItem = createMockPullRequest({
+        status: 'Awaiting Owner',
+        url: 'https://github.com/user/repo/pull/9',
+        agent: 'chore',
+      });
+      const taskIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        url: 'https://github.com/user/repo/issues/20',
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequestItem, taskIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [
+            'https://github.com/user/repo/pull/9',
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/9'),
+              isConflicted: true,
+            },
+          ],
+        ]),
+      );
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createReadyPr('https://github.com/user/repo/pull/21'),
+          isConflicted: true,
+        },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(
+        mockIssueRepository.updateStatus.mock.calls.some(
+          (call) => call[1] === pullRequestItem,
+        ),
+      ).toBe(false);
+      expect(
+        mockIssueRepository.updateStatus.mock.calls.some(
+          (call) => call[1] === taskIssue,
+        ),
+      ).toBe(true);
+    });
+
     it('should revert Awaiting Owner issue with developer agent field and no linked PR', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Owner',

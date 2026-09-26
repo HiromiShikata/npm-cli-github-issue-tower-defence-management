@@ -1054,6 +1054,144 @@ describe('StartPreparationUseCase', () => {
       'https://github.com/user/repo/pull/354',
     );
   });
+  it('currently spawns a worker directly on a PR-type Awaiting Workspace board item and moves the PR item itself to Preparation (pins the existing behavior that treats a PR project-board item as its own standalone card, to be removed)', async () => {
+    const prIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/354',
+      title: 'PR 354',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      isPr: true,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([prIssue]),
+    );
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/user/repo/pull/354',
+      branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
+      createdAt: new Date('2024-01-01'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+      'https://github.com/user/repo/pull/354',
+      'agent1',
+      'claude-opus',
+      '--configFilePath',
+      '/path/to/config.yml',
+      '--branch',
+      'dependabot/npm_and_yarn/multi-cc382f683c',
+    ]);
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+      'https://github.com/user/repo/pull/354',
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+      mockProject,
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/pull/354',
+      status: 'Preparation',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+  });
+  it('should not spawn a worker on a PR-type Awaiting Workspace board item after the fix, while a sibling task issue in the same status is still spawned via findRelatedOpenPRs', async () => {
+    const prIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/354',
+      title: 'PR 354',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      isPr: true,
+    });
+    const taskIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/500',
+      title: 'Task 500',
+      number: 500,
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([prIssue, taskIssue]),
+    );
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/user/repo/pull/354',
+      branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
+      createdAt: new Date('2024-01-01'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.some(
+        (call) => call[1][0] === 'https://github.com/user/repo/pull/354',
+      ),
+    ).toBe(false);
+    expect(
+      mockIssueRepository.updateStatus.mock.calls.some(
+        (call) => call[1].url === prIssue.url,
+      ),
+    ).toBe(false);
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.some(
+        (call) => call[1][0] === 'https://github.com/user/repo/issues/500',
+      ),
+    ).toBe(true);
+  });
   it('should skip and not call wrapper when PR URL returns null from getOpenPullRequest', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
