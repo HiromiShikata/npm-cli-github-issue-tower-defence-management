@@ -297,9 +297,7 @@ export class StartPreparationUseCase {
         const issue = storiedAwaitingWorkspaceIssues[nextIndex];
         nextIndex += 1;
         const comments =
-          await this.issueRepository.getIssueOrPullRequestComments(
-            issue.url,
-          );
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
         const nextStepAgent = extractNextStepAgentFromComments(
           comments.map((comment) => ({
             author: comment.author,

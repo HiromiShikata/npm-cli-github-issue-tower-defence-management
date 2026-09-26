@@ -2694,8 +2694,7 @@ describe('StartPreparationUseCase', () => {
     expect(awCallUrls).toContain(labeledModelIssue.url);
     expect(
       mockIssueRepository.updateStatus.mock.calls.some(
-        (call) =>
-          call[1].url === rotationDependentIssue.url && call[2] === '1',
+        (call) => call[1].url === rotationDependentIssue.url && call[2] === '1',
       ),
     ).toBe(true);
     expect(
