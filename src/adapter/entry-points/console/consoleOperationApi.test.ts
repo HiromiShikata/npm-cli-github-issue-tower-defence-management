@@ -3980,6 +3980,86 @@ describe('consoleOperationApi', () => {
         );
       });
     });
+
+    describe('mutating call must use the freshly-fetched story fieldId, not the stale cached one', () => {
+      const buildOrderedProjectWithFieldId = (fieldId: string): Project => ({
+        ...projectWithOrderedStories(),
+        story: {
+          name: 'Story',
+          fieldId,
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      });
+
+      it('calls updateStoryList with a project whose story.fieldId equals the freshly-fetched fieldId, not the stale cached fieldId', async () => {
+        const cachedProject = buildOrderedProjectWithFieldId('PVTSSF_stale');
+        const freshProject = buildOrderedProjectWithFieldId('PVTSSF_fresh');
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const response = await handleReorderStory(
+          contextWithProjectRepository(
+            () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: jest.fn().mockResolvedValue(freshProject),
+            }),
+            cachedProject,
+          ),
+          { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+        );
+        expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+        expect(localUpdateStoryList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            story: freshProject.story,
+          }),
+          expect.anything(),
+        );
+      });
+
+      const fallbackCases: {
+        name: string;
+        freshResolution: 'null' | 'story-null';
+      }[] = [
+        { name: 'the refetch resolves null', freshResolution: 'null' },
+        {
+          name: 'the refetch resolves a project whose story field is null',
+          freshResolution: 'story-null',
+        },
+      ];
+
+      it.each(fallbackCases)(
+        'falls back to the originally-resolved fieldId without throwing when $name',
+        async ({ freshResolution }) => {
+          const cachedProject = buildOrderedProjectWithFieldId('PVTSSF_stale');
+          const freshProjectResolution: Project | null =
+            freshResolution === 'null'
+              ? null
+              : { ...cachedProject, story: null };
+          const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+          const response = await handleReorderStory(
+            contextWithProjectRepository(
+              () => ({
+                updateStoryList: localUpdateStoryList,
+                getProject: jest.fn().mockResolvedValue(freshProjectResolution),
+              }),
+              cachedProject,
+            ),
+            { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+          );
+          expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+          expect(localUpdateStoryList).toHaveBeenCalledWith(
+            expect.objectContaining({
+              story: cachedProject.story,
+            }),
+            expect.anything(),
+          );
+        },
+      );
+    });
   });
 
   describe('handleStoryAdd', () => {
@@ -4742,6 +4822,99 @@ describe('consoleOperationApi', () => {
               issueRepository.updateStoryOptionColor,
             ).not.toHaveBeenCalled();
           }
+        },
+      );
+    });
+
+    describe('mutating call must use the freshly-fetched story fieldId, not the stale cached one', () => {
+      const buildProjectWithFieldId = (fieldId: string): Project => ({
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId,
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      });
+
+      it('calls updateStoryOptionColor with project.story.fieldId equal to the freshly-fetched fieldId, not the stale cached fieldId', async () => {
+        const cachedProject = buildProjectWithFieldId('PVTSSF_stale');
+        const freshProject = buildProjectWithFieldId('PVTSSF_fresh');
+        const response = await handleStoryColor(
+          {
+            ...contextForProject(cachedProject),
+            resolveProjectRepository: () => ({
+              updateStoryList: jest.fn().mockResolvedValue([]),
+              getProject: jest.fn().mockResolvedValue(freshProject),
+            }),
+          },
+          {
+            pjcode: 'acme',
+            storyOptionId: 'opt_blue',
+            newColor: 'RED',
+            nameWithOwner: 'acme-labs/portal',
+          },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
+          expect.objectContaining({
+            story: freshProject.story,
+          }),
+          'opt_blue',
+          'RED',
+        );
+      });
+
+      const fallbackCases: {
+        name: string;
+        freshResolution: 'null' | 'story-null';
+      }[] = [
+        { name: 'the refetch resolves null', freshResolution: 'null' },
+        {
+          name: 'the refetch resolves a project whose story field is null',
+          freshResolution: 'story-null',
+        },
+      ];
+
+      it.each(fallbackCases)(
+        'falls back to the originally-resolved fieldId without throwing when $name',
+        async ({ freshResolution }) => {
+          const cachedProject = buildProjectWithFieldId('PVTSSF_stale');
+          const freshProjectResolution: Project | null =
+            freshResolution === 'null'
+              ? null
+              : { ...cachedProject, story: null };
+          const response = await handleStoryColor(
+            {
+              ...contextForProject(cachedProject),
+              resolveProjectRepository: () => ({
+                updateStoryList: jest.fn().mockResolvedValue([]),
+                getProject: jest.fn().mockResolvedValue(freshProjectResolution),
+              }),
+            },
+            {
+              pjcode: 'acme',
+              storyOptionId: 'opt_blue',
+              newColor: 'RED',
+              nameWithOwner: 'acme-labs/portal',
+            },
+          );
+          expect(response.statusCode).toBe(200);
+          expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
+            expect.objectContaining({
+              story: cachedProject.story,
+            }),
+            'opt_blue',
+            'RED',
+          );
         },
       );
     });
@@ -5830,6 +6003,110 @@ describe('consoleOperationApi', () => {
         expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
       });
     });
+
+    describe('mutating call must use the freshly-fetched story fieldId, not the stale cached one', () => {
+      const buildDeletableProjectWithFieldId = (fieldId: string): Project => ({
+        ...projectWithStoriesToDelete(),
+        story: {
+          name: 'Story',
+          fieldId,
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'opt_also_keep',
+              name: 'Also keep',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      });
+
+      it('calls updateStoryList with a project whose story.fieldId equals the freshly-fetched fieldId, not the stale cached fieldId', async () => {
+        const cachedProject = buildDeletableProjectWithFieldId('PVTSSF_stale');
+        const freshProject = buildDeletableProjectWithFieldId('PVTSSF_fresh');
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const ctx: ConsoleOperationContext = {
+          ...deleteStoryContext(cachedProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: localUpdateStoryList,
+            getProject: jest.fn().mockResolvedValue(freshProject),
+          }),
+        };
+        const response = await handleDeleteStory(ctx, {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(localUpdateStoryList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            story: freshProject.story,
+          }),
+          expect.anything(),
+        );
+      });
+
+      const fallbackCases: {
+        name: string;
+        freshResolution: 'null' | 'story-null';
+      }[] = [
+        { name: 'the refetch resolves null', freshResolution: 'null' },
+        {
+          name: 'the refetch resolves a project whose story field is null',
+          freshResolution: 'story-null',
+        },
+      ];
+
+      it.each(fallbackCases)(
+        'falls back to the originally-resolved fieldId without throwing when $name',
+        async ({ freshResolution }) => {
+          const cachedProject =
+            buildDeletableProjectWithFieldId('PVTSSF_stale');
+          const freshProjectResolution: Project | null =
+            freshResolution === 'null'
+              ? null
+              : { ...cachedProject, story: null };
+          const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+          const ctx: ConsoleOperationContext = {
+            ...deleteStoryContext(cachedProject),
+            resolveProjectRepository: () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: jest.fn().mockResolvedValue(freshProjectResolution),
+            }),
+          };
+          const response = await handleDeleteStory(ctx, {
+            pjcode: 'acme',
+            storyOptionId: 'opt_remove',
+          });
+          expect(response.statusCode).toBe(200);
+          expect(localUpdateStoryList).toHaveBeenCalledWith(
+            expect.objectContaining({
+              story: cachedProject.story,
+            }),
+            expect.anything(),
+          );
+        },
+      );
+    });
   });
 
   describe('handleStoryRename', () => {
@@ -6097,6 +6374,102 @@ describe('consoleOperationApi', () => {
         ]),
       );
     });
+
+    describe('mutating call must use the freshly-fetched story fieldId, not the stale cached one', () => {
+      const buildRenamableProjectWithFieldId = (fieldId: string): Project => ({
+        ...projectWithStoriesToRename(),
+        story: {
+          name: 'Story',
+          fieldId,
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      });
+
+      it('calls updateStoryList with a project whose story.fieldId equals the freshly-fetched fieldId, not the stale cached fieldId', async () => {
+        const cachedProject = buildRenamableProjectWithFieldId('PVTSSF_stale');
+        const freshProject = buildRenamableProjectWithFieldId('PVTSSF_fresh');
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const ctx: ConsoleOperationContext = {
+          ...renameStoryContext(cachedProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: localUpdateStoryList,
+            getProject: jest.fn().mockResolvedValue(freshProject),
+          }),
+        };
+        const response = await handleStoryRename(ctx, {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          newName: 'Alpha renamed',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
+        expect(localUpdateStoryList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            story: freshProject.story,
+          }),
+          expect.anything(),
+        );
+      });
+
+      const fallbackCases: {
+        name: string;
+        freshResolution: 'null' | 'story-null';
+      }[] = [
+        { name: 'the refetch resolves null', freshResolution: 'null' },
+        {
+          name: 'the refetch resolves a project whose story field is null',
+          freshResolution: 'story-null',
+        },
+      ];
+
+      it.each(fallbackCases)(
+        'falls back to the originally-resolved fieldId without throwing when $name',
+        async ({ freshResolution }) => {
+          const cachedProject =
+            buildRenamableProjectWithFieldId('PVTSSF_stale');
+          const freshProjectResolution: Project | null =
+            freshResolution === 'null'
+              ? null
+              : { ...cachedProject, story: null };
+          const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+          const ctx: ConsoleOperationContext = {
+            ...renameStoryContext(cachedProject),
+            resolveProjectRepository: () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: jest.fn().mockResolvedValue(freshProjectResolution),
+            }),
+          };
+          const response = await handleStoryRename(ctx, {
+            pjcode: 'acme',
+            storyOptionId: 'opt_alpha',
+            newName: 'Alpha renamed',
+          });
+          expect(response.statusCode).toBe(200);
+          expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
+          expect(localUpdateStoryList).toHaveBeenCalledWith(
+            expect.objectContaining({
+              story: cachedProject.story,
+            }),
+            expect.anything(),
+          );
+        },
+      );
+    });
   });
 
   describe('handleStoryUpdateDescription', () => {
@@ -6279,6 +6652,105 @@ describe('consoleOperationApi', () => {
           error: 'story option "opt_nonexistent" not found in project',
         },
       });
+    });
+
+    describe('mutating call must use the freshly-fetched story fieldId, not the stale cached one', () => {
+      const buildDescribableProjectWithFieldId = (
+        fieldId: string,
+      ): Project => ({
+        ...projectWithStoriesToUpdateDescription(),
+        story: {
+          name: 'Story',
+          fieldId,
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_alpha',
+              name: 'Alpha story',
+              color: 'BLUE',
+              description: 'Original description',
+            },
+            {
+              id: 'opt_beta',
+              name: 'Beta story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      });
+
+      it('calls updateStoryList with a project whose story.fieldId equals the freshly-fetched fieldId, not the stale cached fieldId', async () => {
+        const cachedProject =
+          buildDescribableProjectWithFieldId('PVTSSF_stale');
+        const freshProject = buildDescribableProjectWithFieldId('PVTSSF_fresh');
+        const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+        const ctx: ConsoleOperationContext = {
+          ...descriptionContext(cachedProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: localUpdateStoryList,
+            getProject: jest.fn().mockResolvedValue(freshProject),
+          }),
+        };
+        const response = await handleStoryUpdateDescription(ctx, {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'Updated description',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
+        expect(localUpdateStoryList).toHaveBeenCalledWith(
+          expect.objectContaining({
+            story: freshProject.story,
+          }),
+          expect.anything(),
+        );
+      });
+
+      const fallbackCases: {
+        name: string;
+        freshResolution: 'null' | 'story-null';
+      }[] = [
+        { name: 'the refetch resolves null', freshResolution: 'null' },
+        {
+          name: 'the refetch resolves a project whose story field is null',
+          freshResolution: 'story-null',
+        },
+      ];
+
+      it.each(fallbackCases)(
+        'falls back to the originally-resolved fieldId without throwing when $name',
+        async ({ freshResolution }) => {
+          const cachedProject =
+            buildDescribableProjectWithFieldId('PVTSSF_stale');
+          const freshProjectResolution: Project | null =
+            freshResolution === 'null'
+              ? null
+              : { ...cachedProject, story: null };
+          const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+          const ctx: ConsoleOperationContext = {
+            ...descriptionContext(cachedProject),
+            resolveProjectRepository: () => ({
+              updateStoryList: localUpdateStoryList,
+              getProject: jest.fn().mockResolvedValue(freshProjectResolution),
+            }),
+          };
+          const response = await handleStoryUpdateDescription(ctx, {
+            pjcode: 'acme',
+            storyOptionId: 'opt_alpha',
+            description: 'Updated description',
+          });
+          expect(response.statusCode).toBe(200);
+          expect(localUpdateStoryList).toHaveBeenCalledTimes(1);
+          expect(localUpdateStoryList).toHaveBeenCalledWith(
+            expect.objectContaining({
+              story: cachedProject.story,
+            }),
+            expect.anything(),
+          );
+        },
+      );
     });
   });
 
