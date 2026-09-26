@@ -56,7 +56,12 @@ export class SetNoStoryIssueToStoryUseCase {
           continue;
         }
       } catch (error) {
-        errors.push(error);
+        errors.push(
+          new Error(
+            `Failed to re-read the live Story value before writing NO STORY. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error },
+          ),
+        );
         continue;
       }
       await this.issueRepository.updateStory(
