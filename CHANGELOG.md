@@ -1,3 +1,10 @@
+## [2.151.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.4...v2.151.5) (2026-09-26)
+
+
+### Bug Fixes
+
+* **console:** use fresh story field id in story mutation handlers ([#2737](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2737)) ([3f4ac81](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3f4ac816ef02aff31ff70eb51f34405a7090c512))
+
 ## [2.151.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.3...v2.151.4) (2026-09-26)
 
 
