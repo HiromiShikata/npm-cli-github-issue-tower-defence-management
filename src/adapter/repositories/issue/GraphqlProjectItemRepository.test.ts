@@ -3305,3 +3305,70 @@ describe('GraphqlProjectItemRepository', () => {
     });
   });
 });
+
+const liveToken = process.env.GH_TOKEN;
+const describeWhenLiveCredentials = liveToken ? describe : describe.skip;
+
+const requireGraphqlProjectItemRepositoryClassWithRealUnmockedKyHttpClient =
+  (): typeof GraphqlProjectItemRepository => {
+    jest.resetModules();
+    jest.unmock('ky');
+    return jest.requireActual<{
+      GraphqlProjectItemRepository: typeof GraphqlProjectItemRepository;
+    }>('./GraphqlProjectItemRepository').GraphqlProjectItemRepository;
+  };
+
+describeWhenLiveCredentials(
+  'GraphqlProjectItemRepository (live GitHub GraphQL API)',
+  () => {
+    const localStorageRepository = new LocalStorageRepository();
+    let repository: GraphqlProjectItemRepository;
+    const projectId = 'PVT_kwHOAGJHa84AFhgF';
+    const storyFieldId = 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms';
+    const projectItemIdCarryingRealIssueContent =
+      'PVTI_lAHOAGJHa84AFhgFzgTKpJ8';
+    const knownStoryOption = { id: 'af410dae', name: 'story1' };
+
+    beforeAll(async () => {
+      const LiveGraphqlProjectItemRepository =
+        requireGraphqlProjectItemRepositoryClassWithRealUnmockedKyHttpClient();
+      repository = new LiveGraphqlProjectItemRepository(
+        localStorageRepository,
+        liveToken,
+      );
+      await repository.updateProjectField(
+        projectId,
+        storyFieldId,
+        projectItemIdCarryingRealIssueContent,
+        { singleSelectOptionId: knownStoryOption.id },
+      );
+    });
+
+    afterAll(async () => {
+      await repository.clearProjectField(
+        projectId,
+        storyFieldId,
+        projectItemIdCarryingRealIssueContent,
+      );
+    });
+
+    describe('fetchProjectItems', () => {
+      it('returns the Story field with the real optionId the live GraphQL API assigned, proving the query actually selects optionId', async () => {
+        const items = await repository.fetchProjectItems(projectId);
+
+        const targetItem = items.find(
+          (item) => item.id === projectItemIdCarryingRealIssueContent,
+        );
+        expect(targetItem).toBeDefined();
+        const storyField = targetItem?.customFields.find(
+          (field) => field.name === 'Story',
+        );
+        expect(storyField).toEqual({
+          name: 'Story',
+          value: knownStoryOption.name,
+          optionId: knownStoryOption.id,
+        });
+      });
+    });
+  },
+);
