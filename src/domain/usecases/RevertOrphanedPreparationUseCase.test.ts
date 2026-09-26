@@ -771,10 +771,10 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'no-next-step-agent',
     );
   });
 
@@ -2890,7 +2890,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('no-next-step-agent'),
