@@ -1004,7 +1004,7 @@ export class StartPreparationUseCase {
       let spawnEnv: Record<string, string> | undefined;
       let routedModelName: string | null = null;
       let selectedTokenName: string | null = null;
-      if (rotationTokens !== null && proxyBaseUrl !== null && !labelModelName) {
+      if (rotationTokens !== null && proxyBaseUrl !== null) {
         const tokenToFillOf = (): {
           token: string;
           model: string;
@@ -1029,18 +1029,21 @@ export class StartPreparationUseCase {
           tokenToFill = tokenToFillOf();
         }
         if (tokenToFill === null) {
-          await revertToAwaitingWorkspace(
-            'every Claude OAuth token reached its concurrent worker limit',
-          );
-          continue;
+          if (!labelModelName) {
+            await revertToAwaitingWorkspace(
+              'every Claude OAuth token reached its concurrent worker limit',
+            );
+            continue;
+          }
+        } else {
+          const selected = tokenToFill.token;
+          routedModelName = tokenToFill.model;
+          selectedTokenName = selected;
+          spawnEnv = {
+            CLAUDE_CODE_OAUTH_TOKEN: selected,
+            ANTHROPIC_BASE_URL: proxyBaseUrl,
+          };
         }
-        const selected = tokenToFill.token;
-        routedModelName = tokenToFill.model;
-        selectedTokenName = selected;
-        spawnEnv = {
-          CLAUDE_CODE_OAUTH_TOKEN: selected,
-          ANTHROPIC_BASE_URL: proxyBaseUrl,
-        };
       }
       const model =
         labelModelName || routedModelName || params.defaultLlmModelName;
