@@ -129,12 +129,13 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const { outcome, comments, ciFailingPrUrl } = await this.evaluateOutcome(
-        issue,
-        resolveLabelsNotRequiringPullRequest(params),
-        params.allowedIssueAuthors,
-        params.developerAgentNames,
-      );
+      const { outcome, comments, ciFailingPrUrl, hasIdentifiedPrRejection } =
+        await this.evaluateOutcome(
+          issue,
+          resolveLabelsNotRequiringPullRequest(params),
+          params.allowedIssueAuthors,
+          params.developerAgentNames,
+        );
       const isStillInPreparation = await this.isStillInStatus(
         issue,
         project,
@@ -178,7 +179,7 @@ export class RevertOrphanedPreparationUseCase {
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
-        currentDispatchHasNoReportRejection: false,
+        currentDispatchHasNoReportRejection: lastAgentReport === null,
         comments,
         isTrustedAuthor: (author) =>
           isAuthorAuthorizedForAutoStatusCheck(
@@ -327,6 +328,25 @@ export class RevertOrphanedPreparationUseCase {
         continue;
       }
 
+      if (
+        repetition.type === 'escalateNoNextStepAgent' &&
+        !hasIdentifiedPrRejection
+      ) {
+        if (awaitingOwnerStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingOwnerStatusOption.id,
+          );
+          await this.createCommentWithDedup(issue, repetition.comment);
+        } else {
+          console.error(
+            `Awaiting owner status option '${resolvedOwnerStatusName}' not found in project.`,
+          );
+        }
+        continue;
+      }
+
       const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
       const lastTargetComments = comments.slice(
         -params.thresholdForAutoReject * 2,
@@ -421,6 +441,7 @@ export class RevertOrphanedPreparationUseCase {
     outcome: OrphanedPreparationOutcome;
     comments: Comment[];
     ciFailingPrUrl?: string;
+    hasIdentifiedPrRejection?: boolean;
   }> => {
     if (issue.isClosed) {
       return { outcome: 'advanceToQualityCheck', comments: [] };
@@ -458,7 +479,7 @@ export class RevertOrphanedPreparationUseCase {
         ? await this.resolveOpenPrsForPrItem(issue.url)
         : await this.issueRepository.findRelatedOpenPRs(issue.url);
       if (prsToCheck.some((pr) => pr.isConflicted)) {
-        return { outcome: 'reject', comments };
+        return { outcome: 'reject', comments, hasIdentifiedPrRejection: true };
       }
       if (isNonDeveloperAgent && effectiveDeveloperAgentNames.length > 0) {
         if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
@@ -488,6 +509,7 @@ export class RevertOrphanedPreparationUseCase {
     return {
       outcome: hasRejections ? 'reject' : 'advanceToQualityCheck',
       comments,
+      hasIdentifiedPrRejection: hasRejections,
     };
   };
 
