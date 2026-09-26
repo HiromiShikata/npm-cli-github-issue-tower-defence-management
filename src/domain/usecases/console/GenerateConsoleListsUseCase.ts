@@ -386,6 +386,7 @@ export class GenerateConsoleListsUseCase {
     const result: Record<string, { color: ConsoleColor }> = {};
     for (const option of options) {
       result[option.id] = { color: option.color };
+      result[option.name] = { color: option.color };
     }
     return result;
   };

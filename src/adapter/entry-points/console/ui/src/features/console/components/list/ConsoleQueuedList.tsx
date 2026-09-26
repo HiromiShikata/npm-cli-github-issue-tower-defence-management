@@ -55,11 +55,10 @@ export const ConsoleQueuedList = ({
             <ConsoleStorySummary
               story={row.story}
               count={row.count}
-              colorEnum={
-                row.storyOptionId !== null
-                  ? resolveStoryColorEnum(storyColors, row.storyOptionId)
-                  : null
-              }
+              colorEnum={resolveStoryColorEnum(
+                storyColors,
+                row.storyOptionId ?? row.story,
+              )}
             />
           </li>
         ) : (
