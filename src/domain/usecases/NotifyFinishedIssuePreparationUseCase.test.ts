@@ -1488,7 +1488,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should not post a duplicate storyUnset comment when an identical STORY_UNSET comment for the same agent already exists within the 2-hour dedup window', async () => {
+  it('should not create a second, additional STORY_UNSET comment when a repeat dispatch for the same agent happens shortly after one was already posted', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1519,10 +1519,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: ['test-user'],
     });
 
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Auto Status Check: STORY_UNSET developer'),
-    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
   it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
@@ -1792,6 +1789,78 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining('developer'),
+    );
+  });
+
+  it('escalates to Failed Preparation by the thresholdForDispatchLoop-th consecutive story-unset dispatch cycle even when every cycle happens minutes apart within the comment dedup window', async () => {
+    const thresholdForDispatchLoop = 3;
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    const triagerReport = createMockComment({
+      content:
+        'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      createdAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    let commentHistory: Comment[] = [triagerReport];
+    let escalatedOnThisCycle = false;
+    const requireCreatedCommentContent = (value: unknown): string => {
+      if (typeof value !== 'string') {
+        throw new Error(
+          'Expected createComment to be called with a string body.',
+        );
+      }
+      return value;
+    };
+
+    for (let cycle = 1; cycle <= thresholdForDispatchLoop; cycle += 1) {
+      issue.status = 'Preparation';
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ...commentHistory,
+      ]);
+      mockIssueCommentRepository.createComment.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 10,
+        thresholdForDispatchLoop,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      const dispatchCreatedAt = new Date(
+        Date.now() - (thresholdForDispatchLoop - cycle) * 5 * 60 * 1000,
+      );
+      for (const [, createdCommentContent] of mockIssueCommentRepository
+        .createComment.mock.calls) {
+        commentHistory = [
+          ...commentHistory,
+          createMockComment({
+            content: requireCreatedCommentContent(createdCommentContent),
+            createdAt: dispatchCreatedAt,
+          }),
+        ];
+      }
+
+      escalatedOnThisCycle = mockIssueRepository.updateStatus.mock.calls.some(
+        ([, , statusOptionId]) => statusOptionId === 'failed-preparation-id',
+      );
+    }
+
+    expect(escalatedOnThisCycle).toBe(true);
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: STORY_UNSET_ESCALATED'),
     );
   });
 
