@@ -1375,7 +1375,10 @@ describe('GenerateConsoleListsUseCase', () => {
         const storyColors = run([])[tabName].storyColors;
         expect(Object.values(storyColors)).toEqual([
           { color: 'GRAY' },
+          { color: 'GRAY' },
           { color: 'BLUE' },
+          { color: 'BLUE' },
+          { color: 'GREEN' },
           { color: 'GREEN' },
         ]);
       },
@@ -1388,8 +1391,10 @@ describe('GenerateConsoleListsUseCase', () => {
           .storyColors;
         expect(storyColors).toEqual({
           s1: { color: 'BLUE' },
+          'Story Alpha': { color: 'BLUE' },
           'dup-first': { color: 'YELLOW' },
           'dup-second': { color: 'RED' },
+          'Duplicate Story': { color: 'RED' },
         });
       },
     );
