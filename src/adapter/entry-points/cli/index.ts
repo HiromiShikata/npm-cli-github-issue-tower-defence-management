@@ -58,6 +58,7 @@ import {
   createConsoleProjectResolver,
   createConsoleProjectUrlToPjcodeResolver,
   createPjcodeConfigChecker,
+  createProjectIssuesCacheRepositoryResolver,
 } from '../console/consoleProjectResolver';
 import {
   IssueTitleStateCache,
@@ -1238,26 +1239,18 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
   const resolvePjcodeForProjectUrl =
     createConsoleProjectUrlToPjcodeResolver(pjcodeToProjectUrl);
-  const projectIssuesCacheRepositoryByPjcode = new Map<
-    string,
-    ProjectIssuesCacheRepository
-  >();
-  const resolveProjectIssuesCacheRepositoryForPjcode = (
-    pjcode: string,
-  ): ProjectIssuesCacheRepository => {
-    const alreadyBuilt = projectIssuesCacheRepositoryByPjcode.get(pjcode);
-    if (alreadyBuilt !== undefined) {
-      return alreadyBuilt;
-    }
-    const built = new ProjectIssuesCacheRepository(
-      new LocalStorageCacheRepository(
-        localStorageRepository,
-        projectCacheDirectory(pjcode),
-      ),
+  const resolveProjectIssuesCacheRepositoryForPjcode =
+    createProjectIssuesCacheRepositoryResolver(
+      projectName,
+      new ProjectIssuesCacheRepository(localStorageCacheRepository),
+      (pjcode: string) =>
+        new ProjectIssuesCacheRepository(
+          new LocalStorageCacheRepository(
+            localStorageRepository,
+            projectCacheDirectory(pjcode),
+          ),
+        ),
     );
-    projectIssuesCacheRepositoryByPjcode.set(pjcode, built);
-    return built;
-  };
   const {
     resolve: resolveProject,
     invalidate: invalidateProject,

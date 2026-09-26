@@ -4,6 +4,7 @@ import {
   ConsoleProjectBinding,
   ConsoleProjectResolver,
 } from './consoleOperationApi';
+import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCacheRepository';
 
 export type ConsoleProjectLoader = (
   projectUrl: string,
@@ -71,11 +72,39 @@ export const createPjcodeConfigChecker = (
     Object.prototype.hasOwnProperty.call(pjcodeToProjectUrl, pjcode);
 };
 
+export const createProjectIssuesCacheRepositoryResolver = (
+  projectName: string,
+  defaultProjectIssuesCacheRepository: ProjectIssuesCacheRepository,
+  buildProjectIssuesCacheRepositoryForPjcode: (
+    pjcode: string,
+  ) => ProjectIssuesCacheRepository,
+): ((pjcode: string) => ProjectIssuesCacheRepository) => {
+  const cache = new Map<string, ProjectIssuesCacheRepository>();
+  return (pjcode: string): ProjectIssuesCacheRepository => {
+    const alreadyBuilt = cache.get(pjcode);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const built =
+      pjcode === projectName
+        ? defaultProjectIssuesCacheRepository
+        : buildProjectIssuesCacheRepositoryForPjcode(pjcode);
+    cache.set(pjcode, built);
+    return built;
+  };
+};
+
 export const createConsoleProjectUrlToPjcodeResolver = (
   pjcodeToProjectUrl: Record<string, string>,
 ): ((projectUrl: string) => string) => {
   const pjcodeByProjectUrl = new Map<string, string>();
   for (const [pjcode, projectUrl] of Object.entries(pjcodeToProjectUrl)) {
+    const existingPjcode = pjcodeByProjectUrl.get(projectUrl);
+    if (existingPjcode !== undefined) {
+      throw new Error(
+        `projectUrl ${projectUrl} is configured for both pjcode ${existingPjcode} and pjcode ${pjcode}; each projectUrl must be configured for exactly one pjcode`,
+      );
+    }
     pjcodeByProjectUrl.set(projectUrl, pjcode);
   }
   return (projectUrl: string): string => {
