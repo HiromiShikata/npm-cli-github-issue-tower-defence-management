@@ -8738,173 +8738,158 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(urls).toContain(untouchedIssueUrl);
     });
 
-    it('full-fetch write path: the in-memory return value of getAllIssues reflects a concurrent updateFieldOptions write, not the stale pre-lock project', async () => {
-      const projectId =
-        'proj-full-fetch-update-field-options-race-return-value';
-      const cacheKey = `allIssues-${projectId}`;
-      const oldStatusOptions: FieldOption[] = [
-        {
-          id: 'opt-old-full-fetch-return-value',
-          name: 'Old Status',
-          color: 'GRAY',
-          description: '',
+    it.each([
+      {
+        fetchPathLabel: 'full-fetch',
+        projectId: 'proj-full-fetch-update-field-options-race-return-value',
+        oldStatusOptionId: 'opt-old-full-fetch-return-value',
+        newStatusOptionId: 'opt-new-full-fetch-return-value',
+        cacheLastFetchedAt: '2026-07-01T00:00:00.000Z',
+        cacheLastFullFetchAt: '2026-07-01T00:00:00.000Z',
+        dateRepositoryNow: new Date('2026-07-01T02:00:00.000Z'),
+        cachedIssueUrl: 'https://github.com/o/r/issues/601',
+        cachedIssueTitle: 'existing issue',
+        cachedIssueItemId:
+          'item-existing-full-fetch-field-options-return-value',
+        configureProjectItemFetchMock: (params: {
+          graphqlProjectItemRepository: ReturnType<
+            typeof buildProcessRepository
+          >['graphqlProjectItemRepository'];
+          cachedIssueUrl: string;
+          cachedIssueTitle: string;
+          cachedIssueItemId: string;
+        }): void => {
+          params.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+            [
+              {
+                ...buildProjectItem(
+                  params.cachedIssueUrl,
+                  params.cachedIssueTitle,
+                ),
+                id: params.cachedIssueItemId,
+              },
+            ],
+          );
         },
-      ];
-      const newStatusOptions: FieldOption[] = [
-        {
-          id: 'opt-new-full-fetch-return-value',
-          name: 'New Status',
-          color: 'GREEN',
-          description: '',
+      },
+      {
+        fetchPathLabel: 'incremental-fetch',
+        projectId:
+          'proj-incremental-fetch-update-field-options-race-return-value',
+        oldStatusOptionId: 'opt-old-incremental-fetch-return-value',
+        newStatusOptionId: 'opt-new-incremental-fetch-return-value',
+        cacheLastFetchedAt: '2026-07-07T00:30:00.000Z',
+        cacheLastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        dateRepositoryNow: new Date('2026-07-07T00:45:00Z'),
+        cachedIssueUrl: 'https://github.com/o/r/issues/801',
+        cachedIssueTitle: 'untouched issue',
+        cachedIssueItemId:
+          'item-untouched-incremental-fetch-field-options-return-value',
+        configureProjectItemFetchMock: (params: {
+          graphqlProjectItemRepository: ReturnType<
+            typeof buildProcessRepository
+          >['graphqlProjectItemRepository'];
+        }): void => {
+          params.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+            [],
+          );
         },
-      ];
-      const project: Project = {
-        ...buildTestProject(projectId),
-        status: {
-          name: 'Status',
-          fieldId: 'f-status',
-          statuses: oldStatusOptions,
-        },
-      };
-      const cache = buildRacyLocalStorageCacheRepository();
-      const existingIssueUrl = 'https://github.com/o/r/issues/601';
-      const existingItemId =
-        'item-existing-full-fetch-field-options-return-value';
-      await cache.setSingle(cacheKey, {
-        lastFetchedAt: '2026-07-01T00:00:00.000Z',
-        lastFullFetchAt: '2026-07-01T00:00:00.000Z',
-        project,
-        issues: [
+      },
+    ])(
+      '$fetchPathLabel write path: the in-memory return value of getAllIssues reflects a concurrent updateFieldOptions write, not the stale pre-lock project',
+      async ({
+        projectId,
+        oldStatusOptionId,
+        newStatusOptionId,
+        cacheLastFetchedAt,
+        cacheLastFullFetchAt,
+        dateRepositoryNow,
+        cachedIssueUrl,
+        cachedIssueTitle,
+        cachedIssueItemId,
+        configureProjectItemFetchMock,
+      }) => {
+        const cacheKey = `allIssues-${projectId}`;
+        const oldStatusOptions: FieldOption[] = [
           {
-            ...buildCachedIssueRecord(existingIssueUrl, 'existing issue'),
-            itemId: existingItemId,
+            id: oldStatusOptionId,
+            name: 'Old Status',
+            color: 'GRAY',
+            description: '',
           },
-        ],
-        storyIssueUrlByOptionName: {},
-        storyOptions: [],
-      });
-
-      const {
-        repository,
-        graphqlProjectItemRepository,
-        projectRepository,
-        dateRepository,
-      } = buildProcessRepository(cache);
-      dateRepository.now.mockResolvedValue(
-        new Date('2026-07-01T02:00:00.000Z'),
-      );
-      projectRepository.getProject.mockImplementation(async () => {
-        await wait(80);
-        return project;
-      });
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(existingIssueUrl, 'existing issue'),
-          id: existingItemId,
-        },
-      ]);
-
-      const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
-        await wait(1);
-        await new ProjectIssuesCacheRepository(cache).updateFieldOptions(
-          projectId,
-          project.status.fieldId,
-          newStatusOptions,
-        );
-      };
-
-      const [getAllIssuesResult] = await Promise.all([
-        repository.getAllIssues(projectId),
-        updateFieldOptionsOnceFetchHasStarted(),
-      ]);
-
-      const returnedStatusOptionIds =
-        getAllIssuesResult.project.status.statuses.map((option) => option.id);
-      expect(returnedStatusOptionIds).toContain(newStatusOptions[0].id);
-      expect(getAllIssuesResult.project.status.statuses).not.toEqual(
-        oldStatusOptions,
-      );
-    });
-
-    it('incremental-fetch write path: the in-memory return value of getAllIssues reflects a concurrent updateFieldOptions write, not the stale pre-lock project', async () => {
-      const projectId =
-        'proj-incremental-fetch-update-field-options-race-return-value';
-      const cacheKey = `allIssues-${projectId}`;
-      const oldStatusOptions: FieldOption[] = [
-        {
-          id: 'opt-old-incremental-fetch-return-value',
-          name: 'Old Status',
-          color: 'GRAY',
-          description: '',
-        },
-      ];
-      const newStatusOptions: FieldOption[] = [
-        {
-          id: 'opt-new-incremental-fetch-return-value',
-          name: 'New Status',
-          color: 'GREEN',
-          description: '',
-        },
-      ];
-      const project: Project = {
-        ...buildTestProject(projectId),
-        status: {
-          name: 'Status',
-          fieldId: 'f-status',
-          statuses: oldStatusOptions,
-        },
-      };
-      const cache = buildRacyLocalStorageCacheRepository();
-      const untouchedIssueUrl = 'https://github.com/o/r/issues/801';
-      await cache.setSingle(cacheKey, {
-        lastFetchedAt: '2026-07-07T00:30:00.000Z',
-        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
-        project,
-        issues: [
+        ];
+        const newStatusOptions: FieldOption[] = [
           {
-            ...buildCachedIssueRecord(untouchedIssueUrl, 'untouched issue'),
-            itemId:
-              'item-untouched-incremental-fetch-field-options-return-value',
+            id: newStatusOptionId,
+            name: 'New Status',
+            color: 'GREEN',
+            description: '',
           },
-        ],
-        storyIssueUrlByOptionName: {},
-        storyOptions: [],
-      });
+        ];
+        const project: Project = {
+          ...buildTestProject(projectId),
+          status: {
+            name: 'Status',
+            fieldId: 'f-status',
+            statuses: oldStatusOptions,
+          },
+        };
+        const cache = buildRacyLocalStorageCacheRepository();
+        await cache.setSingle(cacheKey, {
+          lastFetchedAt: cacheLastFetchedAt,
+          lastFullFetchAt: cacheLastFullFetchAt,
+          project,
+          issues: [
+            {
+              ...buildCachedIssueRecord(cachedIssueUrl, cachedIssueTitle),
+              itemId: cachedIssueItemId,
+            },
+          ],
+          storyIssueUrlByOptionName: {},
+          storyOptions: [],
+        });
 
-      const {
-        repository,
-        graphqlProjectItemRepository,
-        projectRepository,
-        dateRepository,
-      } = buildProcessRepository(cache);
-      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
-      projectRepository.getProject.mockImplementation(async () => {
-        await wait(80);
-        return project;
-      });
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          projectRepository,
+          dateRepository,
+        } = buildProcessRepository(cache);
+        dateRepository.now.mockResolvedValue(dateRepositoryNow);
+        projectRepository.getProject.mockImplementation(async () => {
+          await wait(80);
+          return project;
+        });
+        configureProjectItemFetchMock({
+          graphqlProjectItemRepository,
+          cachedIssueUrl,
+          cachedIssueTitle,
+          cachedIssueItemId,
+        });
 
-      const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
-        await wait(1);
-        await new ProjectIssuesCacheRepository(cache).updateFieldOptions(
-          projectId,
-          project.status.fieldId,
-          newStatusOptions,
+        const updateFieldOptionsOnceFetchHasStarted =
+          async (): Promise<void> => {
+            await wait(1);
+            await new ProjectIssuesCacheRepository(cache).updateFieldOptions(
+              projectId,
+              project.status.fieldId,
+              newStatusOptions,
+            );
+          };
+
+        const [getAllIssuesResult] = await Promise.all([
+          repository.getAllIssues(projectId),
+          updateFieldOptionsOnceFetchHasStarted(),
+        ]);
+
+        const returnedStatusOptionIds =
+          getAllIssuesResult.project.status.statuses.map((option) => option.id);
+        expect(returnedStatusOptionIds).toContain(newStatusOptions[0].id);
+        expect(getAllIssuesResult.project.status.statuses).not.toEqual(
+          oldStatusOptions,
         );
-      };
-
-      const [getAllIssuesResult] = await Promise.all([
-        repository.getAllIssues(projectId),
-        updateFieldOptionsOnceFetchHasStarted(),
-      ]);
-
-      const returnedStatusOptionIds =
-        getAllIssuesResult.project.status.statuses.map((option) => option.id);
-      expect(returnedStatusOptionIds).toContain(newStatusOptions[0].id);
-      expect(getAllIssuesResult.project.status.statuses).not.toEqual(
-        oldStatusOptions,
-      );
-    });
+      },
+    );
   });
 
   describe('appendIssueToProjectCache', () => {
