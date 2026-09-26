@@ -766,7 +766,21 @@ export class StartPreparationUseCase {
         exclusionCounts[exclusionReason]++;
         continue;
       }
-      const branchSource = branchSourceByIssueUrl.get(issue.url);
+      let branchSource = branchSourceByIssueUrl.get(issue.url);
+      if (branchSource === undefined) {
+        const onDemandBranchSourceByIssueUrl =
+          await this.fetchSpawnCandidateBranchSources(
+            [issue.url],
+            issueUrlsWithOpenPrs,
+          );
+        const onDemandBranchSource = onDemandBranchSourceByIssueUrl.get(
+          issue.url,
+        );
+        if (onDemandBranchSource !== undefined) {
+          branchSourceByIssueUrl.set(issue.url, onDemandBranchSource);
+          branchSource = onDemandBranchSource;
+        }
+      }
       if (branchSource === undefined) {
         console.error(
           `Skipping ${issue.url}: no branch source was prefetched for this spawn candidate.`,
