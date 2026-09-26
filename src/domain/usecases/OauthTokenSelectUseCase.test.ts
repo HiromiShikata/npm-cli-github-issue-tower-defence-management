@@ -1044,19 +1044,6 @@ describe('oauthTokenDrainOrderSort', () => {
       expectedOrder: string[];
     }> = [
       {
-        description: '7d free ratio ascending when no token is promoted',
-        candidates: [
-          drainCandidate('sixtyPercentFree', 0.6, 200 * HOUR),
-          drainCandidate('twentyPercentFree', 0.2, 300 * HOUR),
-          drainCandidate('fortyPercentFreeUnknownReset', 0.4, Infinity),
-        ],
-        expectedOrder: [
-          'twentyPercentFree',
-          'fortyPercentFreeUnknownReset',
-          'sixtyPercentFree',
-        ],
-      },
-      {
         description:
           'a token that cannot be drained before the deadline moves ahead of a token with less budget',
         candidates: [
@@ -1105,6 +1092,19 @@ describe('oauthTokenDrainOrderSort', () => {
         ],
         expectedOrder: ['ninetyFivePercentFree', 'fullyFreeUnknownReset'],
       },
+      {
+        description: '7d reset ascending when no token is promoted',
+        candidates: [
+          drainCandidate('sixtyPercentFree', 0.6, 200 * HOUR),
+          drainCandidate('twentyPercentFree', 0.2, 300 * HOUR),
+          drainCandidate('fortyPercentFreeUnknownReset', 0.4, Infinity),
+        ],
+        expectedOrder: [
+          'sixtyPercentFree',
+          'twentyPercentFree',
+          'fortyPercentFreeUnknownReset',
+        ],
+      },
     ];
 
     for (const testCase of cases) {
@@ -1118,6 +1118,20 @@ describe('oauthTokenDrainOrderSort', () => {
         order: testCase.expectedOrder,
       });
     }
+  });
+
+  it('fills the token with the sooner 7d reset before one with a higher free ratio when neither token is promoted (reported defect: a token resetting sooner was starved while a token with a more distant reset and a lower free ratio absorbed the fill)', () => {
+    const candidates = [
+      drainCandidate('soonerResetHigherFreeRatio', 0.7, 6 * DAY + 4 * HOUR),
+      drainCandidate('laterResetLowerFreeRatio', 0.3, 6 * DAY + 6 * HOUR),
+    ];
+
+    const sorted = oauthTokenDrainOrderSort(candidates);
+
+    expect(sorted.map((candidate) => candidate.name)).toEqual([
+      'soonerResetHigherFreeRatio',
+      'laterResetLowerFreeRatio',
+    ]);
   });
 
   it('returns a new array and leaves the input order unchanged', () => {
@@ -1183,6 +1197,25 @@ describe('oauthTokenFillTargetSelect', () => {
         description: 'no token for an empty candidate list',
         candidates: [],
         expectedName: null,
+      },
+      {
+        description:
+          'the sooner-7d-reset token with a free slot fills before a later-7d-reset token with a lower free ratio and a free slot, neither promoted',
+        candidates: [
+          drainCandidate(
+            'soonerResetHigherFreeRatio',
+            0.7,
+            6 * DAY + 4 * HOUR,
+            6,
+          ),
+          drainCandidate(
+            'laterResetLowerFreeRatio',
+            0.3,
+            6 * DAY + 6 * HOUR,
+            6,
+          ),
+        ],
+        expectedName: 'soonerResetHigherFreeRatio',
       },
     ];
 
