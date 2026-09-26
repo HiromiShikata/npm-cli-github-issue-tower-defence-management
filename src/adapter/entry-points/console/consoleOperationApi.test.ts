@@ -5237,6 +5237,109 @@ describe('consoleOperationApi', () => {
       expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
+    it('uses the freshly-fetched project fieldId, not the stale cached fieldId, when clearing the story field on open tasks in the background with deleteChildTasks false', async () => {
+      const staleProject: Project = {
+        ...projectWithStoriesToDelete(),
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...staleProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_keep',
+              name: 'Keep this story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'opt_remove',
+              name: 'Remove this story',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'wms',
+              name: 'workflow',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const { story } = staleProject;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/100',
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.id,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(
+        {
+          ...deleteStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+          deleteChildTasks: false,
+        },
+      );
+      await response.backgroundTask;
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
+        expect.anything(),
+        'fresh_field_id',
+        openTask,
+      );
+    });
+
     it('calls invalidateProject after a successful delete', async () => {
       const p = projectWithStoriesToDelete();
       const invalidateProject = jest.fn();
