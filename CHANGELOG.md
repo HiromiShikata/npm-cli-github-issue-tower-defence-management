@@ -1,3 +1,10 @@
+## [2.151.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.1...v2.151.2) (2026-09-26)
+
+
+### Bug Fixes
+
+* **story-usecases:** AggregateError entries drop issueUrl context, and caller-resilience tests do not assert console.error ([#2726](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2726)) ([d7a474c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d7a474c4874b275b563901c418117b17c065db53))
+
 ## [2.151.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.0...v2.151.1) (2026-09-26)
 
 
