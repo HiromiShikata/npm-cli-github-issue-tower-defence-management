@@ -1108,37 +1108,39 @@ export class ApiV3CheerioRestIssueRepository
       const items =
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
       const nowIso = now.toISOString();
-      const issues = await this.projectIssuesCacheRepository.withLock(
-        projectId,
-        async () => {
-          const freshCache = await this.readCachedProjectIssues(projectId);
-          const mergedIssues =
-            this.mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight(
-              freshCache?.issues ?? [],
-              itemIdsKnownBeforeFetch,
-              items,
-            );
-          await this.projectIssuesCacheRepository.write(projectId, {
-            lastFetchedAt: nowIso,
-            lastFullFetchAt: nowIso,
-            project:
+      const { mergedIssues: issues, mergedProject } =
+        await this.projectIssuesCacheRepository.withLock(
+          projectId,
+          async () => {
+            const freshCache = await this.readCachedProjectIssues(projectId);
+            const mergedIssues =
+              this.mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight(
+                freshCache?.issues ?? [],
+                itemIdsKnownBeforeFetch,
+                items,
+              );
+            const mergedProject =
               this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
                 freshCache?.project ?? null,
                 cache?.project ?? null,
                 project,
+              );
+            await this.projectIssuesCacheRepository.write(projectId, {
+              lastFetchedAt: nowIso,
+              lastFullFetchAt: nowIso,
+              project: mergedProject,
+              issues: mergedIssues,
+              storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
+                mergedIssues,
+                project.story?.stories ?? [],
               ),
-            issues: mergedIssues,
-            storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-              mergedIssues,
-              project.story?.stories ?? [],
-            ),
-            storyOptions: buildStoryOptions(project),
-          });
-          return mergedIssues;
-        },
-      );
+              storyOptions: buildStoryOptions(project),
+            });
+            return { mergedIssues, mergedProject };
+          },
+        );
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
-      return { issues, project, cacheUsed: false };
+      return { issues, project: mergedProject, cacheUsed: false };
     }
 
     const itemIdsKnownBeforeFetch = new Set(
@@ -1163,9 +1165,8 @@ export class ApiV3CheerioRestIssueRepository
           )
         : [];
     const nowIso = now.toISOString();
-    const issues = await this.projectIssuesCacheRepository.withLock(
-      projectId,
-      async () => {
+    const { mergedIssues: issues, mergedProject } =
+      await this.projectIssuesCacheRepository.withLock(projectId, async () => {
         const freshCache = await this.readCachedProjectIssues(projectId);
         const mergedIssues =
           this.mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight(
@@ -1173,15 +1174,16 @@ export class ApiV3CheerioRestIssueRepository
             itemIdsKnownBeforeFetch,
             changedItems,
           );
+        const mergedProject =
+          this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
+            freshCache?.project ?? null,
+            cache.project,
+            project,
+          );
         await this.projectIssuesCacheRepository.write(projectId, {
           lastFetchedAt: nowIso,
           lastFullFetchAt: freshCache?.lastFullFetchAt ?? cache.lastFullFetchAt,
-          project:
-            this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
-              freshCache?.project ?? null,
-              cache.project,
-              project,
-            ),
+          project: mergedProject,
           issues: mergedIssues,
           storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
             mergedIssues,
@@ -1189,11 +1191,10 @@ export class ApiV3CheerioRestIssueRepository
           ),
           storyOptions: buildStoryOptions(project),
         });
-        return mergedIssues;
-      },
-    );
+        return { mergedIssues, mergedProject };
+      });
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
-    return { issues, project, cacheUsed: true };
+    return { issues, project: mergedProject, cacheUsed: true };
   };
   createNewIssue = async (
     org: string,
