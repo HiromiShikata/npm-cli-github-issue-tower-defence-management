@@ -372,7 +372,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should process a pull request URL the same as an issue URL when the project item resolves', async () => {
+  it('should return without calling getOpenPullRequest, updateStatus, or posting any comment when the fetched issueUrl resolves to a PR-type project item, instead of processing it as a standalone task card', async () => {
     const prIssue = createMockIssue({
       url: 'https://github.com/user/repo/pull/77',
       number: 77,
@@ -382,18 +382,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
-    ]);
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-      url: 'https://github.com/user/repo/pull/77',
-      isConflicted: false,
-      isPassedAllCiJob: true,
-      isCiStateSuccess: true,
-      isResolvedAllReviewComments: true,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    });
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
@@ -407,21 +395,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       'https://github.com/user/repo/pull/77',
       mockProject,
     );
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/pull/77',
-        status: 'Awaiting Owner',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/pull/77',
-        status: 'Awaiting Owner',
-      }),
-      'awaiting-owner-id',
-    );
+    expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue,
+    ).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
   });
 
   it('should return without throwing or mutating when issue status is Done', async () => {
@@ -3276,7 +3258,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should use getOpenPullRequest when issue is a PR item', async () => {
+  it('should never call setDependedIssueUrlForAllOpenPRs or its underlying findRelatedOpenPRs/getOpenPullRequest/setDependedIssueUrl calls when the fetched issue is itself a PR item', async () => {
     const prIssue = createMockIssue({
       url: 'https://github.com/user/repo/pull/10',
       status: 'Preparation',
@@ -3285,18 +3267,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
-    ]);
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-      url: 'https://github.com/user/repo/pull/10',
-      isConflicted: false,
-      isPassedAllCiJob: true,
-      isCiStateSuccess: true,
-      isResolvedAllReviewComments: true,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    });
 
     await useCase.run({
       projectUrl: 'https://github.com/users/user/projects/1',
@@ -3306,14 +3276,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: ['test-user'],
     });
 
-    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/10',
-    );
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
-      mockProject,
-    );
+    expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
   });
 
   describe('setDependedIssueUrl for open PRs', () => {
@@ -3491,37 +3457,41 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should not call setDependedIssueUrl when issue is a PR and the resolved PR URL matches the issue URL (self-reference prevention)', async () => {
-      const prUrl = 'https://github.com/user/repo/pull/77';
-      const prIssue = createMockIssue({
-        url: prUrl,
+    it('should not call setDependedIssueUrl for a related-PR entry from findRelatedOpenPRs whose URL matches the issue URL itself (self-reference prevention)', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/30';
+      const issue = createMockIssue({
+        url: issueUrl,
         status: 'Preparation',
-        isPr: true,
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(prIssue);
+      mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
       ]);
-      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-        url: prUrl,
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: issueUrl,
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: prUrl,
+        issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
       });
 
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        issueUrl,
+      );
       expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
     });
 
@@ -3960,46 +3930,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
 
     consoleWarnSpy.mockRestore();
-  });
-
-  it('should return no PRs when getOpenPullRequest returns null for a PR item', async () => {
-    const prIssue = createMockIssue({
-      url: 'https://github.com/user/repo/pull/10',
-      status: 'Preparation',
-      isPr: true,
-      agent: 'developer',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(prIssue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nTask complete.',
-      }),
-    ]);
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/pull/10',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-      developerAgentNames: ['developer'],
-    });
-
-    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/10',
-    );
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/pull/10' }),
-      expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-    );
   });
 
   it('should move to Awaiting Workspace when the only JSON block is invalid (not a parseable object)', async () => {
@@ -7428,6 +7358,31 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: null,
       });
 
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('should never reach the CI-failure reassignment check at all for a PR-type Preparation item, calling neither findRelatedOpenPRs, getOpenPullRequest nor setIssueAgentField', async () => {
+      const prIssue = createMockIssue({
+        url: 'https://github.com/user/repo/pull/1',
+        status: 'Preparation',
+        agent: 'chore',
+        isPr: true,
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(prIssue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/pull/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });

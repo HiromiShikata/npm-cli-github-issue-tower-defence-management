@@ -661,6 +661,62 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
+  it('should exclude a PR-type Preparation item from the orphaned-preparation sweep entirely after the fix, while a sibling task issue in the same status is still evaluated via findRelatedOpenPRs', async () => {
+    const stuckPrIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/10',
+      status: 'Preparation',
+      isPr: true,
+    });
+    const stuckTaskIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/11',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckPrIssue, stuckTaskIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: '```json\n{"nextStep": null}\n```',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue(createPassingPr());
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      createPassingPr(),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.updateStatus.mock.calls.some(
+        (call) => call[1].url === stuckPrIssue.url,
+      ),
+    ).toBe(false);
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.some(
+        (call) => call[1][3] === stuckPrIssue.url,
+      ),
+    ).toBe(false);
+    expect(
+      mockIssueRepository.updateStatus.mock.calls.some(
+        (call) => call[1].url === stuckTaskIssue.url,
+      ),
+    ).toBe(true);
+  });
+
   it('should revert orphaned issue to Awaiting Workspace when agent report present but PR CI is failing', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
