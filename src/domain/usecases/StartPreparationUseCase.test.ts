@@ -4860,7 +4860,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should pick the token with the least 7-day budget first when no token is promoted by the spend deadline', async () => {
+  it('should pick the token with the sooner 7-day reset first when no token is promoted by the spend deadline', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 1 }, (_, i) =>
       createMockIssue({
         url: `url${i + 1}`,
@@ -4933,7 +4933,7 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-less-budget-later-reset' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-more-budget-sooner-reset' },
     });
   });
 
