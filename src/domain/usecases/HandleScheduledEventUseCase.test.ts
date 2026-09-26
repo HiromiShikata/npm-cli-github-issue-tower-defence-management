@@ -12,8 +12,9 @@ import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepositor
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
-import { Project } from '../entities/Project';
+import { FieldOption, Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -2741,6 +2742,12 @@ describe('HandleScheduledEventUseCase', () => {
     );
 
     const storyName = 'my story / feature';
+    const storyOption: FieldOption = {
+      id: 'story-1',
+      name: storyName,
+      color: 'BLUE',
+      description: '',
+    };
     const baseProject: Project = {
       id: 'project-1',
       url: 'https://github.com/orgs/user/projects/1',
@@ -2753,9 +2760,7 @@ describe('HandleScheduledEventUseCase', () => {
         name: 'Story',
         fieldId: 'story-field-id',
         databaseId: 1,
-        stories: [
-          { id: 'story-1', name: storyName, color: 'BLUE', description: '' },
-        ],
+        stories: [storyOption],
         workflowManagementStory: { id: 'wms-1', name: 'workflow management' },
       },
       remainingEstimationMinutes: null,
@@ -2803,7 +2808,7 @@ describe('HandleScheduledEventUseCase', () => {
         project: baseProject,
         issues: [closedIssue],
       });
-      expect(result.get(storyName)?.storyIssue).toBeNull();
+      expect(result.get(storyOption.id)?.storyIssue).toBeNull();
     });
 
     it('should return the open matching issue as storyIssue', async () => {
@@ -2811,7 +2816,115 @@ describe('HandleScheduledEventUseCase', () => {
         project: baseProject,
         issues: [baseIssue],
       });
-      expect(result.get(storyName)?.storyIssue).toBe(baseIssue);
+      expect(result.get(storyOption.id)?.storyIssue).toBe(baseIssue);
+    });
+
+    describe('duplicate story option name key collision regression', () => {
+      const liveStoryOption: FieldOption = {
+        id: 'story-live',
+        name: 'feature / duplicate',
+        color: 'BLUE',
+        description: '',
+      };
+      const disabledStoryOption: FieldOption = {
+        id: 'story-disabled',
+        name: 'feature / duplicate',
+        color: 'GRAY',
+        description: '',
+      };
+      const firstStatus: FieldOption = {
+        id: 'status-todo',
+        name: 'ToDo',
+        color: 'BLUE',
+        description: '',
+      };
+      const iceboxStatus: FieldOption = {
+        id: 'status-icebox',
+        name: ICEBOX_STATUS_NAME,
+        color: 'GRAY',
+        description: '',
+      };
+      const duplicateStoryProject: Project = {
+        ...baseProject,
+        status: {
+          name: 'Status',
+          fieldId: 'status-field-id',
+          statuses: [firstStatus, iceboxStatus],
+        },
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [liveStoryOption, disabledStoryOption],
+          workflowManagementStory: { id: 'wms-1', name: 'workflow management' },
+        },
+      };
+      const liveIssue: Issue = {
+        ...baseIssue,
+        title: 'Live task',
+        url: 'https://github.com/user/repo/issues/101',
+        itemId: 'item-101',
+        story: 'feature / duplicate',
+        storyOptionId: 'story-live',
+        status: null,
+        assignees: [],
+      };
+      const disabledIssue: Issue = {
+        ...baseIssue,
+        title: 'Disabled task',
+        url: 'https://github.com/user/repo/issues/102',
+        itemId: 'item-102',
+        story: 'feature / duplicate',
+        storyOptionId: 'story-disabled',
+        status: null,
+        assignees: [],
+      };
+
+      it('moves the task bound to the disabled (GRAY) story option to Icebox but never the task bound to the live story option sharing the same display name', async () => {
+        const map = await useCase.storyIssues({
+          project: duplicateStoryProject,
+          issues: [liveIssue, disabledIssue],
+        });
+
+        const colorMockDateRepository = mock<DateRepository>();
+        const colorMockIssueRepository = mock<IssueRepository>();
+        colorMockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+          [],
+        );
+        colorMockIssueRepository.get.mockImplementation(async (url) => {
+          if (url === liveIssue.url) {
+            return liveIssue;
+          }
+          if (url === disabledIssue.url) {
+            return disabledIssue;
+          }
+          return null;
+        });
+
+        const changeStatusByStoryColorUseCase =
+          new ChangeStatusByStoryColorUseCase(
+            colorMockDateRepository,
+            colorMockIssueRepository,
+          );
+
+        await changeStatusByStoryColorUseCase.run({
+          project: duplicateStoryProject,
+          cacheUsed: false,
+          org: 'org',
+          repo: 'repo',
+          storyObjectMap: map,
+          manager: 'manager-user',
+        });
+
+        expect(
+          colorMockIssueRepository.updateStatus.mock.calls.some(
+            (call) => call[1] === liveIssue && call[2] === iceboxStatus.id,
+          ),
+        ).toBe(false);
+        expect(colorMockIssueRepository.updateStatus.mock.calls).toContainEqual(
+          [duplicateStoryProject, disabledIssue, iceboxStatus.id],
+        );
+      });
     });
   });
 });

@@ -164,16 +164,19 @@ describe('GetStoryObjectMapUseCase', () => {
         number: 1,
         title: 'Issue 1',
         story: 'Story 1',
+        storyOptionId: 'story-1',
       });
       const issue2 = createBasicIssue({
         number: 2,
         title: 'Issue 2',
         story: 'Story 1',
+        storyOptionId: 'story-1',
       });
       const issue3 = createBasicIssue({
         number: 3,
         title: 'Issue 3',
         story: 'Story 2',
+        storyOptionId: 'story-2',
       });
 
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
@@ -188,11 +191,11 @@ describe('GetStoryObjectMapUseCase', () => {
         projectUrl: 'https://github.com/orgs/test/projects/1',
       });
 
-      const story1Object = result.storyObjectMap.get('Story 1');
+      const story1Object = result.storyObjectMap.get('story-1');
       expect(story1Object).toBeDefined();
       expect(story1Object?.issues).toEqual([issue1, issue2]);
 
-      const story2Object = result.storyObjectMap.get('Story 2');
+      const story2Object = result.storyObjectMap.get('story-2');
       expect(story2Object).toBeDefined();
       expect(story2Object?.issues).toEqual([issue3]);
     });
@@ -216,7 +219,7 @@ describe('GetStoryObjectMapUseCase', () => {
         projectUrl: 'https://github.com/orgs/test/projects/1',
       });
 
-      const story1Object = result.storyObjectMap.get('Story 1');
+      const story1Object = result.storyObjectMap.get('story-1');
       expect(story1Object?.storyIssue).toEqual(storyIssue);
     });
 
@@ -239,7 +242,7 @@ describe('GetStoryObjectMapUseCase', () => {
         projectUrl: 'https://github.com/orgs/test/projects/1',
       });
 
-      const story1Object = result.storyObjectMap.get('Story 1');
+      const story1Object = result.storyObjectMap.get('story-1');
       expect(story1Object?.storyIssue).toBeNull();
     });
 
@@ -287,8 +290,8 @@ describe('GetStoryObjectMapUseCase', () => {
       });
 
       expect(result.size).toBe(2);
-      expect(result.get('Story 1')?.issues).toEqual([]);
-      expect(result.get('Story 2')?.issues).toEqual([]);
+      expect(result.get('story-1')?.issues).toEqual([]);
+      expect(result.get('story-2')?.issues).toEqual([]);
     });
 
     it('should include story information in each map entry', () => {
@@ -297,7 +300,7 @@ describe('GetStoryObjectMapUseCase', () => {
         issues: [],
       });
 
-      const story1 = result.get('Story 1');
+      const story1 = result.get('story-1');
       expect(story1?.story).toEqual({
         id: 'story-1',
         name: 'Story 1',
@@ -323,8 +326,23 @@ describe('GetStoryObjectMapUseCase', () => {
         issues: [issueWithNoStory, issueWithUnknownStory],
       });
 
-      expect(result.get('Story 1')?.issues).toEqual([]);
-      expect(result.get('Story 2')?.issues).toEqual([]);
+      expect(result.get('story-1')?.issues).toEqual([]);
+      expect(result.get('story-2')?.issues).toEqual([]);
+    });
+
+    it('should not return a closed issue as storyIssue even when its title prefix-matches the story name', () => {
+      const closedStoryTitledIssue = createBasicIssue({
+        number: 1,
+        title: 'Story 1',
+        isClosed: true,
+      });
+
+      const result = useCase.createStoryObjectMap({
+        project: basicProject,
+        issues: [closedStoryTitledIssue],
+      });
+
+      expect(result.get('story-1')?.storyIssue).toBeNull();
     });
   });
 });

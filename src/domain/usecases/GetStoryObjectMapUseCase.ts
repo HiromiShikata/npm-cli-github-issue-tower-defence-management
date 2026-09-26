@@ -1,7 +1,10 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
+import {
+  buildStoryObjectMap,
+  StoryObjectMap,
+} from '../entities/StoryObjectMap';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
 export class ProjectNotFoundError extends Error {
@@ -56,24 +59,9 @@ export class GetStoryObjectMapUseCase {
     project: Project;
     issues: Issue[];
   }): StoryObjectMap => {
-    const summaryStoryIssue: StoryObjectMap = new Map();
-    const targetStory = input.project.story?.stories || [];
-    for (const story of targetStory) {
-      const storyIssue = input.issues.find((issue) =>
-        story.name.startsWith(issue.title),
-      );
-      summaryStoryIssue.set(story.name, {
-        story,
-        storyIssue: storyIssue || null,
-        issues: [],
-      });
-      for (const issue of input.issues) {
-        if (issue.story !== story.name) {
-          continue;
-        }
-        summaryStoryIssue.get(story.name)?.issues.push(issue);
-      }
-    }
-    return summaryStoryIssue;
+    return buildStoryObjectMap({
+      project: input.project,
+      issues: input.issues,
+    });
   };
 }

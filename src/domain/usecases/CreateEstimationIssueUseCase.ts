@@ -53,7 +53,7 @@ export class CreateEstimationIssueUseCase {
       const storyIssue = input.issues.find((issue) =>
         story.name.startsWith(issue.title),
       );
-      const storyObject = input.storyObjectMap.get(story.name);
+      const storyObject = input.storyObjectMap.get(story.id);
       if (story.name.startsWith('regular / ')) {
         continue;
       } else if (!storyIssue || !storyObject) {
