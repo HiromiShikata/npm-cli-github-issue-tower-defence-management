@@ -4,6 +4,7 @@ import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
   createConsoleProjectResolver,
+  createConsoleProjectUrlToPjcodeResolver,
   createPjcodeConfigChecker,
 } from './consoleProjectResolver';
 
@@ -195,8 +196,11 @@ describe('createConsoleProjectLoader', () => {
     const getProject = jest.fn(async () => globexProjectOfLoader);
     const loadProject = createConsoleProjectLoader(
       buildProjectRepositoryResolver(async () => 'PVT_globex', getProject),
-      async (projectId: string) =>
-        projectId === 'PVT_globex' ? globexProjectOfLoader : null,
+      async (projectUrl: string, projectId: string) =>
+        projectUrl === 'https://github.com/orgs/globex/projects/18' &&
+        projectId === 'PVT_globex'
+          ? globexProjectOfLoader
+          : null,
       () => undefined,
     );
 
@@ -204,6 +208,22 @@ describe('createConsoleProjectLoader', () => {
       loadProject('https://github.com/orgs/globex/projects/18'),
     ).resolves.toBe(globexProjectOfLoader);
     expect(getProject).not.toHaveBeenCalled();
+  });
+
+  it('passes both the project url and the project id to the cache reader, so the cache read can be routed per project url', async () => {
+    const getCachedProject = jest.fn(async () => null);
+    const loadProject = createConsoleProjectLoader(
+      buildProjectRepositoryResolver(async () => 'PVT_globex', async () => globexProjectOfLoader),
+      getCachedProject,
+      () => undefined,
+    );
+
+    await loadProject('https://github.com/orgs/globex/projects/18');
+
+    expect(getCachedProject).toHaveBeenCalledWith(
+      'https://github.com/orgs/globex/projects/18',
+      'PVT_globex',
+    );
   });
 
   it('reports and returns null when the project id cannot be resolved', async () => {
@@ -242,5 +262,33 @@ describe('createConsoleProjectLoader', () => {
     expect(reportedMessages).toEqual([
       'Failed to load project for projectUrl https://github.com/orgs/globex/projects/18',
     ]);
+  });
+});
+
+describe('createConsoleProjectUrlToPjcodeResolver', () => {
+  it('returns the pjcode configured for the given project url', () => {
+    const resolvePjcode = createConsoleProjectUrlToPjcodeResolver({
+      acme: 'https://github.com/orgs/acme/projects/1',
+      globex: 'https://github.com/orgs/globex/projects/2',
+    });
+
+    expect(resolvePjcode('https://github.com/orgs/acme/projects/1')).toBe(
+      'acme',
+    );
+    expect(resolvePjcode('https://github.com/orgs/globex/projects/2')).toBe(
+      'globex',
+    );
+  });
+
+  it('throws when no pjcode is configured for the given project url', () => {
+    const resolvePjcode = createConsoleProjectUrlToPjcodeResolver({
+      acme: 'https://github.com/orgs/acme/projects/1',
+    });
+
+    expect(() =>
+      resolvePjcode('https://github.com/orgs/unknown/projects/9'),
+    ).toThrow(
+      'No pjcode is configured for projectUrl https://github.com/orgs/unknown/projects/9',
+    );
   });
 });
