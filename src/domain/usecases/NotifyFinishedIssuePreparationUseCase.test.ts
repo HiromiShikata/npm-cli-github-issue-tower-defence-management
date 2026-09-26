@@ -127,6 +127,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
     createComment: jest.Mock;
+    updateComment: jest.Mock;
   };
   let mockWebhookRepository: {
     sendGetRequest: jest.Mock;
@@ -191,6 +192,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
       createComment: jest.fn(),
+      updateComment: jest.fn(),
     };
 
     mockWebhookRepository = {
@@ -1505,6 +1507,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
       }),
       createMockComment({
+        id: 'story-unset-comment-id',
         content:
           'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
         createdAt: fiveMinutesAgo,
@@ -1520,6 +1523,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
+      expect.anything(),
+      'story-unset-comment-id',
+      expect.stringContaining('Auto Status Check: STORY_UNSET developer'),
+    );
   });
 
   it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
@@ -1762,12 +1770,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
       }),
       createMockComment({
+        id: 'story-unset-comment-id',
         content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
-      }),
-      createMockComment({
-        content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead. (2/3)',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1812,11 +1817,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
     let commentHistory: Comment[] = [triagerReport];
     let escalatedOnThisCycle = false;
-    const requireCreatedCommentContent = (value: unknown): string => {
+    let updateCommentCalledAtLeastOnce = false;
+    const storyUnsetCommentId = 'story-unset-comment-id';
+    const requireStringValue = (
+      value: unknown,
+      describedSubject: string,
+    ): string => {
       if (typeof value !== 'string') {
-        throw new Error(
-          'Expected createComment to be called with a string body.',
-        );
+        throw new Error(`Expected ${describedSubject} to be a string.`);
       }
       return value;
     };
@@ -1827,6 +1835,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         ...commentHistory,
       ]);
       mockIssueCommentRepository.createComment.mockClear();
+      mockIssueCommentRepository.updateComment.mockClear();
       mockIssueRepository.updateStatus.mockClear();
 
       await useCase.run({
@@ -1846,10 +1855,41 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         commentHistory = [
           ...commentHistory,
           createMockComment({
-            content: requireCreatedCommentContent(createdCommentContent),
+            id: storyUnsetCommentId,
+            content: requireStringValue(
+              createdCommentContent,
+              'a createComment call body',
+            ),
             createdAt: dispatchCreatedAt,
           }),
         ];
+      }
+
+      if (mockIssueCommentRepository.updateComment.mock.calls.length > 0) {
+        updateCommentCalledAtLeastOnce = true;
+      }
+      for (const [
+        ,
+        updatedCommentId,
+        updatedCommentContent,
+      ] of mockIssueCommentRepository.updateComment.mock.calls) {
+        const targetCommentId = requireStringValue(
+          updatedCommentId,
+          'an updateComment call id',
+        );
+        const targetCommentContent = requireStringValue(
+          updatedCommentContent,
+          'an updateComment call body',
+        );
+        commentHistory = commentHistory.map((comment) =>
+          comment.id === targetCommentId
+            ? {
+                ...comment,
+                content: targetCommentContent,
+                createdAt: dispatchCreatedAt,
+              }
+            : comment,
+        );
       }
 
       escalatedOnThisCycle = mockIssueRepository.updateStatus.mock.calls.some(
@@ -1858,6 +1898,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     }
 
     expect(escalatedOnThisCycle).toBe(true);
+    expect(updateCommentCalledAtLeastOnce).toBe(true);
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining('Auto Status Check: STORY_UNSET_ESCALATED'),

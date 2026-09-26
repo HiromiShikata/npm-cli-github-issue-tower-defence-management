@@ -361,7 +361,10 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
         >
       >;
       let notifyMockIssueCommentRepository: jest.Mocked<
-        Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>
+        Pick<
+          IssueCommentRepository,
+          'getCommentsFromIssue' | 'createComment' | 'updateComment'
+        >
       >;
       let notifyMockProjectRepository: jest.Mocked<
         Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>
@@ -493,6 +496,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
             },
           ]),
           createComment: jest.fn().mockResolvedValue(undefined),
+          updateComment: jest.fn().mockResolvedValue(undefined),
         };
         notifyMockWebhookRepository = {
           sendGetRequest: jest.fn().mockResolvedValue(undefined),
