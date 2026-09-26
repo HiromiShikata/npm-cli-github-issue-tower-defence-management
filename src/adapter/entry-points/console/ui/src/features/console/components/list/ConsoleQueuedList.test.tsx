@@ -179,15 +179,23 @@ describe('ConsoleQueuedList', () => {
     expect(dotA.style.backgroundColor).not.toBe(dotB.style.backgroundColor);
   });
 
-  it('renders the group header with no color when the item has no resolvable storyOptionId', () => {
+  it('renders the group header with the story name-matched color when the item has no resolvable storyOptionId', () => {
     const itemWithoutStoryOptionId = buildStoryOptionIdKeyingQueuedItem({
       itemId: 'queued-item-without-story-option-id',
       projectItemId: 'queued-item-without-story-option-id',
       title: 'Queued item without a resolvable story option id',
+      story: 'Duplicate Queued Story Name',
       storyOptionId: null,
     });
+    const itemWithResolvedStoryOptionId = buildStoryOptionIdKeyingQueuedItem({
+      itemId: 'queued-item-with-resolved-story-option-id',
+      projectItemId: 'queued-item-with-resolved-story-option-id',
+      title: 'Queued item with a resolved story option id',
+      story: 'Another Queued Story',
+      storyOptionId: 'queued-story-option-a',
+    });
     const rowsWithNullStoryOptionId = buildConsoleListRows(
-      [itemWithoutStoryOptionId],
+      [itemWithoutStoryOptionId, itemWithResolvedStoryOptionId],
       {},
       [],
     );
@@ -207,9 +215,69 @@ describe('ConsoleQueuedList', () => {
         onSelectItem={() => {}}
       />,
     );
+    const headers = container.querySelectorAll('.console-list-group');
+    expect(headers.length).toBe(2);
+    const nullOptionHeader = Array.from(headers).find((header) =>
+      header.textContent?.includes('Duplicate Queued Story Name'),
+    ) as HTMLElement;
+    const resolvedOptionHeader = Array.from(headers).find((header) =>
+      header.textContent?.includes('Another Queued Story'),
+    ) as HTMLElement;
+    expect(nullOptionHeader).not.toBeUndefined();
+    expect(resolvedOptionHeader).not.toBeUndefined();
+    const nullOptionDot = nullOptionHeader.querySelector(
+      '.console-story-dot',
+    ) as HTMLElement;
+    const resolvedOptionDot = resolvedOptionHeader.querySelector(
+      '.console-story-dot',
+    ) as HTMLElement;
+    expect(nullOptionDot).toHaveStyle({
+      backgroundColor: colorFromEnum('YELLOW').dot,
+    });
+    expect(resolvedOptionDot).toHaveStyle({
+      backgroundColor: colorFromEnum('GREEN').dot,
+    });
+    expect(nullOptionDot.style.backgroundColor).not.toBe(
+      resolvedOptionDot.style.backgroundColor,
+    );
+    expect(nullOptionDot.style.backgroundColor).not.toBe(
+      colorFromEnum(null).dot,
+    );
+  });
+
+  it('renders the group header with the story name-matched color when the item has storyOptionId omitted (undefined)', () => {
+    const itemWithUndefinedStoryOptionId = buildStoryOptionIdKeyingQueuedItem({
+      itemId: 'queued-item-undefined-story-option-id',
+      projectItemId: 'queued-item-undefined-story-option-id',
+      title: 'Queued item with storyOptionId omitted',
+      story: 'Some Known Queued Story',
+    });
+    const rowsWithUndefinedStoryOptionId = buildConsoleListRows(
+      [itemWithUndefinedStoryOptionId],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'queued-story-option-other': { color: 'RED' },
+      'Some Known Queued Story': { color: 'PURPLE' },
+    };
+    const { container } = render(
+      <ConsoleQueuedList
+        rows={rowsWithUndefinedStoryOptionId}
+        storyColors={storyColorsById}
+        statusOptions={consoleStatusOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        activeItemId={null}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
     const header = container.querySelector('.console-list-group');
     expect(header).not.toBeNull();
     const dot = header?.querySelector('.console-story-dot') as HTMLElement;
-    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum(null).dot });
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum(null).dot);
   });
 });

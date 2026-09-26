@@ -277,15 +277,23 @@ describe('ConsoleItemList', () => {
     expect(dotA.style.backgroundColor).not.toBe(dotB.style.backgroundColor);
   });
 
-  it('renders the group header with no color when the item has no resolvable storyOptionId', () => {
+  it('renders the group header with the story name-matched color when the item has no resolvable storyOptionId', () => {
     const itemWithoutStoryOptionId = buildStoryOptionIdKeyingItem({
       itemId: 'item-without-story-option-id',
       projectItemId: 'item-without-story-option-id',
       title: 'Item without a resolvable story option id',
+      story: 'Duplicate Story Name',
       storyOptionId: null,
     });
+    const itemWithResolvedStoryOptionId = buildStoryOptionIdKeyingItem({
+      itemId: 'item-with-resolved-story-option-id',
+      projectItemId: 'item-with-resolved-story-option-id',
+      title: 'Item with a resolved story option id',
+      story: 'Another Story',
+      storyOptionId: 'story-option-a',
+    });
     const rowsWithNullStoryOptionId = buildConsoleListRows(
-      [itemWithoutStoryOptionId],
+      [itemWithoutStoryOptionId, itemWithResolvedStoryOptionId],
       {},
       [],
     );
@@ -304,9 +312,68 @@ describe('ConsoleItemList', () => {
         onSelectItem={() => {}}
       />,
     );
+    const headers = container.querySelectorAll('.console-list-group');
+    expect(headers.length).toBe(2);
+    const nullOptionHeader = Array.from(headers).find((header) =>
+      header.textContent?.includes('Duplicate Story Name'),
+    ) as HTMLElement;
+    const resolvedOptionHeader = Array.from(headers).find((header) =>
+      header.textContent?.includes('Another Story'),
+    ) as HTMLElement;
+    expect(nullOptionHeader).not.toBeUndefined();
+    expect(resolvedOptionHeader).not.toBeUndefined();
+    const nullOptionDot = nullOptionHeader.querySelector(
+      '.console-story-dot',
+    ) as HTMLElement;
+    const resolvedOptionDot = resolvedOptionHeader.querySelector(
+      '.console-story-dot',
+    ) as HTMLElement;
+    expect(nullOptionDot).toHaveStyle({
+      backgroundColor: colorFromEnum('YELLOW').dot,
+    });
+    expect(resolvedOptionDot).toHaveStyle({
+      backgroundColor: colorFromEnum('BLUE').dot,
+    });
+    expect(nullOptionDot.style.backgroundColor).not.toBe(
+      resolvedOptionDot.style.backgroundColor,
+    );
+    expect(nullOptionDot.style.backgroundColor).not.toBe(
+      colorFromEnum(null).dot,
+    );
+  });
+
+  it('renders the group header with the story name-matched color when the item has storyOptionId omitted (undefined)', () => {
+    const itemWithUndefinedStoryOptionId = buildStoryOptionIdKeyingItem({
+      itemId: 'item-undefined-story-option-id',
+      projectItemId: 'item-undefined-story-option-id',
+      title: 'Item with storyOptionId omitted',
+      story: 'Some Known Story',
+    });
+    const rowsWithUndefinedStoryOptionId = buildConsoleListRows(
+      [itemWithUndefinedStoryOptionId],
+      {},
+      [],
+    );
+    const storyColorsById: ConsoleStoryColorSource = {
+      'story-option-other': { color: 'RED' },
+      'Some Known Story': { color: 'PURPLE' },
+    };
+    const { container } = render(
+      <ConsoleItemList
+        rows={rowsWithUndefinedStoryOptionId}
+        storyColors={storyColorsById}
+        activeItemId={null}
+        now={now}
+        isLoading={false}
+        error={null}
+        onSelectItem={() => {}}
+      />,
+    );
     const header = container.querySelector('.console-list-group');
     expect(header).not.toBeNull();
     const dot = header?.querySelector('.console-story-dot') as HTMLElement;
-    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum(null).dot });
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum(null).dot);
   });
 });
