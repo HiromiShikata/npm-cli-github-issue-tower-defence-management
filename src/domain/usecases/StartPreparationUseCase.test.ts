@@ -8250,6 +8250,147 @@ describe('StartPreparationUseCase', () => {
     },
   );
 
+  it('spawns the next-ranked eligible candidate in the same run when the top-ranked candidate has no prefetched branch source and fails the live re-fetch eligibility check', async () => {
+    const topCandidate = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      number: 1,
+      itemId: 'item-1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    const nextCandidate = createMockIssue({
+      url: 'https://github.com/user/repo/issues/2',
+      number: 2,
+      itemId: 'item-2',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([topCandidate, nextCandidate]),
+    );
+    mockIssueRepository.get.mockImplementation(async (url: string) => {
+      if (url === topCandidate.url) {
+        return createMockIssue({
+          url: topCandidate.url,
+          status: 'Failed Preparation',
+          dependedIssueUrls: [],
+        });
+      }
+      return createMockIssue({
+        url: nextCandidate.url,
+        status: 'Awaiting Workspace',
+        dependedIssueUrls: [],
+      });
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 1,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+      'aw',
+      [
+        nextCandidate.url,
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        'i2',
+      ],
+    ]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: nextCandidate.url,
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+  });
+
+  it('does not leave the one free preparation slot unused when the top-ranked candidate becomes ineligible before spawning, even with further eligible candidates ranked below the second one', async () => {
+    const topCandidate = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      number: 10,
+      itemId: 'item-10',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    const secondCandidate = createMockIssue({
+      url: 'https://github.com/user/repo/issues/11',
+      number: 11,
+      itemId: 'item-11',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    const thirdCandidate = createMockIssue({
+      url: 'https://github.com/user/repo/issues/12',
+      number: 12,
+      itemId: 'item-12',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([topCandidate, secondCandidate, thirdCandidate]),
+    );
+    mockIssueRepository.get.mockImplementation(async (url: string) => {
+      if (url === topCandidate.url) {
+        return createMockIssue({
+          url: topCandidate.url,
+          status: 'Failed Preparation',
+          dependedIssueUrls: [],
+        });
+      }
+      return createMockIssue({
+        url,
+        status: 'Awaiting Workspace',
+        dependedIssueUrls: [],
+      });
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 1,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+      secondCandidate.url,
+    );
+  });
+
   it('does not move to Preparation or spawn when the live item left Awaiting Workspace after the item snapshot was taken, even though the on-disk cache still shows Awaiting Workspace', async () => {
     const awaitingIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
