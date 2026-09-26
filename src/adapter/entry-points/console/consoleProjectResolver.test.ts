@@ -213,7 +213,10 @@ describe('createConsoleProjectLoader', () => {
   it('passes both the project url and the project id to the cache reader, so the cache read can be routed per project url', async () => {
     const getCachedProject = jest.fn(async () => null);
     const loadProject = createConsoleProjectLoader(
-      buildProjectRepositoryResolver(async () => 'PVT_globex', async () => globexProjectOfLoader),
+      buildProjectRepositoryResolver(
+        async () => 'PVT_globex',
+        async () => globexProjectOfLoader,
+      ),
       getCachedProject,
       () => undefined,
     );
