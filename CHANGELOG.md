@@ -1,3 +1,10 @@
+# [2.152.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.6...v2.152.0) (2026-09-26)
+
+
+### Features
+
+* order preparation tokens by least 7-day budget first without free-ratio cutoffs ([#2747](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2747)) ([4f749f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f749f7d9b3679fcf5c8b70a99ae3d5081f1062b))
+
 ## [2.151.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.151.5...v2.151.6) (2026-09-26)
 
 
