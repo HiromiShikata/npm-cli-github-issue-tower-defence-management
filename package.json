@@ -120,7 +120,7 @@
     "dompurify": "3.4.15",
     "dotenv": "^18.0.0",
     "gemoji": "8.1.0",
-    "googleapis": "^180.0.0",
+    "googleapis": "^181.0.0",
     "ky": "^2.0.2",
     "marked": "18.0.13",
     "marked-emoji": "3.0.0",
