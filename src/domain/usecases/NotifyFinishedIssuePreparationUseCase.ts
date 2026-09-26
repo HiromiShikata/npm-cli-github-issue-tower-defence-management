@@ -1120,7 +1120,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   };
 
   private setDependedIssueUrlForAllOpenPRs = async (
-    issue: { url: string; labels: string[]; isPr: boolean },
+    issue: { url: string; labels: string[] },
     issueUrl: string,
     project: Parameters<IssueRepository['get']>[1],
   ): Promise<void> => {
@@ -1130,9 +1130,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       return;
     }
-    const openPRs = issue.isPr
-      ? await this.resolveOpenPrsForPrItem(issue.url)
-      : await this.issueRepository.findRelatedOpenPRs(issue.url);
+    const openPRs = await this.issueRepository.findRelatedOpenPRs(issue.url);
     for (const pr of openPRs) {
       if (pr.url === issueUrl) {
         continue;
@@ -1142,7 +1140,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   };
 
   private resolveLinkedPrWithCiFailure = async (
-    issue: { url: string; agent: string | null; isPr: boolean },
+    issue: { url: string; agent: string | null },
     developerAgentNames: string[] | null,
   ): Promise<string | null> => {
     const effectiveDeveloperAgentNames = developerAgentNames ?? [];
@@ -1153,28 +1151,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     ) {
       return null;
     }
-    let openPrs: { url: string; isPassedAllCiJob: boolean }[];
-    if (issue.isPr) {
-      const pr = await this.issueRepository.getOpenPullRequest(issue.url);
-      openPrs = pr === null ? [] : [pr];
-    } else {
-      openPrs = await this.issueRepository.findRelatedOpenPRs(issue.url);
-    }
+    const openPrs = await this.issueRepository.findRelatedOpenPRs(issue.url);
     if (openPrs.length !== 1) {
       return null;
     }
     const pr = openPrs[0];
     return !pr.isPassedAllCiJob ? pr.url : null;
-  };
-
-  private resolveOpenPrsForPrItem = async (
-    prUrl: string,
-  ): Promise<{ url: string }[]> => {
-    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
-    if (pr === null) {
-      return [];
-    }
-    return [pr];
   };
 
   private sendWorkflowBlockerNotification = async (

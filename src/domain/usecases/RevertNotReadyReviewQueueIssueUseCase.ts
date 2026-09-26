@@ -118,7 +118,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const awaitingOwnerIssues = issues.filter(
-      (issue) => issue.status === AWAITING_OWNER_STATUS_NAME,
+      (issue) => issue.status === AWAITING_OWNER_STATUS_NAME && !issue.isPr,
     );
 
     const relatedOpenPrUrlsByIssueUrl =
@@ -134,17 +134,16 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       );
 
     const prUrlsToBatch = Array.from(
-      new Set([
-        ...awaitingOwnerIssues.flatMap((issue) =>
-          issue.isPr
-            ? [issue.url]
-            : (this.resolveRelatedOpenPrUrls(
-                issue,
-                relatedOpenPrUrlsByIssueUrl,
-                batchedRelatedOpenPrUrlsByIssueUrl,
-              ) ?? []),
+      new Set(
+        awaitingOwnerIssues.flatMap(
+          (issue) =>
+            this.resolveRelatedOpenPrUrls(
+              issue,
+              relatedOpenPrUrlsByIssueUrl,
+              batchedRelatedOpenPrUrlsByIssueUrl,
+            ) ?? [],
         ),
-      ]),
+      ),
     );
     const resolvedOpenPrByUrl =
       await this.fetchOpenPullRequestsInBatches(prUrlsToBatch);

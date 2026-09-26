@@ -252,13 +252,7 @@ export class StartPreparationUseCase {
       while (nextIndex < issueUrls.length) {
         const issueUrl = issueUrls[nextIndex];
         nextIndex += 1;
-        if (issueUrl.includes('/pull/')) {
-          branchSourceByIssueUrl.set(issueUrl, {
-            openPullRequest:
-              await this.issueRepository.getOpenPullRequest(issueUrl),
-            relatedOpenPullRequests: [],
-          });
-        } else if (issueUrlsWithKnownOpenPrs.has(issueUrl)) {
+        if (issueUrlsWithKnownOpenPrs.has(issueUrl)) {
           branchSourceByIssueUrl.set(issueUrl, {
             openPullRequest: null,
             relatedOpenPullRequests:
@@ -580,6 +574,7 @@ export class StartPreparationUseCase {
       (issue) =>
         issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
         !issue.isClosed &&
+        !issue.isPr &&
         !isUnstoriedAwaitingWorkspaceIssue(issue),
     );
     const storiedHandOverIssueUrls = await this.fetchStoriedHandOverIssueUrls(
@@ -595,6 +590,7 @@ export class StartPreparationUseCase {
         (issue) =>
           issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
           !issue.isClosed &&
+          !issue.isPr &&
           isUnstoriedAwaitingWorkspaceIssue(issue),
       )
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -837,91 +833,50 @@ export class StartPreparationUseCase {
         );
         continue;
       }
-      const isPrUrl = issue.url.includes('/pull/');
       let branchName: string;
-      if (isPrUrl) {
-        const pr = branchSource.openPullRequest;
-        if (pr === null) {
-          console.warn(
-            `Skipping non-OPEN PR ${issue.url}: wrapper requires an open PR.`,
+      const relatedPRs = branchSource.relatedOpenPullRequests;
+      const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
+        const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
+        return match === null || match[1] === issue.nameWithOwner;
+      });
+      if (sameRepoRelatedPRs.length > 1) {
+        const latestSessionBranchName =
+          await this.issueLatestSessionBranchRepository.findBranchNameByIssue(
+            issue,
           );
-          continue;
-        }
-        if (pr.branchName === null) {
-          console.warn(`Skipping PR ${issue.url}: head branch is unavailable.`);
-          continue;
-        }
-        branchName = pr.branchName;
-      } else {
-        const relatedPRs = branchSource.relatedOpenPullRequests;
-        const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
-          const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
-          return match === null || match[1] === issue.nameWithOwner;
-        });
-        if (sameRepoRelatedPRs.length > 1) {
-          const latestSessionBranchName =
-            await this.issueLatestSessionBranchRepository.findBranchNameByIssue(
-              issue,
-            );
-          const canonicalPullRequestSelection = canonicalPullRequestSelect(
-            [sameRepoRelatedPRs[0], ...sameRepoRelatedPRs.slice(1)],
-            latestSessionBranchName,
+        const canonicalPullRequestSelection = canonicalPullRequestSelect(
+          [sameRepoRelatedPRs[0], ...sameRepoRelatedPRs.slice(1)],
+          latestSessionBranchName,
+        );
+        const canonicalPR = canonicalPullRequestSelection.canonicalPullRequest;
+        const duplicatePRs =
+          canonicalPullRequestSelection.duplicatePullRequests;
+        const adoptionReasonSentence =
+          canonicalPullRequestAdoptionReasonSentence(
+            canonicalPullRequestSelection,
           );
-          const canonicalPR =
-            canonicalPullRequestSelection.canonicalPullRequest;
-          const duplicatePRs =
-            canonicalPullRequestSelection.duplicatePullRequests;
-          const adoptionReasonSentence =
-            canonicalPullRequestAdoptionReasonSentence(
-              canonicalPullRequestSelection,
+        for (const duplicatePR of duplicatePRs) {
+          await this.issueRepository.closePullRequest(duplicatePR.url);
+          if (duplicatePR.branchName !== null) {
+            await this.issueRepository.deletePullRequestBranch(
+              duplicatePR.url,
+              duplicatePR.branchName,
             );
-          for (const duplicatePR of duplicatePRs) {
-            await this.issueRepository.closePullRequest(duplicatePR.url);
-            if (duplicatePR.branchName !== null) {
-              await this.issueRepository.deletePullRequestBranch(
-                duplicatePR.url,
-                duplicatePR.branchName,
-              );
-            }
-            const duplicatePrCommentBody = [
-              `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`,
-              ...(adoptionReasonSentence === null
-                ? []
-                : [adoptionReasonSentence]),
-            ].join(' ');
-            const duplicatePrExistingComments =
-              await this.issueRepository.getIssueOrPullRequestComments(
-                duplicatePR.url,
-              );
-            if (
-              !isDuplicateWithinWindow(
-                duplicatePrCommentBody,
-                duplicatePrExistingComments.map((c) => ({
-                  text: c.body,
-                  createdAt: c.createdAt,
-                })),
-                new Date(),
-              )
-            ) {
-              await this.issueRepository.createCommentByUrl(
-                duplicatePR.url,
-                duplicatePrCommentBody,
-              );
-            }
           }
-          const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
-          const issueCommentBody = [
-            `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
+          const duplicatePrCommentBody = [
+            `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`,
             ...(adoptionReasonSentence === null
               ? []
               : [adoptionReasonSentence]),
-          ].join('\n');
-          const issueExistingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+          ].join(' ');
+          const duplicatePrExistingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(
+              duplicatePR.url,
+            );
           if (
             !isDuplicateWithinWindow(
-              issueCommentBody,
-              issueExistingComments.map((c) => ({
+              duplicatePrCommentBody,
+              duplicatePrExistingComments.map((c) => ({
                 text: c.body,
                 createdAt: c.createdAt,
               })),
@@ -929,28 +884,50 @@ export class StartPreparationUseCase {
             )
           ) {
             await this.issueRepository.createCommentByUrl(
-              issue.url,
-              issueCommentBody,
+              duplicatePR.url,
+              duplicatePrCommentBody,
             );
           }
-          if (canonicalPR.branchName === null) {
-            console.warn(
-              `Skipping issue ${issue.url}: adopted canonical PR has unavailable head branch.`,
-            );
-            continue;
-          }
-          branchName = canonicalPR.branchName;
-        } else if (sameRepoRelatedPRs.length === 1) {
-          if (sameRepoRelatedPRs[0].branchName === null) {
-            console.warn(
-              `Skipping issue ${issue.url}: related open PR has unavailable head branch.`,
-            );
-            continue;
-          }
-          branchName = sameRepoRelatedPRs[0].branchName;
-        } else {
-          branchName = `i${issue.number}`;
         }
+        const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
+        const issueCommentBody = [
+          `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
+          ...(adoptionReasonSentence === null ? [] : [adoptionReasonSentence]),
+        ].join('\n');
+        const issueExistingComments =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        if (
+          !isDuplicateWithinWindow(
+            issueCommentBody,
+            issueExistingComments.map((c) => ({
+              text: c.body,
+              createdAt: c.createdAt,
+            })),
+            new Date(),
+          )
+        ) {
+          await this.issueRepository.createCommentByUrl(
+            issue.url,
+            issueCommentBody,
+          );
+        }
+        if (canonicalPR.branchName === null) {
+          console.warn(
+            `Skipping issue ${issue.url}: adopted canonical PR has unavailable head branch.`,
+          );
+          continue;
+        }
+        branchName = canonicalPR.branchName;
+      } else if (sameRepoRelatedPRs.length === 1) {
+        if (sameRepoRelatedPRs[0].branchName === null) {
+          console.warn(
+            `Skipping issue ${issue.url}: related open PR has unavailable head branch.`,
+          );
+          continue;
+        }
+        branchName = sameRepoRelatedPRs[0].branchName;
+      } else {
+        branchName = `i${issue.number}`;
       }
 
       if (!/^[\w./-]+$/.test(branchName)) {

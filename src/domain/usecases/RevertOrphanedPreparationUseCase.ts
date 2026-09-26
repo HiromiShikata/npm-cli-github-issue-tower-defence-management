@@ -1,7 +1,4 @@
-import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
@@ -53,7 +50,6 @@ export class RevertOrphanedPreparationUseCase {
       | 'getAllIssues'
       | 'updateStatus'
       | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
       | 'get'
       | 'setIssueAgentField'
       | 'searchIssue'
@@ -100,7 +96,7 @@ export class RevertOrphanedPreparationUseCase {
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const preparationIssues = issues.filter(
-      (issue) => issue.status === PREPARATION_STATUS_NAME,
+      (issue) => issue.status === PREPARATION_STATUS_NAME && !issue.isPr,
     );
 
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
@@ -475,9 +471,9 @@ export class RevertOrphanedPreparationUseCase {
       hasLabelNotRequiringPullRequest ||
       (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
     ) {
-      const prsToCheck = issue.isPr
-        ? await this.resolveOpenPrsForPrItem(issue.url)
-        : await this.issueRepository.findRelatedOpenPRs(issue.url);
+      const prsToCheck = await this.issueRepository.findRelatedOpenPRs(
+        issue.url,
+      );
       if (prsToCheck.some((pr) => pr.isConflicted)) {
         return { outcome: 'reject', comments, hasIdentifiedPrRejection: true };
       }
@@ -493,9 +489,7 @@ export class RevertOrphanedPreparationUseCase {
       return { outcome: 'advanceToQualityCheck', comments };
     }
 
-    const prsToCheck = issue.isPr
-      ? await this.resolveOpenPrsForPrItem(issue.url)
-      : await this.issueRepository.findRelatedOpenPRs(issue.url);
+    const prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
 
     if (prsToCheck.length !== 1) {
       return { outcome: 'reject', comments };
@@ -511,16 +505,6 @@ export class RevertOrphanedPreparationUseCase {
       comments,
       hasIdentifiedPrRejection: hasRejections,
     };
-  };
-
-  private resolveOpenPrsForPrItem = async (
-    prUrl: string,
-  ): Promise<RelatedPullRequest[]> => {
-    const pr = await this.issueRepository.getOpenPullRequest(prUrl);
-    if (pr === null) {
-      return [];
-    }
-    return [pr];
   };
 
   private isOrphanedIssue = async (
