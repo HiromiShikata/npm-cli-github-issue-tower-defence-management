@@ -6,6 +6,7 @@ import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
 import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import {
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
   CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
@@ -3444,13 +3445,12 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      const updateStoryList = jest.fn().mockResolvedValue([]);
-      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
       const response = await handleReorderStory(
-        contextWithProjectRepository(
-          () => ({ updateStoryList, getProject }),
-          staleProject,
-        ),
+        contextWithProjectRepository(() => projectRepository, staleProject),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_b',
@@ -3458,12 +3458,8 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response.statusCode).toBe(200);
-      expect(updateStoryList).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        expect.anything(),
-      );
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('calls invalidateProject with pjcode after successful reorder', async () => {
@@ -4186,18 +4182,23 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      getProject.mockResolvedValue(freshProject);
-      const response = await handleStoryAdd(addStoryContext(staleProject), {
-        pjcode: 'acme',
-        storyName: 'Brand new story',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(updateStoryList).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        expect.anything(),
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleStoryAdd(
+        {
+          ...addStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyName: 'Brand new story',
+        },
       );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('returns 502 when resolveProjectRepository is null', async () => {
@@ -4540,13 +4541,11 @@ describe('consoleOperationApi', () => {
       );
 
       expect(response.statusCode).toBe(200);
-      expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        'opt_blue',
-        'RED',
-      );
+      const [colorCalledProject, colorCalledOptionId, colorCalledColor] =
+        issueRepository.updateStoryOptionColor.mock.calls[0];
+      expect(colorCalledProject.story?.fieldId).toBe('fresh_field_id');
+      expect(colorCalledOptionId).toBe('opt_blue');
+      expect(colorCalledColor).toBe('RED');
     });
 
     it('resolves the issue repository from a proxy url of the target repo', async () => {
@@ -5219,18 +5218,23 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      getProject.mockResolvedValue(freshProject);
-      const response = await handleDeleteStory(deleteStoryContext(staleProject), {
-        pjcode: 'acme',
-        storyOptionId: 'opt_remove',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(updateStoryList).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        expect.anything(),
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      const response = await handleDeleteStory(
+        {
+          ...deleteStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_remove',
+        },
       );
+      expect(response.statusCode).toBe(200);
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('calls invalidateProject after a successful delete', async () => {
@@ -6223,9 +6227,15 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      renameGetProject.mockResolvedValue(freshProject);
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
       const response = await handleStoryRename(
-        renameStoryContext(staleProject),
+        {
+          ...renameStoryContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
         {
           pjcode: 'acme',
           storyOptionId: 'opt_alpha',
@@ -6233,12 +6243,8 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response.statusCode).toBe(200);
-      expect(updateStoryList).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        expect.anything(),
-      );
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('calls invalidateProject after a successful rename', async () => {
@@ -6575,9 +6581,15 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      descGetProject.mockResolvedValue(freshProject);
+      const projectRepository =
+        mock<Pick<ProjectRepository, 'updateStoryList' | 'getProject'>>();
+      projectRepository.updateStoryList.mockResolvedValue([]);
+      projectRepository.getProject.mockResolvedValue(freshProject);
       const response = await handleStoryUpdateDescription(
-        descriptionContext(staleProject),
+        {
+          ...descriptionContext(staleProject),
+          resolveProjectRepository: () => projectRepository,
+        },
         {
           pjcode: 'acme',
           storyOptionId: 'opt_alpha',
@@ -6585,12 +6597,8 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response.statusCode).toBe(200);
-      expect(updateDescriptionStoryList).toHaveBeenCalledWith(
-        expect.objectContaining({
-          story: expect.objectContaining({ fieldId: 'fresh_field_id' }),
-        }),
-        expect.anything(),
-      );
+      const [calledProject] = projectRepository.updateStoryList.mock.calls[0];
+      expect(calledProject.story?.fieldId).toBe('fresh_field_id');
     });
 
     it('calls invalidateProject after a successful update', async () => {
