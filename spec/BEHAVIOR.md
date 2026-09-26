@@ -31,16 +31,19 @@ The following markers are always posted as GitHub Issue comments when applicable
 - `Auto Status Check: DISPATCH_AGAIN`
 - `Auto Status Check: STORY_UNSET_ESCALATED`
 
-## Deduplicated: `Auto Status Check: STORY_UNSET` (fixed text within the 2-hour window)
+## Edited in place: `Auto Status Check: STORY_UNSET` (no comment-count growth)
 
-- The `Auto Status Check: STORY_UNSET` interim notification's text no longer varies
-  per dispatch: it does not embed an incrementing dispatch counter, so the text is
-  identical for a given next-step agent across consecutive dispatches while the
-  issue's story field stays unset.
-- Because the text is fixed, the existing 2-hour comment-deduplication window
-  (`isDuplicateWithinWindow` in `src/domain/services/commentDeduplication.ts`)
-  catches it: a repeat dispatch within that window, while the story remains
-  unset, does NOT post a new GitHub Issue comment.
+- The `Auto Status Check: STORY_UNSET` interim notification is edited in place on
+  every repeat dispatch instead of being posted as a new comment: GitHub's issue
+  timeline never grows past one visible `STORY_UNSET` entry per next-step agent
+  while the issue's story field stays unset, because an edit does not add a row to
+  the timeline.
+- The comment text still embeds its own dispatch counter (`(N/threshold)`), and
+  that same counter is what `resolveNextStepAgentDispatchRepetition` reads back
+  from the single existing comment's text to compute the next dispatch count —
+  the count therefore still advances once per dispatch cycle, exactly as it did
+  before comment editing was introduced, regardless of how much wall-clock time
+  separates two dispatches.
 - `Auto Status Check: STORY_UNSET_ESCALATED` is unaffected by this: it fires once,
-  when the real (non-deduped) `STORY_UNSET` dispatch count reaches the
-  dispatch-loop threshold, and always posts.
+  when that per-dispatch-cycle `STORY_UNSET` count reaches the dispatch-loop
+  threshold, and always posts as a new comment.

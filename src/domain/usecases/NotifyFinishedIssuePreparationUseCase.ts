@@ -162,7 +162,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'getCommentsFromIssue' | 'createComment'
+      'getCommentsFromIssue' | 'createComment' | 'updateComment'
     >,
     private readonly webhookRepository: Pick<
       WebhookRepository,
@@ -698,11 +698,22 @@ export class NotifyFinishedIssuePreparationUseCase {
         );
         await this.createCommentWithDedup(issue, rejectionStatusMessage);
       }
-      if (
-        repetition.type === 'dispatchAgain' ||
-        repetition.type === 'storyUnset'
-      ) {
+      if (repetition.type === 'dispatchAgain') {
         await this.createCommentWithDedup(issue, repetition.comment);
+      }
+      if (repetition.type === 'storyUnset') {
+        if (repetition.existingCommentId !== null) {
+          await this.issueCommentRepository.updateComment(
+            issue,
+            repetition.existingCommentId,
+            repetition.comment,
+          );
+        } else {
+          await this.issueCommentRepository.createComment(
+            issue,
+            repetition.comment,
+          );
+        }
       }
       return;
     }

@@ -31,7 +31,7 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'escalateSilentRedispatch'; comment: string }
   | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
-  | { type: 'storyUnset'; comment: string }
+  | { type: 'storyUnset'; comment: string; existingCommentId: string | null }
   | { type: 'escalateStoryUnsetLoop'; comment: string }
   | { type: 'escalateNoNextStepAgent'; comment: string };
 
@@ -288,13 +288,29 @@ const countDispatchesInCurrentCycle = <
   );
 };
 
-const countConsecutiveStoryUnsetDispatches = <
-  CommentLike extends { author: string; content: string },
+type StoryUnsetDispatchState = {
+  count: number;
+  existingCommentId: string | null;
+};
+
+const parseEmbeddedStoryUnsetDispatchCount = (content: string): number => {
+  const match = content.match(/\((\d+)\/\d+\)\s*$/);
+  if (!match) return 0;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const resolveStoryUnsetDispatchState = <
+  StoryUnsetCommentLike extends {
+    author: string;
+    content: string;
+    id?: string;
+  },
 >(params: {
   nextStepAgent: string;
-  comments: CommentLike[];
+  comments: StoryUnsetCommentLike[];
   isTrustedAuthor: (author: string) => boolean;
-}): number => {
+}): StoryUnsetDispatchState => {
   const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
     params.isTrustedAuthor,
@@ -321,13 +337,22 @@ const countConsecutiveStoryUnsetDispatches = <
     lastEscalationIndex >= 0
       ? commentsInCurrentCycle.slice(lastEscalationIndex + 1)
       : commentsInCurrentCycle;
-  return (
-    commentsAfterLastEscalation.filter(
-      (c) =>
-        params.isTrustedAuthor(c.author) &&
-        isStoryUnsetCommentForAgent(c.content, params.nextStepAgent),
-    ).length + 1
-  );
+  const lastStoryUnsetComment =
+    [...commentsAfterLastEscalation]
+      .reverse()
+      .find(
+        (comment) =>
+          params.isTrustedAuthor(comment.author) &&
+          isStoryUnsetCommentForAgent(comment.content, params.nextStepAgent),
+      ) ?? null;
+  if (lastStoryUnsetComment === null) {
+    return { count: 1, existingCommentId: null };
+  }
+  return {
+    count:
+      parseEmbeddedStoryUnsetDispatchCount(lastStoryUnsetComment.content) + 1,
+    existingCommentId: lastStoryUnsetComment.id ?? null,
+  };
 };
 
 export const resolveNextStepAgentDispatchRepetition = <
@@ -358,12 +383,12 @@ export const resolveNextStepAgentDispatchRepetition = <
   });
   if (params.isNoStory) {
     if (params.nextStepAgent !== null) {
-      const storyUnsetDispatchCount = countConsecutiveStoryUnsetDispatches({
+      const storyUnsetDispatchState = resolveStoryUnsetDispatchState({
         nextStepAgent: params.nextStepAgent,
         comments: params.comments,
         isTrustedAuthor: params.isTrustedAuthor,
       });
-      if (storyUnsetDispatchCount >= params.thresholdForDispatchLoop) {
+      if (storyUnsetDispatchState.count >= params.thresholdForDispatchLoop) {
         return {
           type: 'escalateStoryUnsetLoop',
           comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_ESCALATED_KEYWORD} ${params.nextStepAgent}
@@ -375,7 +400,8 @@ This issue's story field has been unset for ${params.thresholdForDispatchLoop} c
         type: 'storyUnset',
         comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_KEYWORD} ${params.nextStepAgent}
 
-The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead. (${storyUnsetDispatchState.count}/${params.thresholdForDispatchLoop})`,
+        existingCommentId: storyUnsetDispatchState.existingCommentId,
       };
     }
     return { type: 'notRepeated' };
