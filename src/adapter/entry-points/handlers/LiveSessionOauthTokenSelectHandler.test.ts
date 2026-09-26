@@ -268,12 +268,12 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('oneSession');
   });
 
-  it('excludes a rate-limit-ineligible token even when it is unoccupied', () => {
+  it('selects an unoccupied token whose five hour window is only 10% free while it is under its concurrent session limit of one', () => {
     writeTokenList([
-      { name: 'blocked', token: 'fake-blocked' },
+      { name: 'narrowFiveHour', token: 'fake-narrow' },
       { name: 'free', token: 'fake-free' },
     ]);
-    writeCache('fake-blocked', {
+    writeCache('fake-narrow', {
       fiveHourUtilization: 0.9,
       fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
@@ -296,10 +296,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
-    expect(output.selectedName).toBe('free');
+    expect(output.selectedName).toBe('narrowFiveHour');
   });
 
-  it('returns no token and a threshold-naming diagnostic without leaking the token when no token passes even the fallback filter', () => {
+  it('selects a token whose five hour window is 10% free and seven day window is 2% free and names it in the diagnostic without leaking the token', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
@@ -316,17 +316,15 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
-    expect(output.selectedToken).toBeNull();
-    expect(output.selectedName).toBeNull();
+    expect(output.selectedToken).toBe('fake-busy');
+    expect(output.selectedName).toBe('busy');
     const diagnostics = output.diagnostics.join('\n');
-    expect(diagnostics).toContain('No eligible token');
-    expect(diagnostics).toContain('5h >= 60% free');
-    expect(diagnostics).toContain('7d >= 14% free');
-    expect(diagnostics).toContain('3% 7d fallback');
+    expect(diagnostics).toContain('Selected busy (');
+    expect(diagnostics).not.toContain('No eligible token');
     expect(diagnostics).not.toContain('fake-busy');
   });
 
-  it('selects via fallback and emits a fallback diagnostic when no token meets live session thresholds but one meets the 3% seven day floor', () => {
+  it('selects a token with 4% seven day free on the normal path and explains the least seven day budget first ordering', () => {
     writeTokenList([{ name: 'fallbackToken', token: 'fake-fallback' }]);
     writeCache('fake-fallback', {
       fiveHourUtilization: 0.5,
@@ -345,9 +343,10 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
 
     expect(output.selectedName).toBe('fallbackToken');
     const diagnostics = output.diagnostics.join('\n');
-    expect(diagnostics).toContain('via fallback');
-    expect(diagnostics).toContain('5h >= 60%');
-    expect(diagnostics).toContain('7d >= 14%');
+    expect(diagnostics).not.toContain('via fallback');
+    expect(diagnostics).toContain('Selected fallbackToken (');
+    expect(diagnostics).toContain('7d free ratio ascending');
+    expect(diagnostics).toContain('cannot be spent by 48h before the 7d reset');
   });
 
   it('returns the token on the selected path when an eligible token exists', () => {
