@@ -74,6 +74,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('fetches single page with correct REST endpoint URL and headers, and maps comments correctly', async () => {
       const commentPayloads = [
         {
+          id: 1001,
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
@@ -101,6 +102,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1001',
         },
       ]);
     });
@@ -108,6 +110,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('fetches two pages when first response contains rel="next" Link header', async () => {
       const page1Payloads = [
         {
+          id: 1002,
           user: { login: 'user1' },
           body: 'Page 1 comment',
           created_at: '2024-01-01T00:00:00Z',
@@ -115,6 +118,7 @@ describe('GitHubIssueCommentRepository', () => {
       ];
       const page2Payloads = [
         {
+          id: 1003,
           user: { login: 'user2' },
           body: 'Page 2 comment',
           created_at: '2024-01-02T00:00:00Z',
@@ -155,11 +159,13 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1002',
         },
         {
           author: 'user2',
           content: 'Page 2 comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          id: '1003',
         },
       ]);
     });
@@ -216,6 +222,7 @@ describe('GitHubIssueCommentRepository', () => {
       );
       const commentPayloads = [
         {
+          id: 1004,
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
@@ -242,6 +249,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1004',
         },
       ]);
     });
@@ -255,6 +263,7 @@ describe('GitHubIssueCommentRepository', () => {
       );
       const commentPayloads = [
         {
+          id: 1005,
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
@@ -283,6 +292,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1005',
         },
       ]);
     });
@@ -339,6 +349,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('caches comments with ETag on first call, sends If-None-Match on second call and returns cached comments on 304', async () => {
       const commentPayloads = [
         {
+          id: 1006,
           user: { login: 'testuser' },
           body: 'Cached comment',
           created_at: '2024-01-01T00:00:00Z',
@@ -374,6 +385,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'testuser',
                   content: 'Cached comment',
                   createdAt: '2024-01-01T00:00:00.000Z',
+                  id: '1006',
                 },
               ],
               hasNextPage: false,
@@ -386,6 +398,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Cached comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1006',
         },
       ]);
 
@@ -431,6 +444,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('treats old cache format (without pages) as a cache miss and fetches fresh', async () => {
       const newCommentPayloads = [
         {
+          id: 1007,
           user: { login: 'user-new' },
           body: 'New comment',
           created_at: '2024-02-01T00:00:00Z',
@@ -469,6 +483,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user-new',
           content: 'New comment',
           createdAt: new Date('2024-02-01T00:00:00Z'),
+          id: '1007',
         },
       ]);
       expect(cache.setSingle).toHaveBeenCalledWith(
@@ -482,6 +497,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'user-new',
                   content: 'New comment',
                   createdAt: '2024-02-01T00:00:00.000Z',
+                  id: '1007',
                 },
               ],
               hasNextPage: false,
@@ -494,6 +510,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('fetches page 2 when page 1 returns 304 (per-page ETag cache regression)', async () => {
       const page2Comments = [
         {
+          id: 1008,
           user: { login: 'user2' },
           body: 'New comment on page 2',
           created_at: '2024-01-02T00:00:00Z',
@@ -546,6 +563,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user2',
           content: 'New comment on page 2',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          id: '1008',
         },
       ]);
     });
@@ -553,6 +571,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('leaves behaviour unchanged when commentCacheRepository is null', async () => {
       const commentPayloads = [
         {
+          id: 1009,
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
@@ -579,6 +598,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1009',
         },
       ]);
     });
@@ -586,6 +606,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('writes cache only after all pages are fetched for multi-page responses', async () => {
       const page1Payloads = [
         {
+          id: 1010,
           user: { login: 'user1' },
           body: 'Page 1 comment',
           created_at: '2024-01-01T00:00:00Z',
@@ -593,6 +614,7 @@ describe('GitHubIssueCommentRepository', () => {
       ];
       const page2Payloads = [
         {
+          id: 1011,
           user: { login: 'user2' },
           body: 'Page 2 comment',
           created_at: '2024-01-02T00:00:00Z',
@@ -630,11 +652,13 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          id: '1010',
         },
         {
           author: 'user2',
           content: 'Page 2 comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          id: '1011',
         },
       ]);
       expect(cache.setSingle).toHaveBeenCalledTimes(1);
@@ -649,6 +673,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'user1',
                   content: 'Page 1 comment',
                   createdAt: '2024-01-01T00:00:00.000Z',
+                  id: '1010',
                 },
               ],
               hasNextPage: true,
@@ -724,6 +749,7 @@ describe('GitHubIssueCommentRepository', () => {
       }));
       const newCommentPayload = [
         {
+          id: 1012,
           user: { login: 'user-new' },
           body: 'New comment on page 2',
           created_at: '2024-02-01T00:00:00Z',
@@ -770,6 +796,7 @@ describe('GitHubIssueCommentRepository', () => {
         author: 'user-new',
         content: 'New comment on page 2',
         createdAt: new Date('2024-02-01T00:00:00Z'),
+        id: '1012',
       });
     });
 
