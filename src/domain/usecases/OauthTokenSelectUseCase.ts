@@ -48,13 +48,10 @@ export type OauthTokenSelectionThresholds = {
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
-export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
-export const SEVEN_DAY_MIN_FREE_RATIO = 0.01;
-
-export const DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds =
+export const OAUTH_TOKEN_SELECTION_WITHOUT_FREE_RATIO_CUTOFF: OauthTokenSelectionThresholds =
   {
-    fiveHourMinFreeRatio: FIVE_HOUR_MIN_FREE_RATIO,
-    sevenDayMinFreeRatio: SEVEN_DAY_MIN_FREE_RATIO,
+    fiveHourMinFreeRatio: 0,
+    sevenDayMinFreeRatio: 0,
   };
 
 export const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds =
@@ -68,6 +65,76 @@ export const MIN_HOURS_TO_RESET = 1;
 export const SEVEN_DAY_SPEND_DEADLINE_HOURS = 48;
 export const FIVE_HOUR_SPEND_DEADLINE_HOURS = 1;
 const SECONDS_PER_HOUR = 3600;
+export const FIVE_HOUR_WINDOW_HOURS = 5;
+export const SEVEN_DAY_FREE_RATIO_SPENT_PER_FULLY_SPENT_FIVE_HOUR_WINDOW = 0.14;
+
+export const windowFreeRatioOfUtilization = (utilization: number): number =>
+  1 - Math.min(Math.max(utilization, 0), 1);
+
+export const sevenDayFreeRatioSpendableBeforeSpendDeadlineOf = (
+  secondsUntilSevenDayReset: number,
+): number => {
+  const hoursUntilSpendDeadline =
+    secondsUntilSevenDayReset / SECONDS_PER_HOUR -
+    SEVEN_DAY_SPEND_DEADLINE_HOURS;
+  return (
+    (Math.max(0, hoursUntilSpendDeadline) / FIVE_HOUR_WINDOW_HOURS) *
+    SEVEN_DAY_FREE_RATIO_SPENT_PER_FULLY_SPENT_FIVE_HOUR_WINDOW
+  );
+};
+
+export type OauthTokenSevenDayBudget = {
+  sevenDayFreeRatio: number;
+  secondsUntilSevenDayReset: number;
+};
+
+export type OauthTokenSevenDayBudgetWithRemainingConcurrentSlots =
+  OauthTokenSevenDayBudget & {
+    remainingConcurrentSlotCount: number;
+  };
+
+export const isSevenDayBudgetUnspendableBeforeSpendDeadline = (
+  budget: OauthTokenSevenDayBudget,
+): boolean =>
+  budget.sevenDayFreeRatio >
+  sevenDayFreeRatioSpendableBeforeSpendDeadlineOf(
+    budget.secondsUntilSevenDayReset,
+  );
+
+const drainOrderComparison = (
+  first: OauthTokenSevenDayBudget,
+  second: OauthTokenSevenDayBudget,
+): number => {
+  const firstPromoted = isSevenDayBudgetUnspendableBeforeSpendDeadline(first);
+  const secondPromoted = isSevenDayBudgetUnspendableBeforeSpendDeadline(second);
+  if (firstPromoted !== secondPromoted) {
+    return firstPromoted ? -1 : 1;
+  }
+  if (first.sevenDayFreeRatio !== second.sevenDayFreeRatio) {
+    return first.sevenDayFreeRatio < second.sevenDayFreeRatio ? -1 : 1;
+  }
+  if (first.secondsUntilSevenDayReset !== second.secondsUntilSevenDayReset) {
+    return first.secondsUntilSevenDayReset < second.secondsUntilSevenDayReset
+      ? -1
+      : 1;
+  }
+  return 0;
+};
+
+export const oauthTokenDrainOrderSort = <
+  Budget extends OauthTokenSevenDayBudget,
+>(
+  budgets: readonly Budget[],
+): Budget[] => [...budgets].sort(drainOrderComparison);
+
+export const oauthTokenFillTargetSelect = <
+  Budget extends OauthTokenSevenDayBudgetWithRemainingConcurrentSlots,
+>(
+  budgets: readonly Budget[],
+): Budget | null =>
+  oauthTokenDrainOrderSort(budgets).find(
+    (budget) => budget.remainingConcurrentSlotCount > 0,
+  ) ?? null;
 
 export const sevenDayUrgencyFactor = (
   sevenDayFreeRatio: number,
@@ -112,7 +179,7 @@ export class OauthTokenSelectUseCase {
     candidates: OauthTokenCandidate[],
     nowEpochSeconds: number,
     random: SelectionRandom = Math.random,
-    thresholds: OauthTokenSelectionThresholds = DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    thresholds: OauthTokenSelectionThresholds = OAUTH_TOKEN_SELECTION_WITHOUT_FREE_RATIO_CUTOFF,
   ): OauthTokenSelectResult => {
     const evaluated = candidates.map((candidate) => {
       const evaluatedMetric = this.evaluate(
@@ -271,7 +338,7 @@ export class OauthTokenSelectUseCase {
     if (this.windowExpired(snapshot.fiveHourReset, nowEpochSeconds)) {
       return 1;
     }
-    return this.freeRatioFromUtilization(snapshot.fiveHourUtilization);
+    return windowFreeRatioOfUtilization(snapshot.fiveHourUtilization);
   };
 
   private sevenDayFreeRatio = (
@@ -284,7 +351,7 @@ export class OauthTokenSelectUseCase {
     if (this.windowExpired(snapshot.sevenDayReset, nowEpochSeconds)) {
       return 1;
     }
-    return this.freeRatioFromUtilization(snapshot.sevenDayUtilization);
+    return windowFreeRatioOfUtilization(snapshot.sevenDayUtilization);
   };
 
   private sevenDayEndEpoch = (
@@ -307,11 +374,6 @@ export class OauthTokenSelectUseCase {
     resetEpoch: number,
     nowEpochSeconds: number,
   ): boolean => resetEpoch > 0 && nowEpochSeconds > resetEpoch;
-
-  private freeRatioFromUtilization = (utilization: number): number => {
-    const bounded = Math.min(Math.max(utilization, 0), 1);
-    return 1 - bounded;
-  };
 
   private toPercent = (ratio: number): number => Math.round(ratio * 100);
 }

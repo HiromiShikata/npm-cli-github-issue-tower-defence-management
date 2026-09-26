@@ -4,7 +4,12 @@ import {
   OauthTokenSelectUseCase,
   OauthTokenWindowSnapshot,
   SEVEN_DAY_WINDOW_HOURS,
+  isSevenDayBudgetUnspendableBeforeSpendDeadline,
+  oauthTokenDrainOrderSort,
+  oauthTokenFillTargetSelect,
+  sevenDayFreeRatioSpendableBeforeSpendDeadlineOf,
   sevenDayUrgencyFactor,
+  windowFreeRatioOfUtilization,
 } from './OauthTokenSelectUseCase';
 
 const NOW = 1_000_000;
@@ -64,13 +69,72 @@ describe('OauthTokenSelectUseCase', () => {
     expect(result.selected?.token).toBe('fake-token-soon');
   });
 
-  it('excludes a token whose 5h window is less than 25% free', () => {
+  it('applies no 5h or 7d free-ratio cutoff when no thresholds are passed', () => {
+    const cases: Array<{
+      description: string;
+      snapshot: OauthTokenWindowSnapshot;
+    }> = [
+      {
+        description: '5h window 24% free, far from its reset',
+        snapshot: snapshot({
+          fiveHourUtilization: 0.76,
+          fiveHourReset: NOW + 4 * HOUR,
+        }),
+      },
+      {
+        description: '5h window fully used, far from its reset',
+        snapshot: snapshot({
+          fiveHourUtilization: 1,
+          fiveHourReset: NOW + 4 * HOUR,
+        }),
+      },
+      {
+        description: '7d window 0.5% free, more than 48 hours before its reset',
+        snapshot: snapshot({
+          sevenDayUtilization: 0.995,
+          sevenDayReset: NOW + 100 * HOUR,
+        }),
+      },
+      {
+        description: 'both windows fully used, far from their resets',
+        snapshot: snapshot({
+          fiveHourUtilization: 1,
+          fiveHourReset: NOW + 4 * HOUR,
+          sevenDayUtilization: 1,
+          sevenDayReset: NOW + 100 * HOUR,
+        }),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const result = useCase.run(
+        [candidate(testCase.description, testCase.snapshot)],
+        NOW,
+      );
+
+      expect({
+        description: testCase.description,
+        selectedName: result.selected?.name ?? null,
+        eligible: result.metrics[0]?.eligible,
+        exclusionReason: result.metrics[0]?.exclusionReason,
+      }).toEqual({
+        description: testCase.description,
+        selectedName: testCase.description,
+        eligible: true,
+        exclusionReason: null,
+      });
+    }
+  });
+
+  it('excludes a token whose 5h window is below the CL script 5h free-ratio threshold', () => {
     const result = useCase.run(
       [
         candidate('busy5h', snapshot({ fiveHourUtilization: 0.76 })),
-        candidate('ok', snapshot({ fiveHourUtilization: 0.75 })),
+        candidate('ok', snapshot({ fiveHourUtilization: 0.4 })),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected?.name).toBe('ok');
@@ -101,13 +165,15 @@ describe('OauthTokenSelectUseCase', () => {
     expect(nearFull?.eligible).toBe(true);
   });
 
-  it('excludes a token whose 7d window is less than 1% free', () => {
+  it('excludes a token whose 7d window is below the CL script 7d free-ratio threshold', () => {
     const result = useCase.run(
       [
         candidate('busy7d', snapshot({ sevenDayUtilization: 0.995 })),
-        candidate('ok', snapshot({ sevenDayUtilization: 0.99 })),
+        candidate('ok', snapshot({ sevenDayUtilization: 0.8 })),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected?.name).toBe('ok');
@@ -203,8 +269,8 @@ describe('OauthTokenSelectUseCase', () => {
   it('returns null selection when no token passes the filter', () => {
     const result = useCase.run(
       [
-        candidate('busy', snapshot({ fiveHourUtilization: 0.9 })),
-        candidate('alsoBusy', snapshot({ sevenDayUtilization: 0.995 })),
+        candidate('rejected', snapshot({}), false, true),
+        candidate('fableOut', snapshot({}), false, false, true),
       ],
       NOW,
     );
@@ -379,7 +445,7 @@ describe('OauthTokenSelectUseCase selectionWeight', () => {
     const result = useCase.run(
       [
         withSelectionWeight(candidate('lowWeightOnly', snapshot({})), 0.01),
-        candidate('blocked', snapshot({ fiveHourUtilization: 0.9 })),
+        candidate('blocked', snapshot({}), false, true),
       ],
       NOW,
       throwingRandom,
@@ -491,6 +557,8 @@ describe('OauthTokenCandidateMetrics drawWeight', () => {
         candidate('ok', snapshot({})),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     const busy = result.metrics.find((m) => m.name === 'busy5h');
@@ -607,7 +675,7 @@ describe('sevenDayUrgencyFactor', () => {
   });
 });
 
-describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
+describe('OauthTokenSelectUseCase spend-deadline bypass with CL script thresholds', () => {
   const useCase = new OauthTokenSelectUseCase();
 
   it('allows a token with less than the minimum seven day free ratio when within 48 hours of the seven day reset', () => {
@@ -622,6 +690,8 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
         ),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected?.name).toBe('nearReset7d');
@@ -641,6 +711,8 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
         ),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected).toBeNull();
@@ -658,6 +730,8 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
         ),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected?.name).toBe('nearReset5h');
@@ -674,6 +748,8 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
         ),
       ],
       NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     expect(result.selected).toBeNull();
@@ -778,5 +854,347 @@ describe('OauthTokenSelectUseCase with CL script thresholds', () => {
 
     const low5h = result.metrics.find((m) => m.name === 'low5h');
     expect(low5h?.exclusionReason).toContain('60%');
+  });
+});
+
+describe('windowFreeRatioOfUtilization', () => {
+  it('returns one minus the utilization clamped to the range 0 to 1', () => {
+    const cases: Array<{ utilization: number; expectedFreeRatio: number }> = [
+      { utilization: -0.2, expectedFreeRatio: 1 },
+      { utilization: 0, expectedFreeRatio: 1 },
+      { utilization: 0.25, expectedFreeRatio: 0.75 },
+      { utilization: 1, expectedFreeRatio: 0 },
+      { utilization: 1.3, expectedFreeRatio: 0 },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        utilization: testCase.utilization,
+        freeRatio: windowFreeRatioOfUtilization(testCase.utilization),
+      }).toEqual({
+        utilization: testCase.utilization,
+        freeRatio: testCase.expectedFreeRatio,
+      });
+    }
+  });
+});
+
+describe('sevenDayFreeRatioSpendableBeforeSpendDeadlineOf', () => {
+  it('spends 14% of the 7d window per fully spent 5h window until 48 hours before the 7d reset', () => {
+    const cases: Array<{
+      description: string;
+      secondsUntilSevenDayReset: number;
+      expectedSpendableFreeRatio: number;
+    }> = [
+      {
+        description: 'one 5h window before the deadline',
+        secondsUntilSevenDayReset: 53 * HOUR,
+        expectedSpendableFreeRatio: 0.14,
+      },
+      {
+        description: 'two 5h windows before the deadline',
+        secondsUntilSevenDayReset: 58 * HOUR,
+        expectedSpendableFreeRatio: 0.28,
+      },
+      {
+        description: 'half a 5h window before the deadline',
+        secondsUntilSevenDayReset: 50.5 * HOUR,
+        expectedSpendableFreeRatio: 0.07,
+      },
+      {
+        description: 'ten 5h windows before the deadline',
+        secondsUntilSevenDayReset: 98 * HOUR,
+        expectedSpendableFreeRatio: 1.4,
+      },
+      {
+        description: 'exactly at the deadline',
+        secondsUntilSevenDayReset: 48 * HOUR,
+        expectedSpendableFreeRatio: 0,
+      },
+      {
+        description: 'past the deadline',
+        secondsUntilSevenDayReset: 30 * HOUR,
+        expectedSpendableFreeRatio: 0,
+      },
+      {
+        description: 'reset already in the past',
+        secondsUntilSevenDayReset: -1 * HOUR,
+        expectedSpendableFreeRatio: 0,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const spendable = sevenDayFreeRatioSpendableBeforeSpendDeadlineOf(
+        testCase.secondsUntilSevenDayReset,
+      );
+      expect({
+        description: testCase.description,
+        spendable: Math.round(spendable * 1e9) / 1e9,
+      }).toEqual({
+        description: testCase.description,
+        spendable: testCase.expectedSpendableFreeRatio,
+      });
+    }
+  });
+
+  it('treats an unknown 7d reset as an unlimited spendable budget', () => {
+    expect(
+      sevenDayFreeRatioSpendableBeforeSpendDeadlineOf(Number.POSITIVE_INFINITY),
+    ).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe('isSevenDayBudgetUnspendableBeforeSpendDeadline', () => {
+  it('reports whether the remaining 7d budget exceeds what the concurrency cap can spend before the deadline', () => {
+    const cases: Array<{
+      description: string;
+      sevenDayFreeRatio: number;
+      secondsUntilSevenDayReset: number;
+      expectedUnspendable: boolean;
+    }> = [
+      {
+        description: '15% left with one 5h window before the deadline',
+        sevenDayFreeRatio: 0.15,
+        secondsUntilSevenDayReset: 53 * HOUR,
+        expectedUnspendable: true,
+      },
+      {
+        description: '13% left with one 5h window before the deadline',
+        sevenDayFreeRatio: 0.13,
+        secondsUntilSevenDayReset: 53 * HOUR,
+        expectedUnspendable: false,
+      },
+      {
+        description: '90% left with 12 hours before the deadline',
+        sevenDayFreeRatio: 0.9,
+        secondsUntilSevenDayReset: 60 * HOUR,
+        expectedUnspendable: true,
+      },
+      {
+        description: '30% left with 12 hours before the deadline',
+        sevenDayFreeRatio: 0.3,
+        secondsUntilSevenDayReset: 60 * HOUR,
+        expectedUnspendable: false,
+      },
+      {
+        description: '1% left after the deadline passed',
+        sevenDayFreeRatio: 0.01,
+        secondsUntilSevenDayReset: 30 * HOUR,
+        expectedUnspendable: true,
+      },
+      {
+        description: 'nothing left after the deadline passed',
+        sevenDayFreeRatio: 0,
+        secondsUntilSevenDayReset: 30 * HOUR,
+        expectedUnspendable: false,
+      },
+      {
+        description: 'fully free far from the reset',
+        sevenDayFreeRatio: 1,
+        secondsUntilSevenDayReset: 400 * HOUR,
+        expectedUnspendable: false,
+      },
+      {
+        description: 'fully free with an unknown reset',
+        sevenDayFreeRatio: 1,
+        secondsUntilSevenDayReset: Number.POSITIVE_INFINITY,
+        expectedUnspendable: false,
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        description: testCase.description,
+        unspendable: isSevenDayBudgetUnspendableBeforeSpendDeadline({
+          sevenDayFreeRatio: testCase.sevenDayFreeRatio,
+          secondsUntilSevenDayReset: testCase.secondsUntilSevenDayReset,
+        }),
+      }).toEqual({
+        description: testCase.description,
+        unspendable: testCase.expectedUnspendable,
+      });
+    }
+  });
+});
+
+type DrainOrderTestCandidate = {
+  name: string;
+  sevenDayFreeRatio: number;
+  secondsUntilSevenDayReset: number;
+  remainingConcurrentSlotCount: number;
+};
+
+const drainCandidate = (
+  name: string,
+  sevenDayFreeRatio: number,
+  secondsUntilSevenDayReset: number,
+  remainingConcurrentSlotCount = 6,
+): DrainOrderTestCandidate => ({
+  name,
+  sevenDayFreeRatio,
+  secondsUntilSevenDayReset,
+  remainingConcurrentSlotCount,
+});
+
+describe('oauthTokenDrainOrderSort', () => {
+  it('orders by least 7d budget first with tokens whose budget cannot be spent before the deadline moved to the front', () => {
+    const cases: Array<{
+      description: string;
+      candidates: DrainOrderTestCandidate[];
+      expectedOrder: string[];
+    }> = [
+      {
+        description: '7d free ratio ascending when no token is promoted',
+        candidates: [
+          drainCandidate('sixtyPercentFree', 0.6, 200 * HOUR),
+          drainCandidate('twentyPercentFree', 0.2, 300 * HOUR),
+          drainCandidate('fortyPercentFreeUnknownReset', 0.4, Infinity),
+        ],
+        expectedOrder: [
+          'twentyPercentFree',
+          'fortyPercentFreeUnknownReset',
+          'sixtyPercentFree',
+        ],
+      },
+      {
+        description:
+          'a token that cannot be drained before the deadline moves ahead of a token with less budget',
+        candidates: [
+          drainCandidate('leastBudget', 0.1, 200 * HOUR),
+          drainCandidate('undrainable', 0.9, 60 * HOUR),
+        ],
+        expectedOrder: ['undrainable', 'leastBudget'],
+      },
+      {
+        description:
+          'promoted tokens keep 7d free ratio ascending among themselves',
+        candidates: [
+          drainCandidate('promotedEightyPercentFree', 0.8, 30 * HOUR),
+          drainCandidate('promotedThirtyPercentFree', 0.3, 20 * HOUR),
+          drainCandidate('notPromotedFivePercentFree', 0.05, 300 * HOUR),
+        ],
+        expectedOrder: [
+          'promotedThirtyPercentFree',
+          'promotedEightyPercentFree',
+          'notPromotedFivePercentFree',
+        ],
+      },
+      {
+        description:
+          'equal 7d free ratio falls back to the sooner 7d reset, unknown reset last',
+        candidates: [
+          drainCandidate('reset300h', 0.5, 300 * HOUR),
+          drainCandidate('resetUnknown', 0.5, Infinity),
+          drainCandidate('reset200h', 0.5, 200 * HOUR),
+        ],
+        expectedOrder: ['reset200h', 'reset300h', 'resetUnknown'],
+      },
+      {
+        description: 'equal 7d free ratio and reset keep the input order',
+        candidates: [
+          drainCandidate('listedFirst', 0.5, Infinity, 1),
+          drainCandidate('listedSecond', 0.5, Infinity, 6),
+        ],
+        expectedOrder: ['listedFirst', 'listedSecond'],
+      },
+      {
+        description: 'a token with an unknown reset is never promoted',
+        candidates: [
+          drainCandidate('fullyFreeUnknownReset', 1, Infinity),
+          drainCandidate('ninetyFivePercentFree', 0.95, 200 * HOUR),
+        ],
+        expectedOrder: ['ninetyFivePercentFree', 'fullyFreeUnknownReset'],
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        description: testCase.description,
+        order: oauthTokenDrainOrderSort(testCase.candidates).map(
+          (candidate) => candidate.name,
+        ),
+      }).toEqual({
+        description: testCase.description,
+        order: testCase.expectedOrder,
+      });
+    }
+  });
+
+  it('returns a new array and leaves the input order unchanged', () => {
+    const candidates = [
+      drainCandidate('moreBudget', 0.9, 300 * HOUR),
+      drainCandidate('lessBudget', 0.1, 300 * HOUR),
+    ];
+
+    const sorted = oauthTokenDrainOrderSort(candidates);
+
+    expect(sorted.map((candidate) => candidate.name)).toEqual([
+      'lessBudget',
+      'moreBudget',
+    ]);
+    expect(candidates.map((candidate) => candidate.name)).toEqual([
+      'moreBudget',
+      'lessBudget',
+    ]);
+  });
+});
+
+describe('oauthTokenFillTargetSelect', () => {
+  it('selects the first token in drain order that still has a free concurrent slot', () => {
+    const cases: Array<{
+      description: string;
+      candidates: DrainOrderTestCandidate[];
+      expectedName: string | null;
+    }> = [
+      {
+        description:
+          'the least-budget token while it still has a slot, even with fewer slots than another token',
+        candidates: [
+          drainCandidate('moreBudgetIdle', 0.9, 300 * HOUR, 6),
+          drainCandidate('leastBudgetOneSlotLeft', 0.1, 300 * HOUR, 1),
+        ],
+        expectedName: 'leastBudgetOneSlotLeft',
+      },
+      {
+        description: 'the next token once the least-budget token is at its cap',
+        candidates: [
+          drainCandidate('moreBudget', 0.9, 300 * HOUR, 2),
+          drainCandidate('leastBudgetFull', 0.1, 300 * HOUR, 0),
+        ],
+        expectedName: 'moreBudget',
+      },
+      {
+        description: 'a promoted token ahead of the least-budget token',
+        candidates: [
+          drainCandidate('leastBudget', 0.1, 300 * HOUR, 6),
+          drainCandidate('undrainable', 0.9, 60 * HOUR, 6),
+        ],
+        expectedName: 'undrainable',
+      },
+      {
+        description: 'no token when every token is at its cap',
+        candidates: [
+          drainCandidate('full', 0.1, 300 * HOUR, 0),
+          drainCandidate('overCap', 0.5, 300 * HOUR, -2),
+        ],
+        expectedName: null,
+      },
+      {
+        description: 'no token for an empty candidate list',
+        candidates: [],
+        expectedName: null,
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        description: testCase.description,
+        selectedName:
+          oauthTokenFillTargetSelect(testCase.candidates)?.name ?? null,
+      }).toEqual({
+        description: testCase.description,
+        selectedName: testCase.expectedName,
+      });
+    }
   });
 });
