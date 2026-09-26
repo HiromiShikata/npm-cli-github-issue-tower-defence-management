@@ -286,7 +286,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/owner/repo/issues/42',
       );
-      const storyObject = storyObjectMap.get('story-feature / X');
+      const storyObject = storyObjectMap.get(
+        createStoryOption('feature / X').id,
+      );
       expect(storyObject?.storyIssue?.isClosed).toBe(false);
       expect(storyObject?.storyIssue?.url).toBe(
         'https://github.com/owner/repo/issues/42',
@@ -330,7 +332,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       expect(mockRepository.searchIssues).toHaveBeenCalledTimes(1);
       expect(mockRepository.getIssueByUrl).not.toHaveBeenCalled();
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
     });
 
     it('skips reopen when getIssueByUrl returns null for search result', async () => {
@@ -352,7 +356,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
     });
 
     it('skips reopen when search result issue is not closed', async () => {
@@ -381,7 +387,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
     });
 
     it('skips reopen when search result issue has no story label', async () => {
@@ -409,7 +417,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
     });
 
     it('throws AggregateError when reopenIssueByUrl throws for archived issue found via searchIssues', async () => {
@@ -441,7 +451,9 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         }),
       ).rejects.toBeInstanceOf(AggregateError);
 
-      expect(storyObjectMap.get('story-feature / X')?.storyIssue).toBeNull();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
     });
   });
 });
