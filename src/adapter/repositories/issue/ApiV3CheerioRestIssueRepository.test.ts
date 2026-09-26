@@ -1410,9 +1410,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-        [],
-      );
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -1475,9 +1473,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-        [],
-      );
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
