@@ -239,7 +239,7 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({ story: 'regular / WORKFLOW BLOCKER' }),
         makeIssue({ story: 'regular / workflow blocker' }),
-        makeIssue({ story: 'Story Alpha' }),
+        makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
         makeIssue({ story: null }),
       ]);
       expect(result['workflow-blocker'].items).toHaveLength(2);
@@ -368,6 +368,7 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({
           status: 'Awaiting Owner',
           story: 'Story Alpha',
+          storyOptionId: 's2',
           labels: ['bug', 'p1'],
           isPr: true,
         }),
@@ -390,6 +391,7 @@ describe('GenerateConsoleListsUseCase', () => {
           'repo',
           'status',
           'story',
+          'storyOptionId',
           'title',
           'url',
         ].sort(),
@@ -400,6 +402,7 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(item.projectItemId).toBe(item.itemId);
       expect(item.isPr).toBe(true);
       expect(item.story).toBe('Story Alpha');
+      expect(item).toHaveProperty('storyOptionId', 's2');
       expect(item.labels).toEqual(['bug', 'p1']);
     });
 
@@ -463,10 +466,22 @@ describe('GenerateConsoleListsUseCase', () => {
   describe('story order stable sort', () => {
     it('sorts by story field order and places unknown stories last', () => {
       const result = run([
-        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Beta',
+          storyOptionId: 's3',
+        }),
         makeIssue({ status: 'Todo by human', story: 'Unmapped Story' }),
-        makeIssue({ status: 'Todo by human', story: 'Story Alpha' }),
-        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Beta',
+          storyOptionId: 's3',
+        }),
       ]);
       expect(result['todo-by-human'].items.map((i) => i.story)).toEqual([
         'Story Alpha',
@@ -481,11 +496,13 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({
           status: 'Todo by human',
           story: 'Story Alpha',
+          storyOptionId: 's2',
           title: 'first',
         }),
         makeIssue({
           status: 'Todo by human',
           story: 'Story Alpha',
+          storyOptionId: 's2',
           title: 'second',
         }),
       ]);
@@ -553,8 +570,8 @@ describe('GenerateConsoleListsUseCase', () => {
   describe('storyColors shape per tab', () => {
     it('uses object color values for prs and failed-preparation', () => {
       const result = run([]);
-      expect(result.prs.storyColors['Story Alpha']).toEqual({ color: 'BLUE' });
-      expect(result['failed-preparation'].storyColors['Story Alpha']).toEqual({
+      expect(result.prs.storyColors['s2']).toEqual({ color: 'BLUE' });
+      expect(result['failed-preparation'].storyColors['s2']).toEqual({
         color: 'BLUE',
       });
     });
@@ -665,10 +682,26 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('counts open items per story from all open issues on the board', () => {
       const result = run([
-        makeIssue({ story: 'Story Alpha', isClosed: false }),
-        makeIssue({ story: 'Story Alpha', isClosed: false }),
-        makeIssue({ story: 'Story Beta', isClosed: false }),
-        makeIssue({ story: 'Story Alpha', isClosed: true }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Beta',
+          storyOptionId: 's3',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: true,
+        }),
       ]);
       const alpha = result.stories.stories.find(
         (s) => s.storyName === 'Story Alpha',
@@ -684,11 +717,13 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           assignees: ['other-person'],
           isClosed: false,
         }),
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
           isClosed: false,
         }),
@@ -814,10 +849,26 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('populates items with all open issues belonging to each story', () => {
       const result = run([
-        makeIssue({ story: 'Story Alpha', isClosed: false }),
-        makeIssue({ story: 'Story Alpha', isClosed: false }),
-        makeIssue({ story: 'Story Beta', isClosed: false }),
-        makeIssue({ story: 'Story Alpha', isClosed: true }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Beta',
+          storyOptionId: 's3',
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: true,
+        }),
       ]);
       const alpha = result.stories.stories.find(
         (s) => s.storyName === 'Story Alpha',
@@ -831,8 +882,16 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('excludes closed issues from story items', () => {
       const result = run([
-        makeIssue({ story: 'Story Alpha', isClosed: true }),
-        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: true,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
       ]);
       const alpha = result.stories.stories.find(
         (s) => s.storyName === 'Story Alpha',
@@ -844,16 +903,19 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           assignees: ['other-person'],
           isClosed: false,
         }),
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
           isClosed: false,
         }),
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
           isClosed: false,
         }),
@@ -868,6 +930,7 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
+          storyOptionId: 's2',
           isClosed: false,
           agent: 'developer',
           nextActionDate: new Date('2026-07-10T00:00:00.000Z'),
@@ -1182,5 +1245,158 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([], baseProject(null));
       expect(result['todo-by-human'].storyOptions).toEqual([]);
     });
+  });
+
+  describe('story option id keying', () => {
+    const projectWithDuplicateStoryNames: Project = baseProject({
+      name: 'story',
+      fieldId: 'story-field',
+      databaseId: 2,
+      stories: [
+        storyOption('s1', 'Story Alpha', 'BLUE'),
+        storyOption('dup-first', 'Duplicate Story', 'YELLOW'),
+        storyOption('dup-second', 'Duplicate Story', 'RED'),
+      ],
+      workflowManagementStory: { id: 'wm', name: 'workflow management' },
+    });
+
+    const summarizeStoryEntries = (lists: ReturnType<typeof run>) =>
+      lists.stories.stories.map((entry) => ({
+        storyOptionId: entry.storyOptionId,
+        storyName: entry.storyName,
+        openItemCount: entry.openItemCount,
+        itemUrls: entry.items.map((item) => item.url),
+      }));
+
+    const tabsWithStoryColors = [
+      'workflow-blocker',
+      'prs',
+      'failed-preparation',
+      'todo-by-human',
+      'queued',
+      'stories',
+    ] as const;
+
+    it('counts and lists open issues of uniquely named stories under their own story entry', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
+        makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
+        makeIssue({ story: 'Story Beta', storyOptionId: 's3' }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: true,
+        }),
+      ]);
+      expect(summarizeStoryEntries(result)).toEqual([
+        {
+          storyOptionId: 's1',
+          storyName: 'regular / NO STORY; SET STORY FIELD',
+          openItemCount: 0,
+          itemUrls: [],
+        },
+        {
+          storyOptionId: 's2',
+          storyName: 'Story Alpha',
+          openItemCount: 2,
+          itemUrls: [
+            'https://github.com/demo/repo/issues/1',
+            'https://github.com/demo/repo/issues/2',
+          ],
+        },
+        {
+          storyOptionId: 's3',
+          storyName: 'Story Beta',
+          openItemCount: 1,
+          itemUrls: ['https://github.com/demo/repo/issues/3'],
+        },
+      ]);
+    });
+
+    it('counts and lists open issues of two same-named stories under the story entry of the option each issue references', () => {
+      const result = run(
+        [
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-first' }),
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-first' }),
+          makeIssue({ story: 'Duplicate Story', storyOptionId: 'dup-second' }),
+        ],
+        projectWithDuplicateStoryNames,
+      );
+      expect(summarizeStoryEntries(result)).toEqual([
+        {
+          storyOptionId: 's1',
+          storyName: 'Story Alpha',
+          openItemCount: 0,
+          itemUrls: [],
+        },
+        {
+          storyOptionId: 'dup-first',
+          storyName: 'Duplicate Story',
+          openItemCount: 2,
+          itemUrls: [
+            'https://github.com/demo/repo/issues/1',
+            'https://github.com/demo/repo/issues/2',
+          ],
+        },
+        {
+          storyOptionId: 'dup-second',
+          storyName: 'Duplicate Story',
+          openItemCount: 1,
+          itemUrls: ['https://github.com/demo/repo/issues/3'],
+        },
+      ]);
+    });
+
+    it.each([
+      { storyOptionIdDescription: 'null', storyOptionId: null },
+      { storyOptionIdDescription: 'undefined', storyOptionId: undefined },
+    ])(
+      'leaves an open issue whose story option id is $storyOptionIdDescription out of the story entry matching its story name',
+      ({ storyOptionId }) => {
+        const result = run([
+          makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
+          makeIssue({ story: 'Story Alpha', storyOptionId }),
+        ]);
+        const alpha = summarizeStoryEntries(result).find(
+          (entry) => entry.storyOptionId === 's2',
+        );
+        expect(alpha).toEqual({
+          storyOptionId: 's2',
+          storyName: 'Story Alpha',
+          openItemCount: 1,
+          itemUrls: ['https://github.com/demo/repo/issues/1'],
+        });
+      },
+    );
+
+    it.each(tabsWithStoryColors)(
+      'emits one story color per uniquely named story option in option order on the %s tab',
+      (tabName) => {
+        const storyColors = run([])[tabName].storyColors;
+        expect(Object.values(storyColors)).toEqual([
+          { color: 'GRAY' },
+          { color: 'GRAY' },
+          { color: 'BLUE' },
+          { color: 'BLUE' },
+          { color: 'GREEN' },
+          { color: 'GREEN' },
+        ]);
+      },
+    );
+
+    it.each(tabsWithStoryColors)(
+      'keys story colors by story option id so two same-named options keep their own colors on the %s tab',
+      (tabName) => {
+        const storyColors = run([], projectWithDuplicateStoryNames)[tabName]
+          .storyColors;
+        expect(storyColors).toEqual({
+          s1: { color: 'BLUE' },
+          'Story Alpha': { color: 'BLUE' },
+          'dup-first': { color: 'YELLOW' },
+          'dup-second': { color: 'RED' },
+          'Duplicate Story': { color: 'RED' },
+        });
+      },
+    );
   });
 });

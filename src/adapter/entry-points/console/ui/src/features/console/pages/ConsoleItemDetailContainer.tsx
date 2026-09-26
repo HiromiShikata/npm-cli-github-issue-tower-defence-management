@@ -140,6 +140,7 @@ export type ConsoleItemDetailContainerProps = {
   agentOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
   storyName: string | null;
+  storyOptionId?: string | null;
   overlayStatus: ConsoleOverlayStatus | null;
   now: number;
   initialCommentDraft?: string;
@@ -163,6 +164,7 @@ export const ConsoleItemDetailContainer = ({
   agentOptions,
   storyColors,
   storyName,
+  storyOptionId,
   overlayStatus,
   now,
   initialCommentDraft,
@@ -266,7 +268,7 @@ export const ConsoleItemDetailContainer = ({
             : undefined,
         overlayPatch: {
           done: true,
-          story: { name: option.name, color: option.color },
+          story: { id: option.id, name: option.name, color: option.color },
         },
       });
     },
@@ -473,8 +475,8 @@ export const ConsoleItemDetailContainer = ({
   const resolvedStoryName =
     storyName ?? (item.story.trim() !== '' ? item.story : null);
   const storyColorEnum: ConsoleColor | null =
-    resolvedStoryName !== null
-      ? resolveStoryColorEnum(storyColors, resolvedStoryName)
+    storyOptionId != null
+      ? resolveStoryColorEnum(storyColors, storyOptionId)
       : null;
 
   return (

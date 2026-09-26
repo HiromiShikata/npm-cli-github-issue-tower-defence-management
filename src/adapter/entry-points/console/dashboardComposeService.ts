@@ -130,10 +130,10 @@ const parseTdpmCacheData = (raw: unknown): TdpmCacheData | null => {
     for (const story of raw.project.story.stories) {
       if (
         isRecord(story) &&
-        typeof story.name === 'string' &&
+        typeof story.id === 'string' &&
         typeof story.color === 'string'
       ) {
-        storyColorMap.set(story.name, story.color);
+        storyColorMap.set(story.id, story.color);
       }
     }
   }

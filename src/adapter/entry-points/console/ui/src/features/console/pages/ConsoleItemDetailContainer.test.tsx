@@ -2,10 +2,12 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { ResourceCache } from '../lib/resourceCache';
+import { colorFromEnum } from '../logic/colors';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
   ConsoleRelatedPullRequest,
+  ConsoleStoryColorSource,
 } from '../logic/types';
 import {
   consoleAgentOptionsFixture,
@@ -1175,6 +1177,69 @@ describe('ConsoleItemDetailContainer', () => {
       name: 'regular / workflow improvement',
       color: 'GRAY',
     });
+  });
+
+  it('queues the set_story action with an overlayPatch that carries the selected story option id alongside its name and color', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole, getByTitle } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    const storySelect = getByRole('combobox', { name: 'Set story' });
+    fireEvent.change(storySelect, { target: { value: '28415d6c' } });
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.overlayPatch).toEqual({
+      done: true,
+      story: {
+        id: '28415d6c',
+        name: 'regular / workflow improvement',
+        color: 'GRAY',
+      },
+    });
+  });
+
+  it('resolves the displayed story color by the story option id rather than by the story display name', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const storyColorsKeyedByNameAndById: ConsoleStoryColorSource = {
+      'TDPM Console port': { color: 'RED' },
+      'story-option-resolved-by-id': { color: 'PURPLE' },
+    };
+    const { container } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={[]}
+        storyColors={storyColorsKeyedByNameAndById}
+        storyName="TDPM Console port"
+        storyOptionId="story-option-resolved-by-id"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    const dot = container.querySelector('.console-story-dot') as HTMLElement;
+    expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
+    expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
   });
 
   it('queues the set_agent action when an agent option is selected', () => {

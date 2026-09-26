@@ -621,7 +621,7 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         const storyColorMap = new Map<string, string>(
           (project.story?.stories ?? []).map((story): [string, string] => [
-            story.name,
+            story.id,
             story.color,
           ]),
         );

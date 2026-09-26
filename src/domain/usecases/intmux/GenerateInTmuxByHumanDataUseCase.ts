@@ -66,6 +66,10 @@ type InTmuxByHumanStoryGroup = {
   issues: Issue[];
 };
 
+type InTmuxByHumanSortableStoryGroup = InTmuxByHumanStoryGroup & {
+  sortIndex: number;
+};
+
 const IN_TMUX_BY_HUMAN_STATUS_NAME = 'In Tmux by human';
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 
@@ -83,15 +87,15 @@ export class GenerateInTmuxByHumanDataUseCase {
       consoleToken,
     } = input;
 
-    const storyOrder = project.story
-      ? project.story.stories.map((option: FieldOption) => option.name)
+    const storyOptions: FieldOption[] = project.story
+      ? project.story.stories
       : [];
 
     const selectedIssues = issues.filter((issue) =>
       this.isInTmuxByHuman(issue, assigneeLogin),
     );
 
-    const groups = this.groupByStoryOrder(selectedIssues, storyOrder);
+    const groups = this.groupByStoryOrder(selectedIssues, storyOptions);
 
     const v2: InTmuxByHumanGroupV2[] = groups.map((group) => ({
       story: group.story,
@@ -152,33 +156,60 @@ export class GenerateInTmuxByHumanDataUseCase {
 
   private groupByStoryOrder = (
     issues: Issue[],
-    storyOrder: string[],
+    storyOptions: FieldOption[],
   ): InTmuxByHumanStoryGroup[] => {
-    const indexByStory = new Map(
-      storyOrder.map((name, index) => [name, index]),
+    const sortIndexByStoryOptionId = new Map(
+      storyOptions.map((option, index) => [option.id, index]),
     );
-    const issuesByStory = new Map<string, Issue[]>();
+    const sortIndexByStoryName = new Map(
+      storyOptions.map((option, index) => [option.name, index]),
+    );
+    const groupsByStoryOptionId = new Map<
+      string,
+      InTmuxByHumanSortableStoryGroup
+    >();
+    const groupsByStoryNameOfIssuesWithoutStoryOptionId = new Map<
+      string,
+      InTmuxByHumanSortableStoryGroup
+    >();
     for (const issue of issues) {
       const story = issue.story ?? '';
-      const existing = issuesByStory.get(story);
+      const storyOptionId = issue.storyOptionId;
+      const [groups, groupKey, sortIndex] =
+        storyOptionId != null
+          ? [
+              groupsByStoryOptionId,
+              storyOptionId,
+              sortIndexByStoryOptionId.get(storyOptionId),
+            ]
+          : [
+              groupsByStoryNameOfIssuesWithoutStoryOptionId,
+              story,
+              sortIndexByStoryName.get(story),
+            ];
+      const existing = groups.get(groupKey);
       if (existing) {
-        existing.push(issue);
+        existing.issues.push(issue);
       } else {
-        issuesByStory.set(story, [issue]);
+        groups.set(groupKey, {
+          story,
+          issues: [issue],
+          sortIndex: sortIndex ?? UNKNOWN_STORY_SORT_INDEX,
+        });
       }
     }
-    return [...issuesByStory.entries()]
-      .map(([story, groupedIssues]) => ({
-        story,
-        issues: groupedIssues,
-        sortIndex: indexByStory.get(story) ?? UNKNOWN_STORY_SORT_INDEX,
-      }))
+    return [
+      ...groupsByStoryOptionId.values(),
+      ...groupsByStoryNameOfIssuesWithoutStoryOptionId.values(),
+    ]
       .sort((left, right) =>
         left.sortIndex !== right.sortIndex
           ? left.sortIndex - right.sortIndex
           : left.story < right.story
             ? -1
-            : 1,
+            : left.story > right.story
+              ? 1
+              : 0,
       )
       .map(({ story, issues: groupedIssues }) => ({
         story,

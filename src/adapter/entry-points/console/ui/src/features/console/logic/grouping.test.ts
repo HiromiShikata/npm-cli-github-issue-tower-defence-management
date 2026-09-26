@@ -8,25 +8,30 @@ import type { ConsoleListItem, ConsoleOverlay } from './types';
 
 const item = (
   overrides: Partial<ConsoleListItem> &
-    Pick<ConsoleListItem, 'number' | 'story'>,
-): ConsoleListItem => ({
-  title: `Item ${overrides.number}`,
-  url: `https://github.com/o/r/issues/${overrides.number}`,
-  repo: 'o/r',
-  nameWithOwner: 'o/r',
-  projectItemId: `PVTI_${overrides.number}`,
-  itemId: `PVTI_${overrides.number}`,
-  isPr: false,
-  relatedOpenPullRequestUrls: [],
-  status: null,
-  agent: null,
-  nextActionDate: null,
-  nextActionHour: null,
-  dependedIssueUrls: [],
-  labels: [],
-  createdAt: '2026-06-10T00:00:00.000Z',
-  ...overrides,
-});
+    Pick<ConsoleListItem, 'number' | 'story'> & {
+      storyOptionId?: string | null;
+    },
+): ConsoleListItem => {
+  const defaults = {
+    title: `Item ${overrides.number}`,
+    url: `https://github.com/o/r/issues/${overrides.number}`,
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: `PVTI_${overrides.number}`,
+    itemId: `PVTI_${overrides.number}`,
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    status: null,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-10T00:00:00.000Z',
+    storyOptionId: null,
+  };
+  return { ...defaults, ...overrides };
+};
 
 describe('resolveStoryColorEnum', () => {
   it('reads a wrapped color object shape', () => {
@@ -139,9 +144,9 @@ describe('resolveItemStory', () => {
 describe('buildConsoleListRows', () => {
   it('sorts items by storyOrder before grouping', () => {
     const items = [
-      item({ number: 1, story: 'Beta' }),
-      item({ number: 2, story: 'Alpha' }),
-      item({ number: 3, story: 'Beta' }),
+      item({ number: 1, story: 'Beta', storyOptionId: 'opt-beta' }),
+      item({ number: 2, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+      item({ number: 3, story: 'Beta', storyOptionId: 'opt-beta' }),
     ];
     const rows = buildConsoleListRows(items, {}, ['Alpha', 'Beta']);
     expect(rows.map((row) => row.kind)).toEqual([
@@ -171,8 +176,8 @@ describe('buildConsoleListRows', () => {
       },
     };
     const items = [
-      item({ number: 1, story: 'Beta' }),
-      item({ number: 2, story: 'Beta' }),
+      item({ number: 1, story: 'Beta', storyOptionId: 'opt-beta' }),
+      item({ number: 2, story: 'Beta', storyOptionId: 'opt-beta' }),
     ];
     const rows = buildConsoleListRows(items, overlay, ['Alpha', 'Beta']);
     const firstHeader = rows[0];
@@ -183,10 +188,10 @@ describe('buildConsoleListRows', () => {
 
   it('keeps original relative order when storyOrder is empty', () => {
     const items = [
-      item({ number: 1, story: 'Alpha' }),
-      item({ number: 2, story: 'Alpha' }),
-      item({ number: 3, story: 'Beta' }),
-      item({ number: 4, story: 'Alpha' }),
+      item({ number: 1, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+      item({ number: 2, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+      item({ number: 3, story: 'Beta', storyOptionId: 'opt-beta' }),
+      item({ number: 4, story: 'Alpha', storyOptionId: 'opt-alpha' }),
     ];
     const rows = buildConsoleListRows(items, {}, []);
     expect(rows.map((row) => row.kind)).toEqual([
@@ -216,7 +221,9 @@ describe('buildConsoleListRows', () => {
         story: { name: 'StaleStory', color: 'RED' },
       },
     };
-    const items = [item({ number: 1, story: 'ItemStory' })];
+    const items = [
+      item({ number: 1, story: 'ItemStory', storyOptionId: 'opt-item-story' }),
+    ];
     const rows = buildConsoleListRows(
       items,
       overlay,
@@ -226,4 +233,123 @@ describe('buildConsoleListRows', () => {
     const header = rows[0];
     expect(header.kind === 'group-header' && header.story).toBe('ItemStory');
   });
+});
+
+describe('buildConsoleListRows grouping by story option id', () => {
+  const summarizeRows = (rows: ReturnType<typeof buildConsoleListRows>) =>
+    rows.map((row) =>
+      row.kind === 'group-header'
+        ? { header: row.story, count: row.count }
+        : { itemNumber: row.item.number },
+    );
+
+  it.each([
+    {
+      description:
+        'sorts uniquely named stories by story order and groups each story under one header',
+      items: [
+        item({ number: 1, story: 'Beta', storyOptionId: 'opt-beta' }),
+        item({ number: 2, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+        item({ number: 3, story: 'Beta', storyOptionId: 'opt-beta' }),
+      ],
+      storyOrder: ['Alpha', 'Beta'],
+      expectedRows: [
+        { header: 'Alpha', count: 1 },
+        { itemNumber: 2 },
+        { header: 'Beta', count: 2 },
+        { itemNumber: 1 },
+        { itemNumber: 3 },
+      ],
+    },
+    {
+      description:
+        'keeps the original order of uniquely named stories and opens a header at each story change when story order is empty',
+      items: [
+        item({ number: 1, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+        item({ number: 2, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+        item({ number: 3, story: 'Beta', storyOptionId: 'opt-beta' }),
+        item({ number: 4, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+      ],
+      storyOrder: [],
+      expectedRows: [
+        { header: 'Alpha', count: 3 },
+        { itemNumber: 1 },
+        { itemNumber: 2 },
+        { header: 'Beta', count: 1 },
+        { itemNumber: 3 },
+        { header: 'Alpha', count: 3 },
+        { itemNumber: 4 },
+      ],
+    },
+  ])('$description', ({ items, storyOrder, expectedRows }) => {
+    expect(summarizeRows(buildConsoleListRows(items, {}, storyOrder))).toEqual(
+      expectedRows,
+    );
+  });
+
+  it('opens a separate header with its own count for each of two same-named story options', () => {
+    const items = [
+      item({ number: 1, story: 'Duplicate', storyOptionId: 'opt-dup-first' }),
+      item({ number: 2, story: 'Duplicate', storyOptionId: 'opt-dup-first' }),
+      item({ number: 3, story: 'Duplicate', storyOptionId: 'opt-dup-second' }),
+      item({ number: 4, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+    ];
+    expect(
+      summarizeRows(
+        buildConsoleListRows(items, {}, ['Alpha', 'Duplicate', 'Duplicate']),
+      ),
+    ).toEqual([
+      { header: 'Alpha', count: 1 },
+      { itemNumber: 4 },
+      { header: 'Duplicate', count: 2 },
+      { itemNumber: 1 },
+      { itemNumber: 2 },
+      { header: 'Duplicate', count: 1 },
+      { itemNumber: 3 },
+    ]);
+  });
+
+  it.each([
+    { storyOptionIdDescription: 'null', storyOptionId: null },
+    { storyOptionIdDescription: 'undefined', storyOptionId: undefined },
+  ])(
+    'groups an item whose story option id is $storyOptionIdDescription under a header of its own story name, never merged into the group of a story option, including a same-named one',
+    ({ storyOptionId }) => {
+      const items = [
+        item({ number: 1, story: 'Duplicate', storyOptionId: 'opt-dup-first' }),
+        item({
+          number: 2,
+          story: 'Duplicate',
+          storyOptionId: 'opt-dup-second',
+        }),
+        item({ number: 3, story: 'Duplicate', storyOptionId }),
+        item({ number: 4, story: 'Alpha', storyOptionId: 'opt-alpha' }),
+        item({ number: 5, story: 'Alpha', storyOptionId }),
+      ];
+      const groups: { header: string; count: number; itemNumbers: number[] }[] =
+        [];
+      buildConsoleListRows(items, {}, [
+        'Alpha',
+        'Duplicate',
+        'Duplicate',
+      ]).forEach((row) => {
+        if (row.kind === 'group-header') {
+          groups.push({ header: row.story, count: row.count, itemNumbers: [] });
+          return;
+        }
+        const currentGroup = groups[groups.length - 1];
+        if (currentGroup) {
+          currentGroup.itemNumbers.push(row.item.number);
+        }
+      });
+      const groupsContainingItem = (itemNumber: number) =>
+        groups.filter((group) => group.itemNumbers.includes(itemNumber));
+      expect(groupsContainingItem(3)).toEqual([
+        { header: 'Duplicate', count: 1, itemNumbers: [3] },
+      ]);
+      expect(groupsContainingItem(5)).toEqual([
+        { header: 'Alpha', count: 1, itemNumbers: [5] },
+      ]);
+    },
+  );
 });

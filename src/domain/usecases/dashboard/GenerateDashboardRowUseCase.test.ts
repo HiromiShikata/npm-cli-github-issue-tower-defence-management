@@ -205,25 +205,51 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('counts open AQC and TodoByHuman issues by story color across all assignees', () => {
     const storyColorMap = new Map([
+      ['opt-red-story', 'RED'],
+      ['opt-yellow-story', 'YELLOW'],
+      ['opt-blue-story', 'BLUE'],
+      ['opt-green-story', 'GREEN'],
       ['red-story', 'RED'],
       ['yellow-story', 'YELLOW'],
       ['blue-story', 'BLUE'],
       ['green-story', 'GREEN'],
     ]);
     const issues = [
-      makeIssue({ status: 'Awaiting Owner', story: 'red-story' }),
-      makeIssue({ status: 'Todo by human', story: 'red-story' }),
-      makeIssue({ status: 'Awaiting Owner', story: 'yellow-story' }),
-      makeIssue({
-        status: 'Awaiting Owner',
-        story: 'blue-story',
-        assignees: ['someone-else'],
-      }),
-      makeIssue({ status: 'Awaiting Owner', story: 'green-story' }),
-      makeIssue({ status: 'Preparation', story: 'red-story' }),
       makeIssue({
         status: 'Awaiting Owner',
         story: 'red-story',
+        storyOptionId: 'opt-red-story',
+      }),
+      makeIssue({
+        status: 'Todo by human',
+        story: 'red-story',
+        storyOptionId: 'opt-red-story',
+      }),
+      makeIssue({
+        status: 'Awaiting Owner',
+        story: 'yellow-story',
+        storyOptionId: 'opt-yellow-story',
+      }),
+      makeIssue({
+        status: 'Awaiting Owner',
+        story: 'blue-story',
+        storyOptionId: 'opt-blue-story',
+        assignees: ['someone-else'],
+      }),
+      makeIssue({
+        status: 'Awaiting Owner',
+        story: 'green-story',
+        storyOptionId: 'opt-green-story',
+      }),
+      makeIssue({
+        status: 'Preparation',
+        story: 'red-story',
+        storyOptionId: 'opt-red-story',
+      }),
+      makeIssue({
+        status: 'Awaiting Owner',
+        story: 'red-story',
+        storyOptionId: 'opt-red-story',
         isClosed: true,
       }),
     ];
@@ -240,8 +266,16 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('returns zero for story color counts when story color map is empty', () => {
     const issues = [
-      makeIssue({ status: 'Awaiting Owner', story: 'some-story' }),
-      makeIssue({ status: 'Todo by human', story: 'other-story' }),
+      makeIssue({
+        status: 'Awaiting Owner',
+        story: 'some-story',
+        storyOptionId: 'opt-some-story',
+      }),
+      makeIssue({
+        status: 'Todo by human',
+        story: 'other-story',
+        storyOptionId: 'opt-other-story',
+      }),
     ];
 
     const result = usecase.run({
@@ -255,11 +289,15 @@ describe('GenerateDashboardRowUseCase', () => {
   });
 
   it('excludes closed issues from story color counts', () => {
-    const storyColorMap = new Map([['red-story', 'RED']]);
+    const storyColorMap = new Map([
+      ['opt-red-story', 'RED'],
+      ['red-story', 'RED'],
+    ]);
     const issues = [
       makeIssue({
         status: 'Awaiting Owner',
         story: 'red-story',
+        storyOptionId: 'opt-red-story',
         isClosed: true,
       }),
     ];
@@ -271,11 +309,15 @@ describe('GenerateDashboardRowUseCase', () => {
   });
 
   it('counts story color pending regardless of issue assignee', () => {
-    const storyColorMap = new Map([['red-story', 'RED']]);
+    const storyColorMap = new Map([
+      ['opt-red-story', 'RED'],
+      ['red-story', 'RED'],
+    ]);
     const issues = [
       makeIssue({
         status: 'Awaiting Owner',
         story: 'red-story',
+        storyOptionId: 'opt-red-story',
         assignees: ['other-user'],
       }),
     ];
@@ -284,5 +326,128 @@ describe('GenerateDashboardRowUseCase', () => {
       usecase.run({ issues, assigneeLogin: ASSIGNEE, storyColorMap })
         .humanPendingRed,
     ).toBe(1);
+  });
+
+  describe('human pending story color lookup by story option id', () => {
+    const storyColorMapKeyedByOptionIdAndName = new Map([
+      ['opt-red-story', 'RED'],
+      ['opt-yellow-story', 'YELLOW'],
+      ['opt-blue-story', 'BLUE'],
+      ['Red Story', 'RED'],
+      ['Yellow Story', 'YELLOW'],
+      ['Blue Story', 'BLUE'],
+    ]);
+
+    it('counts pending issues of uniquely named stories under the color of their story', () => {
+      const issues = [
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Red Story',
+          storyOptionId: 'opt-red-story',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Red Story',
+          storyOptionId: 'opt-red-story',
+        }),
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Yellow Story',
+          storyOptionId: 'opt-yellow-story',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Blue Story',
+          storyOptionId: 'opt-blue-story',
+          assignees: ['someone-else'],
+        }),
+        makeIssue({
+          status: 'Preparation',
+          story: 'Blue Story',
+          storyOptionId: 'opt-blue-story',
+        }),
+      ];
+
+      expect(
+        usecase.run({
+          issues,
+          assigneeLogin: ASSIGNEE,
+          storyColorMap: storyColorMapKeyedByOptionIdAndName,
+        }),
+      ).toMatchObject({
+        humanPendingRed: 2,
+        humanPendingYellow: 1,
+        humanPendingBlue: 1,
+      });
+    });
+
+    it('counts pending issues of two same-named stories under the color of the option each issue references', () => {
+      const storyColorMapKeyedByOptionId = new Map([
+        ['opt-duplicate-red', 'RED'],
+        ['opt-duplicate-blue', 'BLUE'],
+      ]);
+      const issues = [
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Duplicate Story',
+          storyOptionId: 'opt-duplicate-red',
+        }),
+        makeIssue({
+          status: 'Awaiting Owner',
+          story: 'Duplicate Story',
+          storyOptionId: 'opt-duplicate-blue',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Duplicate Story',
+          storyOptionId: 'opt-duplicate-blue',
+        }),
+      ];
+
+      expect(
+        usecase.run({
+          issues,
+          assigneeLogin: ASSIGNEE,
+          storyColorMap: storyColorMapKeyedByOptionId,
+        }),
+      ).toMatchObject({
+        humanPendingRed: 1,
+        humanPendingYellow: 0,
+        humanPendingBlue: 2,
+      });
+    });
+
+    it.each([
+      { storyOptionIdDescription: 'null', storyOptionId: null },
+      { storyOptionIdDescription: 'undefined', storyOptionId: undefined },
+    ])(
+      'never counts a pending issue whose story option id is $storyOptionIdDescription even when its story name has a color',
+      ({ storyOptionId }) => {
+        const issues = [
+          makeIssue({
+            status: 'Awaiting Owner',
+            story: 'Red Story',
+            storyOptionId,
+          }),
+          makeIssue({
+            status: 'Todo by human',
+            story: 'Blue Story',
+            storyOptionId,
+          }),
+        ];
+
+        expect(
+          usecase.run({
+            issues,
+            assigneeLogin: ASSIGNEE,
+            storyColorMap: storyColorMapKeyedByOptionIdAndName,
+          }),
+        ).toMatchObject({
+          humanPendingRed: 0,
+          humanPendingYellow: 0,
+          humanPendingBlue: 0,
+        });
+      },
+    );
   });
 });

@@ -347,6 +347,68 @@ describe('airplaneSnapshot', () => {
       expect(result?.tabs.acme?.prs.timerEndsAt).toBeNull();
       expect(result?.tabs.acme?.prs.timerTotalSeconds).toBeNull();
     });
+
+    describe('parses each list item storyOptionId field', () => {
+      const OMIT_STORY_OPTION_ID_KEY = Symbol('omit storyOptionId key');
+
+      const parseSingleItemStoryOptionId = (
+        rawStoryOptionIdValue: unknown,
+      ): string | null | undefined => {
+        const rawItem: Record<string, unknown> = {
+          number: 1,
+          title: 'Fix bug',
+          url: 'https://github.com/o/r/pull/1',
+          repo: 'o/r',
+          nameWithOwner: 'o/r',
+          projectItemId: 'PVTI_1',
+          itemId: 'PVTI_1',
+          isPr: true,
+          story: 'regular',
+          status: 'In Progress',
+          nextActionDate: null,
+          nextActionHour: null,
+          dependedIssueUrls: [],
+          labels: ['bug'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          relatedOpenPullRequestUrls: [],
+        };
+        if (rawStoryOptionIdValue !== OMIT_STORY_OPTION_ID_KEY) {
+          rawItem.storyOptionId = rawStoryOptionIdValue;
+        }
+        const raw = {
+          capturedAt: '2026-01-01T00:00:00Z',
+          tabs: {
+            acme: {
+              prs: {
+                generatedAt: '2026-01-01T00:00:00Z',
+                statusOptions: [],
+                agentOptions: [],
+                storyOptions: [],
+                storyColors: {},
+                items: [rawItem],
+              },
+            },
+          },
+          items: {},
+          failures: [],
+        };
+        const result = parseAirplaneSnapshot(raw);
+        return result?.tabs.acme?.prs.items[0]?.storyOptionId;
+      };
+
+      it.each<[string, unknown, string | null]>([
+        ['a valid string id', 'opt-abc123', 'opt-abc123'],
+        ['the key omitted entirely', OMIT_STORY_OPTION_ID_KEY, null],
+        ['a number instead of a string', 42, null],
+        ['an explicit null', null, null],
+        ['an explicit undefined', undefined, null],
+      ])(
+        'extracts storyOptionId when the raw value is %s',
+        (_label, rawValue, expected) => {
+          expect(parseSingleItemStoryOptionId(rawValue)).toBe(expected);
+        },
+      );
+    });
   });
 
   describe('readAirplaneModeFlag / writeAirplaneModeFlag', () => {

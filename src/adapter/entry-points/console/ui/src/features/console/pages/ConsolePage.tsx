@@ -60,7 +60,11 @@ import {
   actionToastColor,
   formatActionToast,
 } from '../logic/actionToast';
-import { buildConsoleListRows, resolveItemStory } from '../logic/grouping';
+import {
+  buildConsoleListRows,
+  resolveItemStory,
+  resolveItemStoryOptionId,
+} from '../logic/grouping';
 import {
   nextPendingKeyAfter,
   nextPendingKeyBrowse,
@@ -581,6 +585,15 @@ export const ConsolePage = () => {
   const storyNameForSelected =
     selectedItem !== null
       ? resolveItemStory(
+          selectedItem,
+          overlayState.overlay,
+          snapshots[activeTab]?.generatedAt ?? null,
+        )
+      : null;
+
+  const storyOptionIdForSelected =
+    selectedItem !== null
+      ? resolveItemStoryOptionId(
           selectedItem,
           overlayState.overlay,
           snapshots[activeTab]?.generatedAt ?? null,
@@ -1251,6 +1264,7 @@ export const ConsolePage = () => {
             storyEntries={storyEntries}
             storyColors={storyColors}
             storyName={storyNameForSelected}
+            storyOptionId={storyOptionIdForSelected}
             overlayStatus={overlayStatusForSelected}
             now={now}
             initialCommentDraft={
