@@ -18,7 +18,10 @@ export const createConsoleProjectLoader = (
   resolveProjectRepository: (
     projectUrl: string,
   ) => ConsoleProjectIdAndProjectReader,
-  getCachedProject: (projectId: string) => Promise<Project | null>,
+  getCachedProject: (
+    projectUrl: string,
+    projectId: string,
+  ) => Promise<Project | null>,
   reportLoadFailure: (message: string) => void,
 ): ConsoleProjectLoader => {
   return async (projectUrl: string): Promise<Project | null> => {
@@ -28,7 +31,7 @@ export const createConsoleProjectLoader = (
       reportLoadFailure(`No project found for projectUrl ${projectUrl}`);
       return null;
     }
-    const cachedProject = await getCachedProject(projectId);
+    const cachedProject = await getCachedProject(projectUrl, projectId);
     if (cachedProject) {
       return cachedProject;
     }
@@ -66,6 +69,22 @@ export const createPjcodeConfigChecker = (
 ): ConsolePjcodeValidator => {
   return (pjcode: string): boolean =>
     Object.prototype.hasOwnProperty.call(pjcodeToProjectUrl, pjcode);
+};
+
+export const createConsoleProjectUrlToPjcodeResolver = (
+  pjcodeToProjectUrl: Record<string, string>,
+): ((projectUrl: string) => string) => {
+  const pjcodeByProjectUrl = new Map<string, string>();
+  for (const [pjcode, projectUrl] of Object.entries(pjcodeToProjectUrl)) {
+    pjcodeByProjectUrl.set(projectUrl, pjcode);
+  }
+  return (projectUrl: string): string => {
+    const pjcode = pjcodeByProjectUrl.get(projectUrl);
+    if (pjcode === undefined) {
+      throw new Error(`No pjcode is configured for projectUrl ${projectUrl}`);
+    }
+    return pjcode;
+  };
 };
 
 export type ConsoleProjectResolverBundle = {

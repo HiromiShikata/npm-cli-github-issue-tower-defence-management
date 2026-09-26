@@ -34,6 +34,7 @@ import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalC
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
+import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCacheRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
@@ -55,6 +56,7 @@ import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
   createConsoleProjectResolver,
+  createConsoleProjectUrlToPjcodeResolver,
   createPjcodeConfigChecker,
 } from '../console/consoleProjectResolver';
 import {
@@ -1234,6 +1236,28 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     config.consoleProjects ?? null,
   );
   const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
+  const resolvePjcodeForProjectUrl =
+    createConsoleProjectUrlToPjcodeResolver(pjcodeToProjectUrl);
+  const projectIssuesCacheRepositoryByPjcode = new Map<
+    string,
+    ProjectIssuesCacheRepository
+  >();
+  const resolveProjectIssuesCacheRepositoryForPjcode = (
+    pjcode: string,
+  ): ProjectIssuesCacheRepository => {
+    const alreadyBuilt = projectIssuesCacheRepositoryByPjcode.get(pjcode);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const built = new ProjectIssuesCacheRepository(
+      new LocalStorageCacheRepository(
+        localStorageRepository,
+        projectCacheDirectory(pjcode),
+      ),
+    );
+    projectIssuesCacheRepositoryByPjcode.set(pjcode, built);
+    return built;
+  };
   const {
     resolve: resolveProject,
     invalidate: invalidateProject,
@@ -1242,8 +1266,10 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     pjcodeToProjectUrl,
     createConsoleProjectLoader(
       resolveProjectRepository,
-      (targetProjectId: string) =>
-        issueRepository.getCachedProject(targetProjectId),
+      (targetProjectUrl: string, targetProjectId: string) =>
+        resolveProjectIssuesCacheRepositoryForPjcode(
+          resolvePjcodeForProjectUrl(targetProjectUrl),
+        ).readProject(targetProjectId),
       (message: string) => console.error(message),
     ),
   );

@@ -36,7 +36,11 @@ jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/LocalStorageCacheRepository', () => ({
-  LocalStorageCacheRepository: jest.fn().mockImplementation(() => ({})),
+  LocalStorageCacheRepository: jest.fn().mockImplementation(() => ({
+    getSingle: jest.fn().mockResolvedValue(undefined),
+    setSingle: jest.fn().mockResolvedValue(undefined),
+    withLock: jest.fn(async (_key: string, fn: () => Promise<unknown>) => fn()),
+  })),
 }));
 jest.mock('../../repositories/GraphqlProjectRepository', () => ({
   GraphqlProjectRepository: jest.fn().mockImplementation(() => ({
