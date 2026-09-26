@@ -1,10 +1,14 @@
 import { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
   DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+  LiveSessionOauthTokenCandidateMetrics,
   LiveSessionOauthTokenSelectUseCase,
   LiveSessionOauthTokenSelectionSettings,
   fiveHourSustainableSessionCountOf,
   liveSessionConcurrentLimitOf,
+  liveSessionOauthTokenCandidateMetricsInSelectionOrder,
+  sevenDayBudgetUndrainableBeforeSpendDeadlineOf,
+  sevenDayShareDrainableBeforeSpendDeadlineOf,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
   OauthTokenCandidate,
@@ -151,7 +155,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(full?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
   });
 
-  it('boosts the concurrent session limit toward maxConcurrentSessionCount when the seven day reset is imminent', () => {
+  it('boosts the concurrent session limit toward maxConcurrentSessionCount when the seven day reset is imminent and keeps selecting that token while it is under the boosted limit', () => {
     const result = useCase.run(
       [
         candidate(
@@ -175,10 +179,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       (m) => m.name === 'soonResetNarrowFiveHour',
     );
     expect(narrow?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
-    expect(result.selected?.name).toBe('distantResetIdle');
+    expect(result.selected?.name).toBe('soonResetNarrowFiveHour');
   });
 
-  it('excludes a seven day window that has fallen below the minimum free ratio even when sessions are below the concurrent limit', () => {
+  it('keeps a token whose seven day window is only 10% free eligible and moves to the next token once it is at its concurrent session limit', () => {
     const result = useCase.run(
       [
         candidate(
@@ -201,8 +205,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const nearlyUsed = result.metrics.find(
       (m) => m.name === 'nearlyUsedSevenDay',
     );
-    expect(nearlyUsed?.eligible).toBe(false);
-    expect(nearlyUsed?.exclusionReason).toContain('7d window');
+    expect(nearlyUsed?.eligible).toBe(true);
+    expect(nearlyUsed?.exclusionReason).toBeNull();
+    expect(nearlyUsed?.hasConcurrencyHeadroom).toBe(false);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
@@ -256,7 +261,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('aboutToResetNearlyUsedSevenDay');
   });
 
-  it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
+  it('selects a seven day window that resets within the hour while it is under its boosted concurrent session limit even though its five hour window is below half free', () => {
     const result = useCase.run(
       [
         candidate(
@@ -282,7 +287,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(aboutToReset?.concurrentSessionLimit).toBe(
       MAX_CONCURRENT_SESSION_COUNT,
     );
-    expect(result.selected?.name).toBe('distantResetIdle');
+    expect(result.selected?.name).toBe('aboutToResetNarrowFiveHour');
   });
 
   it('scales the concurrent session limit down by the configured selection weight', () => {
@@ -309,7 +314,8 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(downWeighted?.concurrentSessionLimit).toBe(
       MAX_CONCURRENT_SESSION_COUNT,
     );
-    expect(result.selected?.name).toBe('downWeighted');
+    expect(downWeighted?.hasConcurrencyHeadroom).toBe(true);
+    expect(result.selected?.name).toBe('lowerFreeRatioIdle');
   });
 
   it('honours a fleet supplied maximum concurrent session count', () => {
@@ -410,21 +416,23 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(first.selected?.name).toBe('firstOfEqualPair');
   });
 
-  it('excludes a rate-limit-ineligible token even when it has no live sessions', () => {
+  it('keeps a token whose five hour window is only 10% free eligible and selects it while it is under its concurrent session limit of one', () => {
     const result = useCase.run(
       [
-        candidate('idleButBlocked', snapshot({ fiveHourUtilization: 0.9 })),
-        candidate('busyButFree', snapshot({})),
+        candidate('idleNarrowFiveHour', snapshot({ fiveHourUtilization: 0.9 })),
+        candidate('busyFresh', snapshot({})),
       ],
-      [session('busyButFree', 'session-a')],
+      [session('busyFresh', 'session-a')],
       NOW,
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('busyButFree');
-    const blocked = result.metrics.find((m) => m.name === 'idleButBlocked');
-    expect(blocked?.eligible).toBe(false);
-    expect(blocked?.liveSessionCount).toBe(0);
+    expect(result.selected?.name).toBe('idleNarrowFiveHour');
+    const narrow = result.metrics.find((m) => m.name === 'idleNarrowFiveHour');
+    expect(narrow?.eligible).toBe(true);
+    expect(narrow?.exclusionReason).toBeNull();
+    expect(narrow?.liveSessionCount).toBe(0);
+    expect(narrow?.concurrentSessionLimit).toBe(1);
   });
 
   it('counts distinct session keys and dedupes child processes sharing one session key', () => {
@@ -474,11 +482,11 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('resumedHeavy');
   });
 
-  it('returns null selection when no token passes even the fallback filter', () => {
+  it('selects a sole token whose five hour window is 10% free and seven day window is 2% free because free ratios no longer exclude a token', () => {
     const result = useCase.run(
       [
         candidate(
-          'blocked',
+          'nearlySpentBothWindows',
           snapshot({ fiveHourUtilization: 0.9, sevenDayUtilization: 0.98 }),
         ),
       ],
@@ -487,10 +495,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       SETTINGS,
     );
 
-    expect(result.selected).toBeNull();
+    expect(result.selected?.name).toBe('nearlySpentBothWindows');
   });
 
-  it('selects the token with the highest five hour free ratio among non-excluded tokens with more than 3% seven day free when no token meets the live session thresholds', () => {
+  it('selects the token with the least seven day budget among the tokens the API has not rejected when their seven day resets are equally distant', () => {
     const rejected = Array.from({ length: 7 }, (_unused, index) =>
       candidate(`rejected${index}`, snapshot({}), false, true),
     );
@@ -530,7 +538,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('dev9');
   });
 
-  it('does not include hard-excluded tokens in the fallback even when their seven day window is above 3%', () => {
+  it('returns null selection when the only token is rejected by the API even though its seven day window is half free', () => {
     const result = useCase.run(
       [
         candidate(
@@ -548,7 +556,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected).toBeNull();
   });
 
-  it('breaks a five hour free ratio tie in the fallback by the fewer live sessions', () => {
+  it('breaks a seven day free ratio and reset tie by the fewer live sessions', () => {
     const result = useCase.run(
       [
         candidate(
@@ -657,47 +665,66 @@ describe('LiveSessionOauthTokenCandidateMetrics selectionWeight', () => {
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase minimum free ratio thresholds', () => {
+describe('LiveSessionOauthTokenSelectUseCase accepts the minimum free ratio settings keys without excluding a token', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('excludes a token whose five hour window has less than the minimum free ratio', () => {
-    const result = useCase.run(
-      [
-        candidate('narrowFiveHourMin', snapshot({ fiveHourUtilization: 0.5 })),
-        candidate('freeFiveHourMin', snapshot({})),
-      ],
-      [],
-      NOW,
-      SETTINGS,
-    );
+  const belowFormerMinimumCases: [
+    string,
+    string,
+    Partial<OauthTokenWindowSnapshot>,
+    Partial<LiveSessionOauthTokenSelectionSettings>,
+  ][] = [
+    [
+      'five hour window below the default minimum five hour free ratio',
+      'narrowFiveHourMin',
+      { fiveHourUtilization: 0.5 },
+      {},
+    ],
+    [
+      'seven day window below the default minimum seven day free ratio',
+      'nearlyUsedSevenDayMin',
+      { sevenDayUtilization: 0.9 },
+      {},
+    ],
+    [
+      'five hour window below a fleet supplied minimum five hour free ratio',
+      'narrowForFleetFiveHour',
+      { fiveHourUtilization: 0.15 },
+      { minFiveHourFreeRatio: 0.9 },
+    ],
+    [
+      'seven day window below a fleet supplied minimum seven day free ratio',
+      'narrowForFleetSevenDay',
+      { sevenDayUtilization: 0.5 },
+      { minSevenDayFreeRatio: 0.6 },
+    ],
+    [
+      'both windows below the default minimum free ratios',
+      'bothNarrow',
+      { fiveHourUtilization: 0.5, sevenDayUtilization: 0.9 },
+      {},
+    ],
+  ];
 
-    const narrow = result.metrics.find((m) => m.name === 'narrowFiveHourMin');
-    expect(narrow?.eligible).toBe(false);
-    expect(narrow?.exclusionReason).toContain('5h window');
-    expect(result.selected?.name).toBe('freeFiveHourMin');
-  });
+  it.each(belowFormerMinimumCases)(
+    'keeps a token eligible and selects it when its %s',
+    (_description, name, snapshotOverrides, settingsOverrides) => {
+      const result = useCase.run(
+        [
+          candidate(name, snapshot(snapshotOverrides)),
+          candidate('fresh', snapshot({})),
+        ],
+        [],
+        NOW,
+        settingsWith(settingsOverrides),
+      );
 
-  it('excludes a token whose seven day window has less than the minimum free ratio', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'nearlyUsedSevenDayMin',
-          snapshot({ sevenDayUtilization: 0.9 }),
-        ),
-        candidate('freeSevenDayMin', snapshot({})),
-      ],
-      [],
-      NOW,
-      SETTINGS,
-    );
-
-    const nearlyUsed = result.metrics.find(
-      (m) => m.name === 'nearlyUsedSevenDayMin',
-    );
-    expect(nearlyUsed?.eligible).toBe(false);
-    expect(nearlyUsed?.exclusionReason).toContain('7d window');
-    expect(result.selected?.name).toBe('freeSevenDayMin');
-  });
+      const metric = result.metrics.find((m) => m.name === name);
+      expect(metric?.eligible).toBe(true);
+      expect(metric?.exclusionReason).toBeNull();
+      expect(result.selected?.name).toBe(name);
+    },
+  );
 
   it('selects a token whose ratios are at exactly the minimum free ratio thresholds', () => {
     const result = useCase.run(
@@ -715,69 +742,6 @@ describe('LiveSessionOauthTokenSelectUseCase minimum free ratio thresholds', () 
     const atThreshold = result.metrics.find((m) => m.name === 'atThreshold');
     expect(atThreshold?.eligible).toBe(true);
     expect(result.selected?.name).toBe('atThreshold');
-  });
-
-  it('honours a fleet supplied minimum five hour free ratio', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'narrowForFleetFiveHour',
-          snapshot({ fiveHourUtilization: 0.15 }),
-        ),
-        candidate('freeForFleetFiveHour', snapshot({})),
-      ],
-      [],
-      NOW,
-      settingsWith({ minFiveHourFreeRatio: 0.9 }),
-    );
-
-    const narrow = result.metrics.find(
-      (m) => m.name === 'narrowForFleetFiveHour',
-    );
-    expect(narrow?.eligible).toBe(false);
-    expect(narrow?.exclusionReason).toContain('5h window');
-    expect(result.selected?.name).toBe('freeForFleetFiveHour');
-  });
-
-  it('honours a fleet supplied minimum seven day free ratio', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'narrowForFleetSevenDay',
-          snapshot({ sevenDayUtilization: 0.5 }),
-        ),
-        candidate('freeForFleetSevenDay', snapshot({})),
-      ],
-      [],
-      NOW,
-      settingsWith({ minSevenDayFreeRatio: 0.6 }),
-    );
-
-    const narrow = result.metrics.find(
-      (m) => m.name === 'narrowForFleetSevenDay',
-    );
-    expect(narrow?.eligible).toBe(false);
-    expect(narrow?.exclusionReason).toContain('7d window');
-    expect(result.selected?.name).toBe('freeForFleetSevenDay');
-  });
-
-  it('reports the five hour window exclusion reason when both windows are below their minimums', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'bothNarrow',
-          snapshot({ fiveHourUtilization: 0.5, sevenDayUtilization: 0.9 }),
-        ),
-      ],
-      [],
-      NOW,
-      SETTINGS,
-    );
-
-    const bothNarrow = result.metrics.find((m) => m.name === 'bothNarrow');
-    expect(bothNarrow?.eligible).toBe(false);
-    expect(bothNarrow?.exclusionReason).toContain('5h window');
-    expect(bothNarrow?.exclusionReason).not.toContain('7d window');
   });
 });
 
@@ -872,17 +836,17 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase excludes tokens with depleted 7d budget within 48-hour deadline window', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a nearly spent 7d budget within the 48-hour deadline window first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   const exhaustedWithinDeadlineCases: [string, number, number][] = [
     [
-      'token at 3% seven day free within 47 hours of reset is not eligible despite deadline bypass',
+      'token at 3% seven day free within 47 hours of reset is eligible and selected before a fresh token',
       0.97,
       47,
     ],
     [
-      'token at 1% seven day free within 30 hours of reset is not eligible despite deadline bypass',
+      'token at 1% seven day free within 30 hours of reset is eligible and selected before a fresh token',
       0.99,
       30,
     ],
@@ -908,9 +872,9 @@ describe('LiveSessionOauthTokenSelectUseCase excludes tokens with depleted 7d bu
       );
 
       const metric = result.metrics.find((m) => m.name === 'nearlyExhausted');
-      expect(metric?.eligible).toBe(false);
-      expect(metric?.exclusionReason).toContain('7d window');
-      expect(result.selected?.name).toBe('fine');
+      expect(metric?.eligible).toBe(true);
+      expect(metric?.exclusionReason).toBeNull();
+      expect(result.selected?.name).toBe('nearlyExhausted');
     },
   );
 });
@@ -928,13 +892,13 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
     string | null,
   ][] = [
     [
-      'token at 3% seven day free more than 48 hours before reset is not eligible',
+      'token at 3% seven day free more than 48 hours before reset is eligible',
       0.97,
       50,
       0,
       5 * 60,
-      false,
-      '7d window',
+      true,
+      null,
     ],
     [
       'token within 1 hour of its five hour reset is eligible for live session selection despite five hour window being below the minimum',
@@ -986,10 +950,10 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
   );
 });
 
-describe('LiveSessionOauthTokenSelectUseCase does not fall back to a depleted-budget token within the 48-hour deadline window', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a depleted-budget token within the 48-hour deadline window', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('returns null when the only candidate has 3% seven-day-window free within 47 hours of reset', () => {
+  it('selects the only candidate when it has 3% seven-day-window free within 47 hours of reset', () => {
     const result = useCase.run(
       [
         candidate(
@@ -1005,7 +969,9 @@ describe('LiveSessionOauthTokenSelectUseCase does not fall back to a depleted-bu
       SETTINGS,
     );
 
-    expect(result.selected).toBeNull();
+    expect(result.selected?.name).toBe(
+      'depletedSoleCandidateWithinDeadlineWindow',
+    );
   });
 });
 
@@ -1231,5 +1197,376 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
     expect(soonReset?.concurrentSessionLimit).toBe(1);
     expect(distantReset?.concurrentSessionLimit).toBe(4);
     expect(result.selected?.name).toBe('distantResetFresh');
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase drains the token with the least seven day budget first', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('selects a 2% free token inside the 48-hour deadline window first', () => {
+    const result = useCase.run(
+      [
+        candidate('freshFirst', snapshot({})),
+        candidate('halfSpent', snapshot({ sevenDayUtilization: 0.5 })),
+        candidate(
+          'nearlySpentInsideDeadline',
+          snapshot({
+            sevenDayUtilization: 0.98,
+            sevenDayReset: NOW + 28 * HOUR,
+          }),
+        ),
+        candidate('freshLast', snapshot({})),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const nearlySpent = result.metrics.find(
+      (m) => m.name === 'nearlySpentInsideDeadline',
+    );
+    expect(nearlySpent?.eligible).toBe(true);
+    expect(nearlySpent?.exclusionReason).toBeNull();
+    expect(result.selected?.name).toBe('nearlySpentInsideDeadline');
+  });
+
+  it('selects a 7% free token before the deadline ahead of a 25% free token under fleet minimum free ratios of 10% and 25%', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'twentyFivePercentFree',
+          snapshot({
+            sevenDayUtilization: 0.75,
+            sevenDayReset: NOW + 72 * HOUR,
+          }),
+        ),
+        candidate(
+          'sevenPercentFree',
+          snapshot({
+            sevenDayUtilization: 0.93,
+            sevenDayReset: NOW + 6 * DAY,
+          }),
+        ),
+      ],
+      [],
+      NOW,
+      settingsWith({ minSevenDayFreeRatio: 0.1, minFiveHourFreeRatio: 0.25 }),
+    );
+
+    const sevenPercent = result.metrics.find(
+      (m) => m.name === 'sevenPercentFree',
+    );
+    expect(sevenPercent?.eligible).toBe(true);
+    expect(sevenPercent?.exclusionReason).toBeNull();
+    expect(result.selected?.name).toBe('sevenPercentFree');
+  });
+
+  const rejectedCases: [string, boolean, boolean][] = [
+    ['unified status rejected', true, false],
+    ['fable weekly limit rejected', false, true],
+  ];
+
+  it.each(rejectedCases)(
+    'keeps a token with the least seven day budget excluded when the API reports %s',
+    (_description, unifiedRejected, fableRejected) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'rejectedLeastBudget',
+            snapshot({
+              sevenDayUtilization: 0.98,
+              sevenDayReset: NOW + 28 * HOUR,
+            }),
+            false,
+            unifiedRejected,
+            fableRejected,
+          ),
+          candidate(
+            'sevenPercentFree',
+            snapshot({
+              sevenDayUtilization: 0.93,
+              sevenDayReset: NOW + 5 * DAY,
+            }),
+          ),
+          candidate('fresh', snapshot({})),
+        ],
+        [],
+        NOW,
+        SETTINGS,
+      );
+
+      const rejected = result.metrics.find(
+        (m) => m.name === 'rejectedLeastBudget',
+      );
+      expect(rejected?.eligible).toBe(false);
+      expect(rejected?.exclusionReason).toContain('rejected');
+      expect(result.selected?.name).toBe('sevenPercentFree');
+    },
+  );
+
+  const concurrencyCapCases: [number, string][] = [
+    [0, 'leastBudget'],
+    [9, 'leastBudget'],
+    [10, 'moreBudget'],
+  ];
+
+  it.each(concurrencyCapCases)(
+    'fills the least budget token up to its concurrent session limit of ten before moving to the next token (%i live sessions selects %s)',
+    (leastBudgetLiveSessionCount, expectedSelectedName) => {
+      const result = useCase.run(
+        [
+          candidate(
+            'moreBudget',
+            snapshot({
+              sevenDayUtilization: 0.6,
+              sevenDayReset: NOW + 5 * DAY,
+            }),
+          ),
+          candidate(
+            'leastBudget',
+            snapshot({
+              sevenDayUtilization: 0.9,
+              sevenDayReset: NOW + 5 * DAY,
+            }),
+          ),
+        ],
+        sessionsFor('leastBudget', leastBudgetLiveSessionCount),
+        NOW,
+        settingsWith({ fiveHourShareConsumedPerSessionHour: 0.02 }),
+      );
+
+      const leastBudget = result.metrics.find((m) => m.name === 'leastBudget');
+      expect(leastBudget?.concurrentSessionLimit).toBe(
+        MAX_CONCURRENT_SESSION_COUNT,
+      );
+      expect(result.selected?.name).toBe(expectedSelectedName);
+    },
+  );
+
+  it('moves a token whose remaining seven day budget cannot be spent by 48 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'drainableSoonerReset',
+          snapshot({
+            sevenDayUtilization: 0.7,
+            sevenDayReset: NOW + 72 * HOUR,
+          }),
+        ),
+        candidate(
+          'undrainableLaterReset',
+          snapshot({
+            sevenDayUtilization: 0,
+            sevenDayReset: NOW + 80 * HOUR,
+          }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const drainable = result.metrics.find(
+      (m) => m.name === 'drainableSoonerReset',
+    );
+    const undrainable = result.metrics.find(
+      (m) => m.name === 'undrainableLaterReset',
+    );
+    expect(drainable?.sevenDayBudgetUndrainableBeforeSpendDeadline).toBe(false);
+    expect(undrainable?.sevenDayBudgetUndrainableBeforeSpendDeadline).toBe(
+      true,
+    );
+    expect(result.selected?.name).toBe('undrainableLaterReset');
+  });
+
+  it('selects via fallback the token with the highest five hour free ratio when every token is blocked by an HTTP 401 auth failure', () => {
+    const result = useCase.run(
+      [
+        {
+          ...candidate(
+            'authFailedNarrow',
+            snapshot({ fiveHourUtilization: 0.8 }),
+          ),
+          blockedUntilEpoch: NOW + HOUR,
+        },
+        {
+          ...candidate(
+            'authFailedWide',
+            snapshot({ fiveHourUtilization: 0.2 }),
+          ),
+          blockedUntilEpoch: NOW + HOUR,
+        },
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const wide = result.metrics.find((m) => m.name === 'authFailedWide');
+    expect(wide?.eligible).toBe(false);
+    expect(wide?.exclusionReason).toContain('HTTP 401');
+    expect(result.selected?.name).toBe('authFailedWide');
+  });
+});
+
+describe('sevenDayShareDrainableBeforeSpendDeadlineOf', () => {
+  const drainableShareCases: [
+    string,
+    number,
+    LiveSessionOauthTokenSelectionSettings,
+    number,
+  ][] = [
+    ['a reset inside the 48-hour deadline window', 28 * HOUR, SETTINGS, 0],
+    ['a reset 72 hours away', 72 * HOUR, SETTINGS, 0.672],
+    ['a reset seven days away', 7 * DAY, SETTINGS, 3.36],
+    ['a reset already in the past', -HOUR, SETTINGS, 0],
+    [
+      'a reset seven days away when each session consumes only 0.1% of the five hour window per hour',
+      7 * DAY,
+      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
+      0.168,
+    ],
+  ];
+
+  it.each(drainableShareCases)(
+    'returns the seven day share the maximum concurrency can spend before the spend deadline for %s',
+    (_description, secondsUntilSevenDayReset, settings, expectedShare) => {
+      expect(
+        sevenDayShareDrainableBeforeSpendDeadlineOf(
+          NOW + secondsUntilSevenDayReset,
+          NOW,
+          settings,
+        ),
+      ).toBeCloseTo(expectedShare, 10);
+    },
+  );
+});
+
+describe('sevenDayBudgetUndrainableBeforeSpendDeadlineOf', () => {
+  const undrainableCases: [number, number, boolean][] = [
+    [0.02, 28 * HOUR, true],
+    [0, 28 * HOUR, false],
+    [0.5, 72 * HOUR, false],
+    [0.7, 72 * HOUR, true],
+    [1, 80 * HOUR, true],
+    [1, 7 * DAY, false],
+  ];
+
+  it.each(undrainableCases)(
+    'reports %f seven day free with the reset %i seconds away as undrainable: %s',
+    (sevenDayFreeRatio, secondsUntilSevenDayReset, expectedUndrainable) => {
+      expect(
+        sevenDayBudgetUndrainableBeforeSpendDeadlineOf(
+          sevenDayFreeRatio,
+          NOW + secondsUntilSevenDayReset,
+          NOW,
+          SETTINGS,
+        ),
+      ).toBe(expectedUndrainable);
+    },
+  );
+});
+
+describe('liveSessionOauthTokenCandidateMetricsInSelectionOrder', () => {
+  const metricOf = (
+    name: string,
+    overrides: Partial<LiveSessionOauthTokenCandidateMetrics>,
+  ): LiveSessionOauthTokenCandidateMetrics => ({
+    name,
+    fiveHourFreeRatio: 1,
+    sevenDayFreeRatio: 1,
+    sevenDayEndEpoch: NOW + 7 * DAY,
+    sevenDayBudgetUndrainableBeforeSpendDeadline: false,
+    liveSessionCount: 0,
+    concurrentSessionLimit: MAX_CONCURRENT_SESSION_COUNT,
+    hasConcurrencyHeadroom: true,
+    eligible: true,
+    exclusionReason: null,
+    selectionWeight: 1,
+    ...overrides,
+  });
+
+  const selectionOrderCases: [
+    string,
+    LiveSessionOauthTokenCandidateMetrics[],
+    string[],
+  ][] = [
+    [
+      'puts a token whose seven day budget is undrainable first even when it has more budget',
+      [
+        metricOf('leastBudget', { sevenDayFreeRatio: 0.1 }),
+        metricOf('undrainable', {
+          sevenDayFreeRatio: 0.9,
+          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
+        }),
+      ],
+      ['undrainable', 'leastBudget'],
+    ],
+    [
+      'orders by seven day free ratio ascending',
+      [
+        metricOf('half', { sevenDayFreeRatio: 0.5 }),
+        metricOf('full', { sevenDayFreeRatio: 1 }),
+        metricOf('tenth', { sevenDayFreeRatio: 0.1 }),
+      ],
+      ['tenth', 'half', 'full'],
+    ],
+    [
+      'orders undrainable tokens by seven day free ratio ascending among themselves',
+      [
+        metricOf('undrainableFull', {
+          sevenDayFreeRatio: 1,
+          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
+        }),
+        metricOf('undrainableHalf', {
+          sevenDayFreeRatio: 0.5,
+          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
+        }),
+      ],
+      ['undrainableHalf', 'undrainableFull'],
+    ],
+    [
+      'breaks a seven day free ratio tie by the sooner seven day reset',
+      [
+        metricOf('laterReset', { sevenDayEndEpoch: NOW + 6 * DAY }),
+        metricOf('soonerReset', { sevenDayEndEpoch: NOW + 5 * DAY }),
+      ],
+      ['soonerReset', 'laterReset'],
+    ],
+    [
+      'breaks a seven day free ratio and reset tie by the fewer live sessions',
+      [
+        metricOf('busy', { liveSessionCount: 3 }),
+        metricOf('idle', { liveSessionCount: 0 }),
+      ],
+      ['idle', 'busy'],
+    ],
+    [
+      'keeps the candidate order for a full tie',
+      [metricOf('first', {}), metricOf('second', {})],
+      ['first', 'second'],
+    ],
+  ];
+
+  it.each(selectionOrderCases)(
+    '%s',
+    (_description, metrics, expectedNamesInSelectionOrder) => {
+      expect(
+        liveSessionOauthTokenCandidateMetricsInSelectionOrder(metrics).map(
+          (metric) => metric.name,
+        ),
+      ).toEqual(expectedNamesInSelectionOrder);
+    },
+  );
+
+  it('does not reorder the metrics array it is given', () => {
+    const metrics = [
+      metricOf('full', { sevenDayFreeRatio: 1 }),
+      metricOf('tenth', { sevenDayFreeRatio: 0.1 }),
+    ];
+
+    liveSessionOauthTokenCandidateMetricsInSelectionOrder(metrics);
+
+    expect(metrics.map((metric) => metric.name)).toEqual(['full', 'tenth']);
   });
 });
