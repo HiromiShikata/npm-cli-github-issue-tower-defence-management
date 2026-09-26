@@ -1530,6 +1530,48 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should edit the existing STORY_UNSET comment in place, naming the new agent, when the reported next-step-agent changes between story-unset cycles', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'developer',
+      story: null,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        id: 'story-unset-comment-id',
+        content:
+          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
+      }),
+      createMockComment({
+        content:
+          'From: :robot: developer\n```json\n{"nextStepAgent": "code-reviewer", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
+      expect.anything(),
+      'story-unset-comment-id',
+      expect.stringContaining('Auto Status Check: STORY_UNSET code-reviewer'),
+    );
+  });
+
   it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

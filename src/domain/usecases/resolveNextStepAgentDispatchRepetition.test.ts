@@ -924,6 +924,40 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     });
   });
 
+  describe('no-story guard existing comment id tracking across a next-step-agent name change', () => {
+    const markerCommentWithId = (
+      nextStepAgent: string,
+      id: string,
+    ): TestComment & { id: string } => ({
+      ...storyUnsetMarkerComment(nextStepAgent),
+      id,
+    });
+
+    it('surfaces the prior STORY_UNSET comment id and increments its embedded count even when the newly reported nextStepAgent differs from the agent name embedded in that comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'code-reviewer',
+        comments: [
+          report('developer'),
+          markerCommentWithId('developer', 'existing-comment-id'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      expect(result.type).toBe('storyUnset');
+      if (result.type !== 'storyUnset') {
+        throw new Error('Expected storyUnset');
+      }
+      expect(result.existingCommentId).toBe('existing-comment-id');
+      expect(result.comment).toContain('code-reviewer');
+      expect(result.comment).toContain('(2/6)');
+    });
+  });
+
   describe('no-story guard dispatch loop circuit breaker', () => {
     it.each([
       { priorStoryUnsetComments: 1, expectedType: 'storyUnset' },
