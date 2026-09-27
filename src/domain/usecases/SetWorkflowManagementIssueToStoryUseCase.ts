@@ -91,7 +91,12 @@ export class SetWorkflowManagementIssueToStoryUseCase {
               `Skipping stale project item while setting workflow-management Story: ${issue.url} (itemId=${error.itemId})`,
             );
           } else {
-            errors.push(error);
+            errors.push(
+              new Error(
+                `Failed to write the workflow-management Story. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error },
+              ),
+            );
           }
           continue;
         }
@@ -176,7 +181,12 @@ export class SetWorkflowManagementIssueToStoryUseCase {
             `Skipping stale project item while setting matched-story-label Story: ${issue.url} (itemId=${error.itemId})`,
           );
         } else {
-          errors.push(error);
+          errors.push(
+            new Error(
+              `Failed to write the matched-story-label Story. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
+            ),
+          );
         }
         continue;
       }
@@ -185,7 +195,11 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     if (errors.length > 0) {
       throw new AggregateError(
         errors,
-        `Failed to re-read the live Story value for ${errors.length} issue(s) before writing the workflow-management or matched-story-label Story`,
+        `Failed to write the workflow-management or matched-story-label Story for ${errors.length} issue(s): ${errors
+          .map((error) =>
+            error instanceof Error ? error.message : String(error),
+          )
+          .join('; ')}`,
       );
     }
   };
