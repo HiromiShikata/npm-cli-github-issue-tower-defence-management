@@ -1419,7 +1419,19 @@ export class ApiV3CheerioRestIssueRepository
       if (alreadyPresent) {
         return;
       }
-      const updatedIssues = [...cached.issues, issue];
+      const storyOptionIdUnresolved =
+        issue.storyOptionId === null || issue.storyOptionId === undefined;
+      const matchedStoryOption =
+        storyOptionIdUnresolved && issue.story !== null
+          ? (cached.project.story?.stories ?? []).find(
+              (storyOption) => storyOption.name === issue.story,
+            )
+          : undefined;
+      const issueToAppend: Issue =
+        matchedStoryOption === undefined
+          ? issue
+          : { ...issue, storyOptionId: matchedStoryOption.id };
+      const updatedIssues = [...cached.issues, issueToAppend];
       await this.projectIssuesCacheRepository.write(projectId, {
         ...cached,
         issues: updatedIssues,

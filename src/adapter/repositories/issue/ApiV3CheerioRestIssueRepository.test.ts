@@ -9164,6 +9164,134 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
     });
+
+    it('resolves storyOptionId from the project story options when the issue carries no storyOptionId but its story name matches an option', async () => {
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const storyOptionId = 'story-option-id-abc';
+      const projectWithMatchingStoryOption: Project = {
+        ...buildTestProject('proj-cache-test'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: storyOptionId,
+              name: 'feature / NewStory',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      const issueWithUnresolvedStoryOptionId: Issue = {
+        ...newIssue,
+        storyOptionId: undefined,
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        ...baseCache,
+        project: projectWithMatchingStoryOption,
+      });
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.appendIssueToProjectCache(
+        'proj-cache-test',
+        issueWithUnresolvedStoryOptionId,
+      );
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        issues: [
+          expect.objectContaining({ url: existingIssue.url }),
+          expect.objectContaining({
+            url: newIssue.url,
+            storyOptionId,
+          }),
+        ],
+      });
+    });
+
+    const noMatchingStoryOptionCases: { name: string; project: Project }[] = [
+      {
+        name: 'the project has no story field',
+        project: buildTestProject('proj-cache-test'),
+      },
+      {
+        name: 'the story option list is empty',
+        project: {
+          ...buildTestProject('proj-cache-test'),
+          story: {
+            name: 'Story',
+            fieldId: 'story-field-id',
+            databaseId: 1,
+            stories: [],
+            workflowManagementStory: {
+              id: 'wms',
+              name: 'workflow management',
+            },
+          },
+        },
+      },
+      {
+        name: 'the story option list has no name match',
+        project: {
+          ...buildTestProject('proj-cache-test'),
+          story: {
+            name: 'Story',
+            fieldId: 'story-field-id',
+            databaseId: 1,
+            stories: [
+              {
+                id: 'unrelated-option-id',
+                name: 'feature / UnrelatedStory',
+                color: 'BLUE',
+                description: '',
+              },
+            ],
+            workflowManagementStory: {
+              id: 'wms',
+              name: 'workflow management',
+            },
+          },
+        },
+      },
+    ];
+
+    test.each(noMatchingStoryOptionCases)(
+      'leaves storyOptionId unresolved when $name',
+      async (tc) => {
+        const { repository, localStorageCacheRepository } =
+          createApiV3CheerioRestIssueRepository();
+        const issueWithUnresolvedStoryOptionId: Issue = {
+          ...newIssue,
+          storyOptionId: undefined,
+        };
+        localStorageCacheRepository.getSingle.mockResolvedValue({
+          ...baseCache,
+          project: tc.project,
+        });
+        localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+        await repository.appendIssueToProjectCache(
+          'proj-cache-test',
+          issueWithUnresolvedStoryOptionId,
+        );
+
+        const cacheWrite =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(cacheWrite).toMatchObject({
+          issues: [
+            expect.objectContaining({ url: existingIssue.url }),
+            expect.objectContaining({
+              url: newIssue.url,
+              storyOptionId: undefined,
+            }),
+          ],
+        });
+      },
+    );
   });
 
   describe('appendIssueToProjectCache concurrent writes (hardening lock)', () => {
@@ -9578,6 +9706,57 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'feature / OldStory': 'https://github.com/o/r/issues/2',
           'feature / NewStory': newIssueUrl,
         },
+      });
+    });
+
+    it('resolves storyOptionId on the partial issue cache write for a newly created issue with a story pre-selected', async () => {
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const storyOptionId = 'story-option-id-abc';
+      const projectWithMatchingStoryOption: Project = {
+        ...buildTestProject('proj-create-test'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: storyOptionId,
+              name: 'feature / NewStory',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      restIssueRepository.createNewIssue.mockResolvedValue(newIssueNumber);
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        ...baseCache,
+        project: projectWithMatchingStoryOption,
+      });
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        'proj-create-test',
+        'feature / NewStory',
+      );
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        issues: [
+          expect.objectContaining({ url: existingIssue.url }),
+          expect.objectContaining({
+            url: newIssueUrl,
+            storyOptionId,
+          }),
+        ],
       });
     });
   });
