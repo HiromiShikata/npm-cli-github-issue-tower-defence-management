@@ -130,6 +130,7 @@ const buildStaleItemTestIssue = (itemId: string, url: string): Issue => ({
   createdAt: new Date('2026-01-01'),
   author: '',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   isRepoArchived: false,
   stateReason: null,
