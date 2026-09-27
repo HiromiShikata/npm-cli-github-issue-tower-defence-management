@@ -32,6 +32,7 @@ import {
 } from '../cli/projectConfig';
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -598,13 +599,21 @@ export const handleTriage = async (
     if (!isNonEmptyString(statusName)) {
       return badRequest('statusName is required for set_status');
     }
-    const failure = await updateStatusByName(
-      context.resolveIssueRepository(issueUrl),
-      project,
-      issueUrl,
-      projectItemId,
-      statusName,
-    );
+    let failure: ConsoleOperationResponse | null;
+    try {
+      failure = await updateStatusByName(
+        context.resolveIssueRepository(issueUrl),
+        project,
+        issueUrl,
+        projectItemId,
+        statusName,
+      );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      failure = badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
     if (failure !== null) {
       return failure;
     }

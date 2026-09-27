@@ -15,6 +15,7 @@ import {
 } from './consoleDoneStore';
 import { countCloseEvents } from './consoleCloseEventStore';
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import {
   type ConsoleOperationContext,
   type ConsoleProjectBinding,
@@ -768,6 +769,38 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(400);
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('re-throws from set_status when updateStatus fails for a reason other than a stale project item', async () => {
+      const otherError = new Error('some other failure');
+      issueRepository.updateStatus.mockRejectedValueOnce(otherError);
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_d',
+          statusName: 'Todo',
+        }),
+      ).rejects.toThrow('some other failure');
+    });
+
+    it('resolves with a 4xx response when updateStatus fails because the project item no longer exists on GitHub', async () => {
+      issueRepository.updateStatus.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_stale'),
+      );
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_stale',
+        statusName: 'Todo',
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBeLessThan(500);
     });
 
     it('sets the story option', async () => {
