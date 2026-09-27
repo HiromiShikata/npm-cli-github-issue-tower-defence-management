@@ -9258,10 +9258,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('removes the issue with the given itemId from the on-disk project issues cache and keeps the other cached issues', async () => {
       const projectId = 'proj-remove-from-cache-on-disk';
       const { cache, project } = await seedProjectIssuesCache(projectId);
-      const { repository } = buildRepositoryReadingOnlyTheCache(
-        cache,
-        project,
-      );
+      const { repository } = buildRepositoryReadingOnlyTheCache(cache, project);
 
       await repository.removeIssueFromProjectCache(
         projectId,
@@ -9280,10 +9277,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('makes later getAllIssues and getAllOpened calls on the same repository instance stop returning the removed issue after an earlier getAllIssues call already returned it', async () => {
       const projectId = 'proj-remove-from-cache-memo';
       const { cache, project } = await seedProjectIssuesCache(projectId);
-      const { repository } = buildRepositoryReadingOnlyTheCache(
-        cache,
-        project,
-      );
+      const { repository } = buildRepositoryReadingOnlyTheCache(cache, project);
       const issueUrlsBeforeRemoval = (
         await repository.getAllIssues(projectId)
       ).issues.map((issue) => issue.url);
