@@ -2,6 +2,7 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { issueReactivationTriggerStartOfTomorrow } from './issueReactivationTriggerIsPending';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const isSameNextActionDate = (a: Date | null, b: Date | null): boolean => {
   if (a === null || b === null) {
@@ -52,6 +53,7 @@ export class ClearPastNextActionDateHourUseCase {
       return;
     }
     const now = input.targetDates[input.targetDates.length - 1];
+    const failedIssueDescriptions: string[] = [];
 
     const nextActionHourField = input.project.nextActionHour;
     if (nextActionHourField) {
@@ -77,49 +79,92 @@ export class ClearPastNextActionDateHourUseCase {
         ) {
           continue;
         }
-        await this.issueRepository.clearProjectField(
-          input.project,
-          nextActionHourField.fieldId,
-          issue,
-        );
+        try {
+          await this.issueRepository.clearProjectField(
+            input.project,
+            nextActionHourField.fieldId,
+            issue,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while clearing Next Action Hour: ${issue.url} (itemId=${error.itemId})`,
+            );
+          } else {
+            failedIssueDescriptions.push(
+              `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+          continue;
+        }
         await new Promise((resolve) => setTimeout(resolve, 5000));
         if (!nextActionDateField || issue.nextActionDate === null) {
           continue;
         }
-        await this.issueRepository.clearProjectField(
-          input.project,
-          nextActionDateField.fieldId,
-          issue,
-        );
+        try {
+          await this.issueRepository.clearProjectField(
+            input.project,
+            nextActionDateField.fieldId,
+            issue,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while clearing Next Action Date: ${issue.url} (itemId=${error.itemId})`,
+            );
+          } else {
+            failedIssueDescriptions.push(
+              `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+          continue;
+        }
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
 
     const nextActionDate = input.project.nextActionDate;
-    if (!nextActionDate) {
-      return;
+    if (nextActionDate) {
+      const startOfTomorrow = issueReactivationTriggerStartOfTomorrow(now);
+      for (const issue of input.issues) {
+        if (
+          issue.nextActionHour !== null ||
+          (issue.nextActionDate?.getTime() ?? Infinity) >=
+            startOfTomorrow.getTime() ||
+          issue.state !== 'OPEN'
+        ) {
+          continue;
+        }
+        if (
+          !(await this.isLiveNextActionDateHourUnchanged(issue, input.project))
+        ) {
+          continue;
+        }
+        try {
+          await this.issueRepository.clearProjectField(
+            input.project,
+            nextActionDate.fieldId,
+            issue,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while clearing past Next Action Date: ${issue.url} (itemId=${error.itemId})`,
+            );
+          } else {
+            failedIssueDescriptions.push(
+              `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+          continue;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
     }
-    const startOfTomorrow = issueReactivationTriggerStartOfTomorrow(now);
-    for (const issue of input.issues) {
-      if (
-        issue.nextActionHour !== null ||
-        (issue.nextActionDate?.getTime() ?? Infinity) >=
-          startOfTomorrow.getTime() ||
-        issue.state !== 'OPEN'
-      ) {
-        continue;
-      }
-      if (
-        !(await this.isLiveNextActionDateHourUnchanged(issue, input.project))
-      ) {
-        continue;
-      }
-      await this.issueRepository.clearProjectField(
-        input.project,
-        nextActionDate.fieldId,
-        issue,
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to clear past next action date/hour for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
       );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   };
 }

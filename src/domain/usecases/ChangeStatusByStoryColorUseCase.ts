@@ -7,6 +7,7 @@ import { Member } from '../entities/Member';
 import { Issue } from '../entities/Issue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(
@@ -41,6 +42,7 @@ export class ChangeStatusByStoryColorUseCase {
     if (!disabledStatusObject) {
       throw new Error('Icebox status is not found');
     }
+    const failedIssueDescriptions: string[] = [];
     for (const storyObject of Array.from(input.storyObjectMap.values())) {
       const isStoryDisabled = storyObject.story.color === 'GRAY';
       for (const issue of storyObject.issues) {
@@ -57,11 +59,24 @@ export class ChangeStatusByStoryColorUseCase {
           ) {
             continue;
           }
-          await this.issueRepository.updateStatus(
-            input.project,
-            issue,
-            disabledStatusObject.id,
-          );
+          try {
+            await this.issueRepository.updateStatus(
+              input.project,
+              issue,
+              disabledStatusObject.id,
+            );
+          } catch (error) {
+            if (error instanceof StaleProjectItemError) {
+              console.warn(
+                `Skipping stale project item while disabling status: ${issue.url} (itemId=${error.itemId})`,
+              );
+              continue;
+            }
+            failedIssueDescriptions.push(
+              `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            continue;
+          }
           await this.createCommentWithDedup(
             issue,
             `This issue status is changed because the story is disabled.`,
@@ -89,17 +104,35 @@ export class ChangeStatusByStoryColorUseCase {
           ) {
             continue;
           }
-          await this.issueRepository.updateStatus(
-            input.project,
-            issue,
-            firstStatus.id,
-          );
+          try {
+            await this.issueRepository.updateStatus(
+              input.project,
+              issue,
+              firstStatus.id,
+            );
+          } catch (error) {
+            if (error instanceof StaleProjectItemError) {
+              console.warn(
+                `Skipping stale project item while enabling status: ${issue.url} (itemId=${error.itemId})`,
+              );
+              continue;
+            }
+            failedIssueDescriptions.push(
+              `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            continue;
+          }
           await this.createCommentWithDedup(
             issue,
             `This issue status is changed because the story is enabled.`,
           );
         }
       }
+    }
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to change status by story color for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+      );
     }
   };
 

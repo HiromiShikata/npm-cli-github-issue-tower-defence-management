@@ -13,6 +13,7 @@ import {
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { isAgentReportBody } from './isAgentReportBody';
 import { extractIterationsExhausted } from './extractIterationsExhausted';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class ClearDependedIssueURLUseCase {
   constructor(
@@ -37,19 +38,37 @@ export class ClearDependedIssueURLUseCase {
     if (!dependedIssueUrlSeparatedByComma) {
       return;
     }
+    const failedIssueDescriptions: string[] = [];
     for (const issue of input.issues) {
       if (issue.dependedIssueUrls.length <= 0 || issue.isClosed) {
         continue;
       }
-      await this.removeResolvedDependedIssueUrlsFromIssue({
-        project: input.project,
-        issues: input.issues,
-        allowedExternalRepoNameWithOwner:
-          input.allowedExternalRepoNameWithOwner,
-        dependedIssueUrlSeparatedByComma,
-        issue,
-        absentDependedIssueIsResolvable: !input.cacheUsed,
-      });
+      try {
+        await this.removeResolvedDependedIssueUrlsFromIssue({
+          project: input.project,
+          issues: input.issues,
+          allowedExternalRepoNameWithOwner:
+            input.allowedExternalRepoNameWithOwner,
+          dependedIssueUrlSeparatedByComma,
+          issue,
+          absentDependedIssueIsResolvable: !input.cacheUsed,
+        });
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `Skipping stale project item while clearing depended issue URL: ${issue.url} (itemId=${error.itemId})`,
+          );
+          continue;
+        }
+        failedIssueDescriptions.push(
+          `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to clear depended issue URL for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+      );
     }
   };
 

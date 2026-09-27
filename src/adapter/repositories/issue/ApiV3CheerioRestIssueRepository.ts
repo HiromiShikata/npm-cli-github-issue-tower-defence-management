@@ -804,6 +804,25 @@ export class ApiV3CheerioRestIssueRepository
     throw new Error(message);
   };
 
+  private evictAndThrowStaleProjectItemErrorOrRethrow = async (
+    error: unknown,
+    project: Project,
+    issue: Issue,
+  ): Promise<never> => {
+    if (
+      error instanceof Error &&
+      error.message.includes('Could not resolve to a node with the global id')
+    ) {
+      this.getAllIssuesRefreshMemo.delete(project.id);
+      await this.projectIssuesCacheRepository.removeIssueByItemId(
+        project.id,
+        issue.itemId,
+      );
+      throw new StaleProjectItemError(issue.itemId);
+    }
+    throw error;
+  };
+
   updateStatus: (
     project: Project,
     issue: Issue,
@@ -817,18 +836,11 @@ export class ApiV3CheerioRestIssueRepository
         { singleSelectOptionId: statusId },
       );
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes('Could not resolve to a node with the global id')
-      ) {
-        this.getAllIssuesRefreshMemo.delete(project.id);
-        await this.projectIssuesCacheRepository.removeIssueByItemId(
-          project.id,
-          issue.itemId,
-        );
-        throw new StaleProjectItemError(issue.itemId);
-      }
-      throw error;
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue,
+      );
     }
     const memoized = this.getAllIssuesRefreshMemo.get(project.id);
     if (memoized) {
@@ -1560,12 +1572,20 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     storyOptionId: string,
   ): Promise<void> => {
-    await this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.story.fieldId,
-      issue.itemId,
-      { singleSelectOptionId: storyOptionId },
-    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.story.fieldId,
+        issue.itemId,
+        { singleSelectOptionId: storyOptionId },
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue,
+      );
+    }
     const storyName = project.story.stories.find(
       (s) => s.id === storyOptionId,
     )?.name;
@@ -1632,11 +1652,19 @@ export class ApiV3CheerioRestIssueRepository
     fieldId: string,
     issue: Issue,
   ): Promise<void> => {
-    await this.graphqlProjectItemRepository.clearProjectField(
-      project.id,
-      fieldId,
-      issue.itemId,
-    );
+    try {
+      await this.graphqlProjectItemRepository.clearProjectField(
+        project.id,
+        fieldId,
+        issue.itemId,
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue,
+      );
+    }
     await this.applyDependedIssueUrlFieldWriteToLaterReads(
       project,
       fieldId,
@@ -1653,12 +1681,20 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     text: string,
   ): Promise<void> => {
-    await this.graphqlProjectItemRepository.updateProjectTextField(
-      project.id,
-      fieldId,
-      issue.itemId,
-      text,
-    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectTextField(
+        project.id,
+        fieldId,
+        issue.itemId,
+        text,
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue,
+      );
+    }
     await this.applyDependedIssueUrlFieldWriteToLaterReads(
       project,
       fieldId,

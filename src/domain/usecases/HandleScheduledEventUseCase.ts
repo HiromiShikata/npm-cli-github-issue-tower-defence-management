@@ -634,6 +634,23 @@ ${JSON.stringify(e)}
     }
     return { rotationOrder: null };
   };
+  private runOperationIsolated = async (
+    operationName: string,
+    operation: () => Promise<void>,
+    failures: string[],
+  ): Promise<void> => {
+    try {
+      await operation();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[HandleScheduledEvent] Failed to ${operationName}: ${message}`,
+        error,
+      );
+      failures.push(`${operationName}: ${message}`);
+    }
+  };
+
   runSlowSweepUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],
     project: Project,
@@ -643,93 +660,140 @@ ${JSON.stringify(e)}
     storyObjectMap: StoryObjectMap,
     now: Date,
   ): Promise<void> => {
-    try {
-      await this.setWorkflowManagementIssueToStoryUseCase.run({
-        targetDates: targetDateTimes,
-        project,
-        issues,
-        cacheUsed,
-      });
-    } catch (workflowManagementStoryError) {
-      console.error(
-        `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${workflowManagementStoryError instanceof Error ? workflowManagementStoryError.message : String(workflowManagementStoryError)}`,
-        workflowManagementStoryError,
+    const failures: string[] = [];
+    await this.runOperationIsolated(
+      `set workflow-management issues to Story for project ${project.url}`,
+      () =>
+        this.setWorkflowManagementIssueToStoryUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `set NO STORY issues to Story for project ${project.url}`,
+      () =>
+        this.setNoStoryIssueToStoryUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `run action announcements for project ${project.url}`,
+      () =>
+        this.actionAnnouncementUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+          members: input.workingReport.members,
+          manager: input.manager,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `clear past next action date/hour for project ${project.url}`,
+      () =>
+        this.clearPastNextActionUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `clear depended issue URL for project ${project.url}`,
+      () =>
+        this.clearDependedIssueURLUseCase.run({
+          project,
+          issues,
+          cacheUsed,
+          allowedExternalRepoNameWithOwner:
+            input.allowedDependencyRepoNameWithOwner ?? null,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `set depended issue URL for open task PRs for project ${project.url}`,
+      () =>
+        this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+          project,
+          issues,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `close stale task pull requests for project ${project.url}`,
+      () =>
+        this.staleTaskPullRequestCloseUseCase.run({
+          issues,
+          evaluatedAt: now,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `create estimation issue for project ${project.url}`,
+      () =>
+        this.createEstimationIssueUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+          manager: input.manager,
+          org: input.org,
+          repo: input.workingReport.repo,
+          urlOfStoryView: input.urlOfStoryView,
+          storyObjectMap: storyObjectMap,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `change status by story color for project ${project.url}`,
+      () =>
+        this.changeStatusByStoryColorUseCase.run({
+          project,
+          cacheUsed,
+          org: input.org,
+          repo: input.workingReport.repo,
+          storyObjectMap: storyObjectMap,
+          manager: input.manager,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `assign no-assignee issue to manager for project ${project.url}`,
+      () =>
+        this.assignNoAssigneeIssueToManagerUseCase.run({
+          issues,
+          manager: input.manager,
+          cacheUsed,
+          autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
+          queryToAddProject: input.queryToAddProject ?? null,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `update issue status by label for project ${project.url}`,
+      () =>
+        this.updateIssueStatusByLabelUseCase.run({
+          project,
+          issues,
+        }),
+      failures,
+    );
+    if (failures.length > 0) {
+      throw new Error(
+        `Failed ${failures.length} operation(s) in runSlowSweepUseCases for project ${project.url}: ${failures.join('; ')}`,
       );
     }
-    try {
-      await this.setNoStoryIssueToStoryUseCase.run({
-        targetDates: targetDateTimes,
-        project,
-        issues,
-        cacheUsed,
-      });
-    } catch (noStoryError) {
-      console.error(
-        `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${noStoryError instanceof Error ? noStoryError.message : String(noStoryError)}`,
-        noStoryError,
-      );
-    }
-    await this.actionAnnouncementUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      members: input.workingReport.members,
-      manager: input.manager,
-    });
-    await this.clearPastNextActionUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-    await this.clearDependedIssueURLUseCase.run({
-      project,
-      issues,
-      cacheUsed,
-      allowedExternalRepoNameWithOwner:
-        input.allowedDependencyRepoNameWithOwner ?? null,
-    });
-    await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
-      project,
-      issues,
-    });
-    await this.staleTaskPullRequestCloseUseCase.run({
-      issues,
-      evaluatedAt: now,
-    });
-    await this.createEstimationIssueUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      manager: input.manager,
-      org: input.org,
-      repo: input.workingReport.repo,
-      urlOfStoryView: input.urlOfStoryView,
-      storyObjectMap: storyObjectMap,
-    });
-    await this.changeStatusByStoryColorUseCase.run({
-      project,
-      cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap: storyObjectMap,
-      manager: input.manager,
-    });
-    await this.assignNoAssigneeIssueToManagerUseCase.run({
-      issues,
-      manager: input.manager,
-      cacheUsed,
-      autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
-      projectToAddSearchedIssues: project,
-      queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
-      queryToAddProject: input.queryToAddProject ?? null,
-    });
-    await this.updateIssueStatusByLabelUseCase.run({
-      project,
-      issues,
-    });
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
     const targetDateTimes: Date[] = [];

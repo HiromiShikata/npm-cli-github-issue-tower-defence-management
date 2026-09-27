@@ -7,6 +7,7 @@ import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class CreateEstimationIssueUseCase {
   constructor(
@@ -49,6 +50,7 @@ export class CreateEstimationIssueUseCase {
       return;
     }
 
+    const failedIssueDescriptions: string[] = [];
     for (const story of input.project.story?.stories || []) {
       const storyIssue = input.issues.find((issue) =>
         story.name.startsWith(issue.title),
@@ -83,11 +85,24 @@ export class CreateEstimationIssueUseCase {
             issueInStory,
             `\`${estimationMinutesField.name}\` field value \`${issueInStory.estimationMinutes}\` is removed to re-estimate.`,
           );
-          await this.issueRepository.clearProjectField(
-            input.project,
-            estimationMinutesField.fieldId,
-            issueInStory,
-          );
+          try {
+            await this.issueRepository.clearProjectField(
+              input.project,
+              estimationMinutesField.fieldId,
+              issueInStory,
+            );
+          } catch (error) {
+            if (error instanceof StaleProjectItemError) {
+              console.warn(
+                `Skipping stale project item while clearing estimation minutes field: ${issueInStory.url} (itemId=${error.itemId})`,
+              );
+            } else {
+              failedIssueDescriptions.push(
+                `${issueInStory.url}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+            continue;
+          }
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
         if (
@@ -101,11 +116,24 @@ export class CreateEstimationIssueUseCase {
             issueInStory,
             `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`,
           );
-          await this.issueRepository.clearProjectField(
-            input.project,
-            completionDate50PercentConfidenceField.fieldId,
-            issueInStory,
-          );
+          try {
+            await this.issueRepository.clearProjectField(
+              input.project,
+              completionDate50PercentConfidenceField.fieldId,
+              issueInStory,
+            );
+          } catch (error) {
+            if (error instanceof StaleProjectItemError) {
+              console.warn(
+                `Skipping stale project item while clearing completion date field: ${issueInStory.url} (itemId=${error.itemId})`,
+              );
+            } else {
+              failedIssueDescriptions.push(
+                `${issueInStory.url}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+            continue;
+          }
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
         for (const assignee of issueInStory.assignees) {
@@ -127,6 +155,11 @@ export class CreateEstimationIssueUseCase {
         );
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
+    }
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to create estimation issue for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+      );
     }
   };
   private createCommentWithDedup = async (
