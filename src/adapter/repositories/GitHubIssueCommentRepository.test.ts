@@ -41,6 +41,7 @@ const buildIssue = (url: string): Issue => ({
   createdAt: new Date('2024-01-01T00:00:00Z'),
   author: 'testuser',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   stateReason: null,
 });

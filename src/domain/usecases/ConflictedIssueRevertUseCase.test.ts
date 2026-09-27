@@ -82,6 +82,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   author: 'owner',
   stateReason: null,
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   ...overrides,
 });

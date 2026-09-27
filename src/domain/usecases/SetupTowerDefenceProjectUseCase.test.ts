@@ -77,6 +77,7 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
   createdAt: new Date('2024-01-01'),
   author: 'user',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   stateReason: null,
   ...overrides,
