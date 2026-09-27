@@ -17,6 +17,7 @@ export type ProjectItem = {
   updatedAt: string;
   author: string;
   closingIssueReferenceUrls: string[];
+  plainCrossRepoIssueReferenceUrls: string[];
   isRepoArchived: boolean;
   stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;
   customFields: {
@@ -670,6 +671,20 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     );
     return retryAttempt.issues;
   };
+  private extractPlainCrossRepoIssueReferenceUrls = (
+    body: string | null,
+    ownRepoNameWithOwner: string,
+  ): string[] => {
+    if (!body) {
+      return [];
+    }
+    const githubIssueOrPullUrlPattern =
+      /https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/(?:issues|pull)\/\d+/g;
+    const crossRepoUrls = Array.from(body.matchAll(githubIssueOrPullUrlPattern))
+      .filter((match) => `${match[1]}/${match[2]}` !== ownRepoNameWithOwner)
+      .map((match) => match[0]);
+    return Array.from(new Set(crossRepoUrls));
+  };
   private mapProjectV2ItemNodeToProjectItem = (
     item: ProjectV2ItemNode | null,
   ): ProjectItem | null => {
@@ -706,6 +721,11 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           })
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
+      plainCrossRepoIssueReferenceUrls:
+        this.extractPlainCrossRepoIssueReferenceUrls(
+          item.content.body ?? null,
+          item.content.repository.nameWithOwner,
+        ),
       isRepoArchived: item.content.repository.isArchived ?? false,
       stateReason: toStateReason(item.content.stateReason),
       customFields: item.fieldValues.nodes
@@ -1403,6 +1423,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           })
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
+      plainCrossRepoIssueReferenceUrls:
+        this.extractPlainCrossRepoIssueReferenceUrls(
+          content.body,
+          content.repository.nameWithOwner,
+        ),
       isRepoArchived: content.repository.isArchived ?? false,
       stateReason: toStateReason(content.stateReason),
       customFields,

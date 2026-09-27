@@ -52,6 +52,7 @@ describe('ClearPastNextActionDateHourUseCase - stale snapshot re-read', () => {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     author: 'some-author',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
     agent: null,
     stateReason: null,
     ...overrides,

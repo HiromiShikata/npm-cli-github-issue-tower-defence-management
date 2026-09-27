@@ -26,6 +26,7 @@ export type Issue = {
   createdAt: Date;
   author: string;
   closingIssueReferenceUrls: string[];
+  plainCrossRepoIssueReferenceUrls: string[];
   agent: string | null;
   isRepoArchived?: boolean;
   stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;

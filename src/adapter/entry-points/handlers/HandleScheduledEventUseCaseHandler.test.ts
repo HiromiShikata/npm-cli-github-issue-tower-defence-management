@@ -1063,6 +1063,7 @@ defaultAgentName: readme-agent
       createdAt: new Date('2026-06-13T08:18:45.000Z'),
       author: 'someone',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
       agent: null,
       stateReason: null,
     });

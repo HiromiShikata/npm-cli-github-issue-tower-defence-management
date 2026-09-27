@@ -78,6 +78,7 @@ const buildProjectItem = (url: string, title: string): ProjectItem => ({
   updatedAt: '2026-07-06T00:00:00.000Z',
   author: '',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   isRepoArchived: false,
   stateReason: null,
   customFields: [],
@@ -134,6 +135,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             closingIssueReferenceUrls: [
               'https://github.com/HiromiShikata/test-repository/issues/7',
             ],
+            plainCrossRepoIssueReferenceUrls: [],
             isRepoArchived: false,
             stateReason: 'REOPENED' as const,
             customFields: [
@@ -172,6 +174,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           closingIssueReferenceUrls: [
             'https://github.com/HiromiShikata/test-repository/issues/7',
           ],
+          plainCrossRepoIssueReferenceUrls: [],
           agent: null,
           isRepoArchived: false,
           stateReason: 'REOPENED',
@@ -194,6 +197,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             updatedAt: '2024-01-02T00:00:00Z',
             author: '',
             closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
             isRepoArchived: false,
             stateReason: null,
             customFields: [
@@ -233,6 +237,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           createdAt: new Date('2024-01-01T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
+          plainCrossRepoIssueReferenceUrls: [],
           agent: null,
           isRepoArchived: false,
           stateReason: null,
@@ -255,6 +260,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             updatedAt: '2024-01-02T00:00:00Z',
             author: '',
             closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
             isRepoArchived: false,
             stateReason: null,
             customFields: [
@@ -292,6 +298,65 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           createdAt: new Date('2024-01-01T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
+          plainCrossRepoIssueReferenceUrls: [],
+          agent: null,
+          isRepoArchived: false,
+          stateReason: null,
+        },
+      },
+      {
+        name: 'passes plainCrossRepoIssueReferenceUrls through unchanged',
+        params: [
+          {
+            id: 'test-id-4',
+            nameWithOwner: 'HiromiShikata/test-repository',
+            number: 41,
+            title: 'test-title-4',
+            state: 'OPEN',
+            url: 'https://github.com/HiromiShikata/test-repository/issues/41',
+            body: 'test-body',
+            labels: [],
+            assignees: [],
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
+            author: '',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other-org/other-repo/issues/5',
+            ],
+            isRepoArchived: false,
+            stateReason: null,
+            customFields: [],
+          },
+        ],
+        expected: {
+          assignees: [],
+          body: 'test-body',
+          estimationMinutes: null,
+          isPr: false,
+          itemId: 'test-id-4',
+          labels: [],
+          nameWithOwner: 'HiromiShikata/test-repository',
+          nextActionDate: null,
+          nextActionHour: null,
+          number: 41,
+          org: 'HiromiShikata',
+          repo: 'test-repository',
+          state: 'OPEN',
+          status: null,
+          story: null,
+          title: 'test-title-4',
+          url: 'https://github.com/HiromiShikata/test-repository/issues/41',
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          plainCrossRepoIssueReferenceUrls: [
+            'https://github.com/other-org/other-repo/issues/5',
+          ],
           agent: null,
           isRepoArchived: false,
           stateReason: null,
@@ -1784,6 +1849,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createdAt: new Date('2024-01-01'),
         author: '',
         closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
         agent: null,
         stateReason: null,
       };
@@ -7370,6 +7436,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       author: '',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
       agent: null,
       stateReason: null,
     };
@@ -8040,6 +8107,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     author: '',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
     agent: null,
     isRepoArchived: false,
     stateReason: null,
@@ -8918,6 +8986,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       author: '',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
       agent: null,
       stateReason: null,
     };
@@ -9014,6 +9083,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         author: '',
         closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
         agent: null,
         stateReason: null,
       };
@@ -9611,6 +9681,113 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItemByUrl,
       ).toHaveBeenCalledWith(issueUrl);
     });
+
+    it('restores plainCrossRepoIssueReferenceUrls as an empty array when the cached record lacks the field entirely', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/10';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [buildCachedIssueRecord(issueUrl, 'Cached Issue No Field')],
+        }),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([]);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('restores plainCrossRepoIssueReferenceUrls as an empty array when the cached value is malformed', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/11';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [
+            {
+              ...buildCachedIssueRecord(issueUrl, 'Cached Issue Malformed'),
+              plainCrossRepoIssueReferenceUrls: ['ok-url', 123],
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([]);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('restores a valid plainCrossRepoIssueReferenceUrls string array unchanged', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/12';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [
+            {
+              ...buildCachedIssueRecord(issueUrl, 'Cached Issue Valid Field'),
+              plainCrossRepoIssueReferenceUrls: [
+                'https://github.com/other/repo/issues/5',
+              ],
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([
+        'https://github.com/other/repo/issues/5',
+      ]);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   describe('addIssueToProject then getIssueByUrl cache update', () => {
@@ -9858,6 +10035,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createdAt: new Date('2026-01-01'),
         author: '',
         closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
         agent: null,
         isRepoArchived: false,
         stateReason: null,
@@ -9922,6 +10100,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createdAt: new Date('2026-01-01'),
         author: '',
         closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
         agent: null,
         isRepoArchived: false,
         stateReason: null,

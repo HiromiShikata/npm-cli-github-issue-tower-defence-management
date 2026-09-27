@@ -900,6 +900,7 @@ export class ApiV3CheerioRestIssueRepository
       createdAt: new Date(item.createdAt || '2000-01-01'),
       author: item.author,
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
+      plainCrossRepoIssueReferenceUrls: item.plainCrossRepoIssueReferenceUrls,
       agent,
       isRepoArchived: item.isRepoArchived,
       stateReason: item.stateReason,
@@ -938,6 +939,14 @@ export class ApiV3CheerioRestIssueRepository
           )
             ? issue.closingIssueReferenceUrls
             : [];
+        const plainCrossRepoIssueReferenceUrls =
+          'plainCrossRepoIssueReferenceUrls' in issue &&
+          Array.isArray(issue.plainCrossRepoIssueReferenceUrls) &&
+          issue.plainCrossRepoIssueReferenceUrls.every(
+            (url): url is string => typeof url === 'string',
+          )
+            ? issue.plainCrossRepoIssueReferenceUrls
+            : [];
 
         const stateReason =
           'stateReason' in issue &&
@@ -952,6 +961,7 @@ export class ApiV3CheerioRestIssueRepository
           completionDate50PercentConfidence: completionDate50PercentConfidence,
           createdAt: createdAt,
           closingIssueReferenceUrls: closingIssueReferenceUrls,
+          plainCrossRepoIssueReferenceUrls: plainCrossRepoIssueReferenceUrls,
           stateReason: stateReason,
         };
       });
@@ -1254,6 +1264,7 @@ export class ApiV3CheerioRestIssueRepository
         createdAt: now,
         author: '',
         closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
         agent: null,
         stateReason: null,
       };

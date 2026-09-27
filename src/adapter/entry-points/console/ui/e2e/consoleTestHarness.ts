@@ -547,6 +547,7 @@ const buildIssueForUrl = (url: string): Issue => ({
   createdAt: new Date('2026-06-18T00:00:00.000Z'),
   author: 'HiromiShikata',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   stateReason: null,
 });
@@ -778,6 +779,7 @@ const createStubIssueRepository = (
           createdAt: new Date(0),
           author: '',
           closingIssueReferenceUrls: [],
+          plainCrossRepoIssueReferenceUrls: [],
           agent: null,
           stateReason: null,
         },

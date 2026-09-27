@@ -69,6 +69,7 @@ describe('GetStoryObjectMapUseCase', () => {
     createdAt: new Date(),
     author: '',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
     agent: null,
     stateReason: null,
     ...overrides,

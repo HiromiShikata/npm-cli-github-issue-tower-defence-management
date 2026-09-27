@@ -234,6 +234,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     createdAt: now,
     author: '',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
     agent: null,
     stateReason: null,
   }));
