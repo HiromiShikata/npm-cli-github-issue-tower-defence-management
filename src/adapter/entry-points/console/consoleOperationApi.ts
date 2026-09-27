@@ -32,6 +32,7 @@ import {
 } from '../cli/projectConfig';
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -315,11 +316,18 @@ const updateStatusByName = async (
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
-  await issueRepository.updateStatus(
-    project,
-    projectItemReference(issueUrl, projectItemId),
-    statusId,
-  );
+  try {
+    await issueRepository.updateStatus(
+      project,
+      projectItemReference(issueUrl, projectItemId),
+      statusId,
+    );
+  } catch (error) {
+    if (!(error instanceof StaleProjectItemError)) throw error;
+    return badRequest(
+      `project item "${projectItemId}" no longer exists in GitHub`,
+    );
+  }
   return null;
 };
 
