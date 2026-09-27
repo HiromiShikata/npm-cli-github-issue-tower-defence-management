@@ -12,7 +12,7 @@ export class QualityCheckAdvanceUseCase {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'get'
+      'updateStatus' | 'get' | 'removeIssueFromProjectCache'
     >,
   ) {}
 

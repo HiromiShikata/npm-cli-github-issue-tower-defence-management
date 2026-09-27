@@ -13,7 +13,11 @@ export class ChangeStatusByStoryColorUseCase {
     readonly dateRepository: Pick<DateRepository, 'now'>,
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'createComment' | 'getIssueOrPullRequestComments' | 'get'
+      | 'updateStatus'
+      | 'createComment'
+      | 'getIssueOrPullRequestComments'
+      | 'get'
+      | 'removeIssueFromProjectCache'
     >,
   ) {}
 

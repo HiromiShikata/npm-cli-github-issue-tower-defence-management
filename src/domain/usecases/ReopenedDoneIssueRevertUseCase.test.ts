@@ -80,7 +80,10 @@ const createMockProject = (): Project => ({
 describe('ReopenedDoneIssueRevertUseCase', () => {
   let useCase: ReopenedDoneIssueRevertUseCase;
   let mockIssueRepository: Mocked<
-    Pick<IssueRepository, 'updateStatus' | 'get'>
+    Pick<
+      IssueRepository,
+      'updateStatus' | 'get' | 'removeIssueFromProjectCache'
+    >
   >;
 
   beforeEach(() => {
@@ -91,6 +94,7 @@ describe('ReopenedDoneIssueRevertUseCase', () => {
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(createMockIssue({ url: issueUrl })),
         ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     useCase = new ReopenedDoneIssueRevertUseCase(mockIssueRepository);
   });

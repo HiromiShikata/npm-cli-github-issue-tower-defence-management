@@ -155,8 +155,12 @@ describe('issueSnapshotStalenessCheck', () => {
       expectedStaleness,
       expectedWarnings,
     }) => {
-      const issueRepository: Pick<IssueRepository, 'get'> = {
+      const issueRepository: Pick<
+        IssueRepository,
+        'get' | 'removeIssueFromProjectCache'
+      > = {
         get: jest.fn().mockResolvedValue(liveIssue),
+        removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
       };
 
       const staleness = await issueSnapshotStalenessCheck({
@@ -176,14 +180,30 @@ describe('issueSnapshotStalenessCheck', () => {
       expect(warnSpy.mock.calls).toEqual(
         expectedWarnings.map((warning) => [warning]),
       );
+      if (liveIssue === null) {
+        expect(
+          issueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          issueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith(project.id, snapshotIssue);
+      } else {
+        expect(
+          issueRepository.removeIssueFromProjectCache,
+        ).not.toHaveBeenCalled();
+      }
     },
   );
 
   it('propagates a failure of the live item read to the caller', async () => {
-    const issueRepository: Pick<IssueRepository, 'get'> = {
+    const issueRepository: Pick<
+      IssueRepository,
+      'get' | 'removeIssueFromProjectCache'
+    > = {
       get: jest
         .fn()
         .mockRejectedValue(new Error('GraphQL rate limit exceeded')),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
 
     await expect(

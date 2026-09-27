@@ -15,7 +15,7 @@ export const adoptIssueAgentDesignationLabel = async (
   >,
   issueRepository: Pick<
     IssueRepository,
-    'setIssueAgentField' | 'removeLabel' | 'get'
+    'setIssueAgentField' | 'removeLabel' | 'get' | 'removeIssueFromProjectCache'
   >,
   agentDesignationLabelsToKeep?: string[] | null,
   defaultAgentName?: string | null,
@@ -89,7 +89,10 @@ export class AgentDesignationLabelAdoptUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'setIssueAgentField' | 'removeLabel' | 'get'
+      | 'setIssueAgentField'
+      | 'removeLabel'
+      | 'get'
+      | 'removeIssueFromProjectCache'
     >,
   ) {}
 

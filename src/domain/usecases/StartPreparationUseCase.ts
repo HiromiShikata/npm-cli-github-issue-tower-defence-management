@@ -798,6 +798,9 @@ export class StartPreparationUseCase {
           checkedFieldNames: ['agent'],
           skippedWriteDescription: `the default Agent write for a spawn candidate`,
         });
+        if (staleness.type === 'removedFromProject') {
+          continue;
+        }
         if (staleness.type === 'current') {
           const agentOptionId = await ensureAgentOptionAndGetId(
             this.projectRepository,

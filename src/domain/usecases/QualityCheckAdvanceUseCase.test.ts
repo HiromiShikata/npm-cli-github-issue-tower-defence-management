@@ -121,7 +121,10 @@ const FIXED_NOW = new Date('2026-01-15T10:00:00Z');
 describe('QualityCheckAdvanceUseCase', () => {
   let useCase: QualityCheckAdvanceUseCase;
   let mockIssueRepository: Mocked<
-    Pick<IssueRepository, 'updateStatus' | 'get'>
+    Pick<
+      IssueRepository,
+      'updateStatus' | 'get' | 'removeIssueFromProjectCache'
+    >
   >;
 
   beforeEach(() => {
@@ -132,6 +135,7 @@ describe('QualityCheckAdvanceUseCase', () => {
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(createMockIssue({ url: issueUrl })),
         ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     useCase = new QualityCheckAdvanceUseCase(mockIssueRepository);
   });

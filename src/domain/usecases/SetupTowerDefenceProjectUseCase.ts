@@ -31,7 +31,7 @@ export class SetupTowerDefenceProjectUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'updateStatus' | 'get'
+      'getAllIssues' | 'updateStatus' | 'get' | 'removeIssueFromProjectCache'
     >,
     private readonly statusDefaultRepository: Pick<
       StatusDefaultRepository,
