@@ -4,20 +4,24 @@ import { ConsoleFieldOptionSelect } from './ConsoleFieldOptionSelect';
 export type ConsoleAgentSelectActionsProps = {
   agentOptions: ConsoleFieldOption[];
   currentAgentName: string | null;
+  currentAgentOptionId?: string | null;
   onSetAgent: (option: ConsoleFieldOption) => void;
 };
 
 export const ConsoleAgentSelectActions = ({
   agentOptions,
   currentAgentName,
+  currentAgentOptionId,
   onSetAgent,
 }: ConsoleAgentSelectActionsProps) => {
   if (agentOptions.length === 0) return null;
 
   const currentOption =
-    currentAgentName !== null
-      ? (agentOptions.find((o) => o.name === currentAgentName) ?? null)
-      : null;
+    currentAgentOptionId != null
+      ? (agentOptions.find((o) => o.id === currentAgentOptionId) ?? null)
+      : currentAgentName !== null
+        ? (agentOptions.find((o) => o.name === currentAgentName) ?? null)
+        : null;
 
   return (
     <div className="console-op-group">

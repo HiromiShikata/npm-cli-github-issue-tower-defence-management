@@ -878,10 +878,10 @@ export class ApiV3CheerioRestIssueRepository
     const status = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
-    const agent =
-      item.customFields.find(
-        (field) => normalizeFieldName(field.name) === 'agent',
-      )?.value ?? null;
+    const agentField = item.customFields.find(
+      (field) => normalizeFieldName(field.name) === 'agent',
+    );
+    const agent = agentField?.value ?? null;
     const { owner, repo } = this.extractIssueFromUrl(item.url);
 
     return {
@@ -914,6 +914,7 @@ export class ApiV3CheerioRestIssueRepository
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
       plainCrossRepoIssueReferenceUrls: item.plainCrossRepoIssueReferenceUrls,
       agent,
+      agentOptionId: agentField?.optionId,
       isRepoArchived: item.isRepoArchived,
       stateReason: item.stateReason,
     };

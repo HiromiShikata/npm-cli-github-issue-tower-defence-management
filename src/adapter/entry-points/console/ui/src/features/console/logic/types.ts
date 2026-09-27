@@ -14,6 +14,7 @@ export type ConsoleListItem = {
   storyOptionId?: string | null;
   status: string | null;
   agent: string | null;
+  agentOptionId?: string | null;
   nextActionDate: string | null;
   nextActionHour: number | null;
   dependedIssueUrls: string[];
