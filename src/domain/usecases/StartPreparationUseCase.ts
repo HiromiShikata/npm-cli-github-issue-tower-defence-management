@@ -1,5 +1,6 @@
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
+import type { Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -94,6 +95,7 @@ export class StartPreparationUseCase {
       | 'setIssueAgentField'
       | 'removeLabel'
       | 'get'
+      | 'removeIssueFromProjectCache'
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
@@ -221,6 +223,48 @@ export class StartPreparationUseCase {
       return 'notAssignedToManager';
     }
     return null;
+  };
+
+  private selectEligibleUnstoriedIssue = async (
+    candidatesOldestFirst: Issue[],
+    allowedIssueAuthors: string[] | null,
+    manager: string,
+    now: Date,
+    project: Project,
+  ): Promise<{
+    selectedIssue: Issue | null;
+    offProjectBoardIssueUrls: Set<string>;
+  }> => {
+    const offProjectBoardIssueUrls = new Set<string>();
+    for (const candidate of candidatesOldestFirst) {
+      if (
+        this.spawnCandidateExclusionReasonOf(
+          candidate,
+          allowedIssueAuthors,
+          manager,
+          now,
+        ) !== null
+      ) {
+        continue;
+      }
+      const liveCandidate = await this.issueRepository.get(
+        candidate.url,
+        project,
+      );
+      if (liveCandidate === null) {
+        console.warn(
+          `Dropping ${candidate.url} from the preparation candidates: it is no longer on the project board.`,
+        );
+        await this.issueRepository.removeIssueFromProjectCache(
+          project.id,
+          candidate,
+        );
+        offProjectBoardIssueUrls.add(candidate.url);
+        continue;
+      }
+      return { selectedIssue: candidate, offProjectBoardIssueUrls };
+    }
+    return { selectedIssue: null, offProjectBoardIssueUrls };
   };
 
   private buildIssueUrlsWithOpenPrs = (issues: Issue[]): Set<string> => {
@@ -548,34 +592,30 @@ export class StartPreparationUseCase {
           isUnstoriedAwaitingWorkspaceIssue(issue),
       )
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    const nextEligibleUnstoriedIssueIndex =
-      unstoriedAwaitingWorkspaceIssuesOldestFirst.findIndex(
+    const { selectedIssue: eligibleUnstoriedIssue, offProjectBoardIssueUrls } =
+      await this.selectEligibleUnstoriedIssue(
+        unstoriedAwaitingWorkspaceIssuesOldestFirst,
+        params.allowedIssueAuthors,
+        params.manager,
+        now,
+        project,
+      );
+    const remainingUnstoriedAwaitingWorkspaceIssues =
+      unstoriedAwaitingWorkspaceIssuesOldestFirst.filter(
         (issue) =>
-          this.spawnCandidateExclusionReasonOf(
-            issue,
-            params.allowedIssueAuthors,
-            params.manager,
-            now,
-          ) === null,
+          issue.url !== eligibleUnstoriedIssue?.url &&
+          !offProjectBoardIssueUrls.has(issue.url),
       );
     const awaitingWorkspaceIssues: Issue[] =
-      nextEligibleUnstoriedIssueIndex === -1
+      eligibleUnstoriedIssue === null
         ? [
             ...storiedAwaitingWorkspaceIssues,
-            ...unstoriedAwaitingWorkspaceIssuesOldestFirst,
+            ...remainingUnstoriedAwaitingWorkspaceIssues,
           ]
         : [
-            unstoriedAwaitingWorkspaceIssuesOldestFirst[
-              nextEligibleUnstoriedIssueIndex
-            ],
+            eligibleUnstoriedIssue,
             ...storiedAwaitingWorkspaceIssues,
-            ...unstoriedAwaitingWorkspaceIssuesOldestFirst.slice(
-              0,
-              nextEligibleUnstoriedIssueIndex,
-            ),
-            ...unstoriedAwaitingWorkspaceIssuesOldestFirst.slice(
-              nextEligibleUnstoriedIssueIndex + 1,
-            ),
+            ...remainingUnstoriedAwaitingWorkspaceIssues,
           ];
 
     const maxConcurrentWorkers = params.maxConcurrentWorkers ?? null;
@@ -911,8 +951,17 @@ export class StartPreparationUseCase {
       }
 
       const refetchedIssue = await this.issueRepository.get(issue.url, project);
+      if (refetchedIssue === null) {
+        console.warn(
+          `Dropping ${issue.url} from the preparation candidates: it is no longer on the project board.`,
+        );
+        await this.issueRepository.removeIssueFromProjectCache(
+          project.id,
+          issue,
+        );
+        continue;
+      }
       if (
-        refetchedIssue === null ||
         refetchedIssue.dependedIssueUrls.length > 0 ||
         refetchedIssue.status !== AWAITING_WORKSPACE_STATUS_NAME
       ) {

@@ -323,6 +323,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'setIssueAgentField'
           | 'removeLabel'
           | 'get'
+          | 'removeIssueFromProjectCache'
         >
       >;
       let spawnMockProjectRepository: jest.Mocked<
@@ -408,6 +409,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
               dependedIssueUrls: [],
             }),
           ),
+          removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
         };
         spawnMockLocalCommandRunner = {
           runCommand: jest

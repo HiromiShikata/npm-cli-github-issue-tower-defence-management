@@ -224,6 +224,27 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(repo1.appendIssueToProjectCache).not.toHaveBeenCalled();
       expect(repo2.appendIssueToProjectCache).not.toHaveBeenCalled();
     });
+
+    it('delegates removeIssueFromProjectCache to the write repository, not read repositories', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      writeRepo.removeIssueFromProjectCache.mockResolvedValue(undefined);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const issue = mock<Issue>();
+      await rotating.removeIssueFromProjectCache('proj-1', issue);
+
+      expect(writeRepo.removeIssueFromProjectCache).toHaveBeenCalledWith(
+        'proj-1',
+        issue,
+      );
+      expect(repo1.removeIssueFromProjectCache).not.toHaveBeenCalled();
+      expect(repo2.removeIssueFromProjectCache).not.toHaveBeenCalled();
+    });
   });
 });
 

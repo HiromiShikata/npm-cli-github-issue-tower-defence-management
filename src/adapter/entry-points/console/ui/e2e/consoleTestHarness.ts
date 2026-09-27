@@ -623,6 +623,7 @@ const createStubIssueRepository = (
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   appendIssueToProjectCache: async (): Promise<void> => undefined,
+  removeIssueFromProjectCache: async (): Promise<void> => undefined,
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
     buildIssueForUrl(url),
   getIssueBodyByUrl: async (url: string): Promise<string | null> =>

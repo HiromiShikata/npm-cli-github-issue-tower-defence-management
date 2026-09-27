@@ -127,6 +127,7 @@ describe('StartPreparationUseCase', () => {
       | 'removeLabel'
       | 'getIssueByUrl'
       | 'get'
+      | 'removeIssueFromProjectCache'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -166,6 +167,7 @@ describe('StartPreparationUseCase', () => {
           dependedIssueUrls: [],
         }),
       ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -8644,6 +8646,288 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     });
   });
+
+  describe('spawn candidate whose live re-fetch shows it is no longer on the project board', () => {
+    const buildAwaitingWorkspaceIssue = (
+      issueNumber: number,
+      story: Issue['story'],
+      createdAt: Date,
+    ): Issue =>
+      createMockIssue({
+        url: `https://github.com/user/repo/issues/${issueNumber}`,
+        number: issueNumber,
+        itemId: `item-${issueNumber}`,
+        title: `Awaiting Workspace Issue ${issueNumber}`,
+        status: 'Awaiting Workspace',
+        story,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt,
+      });
+
+    const expectedAwCommandFor = (issue: Issue): [string, string[]] => [
+      'aw',
+      [
+        issue.url,
+        'agent1',
+        'claude-opus',
+        '--configFilePath',
+        '/path/to/config.yml',
+        '--branch',
+        `i${issue.number}`,
+      ],
+    ];
+
+    const mockLiveRefetchReturningNullForIssueUrls = (
+      offProjectBoardIssueUrls: string[],
+    ): void => {
+      mockIssueRepository.get.mockImplementation(async (url: string) =>
+        offProjectBoardIssueUrls.includes(url)
+          ? null
+          : createMockIssue({
+              url,
+              status: 'Awaiting Workspace',
+              dependedIssueUrls: [],
+            }),
+      );
+    };
+
+    const runWithFreePreparationSlotCount = async (
+      freePreparationSlotCount: number,
+    ): Promise<void> => {
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: freePreparationSlotCount,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+    };
+
+    const spawnedIssueUrls = (): string[] =>
+      mockLocalCommandRunner.runCommand.mock.calls.map((call) => call[1][0]);
+
+    const statusWrittenIssueUrls = (): string[] =>
+      mockIssueRepository.updateStatus.mock.calls.map((call) => call[1].url);
+
+    it('removes the oldest unstoried Awaiting Workspace issue from the project cache and neither spawns it nor writes its status when its live re-fetch returns null', async () => {
+      const oldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9101,
+        null,
+        new Date(Date.UTC(2020, 0, 1)),
+      );
+      const nextOldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9102,
+        null,
+        new Date(Date.UTC(2020, 0, 2)),
+      );
+      const storiedIssue = buildAwaitingWorkspaceIssue(
+        9103,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 1)),
+      );
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([storiedIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        storiedIssue,
+        oldestUnstoriedIssue,
+        nextOldestUnstoriedIssue,
+      ]);
+      mockLiveRefetchReturningNullForIssueUrls([oldestUnstoriedIssue.url]);
+
+      await runWithFreePreparationSlotCount(1);
+
+      expect(
+        mockIssueRepository.removeIssueFromProjectCache.mock.calls,
+      ).toEqual([
+        [
+          mockProject.id,
+          expect.objectContaining({
+            url: oldestUnstoriedIssue.url,
+            itemId: oldestUnstoriedIssue.itemId,
+          }),
+        ],
+      ]);
+      expect(spawnedIssueUrls()).not.toContain(oldestUnstoriedIssue.url);
+      expect(statusWrittenIssueUrls()).not.toContain(oldestUnstoriedIssue.url);
+    });
+
+    it('gives the single free preparation slot to the next-oldest unstoried issue instead of a storied issue when the oldest unstoried issue re-fetches as off the project board', async () => {
+      const oldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9201,
+        null,
+        new Date(Date.UTC(2020, 0, 1)),
+      );
+      const nextOldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9202,
+        null,
+        new Date(Date.UTC(2020, 0, 2)),
+      );
+      const storiedIssue = buildAwaitingWorkspaceIssue(
+        9203,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 1)),
+      );
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([storiedIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        storiedIssue,
+        oldestUnstoriedIssue,
+        nextOldestUnstoriedIssue,
+      ]);
+      mockLiveRefetchReturningNullForIssueUrls([oldestUnstoriedIssue.url]);
+
+      await runWithFreePreparationSlotCount(1);
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+        expectedAwCommandFor(nextOldestUnstoriedIssue),
+      ]);
+    });
+
+    it('with two free preparation slots, spawns the next-oldest unstoried issue and then the first storied issue when the oldest unstoried issue re-fetches as off the project board', async () => {
+      const oldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9301,
+        null,
+        new Date(Date.UTC(2020, 0, 1)),
+      );
+      const nextOldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9302,
+        null,
+        new Date(Date.UTC(2020, 0, 2)),
+      );
+      const newestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9303,
+        null,
+        new Date(Date.UTC(2020, 0, 3)),
+      );
+      const firstStoriedIssue = buildAwaitingWorkspaceIssue(
+        9304,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 1)),
+      );
+      const secondStoriedIssue = buildAwaitingWorkspaceIssue(
+        9305,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 2)),
+      );
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([firstStoriedIssue, secondStoriedIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        firstStoriedIssue,
+        secondStoriedIssue,
+        newestUnstoriedIssue,
+        oldestUnstoriedIssue,
+        nextOldestUnstoriedIssue,
+      ]);
+      mockLiveRefetchReturningNullForIssueUrls([oldestUnstoriedIssue.url]);
+
+      await runWithFreePreparationSlotCount(2);
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+        expectedAwCommandFor(nextOldestUnstoriedIssue),
+        expectedAwCommandFor(firstStoriedIssue),
+      ]);
+    });
+
+    it('removes a storied candidate from the project cache, skips it and spawns the next candidate when its live re-fetch returns null', async () => {
+      const offProjectBoardStoriedIssue = buildAwaitingWorkspaceIssue(
+        9401,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 1)),
+      );
+      const nextStoriedIssue = buildAwaitingWorkspaceIssue(
+        9402,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 2)),
+      );
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          offProjectBoardStoriedIssue,
+          nextStoriedIssue,
+        ]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        offProjectBoardStoriedIssue,
+        nextStoriedIssue,
+      ]);
+      mockLiveRefetchReturningNullForIssueUrls([
+        offProjectBoardStoriedIssue.url,
+      ]);
+
+      await runWithFreePreparationSlotCount(1);
+
+      expect(
+        mockIssueRepository.removeIssueFromProjectCache.mock.calls,
+      ).toEqual([
+        [
+          mockProject.id,
+          expect.objectContaining({
+            url: offProjectBoardStoriedIssue.url,
+            itemId: offProjectBoardStoriedIssue.itemId,
+          }),
+        ],
+      ]);
+      expect(statusWrittenIssueUrls()).not.toContain(
+        offProjectBoardStoriedIssue.url,
+      );
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+        expectedAwCommandFor(nextStoriedIssue),
+      ]);
+    });
+
+    it('does not remove any candidate from the project cache when every live re-fetch returns an issue', async () => {
+      const oldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9501,
+        null,
+        new Date(Date.UTC(2020, 0, 1)),
+      );
+      const nextOldestUnstoriedIssue = buildAwaitingWorkspaceIssue(
+        9502,
+        null,
+        new Date(Date.UTC(2020, 0, 2)),
+      );
+      const storiedIssue = buildAwaitingWorkspaceIssue(
+        9503,
+        'Default Story',
+        new Date(Date.UTC(2019, 0, 1)),
+      );
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([storiedIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        storiedIssue,
+        oldestUnstoriedIssue,
+        nextOldestUnstoriedIssue,
+      ]);
+      mockLiveRefetchReturningNullForIssueUrls([]);
+
+      await runWithFreePreparationSlotCount(2);
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+        expectedAwCommandFor(oldestUnstoriedIssue),
+        expectedAwCommandFor(storiedIssue),
+      ]);
+      expect(
+        mockIssueRepository.removeIssueFromProjectCache,
+      ).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -8669,6 +8953,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'setIssueAgentField'
       | 'removeLabel'
       | 'get'
+      | 'removeIssueFromProjectCache'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -8683,6 +8968,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     setIssueAgentField: jest.fn(),
     removeLabel: jest.fn(),
     get: jest.fn().mockResolvedValue(null),
+    removeIssueFromProjectCache: jest.fn(),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -8982,6 +9268,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
         get: jest.fn().mockResolvedValue(null),
+        removeIssueFromProjectCache: jest.fn(),
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
@@ -9078,6 +9365,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
           dependedIssueUrls: [],
         }),
       ),
+      removeIssueFromProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9177,6 +9465,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           dependedIssueUrls: [],
         }),
       ),
+      removeIssueFromProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9262,6 +9551,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           dependedIssueUrls: [],
         }),
       ),
+      removeIssueFromProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9350,6 +9640,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           dependedIssueUrls: [],
         }),
       ),
+      removeIssueFromProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9469,6 +9760,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
             dependedIssueUrls: [],
           }),
         ),
+        removeIssueFromProjectCache: jest.fn(),
       };
       const mockLocalCommandRunner = {
         runCommand: jest
@@ -9555,6 +9847,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
         get: jest.fn().mockResolvedValue(null),
+        removeIssueFromProjectCache: jest.fn(),
         ...issueRepositoryOverrides,
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
