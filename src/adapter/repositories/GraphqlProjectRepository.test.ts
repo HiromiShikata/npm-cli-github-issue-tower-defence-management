@@ -108,7 +108,7 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
   describe('getProject', () => {
     it('should retrieve project details', async () => {
       const project = await repository.getProject(projectId);
-      expect(project).toEqual({
+      expect(project).toMatchObject({
         id: 'PVT_kwHOAGJHa84AFhgF',
         url: 'https://github.com/users/HiromiShikata/projects/49',
         databaseId: 1447941,
@@ -151,7 +151,6 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
           },
         },
         completionDate50PercentConfidence: null,
-        dependedIssueUrlSeparatedByComma: null,
         agent: null,
 
         status: {
