@@ -11,7 +11,10 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
 
 export class IssueNoStatusUpdateUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'updateStatus' | 'get'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'updateStatus' | 'get' | 'removeIssueFromProjectCache'
+    >,
   ) {}
 
   run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {

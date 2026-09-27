@@ -71,6 +71,7 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     setIssueAgentField: jest.Mock;
     removeLabel: jest.Mock;
     get: jest.Mock;
+    removeIssueFromProjectCache: jest.Mock;
   };
   let useCase: AgentDesignationLabelAdoptUseCase;
 
@@ -89,6 +90,7 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(createIssue({ url: issueUrl, agent: null })),
         ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     useCase = new AgentDesignationLabelAdoptUseCase(
       mockProjectRepository,

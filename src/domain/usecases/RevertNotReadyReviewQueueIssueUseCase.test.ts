@@ -165,6 +165,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     approvePullRequest: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
     get: jest.Mock;
+    removeIssueFromProjectCache: jest.Mock;
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock<Promise<void>, [Issue, string]>;
@@ -205,6 +206,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
             createMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
           ),
         ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {

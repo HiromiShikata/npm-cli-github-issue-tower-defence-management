@@ -11,7 +11,7 @@ export class ReopenedDoneIssueRevertUseCase {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'get'
+      'updateStatus' | 'get' | 'removeIssueFromProjectCache'
     >,
   ) {}
 

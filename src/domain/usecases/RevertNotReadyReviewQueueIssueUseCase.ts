@@ -59,6 +59,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
       | 'get'
+      | 'removeIssueFromProjectCache'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,

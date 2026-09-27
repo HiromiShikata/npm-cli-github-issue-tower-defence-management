@@ -6,7 +6,10 @@ import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 
 export class SetNoStoryIssueToStoryUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'updateStory' | 'get'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'updateStory' | 'get' | 'removeIssueFromProjectCache'
+    >,
   ) {}
 
   run = async (input: {

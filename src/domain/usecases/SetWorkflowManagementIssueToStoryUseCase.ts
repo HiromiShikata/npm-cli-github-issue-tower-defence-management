@@ -7,7 +7,12 @@ export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStory' | 'removeLabel' | 'searchIssue' | 'createNewIssue' | 'get'
+      | 'updateStory'
+      | 'removeLabel'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'get'
+      | 'removeIssueFromProjectCache'
     >,
   ) {}
 

@@ -17,7 +17,7 @@ export type IssueSnapshotStaleness =
   | { type: 'removedFromProject' };
 
 export const issueSnapshotStalenessCheck = async (params: {
-  issueRepository: Pick<IssueRepository, 'get'>;
+  issueRepository: Pick<IssueRepository, 'get' | 'removeIssueFromProjectCache'>;
   project: Project;
   snapshotIssue: Issue;
   checkedFieldNames: IssueSnapshotCheckedFieldName[];
@@ -31,6 +31,10 @@ export const issueSnapshotStalenessCheck = async (params: {
   if (liveIssue === null) {
     console.warn(
       `Skipping ${params.skippedWriteDescription} for ${snapshotIssue.url} because the item is no longer on project ${params.project.url}.`,
+    );
+    await params.issueRepository.removeIssueFromProjectCache(
+      params.project.id,
+      snapshotIssue,
     );
     return { type: 'removedFromProject' };
   }
