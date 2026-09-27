@@ -1,3 +1,13 @@
+## [2.152.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.12...v2.152.13) (2026-09-27)
+
+
+### Bug Fixes
+
+* **console:** catch StaleProjectItemError in the set_status API path ([#2792](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2792)) ([b82b7d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b82b7d47099b7ec73d2dbee855cf97bbea4530d8))
+* **deps:** pin npm override to remediate bundled CVE dependencies ([#2791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2791)) ([e7431bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7431bc7039ab6d0cb6a1bdbaf4565f0d1cfc398))
+* **GraphqlProjectRepository:** assert only stable fields in getProject test ([#2799](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2799)) ([db890e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db890e157e1095b7829d289db071601dd6e6d614))
+* **HandleScheduledEventUseCase:** isolate stale GitHub project items and per-operation failures during scheduled sweep ([#2797](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2797)) ([c1f62f2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1f62f2a98000174e7873d7b9497ee50d5983aeb)), closes [#2789](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2789)
+
 ## [2.152.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.11...v2.152.12) (2026-09-27)
 
 
