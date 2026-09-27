@@ -160,6 +160,7 @@ const projectItemReference = (
   createdAt: new Date(0),
   author: '',
   closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
   agent: null,
   stateReason: null,
 });

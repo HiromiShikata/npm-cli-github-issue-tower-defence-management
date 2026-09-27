@@ -52,7 +52,10 @@ export class SetDependedIssueUrlForOpenTaskPRsUseCase {
       if (issue.dependedIssueUrls.length > 0) {
         continue;
       }
-      for (const closedIssueUrl of issue.closingIssueReferenceUrls) {
+      for (const closedIssueUrl of new Set([
+        ...issue.closingIssueReferenceUrls,
+        ...issue.plainCrossRepoIssueReferenceUrls,
+      ])) {
         const existing = openPrUrlsByClosedIssueUrl.get(closedIssueUrl);
         if (existing) {
           existing.add(issue.url);
