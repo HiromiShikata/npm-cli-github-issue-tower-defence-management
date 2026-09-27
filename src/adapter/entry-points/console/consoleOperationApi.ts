@@ -316,18 +316,11 @@ const updateStatusByName = async (
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
-  try {
-    await issueRepository.updateStatus(
-      project,
-      projectItemReference(issueUrl, projectItemId),
-      statusId,
-    );
-  } catch (error) {
-    if (!(error instanceof StaleProjectItemError)) throw error;
-    return badRequest(
-      `project item "${projectItemId}" no longer exists in GitHub`,
-    );
-  }
+  await issueRepository.updateStatus(
+    project,
+    projectItemReference(issueUrl, projectItemId),
+    statusId,
+  );
   return null;
 };
 
@@ -606,13 +599,21 @@ export const handleTriage = async (
     if (!isNonEmptyString(statusName)) {
       return badRequest('statusName is required for set_status');
     }
-    const failure = await updateStatusByName(
-      context.resolveIssueRepository(issueUrl),
-      project,
-      issueUrl,
-      projectItemId,
-      statusName,
-    );
+    let failure: ConsoleOperationResponse | null;
+    try {
+      failure = await updateStatusByName(
+        context.resolveIssueRepository(issueUrl),
+        project,
+        issueUrl,
+        projectItemId,
+        statusName,
+      );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      failure = badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
     if (failure !== null) {
       return failure;
     }
