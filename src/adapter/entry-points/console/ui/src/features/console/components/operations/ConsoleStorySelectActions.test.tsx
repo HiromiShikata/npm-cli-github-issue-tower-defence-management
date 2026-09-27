@@ -106,6 +106,21 @@ describe('ConsoleStorySelectActions', () => {
     expect(select.value).toBe('story_2');
   });
 
+  it('pre-selects the option matching currentStoryOptionId when display names do not collide (no regression)', () => {
+    render(
+      <ConsoleStorySelectActions
+        storyOptions={storyOptions}
+        currentStoryName="regular / high priority"
+        currentStoryOptionId="story_2"
+        onSetStory={jest.fn()}
+      />,
+    );
+    const select = screen.getByRole('combobox', {
+      name: 'Set story',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('story_2');
+  });
+
   it('falls back to name matching when currentStoryOptionId is null and the display name is not shared', () => {
     render(
       <ConsoleStorySelectActions
