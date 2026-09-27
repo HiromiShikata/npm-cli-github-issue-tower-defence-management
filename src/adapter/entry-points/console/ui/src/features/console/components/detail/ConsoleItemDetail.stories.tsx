@@ -267,6 +267,7 @@ export const IssueWithRichMarkdownBody: Story = {
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={[]}
         currentStoryName={null}
+        currentStoryOptionId={null}
         agentOptions={[]}
         currentAgentName={null}
         handlers={noopOperationHandlers}
