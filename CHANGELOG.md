@@ -1,3 +1,10 @@
+## [2.152.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.9...v2.152.10) (2026-09-27)
+
+
+### Bug Fixes
+
+* drop issues without a project item from preparation candidates ([#2783](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2783)) ([b799ab2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b799ab23f5f483388e69c5812c27bfbfb73dea4f))
+
 ## [2.152.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.8...v2.152.9) (2026-09-27)
 
 
