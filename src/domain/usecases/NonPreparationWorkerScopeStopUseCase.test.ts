@@ -69,6 +69,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
           status: PREPARATION_STATUS_NAME,
         }),
       ],
+      currentProjectOrg: 'owner',
     });
 
     expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalled();
@@ -88,6 +89,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
 
       const result = await useCase.run({
         issues: [buildIssue({ org: 'owner', repo: 'repo', number: 1, status })],
+        currentProjectOrg: 'owner',
       });
 
       expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
@@ -117,6 +119,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
           status: DONE_STATUS_NAME,
         }),
       ],
+      currentProjectOrg: 'owner',
     });
 
     expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalled();
@@ -130,7 +133,10 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
       tmuxSessionRepository,
     );
 
-    const result = await useCase.run({ issues: [] });
+    const result = await useCase.run({
+      issues: [],
+      currentProjectOrg: 'owner',
+    });
 
     expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalled();
     expect(result.stoppedScopeUnitNames).toEqual([]);
@@ -163,6 +169,7 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
           url: 'https://github.com/owner/repo/issues/2',
         }),
       ],
+      currentProjectOrg: 'owner',
     });
 
     expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledTimes(1);
@@ -170,5 +177,99 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
       'aw-owner-repo-2-200.scope',
     );
     expect(result.stoppedScopeUnitNames).toEqual(['aw-owner-repo-2-200.scope']);
+  });
+
+  it('does not stop a running worker scope whose resolved issue is Preparation but belongs to a different org than the current project cycle', async () => {
+    const tmuxSessionRepository = createMockTmuxSessionRepository();
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+      'aw-otherorg-repo-1-100.scope',
+    ]);
+    const useCase = new NonPreparationWorkerScopeStopUseCase(
+      tmuxSessionRepository,
+    );
+
+    const result = await useCase.run({
+      issues: [
+        buildIssue({
+          org: 'otherorg',
+          repo: 'repo',
+          number: 1,
+          status: PREPARATION_STATUS_NAME,
+          url: 'https://github.com/otherorg/repo/issues/1',
+        }),
+      ],
+      currentProjectOrg: 'owner',
+    });
+
+    expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalled();
+    expect(result.stoppedScopeUnitNames).toEqual([]);
+  });
+
+  it('★ does not stop a running worker scope whose resolved issue is not Preparation but belongs to a different org than the current project cycle (regression: today this incorrectly stops it)', async () => {
+    const tmuxSessionRepository = createMockTmuxSessionRepository();
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+      'aw-otherorg-repo-1-100.scope',
+    ]);
+    const useCase = new NonPreparationWorkerScopeStopUseCase(
+      tmuxSessionRepository,
+    );
+
+    const result = await useCase.run({
+      issues: [
+        buildIssue({
+          org: 'otherorg',
+          repo: 'repo',
+          number: 1,
+          status: AWAITING_WORKSPACE_STATUS_NAME,
+          url: 'https://github.com/otherorg/repo/issues/1',
+        }),
+      ],
+      currentProjectOrg: 'owner',
+    });
+
+    expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalled();
+    expect(result.stoppedScopeUnitNames).toEqual([]);
+  });
+
+  it('logs a diagnostic identifying the scope unit name and the mismatched orgs when a mismatch is detected', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const tmuxSessionRepository = createMockTmuxSessionRepository();
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+      'aw-otherorg-repo-1-100.scope',
+    ]);
+    const useCase = new NonPreparationWorkerScopeStopUseCase(
+      tmuxSessionRepository,
+    );
+
+    await useCase.run({
+      issues: [
+        buildIssue({
+          org: 'otherorg',
+          repo: 'repo',
+          number: 1,
+          status: AWAITING_WORKSPACE_STATUS_NAME,
+          url: 'https://github.com/otherorg/repo/issues/1',
+        }),
+      ],
+      currentProjectOrg: 'owner',
+    });
+
+    const diagnosticLines = [
+      ...consoleLogSpy.mock.calls,
+      ...consoleWarnSpy.mock.calls,
+    ].map((callArgs) => callArgs.join(' '));
+
+    expect(
+      diagnosticLines.some(
+        (line) =>
+          line.includes('aw-otherorg-repo-1-100.scope') &&
+          line.includes('owner') &&
+          line.includes('otherorg'),
+      ),
+    ).toBe(true);
+
+    consoleLogSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 });
