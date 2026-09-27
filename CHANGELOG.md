@@ -1,3 +1,10 @@
+## [2.152.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.11...v2.152.12) (2026-09-27)
+
+
+### Bug Fixes
+
+* **SetDependedIssueUrlForOpenTaskPRsUseCase:** detect plain cross-repo issue URLs with no closing keyword ([#2787](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2787)) ([d761ccd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d761ccd43cd4766b057bd506d0c28765262b5c8d)), closes [#2785](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2785)
+
 ## [2.152.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.10...v2.152.11) (2026-09-27)
 
 
