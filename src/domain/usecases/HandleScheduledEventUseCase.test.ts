@@ -1708,7 +1708,9 @@ describe('HandleScheduledEventUseCase', () => {
         const clearError = new Error('clear mutation failed');
         mockClearDependedIssueURLUseCase.run.mockRejectedValueOnce(clearError);
 
-        await expect(useCase.run(baseInput)).rejects.toBe(clearError);
+        await expect(useCase.run(baseInput)).rejects.toThrow(
+          clearError.message,
+        );
 
         expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
         expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(

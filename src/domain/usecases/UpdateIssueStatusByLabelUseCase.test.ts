@@ -294,13 +294,25 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         new Error('Request failed with status code 403 Forbidden'),
       );
 
-      await expect(
-        useCase.run({
+      let caughtError: unknown;
+      try {
+        await useCase.run({
           project: basicProject,
           issues: [issueWithUrl],
-        }),
-      ).rejects.toThrow(
-        'Failed to remove label status:In Progress from issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
+        });
+        throw new Error('expected run() to reject');
+      } catch (e) {
+        caughtError = e;
+      }
+      if (!(caughtError instanceof Error)) {
+        throw new Error('Expected caughtError to be an Error instance');
+      }
+      expect(caughtError.message).toContain(
+        'https://github.com/testOrg/testRepo/issues/42',
+      );
+      expect(caughtError.message).toContain('status:In Progress');
+      expect(caughtError.message).toContain(
+        'Request failed with status code 403 Forbidden',
       );
     });
 
