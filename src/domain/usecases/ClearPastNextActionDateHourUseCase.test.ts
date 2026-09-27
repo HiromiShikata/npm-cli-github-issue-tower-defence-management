@@ -476,9 +476,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
           warnedMessages.some((message) => message.includes(staleIssue.url)),
         ).toBe(true);
         expect(
-          warnedMessages.some((message) =>
-            message.includes(staleIssue.itemId),
-          ),
+          warnedMessages.some((message) => message.includes(staleIssue.itemId)),
         ).toBe(true);
         consoleWarnSpy.mockRestore();
       });

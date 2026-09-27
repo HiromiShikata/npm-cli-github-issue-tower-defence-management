@@ -10198,14 +10198,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     ])(
       'rethrows unchanged with no cache eviction when clearProjectField fails with %s',
       async (_label, thrown) => {
-        const { repository, graphqlProjectItemRepository, localStorageCacheRepository } =
-          createApiV3CheerioRestIssueRepository();
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
         const project = buildTestProject('proj-clear-other');
         const issue = buildStaleItemTestIssue(
           'item-clear-other',
           'https://github.com/o/r/issues/12',
         );
-        graphqlProjectItemRepository.clearProjectField.mockRejectedValue(thrown);
+        graphqlProjectItemRepository.clearProjectField.mockRejectedValue(
+          thrown,
+        );
 
         await expect(
           repository.clearProjectField(project, 'some-field-id', issue),
@@ -10273,8 +10278,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     ])(
       'rethrows unchanged with no cache eviction when updateProjectTextField fails with %s',
       async (_label, thrown) => {
-        const { repository, graphqlProjectItemRepository, localStorageCacheRepository } =
-          createApiV3CheerioRestIssueRepository();
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
         const project = buildTestProject('proj-text-other');
         const issue = buildStaleItemTestIssue(
           'item-text-other',
@@ -10373,8 +10381,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     ])(
       'rethrows unchanged with no cache eviction when updateStory fails with %s',
       async (_label, thrown) => {
-        const { repository, graphqlProjectItemRepository, localStorageCacheRepository } =
-          createApiV3CheerioRestIssueRepository();
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
         const issue = buildStaleItemTestIssue(
           'item-story-other',
           'https://github.com/o/r/issues/32',
