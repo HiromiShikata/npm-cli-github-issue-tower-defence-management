@@ -11,6 +11,7 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
+  IN_TMUX_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
@@ -318,6 +319,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     } else if (issue.status === DISABLED_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is Disabled`,
+      );
+      return;
+    } else if (issue.status === IN_TMUX_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is In Tmux by human; the owner is operating it directly in a terminal session`,
       );
       return;
     } else if (
