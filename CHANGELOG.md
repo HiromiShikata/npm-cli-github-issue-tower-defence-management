@@ -1,3 +1,10 @@
+## [2.152.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.13...v2.152.14) (2026-09-27)
+
+
+### Bug Fixes
+
+* **preparation:** stop treating a pull request as a standalone card in TDPM CLI ([#2777](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2777)) ([430010e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/430010e0592308525b8c6c67362405bfbe167661))
+
 ## [2.152.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.12...v2.152.13) (2026-09-27)
 
 
