@@ -1708,7 +1708,9 @@ describe('HandleScheduledEventUseCase', () => {
         const clearError = new Error('clear mutation failed');
         mockClearDependedIssueURLUseCase.run.mockRejectedValueOnce(clearError);
 
-        await expect(useCase.run(baseInput)).rejects.toBe(clearError);
+        await expect(useCase.run(baseInput)).rejects.toThrow(
+          clearError.message,
+        );
 
         expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
         expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
@@ -2687,26 +2689,29 @@ describe('HandleScheduledEventUseCase', () => {
         mockClosedStoryIssueReopenUseCase.run.mockResolvedValue(0);
       });
 
-      it('continues to startPreparationUseCase when setWorkflowManagementIssueToStoryUseCase.run rejects', async () => {
+      it('rejects with the aggregate slow-sweep failure and does not reach startPreparationUseCase when setWorkflowManagementIssueToStoryUseCase.run rejects (issue #2789)', async () => {
         const rejectionError = new Error('GitHub API rate limit');
         mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValueOnce(
           rejectionError,
         );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
         const consoleErrorSpy = jest
           .spyOn(console, 'error')
           .mockImplementation(() => {});
 
         try {
-          await useCase.run({
-            ...baseInput,
-            startPreparation: {
-              defaultAgentName: 'agent1',
-              configFilePath: '/path/to/config.yml',
-              maximumPreparingIssuesCount: null,
-            },
-          });
+          await expect(
+            useCase.run({
+              ...baseInput,
+              startPreparation: {
+                defaultAgentName: 'agent1',
+                configFilePath: '/path/to/config.yml',
+                maximumPreparingIssuesCount: null,
+              },
+            }),
+          ).rejects.toThrow('GitHub API rate limit');
 
-          expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
           expect(consoleErrorSpy.mock.calls).toEqual([
             [
               `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${rejectionError.message}`,
@@ -2718,26 +2723,29 @@ describe('HandleScheduledEventUseCase', () => {
         }
       });
 
-      it('continues to startPreparationUseCase when setNoStoryIssueToStoryUseCase.run rejects', async () => {
+      it('rejects with the aggregate slow-sweep failure and does not reach startPreparationUseCase when setNoStoryIssueToStoryUseCase.run rejects (issue #2789)', async () => {
         const rejectionError = new Error('GitHub API rate limit');
         mockSetNoStoryIssueToStoryUseCase.run.mockRejectedValueOnce(
           rejectionError,
         );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
         const consoleErrorSpy = jest
           .spyOn(console, 'error')
           .mockImplementation(() => {});
 
         try {
-          await useCase.run({
-            ...baseInput,
-            startPreparation: {
-              defaultAgentName: 'agent1',
-              configFilePath: '/path/to/config.yml',
-              maximumPreparingIssuesCount: null,
-            },
-          });
+          await expect(
+            useCase.run({
+              ...baseInput,
+              startPreparation: {
+                defaultAgentName: 'agent1',
+                configFilePath: '/path/to/config.yml',
+                maximumPreparingIssuesCount: null,
+              },
+            }),
+          ).rejects.toThrow('GitHub API rate limit');
 
-          expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+          expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
           expect(consoleErrorSpy.mock.calls).toEqual([
             [
               `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${rejectionError.message}`,
@@ -2746,6 +2754,96 @@ describe('HandleScheduledEventUseCase', () => {
           ]);
         } finally {
           consoleErrorSpy.mockRestore();
+        }
+      });
+    });
+
+    describe('runSlowSweepUseCases operation isolation (issue #2789)', () => {
+      const isolationInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      const allSlowSweepOperationMocks = (): jest.Mock[] => [
+        mockSetWorkflowManagementIssueToStoryUseCase.run,
+        mockSetNoStoryIssueToStoryUseCase.run,
+        mockActionAnnouncementUseCase.run,
+        mockClearPastNextActionDateHourUseCase.run,
+        mockClearDependedIssueURLUseCase.run,
+        mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
+        mockStaleTaskPullRequestCloseUseCase.run,
+        mockCreateEstimationIssueUseCase.run,
+        mockChangeStatusByStoryColorUseCase.run,
+        mockAssignNoAssigneeIssueToManagerUseCase.run,
+        mockUpdateIssueStatusByLabelUseCase.run,
+      ];
+
+      it('calls all 11 slow-sweep operations and resolves when none fail', async () => {
+        await expect(useCase.run(isolationInput)).resolves.not.toBeNull();
+
+        for (const operationMock of allSlowSweepOperationMocks()) {
+          expect(operationMock).toHaveBeenCalledTimes(1);
+        }
+      });
+
+      it('still calls all 11 slow-sweep operations and rejects with one aggregate error naming the failed operation when 1 operation fails', async () => {
+        const rejectionError = new Error(
+          'ChangeStatusByStoryColorUseCase exploded',
+        );
+        mockChangeStatusByStoryColorUseCase.run.mockRejectedValueOnce(
+          rejectionError,
+        );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+        await expect(useCase.run(isolationInput)).rejects.toThrow(
+          rejectionError.message,
+        );
+
+        for (const operationMock of allSlowSweepOperationMocks()) {
+          expect(operationMock).toHaveBeenCalledTimes(1);
+        }
+      });
+
+      it('still calls all 11 slow-sweep operations and rejects with one aggregate error naming every failed operation when 2 or more operations fail', async () => {
+        const firstError = new Error(
+          'SetWorkflowManagementIssueToStoryUseCase exploded',
+        );
+        const secondError = new Error(
+          'UpdateIssueStatusByLabelUseCase exploded',
+        );
+        mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValueOnce(
+          firstError,
+        );
+        mockUpdateIssueStatusByLabelUseCase.run.mockRejectedValueOnce(
+          secondError,
+        );
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+        const runPromise = useCase.run(isolationInput);
+        runPromise.catch(() => {});
+        let caughtError: unknown;
+        try {
+          await runPromise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(firstError.message);
+        expect(caughtError.message).toContain(secondError.message);
+        for (const operationMock of allSlowSweepOperationMocks()) {
+          expect(operationMock).toHaveBeenCalledTimes(1);
         }
       });
     });

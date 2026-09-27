@@ -3,6 +3,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('UpdateIssueStatusByLabelUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -293,14 +294,132 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         new Error('Request failed with status code 403 Forbidden'),
       );
 
-      await expect(
-        useCase.run({
+      let caughtError: unknown;
+      try {
+        await useCase.run({
           project: basicProject,
           issues: [issueWithUrl],
-        }),
-      ).rejects.toThrow(
-        'Failed to remove label status:In Progress from issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
+        });
+        throw new Error('expected run() to reject');
+      } catch (e) {
+        caughtError = e;
+      }
+      if (!(caughtError instanceof Error)) {
+        throw new Error('Expected caughtError to be an Error instance');
+      }
+      expect(caughtError.message).toContain(
+        'https://github.com/testOrg/testRepo/issues/42',
       );
+      expect(caughtError.message).toContain('status:In Progress');
+      expect(caughtError.message).toContain(
+        'Request failed with status code 403 Forbidden',
+      );
+    });
+
+    describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+      const staleIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/testOrg/testRepo/issues/901',
+        itemId: 'item-stale-1',
+        labels: ['status:In Progress'],
+        status: 'ToDo',
+      };
+      const okIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/testOrg/testRepo/issues/902',
+        itemId: 'item-ok-1',
+        labels: ['status:Icebox'],
+        status: 'ToDo',
+      };
+
+      it('skips an issue whose updateStatus call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the other issue in the same run is still processed', async () => {
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        mockIssueRepository.updateStatus.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError(staleIssue.itemId);
+            }
+          },
+        );
+
+        await useCase.run({
+          project: basicProject,
+          issues: [staleIssue, okIssue],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status2'],
+          [basicProject, okIssue, 'status3'],
+        ]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [okIssue, 'status:Icebox'],
+        ]);
+        const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+          call.join(' '),
+        );
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.url)),
+        ).toBe(true);
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.itemId)),
+        ).toBe(true);
+        consoleWarnSpy.mockRestore();
+      });
+
+      it('collects a non-stale error from one issue, still processes the other issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+        const underlyingError = new Error('GitHub API rate limit exceeded');
+        mockIssueRepository.updateStatus.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw underlyingError;
+            }
+          },
+        );
+
+        const runPromise = useCase.run({
+          project: basicProject,
+          issues: [staleIssue, okIssue],
+        });
+
+        runPromise.catch(() => {});
+        let caughtError: unknown;
+        try {
+          await runPromise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(staleIssue.url);
+        expect(caughtError.message).toContain(underlyingError.message);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status2'],
+          [basicProject, okIssue, 'status3'],
+        ]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [okIssue, 'status:Icebox'],
+        ]);
+      });
+
+      it('resolves normally when no exception occurs (no-op regression check)', async () => {
+        mockIssueRepository.updateStatus.mockReset();
+        mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+        await expect(
+          useCase.run({
+            project: basicProject,
+            issues: [staleIssue, okIssue],
+          }),
+        ).resolves.toBeUndefined();
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status2'],
+          [basicProject, okIssue, 'status3'],
+        ]);
+      });
     });
   });
 });

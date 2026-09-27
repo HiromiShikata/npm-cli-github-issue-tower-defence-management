@@ -105,6 +105,37 @@ const buildCustomFieldWithOptionId = (
   optionId,
 });
 
+const buildStaleItemTestIssue = (itemId: string, url: string): Issue => ({
+  nameWithOwner: 'o/r',
+  url,
+  title: 'issue',
+  number: 1,
+  state: 'OPEN',
+  labels: [],
+  assignees: [],
+  nextActionDate: null,
+  nextActionHour: null,
+  estimationMinutes: null,
+  dependedIssueUrls: [],
+  completionDate50PercentConfidence: null,
+  status: null,
+  story: null,
+  org: 'o',
+  repo: 'r',
+  body: '',
+  itemId,
+  isPr: false,
+  isInProgress: false,
+  isClosed: false,
+  createdAt: new Date('2026-01-01'),
+  author: '',
+  closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
+  agent: null,
+  isRepoArchived: false,
+  stateReason: null,
+});
+
 describe('ApiV3CheerioRestIssueRepository', () => {
   describe('convertProjectItemToIssue', () => {
     const testCases: {
@@ -10113,6 +10144,267 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         repository.updateStatus(project, issue, 'status-id'),
       ).rejects.toThrow('Network timeout');
     });
+  });
+
+  describe('clearProjectField stale project item handling', () => {
+    it('removes the stale item from the cache and throws StaleProjectItemError when clearProjectField fails with "Could not resolve to a node"', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-clear-stale');
+      const staleIssue = buildStaleItemTestIssue(
+        'PVTI_clear_stale_1',
+        'https://github.com/o/r/issues/11',
+      );
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.clearProjectField.mockRejectedValue(
+        new Error(
+          `Could not resolve to a node with the global id of '${staleIssue.itemId}'.`,
+        ),
+      );
+      await repository.getAllIssues('proj-clear-stale');
+
+      await expect(
+        repository.clearProjectField(project, 'some-field-id', staleIssue),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+
+    it.each([
+      ['a FORBIDDEN message', new Error('FORBIDDEN')],
+      ['an unrelated error message', new Error('Network timeout')],
+      ['a non-Error thrown value', 'raw string failure'],
+    ])(
+      'rethrows unchanged with no cache eviction when clearProjectField fails with %s',
+      async (_label, thrown) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        const project = buildTestProject('proj-clear-other');
+        const issue = buildStaleItemTestIssue(
+          'item-clear-other',
+          'https://github.com/o/r/issues/12',
+        );
+        graphqlProjectItemRepository.clearProjectField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.clearProjectField(project, 'some-field-id', issue),
+        ).rejects.toBe(thrown);
+
+        expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('updateProjectTextField stale project item handling', () => {
+    it('removes the stale item from the cache and throws StaleProjectItemError when updateProjectTextField fails with "Could not resolve to a node"', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-text-stale');
+      const staleIssue = buildStaleItemTestIssue(
+        'PVTI_text_stale_1',
+        'https://github.com/o/r/issues/21',
+      );
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectTextField.mockRejectedValue(
+        new Error(
+          `Could not resolve to a node with the global id of '${staleIssue.itemId}'.`,
+        ),
+      );
+      await repository.getAllIssues('proj-text-stale');
+
+      await expect(
+        repository.updateProjectTextField(
+          project,
+          'some-field-id',
+          staleIssue,
+          'text-value',
+        ),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+
+    it.each([
+      ['a FORBIDDEN message', new Error('FORBIDDEN')],
+      ['an unrelated error message', new Error('Network timeout')],
+      ['a non-Error thrown value', 'raw string failure'],
+    ])(
+      'rethrows unchanged with no cache eviction when updateProjectTextField fails with %s',
+      async (_label, thrown) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        const project = buildTestProject('proj-text-other');
+        const issue = buildStaleItemTestIssue(
+          'item-text-other',
+          'https://github.com/o/r/issues/22',
+        );
+        graphqlProjectItemRepository.updateProjectTextField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.updateProjectTextField(
+            project,
+            'some-field-id',
+            issue,
+            'text-value',
+          ),
+        ).rejects.toBe(thrown);
+
+        expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('updateStory stale project item handling', () => {
+    const storyProjectForStaleTest: Project & {
+      story: NonNullable<Project['story']>;
+    } = {
+      ...buildTestProject('proj-story-stale'),
+      story: {
+        name: 'Story',
+        fieldId: 'story-field-id-stale',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'story-opt-a',
+            name: 'regular / workflow improvement',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow management' },
+      },
+    };
+
+    it('removes the stale item from the cache and throws StaleProjectItemError when updateStory fails with "Could not resolve to a node"', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const staleIssue = buildStaleItemTestIssue(
+        'PVTI_story_stale_1',
+        'https://github.com/o/r/issues/31',
+      );
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project: storyProjectForStaleTest,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(storyProjectForStaleTest);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          `Could not resolve to a node with the global id of '${staleIssue.itemId}'.`,
+        ),
+      );
+      await repository.getAllIssues('proj-story-stale');
+
+      await expect(
+        repository.updateStory(
+          storyProjectForStaleTest,
+          staleIssue,
+          'story-opt-a',
+        ),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+
+    it.each([
+      ['a FORBIDDEN message', new Error('FORBIDDEN')],
+      ['an unrelated error message', new Error('Network timeout')],
+      ['a non-Error thrown value', 'raw string failure'],
+    ])(
+      'rethrows unchanged with no cache eviction when updateStory fails with %s',
+      async (_label, thrown) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        const issue = buildStaleItemTestIssue(
+          'item-story-other',
+          'https://github.com/o/r/issues/32',
+        );
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.updateStory(
+            storyProjectForStaleTest,
+            issue,
+            'story-opt-a',
+          ),
+        ).rejects.toBe(thrown);
+
+        expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+      },
+    );
   });
 
   const createApiV3CheerioRestIssueRepository = () => {

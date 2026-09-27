@@ -5,6 +5,7 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { Project } from '../entities/Project';
 import { StoryObject } from '../entities/StoryObjectMap';
 import { Issue } from '../entities/Issue';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('CreateEstimationIssueUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -224,6 +225,293 @@ describe('CreateEstimationIssueUseCase', () => {
       const body = mockIssueRepository.createNewIssue.mock.calls[0]?.[3];
       expect(body).not.toContain('From: :robot:');
       expect(body).toContain('This issue is experimental workflow :pray:');
+    });
+  });
+
+  describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+    const mondayAt07hUTC = new Date(Date.UTC(2026, 0, 12, 7, 0, 0));
+    const farFutureDate = new Date(Date.UTC(2026, 5, 1, 0, 0, 0));
+
+    const featureStory = {
+      id: 'story-feat-iso',
+      name: 'Feature Story ISO',
+      color: 'BLUE' as const,
+      description: '',
+    };
+
+    const projectBase: Project = {
+      ...mock<Project>(),
+      story: {
+        name: 'Story',
+        fieldId: 'story-field',
+        databaseId: 1,
+        stories: [featureStory],
+        workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+      },
+      remainingEstimationMinutes: {
+        name: 'Remaining Estimation (minutes)',
+        fieldId: 'estimation-field',
+      },
+      completionDate50PercentConfidence: {
+        name: 'Completion Date',
+        fieldId: 'completion-field',
+      },
+    };
+
+    const storyIssue: Issue = {
+      ...mock<Issue>(),
+      title: 'Feature Story ISO',
+      labels: ['story', 'story:action:schedule-control'],
+      isClosed: false,
+      isPr: false,
+      url: 'https://github.com/org/repo/issues/1',
+    };
+
+    const buildEstimationOnlyIssue = (url: string, itemId: string): Issue => ({
+      ...mock<Issue>(),
+      url,
+      itemId,
+      title: 'Task',
+      labels: [],
+      isClosed: false,
+      isPr: false,
+      status: null,
+      estimationMinutes: 30,
+      completionDate50PercentConfidence: null,
+      assignees: [],
+    });
+
+    const buildMultiWriteIssue = (url: string, itemId: string): Issue => ({
+      ...mock<Issue>(),
+      url,
+      itemId,
+      title: 'Task Multi',
+      labels: [],
+      isClosed: false,
+      isPr: false,
+      status: null,
+      estimationMinutes: 30,
+      completionDate50PercentConfidence: farFutureDate,
+      assignees: [],
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      mockDateRepository.formatDateWithDayOfWeek.mockReturnValue(
+        'Mon, Jun 01, 2026',
+      );
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('skips an issue whose clearProjectField call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the other issue in the same run is still processed', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const staleIssue = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/901',
+        'item-stale-1',
+      );
+      const okIssue = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/902',
+        'item-ok-1',
+      );
+      mockIssueRepository.clearProjectField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === staleIssue.url) {
+            throw new StaleProjectItemError(staleIssue.itemId);
+          }
+        },
+      );
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          { story: featureStory, storyIssue, issues: [staleIssue, okIssue] },
+        ],
+      ]);
+
+      const runPromise = useCase.run({
+        project: projectBase,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+        [projectBase, 'estimation-field', staleIssue],
+        [projectBase, 'estimation-field', okIssue],
+      ]);
+      const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+        call.join(' '),
+      );
+      expect(
+        warnedMessages.some((message) => message.includes(staleIssue.url)),
+      ).toBe(true);
+      expect(
+        warnedMessages.some((message) => message.includes(staleIssue.itemId)),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('collects a non-stale error from one issue, still processes the other issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+      const failingIssue = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/903',
+        'item-fail-1',
+      );
+      const okIssue = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/904',
+        'item-ok-2',
+      );
+      const underlyingError = new Error('GitHub API rate limit exceeded');
+      mockIssueRepository.clearProjectField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === failingIssue.url) {
+            throw underlyingError;
+          }
+        },
+      );
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          {
+            story: featureStory,
+            storyIssue,
+            issues: [failingIssue, okIssue],
+          },
+        ],
+      ]);
+
+      const runPromise = useCase.run({
+        project: projectBase,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      runPromise.catch(() => {});
+      await jest.runAllTimersAsync();
+      let caughtError: unknown;
+      try {
+        await runPromise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      if (!(caughtError instanceof Error)) {
+        throw new Error('Expected run() to reject with an Error instance');
+      }
+      expect(caughtError.message).toContain(failingIssue.url);
+      expect(caughtError.message).toContain(underlyingError.message);
+      expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+        [projectBase, 'estimation-field', failingIssue],
+        [projectBase, 'estimation-field', okIssue],
+      ]);
+    });
+
+    it('resolves normally when no exception occurs (no-op regression check)', async () => {
+      const issueA = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/905',
+        'item-a-1',
+      );
+      const issueB = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/906',
+        'item-b-1',
+      );
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          { story: featureStory, storyIssue, issues: [issueA, issueB] },
+        ],
+      ]);
+
+      const runPromise = useCase.run({
+        project: projectBase,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await expect(runPromise).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+        [projectBase, 'estimation-field', issueA],
+        [projectBase, 'estimation-field', issueB],
+      ]);
+    });
+
+    it('skips the second write (completionDate clear) for an issue whose first write (estimation clear) fails with StaleProjectItemError, and still processes the next issue', async () => {
+      const multiWriteStaleIssue = buildMultiWriteIssue(
+        'https://github.com/org/repo/issues/907',
+        'item-stale-2',
+      );
+      const okIssue = buildEstimationOnlyIssue(
+        'https://github.com/org/repo/issues/908',
+        'item-ok-3',
+      );
+      mockIssueRepository.clearProjectField.mockImplementation(
+        async (_project, fieldId, issue) => {
+          if (
+            issue.url === multiWriteStaleIssue.url &&
+            fieldId === 'estimation-field'
+          ) {
+            throw new StaleProjectItemError(multiWriteStaleIssue.itemId);
+          }
+        },
+      );
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          {
+            story: featureStory,
+            storyIssue,
+            issues: [multiWriteStaleIssue, okIssue],
+          },
+        ],
+      ]);
+
+      const runPromise = useCase.run({
+        project: projectBase,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+        [projectBase, 'estimation-field', multiWriteStaleIssue],
+        [projectBase, 'estimation-field', okIssue],
+      ]);
+      expect(
+        mockIssueRepository.clearProjectField.mock.calls.some(
+          ([, fieldId, issue]) =>
+            issue.url === multiWriteStaleIssue.url &&
+            fieldId === 'completion-field',
+        ),
+      ).toBe(false);
     });
   });
 });

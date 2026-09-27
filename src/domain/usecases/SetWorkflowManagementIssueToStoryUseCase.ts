@@ -2,6 +2,7 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
@@ -70,18 +71,34 @@ export class SetWorkflowManagementIssueToStoryUseCase {
           );
           continue;
         }
-        await this.issueRepository.updateStory(
-          { ...input.project, story },
-          issue,
-          story.workflowManagementStory.id,
-        );
-        const workflowLabel = issue.labels.find(
-          (label) =>
-            label.toLowerCase() ===
-            SetWorkflowManagementIssueToStoryUseCase.WORKFLOW_MANAGEMENT_LABEL,
-        );
-        if (workflowLabel) {
-          await this.issueRepository.removeLabel(issue, workflowLabel);
+        try {
+          await this.issueRepository.updateStory(
+            { ...input.project, story },
+            issue,
+            story.workflowManagementStory.id,
+          );
+          const workflowLabel = issue.labels.find(
+            (label) =>
+              label.toLowerCase() ===
+              SetWorkflowManagementIssueToStoryUseCase.WORKFLOW_MANAGEMENT_LABEL,
+          );
+          if (workflowLabel) {
+            await this.issueRepository.removeLabel(issue, workflowLabel);
+          }
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while setting workflow-management Story: ${issue.url} (itemId=${error.itemId})`,
+            );
+          } else {
+            errors.push(
+              new Error(
+                `Failed to write the workflow-management Story. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error },
+              ),
+            );
+          }
+          continue;
         }
         await new Promise((resolve) => setTimeout(resolve, 5000));
         continue;
@@ -151,18 +168,38 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         continue;
       }
 
-      await this.issueRepository.updateStory(
-        { ...input.project, story },
-        issue,
-        matchingStory.id,
-      );
-      await this.issueRepository.removeLabel(issue, storyLabel);
+      try {
+        await this.issueRepository.updateStory(
+          { ...input.project, story },
+          issue,
+          matchingStory.id,
+        );
+        await this.issueRepository.removeLabel(issue, storyLabel);
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `Skipping stale project item while setting matched-story-label Story: ${issue.url} (itemId=${error.itemId})`,
+          );
+        } else {
+          errors.push(
+            new Error(
+              `Failed to write the matched-story-label Story. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
+            ),
+          );
+        }
+        continue;
+      }
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
     if (errors.length > 0) {
       throw new AggregateError(
         errors,
-        `Failed to re-read the live Story value for ${errors.length} issue(s) before writing the workflow-management or matched-story-label Story`,
+        `Failed to write the workflow-management or matched-story-label Story for ${errors.length} issue(s): ${errors
+          .map((error) =>
+            error instanceof Error ? error.message : String(error),
+          )
+          .join('; ')}`,
       );
     }
   };

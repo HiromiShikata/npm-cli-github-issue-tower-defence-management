@@ -1,6 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class UpdateIssueStatusByLabelUseCase {
   constructor(
@@ -16,6 +17,7 @@ export class UpdateIssueStatusByLabelUseCase {
     status.toLowerCase().replace(/[\s\-_]/g, '');
 
   run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
+    const failedIssueDescriptions: string[] = [];
     for (const issue of input.issues) {
       const statusLabel = issue.labels.find((label) =>
         label
@@ -42,23 +44,38 @@ export class UpdateIssueStatusByLabelUseCase {
       const targetStatusNormalized =
         UpdateIssueStatusByLabelUseCase.normalizeStatus(targetStatus.name);
       if (currentStatusNormalized !== targetStatusNormalized) {
-        await this.issueRepository.updateStatus(
-          input.project,
-          issue,
-          targetStatus.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            input.project,
+            issue,
+            targetStatus.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while updating status by label: ${issue.url} (itemId=${error.itemId})`,
+            );
+            continue;
+          }
+          failedIssueDescriptions.push(
+            `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          continue;
+        }
       }
       try {
         await this.issueRepository.removeLabel(issue, statusLabel);
-      } catch (e) {
-        if (!(e instanceof Error)) {
-          throw e;
-        }
-        throw new Error(
-          `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
-          { cause: e },
+      } catch (error) {
+        failedIssueDescriptions.push(
+          `${issue.url}: Failed to remove label ${statusLabel}: ${error instanceof Error ? error.message : String(error)}`,
         );
+        continue;
       }
+    }
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to update issue status by label for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+      );
     }
   };
 }

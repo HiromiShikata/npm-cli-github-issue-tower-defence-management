@@ -4,6 +4,7 @@ import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('ClearDependedIssueURLUseCase', () => {
   jest.setTimeout(30 * 1000);
@@ -1198,6 +1199,147 @@ describe('ClearDependedIssueURLUseCase', () => {
           ]);
         },
       );
+    });
+
+    describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+      const isolationProject: Project = {
+        ...mock<Project>(),
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL Separated By Comma',
+          fieldId: 'fieldId',
+        },
+      };
+      const closedBlocker = {
+        ...mock<Issue>(),
+        url: 'https://github.com/o/r/issues/1',
+        dependedIssueUrls: [],
+        isClosed: true,
+      };
+      const buildDependentIssue = (url: string, itemId: string): Issue => ({
+        ...mock<Issue>(),
+        url,
+        itemId,
+        dependedIssueUrls: [closedBlocker.url],
+        isClosed: false,
+      });
+
+      it('skips an issue whose field write fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the remaining issue in the same run is still processed', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        const staleIssue = buildDependentIssue(
+          'https://github.com/o/r/issues/2',
+          'item-stale-1',
+        );
+        const okIssue = buildDependentIssue(
+          'https://github.com/o/r/issues/3',
+          'item-ok-1',
+        );
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        mockIssueRepository.clearProjectField.mockImplementation(
+          async (_project, _fieldId, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError(staleIssue.itemId);
+            }
+          },
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+
+        await useCase.run({
+          project: isolationProject,
+          issues: [closedBlocker, staleIssue, okIssue],
+          cacheUsed: false,
+        });
+
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [isolationProject, 'fieldId', staleIssue],
+          [isolationProject, 'fieldId', okIssue],
+        ]);
+        const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+          call.join(' '),
+        );
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.url)),
+        ).toBe(true);
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.itemId)),
+        ).toBe(true);
+        consoleWarnSpy.mockRestore();
+      });
+
+      it('collects a non-stale error from one issue, still processes the remaining issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        const failingIssue = buildDependentIssue(
+          'https://github.com/o/r/issues/4',
+          'item-fail-1',
+        );
+        const okIssue = buildDependentIssue(
+          'https://github.com/o/r/issues/5',
+          'item-ok-2',
+        );
+        const underlyingError = new Error('GitHub API rate limit exceeded');
+        mockIssueRepository.clearProjectField.mockImplementation(
+          async (_project, _fieldId, issue) => {
+            if (issue.url === failingIssue.url) {
+              throw underlyingError;
+            }
+          },
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+
+        const runPromise = useCase.run({
+          project: isolationProject,
+          issues: [closedBlocker, failingIssue, okIssue],
+          cacheUsed: false,
+        });
+
+        runPromise.catch(() => {});
+        let caughtError: unknown;
+        try {
+          await runPromise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(failingIssue.url);
+        expect(caughtError.message).toContain(underlyingError.message);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [isolationProject, 'fieldId', failingIssue],
+          [isolationProject, 'fieldId', okIssue],
+        ]);
+      });
+
+      it('resolves normally when no exception occurs (no-op regression check)', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        const issueA = buildDependentIssue(
+          'https://github.com/o/r/issues/6',
+          'item-a-1',
+        );
+        const issueB = buildDependentIssue(
+          'https://github.com/o/r/issues/7',
+          'item-b-1',
+        );
+        mockIssueRepository.clearProjectField.mockResolvedValue(undefined);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+
+        await expect(
+          useCase.run({
+            project: isolationProject,
+            issues: [closedBlocker, issueA, issueB],
+            cacheUsed: false,
+          }),
+        ).resolves.toBeUndefined();
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [isolationProject, 'fieldId', issueA],
+          [isolationProject, 'fieldId', issueB],
+        ]);
+      });
     });
   });
 

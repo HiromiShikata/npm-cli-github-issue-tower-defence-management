@@ -3,6 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('ClearPastNextActionDateHourUseCase', () => {
   jest.setTimeout(60 * 1000);
@@ -401,5 +402,205 @@ describe('ClearPastNextActionDateHourUseCase', () => {
         });
       },
     );
+
+    describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+      const singleWriteTargetDates = [
+        new Date('2026-04-02T10:05:00'),
+        new Date('2026-04-02T10:15:00'),
+      ];
+      const buildSingleWriteIssue = (url: string, itemId: string): Issue => ({
+        ...openIssueWithHour,
+        url,
+        itemId,
+        nextActionHour: 10,
+        nextActionDate: null,
+      });
+      const buildMultiWriteIssue = (url: string, itemId: string): Issue => ({
+        ...openIssueWithHour,
+        url,
+        itemId,
+        nextActionHour: 10,
+        nextActionDate: new Date('2026-04-01T00:00:00'),
+      });
+      const mockGetToMirrorSnapshot = (issues: Issue[]) => {
+        mockIssueRepository.get.mockReset();
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          const found = issues.find((issue) => issue.url === url);
+          return found ?? null;
+        });
+      };
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('skips an issue whose clearProjectField call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the other issue in the same run is still processed', async () => {
+        const staleIssue = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/901',
+          'item-stale-1',
+        );
+        const okIssue = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/902',
+          'item-ok-1',
+        );
+        mockGetToMirrorSnapshot([staleIssue, okIssue]);
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        mockIssueRepository.clearProjectField.mockImplementation(
+          async (_project, _fieldId, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError(staleIssue.itemId);
+            }
+          },
+        );
+        const useCase = new ClearPastNextActionDateHourUseCase(
+          mockIssueRepository,
+        );
+
+        await useCase.run({
+          targetDates: singleWriteTargetDates,
+          project: basicProject,
+          issues: [staleIssue, okIssue],
+          cacheUsed: false,
+        });
+
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'hourFieldId', staleIssue],
+          [basicProject, 'hourFieldId', okIssue],
+        ]);
+        const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+          call.join(' '),
+        );
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.url)),
+        ).toBe(true);
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.itemId)),
+        ).toBe(true);
+        consoleWarnSpy.mockRestore();
+      });
+
+      it('collects a non-stale error from one issue, still processes the other issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+        const failingIssue = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/903',
+          'item-fail-1',
+        );
+        const okIssue = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/904',
+          'item-ok-2',
+        );
+        mockGetToMirrorSnapshot([failingIssue, okIssue]);
+        const underlyingError = new Error('GitHub API rate limit exceeded');
+        mockIssueRepository.clearProjectField.mockImplementation(
+          async (_project, _fieldId, issue) => {
+            if (issue.url === failingIssue.url) {
+              throw underlyingError;
+            }
+          },
+        );
+        const useCase = new ClearPastNextActionDateHourUseCase(
+          mockIssueRepository,
+        );
+
+        const runPromise = useCase.run({
+          targetDates: singleWriteTargetDates,
+          project: basicProject,
+          issues: [failingIssue, okIssue],
+          cacheUsed: false,
+        });
+
+        runPromise.catch(() => {});
+        let caughtError: unknown;
+        try {
+          await runPromise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(failingIssue.url);
+        expect(caughtError.message).toContain(underlyingError.message);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'hourFieldId', failingIssue],
+          [basicProject, 'hourFieldId', okIssue],
+        ]);
+      });
+
+      it('resolves normally when no exception occurs (no-op regression check)', async () => {
+        const issueA = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/905',
+          'item-a-1',
+        );
+        const issueB = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/906',
+          'item-b-1',
+        );
+        mockGetToMirrorSnapshot([issueA, issueB]);
+        mockIssueRepository.clearProjectField.mockResolvedValue(undefined);
+        const useCase = new ClearPastNextActionDateHourUseCase(
+          mockIssueRepository,
+        );
+
+        await expect(
+          useCase.run({
+            targetDates: singleWriteTargetDates,
+            project: basicProject,
+            issues: [issueA, issueB],
+            cacheUsed: false,
+          }),
+        ).resolves.toBeUndefined();
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'hourFieldId', issueA],
+          [basicProject, 'hourFieldId', issueB],
+        ]);
+      });
+
+      it('skips the second write (nextActionDate clear) for an issue whose first write (nextActionHour clear) fails with StaleProjectItemError, and still processes the next issue', async () => {
+        const multiWriteStaleIssue = buildMultiWriteIssue(
+          'https://github.com/o/r/issues/907',
+          'item-stale-2',
+        );
+        const okIssue = buildSingleWriteIssue(
+          'https://github.com/o/r/issues/908',
+          'item-ok-3',
+        );
+        mockGetToMirrorSnapshot([multiWriteStaleIssue, okIssue]);
+        mockIssueRepository.clearProjectField.mockImplementation(
+          async (_project, fieldId, issue) => {
+            if (
+              issue.url === multiWriteStaleIssue.url &&
+              fieldId === 'hourFieldId'
+            ) {
+              throw new StaleProjectItemError(multiWriteStaleIssue.itemId);
+            }
+          },
+        );
+        const useCase = new ClearPastNextActionDateHourUseCase(
+          mockIssueRepository,
+        );
+
+        await useCase.run({
+          targetDates: [new Date('2026-04-02T10:15:00')],
+          project: basicProject,
+          issues: [multiWriteStaleIssue, okIssue],
+          cacheUsed: false,
+        });
+
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [basicProject, 'hourFieldId', multiWriteStaleIssue],
+          [basicProject, 'hourFieldId', okIssue],
+        ]);
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls.some(
+            ([, fieldId, issue]) =>
+              issue.url === multiWriteStaleIssue.url &&
+              fieldId === 'dateFieldId',
+          ),
+        ).toBe(false);
+      });
+    });
   });
 });

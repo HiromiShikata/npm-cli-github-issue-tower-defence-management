@@ -3,6 +3,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('SetNoStoryIssueToStoryUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -715,6 +716,160 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
           'noStoryId',
         ],
       ]);
+    });
+
+    describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+      const buildTargetIssue = (url: string, itemId: string): Issue => ({
+        ...mock<Issue>(),
+        url,
+        itemId,
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      });
+      const mockGetToMirrorSnapshot = (issues: Issue[]) => {
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          const found = issues.find((issue) => issue.url === url);
+          return found ? { ...found } : null;
+        });
+      };
+
+      it('skips an issue whose updateStory call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the other issue in the same run is still processed', async () => {
+        const staleIssue = buildTargetIssue(
+          'https://github.com/o/r/issues/901',
+          'item-stale-1',
+        );
+        const okIssue = buildTargetIssue(
+          'https://github.com/o/r/issues/902',
+          'item-ok-1',
+        );
+        mockGetToMirrorSnapshot([staleIssue, okIssue]);
+        mockIssueRepository.updateStory.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError(staleIssue.itemId);
+            }
+          },
+        );
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [staleIssue, okIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await promise;
+
+        expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+          [
+            { ...basicProject, story: basicProject.story },
+            staleIssue,
+            'noStoryId',
+          ],
+          [
+            { ...basicProject, story: basicProject.story },
+            okIssue,
+            'noStoryId',
+          ],
+        ]);
+        expect(
+          warnSpy.mock.calls.some((call: unknown[]) =>
+            call.some(
+              (arg) => typeof arg === 'string' && arg.includes(staleIssue.url),
+            ),
+          ),
+        ).toBe(true);
+        expect(
+          warnSpy.mock.calls.some((call: unknown[]) =>
+            call.some(
+              (arg) =>
+                typeof arg === 'string' && arg.includes(staleIssue.itemId),
+            ),
+          ),
+        ).toBe(true);
+      });
+
+      it('collects a non-stale error from one issue, still processes the other issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+        const failingIssue = buildTargetIssue(
+          'https://github.com/o/r/issues/903',
+          'item-fail-1',
+        );
+        const okIssue = buildTargetIssue(
+          'https://github.com/o/r/issues/904',
+          'item-ok-2',
+        );
+        mockGetToMirrorSnapshot([failingIssue, okIssue]);
+        const underlyingError = new Error('GitHub API rate limit exceeded');
+        mockIssueRepository.updateStory.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === failingIssue.url) {
+              throw underlyingError;
+            }
+          },
+        );
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [failingIssue, okIssue],
+          cacheUsed: false,
+        });
+        promise.catch(() => {});
+        await jest.runAllTimersAsync();
+        let caughtError: unknown;
+        try {
+          await promise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(failingIssue.url);
+        expect(caughtError.message).toContain(underlyingError.message);
+        expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+          [
+            { ...basicProject, story: basicProject.story },
+            failingIssue,
+            'noStoryId',
+          ],
+          [
+            { ...basicProject, story: basicProject.story },
+            okIssue,
+            'noStoryId',
+          ],
+        ]);
+      });
+
+      it('resolves normally when no exception occurs (no-op regression check)', async () => {
+        const issueA = buildTargetIssue(
+          'https://github.com/o/r/issues/905',
+          'item-a-1',
+        );
+        const issueB = buildTargetIssue(
+          'https://github.com/o/r/issues/906',
+          'item-b-1',
+        );
+        mockGetToMirrorSnapshot([issueA, issueB]);
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [issueA, issueB],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await expect(promise).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+          [{ ...basicProject, story: basicProject.story }, issueA, 'noStoryId'],
+          [{ ...basicProject, story: basicProject.story }, issueB, 'noStoryId'],
+        ]);
+      });
     });
   });
 });

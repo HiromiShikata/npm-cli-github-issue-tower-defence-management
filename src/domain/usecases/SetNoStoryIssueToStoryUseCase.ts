@@ -3,6 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class SetNoStoryIssueToStoryUseCase {
   constructor(
@@ -67,17 +68,37 @@ export class SetNoStoryIssueToStoryUseCase {
         );
         continue;
       }
-      await this.issueRepository.updateStory(
-        { ...input.project, story },
-        issue,
-        noStoryOption.id,
-      );
+      try {
+        await this.issueRepository.updateStory(
+          { ...input.project, story },
+          issue,
+          noStoryOption.id,
+        );
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `Skipping stale project item while setting NO STORY: ${issue.url} (itemId=${error.itemId})`,
+          );
+        } else {
+          errors.push(
+            new Error(
+              `Failed to write NO STORY. issueUrl: ${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
+            ),
+          );
+        }
+        continue;
+      }
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
     if (errors.length > 0) {
       throw new AggregateError(
         errors,
-        `Failed to re-read the live Story value for ${errors.length} issue(s) before writing NO STORY`,
+        `Failed to write NO STORY for ${errors.length} issue(s): ${errors
+          .map((error) =>
+            error instanceof Error ? error.message : String(error),
+          )
+          .join('; ')}`,
       );
     }
   };
