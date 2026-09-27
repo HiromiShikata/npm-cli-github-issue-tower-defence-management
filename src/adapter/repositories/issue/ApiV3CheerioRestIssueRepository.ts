@@ -1407,6 +1407,16 @@ export class ApiV3CheerioRestIssueRepository
       });
     });
   };
+  removeIssueFromProjectCache = async (
+    projectId: Project['id'],
+    issue: Issue,
+  ): Promise<void> => {
+    this.getAllIssuesRefreshMemo.delete(projectId);
+    await this.projectIssuesCacheRepository.removeIssueByItemId(
+      projectId,
+      issue.itemId,
+    );
+  };
   updateStoryByProjectItemId = async (
     project: Project & { story: NonNullable<Project['story']> },
     projectItemId: string,

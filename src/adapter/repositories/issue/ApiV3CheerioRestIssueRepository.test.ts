@@ -9197,6 +9197,121 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('removeIssueFromProjectCache', () => {
+    const offBoardItemId = 'item-off-board';
+    const offBoardIssueUrl = 'https://github.com/o/r/issues/700';
+    const remainingItemId = 'item-remaining';
+    const remainingIssueUrl = 'https://github.com/o/r/issues/701';
+
+    const seedProjectIssuesCache = async (
+      projectId: Project['id'],
+    ): Promise<{
+      cache: Pick<
+        LocalStorageCacheRepository,
+        'getSingle' | 'setSingle' | 'withLock'
+      >;
+      project: Project;
+    }> => {
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      await cache.setSingle(`allIssues-${projectId}`, {
+        lastFetchedAt: '2026-07-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-01T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(offBoardIssueUrl, 'off-board issue'),
+            itemId: offBoardItemId,
+          },
+          {
+            ...buildCachedIssueRecord(remainingIssueUrl, 'remaining issue'),
+            itemId: remainingItemId,
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      return { cache, project };
+    };
+
+    const buildRepositoryReadingOnlyTheCache = (
+      cache: Pick<
+        LocalStorageCacheRepository,
+        'getSingle' | 'setSingle' | 'withLock'
+      >,
+      project: Project,
+    ) => {
+      const processRepository = buildProcessRepository(cache);
+      processRepository.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-01T00:10:00.000Z'),
+      );
+      processRepository.projectRepository.getProject.mockResolvedValue(project);
+      processRepository.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        [],
+      );
+      processRepository.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [],
+      );
+      return processRepository;
+    };
+
+    it('removes the issue with the given itemId from the on-disk project issues cache and keeps the other cached issues', async () => {
+      const projectId = 'proj-remove-from-cache-on-disk';
+      const { cache, project } = await seedProjectIssuesCache(projectId);
+      const { repository } = buildRepositoryReadingOnlyTheCache(
+        cache,
+        project,
+      );
+
+      await repository.removeIssueFromProjectCache(
+        projectId,
+        buildIssueArgument(offBoardItemId, offBoardIssueUrl, 'off-board issue'),
+      );
+
+      const finalCache = await new ProjectIssuesCacheRepository(cache).read(
+        projectId,
+      );
+      const cachedItemIds = (finalCache?.issues ?? []).map(
+        (issue) => issue.itemId,
+      );
+      expect(cachedItemIds).toEqual([remainingItemId]);
+    });
+
+    it('makes later getAllIssues and getAllOpened calls on the same repository instance stop returning the removed issue after an earlier getAllIssues call already returned it', async () => {
+      const projectId = 'proj-remove-from-cache-memo';
+      const { cache, project } = await seedProjectIssuesCache(projectId);
+      const { repository } = buildRepositoryReadingOnlyTheCache(
+        cache,
+        project,
+      );
+      const issueUrlsBeforeRemoval = (
+        await repository.getAllIssues(projectId)
+      ).issues.map((issue) => issue.url);
+
+      await repository.removeIssueFromProjectCache(
+        projectId,
+        buildIssueArgument(offBoardItemId, offBoardIssueUrl, 'off-board issue'),
+      );
+
+      const issueUrlsFromGetAllIssuesAfterRemoval = (
+        await repository.getAllIssues(projectId)
+      ).issues.map((issue) => issue.url);
+      const issueUrlsFromGetAllOpenedAfterRemoval = (
+        await repository.getAllOpened(project)
+      ).map((issue) => issue.url);
+      expect(issueUrlsBeforeRemoval).toEqual([
+        offBoardIssueUrl,
+        remainingIssueUrl,
+      ]);
+      expect(issueUrlsFromGetAllIssuesAfterRemoval).toEqual([
+        remainingIssueUrl,
+      ]);
+      expect(issueUrlsFromGetAllOpenedAfterRemoval).toEqual([
+        remainingIssueUrl,
+      ]);
+    });
+  });
+
   describe('createNewIssue', () => {
     const newIssueNumber = 99;
     const newIssueUrl = 'https://github.com/o/r/issues/99';
