@@ -343,6 +343,34 @@ describe('ConsoleOperationMenu', () => {
     expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
   });
 
+  it('forwards currentAgentOptionId to the agent select dropdown', () => {
+    const duplicateNameAgentOptions = [
+      { id: 'menu_agent_dup_1', name: 'developer', color: 'BLUE' as const },
+      { id: 'menu_agent_dup_2', name: 'developer', color: 'GRAY' as const },
+    ];
+    const props = {
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      hasPullRequest: false,
+      rejectEnabled: false,
+      statusOptions: consoleStatusOptionsFixture,
+      storyOptions: [],
+      currentStoryName: null,
+      agentOptions: duplicateNameAgentOptions,
+      currentAgentName: 'developer',
+      currentAgentOptionId: 'menu_agent_dup_2',
+      handlers,
+    };
+    const { getByRole, getByTitle } = render(
+      <ConsoleOperationMenu {...props} />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    const select = getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('menu_agent_dup_2');
+  });
+
   it('shows field selector toggle button when agent or story options are provided', () => {
     const { getByTitle } = render(
       <ConsoleOperationMenu

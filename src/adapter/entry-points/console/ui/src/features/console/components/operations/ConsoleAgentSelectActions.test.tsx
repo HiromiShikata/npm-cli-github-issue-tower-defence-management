@@ -74,4 +74,96 @@ describe('ConsoleAgentSelectActions', () => {
     fireEvent.change(select, { target: { value: 'agent_1' } });
     expect(onSetAgent).not.toHaveBeenCalled();
   });
+
+  it('pre-selects the current agent by id when duplicate names exist', () => {
+    const duplicateNameAgentOptions = [
+      { id: 'agent_dup_1', name: 'developer', color: 'BLUE' as const },
+      { id: 'agent_dup_2', name: 'developer', color: 'GRAY' as const },
+    ];
+    const props = {
+      agentOptions: duplicateNameAgentOptions,
+      currentAgentName: 'developer',
+      currentAgentOptionId: 'agent_dup_2',
+      onSetAgent: jest.fn(),
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('agent_dup_2');
+  });
+
+  it('pre-selects the current agent by id when the id points to a different option than the name would match', () => {
+    const props = {
+      agentOptions,
+      currentAgentName: 'developer',
+      currentAgentOptionId: 'agent_2',
+      onSetAgent: jest.fn(),
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('agent_2');
+  });
+
+  it('falls back to matching by name when currentAgentOptionId is null', () => {
+    const props = {
+      agentOptions,
+      currentAgentName: 'chore',
+      currentAgentOptionId: null,
+      onSetAgent: jest.fn(),
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('agent_2');
+  });
+
+  it('does not pre-select any option when currentAgentOptionId does not match any option, even when the name would match a different one', () => {
+    const props = {
+      agentOptions,
+      currentAgentName: 'chore',
+      currentAgentOptionId: 'agent_stale',
+      onSetAgent: jest.fn(),
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('');
+  });
+
+  it('pre-selects the first matching name when duplicate names exist and no id is supplied', () => {
+    const duplicateNameAgentOptions = [
+      { id: 'agent_dup_1', name: 'developer', color: 'BLUE' as const },
+      { id: 'agent_dup_2', name: 'developer', color: 'GRAY' as const },
+    ];
+    const props = {
+      agentOptions: duplicateNameAgentOptions,
+      currentAgentName: 'developer',
+      currentAgentOptionId: null,
+      onSetAgent: jest.fn(),
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('agent_dup_1');
+  });
+
+  it('still calls onSetAgent with the full option object when currentAgentOptionId is supplied', () => {
+    const onSetAgent = jest.fn();
+    const props = {
+      agentOptions,
+      currentAgentName: 'developer',
+      currentAgentOptionId: 'agent_1',
+      onSetAgent,
+    };
+    render(<ConsoleAgentSelectActions {...props} />);
+    const select = screen.getByRole('combobox', { name: 'Set agent' });
+    fireEvent.change(select, { target: { value: 'agent_2' } });
+    expect(onSetAgent).toHaveBeenCalledWith(agentOptions[1]);
+  });
 });
