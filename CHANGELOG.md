@@ -1,3 +1,10 @@
+## [2.152.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.8...v2.152.9) (2026-09-27)
+
+
+### Bug Fixes
+
+* **domain:** revert no-next-step-agent immediate escalation regression (c523151c6) ([#2765](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2765)) ([dd235ea](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd235ea2d9a38e35f0670a51f5a23ad3e47f26e6))
+
 ## [2.152.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.7...v2.152.8) (2026-09-26)
 
 
