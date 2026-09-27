@@ -1223,6 +1223,106 @@ describe('GraphqlProjectItemRepository', () => {
       }
     });
 
+    describe('plainCrossRepoIssueReferenceUrls extraction', () => {
+      const buildItemNode = (
+        body: string | null,
+        nameWithOwner = 'owner/repo',
+      ) => ({
+        id: 'item-1',
+        fieldValues: { nodes: [] },
+        content: {
+          repository: { nameWithOwner, isArchived: false },
+          number: 1,
+          title: 'title',
+          state: 'OPEN',
+          url: `https://github.com/${nameWithOwner}/issues/1`,
+          body,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          author: { login: 'author' },
+          labels: { nodes: [] },
+          assignees: { nodes: [] },
+        },
+      });
+
+      const fetchPlainCrossRepoIssueReferenceUrls = async (
+        body: string | null,
+      ): Promise<string[]> => {
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+        mockPost.mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 1,
+                  pageInfo: {
+                    endCursor: 'cursor-1',
+                    startCursor: 'cursor-start',
+                    hasNextPage: false,
+                  },
+                  nodes: [buildItemNode(body)],
+                },
+              },
+            },
+          }),
+        );
+
+        const result = await repository.fetchProjectItems('test-project-id');
+        expect(result).toHaveLength(1);
+        return result[0].plainCrossRepoIssueReferenceUrls;
+      };
+
+      const extractionTestCases: {
+        name: string;
+        body: string | null;
+        expected: string[];
+      }[] = [
+        {
+          name: 'extracts a bare-text cross-repo issue URL from the body',
+          body: 'See https://github.com/other/repo/issues/99 for details',
+          expected: ['https://github.com/other/repo/issues/99'],
+        },
+        {
+          name: 'extracts a cross-repo issue URL embedded in markdown link syntax',
+          body: 'See [this](https://github.com/other/repo/issues/99) for details',
+          expected: ['https://github.com/other/repo/issues/99'],
+        },
+        {
+          name: 'excludes a same-repository URL',
+          body: 'See https://github.com/owner/repo/issues/5 for details',
+          expected: [],
+        },
+        {
+          name: 'de-duplicates the same cross-repo URL appearing twice',
+          body: 'https://github.com/other/repo/issues/99 and again https://github.com/other/repo/issues/99',
+          expected: ['https://github.com/other/repo/issues/99'],
+        },
+        {
+          name: 'returns an empty array when body is null',
+          body: null,
+          expected: [],
+        },
+        {
+          name: 'returns an empty array when body is an empty string',
+          body: '',
+          expected: [],
+        },
+        {
+          name: 'extracts a cross-repo pull request URL',
+          body: 'See https://github.com/other/repo/pull/7',
+          expected: ['https://github.com/other/repo/pull/7'],
+        },
+      ];
+      it.each(extractionTestCases)('$name', async ({ body, expected }) => {
+        const plainCrossRepoIssueReferenceUrls =
+          await fetchPlainCrossRepoIssueReferenceUrls(body);
+        expect(plainCrossRepoIssueReferenceUrls).toEqual(expected);
+      });
+    });
+
     it('should sleep the 5000ms blanket delay between pages', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
@@ -2804,6 +2904,58 @@ describe('GraphqlProjectItemRepository', () => {
       } finally {
         consoleSpy.mockRestore();
       }
+    });
+
+    it('extracts plainCrossRepoIssueReferenceUrls for a cross-repo URL in the body via fetchProjectItemByUrl', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                number: 50,
+                title: 'Issue Title',
+                state: 'OPEN',
+                url: 'https://github.com/owner/repo/issues/50',
+                body: 'See https://github.com/other/repo/issues/99 for details',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                author: { login: 'author' },
+                labels: { nodes: [] },
+                assignees: { nodes: [] },
+                repository: {
+                  nameWithOwner: 'owner/repo',
+                  isArchived: false,
+                },
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'item-50',
+                      project: null,
+                      fieldValues: { nodes: [] },
+                    },
+                  ],
+                },
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/50',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([
+        'https://github.com/other/repo/issues/99',
+      ]);
     });
   });
 

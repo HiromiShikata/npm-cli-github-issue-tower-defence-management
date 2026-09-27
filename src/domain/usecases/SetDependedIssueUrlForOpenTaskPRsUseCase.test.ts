@@ -29,6 +29,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     isClosed: false,
     state: 'OPEN',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
   };
   const closedTaskIssue: Issue = {
     ...mock<Issue>(),
@@ -37,6 +38,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     isClosed: true,
     state: 'CLOSED',
     closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
   };
 
   const openPrClosingIssue1: Issue = {
@@ -47,6 +49,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     isClosed: false,
     state: 'OPEN',
     closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+    plainCrossRepoIssueReferenceUrls: [],
   };
 
   beforeEach(() => {
@@ -76,6 +79,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -95,6 +99,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -132,6 +137,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/2'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -151,6 +157,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: true,
       state: 'CLOSED',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -170,6 +177,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -188,6 +196,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
     };
     const openPrClosingCrossRepoIssue: Issue = {
       ...mock<Issue>(),
@@ -199,6 +208,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       closingIssueReferenceUrls: [
         'https://github.com/owner/other-repo/issues/9',
       ],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -245,6 +255,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
     };
     const openPrClosingIssue3: Issue = {
       ...mock<Issue>(),
@@ -254,6 +265,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/3'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -289,6 +301,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     await useCase.run({
@@ -321,6 +334,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
     const succeedingPr: Issue = {
       ...mock<Issue>(),
@@ -330,6 +344,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+      plainCrossRepoIssueReferenceUrls: [],
     };
 
     mockIssueRepository.setDependedIssueUrl.mockImplementation(
@@ -356,5 +371,266 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();
+  });
+
+  describe('cross-repo plain URL references (plainCrossRepoIssueReferenceUrls)', () => {
+    const testCases: {
+      name: string;
+      issues: Issue[];
+      expectedCalls: { prUrl: string; issueUrl: string }[];
+    }[] = [
+      {
+        name: 'sets the dependency when a cross-repo plain URL targets an open issue',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/10',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/300',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/10',
+            ],
+          },
+        ],
+        expectedCalls: [
+          {
+            prUrl: 'https://github.com/owner/repo/pull/300',
+            issueUrl: 'https://github.com/other/repo/issues/10',
+          },
+        ],
+      },
+      {
+        name: 'does not set the dependency when the cross-repo plain URL targets a closed issue',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/11',
+            isPr: false,
+            isClosed: true,
+            state: 'CLOSED',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/301',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/11',
+            ],
+          },
+        ],
+        expectedCalls: [],
+      },
+      {
+        name: 'does not set the dependency when the cross-repo plain URL targets another pull request',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/pull/12',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/302',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/pull/12',
+            ],
+          },
+        ],
+        expectedCalls: [],
+      },
+      {
+        name: 'does not set the dependency when the referencing pull request already has a depended issue url',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/13',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/303',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: ['https://github.com/other/repo/issues/13'],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/13',
+            ],
+          },
+        ],
+        expectedCalls: [],
+      },
+      {
+        name: 'sets the dependency for each of two cross-repo plain URLs on the same pull request',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/14',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/15',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/304',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/14',
+              'https://github.com/other/repo/issues/15',
+            ],
+          },
+        ],
+        expectedCalls: [
+          {
+            prUrl: 'https://github.com/owner/repo/pull/304',
+            issueUrl: 'https://github.com/other/repo/issues/14',
+          },
+          {
+            prUrl: 'https://github.com/owner/repo/pull/304',
+            issueUrl: 'https://github.com/other/repo/issues/15',
+          },
+        ],
+      },
+      {
+        name: 'sets the dependency for both a same-repository closing keyword target and a cross-repo plain URL target on the same pull request',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/issues/16',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/17',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/305',
+            isPr: true,
+            isClosed: false,
+            state: 'OPEN',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [
+              'https://github.com/owner/repo/issues/16',
+            ],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/17',
+            ],
+          },
+        ],
+        expectedCalls: [
+          {
+            prUrl: 'https://github.com/owner/repo/pull/305',
+            issueUrl: 'https://github.com/owner/repo/issues/16',
+          },
+          {
+            prUrl: 'https://github.com/owner/repo/pull/305',
+            issueUrl: 'https://github.com/other/repo/issues/17',
+          },
+        ],
+      },
+      {
+        name: 'does not set any dependency when the referencing pull request itself is closed',
+        issues: [
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/other/repo/issues/18',
+            isPr: false,
+            isClosed: false,
+            state: 'OPEN',
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [],
+          },
+          {
+            ...mock<Issue>(),
+            url: 'https://github.com/owner/repo/pull/306',
+            isPr: true,
+            isClosed: true,
+            state: 'CLOSED',
+            dependedIssueUrls: [],
+            closingIssueReferenceUrls: [],
+            plainCrossRepoIssueReferenceUrls: [
+              'https://github.com/other/repo/issues/18',
+            ],
+          },
+        ],
+        expectedCalls: [],
+      },
+    ];
+
+    test.each(testCases)('$name', async ({ issues, expectedCalls }) => {
+      await useCase.run({
+        project: projectWithField,
+        issues,
+      });
+
+      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(
+        expectedCalls.length,
+      );
+      for (const { prUrl, issueUrl } of expectedCalls) {
+        expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+          prUrl,
+          projectWithField,
+          issueUrl,
+        );
+      }
+    });
   });
 });
