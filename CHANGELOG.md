@@ -1,3 +1,10 @@
+## [2.152.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.10...v2.152.11) (2026-09-27)
+
+
+### Bug Fixes
+
+* drop off-board items from the project cache in the snapshot staleness check ([#2788](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2788)) ([2ef61c1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ef61c1f88b58daf94c243e372c8d615c5961838))
+
 ## [2.152.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.9...v2.152.10) (2026-09-27)
 
 
