@@ -1242,6 +1242,37 @@ describe('ConsoleItemDetailContainer', () => {
     expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
   });
 
+  it('pre-selects the story dropdown by the resolved story option id, not by the first same-named option, when two story options share a display name', () => {
+    const collidingStoryOptions = [
+      { id: 'story_1', name: 'regular / A', color: 'BLUE' as const },
+      { id: 'story_2', name: 'regular / A', color: 'RED' as const },
+    ];
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole, getByTitle } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={collidingStoryOptions}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="regular / A"
+        storyOptionId="story_2"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    const storySelect = getByRole('combobox', {
+      name: 'Set story',
+    }) as HTMLSelectElement;
+    expect(storySelect.value).toBe('story_2');
+  });
+
   it('queues the set_agent action when an agent option is selected', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
