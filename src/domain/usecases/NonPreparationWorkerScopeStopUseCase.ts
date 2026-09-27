@@ -13,6 +13,7 @@ export class NonPreparationWorkerScopeStopUseCase {
 
   run = async (params: {
     issues: Issue[];
+    currentProjectOrg: string;
   }): Promise<{ stoppedScopeUnitNames: string[] }> => {
     const runningScopeUnitNames =
       await this.tmuxSessionRepository.listRunningWorkerScopeUnitNames();
@@ -24,6 +25,12 @@ export class NonPreparationWorkerScopeStopUseCase {
         params.issues,
       );
       if (resolvedIssue === null) {
+        continue;
+      }
+      if (resolvedIssue.org !== params.currentProjectOrg) {
+        console.warn(
+          `[NonPreparationWorkerScopeStopUseCase] Skipped scope unit ${scopeUnitName}: resolved issue org "${resolvedIssue.org}" does not match current project org "${params.currentProjectOrg}" (resolvedIssue repo: ${resolvedIssue.repo}, url: ${resolvedIssue.url})`,
+        );
         continue;
       }
       if (resolvedIssue.status === PREPARATION_STATUS_NAME) {
