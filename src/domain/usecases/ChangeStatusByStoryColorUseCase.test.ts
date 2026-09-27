@@ -5,6 +5,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project, StoryOption } from '../entities/Project';
 import { StoryObject, StoryObjectMap } from '../entities/StoryObjectMap';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('ChangeStatusByStoryColorUseCase', () => {
   const mockDateRepository = mock<DateRepository>();
@@ -263,6 +264,148 @@ describe('ChangeStatusByStoryColorUseCase', () => {
           manager,
         }),
       ).rejects.toThrow('First status is not found');
+    });
+
+    describe('stale project item isolation and failure aggregation (issue #2789)', () => {
+      const staleIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/901',
+        itemId: 'item-stale-1',
+        status: null,
+        story: 'Story X',
+        assignees: [manager],
+      };
+      const okIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/902',
+        itemId: 'item-ok-1',
+        status: null,
+        story: 'Story X',
+        assignees: [manager],
+      };
+      const storyIssueX = {
+        ...mock<Issue>(),
+        title: 'Story X',
+        url: 'https://github.com/org/repo/issues/900',
+      };
+      const isolationStoryObjectMap: StoryObjectMap = new Map([
+        [
+          'Story X',
+          {
+            story: {
+              ...mock<StoryOption>(),
+              id: 'storyX',
+              name: 'Story X',
+              color: 'BLUE',
+            },
+            storyIssue: storyIssueX,
+            issues: [staleIssue, okIssue],
+          },
+        ],
+      ]);
+
+      beforeEach(() => {
+        mockIssueRepository.updateStatus.mockReset();
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          if (url === staleIssue.url) return staleIssue;
+          if (url === okIssue.url) return okIssue;
+          return null;
+        });
+      });
+
+      it('skips an issue whose updateStatus call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, while the other issue in the same run is still processed', async () => {
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        mockIssueRepository.updateStatus.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError(staleIssue.itemId);
+            }
+          },
+        );
+
+        await useCase.run({
+          project: basicProject,
+          cacheUsed: false,
+          org: 'testOrg',
+          repo: 'testRepo',
+          storyObjectMap: isolationStoryObjectMap,
+          manager,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status1'],
+          [basicProject, okIssue, 'status1'],
+        ]);
+        const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+          call.join(' '),
+        );
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.url)),
+        ).toBe(true);
+        expect(
+          warnedMessages.some((message) =>
+            message.includes(staleIssue.itemId),
+          ),
+        ).toBe(true);
+        consoleWarnSpy.mockRestore();
+      });
+
+      it('collects a non-stale error from one issue, still processes the other issue, and surfaces one rejection naming the failing issue and the underlying error', async () => {
+        const underlyingError = new Error('GitHub API rate limit exceeded');
+        mockIssueRepository.updateStatus.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw underlyingError;
+            }
+          },
+        );
+
+        const runPromise = useCase.run({
+          project: basicProject,
+          cacheUsed: false,
+          org: 'testOrg',
+          repo: 'testRepo',
+          storyObjectMap: isolationStoryObjectMap,
+          manager,
+        });
+
+        runPromise.catch(() => {});
+        let caughtError: unknown;
+        try {
+          await runPromise;
+        } catch (error) {
+          caughtError = error;
+        }
+
+        if (!(caughtError instanceof Error)) {
+          throw new Error('Expected run() to reject with an Error instance');
+        }
+        expect(caughtError.message).toContain(staleIssue.url);
+        expect(caughtError.message).toContain(underlyingError.message);
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status1'],
+          [basicProject, okIssue, 'status1'],
+        ]);
+      });
+
+      it('resolves normally when no exception occurs (no-op regression check)', async () => {
+        await expect(
+          useCase.run({
+            project: basicProject,
+            cacheUsed: false,
+            org: 'testOrg',
+            repo: 'testRepo',
+            storyObjectMap: isolationStoryObjectMap,
+            manager,
+          }),
+        ).resolves.toBeUndefined();
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status1'],
+          [basicProject, okIssue, 'status1'],
+        ]);
+      });
     });
   });
 
