@@ -1,5 +1,5 @@
 const HTTP_STATUS_CODE_IN_CONTEXT_PATTERN =
-  /(?:^|\bstatus\s+code\s+|:\s*)(401|403|429|500|502|503|504)\b/i;
+  /(?:^|\bstatus\s+code\s+|\bHTTP\s+|:\s*)(401|403|429|500|502|503|504)\b/i;
 
 export const isTransientApiError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {

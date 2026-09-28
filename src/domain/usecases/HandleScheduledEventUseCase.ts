@@ -199,6 +199,7 @@ export class HandleScheduledEventUseCase {
     targetDateTimes: Date[];
     storyIssues: StoryObjectMap;
     rotationOrder: RotationOrderEntry[] | null;
+    storyOptionWriteFailures: string[];
   } | null> => {
     if (input.disabled) {
       return null;
@@ -263,6 +264,7 @@ export class HandleScheduledEventUseCase {
     if (input.afterIssuesFetched) {
       await input.afterIssuesFetched(project, issues);
     }
+    const storyOptionWriteFailures: string[] = [];
     for (const storyObject of storyIssues.values()) {
       const projectStory = project.story;
       if (!projectStory) {
@@ -304,6 +306,7 @@ export class HandleScheduledEventUseCase {
             storyName: storyObject.story.name,
             issueUrl: matchedOpenStoryIssue.url,
             projectItemId: matchedIssueState.itemId,
+            failures: storyOptionWriteFailures,
           });
         }
         continue;
@@ -332,6 +335,7 @@ export class HandleScheduledEventUseCase {
         storyName: storyObject.story.name,
         issueUrl,
         projectItemId,
+        failures: storyOptionWriteFailures,
       });
       console.log(
         `[HandleScheduledEvent] Waiting for story update: url=${issueUrl}`,
@@ -461,6 +465,7 @@ ${JSON.stringify(e)}
       targetDateTimes,
       storyIssues,
       rotationOrder,
+      storyOptionWriteFailures,
     };
   };
   private refetchAndWriteStoryOption = async (input: {
@@ -468,36 +473,37 @@ ${JSON.stringify(e)}
     storyName: string;
     issueUrl: string;
     projectItemId: string;
+    failures: string[];
   }): Promise<void> => {
-    const { projectId, storyName, issueUrl, projectItemId } = input;
-    try {
-      const freshProject = await this.projectRepository.getProject(projectId);
-      const freshStory = freshProject?.story ?? null;
-      if (!freshProject || !freshStory) {
-        console.warn(
-          `[HandleScheduledEvent] Skipping Story field write because the project or its Story field could not be re-fetched: issue=${issueUrl} story="${storyName}"`,
+    const { projectId, storyName, issueUrl, projectItemId, failures } = input;
+    await this.runOperationIsolated(
+      `write Story field for issue ${issueUrl} (story="${storyName}")`,
+      async () => {
+        const freshProject = await this.projectRepository.getProject(projectId);
+        const freshStory = freshProject?.story ?? null;
+        if (!freshProject || !freshStory) {
+          console.warn(
+            `[HandleScheduledEvent] Skipping Story field write because the project or its Story field could not be re-fetched: issue=${issueUrl} story="${storyName}"`,
+          );
+          return;
+        }
+        const matchingStoryOption = freshStory.stories.find(
+          (option) => option.name === storyName,
         );
-        return;
-      }
-      const matchingStoryOption = freshStory.stories.find(
-        (option) => option.name === storyName,
-      );
-      if (!matchingStoryOption) {
-        console.warn(
-          `[HandleScheduledEvent] Skipping Story field write because no Story option currently matches the story name: issue=${issueUrl} story="${storyName}"`,
+        if (!matchingStoryOption) {
+          console.warn(
+            `[HandleScheduledEvent] Skipping Story field write because no Story option currently matches the story name: issue=${issueUrl} story="${storyName}"`,
+          );
+          return;
+        }
+        await this.issueRepository.updateStoryByProjectItemId(
+          { ...freshProject, story: freshStory },
+          projectItemId,
+          matchingStoryOption.id,
         );
-        return;
-      }
-      await this.issueRepository.updateStoryByProjectItemId(
-        { ...freshProject, story: freshStory },
-        projectItemId,
-        matchingStoryOption.id,
-      );
-    } catch (e) {
-      console.warn(
-        `[HandleScheduledEvent] Failed to write Story field: issue=${issueUrl} story="${storyName}" error=${e instanceof Error ? e.message : String(e)}`,
-      );
-    }
+      },
+      failures,
+    );
   };
   runEachUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],
