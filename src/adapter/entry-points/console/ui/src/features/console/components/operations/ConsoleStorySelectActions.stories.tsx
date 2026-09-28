@@ -16,6 +16,7 @@ export const NoCurrentStory: Story = {
   args: {
     storyOptions: consoleStoryOptionsFixture,
     currentStoryName: null,
+    currentStoryOptionId: null,
   },
 };
 
@@ -23,6 +24,7 @@ export const WithCurrentStory: Story = {
   args: {
     storyOptions: consoleStoryOptionsFixture,
     currentStoryName: 'TDPM Console port',
+    currentStoryOptionId: null,
   },
 };
 
@@ -30,5 +32,17 @@ export const EmptyOptions: Story = {
   args: {
     storyOptions: [],
     currentStoryName: null,
+    currentStoryOptionId: null,
+  },
+};
+
+export const NameCollisionResolvedById: Story = {
+  args: {
+    storyOptions: [
+      { id: 'story_1', name: 'regular / duplicate name', color: 'GRAY' },
+      { id: 'story_2', name: 'regular / duplicate name', color: 'BLUE' },
+    ],
+    currentStoryName: 'regular / duplicate name',
+    currentStoryOptionId: 'story_2',
   },
 };

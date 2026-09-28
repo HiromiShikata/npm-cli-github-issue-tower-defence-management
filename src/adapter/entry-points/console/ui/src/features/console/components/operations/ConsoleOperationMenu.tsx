@@ -25,6 +25,7 @@ export type ConsoleOperationBarProps = {
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   currentStoryName: string | null;
+  currentStoryOptionId: string | null;
   agentOptions: ConsoleFieldOption[];
   currentAgentName: string | null;
   handlers: ConsoleOperationHandlers;
@@ -41,6 +42,7 @@ export const ConsoleOperationMenu = ({
   statusOptions,
   storyOptions,
   currentStoryName,
+  currentStoryOptionId,
   agentOptions,
   currentAgentName,
   handlers,
@@ -72,6 +74,7 @@ export const ConsoleOperationMenu = ({
           <ConsoleStorySelectActions
             storyOptions={storyOptions}
             currentStoryName={currentStoryName}
+            currentStoryOptionId={currentStoryOptionId}
             onSetStory={handlers.onSetStory}
           />
           <ConsoleAgentSelectActions

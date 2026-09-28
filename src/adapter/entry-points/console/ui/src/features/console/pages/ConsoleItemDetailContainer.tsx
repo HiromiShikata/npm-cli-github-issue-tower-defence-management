@@ -478,6 +478,7 @@ export const ConsoleItemDetailContainer = ({
     storyOptionId != null
       ? resolveStoryColorEnum(storyColors, storyOptionId)
       : null;
+  const resolvedStoryOptionId = storyOptionId ?? item.storyOptionId ?? null;
 
   return (
     <ConsoleItemDetail
@@ -538,6 +539,7 @@ export const ConsoleItemDetailContainer = ({
           statusOptions={statusOptions}
           storyOptions={storyOptions}
           currentStoryName={resolvedStoryName}
+          currentStoryOptionId={resolvedStoryOptionId}
           agentOptions={agentOptions}
           currentAgentName={item.agent}
           handlers={handlers}

@@ -31,6 +31,7 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
     statusOptions: consoleStatusOptionsFixture,
     storyOptions: consoleStoryOptionsFixture,
     currentStoryName: null,
+    currentStoryOptionId: null,
     agentOptions: consoleAgentOptionsFixture,
     currentAgentName: null,
     handlers,
