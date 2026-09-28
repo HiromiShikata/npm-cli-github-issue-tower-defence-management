@@ -188,6 +188,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
     ) => writeRepository.closeIssueByUrl(issueUrl, stateReason),
     reopenIssueByUrl: (issueUrl: string) =>
       writeRepository.reopenIssueByUrl(issueUrl),
+    getLatestReopenedEventAt: (issue: Issue) =>
+      rotate((r) => r.getLatestReopenedEventAt(issue)),
     deletePullRequestBranch: (prUrl: string, branchName: string) =>
       writeRepository.deletePullRequestBranch(prUrl, branchName),
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>

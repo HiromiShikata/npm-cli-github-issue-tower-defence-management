@@ -60,6 +60,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'requestChangesWithInlineComment'
       | 'get'
       | 'removeIssueFromProjectCache'
+      | 'getLatestReopenedEventAt'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -223,6 +224,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           if (params.thresholdForAutoReject !== undefined) {
             const comments =
               await this.issueCommentRepository.getCommentsFromIssue(issue);
+            const latestReopenedAt =
+              await this.issueRepository.getLatestReopenedEventAt(issue);
             const nextStepAgent = extractNextStepAgentFromComments(
               comments,
               (author) =>
@@ -247,6 +250,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                   params.thresholdForDispatchLoop ??
                   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
                 isNoStory: false,
+                latestReopenedAt,
               });
               if (repetition.type === 'escalateSilentRedispatch') {
                 if (
