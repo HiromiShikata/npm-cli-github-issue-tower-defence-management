@@ -1,5 +1,5 @@
 const HTTP_STATUS_CODE_IN_CONTEXT_PATTERN =
-  /(?:^|\bstatus\s+code\s+|\bHTTP\s+)(?:401|403|429|500|502|503|504)\b|\b(?:401|403|429|500|502|503|504)\b\s+(?:Unauthorized|Forbidden|Too Many Requests|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)|:\s*(?:401|403|429|500|502|503|504)\b\s*$/i;
+  /(?:^|\bstatus\s+code\s+|\bHTTP\s+)(?:401|403|429|500|502|503|504)\b|\b(?:401|403|429|500|502|503|504)\b\s+(?:Unauthorized|Forbidden|Too Many Requests|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)|\bAPI:\s*(?:401|403|429|500|502|503|504)\b\s*$/i;
 
 export const isTransientApiError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
