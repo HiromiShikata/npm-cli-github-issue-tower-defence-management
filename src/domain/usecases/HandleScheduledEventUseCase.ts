@@ -573,7 +573,10 @@ ${JSON.stringify(e)}
       }
       try {
         const { stoppedScopeUnitNames } =
-          await this.nonPreparationWorkerScopeStopUseCase.run({ issues });
+          await this.nonPreparationWorkerScopeStopUseCase.run({
+            issues,
+            currentProjectOrg: input.org,
+          });
         if (stoppedScopeUnitNames.length > 0) {
           console.log(
             `[HandleScheduledEvent] Stopped ${stoppedScopeUnitNames.length} worker scope(s) whose issue Status is not ${PREPARATION_STATUS_NAME} for project ${project.url}: ${stoppedScopeUnitNames.join(', ')}`,

@@ -8162,6 +8162,162 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
+  describe('isNoStory determination ordering against a newly supplied story', () => {
+    const buildProjectWithStories = () =>
+      createMockProject({
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+        agent: {
+          name: AGENT_FIELD_NAME,
+          fieldId: 'agent-field-id',
+          options: [
+            {
+              id: 'opt-developer',
+              name: 'developer',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        },
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-opt-some',
+              name: 'regular / some story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'story-opt-other',
+              name: 'regular / other story',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
+        },
+      });
+
+    it('★ writes the newly supplied story and posts no STORY_UNSET comment when the issue had no story before this cycle (regression: today this incorrectly posts STORY_UNSET)', async () => {
+      const project = buildProjectWithStories();
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: null,
+        story: null,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / some story", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-some',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_UNSET'),
+      );
+      expect(mockIssueCommentRepository.updateComment).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateStory and posts no STORY_UNSET comment when the issue already has a story and the report supplies no story key', async () => {
+      const project = buildProjectWithStories();
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: null,
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_UNSET'),
+      );
+    });
+
+    it('writes the differently supplied story and posts no STORY_UNSET comment when the issue already has a story and the report supplies a different valid story', async () => {
+      const project = buildProjectWithStories();
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: null,
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / other story", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-other',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_UNSET'),
+      );
+    });
+  });
+
   describe('null nextStepAgent dispatch loop detection', () => {
     it('should escalate to Failed Preparation when a task with no nextStepAgent has been re-dispatched up to the dispatch loop threshold', async () => {
       const issue = createMockIssue({

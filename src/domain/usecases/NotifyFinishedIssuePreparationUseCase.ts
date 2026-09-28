@@ -599,7 +599,8 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     const isNoStory =
       nextStepAgent !== null &&
-      (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
+      (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME)) &&
+      storyName === null;
     const repetition = resolveNextStepAgentDispatchRepetition({
       agentFieldValue: issue.agent,
       nextStepAgent,
