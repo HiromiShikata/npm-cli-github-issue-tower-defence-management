@@ -27,13 +27,21 @@ import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/Check
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
+import {
+  PullRequestProjectItemRemoveUseCase,
+  PullRequestProjectItemBackupRecord,
+} from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
 jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
+jest.mock('../../../domain/usecases/PullRequestProjectItemRemoveUseCase');
+const mockLocalStorageRepositoryWrite = jest.fn<void, [string, string]>();
 jest.mock('../../repositories/LocalStorageRepository', () => ({
-  LocalStorageRepository: jest.fn().mockImplementation(() => ({})),
+  LocalStorageRepository: jest.fn().mockImplementation(() => ({
+    write: mockLocalStorageRepositoryWrite,
+  })),
 }));
 jest.mock('../../repositories/LocalStorageCacheRepository', () => ({
   LocalStorageCacheRepository: jest.fn().mockImplementation(() => ({
@@ -3406,6 +3414,105 @@ mysteryKey: 'value'
           }
         }
       });
+    });
+  });
+
+  describe('removePullRequestProjectItems', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('removePullRequestProjectItems');
+    });
+
+    it('writes the backup file with the findPullRequestItems result before calling removeItems, and calls removeItems with the exact array findPullRequestItems resolved to', async () => {
+      const backupRecords: PullRequestProjectItemBackupRecord[] = [
+        {
+          itemId: 'ITEM_PR_1',
+          url: 'https://github.com/owner/repo/pull/1',
+          statusValue: 'In Progress',
+          storyValue: 'story-a',
+        },
+        {
+          itemId: 'ITEM_PR_2',
+          url: 'https://github.com/owner/repo/pull/2',
+          statusValue: null,
+          storyValue: null,
+        },
+      ];
+      const mockFindPullRequestItems = jest
+        .fn()
+        .mockResolvedValue(backupRecords);
+      const mockRemoveItems = jest
+        .fn()
+        .mockResolvedValue({ succeededUrls: [], failures: [] });
+
+      jest
+        .mocked(PullRequestProjectItemRemoveUseCase)
+        .mockImplementation(function (
+          this: PullRequestProjectItemRemoveUseCase,
+        ) {
+          this.findPullRequestItems = mockFindPullRequestItems;
+          this.removeItems = mockRemoveItems;
+          return this;
+        });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'removePullRequestProjectItems',
+        '--projectId',
+        'PVT_test123',
+        '--backupFilePath',
+        '/tmp/whatever.json',
+      ]);
+
+      expect(mockFindPullRequestItems).toHaveBeenCalledWith('PVT_test123');
+      expect(mockLocalStorageRepositoryWrite).toHaveBeenCalledTimes(1);
+      const [writtenPath, writtenContent] =
+        mockLocalStorageRepositoryWrite.mock.calls[0];
+      expect(writtenPath).toBe('/tmp/whatever.json');
+      expect(JSON.parse(writtenContent)).toEqual(backupRecords);
+
+      expect(mockRemoveItems).toHaveBeenCalledWith(
+        'PVT_test123',
+        backupRecords,
+      );
+
+      const writeCallOrder =
+        mockLocalStorageRepositoryWrite.mock.invocationCallOrder[0];
+      const removeItemsCallOrder = mockRemoveItems.mock.invocationCallOrder[0];
+      expect(writeCallOrder).toBeLessThan(removeItemsCallOrder);
+    });
+
+    it('should exit with error when GH_TOKEN is missing, and never construct or call the use case', async () => {
+      delete process.env.GH_TOKEN;
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'removePullRequestProjectItems',
+          '--projectId',
+          'PVT_test123',
+          '--backupFilePath',
+          '/tmp/whatever.json',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'GH_TOKEN environment variable is required',
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(PullRequestProjectItemRemoveUseCase).not.toHaveBeenCalled();
+      expect(mockLocalStorageRepositoryWrite).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 
