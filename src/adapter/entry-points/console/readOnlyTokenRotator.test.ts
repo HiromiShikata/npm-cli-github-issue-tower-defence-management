@@ -185,6 +185,28 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
+    it('rotates on getLatestReopenedEventAt as well', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const issue = mock<Issue>();
+      const expected = new Date('2024-01-01T00:00:00Z');
+      repo1.getLatestReopenedEventAt.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getLatestReopenedEventAt.mockResolvedValue(expected);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result = await rotating.getLatestReopenedEventAt(issue);
+
+      expect(result).toEqual(expected);
+      expect(repo1.getLatestReopenedEventAt).toHaveBeenCalledWith(issue);
+      expect(repo2.getLatestReopenedEventAt).toHaveBeenCalledWith(issue);
+    });
+
     it('delegates write methods to the dedicated write repository, not any read repository', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();

@@ -138,6 +138,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'getIssueOrPullRequestComments'
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
+      | 'getLatestReopenedEventAt'
     >
   >;
   let mockIssueCommentRepository: Mocked<
@@ -177,6 +178,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       addIssueToProject: jest.fn().mockResolvedValue(''),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
+      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
@@ -2951,6 +2953,95 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('no-next-step-agent'),
+      );
+    });
+
+    it('passes issueRepository.getLatestReopenedEventAt through to the dispatch-loop escalation decision, and its value changes whether escalation fires (issue #2814)', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        story: 'Default Story',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      const comments = [
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T02:00:00Z'),
+        },
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        comments,
+      );
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+
+      const runParams = {
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        allowedIssueAuthors: ['bot'],
+      };
+
+      // Baseline: no reopened event on record -> all 3 null-nextStep reports
+      // count toward the threshold of 3 -> escalates (matches the
+      // pre-existing 'should escalate to Failed Preparation when a task with
+      // no nextStepAgent has been re-dispatched up to the dispatch loop
+      // threshold' behavior above).
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        stuckIssue,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+
+      mockIssueRepository.getLatestReopenedEventAt.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+
+      // Same 3 comments, but the issue was reopened (no comment) between the
+      // 1st and 2nd report. Only the 2 reports after the reopened event count
+      // toward the threshold of 3, so escalation must NOT fire.
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
+        new Date('2024-01-02T00:30:00Z'),
+      );
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        stuckIssue,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        '5',
       );
     });
   });

@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import dotenv from 'dotenv';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { FieldOption, Project } from '../../../domain/entities/Project';
 import type { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
@@ -21,6 +22,11 @@ import type {
   ProjectItemLight,
 } from './GraphqlProjectItemRepository';
 import type { RestIssueRepository } from './RestIssueRepository';
+
+dotenv.config();
+
+const githubToken = process.env.GH_TOKEN;
+const describeWhenCredentials = githubToken ? describe : describe.skip;
 
 const buildTestProject = (id: string): Project => ({
   id,
@@ -2750,6 +2756,141 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow(
         'Failed to reopen issue https://github.com/HiromiShikata/test-repository/issues/42:',
       );
+    });
+  });
+
+  describe('getLatestReopenedEventAt', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildReopenedEventTestIssue = (): Issue => ({
+      nameWithOwner: 'HiromiShikata/test-repository',
+      url: 'https://github.com/HiromiShikata/test-repository/issues/42',
+      title: 'issue',
+      number: 42,
+      state: 'OPEN',
+      labels: [],
+      assignees: [],
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      status: null,
+      story: null,
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      body: '',
+      itemId: 'item-42',
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
+      agent: null,
+      isRepoArchived: false,
+      stateReason: null,
+    });
+
+    it('returns the most recent created_at among reopened events, ignoring closed/labeled events and an unrelated updated_at field', async () => {
+      const events = [
+        {
+          event: 'reopened',
+          created_at: '2024-01-05T00:00:00Z',
+          updated_at: '2099-01-01T00:00:00Z',
+        },
+        { event: 'closed', created_at: '2024-01-06T00:00:00Z' },
+        { event: 'reopened', created_at: '2024-01-03T00:00:00Z' },
+        { event: 'labeled', created_at: '2024-01-07T00:00:00Z' },
+      ];
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(events), { status: 200 }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getLatestReopenedEventAt(
+        buildReopenedEventTestIssue(),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0][0]).toContain(
+        '/repos/HiromiShikata/test-repository/issues/42/events',
+      );
+      expect(result).toEqual(new Date('2024-01-05T00:00:00Z'));
+    });
+
+    it('follows the rel="next" Link header across pages and returns the overall most recent reopened created_at', async () => {
+      const page1Events = [
+        { event: 'closed', created_at: '2024-02-01T00:00:00Z' },
+        { event: 'reopened', created_at: '2024-02-05T00:00:00Z' },
+      ];
+      const page2Events = [
+        { event: 'reopened', created_at: '2024-02-03T00:00:00Z' },
+        { event: 'labeled', created_at: '2024-02-06T00:00:00Z' },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page1Events), {
+            status: 200,
+            headers: {
+              Link: '<https://api.github.com/repos/HiromiShikata/test-repository/issues/42/events?page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page2Events), { status: 200 }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getLatestReopenedEventAt(
+        buildReopenedEventTestIssue(),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0]).toContain(
+        '/repos/HiromiShikata/test-repository/issues/42/events',
+      );
+      // The most recent reopened event (page 1, 02-05) is later than the one
+      // on page 2 (02-03), so pagination must not just take the last page's
+      // value -- it must compare across every page fetched.
+      expect(result).toEqual(new Date('2024-02-05T00:00:00Z'));
+    });
+
+    it('returns null when the issue has no events at all', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getLatestReopenedEventAt(
+        buildReopenedEventTestIssue(),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when the issue has events but none of them are reopened', async () => {
+      const events = [
+        { event: 'closed', created_at: '2024-01-06T00:00:00Z' },
+        { event: 'labeled', created_at: '2024-01-07T00:00:00Z' },
+      ];
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(events), { status: 200 }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getLatestReopenedEventAt(
+        buildReopenedEventTestIssue(),
+      );
+
+      expect(result).toBeNull();
     });
   });
 
@@ -10631,3 +10772,88 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     };
   };
 });
+
+// Live integration coverage for issue #2814: getLatestReopenedEventAt must
+// reflect a real close+reopen cycle performed through the real GitHub REST
+// API against the sandbox repository, not just the unit-mocked fetch above.
+describeWhenCredentials(
+  'ApiV3CheerioRestIssueRepository - getLatestReopenedEventAt live integration',
+  () => {
+    const apiV3IssueRepository = mock<ApiV3IssueRepository>();
+    const restIssueRepository = mock<RestIssueRepository>();
+    const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
+    const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
+    localStorageCacheRepository.withLock.mockImplementation((_key, fn) =>
+      fn(),
+    );
+    const projectRepository = mock<ProjectRepository>();
+    const dateRepository = mock<DateRepository>();
+    const localStorageRepository = mock<LocalStorageRepository>();
+
+    const repository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      dateRepository,
+      localStorageRepository,
+      githubToken,
+    );
+
+    const sandboxIssueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/3585';
+    const sandboxIssue: Issue = {
+      nameWithOwner: 'HiromiShikata/test-repository',
+      url: sandboxIssueUrl,
+      title: 'issue',
+      number: 3585,
+      state: 'OPEN',
+      labels: [],
+      assignees: [],
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      status: null,
+      story: null,
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      body: '',
+      itemId: 'item-3585',
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
+      agent: null,
+      isRepoArchived: false,
+      stateReason: null,
+    };
+
+    test(
+      'reflects a real close+reopen cycle on the sandbox issue as a recent reopened event',
+      async () => {
+        await repository.closeIssueByUrl(sandboxIssueUrl, 'not_planned');
+        await repository.reopenIssueByUrl(sandboxIssueUrl);
+
+        const result = await repository.getLatestReopenedEventAt(
+          sandboxIssue,
+        );
+
+        if (result === null) {
+          throw new Error(
+            'expected getLatestReopenedEventAt to return a non-null Date after the close+reopen cycle',
+          );
+        }
+        const nowMs = Date.now();
+        const resultMs = result.getTime();
+        expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
+      },
+      30000,
+    );
+  },
+);
