@@ -47,6 +47,7 @@ import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
+import { isTransientApiError } from './isTransientApiError';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -58,18 +59,6 @@ export class ProjectNotFoundError extends Error {
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 const WORKFLOW_INCIDENT_ISSUE_TITLE =
   'Error in HandleScheduledEvent / workflow incident';
-
-const isTransientApiError = (error: Error): boolean => {
-  const msg = error.message;
-  return (
-    /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
-    /rate.?limit|RATE_LIMIT/i.test(msg) ||
-    /bad credentials/i.test(msg) ||
-    error.name === 'TimeoutError' ||
-    /request timed out/i.test(msg) ||
-    /does not belong to the field/i.test(msg)
-  );
-};
 
 const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
   /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
@@ -210,6 +199,7 @@ export class HandleScheduledEventUseCase {
     targetDateTimes: Date[];
     storyIssues: StoryObjectMap;
     rotationOrder: RotationOrderEntry[] | null;
+    storyOptionWriteFailures: string[];
   } | null> => {
     if (input.disabled) {
       return null;
@@ -274,6 +264,7 @@ export class HandleScheduledEventUseCase {
     if (input.afterIssuesFetched) {
       await input.afterIssuesFetched(project, issues);
     }
+    const storyOptionWriteFailures: string[] = [];
     for (const storyObject of storyIssues.values()) {
       const projectStory = project.story;
       if (!projectStory) {
@@ -302,11 +293,22 @@ export class HandleScheduledEventUseCase {
         state: 'open',
         title: storyObject.story.name,
       });
-      if (
-        existingOpenStoryIssues.some(
-          (issue) => issue.title === storyObject.story.name,
-        )
-      ) {
+      const matchedOpenStoryIssue = existingOpenStoryIssues.find(
+        (issue) => issue.title === storyObject.story.name,
+      );
+      if (matchedOpenStoryIssue) {
+        const matchedIssueState = await this.issueRepository.getIssueByUrl(
+          matchedOpenStoryIssue.url,
+        );
+        if (matchedIssueState && !matchedIssueState.storyOptionId) {
+          await this.refetchAndWriteStoryOption({
+            projectId,
+            storyName: storyObject.story.name,
+            issueUrl: matchedOpenStoryIssue.url,
+            projectItemId: matchedIssueState.itemId,
+            failures: storyOptionWriteFailures,
+          });
+        }
         continue;
       }
       const storyStartTime = Date.now();
@@ -328,11 +330,13 @@ export class HandleScheduledEventUseCase {
         project,
         issueUrl,
       );
-      await this.issueRepository.updateStoryByProjectItemId(
-        { ...project, story: projectStory },
+      await this.refetchAndWriteStoryOption({
+        projectId,
+        storyName: storyObject.story.name,
+        issueUrl,
         projectItemId,
-        storyObject.story.id,
-      );
+        failures: storyOptionWriteFailures,
+      });
       console.log(
         `[HandleScheduledEvent] Waiting for story update: url=${issueUrl}`,
       );
@@ -461,7 +465,45 @@ ${JSON.stringify(e)}
       targetDateTimes,
       storyIssues,
       rotationOrder,
+      storyOptionWriteFailures,
     };
+  };
+  private refetchAndWriteStoryOption = async (input: {
+    projectId: Project['id'];
+    storyName: string;
+    issueUrl: string;
+    projectItemId: string;
+    failures: string[];
+  }): Promise<void> => {
+    const { projectId, storyName, issueUrl, projectItemId, failures } = input;
+    await this.runOperationIsolated(
+      `write Story field for issue ${issueUrl} (story="${storyName}")`,
+      async () => {
+        const freshProject = await this.projectRepository.getProject(projectId);
+        const freshStory = freshProject?.story ?? null;
+        if (!freshProject || !freshStory) {
+          console.warn(
+            `[HandleScheduledEvent] Skipping Story field write because the project or its Story field could not be re-fetched: issue=${issueUrl} story="${storyName}"`,
+          );
+          return;
+        }
+        const matchingStoryOption = freshStory.stories.find(
+          (option) => option.name === storyName,
+        );
+        if (!matchingStoryOption) {
+          console.warn(
+            `[HandleScheduledEvent] Skipping Story field write because no Story option currently matches the story name: issue=${issueUrl} story="${storyName}"`,
+          );
+          return;
+        }
+        await this.issueRepository.updateStoryByProjectItemId(
+          { ...freshProject, story: freshStory },
+          projectItemId,
+          matchingStoryOption.id,
+        );
+      },
+      failures,
+    );
   };
   runEachUseCases = async (
     input: Parameters<HandleScheduledEventUseCase['run']>[0],

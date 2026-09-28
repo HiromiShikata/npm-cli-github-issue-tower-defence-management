@@ -1,5 +1,6 @@
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { isTransientApiError } from './isTransientApiError';
 
 type CliErrorReportRepository = Pick<
   IssueRepository,
@@ -22,15 +23,6 @@ const isGitHubRateLimitError = (error: unknown): boolean => {
   );
 };
 
-const isGitHubGraphQLTransientError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return /^Something went wrong while executing your query on /i.test(
-    error.message,
-  );
-};
-
 export class CliErrorReportUseCase {
   constructor(private readonly issueRepository: CliErrorReportRepository) {}
 
@@ -50,9 +42,9 @@ export class CliErrorReportUseCase {
       return;
     }
 
-    if (isGitHubGraphQLTransientError(error)) {
+    if (isTransientApiError(error)) {
       console.warn(
-        'CliErrorReportUseCase: suppressing GitHub GraphQL transient error; aw retry will handle recovery:',
+        'CliErrorReportUseCase: suppressing known/transient API error:',
         error instanceof Error ? error.message : String(error),
       );
       return;
