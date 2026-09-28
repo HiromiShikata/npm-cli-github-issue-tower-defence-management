@@ -1,11 +1,50 @@
 import { mock } from 'jest-mock-extended';
 import type { Issue } from '../entities/Issue';
-import type { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
+import type {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
+import {
+  DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS,
+  StaleTaskPullRequestCloseUseCase,
+} from './StaleTaskPullRequestCloseUseCase';
 
 describe('StaleTaskPullRequestCloseUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
   const useCase = new StaleTaskPullRequestCloseUseCase(mockIssueRepository);
+
+  const asRelatedPullRequest = (issue: Issue): RelatedPullRequest => ({
+    url: issue.url,
+    branchName: null,
+    createdAt: issue.createdAt,
+    isDraft: false,
+    isConflicted: false,
+    mergeable: null,
+    isPassedAllCiJob: true,
+    isCiStateSuccess: true,
+    isResolvedAllReviewComments: true,
+    isBranchOutOfDate: false,
+    missingRequiredCheckNames: [],
+    reviewDecision: null,
+  });
+
+  const configureFindRelatedOpenPRsAndGetIssueByUrl = (
+    closedTaskIssueUrlToCandidatePrs: Record<string, Issue[]>,
+  ): void => {
+    mockIssueRepository.findRelatedOpenPRs.mockImplementation(
+      async (issueUrl: string) =>
+        (closedTaskIssueUrlToCandidatePrs[issueUrl] ?? []).map(
+          asRelatedPullRequest,
+        ),
+    );
+    const allCandidatePrs = Object.values(
+      closedTaskIssueUrlToCandidatePrs,
+    ).flat();
+    mockIssueRepository.getIssueByUrl.mockImplementation(
+      async (url: string) =>
+        allCandidatePrs.find((candidatePr) => candidatePr.url === url) ?? null,
+    );
+  };
 
   const openTaskIssue: Issue = {
     ...mock<Issue>(),
@@ -94,9 +133,15 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+    mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
   });
 
   it('should close an open pull request whose every closing issue reference is a closed task issue', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+    });
+
     await useCase.run({
       issues: [closedTaskIssue, openPrWithClosedTaskIssue],
     });
@@ -116,6 +161,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that has no closing issue reference', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithoutTaskIssue],
+    });
+
     await useCase.run({
       issues: [closedTaskIssue, openPrWithoutTaskIssue],
     });
@@ -124,6 +173,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request whose closing issue reference is not among the given issues', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithUnknownTaskIssue],
+    });
+
     await useCase.run({
       issues: [closedTaskIssue, openPrWithUnknownTaskIssue],
     });
@@ -132,6 +185,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request when only some of its closing issue references are closed', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedAndOpenTaskIssues],
+    });
+
     await useCase.run({
       issues: [
         closedTaskIssue,
@@ -144,6 +201,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that is already closed', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [closedPrWithClosedTaskIssue],
+    });
+
     await useCase.run({
       issues: [closedTaskIssue, closedPrWithClosedTaskIssue],
     });
@@ -152,6 +213,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should continue with the remaining pull requests when closing one of them fails', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+      [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue],
+    });
     mockIssueRepository.closePullRequest.mockRejectedValueOnce(
       new Error('close failed'),
     );
@@ -172,6 +237,10 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment with the closed task issue URLs when closing a stale pull request', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+    });
+
     await useCase.run({
       issues: [closedTaskIssue, openPrWithClosedTaskIssue],
     });
@@ -183,6 +252,9 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment before closing the pull request', async () => {
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+    });
     const callOrder: string[] = [];
     mockIssueRepository.createCommentByUrl.mockImplementation(async () => {
       callOrder.push('comment');
@@ -322,6 +394,12 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
           ),
         };
 
+        if (referencedTaskIssue && referencedTaskIssue.isClosed) {
+          configureFindRelatedOpenPRsAndGetIssueByUrl({
+            [referencedTaskIssue.url]: [targetPullRequest],
+          });
+        }
+
         await useCase.run({
           issues: referencedTaskIssue
             ? [referencedTaskIssue, targetPullRequest]
@@ -335,6 +413,86 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         if (testCase.expectClosePullRequestCalled) {
           expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
             targetPullRequest.url,
+          );
+        } else {
+          expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+        }
+      });
+    });
+  });
+
+  describe('stale-pull-request-close discovery decision (test table 2)', () => {
+    const discoveryEvaluatedAt = new Date('2026-01-02T00:00:00Z');
+    const AT_MINIMUM_AGE_MS = DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS;
+    const BELOW_MINIMUM_AGE_MS = DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS - 60_000;
+
+    const tableTestCases: {
+      name: string;
+      taskIssue: Issue;
+      pullRequestAgeMs: number;
+      pullRequestIsAlreadyBoardCard: boolean;
+      expectClosePullRequestCalled: boolean;
+    }[] = [
+      {
+        name: 'row 1: closed task issue, open PR at/above the minimum age, not already a board card => the PR is closed via direct lookup alone',
+        taskIssue: closedTaskIssue,
+        pullRequestAgeMs: AT_MINIMUM_AGE_MS,
+        pullRequestIsAlreadyBoardCard: false,
+        expectClosePullRequestCalled: true,
+      },
+      {
+        name: 'row 2: closed task issue, open PR at/above the minimum age, already a leftover board card => the PR is still closed (unchanged outcome)',
+        taskIssue: closedTaskIssue,
+        pullRequestAgeMs: AT_MINIMUM_AGE_MS,
+        pullRequestIsAlreadyBoardCard: true,
+        expectClosePullRequestCalled: true,
+      },
+      {
+        name: 'row 3: closed task issue, open PR below the minimum age, not already a board card => the PR is left open',
+        taskIssue: closedTaskIssue,
+        pullRequestAgeMs: BELOW_MINIMUM_AGE_MS,
+        pullRequestIsAlreadyBoardCard: false,
+        expectClosePullRequestCalled: false,
+      },
+      {
+        name: 'row 4: open task issue, open PR linked to it, not already a board card => the PR is left open',
+        taskIssue: openTaskIssue,
+        pullRequestAgeMs: AT_MINIMUM_AGE_MS,
+        pullRequestIsAlreadyBoardCard: false,
+        expectClosePullRequestCalled: false,
+      },
+    ];
+
+    tableTestCases.forEach((testCase) => {
+      it(testCase.name, async () => {
+        const candidatePullRequest: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/owner/repo/pull/300',
+          isPr: true,
+          isClosed: false,
+          state: 'OPEN',
+          closingIssueReferenceUrls: [testCase.taskIssue.url],
+          createdAt: new Date(
+            discoveryEvaluatedAt.getTime() - testCase.pullRequestAgeMs,
+          ),
+        };
+
+        configureFindRelatedOpenPRsAndGetIssueByUrl({
+          [testCase.taskIssue.url]: [candidatePullRequest],
+        });
+
+        const issuesInput: Issue[] = testCase.pullRequestIsAlreadyBoardCard
+          ? [testCase.taskIssue, candidatePullRequest]
+          : [testCase.taskIssue];
+
+        await useCase.run({
+          issues: issuesInput,
+          evaluatedAt: discoveryEvaluatedAt,
+        });
+
+        if (testCase.expectClosePullRequestCalled) {
+          expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+            candidatePullRequest.url,
           );
         } else {
           expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();

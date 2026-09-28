@@ -11,6 +11,8 @@ export class StaleTaskPullRequestCloseUseCase {
       | 'closePullRequest'
       | 'createCommentByUrl'
       | 'getIssueOrPullRequestComments'
+      | 'findRelatedOpenPRs'
+      | 'getIssueByUrl'
     >,
   ) {}
 
@@ -22,40 +24,51 @@ export class StaleTaskPullRequestCloseUseCase {
     const evaluatedAt = input.evaluatedAt ?? new Date();
     const minimumPullRequestAgeMs =
       input.minimumPullRequestAgeMs ?? DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS;
-    const closedTaskIssueUrls = new Set(
-      input.issues
-        .filter((issue) => !issue.isPr && issue.isClosed)
-        .map((issue) => issue.url),
+    const closedTaskIssues = input.issues.filter(
+      (issue) => !issue.isPr && issue.isClosed,
     );
-    for (const issue of input.issues) {
-      if (!issue.isPr || issue.isClosed) {
+    const closedTaskIssueUrls = new Set(
+      closedTaskIssues.map((issue) => issue.url),
+    );
+    const candidatePullRequestUrls = new Set<string>();
+    for (const closedTaskIssue of closedTaskIssues) {
+      const relatedOpenPullRequests =
+        await this.issueRepository.findRelatedOpenPRs(closedTaskIssue.url);
+      for (const relatedOpenPullRequest of relatedOpenPullRequests) {
+        candidatePullRequestUrls.add(relatedOpenPullRequest.url);
+      }
+    }
+    for (const pullRequestUrl of candidatePullRequestUrls) {
+      const pullRequestIssue =
+        await this.issueRepository.getIssueByUrl(pullRequestUrl);
+      if (!pullRequestIssue || pullRequestIssue.isClosed) {
         continue;
       }
-      if (issue.closingIssueReferenceUrls.length === 0) {
+      if (pullRequestIssue.closingIssueReferenceUrls.length === 0) {
         continue;
       }
       const everyReferencedTaskIssueClosed =
-        issue.closingIssueReferenceUrls.every((url) =>
+        pullRequestIssue.closingIssueReferenceUrls.every((url) =>
           closedTaskIssueUrls.has(url),
         );
       if (!everyReferencedTaskIssueClosed) {
         continue;
       }
       const pullRequestAgeMs =
-        evaluatedAt.getTime() - issue.createdAt.getTime();
+        evaluatedAt.getTime() - pullRequestIssue.createdAt.getTime();
       if (pullRequestAgeMs < minimumPullRequestAgeMs) {
         continue;
       }
-      const closedRefs = issue.closingIssueReferenceUrls.join(', ');
+      const closedRefs = pullRequestIssue.closingIssueReferenceUrls.join(', ');
       try {
         await this.createCommentByUrlWithDedup(
-          issue.url,
+          pullRequestIssue.url,
           `Closing this pull request because all referenced task issues are already closed: ${closedRefs}`,
         );
-        await this.issueRepository.closePullRequest(issue.url);
+        await this.issueRepository.closePullRequest(pullRequestIssue.url);
       } catch (error) {
         console.warn(
-          `Failed to close stale pull request ${issue.url}, skipping and continuing with remaining pull requests: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to close stale pull request ${pullRequestIssue.url}, skipping and continuing with remaining pull requests: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }
