@@ -372,6 +372,7 @@ describe('ConsoleOperationMenu', () => {
       statusOptions: consoleStatusOptionsFixture,
       storyOptions: [],
       currentStoryName: null,
+      currentStoryOptionId: null,
       agentOptions: duplicateNameAgentOptions,
       currentAgentName: 'developer',
       currentAgentOptionId: 'menu_agent_dup_2',
