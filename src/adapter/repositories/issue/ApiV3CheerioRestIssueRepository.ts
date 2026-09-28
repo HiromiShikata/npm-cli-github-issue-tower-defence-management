@@ -1485,6 +1485,12 @@ export class ApiV3CheerioRestIssueRepository
     if (existingValue) {
       return;
     }
+    if (!existingProjectItem && this.parseIssueUrl(prUrl).isPr) {
+      console.info(
+        `ApiV3CheerioRestIssueRepository: skipping project item creation for pull request not already on the board. prUrl: ${prUrl}`,
+      );
+      return;
+    }
     const projectItemId =
       existingProjectItem?.id ??
       (await this.graphqlProjectItemRepository.addIssueToProject(
