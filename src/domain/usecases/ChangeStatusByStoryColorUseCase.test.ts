@@ -121,7 +121,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       name: `should no update when status is correct`,
       input: {
         project: basicProject,
-        cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
         storyObjectMap: basicStoryObjectMap,
@@ -199,7 +198,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       name: `should update status with comment when story color is gray.`,
       input: {
         project: basicProject,
-        cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
         storyObjectMap: new Map([
@@ -231,7 +229,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       name: `should update status with comment when story color is not gray`,
       input: {
         project: basicProject,
-        cacheUsed: false,
         org: 'testOrg',
         repo: 'testRepo',
         storyObjectMap: new Map([
@@ -305,7 +302,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       await expect(
         useCase.run({
           project: projectWithNoStatus,
-          cacheUsed: false,
           org: 'testOrg',
           repo: 'testRepo',
           storyObjectMap: basicStoryObjectMap,
@@ -375,7 +371,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
 
         await useCase.run({
           project: basicProject,
-          cacheUsed: false,
           org: 'testOrg',
           repo: 'testRepo',
           storyObjectMap: isolationStoryObjectMap,
@@ -410,7 +405,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
 
         const runPromise = useCase.run({
           project: basicProject,
-          cacheUsed: false,
           org: 'testOrg',
           repo: 'testRepo',
           storyObjectMap: isolationStoryObjectMap,
@@ -440,7 +434,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         await expect(
           useCase.run({
             project: basicProject,
-            cacheUsed: false,
             org: 'testOrg',
             repo: 'testRepo',
             storyObjectMap: isolationStoryObjectMap,
@@ -477,7 +470,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
 
     const runInput = (issue: Issue) => ({
       project: basicProject,
-      cacheUsed: false,
       org: 'testOrg',
       repo: 'testRepo',
       storyObjectMap: buildStoryObjectMap(issue),
@@ -589,7 +581,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
 
     const runInput = (issue: Issue) => ({
       project: basicProject,
-      cacheUsed: false,
       org: 'testOrg',
       repo: 'testRepo',
       storyObjectMap: buildStoryObjectMap(issue),
@@ -766,7 +757,6 @@ describe('ChangeStatusByStoryColorUseCase', () => {
 
         await useCase.run({
           project: basicProject,
-          cacheUsed: false,
           org: 'testOrg',
           repo: 'testRepo',
           storyObjectMap: storyObjectMapFor(storyColor, snapshotIssue),
