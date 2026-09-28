@@ -15,6 +15,7 @@
     "build": "tsc -p ./tsconfig.build.json",
     "postbuild": "node scripts/copyConsoleUiDist.mjs",
     "console-ui:lint": "biome check src/adapter/entry-points/console/ui",
+    "console-ui:typecheck": "tsc --noEmit -p src/adapter/entry-points/console/ui/tsconfig.typecheck.json",
     "console-ui:e2e:typecheck": "tsc --noEmit -p src/adapter/entry-points/console/ui/e2e/tsconfig.json",
     "console-ui:e2e": "npm run build:console-ui && playwright test --config src/adapter/entry-points/console/ui/e2e/playwright.config.ts",
     "console-ui:storybook": "storybook dev -p 6006 -c src/adapter/entry-points/console/ui/.storybook",
