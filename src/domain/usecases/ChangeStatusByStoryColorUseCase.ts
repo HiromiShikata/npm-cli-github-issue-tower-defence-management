@@ -24,7 +24,6 @@ export class ChangeStatusByStoryColorUseCase {
 
   run = async (input: {
     project: Project;
-    cacheUsed: boolean;
     org: string;
     repo: string;
     storyObjectMap: StoryObjectMap;
@@ -33,8 +32,6 @@ export class ChangeStatusByStoryColorUseCase {
     const firstStatus = input.project.status.statuses[0];
     if (!firstStatus) {
       throw new Error('First status is not found');
-    } else if (input.cacheUsed) {
-      return;
     }
     const disabledStatusObject = input.project.status.statuses.find(
       (status) => status.name === ICEBOX_STATUS_NAME,

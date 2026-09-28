@@ -3288,7 +3288,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await changeStatusByStoryColorUseCase.run({
           project: duplicateStoryProject,
-          cacheUsed: false,
           org: 'org',
           repo: 'repo',
           storyObjectMap: map,
