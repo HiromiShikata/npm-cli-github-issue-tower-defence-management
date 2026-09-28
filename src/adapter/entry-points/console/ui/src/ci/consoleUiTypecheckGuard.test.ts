@@ -158,24 +158,20 @@ const runFixtureTypecheck = (
 describe('console-ui typecheck guard', () => {
   const repositoryRootDirectory = resolveRepositoryRootDirectory(__dirname);
 
-  it(
-    'exits 0 for the contracted console-ui:typecheck command against the current repository tree',
-    () => {
-      const result = runNpxTypecheckCommand(
-        repositoryRootDirectory,
-        path.join(
-          'src',
-          'adapter',
-          'entry-points',
-          'console',
-          'ui',
-          'tsconfig.typecheck.json',
-        ),
-      );
-      expect(result.exitCode).toBe(0);
-    },
-    60000,
-  );
+  it('exits 0 for the contracted console-ui:typecheck command against the current repository tree', () => {
+    const result = runNpxTypecheckCommand(
+      repositoryRootDirectory,
+      path.join(
+        'src',
+        'adapter',
+        'entry-points',
+        'console',
+        'ui',
+        'tsconfig.typecheck.json',
+      ),
+    );
+    expect(result.exitCode).toBe(0);
+  }, 60000);
 
   describe.each([
     {
@@ -184,36 +180,31 @@ describe('console-ui typecheck guard', () => {
       expectedExitCode: 2,
     },
     {
-      caseName:
-        'a fixture test file supplying every required component prop',
+      caseName: 'a fixture test file supplying every required component prop',
       includeRequiredProp: true,
       expectedExitCode: 0,
     },
   ])('$caseName', ({ includeRequiredProp, expectedExitCode }) => {
-    it(
-      'reports the expected tsc --noEmit outcome for the fixture',
-      () => {
-        const fixtureDirectory = createIsolatedTypecheckFixtureDirectory(
+    it('reports the expected tsc --noEmit outcome for the fixture', () => {
+      const fixtureDirectory = createIsolatedTypecheckFixtureDirectory(
+        repositoryRootDirectory,
+        includeRequiredProp,
+      );
+      try {
+        const result = runFixtureTypecheck(
           repositoryRootDirectory,
-          includeRequiredProp,
+          fixtureDirectory,
         );
-        try {
-          const result = runFixtureTypecheck(
-            repositoryRootDirectory,
-            fixtureDirectory,
-          );
-          expect(result.exitCode).toBe(expectedExitCode);
-          if (includeRequiredProp) {
-            expect(result.combinedOutput.trim()).toBe('');
-          } else {
-            expect(result.combinedOutput).toContain('TS2741');
-            expect(result.combinedOutput).toContain('disabledReason');
-          }
-        } finally {
-          fs.rmSync(fixtureDirectory, { recursive: true, force: true });
+        expect(result.exitCode).toBe(expectedExitCode);
+        if (includeRequiredProp) {
+          expect(result.combinedOutput.trim()).toBe('');
+        } else {
+          expect(result.combinedOutput).toContain('TS2741');
+          expect(result.combinedOutput).toContain('disabledReason');
         }
-      },
-      60000,
-    );
+      } finally {
+        fs.rmSync(fixtureDirectory, { recursive: true, force: true });
+      }
+    }, 60000);
   });
 });
