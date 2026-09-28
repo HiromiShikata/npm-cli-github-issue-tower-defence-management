@@ -803,7 +803,6 @@ ${JSON.stringify(e)}
       () =>
         this.changeStatusByStoryColorUseCase.run({
           project,
-          cacheUsed,
           org: input.org,
           repo: input.workingReport.repo,
           storyObjectMap: storyObjectMap,
