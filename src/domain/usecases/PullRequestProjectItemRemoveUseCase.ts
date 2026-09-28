@@ -7,7 +7,7 @@ export type PullRequestProjectItemBackupRecord = {
   storyValue: string | null;
 };
 
-const isPullRequestItemUrl = (url: string): boolean => url.includes('/pull/');
+const isPullRequestItemUrl = (url: string): boolean => /\/pull\/\d+$/.test(url);
 
 const findCustomFieldValue = (
   customFields: { name: string; value: string | null }[],
