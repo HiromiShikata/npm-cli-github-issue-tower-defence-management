@@ -110,7 +110,7 @@ describe('ConsoleStorySelectActions', () => {
     render(
       <ConsoleStorySelectActions
         storyOptions={storyOptions}
-        currentStoryName="regular / high priority"
+        currentStoryName="regular / workflow improvement"
         currentStoryOptionId="story_2"
         onSetStory={jest.fn()}
       />,
