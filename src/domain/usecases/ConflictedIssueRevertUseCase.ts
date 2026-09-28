@@ -27,7 +27,11 @@ export class ConflictedIssueRevertUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'getOpenPullRequests' | 'updateStatus' | 'updateBranch'
+      | 'getAllIssues'
+      | 'getOpenPullRequests'
+      | 'updateStatus'
+      | 'updateBranch'
+      | 'getLatestReopenedEventAt'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -141,6 +145,8 @@ export class ConflictedIssueRevertUseCase {
 
       const existingComments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
+      const latestReopenedAt =
+        await this.issueRepository.getLatestReopenedEventAt(issue);
       if (params.thresholdForAutoReject !== undefined) {
         const nextStepAgent = extractNextStepAgentFromComments(
           existingComments,
@@ -166,6 +172,7 @@ export class ConflictedIssueRevertUseCase {
               params.thresholdForDispatchLoop ??
               DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
             isNoStory: false,
+            latestReopenedAt,
           });
           if (repetition.type === 'escalateSilentRedispatch') {
             await this.issueRepository.updateStatus(

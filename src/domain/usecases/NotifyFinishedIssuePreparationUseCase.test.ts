@@ -124,6 +124,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     addIssueToProject: jest.Mock;
     getIssueByUrl: jest.Mock;
     updateStoryByProjectItemId: jest.Mock;
+    getLatestReopenedEventAt: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -188,6 +189,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       addIssueToProject: jest.fn().mockResolvedValue(''),
       getIssueByUrl: jest.fn().mockResolvedValue(null),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
+      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
 
     mockIssueCommentRepository = {
@@ -8408,6 +8410,82 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'Awaiting Owner' }),
         expect.anything(),
+      );
+    });
+  });
+
+  describe('getLatestReopenedEventAt integration into the dispatch loop (issue #2814)', () => {
+    it('passes issueRepository.getLatestReopenedEventAt through to the dispatch-loop escalation decision, and its value changes whether escalation fires', async () => {
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const nullStepComment = (createdAt: Date) =>
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt,
+        });
+      const comments = [
+        nullStepComment(new Date('2026-01-01T00:00:00Z')),
+        nullStepComment(new Date('2026-01-02T00:00:00Z')),
+        nullStepComment(new Date('2026-01-03T00:00:00Z')),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        comments,
+      );
+
+      const runParams = {
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      };
+
+      const issueBeforeReopen = createMockIssue({
+        url: runParams.issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+      mockIssueRepository.get.mockResolvedValueOnce(issueBeforeReopen);
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
+
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issueBeforeReopen,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+
+      mockIssueRepository.getLatestReopenedEventAt.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueRepository.update.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+
+      const issueAfterReopen = createMockIssue({
+        url: runParams.issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+      mockIssueRepository.get.mockResolvedValueOnce(issueAfterReopen);
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
+        new Date('2026-01-01T12:00:00Z'),
+      );
+
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issueAfterReopen,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
       );
     });
   });

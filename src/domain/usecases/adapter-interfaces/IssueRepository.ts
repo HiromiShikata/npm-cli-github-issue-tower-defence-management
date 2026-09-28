@@ -208,6 +208,7 @@ export interface IssueRepository {
     stateReason: 'completed' | 'not_planned',
   ) => Promise<void>;
   reopenIssueByUrl: (issueUrl: string) => Promise<void>;
+  getLatestReopenedEventAt: (issue: Issue) => Promise<Date | null>;
   deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
   createCommentByUrl: (
     issueOrPrUrl: string,

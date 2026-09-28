@@ -460,6 +460,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+type IssueEventResponseItem = {
+  event: string;
+  created_at: string;
+};
+
+function isIssueEventsResponse(
+  value: unknown,
+): value is IssueEventResponseItem[] {
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) => typeof item === 'object' && item !== null && 'event' in item,
+  );
+}
+
 type RestPullRequestCiStatusResponse = {
   html_url: string;
   state: string;
@@ -3506,6 +3520,53 @@ export class ApiV3CheerioRestIssueRepository
       const reason = await this.formatGitHubErrorWithStatus(response);
       throw new Error(`Failed to reopen issue ${issueUrl}: ${reason}`);
     }
+  };
+
+  getLatestReopenedEventAt = async (issue: Issue): Promise<Date | null> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issue.url);
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const perPage = 100;
+    let page = 1;
+    let hasNextPage = true;
+    let latestReopenedAt: Date | null = null;
+    while (hasNextPage) {
+      const eventsUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}/events?per_page=${perPage}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(eventsUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
+          }),
+        { method: 'GET', path: sanitizeRestPath(eventsUrl) },
+      );
+      if (!response.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(
+          `Failed to fetch events for issue ${issue.url}: ${reason}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isIssueEventsResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching events for issue ${issue.url}`,
+        );
+      }
+      for (const eventItem of body) {
+        if (eventItem.event !== 'reopened') continue;
+        const reopenedAt = new Date(eventItem.created_at);
+        if (latestReopenedAt === null || reopenedAt > latestReopenedAt) {
+          latestReopenedAt = reopenedAt;
+        }
+      }
+      const linkHeader = response.headers.get('Link') ?? '';
+      hasNextPage = linkHeader.includes('rel="next"');
+      page++;
+    }
+    return latestReopenedAt;
   };
 
   getPullRequestChangedFilePaths = async (prUrl: string): Promise<string[]> => {

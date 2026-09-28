@@ -58,6 +58,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'getIssueOrPullRequestComments'
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
+      | 'getLatestReopenedEventAt'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -125,12 +126,13 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const { outcome, comments, ciFailingPrUrl } = await this.evaluateOutcome(
-        issue,
-        resolveLabelsNotRequiringPullRequest(params),
-        params.allowedIssueAuthors,
-        params.developerAgentNames,
-      );
+      const { outcome, comments, ciFailingPrUrl, latestReopenedAt } =
+        await this.evaluateOutcome(
+          issue,
+          resolveLabelsNotRequiringPullRequest(params),
+          params.allowedIssueAuthors,
+          params.developerAgentNames,
+        );
       const isStillInPreparation = await this.isStillInStatus(
         issue,
         project,
@@ -186,6 +188,7 @@ export class RevertOrphanedPreparationUseCase {
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         isNoStory,
+        latestReopenedAt,
       });
       if (
         repetition.type === 'escalateSilentRedispatch' &&
@@ -417,9 +420,14 @@ export class RevertOrphanedPreparationUseCase {
     outcome: OrphanedPreparationOutcome;
     comments: Comment[];
     ciFailingPrUrl?: string;
+    latestReopenedAt: Date | null;
   }> => {
     if (issue.isClosed) {
-      return { outcome: 'advanceToQualityCheck', comments: [] };
+      return {
+        outcome: 'advanceToQualityCheck',
+        comments: [],
+        latestReopenedAt: null,
+      };
     }
     let comments: Comment[];
     try {
@@ -429,11 +437,13 @@ export class RevertOrphanedPreparationUseCase {
         `Failed to fetch comments for orphaned preparation issue ${issue.url}, reverting to Awaiting Workspace:`,
         error,
       );
-      return { outcome: 'reject', comments: [] };
+      return { outcome: 'reject', comments: [], latestReopenedAt: null };
     }
+    const latestReopenedAt =
+      await this.issueRepository.getLatestReopenedEventAt(issue);
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !isAgentReportBody(lastComment.content)) {
-      return { outcome: 'reject', comments };
+      return { outcome: 'reject', comments, latestReopenedAt };
     }
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
@@ -454,7 +464,7 @@ export class RevertOrphanedPreparationUseCase {
         issue.url,
       );
       if (prsToCheck.some((pr) => pr.isConflicted)) {
-        return { outcome: 'reject', comments };
+        return { outcome: 'reject', comments, latestReopenedAt };
       }
       if (isNonDeveloperAgent && effectiveDeveloperAgentNames.length > 0) {
         if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
@@ -462,16 +472,17 @@ export class RevertOrphanedPreparationUseCase {
             outcome: 'reassignToDeveloper',
             comments,
             ciFailingPrUrl: prsToCheck[0].url,
+            latestReopenedAt,
           };
         }
       }
-      return { outcome: 'advanceToQualityCheck', comments };
+      return { outcome: 'advanceToQualityCheck', comments, latestReopenedAt };
     }
 
     const prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
 
     if (prsToCheck.length !== 1) {
-      return { outcome: 'reject', comments };
+      return { outcome: 'reject', comments, latestReopenedAt };
     }
 
     const pr = prsToCheck[0];
@@ -482,6 +493,7 @@ export class RevertOrphanedPreparationUseCase {
     return {
       outcome: hasRejections ? 'reject' : 'advanceToQualityCheck',
       comments,
+      latestReopenedAt,
     };
   };
 

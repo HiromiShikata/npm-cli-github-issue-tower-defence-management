@@ -160,6 +160,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'addIssueToProject'
       | 'getIssueByUrl'
       | 'updateStoryByProjectItemId'
+      | 'getLatestReopenedEventAt'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -413,6 +414,8 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
+    const latestReopenedAt =
+      await this.issueRepository.getLatestReopenedEventAt(issue);
 
     const isTrustedAuthor = (author: string): boolean =>
       isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
@@ -526,6 +529,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       const consecutiveCount = countConsecutiveNoReportDispatches({
         comments,
         isTrustedAuthor,
+        latestReopenedAt,
       });
       const thisDispatchCount = consecutiveCount + 1;
       if (thisDispatchCount >= params.thresholdForAutoReject) {
@@ -611,6 +615,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       thresholdForDispatchLoop:
         params.thresholdForDispatchLoop ?? DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory,
+      latestReopenedAt,
     });
     if (repetition.type === 'escalateSilentRedispatch') {
       issue.status = FAILED_PREPARATION_STATUS_NAME;

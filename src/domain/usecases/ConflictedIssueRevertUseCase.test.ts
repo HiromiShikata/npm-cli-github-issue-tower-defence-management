@@ -127,6 +127,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     getOpenPullRequests: jest.Mock;
     updateStatus: jest.Mock;
     updateBranch: jest.Mock;
+    getLatestReopenedEventAt: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -154,6 +155,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       getOpenPullRequests: jest.fn().mockResolvedValue(new Map()),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateBranch: jest.fn().mockResolvedValue(false),
+      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
 
     mockIssueCommentRepository = {
@@ -1849,6 +1851,67 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('passes issueRepository.getLatestReopenedEventAt through to the dispatch-loop escalation decision, and its value changes whether escalation fires (issue #2814)', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithEscalationStatuses,
+      );
+
+      const reportAt = (createdAt: Date) => ({
+        author: 'owner',
+        content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "developer" }\n\`\`\``,
+        createdAt,
+      });
+      const comments = [
+        reportAt(new Date('2026-01-01T00:00:00Z')),
+        reportAt(new Date('2026-01-02T00:00:00Z')),
+        reportAt(new Date('2026-01-03T00:00:00Z')),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        comments,
+      );
+
+      const runParams = {
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+      };
+
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issue,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithEscalationStatuses,
+        issue,
+        'failed-preparation-id',
+      );
+
+      mockIssueRepository.getLatestReopenedEventAt.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
+        new Date('2026-01-01T12:00:00Z'),
+      );
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issue,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
     });
   });
 });

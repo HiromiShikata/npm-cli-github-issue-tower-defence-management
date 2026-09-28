@@ -22,7 +22,9 @@ const STORY_UNSET_ESCALATION_PHRASE =
 
 const trustAll = (): boolean => true;
 
-type TestComment = { author: string; content: string };
+const TEST_COMMENT_CREATED_AT = new Date('2024-01-01T00:00:00Z');
+
+type TestComment = { author: string; content: string; createdAt: Date };
 
 const report = (nextStepAgent: string, author = 'bot'): TestComment => ({
   author,
@@ -33,11 +35,13 @@ const report = (nextStepAgent: string, author = 'bot'): TestComment => ({
 \`\`\`
 
 Report body.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const reportWithoutRouting = (author = 'bot'): TestComment => ({
   author,
   content: 'From: :robot: agent (model)\n\nReport body with no routing block.',
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const repetitionComment = (
@@ -48,6 +52,7 @@ const repetitionComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_AGAIN ${nextStepAgent}
 
 Dispatching it again.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const escalationComment = (
@@ -58,6 +63,7 @@ const escalationComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} SILENT_REDISPATCH_ESCALATED ${nextStepAgent}
 
 Failed to receive a report from the dispatched agent for 3 consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const reportingEscalationComment = (
@@ -68,6 +74,7 @@ const reportingEscalationComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} REPORTING_LOOP_ESCALATED ${nextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched 3 times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const bareRepetitionComment = (
@@ -76,6 +83,7 @@ const bareRepetitionComment = (
 ): TestComment => ({
   author,
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_AGAIN ${nextStepAgent}`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const dispatchLoopEscalationComment = (
@@ -86,6 +94,7 @@ const dispatchLoopEscalationComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_LOOP_ESCALATED ${nextStepAgent}
 
 This agent has been dispatched 3 times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const storyUnsetMarkerComment = (
@@ -96,6 +105,7 @@ const storyUnsetMarkerComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET ${nextStepAgent}
 
 The story field is not set on this issue. The designated agent "${nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const storyUnsetEscalatedMarkerComment = (
@@ -106,6 +116,7 @@ const storyUnsetEscalatedMarkerComment = (
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET_ESCALATED ${nextStepAgent}
 
 This task has been dispatched repeatedly with no story assigned since the last human comment, so it has been escalated for a decision instead of being dispatched again.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const buildStoryUnsetCommentsAfterPriorDispatches = (
@@ -133,7 +144,14 @@ const buildStoryUnsetCommentsAfterPriorDispatches = (
         `Expected storyUnset while building the fixture at prior dispatch ${dispatchNumber}, got ${result.type}`,
       );
     }
-    history = [history[0], { author: 'bot', content: result.comment }];
+    history = [
+      history[0],
+      {
+        author: 'bot',
+        content: result.comment,
+        createdAt: TEST_COMMENT_CREATED_AT,
+      },
+    ];
   }
   return history;
 };
@@ -141,6 +159,7 @@ const buildStoryUnsetCommentsAfterPriorDispatches = (
 const humanComment = (author = 'bot'): TestComment => ({
   author,
   content: 'Please carry on with the second option.',
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const reportWithNullNextStep = (author = 'bot'): TestComment => ({
@@ -152,6 +171,7 @@ const reportWithNullNextStep = (author = 'bot'): TestComment => ({
 \`\`\`
 
 Report body.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 const nullDispatchLoopEscalationComment = (author = 'bot'): TestComment => ({
@@ -159,6 +179,7 @@ const nullDispatchLoopEscalationComment = (author = 'bot'): TestComment => ({
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_LOOP_ESCALATED (no next-step agent)
 
 This no-next-step-agent task has been dispatched 3 times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
 });
 
 describe('resolveNextStepAgentDispatchRepetition', () => {
@@ -520,6 +541,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           {
             author: 'bot',
             content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} REPORTING_LOOP_ESCALATED chore\n\nOwner judgment is required to break the loop.`,
+            createdAt: TEST_COMMENT_CREATED_AT,
           },
           report('chore'),
         ],
@@ -686,7 +708,11 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         comments: [
           report('reviewer', 'bot'),
           report('analyst', 'bot'),
-          { author: 'stranger', content: 'A drive-by remark.' },
+          {
+            author: 'stranger',
+            content: 'A drive-by remark.',
+            createdAt: TEST_COMMENT_CREATED_AT,
+          },
           report('reviewer', 'bot'),
           report('analyst', 'bot'),
           report('reviewer', 'bot'),
@@ -733,6 +759,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           {
             author: 'bot',
             content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} PULL_REQUEST_NOT_FOUND`,
+            createdAt: TEST_COMMENT_CREATED_AT,
           },
           report('reviewer'),
           report('analyst'),
@@ -934,6 +961,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       author: 'bot',
       content: `${storyUnsetMarkerComment(nextStepAgent).content} (${embeddedCount}/${threshold})`,
       id,
+      createdAt: TEST_COMMENT_CREATED_AT,
     });
 
     it('surfaces the prior STORY_UNSET comment id and increments its embedded count even when the newly reported nextStepAgent differs from the agent name embedded in that comment', () => {
@@ -1393,6 +1421,7 @@ describe('countConsecutiveNoReportDispatches', () => {
   ): TestComment => ({
     author,
     content: `${NO_REPORT_REDISPATCH_COUNT_PREFIX}${n}/${threshold}\n\nNo completion comment was posted.`,
+    createdAt: TEST_COMMENT_CREATED_AT,
   });
 
   it('returns 0 when there are no comments', () => {

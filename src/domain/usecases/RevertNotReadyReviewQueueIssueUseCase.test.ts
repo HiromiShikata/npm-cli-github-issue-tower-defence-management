@@ -167,6 +167,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     requestChangesWithInlineComment: jest.Mock;
     get: jest.Mock;
     removeIssueFromProjectCache: jest.Mock;
+    getLatestReopenedEventAt: jest.Mock;
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock<Promise<void>, [Issue, string]>;
@@ -208,6 +209,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
+      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
 
     mockIssueCommentRepository = {
@@ -2621,6 +2623,89 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('passes issueRepository.getLatestReopenedEventAt through to the silent-redispatch escalation decision, and its value changes whether escalation fires (issue #2814)', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const silentRedispatchComment = (count: number, createdAt: Date) => ({
+        author: 'owner',
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        createdAt,
+      });
+
+      const comments = [
+        {
+          ...agentReport('developer'),
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
+        {
+          author: 'owner',
+          content: 'please continue',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+        },
+        silentRedispatchComment(1, new Date('2026-01-03T00:00:00Z')),
+        silentRedispatchComment(2, new Date('2026-01-04T00:00:00Z')),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        comments,
+      );
+
+      const runParams = {
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      };
+
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issue,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+
+      mockIssueRepository.getLatestReopenedEventAt.mockClear();
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
+        new Date('2026-01-03T12:00:00Z'),
+      );
+      await useCase.run(runParams);
+
+      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
+        issue,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
     });
   });
 

@@ -55,7 +55,7 @@ const STORY_UNSET_DISPATCH_REPETITION_KEYWORDS = new Set([
 ]);
 
 const findLastHumanCommentIndex = <
-  CommentLike extends { author: string; content: string },
+  CommentLike extends { author: string; content: string; createdAt: Date },
 >(
   comments: CommentLike[],
   isTrustedAuthor: (author: string) => boolean,
@@ -66,11 +66,26 @@ const findLastHumanCommentIndex = <
     -1,
   );
 
+const findReopenedEventBoundaryIndex = <
+  CommentLike extends { author: string; content: string; createdAt: Date },
+>(
+  comments: CommentLike[],
+  latestReopenedAt: Date | null,
+): number =>
+  latestReopenedAt === null
+    ? -1
+    : comments.reduce(
+        (found, comment, index) =>
+          comment.createdAt <= latestReopenedAt ? index : found,
+        -1,
+      );
+
 export const countConsecutiveNoReportDispatches = <
-  CommentLike extends { author: string; content: string },
+  CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt?: Date | null;
 }): number => {
   const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
@@ -84,7 +99,15 @@ export const countConsecutiveNoReportDispatches = <
         : found,
     -1,
   );
-  const cycleStart = Math.max(lastHumanCommentIndex, lastAgentReportIndex);
+  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
+    params.comments,
+    params.latestReopenedAt ?? null,
+  );
+  const cycleStart = Math.max(
+    lastHumanCommentIndex,
+    lastAgentReportIndex,
+    reopenedEventBoundaryIndex,
+  );
   return params.comments
     .slice(cycleStart + 1)
     .filter(
@@ -131,12 +154,13 @@ const isEscalationDispatchComment = (content: string): boolean =>
   content.includes(DISPATCH_LOOP_ESCALATION_PHRASE);
 
 const countSilentRedispatches = <
-  CommentLike extends { author: string; content: string },
+  CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   agentFieldValue: string | null;
   nextStepAgent: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt: Date | null;
 }): SilentRedispatch | null => {
   if (params.nextStepAgent === null) {
     return null;
@@ -153,9 +177,15 @@ const countSilentRedispatches = <
     params.comments,
     params.isTrustedAuthor,
   );
-  const commentsInCurrentCycle = params.comments.slice(
-    lastHumanCommentIndex + 1,
+  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
+    params.comments,
+    params.latestReopenedAt,
   );
+  const cycleStart = Math.max(
+    lastHumanCommentIndex,
+    reopenedEventBoundaryIndex,
+  );
+  const commentsInCurrentCycle = params.comments.slice(cycleStart + 1);
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
@@ -215,11 +245,12 @@ const countSilentRedispatches = <
 };
 
 const countDispatchesInCurrentCycle = <
-  CommentLike extends { author: string; content: string },
+  CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   nextStepAgent: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt: Date | null;
 }): number => {
   const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
@@ -247,10 +278,15 @@ const countDispatchesInCurrentCycle = <
         : found,
     -1,
   );
+  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
+    params.comments,
+    params.latestReopenedAt,
+  );
   const cycleStart = Math.max(
     lastHumanCommentIndex,
     lastEscalationCommentIndex,
     lastReactivationTriggerConfirmationIndex,
+    reopenedEventBoundaryIndex,
   );
   const reportsInCurrentCycle = params.comments
     .slice(cycleStart + 1)
@@ -291,18 +327,26 @@ const resolveStoryUnsetDispatchState = <
     author: string;
     content: string;
     id?: string;
+    createdAt: Date;
   },
 >(params: {
   comments: StoryUnsetCommentLike[];
   isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt: Date | null;
 }): StoryUnsetDispatchState => {
   const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
     params.isTrustedAuthor,
   );
-  const commentsInCurrentCycle = params.comments.slice(
-    lastHumanCommentIndex + 1,
+  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
+    params.comments,
+    params.latestReopenedAt,
   );
+  const cycleStart = Math.max(
+    lastHumanCommentIndex,
+    reopenedEventBoundaryIndex,
+  );
+  const commentsInCurrentCycle = params.comments.slice(cycleStart + 1);
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) => {
       if (!params.isTrustedAuthor(comment.author)) return found;
@@ -341,7 +385,7 @@ const resolveStoryUnsetDispatchState = <
 };
 
 export const resolveNextStepAgentDispatchRepetition = <
-  CommentLike extends { author: string; content: string },
+  CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   agentFieldValue: string | null;
   nextStepAgent: string | null;
@@ -351,6 +395,7 @@ export const resolveNextStepAgentDispatchRepetition = <
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
   isNoStory: boolean;
+  latestReopenedAt?: Date | null;
 }): NextStepAgentDispatchRepetition => {
   const effectiveNextStepAgent =
     params.nextStepAgent ??
@@ -365,12 +410,14 @@ export const resolveNextStepAgentDispatchRepetition = <
   const silentRedispatches = countSilentRedispatches({
     ...params,
     nextStepAgent: effectiveNextStepAgent,
+    latestReopenedAt: params.latestReopenedAt ?? null,
   });
   if (params.isNoStory) {
     if (params.nextStepAgent !== null) {
       const storyUnsetDispatchState = resolveStoryUnsetDispatchState({
         comments: params.comments,
         isTrustedAuthor: params.isTrustedAuthor,
+        latestReopenedAt: params.latestReopenedAt ?? null,
       });
       if (storyUnsetDispatchState.count >= params.thresholdForDispatchLoop) {
         return {
@@ -414,6 +461,7 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
   const dispatchesInCycle = countDispatchesInCurrentCycle({
     ...params,
     nextStepAgent: effectiveNextStepAgent,
+    latestReopenedAt: params.latestReopenedAt ?? null,
   });
   if (
     !isSelfReference &&
