@@ -133,13 +133,61 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       },
     },
     {
-      name: `should no update when cacheUsed`,
+      name: `moves an issue to Icebox when its story is disabled, regardless of fetch cadence`,
       input: {
         project: basicProject,
-        cacheUsed: true,
         org: 'testOrg',
         repo: 'testRepo',
-        storyObjectMap: basicStoryObjectMap,
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              ...basicStoryObject1,
+              story: {
+                ...basicStoryObject1.story,
+                color: 'GRAY',
+              },
+            },
+          ],
+          ['Story 2', basicStoryObject2],
+        ]),
+        manager,
+      },
+      expectedCalls: {
+        createComment: [
+          [
+            expect.anything(),
+            'This issue status is changed because the story is disabled.',
+          ],
+        ],
+        updateStatus: [[expect.anything(), expect.anything(), 'status3']],
+      },
+    },
+    {
+      name: `should not write again when an issue under a disabled story is already in Icebox`,
+      input: {
+        project: basicProject,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              ...basicStoryObject1,
+              story: {
+                ...basicStoryObject1.story,
+                color: 'GRAY',
+              },
+              issues: [
+                {
+                  ...basicStoryObject1.issues[0],
+                  status: 'Icebox',
+                },
+              ],
+            },
+          ],
+          ['Story 2', basicStoryObject2],
+        ]),
         manager,
       },
       expectedCalls: {
