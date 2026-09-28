@@ -1,5 +1,6 @@
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { isTransientApiError } from './isTransientApiError';
 
 type CliErrorReportRepository = Pick<
   IssueRepository,
@@ -53,6 +54,14 @@ export class CliErrorReportUseCase {
     if (isGitHubGraphQLTransientError(error)) {
       console.warn(
         'CliErrorReportUseCase: suppressing GitHub GraphQL transient error; aw retry will handle recovery:',
+        error instanceof Error ? error.message : String(error),
+      );
+      return;
+    }
+
+    if (isTransientApiError(error)) {
+      console.warn(
+        'CliErrorReportUseCase: suppressing known/transient API error:',
         error instanceof Error ? error.message : String(error),
       );
       return;
