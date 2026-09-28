@@ -290,4 +290,85 @@ describe('CliErrorReportUseCase', () => {
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
     });
   });
+
+  describe('shared transient-error classifier (isTransientApiError) consultation', () => {
+    const transientErrorMessage =
+      'The single select option Id does not belong to the field';
+    const nonTransientErrorMessage = "Validation Failed: Title can't be blank";
+
+    it('should make no repository calls and only log a warning when the shared classifier recognizes the error and no matching open issue exists', async () => {
+      const error = new Error(transientErrorMessage);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should still create a new issue for a non-transient error when no matching open issue exists (no regression)', async () => {
+      const error = new Error(nonTransientErrorMessage);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(21);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        owner,
+        repo,
+        expect.stringContaining('CLI error:'),
+        expect.any(String),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('should not comment on an existing matching open issue and should only log a warning when the shared classifier recognizes the error', async () => {
+      const error = new Error(transientErrorMessage);
+      const title = `CLI error: Error: ${transientErrorMessage}`;
+      const existingIssueUrl =
+        'https://github.com/test-owner/test-repo/issues/20';
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        { url: existingIssueUrl, title, number: '20' },
+      ]);
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should still comment on an existing matching open issue for a non-transient error (no regression)', async () => {
+      const error = new Error(nonTransientErrorMessage);
+      const title = `CLI error: Error: ${nonTransientErrorMessage}`;
+      const existingIssueUrl =
+        'https://github.com/test-owner/test-repo/issues/21';
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        { url: existingIssueUrl, title, number: '21' },
+      ]);
+      mockIssueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'bot',
+        body: 'CLI error recurrence',
+        createdAt: new Date(0),
+      });
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        existingIssueUrl,
+        expect.any(String),
+      );
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+  });
 });

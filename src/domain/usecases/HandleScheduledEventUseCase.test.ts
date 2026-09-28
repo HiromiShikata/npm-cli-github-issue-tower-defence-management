@@ -1318,6 +1318,215 @@ describe('HandleScheduledEventUseCase', () => {
         expect(storyIssueCalls).toHaveLength(1);
         expect(storyIssueCalls[0][2]).toBe('feature / StoryOne');
       });
+
+      describe('stale Story option id at write time (issue #2781)', () => {
+        it('passes the id from a live re-fetch that still matches the cycle-start id (case 7)', async () => {
+          mockProjectRepository.getProject.mockResolvedValue(storyProject);
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(String),
+            'story-1',
+          );
+        });
+
+        it('passes the freshly re-fetched matching option id to updateStoryByProjectItemId when the cycle-start id has become stale (case 8)', async () => {
+          const freshProjectWithMatchingOption: Project = {
+            ...storyProject,
+            story: {
+              name: 'Story',
+              fieldId: 'f2',
+              databaseId: 2,
+              workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+              stories: [
+                {
+                  id: 'story-1-fresh',
+                  name: 'feature / StoryOne',
+                  color: 'BLUE',
+                  description: 'story desc',
+                },
+              ],
+            },
+          };
+          mockProjectRepository.getProject.mockResolvedValue(
+            freshProjectWithMatchingOption,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(mockProjectRepository.getProject).toHaveBeenCalledWith(
+            'project-1',
+          );
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(String),
+            'story-1-fresh',
+          );
+        });
+
+        it('does not perform the write and logs a warning when the live re-fetch finds no matching Story option (case 9)', async () => {
+          const freshProjectWithNoMatchingOption: Project = {
+            ...storyProject,
+            story: {
+              name: 'Story',
+              fieldId: 'f2',
+              databaseId: 2,
+              workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+              stories: [
+                {
+                  id: 'story-other',
+                  name: 'feature / SomeOtherStory',
+                  color: 'BLUE',
+                  description: 'other desc',
+                },
+              ],
+            },
+          };
+          mockProjectRepository.getProject.mockResolvedValue(
+            freshProjectWithNoMatchingOption,
+          );
+          const consoleWarnSpy = jest
+            .spyOn(console, 'warn')
+            .mockImplementation(() => undefined);
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(mockProjectRepository.getProject).toHaveBeenCalledWith(
+            'project-1',
+          );
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).not.toHaveBeenCalled();
+          const warnCalls = consoleWarnSpy.mock.calls.map((args) =>
+            args.map((a) => String(a)).join(' '),
+          );
+          expect(
+            warnCalls.some(
+              (text) =>
+                text.includes('feature / StoryOne') ||
+                text.includes('issues/99'),
+            ),
+          ).toBe(true);
+          consoleWarnSpy.mockRestore();
+        });
+
+        it('skips the existing open issue when its Story field is already set (case 10, no regression)', async () => {
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [],
+            project: storyProject,
+            cacheUsed: false,
+          });
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/77';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '77',
+            },
+          ]);
+          const existingIssueWithStorySet = mock<Issue>();
+          existingIssueWithStorySet.itemId = 'item-77';
+          existingIssueWithStorySet.storyOptionId = 'story-already-set';
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            existingIssueWithStorySet,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).not.toHaveBeenCalled();
+          const storyIssueCalls =
+            mockIssueRepository.createNewIssue.mock.calls.filter(
+              (call) => Array.isArray(call[5]) && call[5].includes('story'),
+            );
+          expect(storyIssueCalls).toHaveLength(0);
+          expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
+            expect.objectContaining({
+              owner: 'test-org',
+              repositoryName: 'test-repo',
+              type: 'issue',
+              state: 'open',
+              title: 'feature / StoryOne',
+            }),
+          );
+        });
+
+        it('retries the write for the existing open issue when its Story field is unset (case 11, new behavior)', async () => {
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [],
+            project: storyProject,
+            cacheUsed: false,
+          });
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/77';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '77',
+            },
+          ]);
+          const existingIssueWithStoryUnset = mock<Issue>();
+          existingIssueWithStoryUnset.itemId = 'item-77';
+          existingIssueWithStoryUnset.storyOptionId = null;
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            existingIssueWithStoryUnset,
+          );
+          const freshProjectForRetry: Project = {
+            ...storyProject,
+            story: {
+              name: 'Story',
+              fieldId: 'f2',
+              databaseId: 2,
+              workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+              stories: [
+                {
+                  id: 'story-1-retry-fresh',
+                  name: 'feature / StoryOne',
+                  color: 'BLUE',
+                  description: 'story desc',
+                },
+              ],
+            },
+          };
+          mockProjectRepository.getProject.mockResolvedValue(
+            freshProjectForRetry,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).toHaveBeenCalledWith(
+            expect.anything(),
+            'item-77',
+            'story-1-retry-fresh',
+          );
+          const storyIssueCalls =
+            mockIssueRepository.createNewIssue.mock.calls.filter(
+              (call) => Array.isArray(call[5]) && call[5].includes('story'),
+            );
+          expect(storyIssueCalls).toHaveLength(0);
+        });
+      });
     });
 
     describe('slow sweep cadence', () => {
