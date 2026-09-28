@@ -18,6 +18,7 @@ import { ConsoleErrorReportUseCase } from '../../../domain/usecases/ConsoleError
 import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { PullRequestProjectItemRemoveUseCase } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
@@ -254,6 +255,11 @@ type ArchiveUnresumableSessionOptions = {
   logFile: string;
   sessionDir: string;
   archiveDir: string;
+};
+
+type RemovePullRequestProjectItemsOptions = {
+  projectId: string;
+  backupFilePath: string;
 };
 
 const resolveScopeLibPath = (): string | null => {
@@ -1591,6 +1597,50 @@ program
       await tmuxSessionRepository.killOwnSession();
     } else if (options.session) {
       await tmuxSessionRepository.killSession(options.session);
+    }
+  });
+
+program
+  .command('removePullRequestProjectItems')
+  .description(
+    'List every item in a GitHub Project V2 board, back up the identifier, URL, Status value, and story value of every item whose content is a pull request to --backupFilePath, then remove each of those pull-request items from the board.',
+  )
+  .requiredOption('--projectId <projectId>', 'GitHub Project V2 node ID')
+  .requiredOption(
+    '--backupFilePath <path>',
+    'File path to write the JSON backup of matched pull-request items before deletion',
+  )
+  .action(async (options: RemovePullRequestProjectItemsOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
+    const localStorageRepository = new LocalStorageRepository();
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      localStorageRepository,
+      token,
+    );
+    const useCase = new PullRequestProjectItemRemoveUseCase(
+      graphqlProjectItemRepository,
+    );
+    const matchedItems = await useCase.findPullRequestItems(options.projectId);
+    localStorageRepository.write(
+      options.backupFilePath,
+      JSON.stringify(matchedItems, null, 2),
+    );
+    const { succeededUrls, failures } = await useCase.removeItems(
+      options.projectId,
+      matchedItems,
+    );
+    console.log(
+      `removePullRequestProjectItems: matched ${matchedItems.length}, removed ${succeededUrls.length}, failed ${failures.length}. Backup written to ${options.backupFilePath}`,
+    );
+    if (failures.length > 0) {
+      console.error(
+        `removePullRequestProjectItems: failed to remove ${failures.length} item(s): ${JSON.stringify(failures)}`,
+      );
+      process.exitCode = 1;
     }
   });
 
