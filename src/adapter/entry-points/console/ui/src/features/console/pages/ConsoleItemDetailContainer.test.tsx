@@ -1308,6 +1308,41 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
+  it('pre-selects the agent dropdown by the item agentOptionId rather than by the agent display name', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const duplicateNameAgentOptions = [
+      { id: 'agent-first', name: 'developer', color: 'GRAY' as const },
+      { id: 'agent-second', name: 'developer', color: 'BLUE' as const },
+    ];
+    const itemWithAgentOptionId = {
+      ...issueItem,
+      agent: 'developer',
+      agentOptionId: 'agent-second',
+    };
+    const { getByRole, getByTitle } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={itemWithAgentOptionId}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={duplicateNameAgentOptions}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    const agentSelect = getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
+    expect(agentSelect.value).toBe('agent-second');
+  });
+
   it('provides overlayPatch with done and status when ok & Awaiting Workspace is triggered', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();

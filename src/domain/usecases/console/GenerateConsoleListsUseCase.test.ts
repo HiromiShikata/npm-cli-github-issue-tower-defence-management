@@ -378,6 +378,7 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(Object.keys(item).sort()).toEqual(
         [
           'agent',
+          'agentOptionId',
           'createdAt',
           'dependedIssueUrls',
           'isPr',
@@ -983,6 +984,28 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Awaiting Owner', agent: 'chore' }),
       ]);
       expect(result.prs.items[0].agent).toBe('chore');
+    });
+  });
+
+  describe('agentOptionId propagation', () => {
+    it('copies the agentOptionId value from the issue into the list item', () => {
+      const overrides = {
+        status: 'Awaiting Owner',
+        agent: 'developer',
+        agentOptionId: 'AGENT_OPTION_ID_X',
+      };
+      const result = run([makeIssue(overrides)]);
+      expect(result.prs.items[0]).toHaveProperty(
+        'agentOptionId',
+        'AGENT_OPTION_ID_X',
+      );
+    });
+
+    it('defaults the list item agentOptionId to null when the issue has no agentOptionId', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Owner', agent: 'developer' }),
+      ]);
+      expect(result.prs.items[0]).toHaveProperty('agentOptionId', null);
     });
   });
 

@@ -27,6 +27,7 @@ export type ConsoleListItem = {
   storyOptionId?: string | null;
   status: string | null;
   agent: string | null;
+  agentOptionId?: string | null;
   nextActionDate: string | null;
   nextActionHour: number | null;
   dependedIssueUrls: string[];
@@ -357,6 +358,7 @@ export class GenerateConsoleListsUseCase {
     storyOptionId: issue.storyOptionId ?? null,
     status: issue.status,
     agent: issue.agent,
+    agentOptionId: issue.agentOptionId ?? null,
     nextActionDate:
       issue.nextActionDate === null ? null : issue.nextActionDate.toISOString(),
     nextActionHour: issue.nextActionHour,

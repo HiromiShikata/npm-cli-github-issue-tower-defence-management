@@ -28,6 +28,7 @@ export type ConsoleOperationBarProps = {
   currentStoryOptionId: string | null;
   agentOptions: ConsoleFieldOption[];
   currentAgentName: string | null;
+  currentAgentOptionId?: string | null;
   handlers: ConsoleOperationHandlers;
   storyNameForDeletion?: string | null;
   onCommentAndClose?: () => Promise<void>;
@@ -45,6 +46,7 @@ export const ConsoleOperationMenu = ({
   currentStoryOptionId,
   agentOptions,
   currentAgentName,
+  currentAgentOptionId,
   handlers,
   storyNameForDeletion,
   onCommentAndClose,
@@ -80,6 +82,7 @@ export const ConsoleOperationMenu = ({
           <ConsoleAgentSelectActions
             agentOptions={agentOptions}
             currentAgentName={currentAgentName}
+            currentAgentOptionId={currentAgentOptionId}
             onSetAgent={handlers.onSetAgent}
           />
         </>

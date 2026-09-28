@@ -400,6 +400,123 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toEqual(arg.expected);
     });
   });
+  describe('convertProjectItemToIssue — agentOptionId', () => {
+    it('sets agentOptionId from the Agent custom field optionId', () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const projectItem: ProjectItem = {
+        id: 'test-id-agent-1',
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 50,
+        title: 'test-title-agent-1',
+        state: 'OPEN',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/50',
+        body: 'test-body',
+        labels: [],
+        assignees: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-02T00:00:00Z',
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        isRepoArchived: false,
+        stateReason: null,
+        customFields: [
+          buildCustomFieldWithOptionId(
+            'agent',
+            'developer',
+            'AGENT_OPTION_ID_X',
+          ),
+        ],
+      };
+      const result = repository.convertProjectItemToIssue(projectItem);
+      const expectedBase = {
+        assignees: [],
+        body: 'test-body',
+        estimationMinutes: null,
+        isPr: false,
+        itemId: 'test-id-agent-1',
+        labels: [],
+        nameWithOwner: 'HiromiShikata/test-repository',
+        nextActionDate: null,
+        nextActionHour: null,
+        number: 50,
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        state: 'OPEN',
+        status: null,
+        story: null,
+        title: 'test-title-agent-1',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/50',
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        agent: 'developer',
+        isRepoArchived: false,
+        stateReason: null,
+      };
+      const expected = { ...expectedBase, agentOptionId: 'AGENT_OPTION_ID_X' };
+      expect(result).toEqual(expected);
+    });
+    it('leaves agentOptionId unset when the Agent custom field has no optionId', () => {
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const projectItem: ProjectItem = {
+        id: 'test-id-agent-2',
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 51,
+        title: 'test-title-agent-2',
+        state: 'OPEN',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/51',
+        body: 'test-body',
+        labels: [],
+        assignees: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-02T00:00:00Z',
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        isRepoArchived: false,
+        stateReason: null,
+        customFields: [{ name: 'agent', value: 'developer' }],
+      };
+      const result = repository.convertProjectItemToIssue(projectItem);
+      const expected = {
+        assignees: [],
+        body: 'test-body',
+        estimationMinutes: null,
+        isPr: false,
+        itemId: 'test-id-agent-2',
+        labels: [],
+        nameWithOwner: 'HiromiShikata/test-repository',
+        nextActionDate: null,
+        nextActionHour: null,
+        number: 51,
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        state: 'OPEN',
+        status: null,
+        story: null,
+        title: 'test-title-agent-2',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/51',
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        agent: 'developer',
+        isRepoArchived: false,
+        stateReason: null,
+      };
+      expect(result).toEqual(expected);
+    });
+  });
   describe('getStoryObjectMap', () => {
     it('keeps two story option instances separate when they share the same display name but have different ids', async () => {
       const {

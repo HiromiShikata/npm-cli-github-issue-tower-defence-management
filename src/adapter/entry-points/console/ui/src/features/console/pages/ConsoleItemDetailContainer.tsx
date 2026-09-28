@@ -542,6 +542,7 @@ export const ConsoleItemDetailContainer = ({
           currentStoryOptionId={resolvedStoryOptionId}
           agentOptions={agentOptions}
           currentAgentName={item.agent}
+          currentAgentOptionId={item.agentOptionId ?? null}
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
           onCommentAndClose={commentAndCloseWithDraft}
