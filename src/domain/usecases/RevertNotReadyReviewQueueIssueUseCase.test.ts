@@ -2648,7 +2648,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       const comments = [
-        { ...agentReport('developer'), createdAt: new Date('2026-01-01T00:00:00Z') },
+        {
+          ...agentReport('developer'),
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
         {
           author: 'owner',
           content: 'please continue',

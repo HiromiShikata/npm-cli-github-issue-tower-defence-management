@@ -279,13 +279,12 @@ Report body.`,
       });
       expect(withoutReopen).toBe(3);
 
-      const withReopenBetweenFirstAndSecond = countConsecutiveNoReportDispatches(
-        {
+      const withReopenBetweenFirstAndSecond =
+        countConsecutiveNoReportDispatches({
           comments,
           isTrustedAuthor: trustAll,
           latestReopenedAt: new Date(hour(1).getTime() + 30 * 60 * 1000),
-        },
-      );
+        });
       expect(withReopenBetweenFirstAndSecond).toBe(2);
     });
   });

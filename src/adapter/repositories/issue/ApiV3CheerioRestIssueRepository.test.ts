@@ -2806,9 +2806,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         { event: 'reopened', created_at: '2024-01-03T00:00:00Z' },
         { event: 'labeled', created_at: '2024-01-07T00:00:00Z' },
       ];
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify(events), { status: 200 }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(events), { status: 200 }),
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getLatestReopenedEventAt(
@@ -2860,7 +2862,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('returns null when the issue has no events at all', async () => {
       const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.getLatestReopenedEventAt(
@@ -10777,9 +10781,7 @@ describeWhenCredentials(
     const restIssueRepository = mock<RestIssueRepository>();
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
-    localStorageCacheRepository.withLock.mockImplementation((_key, fn) =>
-      fn(),
-    );
+    localStorageCacheRepository.withLock.mockImplementation((_key, fn) => fn());
     const projectRepository = mock<ProjectRepository>();
     const dateRepository = mock<DateRepository>();
     const localStorageRepository = mock<LocalStorageRepository>();
@@ -10828,26 +10830,20 @@ describeWhenCredentials(
       stateReason: null,
     };
 
-    test(
-      'reflects a real close+reopen cycle on the sandbox issue as a recent reopened event',
-      async () => {
-        await repository.closeIssueByUrl(sandboxIssueUrl, 'not_planned');
-        await repository.reopenIssueByUrl(sandboxIssueUrl);
+    test('reflects a real close+reopen cycle on the sandbox issue as a recent reopened event', async () => {
+      await repository.closeIssueByUrl(sandboxIssueUrl, 'not_planned');
+      await repository.reopenIssueByUrl(sandboxIssueUrl);
 
-        const result = await repository.getLatestReopenedEventAt(
-          sandboxIssue,
+      const result = await repository.getLatestReopenedEventAt(sandboxIssue);
+
+      if (result === null) {
+        throw new Error(
+          'expected getLatestReopenedEventAt to return a non-null Date after the close+reopen cycle',
         );
-
-        if (result === null) {
-          throw new Error(
-            'expected getLatestReopenedEventAt to return a non-null Date after the close+reopen cycle',
-          );
-        }
-        const nowMs = Date.now();
-        const resultMs = result.getTime();
-        expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
-      },
-      30000,
-    );
+      }
+      const nowMs = Date.now();
+      const resultMs = result.getTime();
+      expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
+    }, 30000);
   },
 );
