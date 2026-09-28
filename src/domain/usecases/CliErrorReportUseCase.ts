@@ -23,15 +23,6 @@ const isGitHubRateLimitError = (error: unknown): boolean => {
   );
 };
 
-const isGitHubGraphQLTransientError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return /^Something went wrong while executing your query on /i.test(
-    error.message,
-  );
-};
-
 export class CliErrorReportUseCase {
   constructor(private readonly issueRepository: CliErrorReportRepository) {}
 
@@ -46,14 +37,6 @@ export class CliErrorReportUseCase {
     if (isGitHubRateLimitError(error)) {
       console.warn(
         'CliErrorReportUseCase: suppressing rate-limit error to prevent write amplification:',
-        error instanceof Error ? error.message : String(error),
-      );
-      return;
-    }
-
-    if (isGitHubGraphQLTransientError(error)) {
-      console.warn(
-        'CliErrorReportUseCase: suppressing GitHub GraphQL transient error; aw retry will handle recovery:',
         error instanceof Error ? error.message : String(error),
       );
       return;
