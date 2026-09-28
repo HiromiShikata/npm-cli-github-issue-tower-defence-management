@@ -2273,13 +2273,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       customFields,
     });
 
-    // Test table 1 — registration-skip decision:
-    // | Target URL is a pull request | Already a card on this board | Result                                                                  |
-    // | Yes                          | No                            | No card is created; the link is not recorded on the board             |
-    // | Yes                          | Yes                           | The existing card's link field is updated (unchanged from today)      |
-    // | No (it is an issue)          | No                            | A new card is created for the issue, then its field is set (unchanged)|
-    // | No (it is an issue)          | Yes                           | The existing card's field is updated (unchanged from today)           |
-
     it('should skip creating a project item and skip setting the field when the target URL is a pull request with no existing project item on the current project (table row 1)', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();

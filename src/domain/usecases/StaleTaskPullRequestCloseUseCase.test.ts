@@ -28,11 +28,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     reviewDecision: null,
   });
 
-  // Configures the direct cross-reference-based lookup that replaces the old
-  // board-item scan: for each closed task issue URL, findRelatedOpenPRs
-  // returns the given candidate pull requests, and getIssueByUrl resolves
-  // any of those candidate pull request URLs to their full Issue record.
-  const configureDiscovery = (
+  const configureFindRelatedOpenPRsAndGetIssueByUrl = (
     closedTaskIssueUrlToCandidatePrs: Record<string, Issue[]>,
   ): void => {
     mockIssueRepository.findRelatedOpenPRs.mockImplementation(
@@ -142,7 +138,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should close an open pull request whose every closing issue reference is a closed task issue', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
 
@@ -165,7 +161,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that has no closing issue reference', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithoutTaskIssue],
     });
 
@@ -177,7 +173,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request whose closing issue reference is not among the given issues', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithUnknownTaskIssue],
     });
 
@@ -189,7 +185,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request when only some of its closing issue references are closed', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedAndOpenTaskIssues],
     });
 
@@ -205,7 +201,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that is already closed', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [closedPrWithClosedTaskIssue],
     });
 
@@ -217,7 +213,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should continue with the remaining pull requests when closing one of them fails', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
       [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue],
     });
@@ -241,7 +237,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment with the closed task issue URLs when closing a stale pull request', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
 
@@ -256,7 +252,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment before closing the pull request', async () => {
-    configureDiscovery({
+    configureFindRelatedOpenPRsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
     const callOrder: string[] = [];
@@ -399,7 +395,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         };
 
         if (referencedTaskIssue && referencedTaskIssue.isClosed) {
-          configureDiscovery({
+          configureFindRelatedOpenPRsAndGetIssueByUrl({
             [referencedTaskIssue.url]: [targetPullRequest],
           });
         }
@@ -425,12 +421,6 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     });
   });
 
-  // Test table 2 — stale-pull-request-close discovery decision:
-  // | Task issue state | Open PR linked to it (via direct lookup) | PR already a board card | Result                                            |
-  // | Closed            | Yes, age >= minimum threshold             | No                       | The tool closes the PR (found via direct lookup)  |
-  // | Closed            | Yes, age >= minimum threshold             | Yes (leftover card)     | The tool closes the PR (unchanged outcome)        |
-  // | Closed            | Yes, age below the minimum threshold      | No                       | The tool leaves the PR open (unchanged)           |
-  // | Open              | Yes                                       | No                       | The tool leaves the PR open (unchanged)           |
   describe('stale-pull-request-close discovery decision (test table 2)', () => {
     const discoveryEvaluatedAt = new Date('2026-01-02T00:00:00Z');
     const AT_MINIMUM_AGE_MS = DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS;
@@ -487,7 +477,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
           ),
         };
 
-        configureDiscovery({
+        configureFindRelatedOpenPRsAndGetIssueByUrl({
           [testCase.taskIssue.url]: [candidatePullRequest],
         });
 
