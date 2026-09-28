@@ -22,6 +22,10 @@ describe('isTransientApiError', () => {
         'Something went wrong while executing your query on 2026-09-09T23:34:05Z. Please include `BE9A:BD63D:2E4757E:95BB975:6AA1ECEC` when reporting this issue.',
       ),
     },
+    {
+      name: 'an API-prefixed status code not covered by the rate limit check',
+      error: new Error('Failed to write to Internal Reporting API: 500'),
+    },
   ];
 
   it.each(transientCases)(
@@ -39,6 +43,10 @@ describe('isTransientApiError', () => {
     {
       name: 'a thrown non-Error string value',
       error: 'just a plain string, not an Error instance',
+    },
+    {
+      name: 'a colon-prefixed number that is not an API status code',
+      error: new Error('Order number: 500'),
     },
   ];
 
