@@ -1527,6 +1527,33 @@ describe('HandleScheduledEventUseCase', () => {
           expect(storyIssueCalls).toHaveLength(0);
         });
       });
+
+      describe('storyOptionWriteFailures collection on unexpected write error (issue #2781)', () => {
+        it('resolves run() without throwing and records a failure entry when the Story field write rejects unexpectedly', async () => {
+          const distinctiveWriteError = new Error(
+            'distinctive-story-write-failure-8f3c1a',
+          );
+          mockIssueRepository.updateStoryByProjectItemId.mockRejectedValueOnce(
+            distinctiveWriteError,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+
+          await expect(runPromise).resolves.not.toBeNull();
+          const result = await runPromise;
+
+          expect(result?.storyOptionWriteFailures).toHaveLength(1);
+          expect(result?.storyOptionWriteFailures[0]).toEqual(
+            expect.stringContaining(
+              'https://github.com/test-org/test-repo/issues/99',
+            ),
+          );
+          expect(result?.storyOptionWriteFailures[0]).toEqual(
+            expect.stringContaining('distinctive-story-write-failure-8f3c1a'),
+          );
+        });
+      });
     });
 
     describe('slow sweep cadence', () => {
