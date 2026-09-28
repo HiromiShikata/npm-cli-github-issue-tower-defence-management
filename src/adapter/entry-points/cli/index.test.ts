@@ -37,7 +37,7 @@ jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
 jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
 jest.mock('../../../domain/usecases/PullRequestProjectItemRemoveUseCase');
-const mockLocalStorageRepositoryWrite = jest.fn();
+const mockLocalStorageRepositoryWrite = jest.fn<void, [string, string]>();
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({
     write: mockLocalStorageRepositoryWrite,
@@ -3479,8 +3479,7 @@ mysteryKey: 'value'
 
       const writeCallOrder =
         mockLocalStorageRepositoryWrite.mock.invocationCallOrder[0];
-      const removeItemsCallOrder =
-        mockRemoveItems.mock.invocationCallOrder[0];
+      const removeItemsCallOrder = mockRemoveItems.mock.invocationCallOrder[0];
       expect(writeCallOrder).toBeLessThan(removeItemsCallOrder);
     });
 

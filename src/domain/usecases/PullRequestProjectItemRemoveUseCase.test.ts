@@ -22,8 +22,11 @@ describe('PullRequestProjectItemRemoveUseCase', () => {
   let useCase: PullRequestProjectItemRemoveUseCase;
 
   beforeEach(() => {
-    fetchProjectItems = jest.fn();
-    removeItemFromProjectByIssueUrl = jest.fn();
+    fetchProjectItems = jest.fn<Promise<ProjectItemSnapshot[]>, [string]>();
+    removeItemFromProjectByIssueUrl = jest.fn<
+      Promise<void>,
+      [string, string]
+    >();
     fakeProjectItemRepository = {
       fetchProjectItems,
       removeItemFromProjectByIssueUrl,
