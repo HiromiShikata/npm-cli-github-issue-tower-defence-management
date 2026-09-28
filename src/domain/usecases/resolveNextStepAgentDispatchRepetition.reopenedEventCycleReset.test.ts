@@ -5,15 +5,6 @@ import {
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 
-// Issue #2814: TDPM decides whether the same agent is being redispatched with
-// no progress by looking only at posted comments. A GitHub issue can also
-// change open/closed state with no comment at all (editing the body and
-// reopening it). This file pins the target behavior: a `reopened` event with
-// no comment must act as a new starting point for the redispatch count,
-// exactly like a human comment already does, and only reports posted after
-// the most recent qualifying boundary (the reopen, or the existing
-// comment-based boundary, whichever is later) count toward the threshold.
-
 describe('resolveNextStepAgentDispatchRepetition - reopened-event cycle reset (issue #2814)', () => {
   const trustAll = (): boolean => true;
 
@@ -57,9 +48,6 @@ Report body.`,
     createdAt,
   });
 
-  // Builds `count` consecutive "developer" reports at hour(startHour),
-  // hour(startHour + 1), ... so callers can express "N reports starting at
-  // this point in time" without repeating the report factory call by hand.
   const developerReports = (count: number, startHour: number): TestComment[] =>
     Array.from({ length: count }, (_, index) =>
       namedReport('developer', hour(startHour + index)),
@@ -168,15 +156,6 @@ Report body.`,
 
   describe('incident reproduction: repeated [agent report, comment-less reopen] cycles', () => {
     it('does not escalate when 5 report+reopen cycles are followed by a single new report after the last reopen', () => {
-      // Chronological event order (reopened GitHub issue events post no
-      // comment, so only the reports are modeled as comments):
-      // report1, reopen1, report2, reopen2, report3, reopen3, report4,
-      // reopen4, report5, reopen5, report6.
-      // 6 reports total, 5 reopens total. Only report6 falls after reopen5,
-      // the most recent reopened event, so only 1 report counts toward the
-      // threshold of 6 -- this is the exact miscounted-loop shape the issue
-      // reports: before the fix, all 6 reports would be wrongly counted
-      // together against the threshold and escalation would incorrectly fire.
       const comments = nullStepReports(6, 1);
       const latestReopenedAt = new Date(hour(5).getTime() + 30 * 60 * 1000);
 

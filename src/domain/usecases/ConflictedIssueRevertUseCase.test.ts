@@ -1879,10 +1879,6 @@ describe('ConflictedIssueRevertUseCase', () => {
         thresholdForDispatchLoop: 3,
       };
 
-      // Baseline: no reopened event on record -> all 3 reports count toward
-      // the threshold of 3 -> escalates (matches the pre-existing 'escalates
-      // to Failed Preparation instead of posting conflict comment when
-      // dispatch loop threshold is reached' behavior).
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
       await useCase.run(runParams);
 
@@ -1899,9 +1895,6 @@ describe('ConflictedIssueRevertUseCase', () => {
       mockIssueRepository.updateStatus.mockClear();
       mockIssueCommentRepository.createComment.mockClear();
 
-      // Same 3 reports, but the issue was reopened (no comment) between the
-      // 1st and 2nd report. Only the 2 reports after the reopened event count
-      // toward the threshold of 3, so escalation must NOT fire this time.
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
         new Date('2026-01-01T12:00:00Z'),
       );

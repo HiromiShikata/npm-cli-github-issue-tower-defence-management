@@ -22,13 +22,6 @@ const STORY_UNSET_ESCALATION_PHRASE =
 
 const trustAll = (): boolean => true;
 
-// Fixed placeholder timestamp for every comment fixture in this file. The
-// production generic constraints now require `createdAt: Date` on every
-// comment-like element (see resolveNextStepAgentDispatchRepetition.ts), but
-// none of the scenarios in this file exercise the new reopened-event boundary
-// (that is covered by resolveNextStepAgentDispatchRepetition.reopenedEventCycleReset.test.ts),
-// so a single fixed value keeps every existing assertion and behavior
-// identical — this is a compile-shape addition, not a behavior change.
 const TEST_COMMENT_CREATED_AT = new Date('2024-01-01T00:00:00Z');
 
 type TestComment = { author: string; content: string; createdAt: Date };

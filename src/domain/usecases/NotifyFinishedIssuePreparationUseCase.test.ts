@@ -8287,10 +8287,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       };
 
-      // Baseline: no reopened event on record -> all 3 null-nextStep reports
-      // count toward the threshold of 3 -> escalates to Failed Preparation
-      // (matches the pre-existing 'null nextStepAgent dispatch loop
-      // detection' behavior above).
       const issueBeforeReopen = createMockIssue({
         url: runParams.issueUrl,
         status: 'Preparation',
@@ -8315,10 +8311,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueRepository.update.mockClear();
       mockIssueCommentRepository.createComment.mockClear();
 
-      // Same 3 comments, but this time the issue was reopened (no comment)
-      // between the 1st and 2nd report. Only the 2 reports after the
-      // reopened event count toward the threshold of 3, so escalation must
-      // NOT fire.
       const issueAfterReopen = createMockIssue({
         url: runParams.issueUrl,
         status: 'Preparation',

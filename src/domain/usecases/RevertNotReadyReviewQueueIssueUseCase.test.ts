@@ -2670,9 +2670,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         thresholdForDispatchLoop: 6,
       };
 
-      // Baseline: no reopened event on record -> matches the pre-existing
-      // 'escalates to Failed Preparation instead of reverting when silent
-      // redispatch threshold is reached' behavior above (count reaches 3).
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
       await useCase.run(runParams);
 
@@ -2689,10 +2686,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       mockIssueRepository.updateStatus.mockClear();
       mockIssueCommentRepository.createComment.mockClear();
 
-      // Same comments, but the issue was reopened (no comment) between the
-      // two silent-redispatch comments. Only the second one falls after the
-      // reopened event, so the count drops below the threshold of 3 and
-      // escalation must not fire.
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
         new Date('2026-01-03T12:00:00Z'),
       );

@@ -2854,9 +2854,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(fetchSpy.mock.calls[0][0]).toContain(
         '/repos/HiromiShikata/test-repository/issues/42/events',
       );
-      // The most recent reopened event (page 1, 02-05) is later than the one
-      // on page 2 (02-03), so pagination must not just take the last page's
-      // value -- it must compare across every page fetched.
       expect(result).toEqual(new Date('2024-02-05T00:00:00Z'));
     });
 
@@ -10773,9 +10770,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
   };
 });
 
-// Live integration coverage for issue #2814: getLatestReopenedEventAt must
-// reflect a real close+reopen cycle performed through the real GitHub REST
-// API against the sandbox repository, not just the unit-mocked fetch above.
 describeWhenCredentials(
   'ApiV3CheerioRestIssueRepository - getLatestReopenedEventAt live integration',
   () => {

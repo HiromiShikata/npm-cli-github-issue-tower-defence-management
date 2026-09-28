@@ -3010,11 +3010,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
         allowedIssueAuthors: ['bot'],
       };
 
-      // Baseline: no reopened event on record -> all 3 null-nextStep reports
-      // count toward the threshold of 3 -> escalates (matches the
-      // pre-existing 'should escalate to Failed Preparation when a task with
-      // no nextStepAgent has been re-dispatched up to the dispatch loop
-      // threshold' behavior above).
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
       await useCase.run(runParams);
 
@@ -3027,9 +3022,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueRepository.updateStatus.mockClear();
       mockIssueCommentRepository.createComment.mockClear();
 
-      // Same 3 comments, but the issue was reopened (no comment) between the
-      // 1st and 2nd report. Only the 2 reports after the reopened event count
-      // toward the threshold of 3, so escalation must NOT fire.
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
         new Date('2024-01-02T00:30:00Z'),
       );
