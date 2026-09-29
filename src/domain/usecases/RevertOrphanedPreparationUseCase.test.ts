@@ -96,6 +96,17 @@ const createMockProject = (): Project => ({
   agent: null,
 });
 
+const buildGitHubCommentFetchHttpError = (statusCode: number): Error => {
+  const error = Object.assign(
+    new Error(
+      `Failed to fetch comments from GitHub REST API: ${statusCode} Some Status`,
+    ),
+    { statusCode },
+  );
+  error.name = 'GitHubCommentFetchHttpError';
+  return error;
+};
+
 const createPassingPr = () => ({
   url: 'https://github.com/user/repo/pull/5',
   branchName: 'i1',
@@ -2652,6 +2663,35 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
       'Auto Status Check: REJECTED',
     );
+  });
+
+  it('should skip an orphaned issue without posting a comment or changing its status when getCommentsFromIssue fails with a 403 GitHubCommentFetchHttpError', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      buildGitHubCommentFetchHttpError(403),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
   describe('workflow issue reporting for silent redispatch', () => {

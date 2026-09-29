@@ -33,7 +33,13 @@ import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper';
+  'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper' | 'skip';
+
+const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.name === 'GitHubCommentFetchHttpError' &&
+  'statusCode' in error &&
+  error.statusCode === 403;
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -133,6 +139,9 @@ export class RevertOrphanedPreparationUseCase {
           params.allowedIssueAuthors,
           params.developerAgentNames,
         );
+      if (outcome === 'skip') {
+        continue;
+      }
       const isStillInPreparation = await this.isStillInStatus(
         issue,
         project,
@@ -437,6 +446,9 @@ export class RevertOrphanedPreparationUseCase {
         `Failed to fetch comments for orphaned preparation issue ${issue.url}, reverting to Awaiting Workspace:`,
         error,
       );
+      if (isGitHubCommentFetchForbiddenError(error)) {
+        return { outcome: 'skip', comments: [], latestReopenedAt: null };
+      }
       return { outcome: 'reject', comments: [], latestReopenedAt: null };
     }
     const latestReopenedAt =

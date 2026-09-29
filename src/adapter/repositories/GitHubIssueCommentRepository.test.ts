@@ -13,7 +13,10 @@ jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
     '/tmp/test-comment-repo-breaker-state.json',
 }));
 
-import { GitHubIssueCommentRepository } from './GitHubIssueCommentRepository';
+import {
+  GitHubIssueCommentRepository,
+  GitHubCommentFetchHttpError,
+} from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 
 const buildIssue = (url: string): Issue => ({
@@ -345,6 +348,30 @@ describe('GitHubIssueCommentRepository', () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(fastSleep).not.toHaveBeenCalled();
+    });
+
+    it('throws a GitHubCommentFetchHttpError with statusCode 403 on a 403 response', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        );
+
+      await expect(
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
+      ).rejects.toBeInstanceOf(GitHubCommentFetchHttpError);
+      await expect(
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        name: 'GitHubCommentFetchHttpError',
+      });
     });
 
     it('caches comments with ETag on first call, sends If-None-Match on second call and returns cached comments on 304', async () => {
