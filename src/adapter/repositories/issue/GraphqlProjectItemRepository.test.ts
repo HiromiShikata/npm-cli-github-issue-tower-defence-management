@@ -3032,6 +3032,39 @@ describe('GraphqlProjectItemRepository', () => {
 
       expect(result).toBe('item-id-for-pull-request');
     });
+
+    it('sends a GraphQL query requesting projectItems inside both the Issue and PullRequest fragments of issueOrPullRequest, not just repository.issue', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                projectItems: {
+                  nodes: [{ id: 'item-id', project: { id: 'project-id' } }],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      await repository.fetchItemId('project-id', 'owner', 'repo', 789);
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toEqual(expect.any(String));
+      expect(sentQuery).toContain('issueOrPullRequest(number:');
+      expect(sentQuery).not.toMatch(/\bissue\(number:/);
+      expect(sentQuery).toMatch(/on Issue\s*\{[^}]*projectItems/);
+      expect(sentQuery).toMatch(/on PullRequest\s*\{[^}]*projectItems/);
+    });
   });
 
   describe('removeItemFromProjectByIssueUrl', () => {
