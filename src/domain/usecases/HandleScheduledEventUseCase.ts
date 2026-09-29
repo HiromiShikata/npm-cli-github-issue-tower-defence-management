@@ -560,6 +560,14 @@ ${JSON.stringify(e)}
       agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
       defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
+    try {
+      await this.updateIssueStatusByLabelUseCase.run({ project, issues });
+    } catch (updateStatusByLabelError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to update issue status by label for project ${project.url}: ${updateStatusByLabelError instanceof Error ? updateStatusByLabelError.message : String(updateStatusByLabelError)}`,
+        updateStatusByLabelError,
+      );
+    }
     await this.conflictedIssueRevertUseCase.run({
       projectUrl: input.projectUrl,
       allowedIssueAuthors,
@@ -821,15 +829,6 @@ ${JSON.stringify(e)}
           projectToAddSearchedIssues: project,
           queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
           queryToAddProject: input.queryToAddProject ?? null,
-        }),
-      failures,
-    );
-    await this.runOperationIsolated(
-      `update issue status by label for project ${project.url}`,
-      () =>
-        this.updateIssueStatusByLabelUseCase.run({
-          project,
-          issues,
         }),
       failures,
     );
