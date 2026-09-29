@@ -1730,6 +1730,149 @@ describe('ClearDependedIssueURLUseCase', () => {
       );
       expect(issueRepository.createComment).not.toHaveBeenCalled();
     });
+
+    it('resolves without throwing when the only failures across all issues are StaleProjectItemError, logging a warning naming each issue url and stale item id', async () => {
+      const issueRepository = createIssueRepository();
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const firstStaleIssue = {
+        ...buildIssue(
+          'first-stale-dependent',
+          ['blocker'],
+          false,
+          'Awaiting Workspace',
+        ),
+        itemId: 'item-stale-1',
+      };
+      const secondStaleIssue = {
+        ...buildIssue(
+          'second-stale-dependent',
+          ['blocker'],
+          false,
+          'Awaiting Workspace',
+        ),
+        itemId: 'item-stale-2',
+      };
+      issueRepository.clearProjectField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === firstStaleIssue.url) {
+            throw new StaleProjectItemError(firstStaleIssue.itemId);
+          }
+          if (issue.url === secondStaleIssue.url) {
+            throw new StaleProjectItemError(secondStaleIssue.itemId);
+          }
+        },
+      );
+      const useCase = new ClearDependedIssueURLUseCase(issueRepository);
+
+      await expect(
+        useCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+          {
+            project: projectWithDependedIssueUrlField,
+            issues: [
+              buildIssue('blocker', [], true, 'Done'),
+              firstStaleIssue,
+              secondStaleIssue,
+            ],
+          },
+        ),
+      ).resolves.toBeUndefined();
+
+      const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+        call.join(' '),
+      );
+      for (const staleIssue of [firstStaleIssue, secondStaleIssue]) {
+        expect(
+          warnedMessages.some((message) => message.includes(staleIssue.url)),
+        ).toBe(true);
+        expect(
+          warnedMessages.some((message) =>
+            message.includes(staleIssue.itemId),
+          ),
+        ).toBe(true);
+      }
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('still throws an aggregate error naming only the non-stale issue when a StaleProjectItemError and a non-stale error occur together', async () => {
+      const issueRepository = createIssueRepository();
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const staleIssue = {
+        ...buildIssue(
+          'stale-dependent',
+          ['blocker'],
+          false,
+          'Awaiting Workspace',
+        ),
+        itemId: 'item-stale-3',
+      };
+      issueRepository.clearProjectField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === staleIssue.url) {
+            throw new StaleProjectItemError(staleIssue.itemId);
+          }
+          if (issue.url === 'failing-dependent') {
+            throw new Error('clear mutation failed');
+          }
+        },
+      );
+      const useCase = new ClearDependedIssueURLUseCase(issueRepository);
+
+      await expect(
+        useCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+          {
+            project: projectWithDependedIssueUrlField,
+            issues: [
+              buildIssue('blocker', [], true, 'Done'),
+              staleIssue,
+              buildIssue(
+                'failing-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+              buildIssue(
+                'ok-dependent',
+                ['blocker'],
+                false,
+                'Awaiting Workspace',
+              ),
+            ],
+          },
+        ),
+      ).rejects.toThrow(
+        'Failed to remove resolved depended issue URLs from 1 issue(s): failing-dependent: clear mutation failed',
+      );
+
+      const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+        call.join(' '),
+      );
+      expect(
+        warnedMessages.some((message) => message.includes(staleIssue.url)),
+      ).toBe(true);
+      expect(
+        warnedMessages.some((message) => message.includes(staleIssue.itemId)),
+      ).toBe(true);
+      expect(recordIssueRepositoryCalls(issueRepository)).toEqual({
+        ...noCalls,
+        clearProjectField: [
+          ['fieldId', 'stale-dependent'],
+          ['fieldId', 'failing-dependent'],
+          ['fieldId', 'ok-dependent'],
+        ],
+        createComment: [
+          [
+            'ok-dependent',
+            'All depended issues are already closed, dependency field cleared:\n- blocker',
+          ],
+        ],
+        getIssueOrPullRequestComments: ['ok-dependent'],
+      });
+      consoleWarnSpy.mockRestore();
+    });
   });
 });
 
