@@ -30,6 +30,9 @@ jest.mock('../../repositories/FileHandoverStateRepository', () => ({
 
 const mockRun = jest.fn();
 jest.mock('../../../domain/usecases/TokenExhaustionHandoverUseCase', () => ({
+  ...jest.requireActual<
+    typeof import('../../../domain/usecases/TokenExhaustionHandoverUseCase')
+  >('../../../domain/usecases/TokenExhaustionHandoverUseCase'),
   TokenExhaustionHandoverUseCase: jest.fn().mockImplementation(() => ({
     run: mockRun,
   })),
