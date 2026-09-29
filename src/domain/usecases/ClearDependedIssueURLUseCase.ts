@@ -104,6 +104,12 @@ export class ClearDependedIssueURLUseCase {
             absentDependedIssueIsResolvable: false,
           });
         } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while removing resolved depended issue URLs: ${issue.url} (itemId=${error.itemId})`,
+            );
+            continue;
+          }
           failedIssueDescriptions.push(
             `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
           );
