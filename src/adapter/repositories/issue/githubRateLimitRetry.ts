@@ -69,6 +69,15 @@ export const hasRateLimitSignals = (
 };
 
 /**
+ * Returns true when the status code is a transient, infrastructure-level
+ * GitHub REST API failure (500/502/503/504) that GitHub's own documentation
+ * acknowledges as retryable.
+ */
+export const isTransientServerErrorStatus = (status: number): boolean => {
+  return status === 500 || status === 502 || status === 503 || status === 504;
+};
+
+/**
  * Returns true when the response indicates a secondary (content-creation)
  * rate limit, detected by two signals:
  *   1. Response body matches SECONDARY_RATE_LIMIT_BODY_PATTERN — covers both
@@ -183,9 +192,11 @@ export const computeBoundedBackoffMs = (
  * is written to the shared state file so every other process on the host
  * benefits from the discovery.
  *
- * Primary rate limits follow the original sub-second exponential schedule
- * bounded by RATE_LIMIT_TOTAL_BACKOFF_CAP_MS.  Non-rate-limit failures are
- * returned immediately without retrying.
+ * Primary rate limits, and transient server errors (500/502/503/504) on
+ * non-content-creating requests, follow the same sub-second exponential
+ * schedule bounded by RATE_LIMIT_TOTAL_BACKOFF_CAP_MS.  A transient server
+ * error on a content-creating request, and any other failure, is returned
+ * immediately without retrying.
  */
 export const fetchWithGitHubRateLimitRetry = async (
   request: () => Promise<Response>,
@@ -298,10 +309,13 @@ export const fetchWithGitHubRateLimitRetry = async (
 
     // Primary rate limit or other transient error: existing sub-second
     // exponential schedule bounded by RATE_LIMIT_TOTAL_BACKOFF_CAP_MS.
-    if (
-      attempt >= RATE_LIMIT_MAX_RETRIES ||
-      !hasRateLimitSignals(response.status, response.headers, bodyText)
-    ) {
+    // A transient 5xx (500/502/503/504) also retries here, but only for
+    // non-content-creating requests: retrying a write after a 5xx risks a
+    // duplicate side effect if the origin already processed it.
+    const isRetryableTransientError =
+      hasRateLimitSignals(response.status, response.headers, bodyText) ||
+      (!isContentCreating && isTransientServerErrorStatus(response.status));
+    if (attempt >= RATE_LIMIT_MAX_RETRIES || !isRetryableTransientError) {
       return response;
     }
     const elapsedMs = nowMs - startMs;
