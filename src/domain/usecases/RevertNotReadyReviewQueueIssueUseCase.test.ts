@@ -1874,10 +1874,39 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should revert Awaiting Owner issue with pending nextActionHour to Awaiting Workspace', async () => {
+    it('should not revert Awaiting Owner issue with standalone pending nextActionHour (no nextActionDate)', async () => {
       const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
       const issue = createMockIssue({
         status: 'Awaiting Owner',
+        nextActionDate: null,
+        nextActionHour: 11,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Reactivation trigger not yet reached'),
+      );
+    });
+
+    it('should revert Awaiting Owner issue with pending nextActionDate to Awaiting Workspace even when nextActionHour is also set', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        nextActionDate: new Date(Date.UTC(2026, 0, 16)),
         nextActionHour: 11,
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
