@@ -1,5 +1,8 @@
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import { TokenExhaustionHandoverUseCase } from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
+import {
+  TokenExhaustionHandoverUseCase,
+  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS,
+} from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
 import { GitHubIssueCheckpointRepository } from '../../repositories/GitHubIssueCheckpointRepository';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { RateLimitSnapshotRepository } from '../../repositories/RateLimitSnapshotRepository';
@@ -9,8 +12,6 @@ import {
   FileHandoverStateRepository,
   defaultHandoverStateFilePath,
 } from '../../repositories/FileHandoverStateRepository';
-
-const DEFAULT_HANDOVER_ACTION_COOLDOWN_SECONDS = 180;
 
 export type TokenExhaustionHandoverParams = {
   enabled: boolean;
@@ -65,7 +66,7 @@ export const handleTokenExhaustionHandover = async (
     now,
     handoverActionCooldownSeconds:
       handoverActionCooldownSeconds ??
-      DEFAULT_HANDOVER_ACTION_COOLDOWN_SECONDS,
+      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS,
   });
 
   stateRepository.save(result.state);
