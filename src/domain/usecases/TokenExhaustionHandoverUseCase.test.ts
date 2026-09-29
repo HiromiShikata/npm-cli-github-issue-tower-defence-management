@@ -3,7 +3,10 @@ import {
   TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS,
   TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS,
 } from './TokenExhaustionHandoverUseCase';
-import { ClaudeHandoverSession } from '../entities/ClaudeHandoverSession';
+import {
+  ClaudeHandoverSession,
+  ClaudeHandoverSessionKind,
+} from '../entities/ClaudeHandoverSession';
 import { TokenExhaustionHandoverState } from '../entities/TokenExhaustionHandoverState';
 import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
 import { IssueCheckpointRepository } from './adapter-interfaces/IssueCheckpointRepository';
@@ -86,12 +89,14 @@ const defaultInput = (
     enabled: boolean;
     state: TokenExhaustionHandoverState;
     now: Date;
+    handoverActionCooldownSeconds: number;
   }> = {},
 ) => ({
   enabled: true,
   issueUrlLeaderMessage: '',
   bareNameLeaderMessage: '',
   gracePeriodSeconds: 0,
+  handoverActionCooldownSeconds: 180,
   state: { entries: {} },
   now,
   ...overrides,
@@ -544,7 +549,10 @@ describe('TokenExhaustionHandoverUseCase', () => {
       tmuxSessionRepository.launchBareNameLeaderSession,
     ).toHaveBeenCalledWith(BARE_NAME);
     expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-    expect(result.state.entries[BARE_NAME]).toBeUndefined();
+    expect(result.state.entries[BARE_NAME]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: LEADER_PID,
+    });
   });
 
   it('kills and relaunches a bare-name leader immediately even when a pre-existing state entry exists', async () => {
@@ -575,7 +583,10 @@ describe('TokenExhaustionHandoverUseCase', () => {
     ).toHaveBeenCalledWith(BARE_NAME);
     expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
     expect(result.killedSessionNames).toEqual([BARE_NAME]);
-    expect(result.state.entries[BARE_NAME]).toBeUndefined();
+    expect(result.state.entries[BARE_NAME]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: LEADER_PID,
+    });
   });
 
   it('leaves a session launched by the workspace preparation script untouched instead of terminating it', async () => {
@@ -669,5 +680,227 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(result.killedSessionNames).toEqual([]);
     expect(result.relaunchedLeaderNames).toEqual([]);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(BARE_NAME));
+  });
+
+  describe('handoverActionCooldownSeconds gating', () => {
+    const STATE_KEY_FOR_KIND: Record<ClaudeHandoverSessionKind, string> = {
+      bareNameLeader: BARE_NAME,
+      issueUrlLeader: ISSUE_URL_SESSION,
+      implSubagent: `pid:${IMPL_PID}`,
+    };
+    const PID_FOR_KIND: Record<ClaudeHandoverSessionKind, number> = {
+      bareNameLeader: LEADER_PID,
+      issueUrlLeader: LEADER_PID,
+      implSubagent: IMPL_PID,
+    };
+
+    type CooldownGatingCase = {
+      description: string;
+      sessionFactory: () => ClaudeHandoverSession;
+      existingEntryElapsedSeconds: number | null;
+      handoverActionCooldownSeconds: number;
+      enabled: boolean;
+      exhausted: boolean;
+      expectedKilledSessionNames: string[];
+      expectedTerminatedPids: number[];
+      expectedRelaunchedLeaderNames: string[];
+      expectedStateEntry: 'now' | 'unchanged' | 'absent';
+    };
+
+    const cases: CooldownGatingCase[] = [
+      {
+        description:
+          '#1 bareNameLeader, no existing entry, cooldown=180, enabled=true -> kill+relaunch',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: null,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [BARE_NAME],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [BARE_NAME],
+        expectedStateEntry: 'now',
+      },
+      {
+        description:
+          '#2 bareNameLeader, entry 30s old, cooldown=180, enabled=true -> skip (cooling down)',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: 30,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'unchanged',
+      },
+      {
+        description:
+          '#3 bareNameLeader, entry exactly 180s old (boundary), cooldown=180, enabled=true -> kill+relaunch again',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: 180,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [BARE_NAME],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [BARE_NAME],
+        expectedStateEntry: 'now',
+      },
+      {
+        description:
+          '#4 issueUrlLeader, no existing entry, cooldown=180, enabled=true -> kill only, no relaunch',
+        sessionFactory: issueUrlLeaderSession,
+        existingEntryElapsedSeconds: null,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [ISSUE_URL_SESSION],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'now',
+      },
+      {
+        description:
+          '#5 issueUrlLeader, entry 30s old, cooldown=180, enabled=true -> skip',
+        sessionFactory: issueUrlLeaderSession,
+        existingEntryElapsedSeconds: 30,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'unchanged',
+      },
+      {
+        description:
+          '#6 implSubagent, no existing entry, cooldown=180, enabled=true -> SIGTERM+kill',
+        sessionFactory: implSubagentSession,
+        existingEntryElapsedSeconds: null,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [IMPL_PID],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'now',
+      },
+      {
+        description:
+          '#7 bareNameLeader, entry 30s old, cooldown=180, enabled=false (dry-run) -> log would-kill only, entry preserved',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: 30,
+        handoverActionCooldownSeconds: 180,
+        enabled: false,
+        exhausted: true,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'unchanged',
+      },
+      {
+        description:
+          '#8 bareNameLeader, no existing entry, cooldown=180, enabled=false (dry-run) -> log would-kill only, stays absent',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: null,
+        handoverActionCooldownSeconds: 180,
+        enabled: false,
+        exhausted: true,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'absent',
+      },
+      {
+        description:
+          '#9 bareNameLeader, entry 30s old, cooldown=0 (operator opt-out), enabled=true -> kill+relaunch (cooldown disabled)',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: 30,
+        handoverActionCooldownSeconds: 0,
+        enabled: true,
+        exhausted: true,
+        expectedKilledSessionNames: [BARE_NAME],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [BARE_NAME],
+        expectedStateEntry: 'now',
+      },
+      {
+        description:
+          '#10 bareNameLeader, entry 30s old (within cooldown), cooldown=180, enabled=true, verdict turns healthy -> entry deleted regardless of cooldown',
+        sessionFactory: bareNameLeaderSession,
+        existingEntryElapsedSeconds: 30,
+        handoverActionCooldownSeconds: 180,
+        enabled: true,
+        exhausted: false,
+        expectedKilledSessionNames: [],
+        expectedTerminatedPids: [],
+        expectedRelaunchedLeaderNames: [],
+        expectedStateEntry: 'absent',
+      },
+    ];
+
+    it.each(cases)(
+      '$description',
+      async ({
+        sessionFactory,
+        existingEntryElapsedSeconds,
+        handoverActionCooldownSeconds,
+        enabled,
+        exhausted,
+        expectedKilledSessionNames,
+        expectedTerminatedPids,
+        expectedRelaunchedLeaderNames,
+        expectedStateEntry,
+      }) => {
+        const session = sessionFactory();
+        const stateKey = STATE_KEY_FOR_KIND[session.kind];
+        const pid = PID_FOR_KIND[session.kind];
+        handoverSessionRepository.listHandoverSessions.mockReturnValue([
+          session,
+        ]);
+        snapshotRepository.listSnapshots.mockReturnValue([
+          snapshot(TOKEN_EXHAUSTED, exhausted ? { rejected: true } : {}),
+          snapshot(TOKEN_FRESH),
+        ]);
+        const existingEntry =
+          existingEntryElapsedSeconds === null
+            ? undefined
+            : {
+                signaledAtEpoch: nowEpochSeconds - existingEntryElapsedSeconds,
+                pid,
+              };
+
+        const result = await useCase.run(
+          defaultInput({
+            enabled,
+            handoverActionCooldownSeconds,
+            state: {
+              entries:
+                existingEntry === undefined
+                  ? {}
+                  : { [stateKey]: existingEntry },
+            },
+          }),
+        );
+
+        expect(result.killedSessionNames).toEqual(expectedKilledSessionNames);
+        expect(result.terminatedPids).toEqual(expectedTerminatedPids);
+        expect(result.relaunchedLeaderNames).toEqual(
+          expectedRelaunchedLeaderNames,
+        );
+
+        if (expectedStateEntry === 'now') {
+          expect(result.state.entries[stateKey]).toEqual({
+            signaledAtEpoch: nowEpochSeconds,
+            pid,
+          });
+        } else if (expectedStateEntry === 'unchanged') {
+          expect(result.state.entries[stateKey]).toEqual(existingEntry);
+        } else {
+          expect(result.state.entries[stateKey]).toBeUndefined();
+        }
+      },
+    );
   });
 });
