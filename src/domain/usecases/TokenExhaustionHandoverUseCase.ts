@@ -17,6 +17,7 @@ export const TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS = 900;
 export const TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS = 3600;
 export const TOKEN_EXHAUSTION_FIVE_HOUR_WARNING_FREE_THRESHOLD = 0.25;
 export const TOKEN_EXHAUSTION_SEVEN_DAY_WARNING_FREE_THRESHOLD = 0.15;
+export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS = 180;
 
 type SnapshotVerdict = {
   stale: boolean;
@@ -32,6 +33,7 @@ export type TokenExhaustionHandoverInput = {
   enabled: boolean;
   state: TokenExhaustionHandoverState;
   now: Date;
+  handoverActionCooldownSeconds: number;
 };
 
 export type TokenExhaustionHandoverResult = {
@@ -131,9 +133,21 @@ export class TokenExhaustionHandoverUseCase {
           console.log(
             `Token exhaustion handover: would kill${this.needsRelaunch(session) ? ' and relaunch' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
           );
-          delete nextEntries[stateKey];
           continue;
         }
+
+        const existingEntry = nextEntries[stateKey];
+        if (
+          existingEntry !== undefined &&
+          nowEpochSeconds - existingEntry.signaledAtEpoch <
+            input.handoverActionCooldownSeconds
+        ) {
+          console.log(
+            `Token exhaustion handover: ${this.displayName(session)} kind=${session.kind} is cooling down (${nowEpochSeconds - existingEntry.signaledAtEpoch}s of ${input.handoverActionCooldownSeconds}s elapsed), skipping action this cycle`,
+          );
+          continue;
+        }
+
         await this.forceKill(session, {
           signaledAtEpoch: nowEpochSeconds,
           pid: session.pid,
@@ -149,7 +163,10 @@ export class TokenExhaustionHandoverUseCase {
         console.log(
           `Token exhaustion handover: killed${this.needsRelaunch(session) ? ' and relaunched' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
         );
-        delete nextEntries[stateKey];
+        nextEntries[stateKey] = {
+          signaledAtEpoch: nowEpochSeconds,
+          pid: session.pid,
+        };
       } catch (error) {
         console.error(
           `Token exhaustion handover: error processing ${this.displayName(session)}: ${

@@ -10,13 +10,15 @@ import {
   defaultHandoverStateFilePath,
 } from '../../repositories/FileHandoverStateRepository';
 
+const DEFAULT_HANDOVER_ACTION_COOLDOWN_SECONDS = 180;
+
 export type TokenExhaustionHandoverParams = {
   enabled: boolean;
   tokenListJsonPath: string | null;
   handoverMessage?: string | null;
   bareNameLeaderHandoverMessage?: string | null;
   tokenRateLimitSnapshotBaseDir?: string | null;
-  gracePeriodSeconds?: number | null;
+  handoverActionCooldownSeconds?: number | null;
   stateFilePath?: string | null;
   localCommandRunner: LocalCommandRunner;
   now: Date;
@@ -29,6 +31,7 @@ export const handleTokenExhaustionHandover = async (
     enabled,
     tokenListJsonPath,
     tokenRateLimitSnapshotBaseDir,
+    handoverActionCooldownSeconds,
     stateFilePath,
     localCommandRunner,
     now,
@@ -60,6 +63,9 @@ export const handleTokenExhaustionHandover = async (
     enabled,
     state: stateRepository.load(),
     now,
+    handoverActionCooldownSeconds:
+      handoverActionCooldownSeconds ??
+      DEFAULT_HANDOVER_ACTION_COOLDOWN_SECONDS,
   });
 
   stateRepository.save(result.state);
