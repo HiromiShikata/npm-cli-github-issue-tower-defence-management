@@ -661,13 +661,11 @@ describe('githubRateLimitRetry', () => {
 
     it('does not retry a 502 on a content-creating (write) request', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
-      const request = jest
-        .fn<Promise<Response>, []>()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ message: 'Server Error' }), {
-            status: 502,
-          }),
-        );
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Server Error' }), {
+          status: 502,
+        }),
+      );
 
       const response = await fetchWithGitHubRateLimitRetry(
         request,
