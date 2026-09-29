@@ -2964,7 +2964,7 @@ describe('GraphqlProjectItemRepository', () => {
       mockPost.mockReset();
     });
 
-    it('resolves the matching project item id for an issue number when GitHub returns it under repository.issue', async () => {
+    it('resolves the matching project item id for an issue number when GitHub returns it under repository.issueOrPullRequest', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -2975,7 +2975,7 @@ describe('GraphqlProjectItemRepository', () => {
         mockJsonResponse({
           data: {
             repository: {
-              issue: {
+              issueOrPullRequest: {
                 projectItems: {
                   nodes: [
                     { id: 'item-id-for-issue', project: { id: 'project-id' } },
@@ -3527,7 +3527,7 @@ describe('GraphqlProjectItemRepository', () => {
           mockJsonResponse({
             data: {
               repository: {
-                issue: {
+                issueOrPullRequest: {
                   projectItems: {
                     nodes: [
                       { id: 'existing-item-id', project: { id: 'proj-id' } },
