@@ -179,7 +179,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
+      if (
+        issue.nextActionDate !== null &&
+        issueReactivationTriggerIsPending(issue, evaluatedAt)
+      ) {
         if (
           !(await this.isSnapshotStatusStillCurrent(
             project,
