@@ -657,6 +657,50 @@ describe('githubRateLimitRetry', () => {
       },
     );
 
+    it('returns immediately on a 200 success response without retrying', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(200);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('does not retry a 404 with no rate-limit signal present', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+        }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(404);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
     it('does not retry a 502 on a content-creating (write) request', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
       const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
