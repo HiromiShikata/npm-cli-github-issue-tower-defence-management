@@ -3514,19 +3514,22 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws when the API fails for a reason other than the issue being absent', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
         new Response('Bad Gateway', {
           status: 502,
           statusText: 'Bad Gateway',
         }),
       );
 
-      const { repository } = createApiV3CheerioRestIssueRepository();
+      const { repository, sleep } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.getIssueBodyByUrl(
           'https://github.com/HiromiShikata/test-repository/issues/42',
         ),
       ).rejects.toThrow('502');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(sleep).toHaveBeenCalledTimes(3);
     });
   });
 
