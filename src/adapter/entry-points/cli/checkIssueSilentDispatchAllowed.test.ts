@@ -83,6 +83,21 @@ describe('checkIssueSilentDispatchAllowed', () => {
     expect(output.stderr).not.toBeNull();
   });
 
+  it('exits 2 when the GitHub API response body is not valid JSON', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('not valid json{{{', { status: 200 }));
+
+    const output = await checkIssueSilentDispatchAllowed({
+      issueUrl: VALID_URL,
+      ghToken: 'test-token',
+    });
+
+    expect(output.exitCode).toBe(2);
+    expect(output.stdout).toBeNull();
+    expect(output.stderr).not.toBeNull();
+  });
+
   it('exits 2 when fetch throws', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValue(new Error('network error'));
 
