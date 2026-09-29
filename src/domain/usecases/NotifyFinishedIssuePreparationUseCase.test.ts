@@ -3,7 +3,10 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
-import { AGENT_FIELD_NAME } from '../entities/RequiredProjectField';
+import {
+  AGENT_FIELD_NAME,
+  NO_STORY_STORY_NAME,
+} from '../entities/RequiredProjectField';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -73,7 +76,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   labels: [],
   org: 'user',
   repo: 'repo',
-  body: '',
+  body: 'Test issue body content',
   itemId: 'item-1',
   isPr: false,
   isInProgress: false,
@@ -9316,6 +9319,203 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Failed Preparation' }),
         'failed-preparation-id',
       );
+    });
+  });
+
+  describe('STORY_SET_WITH_EMPTY_BODY rejection', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    const reportWithNoNextStepAgent = (): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content:
+          'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner approval.',
+      });
+
+    it('rejects with STORY_SET_WITH_EMPTY_BODY when Story is set to an active value and body is empty', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+        body: '',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Workspace',
+        }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- STORY_SET_WITH_EMPTY_BODY',
+      );
+    });
+
+    it('rejects with STORY_SET_WITH_EMPTY_BODY when Story is set to an active value and body is whitespace only', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+        body: '   ',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Workspace',
+        }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- STORY_SET_WITH_EMPTY_BODY',
+      );
+    });
+
+    it('does not reject with STORY_SET_WITH_EMPTY_BODY when Story is set to an active value and body has content', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+        body: 'Some real content',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
+      );
+    });
+
+    it('does not reject with STORY_SET_WITH_EMPTY_BODY when Story is unset and body is empty', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: null,
+        body: '',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
+      );
+    });
+
+    it('does not reject with STORY_SET_WITH_EMPTY_BODY when Story is set to the no-story value and body is empty', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: NO_STORY_STORY_NAME,
+        body: '',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
+      );
+    });
+
+    it('does not reject with STORY_SET_WITH_EMPTY_BODY when the item is a pull request even with an active Story and empty body', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        story: 'regular / some story',
+        body: '',
+        isPr: true,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
 });

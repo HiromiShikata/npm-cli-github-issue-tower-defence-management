@@ -82,7 +82,10 @@ export class RepositoryArchivedError extends Error {
     this.name = 'RepositoryArchivedError';
   }
 }
-type RejectedReasonType = 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
+type RejectedReasonType =
+  | 'NO_REPORT_FROM_AGENT_BOT'
+  | 'STORY_SET_WITH_EMPTY_BODY'
+  | PrRejectedReasonType;
 type NotifyFinishedIssuePreparationParams = {
   projectUrl: string;
   issueUrl: string;
@@ -1081,6 +1084,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       isPr: boolean;
       body?: string | null;
       agent: string | null;
+      story: string | null;
     },
     lastAgentReport: { content: string } | null,
     labelsNotRequiringPullRequest: string[],
@@ -1097,6 +1101,17 @@ export class NotifyFinishedIssuePreparationUseCase {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
+    }
+
+    const trimmedBody =
+      issue.body === null || issue.body === undefined ? '' : issue.body.trim();
+    const hasActiveStory =
+      issue.story !== null && !issue.story.startsWith(NO_STORY_STORY_NAME);
+    if (!issue.isPr && hasActiveStory && trimmedBody.length === 0) {
+      rejections.push({
+        type: 'STORY_SET_WITH_EMPTY_BODY',
+        detail: 'STORY_SET_WITH_EMPTY_BODY',
       });
     }
 
