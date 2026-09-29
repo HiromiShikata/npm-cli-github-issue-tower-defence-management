@@ -64,7 +64,16 @@ export const checkIssueSilentDispatchAllowed = async (input: {
     };
   }
 
-  const data: unknown = await response.json();
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch (error) {
+    return {
+      stdout: null,
+      stderr: `Failed to parse issue ${input.issueUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      exitCode: 2,
+    };
+  }
   const rawBody =
     typeof data === 'object' && data !== null && 'body' in data
       ? data.body
