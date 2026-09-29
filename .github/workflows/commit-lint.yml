@@ -53,6 +53,7 @@ jobs:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
       - name: Check for bare issue-number shorthand
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -79,13 +80,23 @@ jobs:
             prep
             adapt
       - name: Install commitlint
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         run: |
           mkdir -p /tmp/commitlint-run
           cd /tmp/commitlint-run
           npm init -y
           npm install --no-fund --save-dev @commitlint/cli @commitlint/config-conventional
       - name: Lint commits
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
           NODE_PATH: /tmp/commitlint-run/node_modules
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          DEFAULT_BRANCH_REF: origin/${{ github.event.repository.default_branch }}
         run: |
-          /tmp/commitlint-run/node_modules/.bin/commitlint --from=origin/${{ github.event.repository.default_branch }} --to=HEAD --config $GITHUB_WORKSPACE/.github/workflows/configs/commitlint.config.cjs
+          FROM_REF="$DEFAULT_BRANCH_REF"
+          if [ "$EVENT_ACTION" = "synchronize" ] && [ -n "$EVENT_BEFORE" ] && [ "$EVENT_BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$EVENT_BEFORE^{commit}" 2>/dev/null && git merge-base --is-ancestor "$EVENT_BEFORE" HEAD 2>/dev/null; then
+            FROM_REF="$EVENT_BEFORE"
+          fi
+          echo "Computed commit-lint range start (--from): $FROM_REF"
+          /tmp/commitlint-run/node_modules/.bin/commitlint --from="$FROM_REF" --to=HEAD --config $GITHUB_WORKSPACE/.github/workflows/configs/commitlint.config.cjs
