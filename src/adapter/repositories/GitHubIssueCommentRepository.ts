@@ -22,6 +22,16 @@ import {
 export const FETCH_COMMENTS_TRANSIENT_ERROR_MAX_RETRIES = 3;
 export const FETCH_COMMENTS_TRANSIENT_ERROR_BASE_BACKOFF_MS = 1000;
 
+export class GitHubCommentFetchHttpError extends Error {
+  readonly name = 'GitHubCommentFetchHttpError';
+  readonly statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 type RestCommentPayload = {
   id: number;
   user: { login: string } | null;
@@ -221,7 +231,8 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       }
 
       if (!response.ok) {
-        throw new Error(
+        throw new GitHubCommentFetchHttpError(
+          response.status,
           `Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`,
         );
       }

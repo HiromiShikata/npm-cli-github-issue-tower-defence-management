@@ -97,11 +97,13 @@ const createMockProject = (): Project => ({
 });
 
 const buildGitHubCommentFetchHttpError = (statusCode: number): Error => {
-  const error = new Error(
-    `Failed to fetch comments from GitHub REST API: ${statusCode} Some Status`,
+  const error = Object.assign(
+    new Error(
+      `Failed to fetch comments from GitHub REST API: ${statusCode} Some Status`,
+    ),
+    { statusCode },
   );
   error.name = 'GitHubCommentFetchHttpError';
-  (error as Error & { statusCode: number }).statusCode = statusCode;
   return error;
 };
 

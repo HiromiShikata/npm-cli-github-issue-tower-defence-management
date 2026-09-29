@@ -11,6 +11,7 @@ import {
 } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
+import { findEffectiveLastComment } from './autoStatusCheckComments';
 
 type RejectedReasonType =
   'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
@@ -70,7 +71,7 @@ export class CheckIssueReviewReadinessUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
 
-    const lastComment = comments[comments.length - 1];
+    const lastComment = findEffectiveLastComment(comments);
     if (
       !lastComment ||
       !isTrustedAuthor(lastComment.author) ||
