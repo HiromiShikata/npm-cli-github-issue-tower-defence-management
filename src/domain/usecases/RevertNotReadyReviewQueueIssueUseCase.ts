@@ -204,12 +204,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      const issueHasNextActionHourWithoutNextActionDate =
-        issue.nextActionDate === null && issue.nextActionHour !== null;
-      if (issueHasNextActionHourWithoutNextActionDate) {
-        continue;
-      }
-
       try {
         const { rejections, approvedPrUrl } =
           await this.issueRejectionEvaluator.evaluate(
