@@ -49,9 +49,11 @@ describe('checkIssueSilentDispatchAllowed', () => {
   });
 
   it('exits 2 without calling fetch when the URL cannot be parsed', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ body: '' }), { status: 200 }),
-    );
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ body: '' }), { status: 200 }),
+      );
 
     const output = await checkIssueSilentDispatchAllowed({
       issueUrl: 'https://example.com/not-an-issue',
@@ -65,9 +67,11 @@ describe('checkIssueSilentDispatchAllowed', () => {
   });
 
   it('exits 2 when the GitHub API responds with a non-ok status', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue(
-      new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-    );
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+      );
 
     const output = await checkIssueSilentDispatchAllowed({
       issueUrl: VALID_URL,
