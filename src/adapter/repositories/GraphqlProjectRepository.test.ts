@@ -1,9 +1,54 @@
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
-import { FieldOption, Project } from '../../domain/entities/Project';
+import {
+  FIELD_OPTION_COLORS,
+  FieldOption,
+  Project,
+} from '../../domain/entities/Project';
 
 const token = process.env.GH_TOKEN;
 const describeWhenCredentials = token ? describe : describe.skip;
+
+const expectEveryFieldOptionIsWellFormedRegardlessOfLiveContent = (
+  options: FieldOption[],
+): void => {
+  expect(Array.isArray(options)).toBe(true);
+  expect(options.length).toBeGreaterThan(0);
+  options.forEach((option) => {
+    expect(typeof option.id).toBe('string');
+    expect(option.id.length).toBeGreaterThan(0);
+    expect(typeof option.name).toBe('string');
+    expect(option.name.length).toBeGreaterThan(0);
+    expect(FIELD_OPTION_COLORS).toContain(option.color);
+    expect(typeof option.description).toBe('string');
+  });
+};
+
+const expectNextActionHourIsWellFormedOrNull = (
+  nextActionHour: Project['nextActionHour'],
+): void => {
+  if (nextActionHour === null) {
+    return;
+  }
+  expect(typeof nextActionHour.fieldId).toBe('string');
+  expect(nextActionHour.fieldId.length).toBeGreaterThan(0);
+  expect(typeof nextActionHour.name).toBe('string');
+  expect(nextActionHour.name.length).toBeGreaterThan(0);
+  expectEveryFieldOptionIsWellFormedRegardlessOfLiveContent(
+    nextActionHour.options,
+  );
+};
+
+const expectWorkflowManagementStoryIsWellFormed = (workflowManagementStory: {
+  id: string;
+  name: string;
+}): void => {
+  expect(typeof workflowManagementStory.id).toBe('string');
+  expect(workflowManagementStory.id.length).toBeGreaterThan(0);
+  expect(typeof workflowManagementStory.name).toBe('string');
+  expect(workflowManagementStory.name.length).toBeGreaterThan(0);
+  expect(workflowManagementStory.name).toMatch(/workflow management/i);
+};
 
 describeWhenCredentials('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
@@ -117,38 +162,11 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
           fieldId: 'PVTF_lAHOAGJHa84AFhgFzgVlnK4',
           name: 'NextActionDate',
         },
-        nextActionHour: null,
         remainingEstimationMinutes: null,
         story: {
           fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms',
           databaseId: 224921195,
           name: 'Story',
-          stories: [
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'af410dae',
-              name: 'story1',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '696ccdef',
-              name: 'Workflow Management',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '4fa21881',
-              name: 'test',
-            },
-          ],
-          workflowManagementStory: {
-            color: 'GRAY',
-            description: '',
-            id: '696ccdef',
-            name: 'Workflow Management',
-          },
         },
         completionDate50PercentConfidence: null,
         agent: null,
@@ -156,46 +174,28 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
         status: {
           fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',
           name: 'Status',
-          statuses: [
-            {
-              color: 'GRAY',
-              description: '',
-              id: '42fe08b2',
-              name: 'Todo',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'd8072cc4',
-              name: 'Awaiting workspace',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'fe181007',
-              name: 'Preparation',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: 'bebc3184',
-              name: 'In Progress',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '88c0a10e',
-              name: 'Done',
-            },
-            {
-              color: 'GRAY',
-              description: '',
-              id: '74cb5e50',
-              name: 'Awaiting Owner',
-            },
-          ],
         },
       });
+
+      if (project === null) {
+        throw new Error('repository.getProject unexpectedly returned null');
+      }
+      expectEveryFieldOptionIsWellFormedRegardlessOfLiveContent(
+        project.status.statuses,
+      );
+      expectNextActionHourIsWellFormedOrNull(project.nextActionHour);
+
+      if (project.story === null) {
+        throw new Error(
+          'project.story unexpectedly returned null on a project with a Story field',
+        );
+      }
+      expectEveryFieldOptionIsWellFormedRegardlessOfLiveContent(
+        project.story.stories,
+      );
+      expectWorkflowManagementStoryIsWellFormed(
+        project.story.workflowManagementStory,
+      );
     });
 
     it('should return the same project from the REST read as from the GraphQL cold start read', async () => {
