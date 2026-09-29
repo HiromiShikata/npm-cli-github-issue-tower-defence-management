@@ -143,7 +143,7 @@ export class HandleScheduledEventUseCaseHandler {
       tokenExhaustionHandoverMessage?: string;
       tokenExhaustionHandoverBareNameLeaderMessage?: string;
       tokenRateLimitSnapshotBaseDir?: string;
-      tokenExhaustionGracePeriodSeconds?: number;
+      tokenExhaustionHandoverActionCooldownSeconds?: number;
       tokenExhaustionHandoverStateFilePath?: string;
       silentNotificationEnabled?: boolean;
       outputDegenerationResetEnabled?: boolean;
@@ -772,8 +772,8 @@ export class HandleScheduledEventUseCaseHandler {
             mergedInput.tokenExhaustionHandoverBareNameLeaderMessage ?? null,
           tokenRateLimitSnapshotBaseDir:
             mergedInput.tokenRateLimitSnapshotBaseDir ?? null,
-          gracePeriodSeconds:
-            mergedInput.tokenExhaustionGracePeriodSeconds ?? null,
+          handoverActionCooldownSeconds:
+            mergedInput.tokenExhaustionHandoverActionCooldownSeconds ?? null,
           stateFilePath:
             mergedInput.tokenExhaustionHandoverStateFilePath ?? null,
           localCommandRunner: nodeLocalCommandRunner,

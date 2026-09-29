@@ -30,6 +30,9 @@ jest.mock('../../repositories/FileHandoverStateRepository', () => ({
 
 const mockRun = jest.fn();
 jest.mock('../../../domain/usecases/TokenExhaustionHandoverUseCase', () => ({
+  ...jest.requireActual<
+    typeof import('../../../domain/usecases/TokenExhaustionHandoverUseCase')
+  >('../../../domain/usecases/TokenExhaustionHandoverUseCase'),
   TokenExhaustionHandoverUseCase: jest.fn().mockImplementation(() => ({
     run: mockRun,
   })),
@@ -58,16 +61,59 @@ describe('handleTokenExhaustionHandover', () => {
     mockRun.mockResolvedValue({ state: { entries: {} } });
   });
 
-  it('accepts handoverMessage, bareNameLeaderHandoverMessage and gracePeriodSeconds but does not forward them to the use case run call', async () => {
+  it('accepts handoverMessage and bareNameLeaderHandoverMessage but does not forward them to the use case run call', async () => {
+    const now = new Date('2026-09-26T00:00:00.000Z');
+    const localCommandRunner = createMockRunner();
+    const params = {
+      enabled: true,
+      tokenListJsonPath: '/tokens.json',
+      handoverMessage: 'custom handover message',
+      bareNameLeaderHandoverMessage: 'custom bare name leader message',
+      handoverActionCooldownSeconds: 999,
+      localCommandRunner,
+      now,
+    };
+
+    await handleTokenExhaustionHandover(params);
+
+    expect(mockRun).toHaveBeenCalledTimes(1);
+    expect(mockRun).toHaveBeenCalledWith({
+      enabled: true,
+      state: { entries: {} },
+      now,
+      handoverActionCooldownSeconds: 999,
+    });
+  });
+
+  it('forwards an explicit handoverActionCooldownSeconds value to the use case run call', async () => {
+    const now = new Date('2026-09-26T00:00:00.000Z');
+    const localCommandRunner = createMockRunner();
+    const params = {
+      enabled: true,
+      tokenListJsonPath: '/tokens.json',
+      handoverActionCooldownSeconds: 45,
+      localCommandRunner,
+      now,
+    };
+
+    await handleTokenExhaustionHandover(params);
+
+    expect(mockRun).toHaveBeenCalledTimes(1);
+    expect(mockRun).toHaveBeenCalledWith({
+      enabled: true,
+      state: { entries: {} },
+      now,
+      handoverActionCooldownSeconds: 45,
+    });
+  });
+
+  it('forwards the default cooldown constant to the use case run call when handoverActionCooldownSeconds is unset', async () => {
     const now = new Date('2026-09-26T00:00:00.000Z');
     const localCommandRunner = createMockRunner();
 
     await handleTokenExhaustionHandover({
       enabled: true,
       tokenListJsonPath: '/tokens.json',
-      handoverMessage: 'custom handover message',
-      bareNameLeaderHandoverMessage: 'custom bare name leader message',
-      gracePeriodSeconds: 999,
       localCommandRunner,
       now,
     });
@@ -77,6 +123,29 @@ describe('handleTokenExhaustionHandover', () => {
       enabled: true,
       state: { entries: {} },
       now,
+      handoverActionCooldownSeconds: 180,
+    });
+  });
+
+  it('forwards the default cooldown constant to the use case run call when handoverActionCooldownSeconds is null', async () => {
+    const now = new Date('2026-09-26T00:00:00.000Z');
+    const localCommandRunner = createMockRunner();
+    const params = {
+      enabled: true,
+      tokenListJsonPath: '/tokens.json',
+      handoverActionCooldownSeconds: null,
+      localCommandRunner,
+      now,
+    };
+
+    await handleTokenExhaustionHandover(params);
+
+    expect(mockRun).toHaveBeenCalledTimes(1);
+    expect(mockRun).toHaveBeenCalledWith({
+      enabled: true,
+      state: { entries: {} },
+      now,
+      handoverActionCooldownSeconds: 180,
     });
   });
 
