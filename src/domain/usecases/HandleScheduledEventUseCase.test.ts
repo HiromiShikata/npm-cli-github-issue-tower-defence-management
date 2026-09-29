@@ -1594,7 +1594,7 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalled();
       });
 
-      it('should skip slow sweep use cases when LastSlowSweepDateTime is within 600 seconds', async () => {
+      it('should skip slow sweep use cases but still update issue status by label when LastSlowSweepDateTime is within 600 seconds', async () => {
         const now = new Date('2024-01-01T00:10:00Z');
         const recentSlowSweep = new Date(
           now.getTime() - 300 * 1000,
@@ -1613,7 +1613,7 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
       });
 
@@ -1730,6 +1730,124 @@ describe('HandleScheduledEventUseCase', () => {
           (call) => call[2] === 1 && call[3] === 4,
         );
         expect(slowSweepValueCall).toBeUndefined();
+      });
+    });
+
+    describe('updateIssueStatusByLabelUseCase runs every cycle (issue #2864)', () => {
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+      const issues: Issue[] = [mock<Issue>()];
+      const storyObjectMap: StoryObjectMap = new Map();
+      const now = new Date('2024-01-01T00:10:00Z');
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'test-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      afterEach(() => {
+        mockUpdateIssueStatusByLabelUseCase.run.mockReset();
+        mockIssueNoStatusUpdateUseCase.run.mockReset();
+      });
+
+      it('invokes updateIssueStatusByLabelUseCase.run exactly once per call to runEachUseCases whether runSlowSweep is true or false', async () => {
+        const runSlowSweepValues: boolean[] = [true, false];
+        for (const runSlowSweep of runSlowSweepValues) {
+          jest.clearAllMocks();
+
+          await useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            runSlowSweep,
+            now,
+          );
+
+          expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledTimes(
+            1,
+          );
+        }
+      });
+
+      it('invokes updateIssueStatusByLabelUseCase.run before issueNoStatusUpdateUseCase.run and startPreparationUseCase.run whether runSlowSweep is true or false', async () => {
+        const runSlowSweepValues: boolean[] = [true, false];
+        for (const runSlowSweep of runSlowSweepValues) {
+          jest.clearAllMocks();
+          const callOrder: string[] = [];
+          mockUpdateIssueStatusByLabelUseCase.run.mockImplementation(
+            async () => {
+              callOrder.push('updateIssueStatusByLabel');
+            },
+          );
+          mockIssueNoStatusUpdateUseCase.run.mockImplementation(async () => {
+            callOrder.push('issueNoStatusUpdate');
+          });
+          mockStartPreparationUseCase.run.mockImplementation(async () => {
+            callOrder.push('startPreparation');
+            return { rotationOrder: null };
+          });
+          mockNonPreparationWorkerScopeStopUseCase.run.mockResolvedValue({
+            stoppedScopeUnitNames: [],
+          });
+
+          await useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            runSlowSweep,
+            now,
+          );
+
+          expect(callOrder).toEqual([
+            'updateIssueStatusByLabel',
+            'issueNoStatusUpdate',
+            'startPreparation',
+          ]);
+        }
+      });
+
+      it('still invokes issueNoStatusUpdateUseCase.run and startPreparationUseCase.run in the same cycle when updateIssueStatusByLabelUseCase.run rejects and runSlowSweep is false', async () => {
+        mockUpdateIssueStatusByLabelUseCase.run.mockRejectedValueOnce(
+          new Error('UpdateIssueStatusByLabelUseCase exploded'),
+        );
+
+        await useCase.runEachUseCases(
+          baseInput,
+          project,
+          issues,
+          false,
+          [],
+          storyObjectMap,
+          false,
+          now,
+        );
+
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(mockIssueNoStatusUpdateUseCase.run).toHaveBeenCalledTimes(1);
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -3020,10 +3138,9 @@ describe('HandleScheduledEventUseCase', () => {
         mockCreateEstimationIssueUseCase.run,
         mockChangeStatusByStoryColorUseCase.run,
         mockAssignNoAssigneeIssueToManagerUseCase.run,
-        mockUpdateIssueStatusByLabelUseCase.run,
       ];
 
-      it('calls all 11 slow-sweep operations and resolves when none fail', async () => {
+      it('calls all 10 slow-sweep operations and resolves when none fail', async () => {
         await expect(useCase.run(isolationInput)).resolves.not.toBeNull();
 
         for (const operationMock of allSlowSweepOperationMocks()) {
@@ -3031,7 +3148,7 @@ describe('HandleScheduledEventUseCase', () => {
         }
       });
 
-      it('still calls all 11 slow-sweep operations and rejects with one aggregate error naming the failed operation when 1 operation fails', async () => {
+      it('still calls all 10 slow-sweep operations and rejects with one aggregate error naming the failed operation when 1 operation fails', async () => {
         const rejectionError = new Error(
           'ChangeStatusByStoryColorUseCase exploded',
         );
@@ -3049,17 +3166,17 @@ describe('HandleScheduledEventUseCase', () => {
         }
       });
 
-      it('still calls all 11 slow-sweep operations and rejects with one aggregate error naming every failed operation when 2 or more operations fail', async () => {
+      it('still calls all 10 slow-sweep operations and rejects with one aggregate error naming every failed operation when 2 or more operations fail', async () => {
         const firstError = new Error(
           'SetWorkflowManagementIssueToStoryUseCase exploded',
         );
         const secondError = new Error(
-          'UpdateIssueStatusByLabelUseCase exploded',
+          'AssignNoAssigneeIssueToManagerUseCase exploded',
         );
         mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValueOnce(
           firstError,
         );
-        mockUpdateIssueStatusByLabelUseCase.run.mockRejectedValueOnce(
+        mockAssignNoAssigneeIssueToManagerUseCase.run.mockRejectedValueOnce(
           secondError,
         );
         mockIssueRepository.searchIssue.mockResolvedValue([]);
