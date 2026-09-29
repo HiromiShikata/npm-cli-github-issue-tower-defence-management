@@ -9356,7 +9356,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ url: issueUrl, status: 'Awaiting Workspace' }),
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Workspace',
+        }),
         'awaiting-workspace-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -9389,7 +9392,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ url: issueUrl, status: 'Awaiting Workspace' }),
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Workspace',
+        }),
         'awaiting-workspace-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(

@@ -1105,9 +1105,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     const trimmedBody =
-      issue.body === null || issue.body === undefined
-        ? ''
-        : issue.body.trim();
+      issue.body === null || issue.body === undefined ? '' : issue.body.trim();
     const hasActiveStory =
       issue.story !== null && !issue.story.startsWith(NO_STORY_STORY_NAME);
     if (!issue.isPr && hasActiveStory && trimmedBody.length === 0) {
