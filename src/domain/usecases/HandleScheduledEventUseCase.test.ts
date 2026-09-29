@@ -1849,6 +1849,29 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueNoStatusUpdateUseCase.run).toHaveBeenCalledTimes(1);
         expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
       });
+
+      it('defers updateIssueStatusByLabelUseCase.run, issueNoStatusUpdateUseCase.run, and startPreparationUseCase.run for the cycle when runSlowSweep is true and runSlowSweepUseCases rejects its aggregate error', async () => {
+        mockSetWorkflowManagementIssueToStoryUseCase.run.mockRejectedValueOnce(
+          new Error('SetWorkflowManagementIssueToStoryUseCase exploded'),
+        );
+
+        await expect(
+          useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            true,
+            now,
+          ),
+        ).rejects.toThrow('SetWorkflowManagementIssueToStoryUseCase exploded');
+
+        expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
+        expect(mockIssueNoStatusUpdateUseCase.run).not.toHaveBeenCalled();
+        expect(mockStartPreparationUseCase.run).not.toHaveBeenCalled();
+      });
     });
 
     describe('depended issue URL removal cadence', () => {
