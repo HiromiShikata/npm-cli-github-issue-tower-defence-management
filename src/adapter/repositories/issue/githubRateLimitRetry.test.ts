@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import {
   hasRateLimitSignals,
   isSecondaryRateLimit,
+  isTransientServerErrorStatus,
   computeBoundedBackoffMs,
   computeSecondaryRateLimitBackoffMs,
   computeRateLimitResetIso,
@@ -242,6 +243,21 @@ describe('githubRateLimitRetry', () => {
 
     it('returns null when no reset header is present', () => {
       expect(computeRateLimitResetIso(new Headers())).toBeNull();
+    });
+  });
+
+  describe('isTransientServerErrorStatus', () => {
+    it.each<[number, boolean]>([
+      [500, true],
+      [502, true],
+      [503, true],
+      [504, true],
+      [200, false],
+      [403, false],
+      [404, false],
+      [429, false],
+    ])('status %i -> %p', (status, expected) => {
+      expect(isTransientServerErrorStatus(status)).toBe(expected);
     });
   });
 
@@ -609,6 +625,90 @@ describe('githubRateLimitRetry', () => {
       expect(sleep).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES);
       const totalSlept = sleeps.reduce((sum, value) => sum + value, 0);
       expect(totalSlept).toBeLessThanOrEqual(RATE_LIMIT_TOTAL_BACKOFF_CAP_MS);
+    });
+
+    // --- Transient server error (500/502/503/504) retry on reads only ---
+
+    it.each([500, 502, 503, 504])(
+      'retries a %i transient server error on a read request (no rate-limit signal) and resolves with the eventual success',
+      async (status) => {
+        const sleep = jest.fn().mockResolvedValue(undefined);
+        const request = jest
+          .fn<Promise<Response>, []>()
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ message: 'Server Error' }), {
+              status,
+            }),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true }), { status: 200 }),
+          );
+
+        const response = await fetchWithGitHubRateLimitRetry(
+          request,
+          sleep,
+          Date.now,
+          false,
+          false, // isContentCreating: read request
+          tmpStateFile,
+        );
+
+        expect(response.status).toBe(200);
+        expect(request).toHaveBeenCalledTimes(2);
+        expect(sleep).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('does not retry a 502 on a content-creating (write) request', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ message: 'Server Error' }), {
+            status: 502,
+          }),
+        );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating: write requests must not retry on 5xx
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(502);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('stops retrying a transient 502 after the bounded retry cap and returns the last 502 response unmodified', async () => {
+      const sleeps: number[] = [];
+      const sleep = jest.fn(async (milliseconds: number) => {
+        sleeps.push(milliseconds);
+      });
+      const payload = { message: 'Server Error' };
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(
+          new Response(JSON.stringify(payload), { status: 502 }),
+        );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false, // isContentCreating: read request
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(502);
+      expect(request).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+      expect(sleep).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES);
+      const body: unknown = await response.json();
+      expect(body).toEqual(payload);
     });
 
     it('preserves the response body for the caller after inspecting it for signals', async () => {
