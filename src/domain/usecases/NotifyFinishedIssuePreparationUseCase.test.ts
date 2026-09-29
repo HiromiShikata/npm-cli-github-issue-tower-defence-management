@@ -9518,4 +9518,122 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
+
+  describe('NO_REPORT_FROM_AGENT_BOT rejection with silent-dispatch marker', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const silentDispatchMarkerBody =
+      'Some issue instructions.\n\n<!-- TDPM_SILENT_DISPATCH_ALLOWED -->';
+    const normalBody = 'Test issue body content';
+
+    const reportWithNoNextStepAgent = (): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content:
+          'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner approval.',
+      });
+
+    it('does not push NO_REPORT_FROM_AGENT_BOT when lastAgentReport is present and marker is present', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        body: silentDispatchMarkerBody,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+      );
+    });
+
+    it('does not push NO_REPORT_FROM_AGENT_BOT when lastAgentReport is present and marker is absent', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        body: normalBody,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+      );
+    });
+
+    it('does not push NO_REPORT_FROM_AGENT_BOT when lastAgentReport is absent and marker is present', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'In Tmux by agent',
+        body: silentDispatchMarkerBody,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+      );
+    });
+
+    it('pushes NO_REPORT_FROM_AGENT_BOT when lastAgentReport is absent and marker is absent', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'In Tmux by agent',
+        body: normalBody,
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      );
+    });
+  });
 });
