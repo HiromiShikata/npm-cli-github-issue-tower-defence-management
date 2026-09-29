@@ -1881,11 +1881,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         nextActionDate: null,
         nextActionHour: 11,
       });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [issue],
-        cacheUsed: false,
-      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
       await useCase.run({
         manager: 'manager-user',
