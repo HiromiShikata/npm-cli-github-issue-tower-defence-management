@@ -327,12 +327,24 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
     const graphqlQuery = {
       query: `query GetProjectItemID( $owner: String!, $name: String!, $issueNumber: Int!) {
   repository(owner: $owner, name: $name) {
-    issue(number: $issueNumber) {
-      projectItems(first: 2) {
-        nodes {
-          id
-          project {
+    issueOrPullRequest(number: $issueNumber) {
+      ... on Issue {
+        projectItems(first: 2) {
+          nodes {
             id
+            project {
+              id
+            }
+          }
+        }
+      }
+      ... on PullRequest {
+        projectItems(first: 2) {
+          nodes {
+            id
+            project {
+              id
+            }
           }
         }
       }
@@ -348,17 +360,18 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
     };
 
     try {
+      type ProjectItemsContainer = {
+        projectItems: {
+          nodes: {
+            id: string;
+            project: { id: string };
+          }[];
+        };
+      };
       const response = await postGithubGraphqlJson<{
         data?: {
           repository: {
-            issue: {
-              projectItems: {
-                nodes: {
-                  id: string;
-                  project: { id: string };
-                }[];
-              };
-            };
+            issueOrPullRequest?: ProjectItemsContainer | null;
           };
         };
         errors?: { message: string }[];
@@ -376,10 +389,11 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
           `GitHub GraphQL API returned no data for fetchItemId: ${errorMessages}`,
         );
       }
+      const projectItemsContainer = response.data.repository.issueOrPullRequest;
       const projectItems: {
         id: string;
         project: { id: string };
-      }[] = response.data.repository.issue.projectItems.nodes;
+      }[] = projectItemsContainer?.projectItems.nodes ?? [];
       const projectItemId = projectItems.find(
         (item) => item.project.id === projectId,
       )?.id;

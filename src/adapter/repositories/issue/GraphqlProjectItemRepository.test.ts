@@ -2959,6 +2959,164 @@ describe('GraphqlProjectItemRepository', () => {
     });
   });
 
+  describe('fetchItemId', () => {
+    afterEach(() => {
+      mockPost.mockReset();
+    });
+
+    it('resolves the matching project item id for an issue number when GitHub returns it under repository.issueOrPullRequest', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                projectItems: {
+                  nodes: [
+                    { id: 'item-id-for-issue', project: { id: 'project-id' } },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchItemId(
+        'project-id',
+        'owner',
+        'repo',
+        123,
+      );
+
+      expect(result).toBe('item-id-for-issue');
+    });
+
+    it('resolves the matching project item id for a pull request number when GitHub returns it under repository.issueOrPullRequest', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'item-id-for-pull-request',
+                      project: { id: 'project-id' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchItemId(
+        'project-id',
+        'owner',
+        'repo',
+        456,
+      );
+
+      expect(result).toBe('item-id-for-pull-request');
+    });
+
+    it('sends a GraphQL query requesting projectItems inside both the Issue and PullRequest fragments of issueOrPullRequest, not just repository.issue', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                projectItems: {
+                  nodes: [{ id: 'item-id', project: { id: 'project-id' } }],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      await repository.fetchItemId('project-id', 'owner', 'repo', 789);
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toEqual(expect.any(String));
+      expect(sentQuery).toContain('issueOrPullRequest(number:');
+      expect(sentQuery).not.toMatch(/\bissue\(number:/);
+      expect(sentQuery).toMatch(/on Issue\s*\{[^}]*projectItems/);
+      expect(sentQuery).toMatch(/on PullRequest\s*\{[^}]*projectItems/);
+    });
+  });
+
+  describe('removeItemFromProjectByIssueUrl', () => {
+    afterEach(() => {
+      mockPost.mockReset();
+    });
+
+    it('resolves without throwing for a pull request URL when GitHub returns the fixed query response shape carrying repository.issueOrPullRequest, then a successful deleteProjectV2Item mutation', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: {
+                  projectItems: {
+                    nodes: [
+                      {
+                        id: 'item-id-for-pull-request',
+                        project: { id: 'project-id' },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              deleteProjectV2Item: {
+                clientMutationId: 'mutation-id',
+              },
+            },
+          }),
+        );
+
+      await expect(
+        repository.removeItemFromProjectByIssueUrl(
+          'https://github.com/owner/repo/pull/42',
+          'project-id',
+        ),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('updateProjectField', () => {
     beforeEach(() => {
       jest.useFakeTimers();
@@ -3402,7 +3560,7 @@ describe('GraphqlProjectItemRepository', () => {
           mockJsonResponse({
             data: {
               repository: {
-                issue: {
+                issueOrPullRequest: {
                   projectItems: {
                     nodes: [
                       { id: 'existing-item-id', project: { id: 'proj-id' } },
