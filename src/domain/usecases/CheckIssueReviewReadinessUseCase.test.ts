@@ -169,6 +169,57 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
+    it("should not return NO_REPORT_FROM_AGENT_BOT when a valid report is followed only by this tool's own Auto Status Check comment", async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+        createMockComment({
+          content: 'Auto Status Check: REJECTED\n- SOME_REASON',
+          author: 'bot',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+      });
+
+      expect(
+        result.rejections.some(
+          (rejection) => rejection.type === 'NO_REPORT_FROM_AGENT_BOT',
+        ),
+      ).toBe(false);
+    });
+
+    it('should still return NO_REPORT_FROM_AGENT_BOT when a valid report is followed by a substantive non-automation comment', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment(),
+        createMockComment({
+          content: 'Can you clarify the deadline for this?',
+          author: 'someone',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+      });
+
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
+    });
+
     it('should return reviewReady=false with PULL_REQUEST_NOT_FOUND when no related PR exists', async () => {
       const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
