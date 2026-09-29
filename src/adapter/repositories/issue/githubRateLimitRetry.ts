@@ -309,9 +309,6 @@ export const fetchWithGitHubRateLimitRetry = async (
 
     // Primary rate limit or other transient error: existing sub-second
     // exponential schedule bounded by RATE_LIMIT_TOTAL_BACKOFF_CAP_MS.
-    // A transient 5xx (500/502/503/504) also retries here, but only for
-    // non-content-creating requests: retrying a write after a 5xx risks a
-    // duplicate side effect if the origin already processed it.
     const isRetryableTransientError =
       hasRateLimitSignals(response.status, response.headers, bodyText) ||
       (!isContentCreating && isTransientServerErrorStatus(response.status));

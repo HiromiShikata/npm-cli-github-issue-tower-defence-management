@@ -627,8 +627,6 @@ describe('githubRateLimitRetry', () => {
       expect(totalSlept).toBeLessThanOrEqual(RATE_LIMIT_TOTAL_BACKOFF_CAP_MS);
     });
 
-    // --- Transient server error (500/502/503/504) retry on reads only ---
-
     it.each([500, 502, 503, 504])(
       'retries a %i transient server error on a read request (no rate-limit signal) and resolves with the eventual success',
       async (status) => {
