@@ -53,6 +53,7 @@ import {
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import { unresumableSessionArchive } from './unresumableSessionArchive';
+import { checkIssueSilentDispatchAllowed } from './checkIssueSilentDispatchAllowed';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
@@ -255,6 +256,10 @@ type ArchiveUnresumableSessionOptions = {
   logFile: string;
   sessionDir: string;
   archiveDir: string;
+};
+
+type CheckIssueSilentDispatchAllowedOptions = {
+  issueUrl: string;
 };
 
 type RemovePullRequestProjectItemsOptions = {
@@ -1754,6 +1759,31 @@ program
     if (output.exitCode !== 0) {
       return process.exit(output.exitCode);
     }
+  });
+
+program
+  .command('check-issue-silent-dispatch-allowed')
+  .description(
+    'Parse owner/repo/issue-number from --issue-url, fetch that issue body via the GitHub REST API using the GH_TOKEN environment variable, and evaluate it with isSilentDispatchAllowedByIssueBody. Exits 0 when silent dispatch is allowed for this issue, 1 when it is not, and 2 with a diagnostic on stderr when the URL cannot be parsed or the GitHub API call fails. Writes nothing to stdout for exit codes 0 or 1.',
+  )
+  .requiredOption('--issue-url <url>', 'GitHub issue URL')
+  .action(async (options: CheckIssueSilentDispatchAllowedOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      return process.exit(2);
+    }
+    const output = await checkIssueSilentDispatchAllowed({
+      issueUrl: options.issueUrl,
+      ghToken: token,
+    });
+    if (output.stdout !== null) {
+      console.log(output.stdout);
+    }
+    if (output.stderr !== null) {
+      console.error(output.stderr);
+    }
+    return process.exit(output.exitCode);
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
