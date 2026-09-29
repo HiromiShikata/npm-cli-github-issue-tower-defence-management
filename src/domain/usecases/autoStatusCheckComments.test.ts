@@ -15,40 +15,38 @@ const buildComment = (overrides: Partial<Comment> = {}): Comment => ({
 });
 
 describe('isAutoStatusCheckComment', () => {
-  const cases: { description: string; content: string; expected: boolean }[] =
-    [
-      {
-        description: 'an Auto Status Check: REJECTED comment',
-        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
-        expected: true,
-      },
-      {
-        description: 'an Auto Status Check: APPROVED comment',
-        content: 'Auto Status Check: APPROVED',
-        expected: true,
-      },
-      {
-        description:
-          'an Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED comment',
-        content: 'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
-        expected: true,
-      },
-      {
-        description: 'a valid agent report body',
-        content: validReportContent,
-        expected: false,
-      },
-      {
-        description: 'a plain question from the issue author',
-        content: 'Can you clarify the deadline for this?',
-        expected: false,
-      },
-      {
-        description: 'an empty string',
-        content: '',
-        expected: false,
-      },
-    ];
+  const cases: { description: string; content: string; expected: boolean }[] = [
+    {
+      description: 'an Auto Status Check: REJECTED comment',
+      content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      expected: true,
+    },
+    {
+      description: 'an Auto Status Check: APPROVED comment',
+      content: 'Auto Status Check: APPROVED',
+      expected: true,
+    },
+    {
+      description: 'an Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED comment',
+      content: 'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
+      expected: true,
+    },
+    {
+      description: 'a valid agent report body',
+      content: validReportContent,
+      expected: false,
+    },
+    {
+      description: 'a plain question from the issue author',
+      content: 'Can you clarify the deadline for this?',
+      expected: false,
+    },
+    {
+      description: 'an empty string',
+      content: '',
+      expected: false,
+    },
+  ];
 
   it.each(cases)(
     'returns $expected for $description',

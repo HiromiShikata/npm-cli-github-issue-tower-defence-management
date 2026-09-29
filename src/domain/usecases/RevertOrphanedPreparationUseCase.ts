@@ -33,10 +33,7 @@ import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  | 'advanceToQualityCheck'
-  | 'reject'
-  | 'reassignToDeveloper'
-  | 'skip';
+  'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper' | 'skip';
 
 const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
   error instanceof Error &&
