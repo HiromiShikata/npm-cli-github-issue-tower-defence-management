@@ -33,6 +33,7 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
 import { findLastAgentReportPostedSince } from './findLastAgentReport';
+import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
 
 import {
   extractAgentNameFromReportBody,
@@ -1097,7 +1098,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   }> => {
     const rejections: { type: RejectedReasonType; detail: string }[] = [];
 
-    if (!lastAgentReport) {
+    if (!lastAgentReport && !isSilentDispatchAllowedByIssueBody(issue.body)) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
