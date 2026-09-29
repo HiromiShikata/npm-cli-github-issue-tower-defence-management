@@ -179,7 +179,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
+      if (
+        issue.nextActionDate !== null &&
+        issueReactivationTriggerIsPending(issue, evaluatedAt)
+      ) {
         if (
           !(await this.isSnapshotStatusStillCurrent(
             project,
@@ -198,6 +201,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           issue,
           'Auto Status Check: REJECTED\n- Reactivation trigger not yet reached',
         );
+        continue;
+      }
+
+      const issueHasNextActionHourWithoutNextActionDate =
+        issue.nextActionDate === null && issue.nextActionHour !== null;
+      if (issueHasNextActionHourWithoutNextActionDate) {
         continue;
       }
 
