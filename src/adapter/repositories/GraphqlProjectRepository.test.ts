@@ -39,9 +39,10 @@ const expectNextActionHourIsWellFormedOrNull = (
   );
 };
 
-const expectWorkflowManagementStoryIsWellFormed = (
-  workflowManagementStory: { id: string; name: string },
-): void => {
+const expectWorkflowManagementStoryIsWellFormed = (workflowManagementStory: {
+  id: string;
+  name: string;
+}): void => {
   expect(typeof workflowManagementStory.id).toBe('string');
   expect(workflowManagementStory.id.length).toBeGreaterThan(0);
   expect(typeof workflowManagementStory.name).toBe('string');
