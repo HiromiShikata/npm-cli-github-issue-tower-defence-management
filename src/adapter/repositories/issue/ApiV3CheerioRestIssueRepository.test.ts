@@ -924,18 +924,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         buildProjectItem(freshIssueUrl, 'Task Issue'),
       ]);
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
-        labels: ['story'],
-        customFields: [{ name: 'story', value: 'regular / StoryA' }],
-        isArchivedFromProject: false,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
+          id: 'item-cached',
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'regular / StoryA' }],
+          isArchivedFromProject: false,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
       expect(result.issues.map((i) => i.url)).toContain(storyIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
     });
 
     it('removes a cached issue absent from fresh pagination when the live check reports it no longer exists', async () => {
@@ -959,16 +965,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         buildProjectItem(freshIssueUrl, 'Fresh Issue'),
       ]);
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
-        null,
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [],
       );
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
       expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-cached']);
+      expect(
         graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).toHaveBeenCalledWith(removedIssueUrl, 'proj-full');
+      ).not.toHaveBeenCalled();
       expect(result.issues.map((i) => i.url)).not.toContain(removedIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
     });
@@ -994,16 +1003,22 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         buildProjectItem(freshIssueUrl, 'Fresh Issue'),
       ]);
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(archivedIssueUrl, 'Archived Issue'),
-        isArchivedFromProject: true,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(archivedIssueUrl, 'Archived Issue'),
+          id: 'item-cached',
+          isArchivedFromProject: true,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
       expect(result.issues.map((i) => i.url)).not.toContain(archivedIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
     });
 
     it('updates a cached issue absent from fresh pagination with fresh live-check data when the live check reports it still active', async () => {
@@ -1027,10 +1042,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         buildProjectItem(freshIssueUrl, 'Fresh Issue'),
       ]);
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(stillActiveIssueUrl, 'Live-Checked Title'),
-        isArchivedFromProject: false,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(stillActiveIssueUrl, 'Live-Checked Title'),
+          id: 'item-cached',
+          isArchivedFromProject: false,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -1040,6 +1058,94 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       expect(reconciledIssue?.title).toBe('Live-Checked Title');
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('bounds full-fetch reconciliation to a single batched fetchProjectItemsByIds call for 250 cached items absent from fresh pagination, and never calls fetchProjectItemByUrl', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+
+      const absentItemCount = 250;
+      const outcomeForIndex = (
+        index: number,
+      ): 'removedAbsentFromBatch' | 'removedArchived' | 'keptActive' => {
+        const remainder = index % 3;
+        if (remainder === 0) return 'removedAbsentFromBatch';
+        if (remainder === 1) return 'removedArchived';
+        return 'keptActive';
+      };
+      const absentIssues = Array.from(
+        { length: absentItemCount },
+        (_unused, index) => ({
+          ...buildCachedIssueRecord(
+            `https://github.com/o/r/issues/${index}`,
+            `Absent Issue ${index}`,
+          ),
+          itemId: `item-absent-${index}`,
+        }),
+      );
+
+      localStorageCacheRepository.getSingle.mockResolvedValue(
+        buildFullFetchTriggeredCache(absentIssues),
+      );
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('proj-full'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
+      ]);
+      const batchResult: ProjectItem[] = absentIssues
+        .map((issue, index) => ({ issue, outcome: outcomeForIndex(index) }))
+        .filter(({ outcome }) => outcome !== 'removedAbsentFromBatch')
+        .map(({ issue, outcome }) => ({
+          ...buildProjectItem(issue.url, `Live-Checked ${issue.itemId}`),
+          id: issue.itemId,
+          isArchivedFromProject: outcome === 'removedArchived',
+        }));
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        batchResult,
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getAllIssues('proj-full');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledTimes(1);
+      const calledIds =
+        graphqlProjectItemRepository.fetchProjectItemsByIds.mock.calls[0][0];
+      expect(calledIds).toHaveLength(absentItemCount);
+      expect(new Set(calledIds)).toEqual(
+        new Set(absentIssues.map((issue) => issue.itemId)),
+      );
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+
+      const resultUrls = new Set(result.issues.map((i) => i.url));
+      const resultTitlesByUrl = new Map(
+        result.issues.map((i) => [i.url, i.title]),
+      );
+      absentIssues.forEach((issue, index) => {
+        const outcome = outcomeForIndex(index);
+        if (outcome === 'keptActive') {
+          expect(resultUrls.has(issue.url)).toBe(true);
+          expect(resultTitlesByUrl.get(issue.url)).toBe(
+            `Live-Checked ${issue.itemId}`,
+          );
+        } else {
+          expect(resultUrls.has(issue.url)).toBe(false);
+        }
+      });
+      expect(resultUrls.has(freshIssueUrl)).toBe(true);
     });
 
     it('uses the fresh pagination entry when a story issue appears in both cache and pagination', async () => {
