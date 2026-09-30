@@ -129,6 +129,10 @@
   },
   "overrides": {
     "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat",
-    "npm": "12.1.0"
+    "npm": "12.1.0",
+    "@actions/http-client": {
+      "undici": "6.28.1"
+    },
+    "undici": "7.29.1"
   }
 }
