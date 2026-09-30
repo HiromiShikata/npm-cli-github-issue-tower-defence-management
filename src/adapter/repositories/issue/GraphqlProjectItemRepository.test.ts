@@ -2957,6 +2957,87 @@ describe('GraphqlProjectItemRepository', () => {
         'https://github.com/other/repo/issues/99',
       ]);
     });
+
+    it('maps isArchived true from the ProjectV2Item node to isArchivedFromProject true on the issue branch', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const contentNode = makeContentNode(
+        'https://github.com/owner/repo/issues/60',
+        60,
+        'Archived Project Item Issue',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                ...contentNode,
+                projectItems: {
+                  nodes: [
+                    { ...contentNode.projectItems.nodes[0], isArchived: true },
+                  ],
+                },
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/60',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isArchivedFromProject).toBe(true);
+    });
+
+    it('maps isArchived false from the ProjectV2Item node to isArchivedFromProject false on the pullRequest branch', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      const contentNode = makeContentNode(
+        'https://github.com/owner/repo/pull/61',
+        61,
+        'Active Project Item PR',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: {
+                ...contentNode,
+                projectItems: {
+                  nodes: [
+                    {
+                      ...contentNode.projectItems.nodes[0],
+                      isArchived: false,
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/61',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.isArchivedFromProject).toBe(false);
+    });
   });
 
   describe('fetchItemId', () => {
