@@ -1044,4 +1044,19 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
       });
     });
   });
+
+  it('should not warn and should treat the closed task issue as resolved with no candidate pull request when findRelatedOpenPrUrls returns an empty array for it', async () => {
+    mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+      new Map([[closedTaskIssue.url, []]]),
+    );
+
+    await useCase.run({
+      issues: [closedTaskIssue],
+      evaluatedAt: staleEvaluatedAt,
+    });
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+  });
 });
