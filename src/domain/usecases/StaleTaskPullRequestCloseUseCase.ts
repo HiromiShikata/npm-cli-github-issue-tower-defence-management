@@ -11,7 +11,7 @@ export class StaleTaskPullRequestCloseUseCase {
       | 'closePullRequest'
       | 'createCommentByUrl'
       | 'getIssueOrPullRequestComments'
-      | 'findRelatedOpenPRs'
+      | 'findRelatedOpenPrUrls'
       | 'getIssueByUrl'
     >,
   ) {}
@@ -27,16 +27,31 @@ export class StaleTaskPullRequestCloseUseCase {
     const closedTaskIssues = input.issues.filter(
       (issue) => !issue.isPr && issue.isClosed,
     );
-    const closedTaskIssueUrls = new Set(
-      closedTaskIssues.map((issue) => issue.url),
+    const closedTaskIssueUrlsInInputOrder = closedTaskIssues.map(
+      (issue) => issue.url,
     );
+    const closedTaskIssueUrls = new Set(closedTaskIssueUrlsInInputOrder);
+    const relatedOpenPrUrlsByIssueUrl =
+      await this.issueRepository.findRelatedOpenPrUrls(
+        closedTaskIssueUrlsInInputOrder,
+      );
+    const unresolvedClosedTaskIssueUrls: string[] = [];
     const candidatePullRequestUrls = new Set<string>();
-    for (const closedTaskIssue of closedTaskIssues) {
-      const relatedOpenPullRequests =
-        await this.issueRepository.findRelatedOpenPRs(closedTaskIssue.url);
-      for (const relatedOpenPullRequest of relatedOpenPullRequests) {
-        candidatePullRequestUrls.add(relatedOpenPullRequest.url);
+    for (const closedTaskIssueUrl of closedTaskIssueUrlsInInputOrder) {
+      const relatedOpenPrUrls =
+        relatedOpenPrUrlsByIssueUrl.get(closedTaskIssueUrl);
+      if (relatedOpenPrUrls === undefined) {
+        unresolvedClosedTaskIssueUrls.push(closedTaskIssueUrl);
+        continue;
       }
+      for (const relatedOpenPrUrl of relatedOpenPrUrls) {
+        candidatePullRequestUrls.add(relatedOpenPrUrl);
+      }
+    }
+    if (unresolvedClosedTaskIssueUrls.length > 0) {
+      console.warn(
+        `StaleTaskPullRequestCloseUseCase: skipping closed task issues whose related open pull requests could not be resolved in this run. count: ${unresolvedClosedTaskIssueUrls.length} issueUrls: ${unresolvedClosedTaskIssueUrls.join(', ')}`,
+      );
     }
     for (const pullRequestUrl of candidatePullRequestUrls) {
       const pullRequestIssue =
