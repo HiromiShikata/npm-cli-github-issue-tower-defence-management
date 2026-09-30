@@ -1,3 +1,10 @@
+## [2.154.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.0...v2.154.1) (2026-09-30)
+
+
+### Reverts
+
+* **cache-reconciliation:** restore per-item reconciliation fetch ([#2935](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2935)) ([aae6533](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aae65333202640e899a2fd3c06c8813782dee71c))
+
 # [2.154.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.9...v2.154.0) (2026-09-30)
 
 
