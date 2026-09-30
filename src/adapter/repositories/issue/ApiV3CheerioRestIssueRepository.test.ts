@@ -1176,6 +1176,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           customFields: [{ name: 'story', value: 'regular / StoryA' }],
         },
       ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -1209,6 +1210,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
         buildProjectItem(freshIssueUrl, 'Task Issue'),
       ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -1890,6 +1892,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(freshProject);
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
       graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -9339,6 +9342,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ];
         },
       );
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
 
       const appendOnceFetchHasStarted = async (): Promise<void> => {
         await wait(1);
