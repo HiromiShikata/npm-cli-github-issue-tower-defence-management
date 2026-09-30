@@ -220,6 +220,8 @@ const SLIM_PULL_REQUEST_BATCH_SIZE = 100;
 const SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE = 100;
 const RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE = 100;
 const RELATED_OPEN_PULL_REQUEST_URLS_TIMELINE_PAGE_SIZE = 100;
+const ISSUE_EVENTS_PAGE_SIZE = 100;
+const ISSUE_EVENT_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_ISSUE_EVENTS = 310;
 
 type IssueRelatedOpenPullRequestUrlsBatchResponse = {
   data?: Record<
@@ -473,6 +475,41 @@ function isIssueEventsResponse(
     (item) => typeof item === 'object' && item !== null && 'event' in item,
   );
 }
+
+type RepositoryIssueEventFeedResponseItem = {
+  id: number;
+  event: string;
+  created_at: string;
+  issue: { number: number };
+};
+
+function isRepositoryIssueEventFeedResponse(
+  value: unknown,
+): value is RepositoryIssueEventFeedResponseItem[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    const issue: unknown = item.issue;
+    return (
+      typeof item.id === 'number' &&
+      typeof item.event === 'string' &&
+      typeof item.created_at === 'string' &&
+      isRecord(issue) &&
+      typeof issue.number === 'number'
+    );
+  });
+}
+
+type IssueEventListingReopenedEventScan =
+  | {
+      listingOutcome: 'listedEveryEvent';
+      latestReopenedEventAt: Date | null;
+    }
+  | {
+      listingOutcome: 'stoppedAtGitHubIssueEventListingLimit';
+      latestReopenedEventAt: Date | null;
+      latestListedEventAt: Date;
+    };
 
 type RestPullRequestCiStatusResponse = {
   html_url: string;
@@ -3581,15 +3618,35 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   getLatestReopenedEventAt = async (issue: Issue): Promise<Date | null> => {
+    const issueEventListingScan =
+      await this.scanIssueEventListingForLatestReopenedEventAt(issue);
+    if (issueEventListingScan.listingOutcome === 'listedEveryEvent') {
+      return issueEventListingScan.latestReopenedEventAt;
+    }
+    const reopenedEventAtNewerThanIssueEventListing =
+      await this.findReopenedEventAtNewerThanIssueEventListing(
+        issue,
+        issueEventListingScan.latestListedEventAt,
+      );
+    return (
+      reopenedEventAtNewerThanIssueEventListing ??
+      issueEventListingScan.latestReopenedEventAt
+    );
+  };
+
+  private scanIssueEventListingForLatestReopenedEventAt = async (
+    issue: Issue,
+  ): Promise<IssueEventListingReopenedEventScan> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue.url);
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const perPage = 100;
     let page = 1;
     let hasNextPage = true;
-    let latestReopenedAt: Date | null = null;
+    let listedEventCount = 0;
+    let latestListedEventAt: Date | null = null;
+    let latestReopenedEventAt: Date | null = null;
     while (hasNextPage) {
-      const eventsUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}/events?per_page=${perPage}&page=${page}`;
+      const eventsUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}/events?per_page=${ISSUE_EVENTS_PAGE_SIZE}&page=${page}`;
       const response = await this.fetchWithRateLimitRetry(
         () =>
           fetch(eventsUrl, {
@@ -3613,18 +3670,86 @@ export class ApiV3CheerioRestIssueRepository
           `Unexpected response shape when fetching events for issue ${issue.url}`,
         );
       }
+      listedEventCount += body.length;
       for (const eventItem of body) {
+        const eventAt = new Date(eventItem.created_at);
+        if (latestListedEventAt === null || eventAt > latestListedEventAt) {
+          latestListedEventAt = eventAt;
+        }
         if (eventItem.event !== 'reopened') continue;
-        const reopenedAt = new Date(eventItem.created_at);
-        if (latestReopenedAt === null || reopenedAt > latestReopenedAt) {
-          latestReopenedAt = reopenedAt;
+        if (latestReopenedEventAt === null || eventAt > latestReopenedEventAt) {
+          latestReopenedEventAt = eventAt;
         }
       }
       const linkHeader = response.headers.get('Link') ?? '';
       hasNextPage = linkHeader.includes('rel="next"');
       page++;
     }
-    return latestReopenedAt;
+    if (
+      listedEventCount <
+        ISSUE_EVENT_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_ISSUE_EVENTS ||
+      latestListedEventAt === null
+    ) {
+      return { listingOutcome: 'listedEveryEvent', latestReopenedEventAt };
+    }
+    return {
+      listingOutcome: 'stoppedAtGitHubIssueEventListingLimit',
+      latestReopenedEventAt,
+      latestListedEventAt,
+    };
+  };
+
+  private findReopenedEventAtNewerThanIssueEventListing = async (
+    issue: Issue,
+    latestListedEventAt: Date,
+  ): Promise<Date | null> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issue.url);
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const repositoryIssueEventFeedUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/events?per_page=${ISSUE_EVENTS_PAGE_SIZE}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(repositoryIssueEventFeedUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
+          }),
+        { method: 'GET', path: sanitizeRestPath(repositoryIssueEventFeedUrl) },
+      );
+      if (!response.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(response);
+        throw new Error(
+          `Failed to fetch the repository issue events feed for issue ${issue.url}: ${reason}`,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isRepositoryIssueEventFeedResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching the repository issue events feed for issue ${issue.url}`,
+        );
+      }
+      for (const feedEvent of body) {
+        const feedEventAt = new Date(feedEvent.created_at);
+        if (feedEventAt < latestListedEventAt) return null;
+        if (
+          feedEvent.issue.number === issueNumber &&
+          feedEvent.event === 'reopened'
+        ) {
+          return feedEventAt;
+        }
+      }
+      const linkHeader = response.headers.get('Link') ?? '';
+      hasNextPage = linkHeader.includes('rel="next"');
+      page++;
+    }
+    throw new Error(
+      `The repository issue events feed ended before reaching the newest listed event of issue ${issue.url} at ${latestListedEventAt.toISOString()}`,
+    );
   };
 
   getPullRequestChangedFilePaths = async (prUrl: string): Promise<string[]> => {
