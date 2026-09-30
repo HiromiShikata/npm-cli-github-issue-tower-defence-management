@@ -96,8 +96,8 @@ export class StartPreparationUseCase {
       | 'removeLabel'
       | 'get'
       | 'removeIssueFromProjectCache'
-    > &
-      Partial<Pick<IssueRepository, 'appendIssueToProjectCache'>>,
+      | 'appendIssueToProjectCache'
+    >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
     private readonly takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository,
@@ -950,7 +950,7 @@ export class StartPreparationUseCase {
             project.id,
             issue,
           );
-          await this.issueRepository.appendIssueToProjectCache?.(
+          await this.issueRepository.appendIssueToProjectCache(
             project.id,
             staleness.liveIssue,
           );
