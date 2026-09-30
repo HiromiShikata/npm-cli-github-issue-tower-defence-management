@@ -1,7 +1,4 @@
-import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
@@ -34,8 +31,6 @@ import {
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
-export const ORPHANED_ALIVE_EXCEPTION_MARKER_PREFIX =
-  'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED';
 
 type OrphanedPreparationOutcome =
   'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper' | 'skip';
@@ -520,7 +515,6 @@ export class RevertOrphanedPreparationUseCase {
       preparationProcessCheckCommand: string;
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
-      thresholdForAutoReject: number;
     },
   ): Promise<boolean> => {
     const commandTemplate = params.preparationProcessCheckCommand.replace(
@@ -533,98 +527,14 @@ export class RevertOrphanedPreparationUseCase {
       '--',
       issue.url,
     ]);
-
     if (exitCode !== 0) return true;
-
     const { awLogDirectoryPath, awLogStaleThresholdMinutes } = params;
     if (!awLogDirectoryPath || !awLogStaleThresholdMinutes) return false;
-
-    const isStale = await this.isAwLogStale(
+    return this.isAwLogStale(
       issue,
       awLogDirectoryPath,
       awLogStaleThresholdMinutes,
     );
-    if (isStale) return true;
-    return this.applyAliveWithFreshLogException(
-      issue,
-      params.thresholdForAutoReject,
-      awLogDirectoryPath,
-    );
-  };
-
-  private findLatestLocalCommitShaForIssue = async (
-    issue: Issue,
-    awLogDirectoryPath: string,
-  ): Promise<string | null> => {
-    const logPattern = `${issue.org}_${issue.repo}_${issue.number}_*`;
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
-      'sh',
-      [
-        '-c',
-        'D=$(head -c 65536 "$(find "$1" -name "$2" | sort | tail -1)" 2>/dev/null | sed -n "s/^Current directory: //p" | head -1); [ -n "$D" ] && git -C "$D" rev-parse HEAD 2>/dev/null',
-        '--',
-        awLogDirectoryPath,
-        logPattern,
-      ],
-    );
-    const sha = stdout.trim();
-    return exitCode === 0 && sha ? sha : null;
-  };
-
-  private applyAliveWithFreshLogException = async (
-    issue: Issue,
-    thresholdForAutoReject: number,
-    awLogDirectoryPath: string,
-  ): Promise<boolean> => {
-    const relatedPullRequests = await this.issueRepository.findRelatedOpenPRs(
-      issue.url,
-    );
-    const latestLocalCommitSha = await this.findLatestLocalCommitShaForIssue(
-      issue,
-      awLogDirectoryPath,
-    );
-    const fingerprint = JSON.stringify({
-      latestLocalCommitSha,
-      relatedPullRequests: [...relatedPullRequests]
-        .sort((a, b) => a.url.localeCompare(b.url))
-        .map((pr: RelatedPullRequest) => ({
-          url: pr.url,
-          isPassedAllCiJob: pr.isPassedAllCiJob,
-          isCiStateSuccess: pr.isCiStateSuccess,
-          mergeable: pr.mergeable,
-          isBranchOutOfDate: pr.isBranchOutOfDate,
-          reviewDecision: pr.reviewDecision,
-        })),
-    });
-    const comments =
-      await this.issueCommentRepository.getCommentsFromIssue(issue);
-    const lastMarker = [...comments]
-      .reverse()
-      .find((comment) =>
-        comment.content.startsWith(ORPHANED_ALIVE_EXCEPTION_MARKER_PREFIX),
-      );
-    const previousCount = ((): number => {
-      if (!lastMarker) return 0;
-      const lines = lastMarker.content.split('\n');
-      const countMatch = lines[0]?.match(/\((\d+)\/\d+\)/);
-      const fingerprintLine = lines[1] ?? '';
-      if (!countMatch || !fingerprintLine.startsWith('fingerprint: ')) {
-        return 0;
-      }
-      const embeddedFingerprint = fingerprintLine.slice('fingerprint: '.length);
-      return embeddedFingerprint === fingerprint ? Number(countMatch[1]) : 0;
-    })();
-
-    if (previousCount >= thresholdForAutoReject) {
-      return true;
-    }
-
-    const nextCount = previousCount + 1;
-    await this.issueCommentRepository.createComment(
-      issue,
-      `${ORPHANED_ALIVE_EXCEPTION_MARKER_PREFIX} (${nextCount}/${thresholdForAutoReject})\nfingerprint: ${fingerprint}`,
-    );
-    return false;
   };
 
   private isAwLogStale = async (
