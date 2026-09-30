@@ -1012,6 +1012,7 @@ export class StartPreparationUseCase {
       let routedModelName: string | null = null;
       let selectedTokenName: string | null = null;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
+        const tokensDeniedThisAttempt = new Set<string>();
         const tokenToFillOf = (): {
           token: string;
           model: string;
@@ -1022,27 +1023,63 @@ export class StartPreparationUseCase {
               model: t.model,
               sevenDayFreeRatio: t.sevenDayFreeRatio,
               secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
-              remainingConcurrentSlotCount:
-                t.limit -
-                (tokenInFlightCounts[t.token] ?? 0) -
-                (spawnedInThisRunByToken[t.token] ?? 0),
+              remainingConcurrentSlotCount: tokensDeniedThisAttempt.has(t.token)
+                ? 0
+                : t.limit -
+                  (tokenInFlightCounts[t.token] ?? 0) -
+                  (spawnedInThisRunByToken[t.token] ?? 0),
             })),
           );
-        let tokenToFill = tokenToFillOf();
-        if (tokenToFill === null && !tokenInFlightCountsRefreshed) {
-          tokenInFlightCountsRefreshed = true;
-          tokenInFlightCounts =
-            await this.claudeTokenUsageRepository.getTokenInFlightCounts();
-          tokenToFill = tokenToFillOf();
+        let reservedTokenToFill: { token: string; model: string } | null = null;
+        let reservationFailureReason: string | null = null;
+        for (;;) {
+          let candidate = tokenToFillOf();
+          if (candidate === null && !tokenInFlightCountsRefreshed) {
+            tokenInFlightCountsRefreshed = true;
+            tokenInFlightCounts =
+              await this.claudeTokenUsageRepository.getTokenInFlightCounts();
+            candidate = tokenToFillOf();
+          }
+          if (candidate === null) {
+            break;
+          }
+          const currentCandidate = candidate;
+          const candidateLimit = selectedTokensWithLimits.find(
+            (t) => t.token === currentCandidate.token,
+          )?.limit;
+          let reserved: boolean;
+          try {
+            reserved =
+              await this.claudeTokenUsageRepository.reserveTokenLaunchSlot({
+                token: currentCandidate.token,
+                concurrentLimit: candidateLimit ?? 0,
+                issueUrl: issue.url,
+              });
+          } catch (error) {
+            console.error(
+              `Token launch slot reservation failed for ${issue.url}: ${String(error)}`,
+            );
+            reservationFailureReason = `token launch slot reservation failed: ${String(error)}`;
+            break;
+          }
+          if (reserved) {
+            reservedTokenToFill = currentCandidate;
+            break;
+          }
+          tokensDeniedThisAttempt.add(currentCandidate.token);
         }
-        if (tokenToFill === null) {
+        if (reservationFailureReason !== null) {
+          await revertToAwaitingWorkspace(reservationFailureReason);
+          continue;
+        }
+        if (reservedTokenToFill === null) {
           await revertToAwaitingWorkspace(
             'every Claude OAuth token reached its concurrent worker limit',
           );
           break;
         }
-        const selected = tokenToFill.token;
-        routedModelName = tokenToFill.model;
+        const selected = reservedTokenToFill.token;
+        routedModelName = reservedTokenToFill.model;
         selectedTokenName = selected;
         spawnEnv = {
           CLAUDE_CODE_OAUTH_TOKEN: selected,

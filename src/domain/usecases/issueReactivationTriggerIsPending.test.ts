@@ -425,6 +425,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           ensureObservable: jest.fn().mockResolvedValue(undefined),
           getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
           getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+          reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
           proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         };
         spawnMockTakeOwnershipSpawnRepository = {
