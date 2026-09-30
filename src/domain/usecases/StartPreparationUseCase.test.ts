@@ -181,6 +181,7 @@ describe('StartPreparationUseCase', () => {
       getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+      reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
     };
     mockTakeOwnershipSpawnRepository = {
       listSpawns: jest.fn().mockReturnValue([]),
@@ -9174,6 +9175,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       getAvailableTokenUsages: jest.fn(),
       getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
+      reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
     };
 
   const useCase = new StartPreparationUseCase(
@@ -9513,6 +9515,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getAvailableTokenUsages: jest.fn(),
         getTokenInFlightCounts: jest.fn(),
         proxyBaseUrl: jest.fn(),
+        reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
       },
       {
         listSpawns: jest.fn().mockReturnValue([]),
@@ -9629,6 +9632,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       ]),
       getTokenInFlightCounts: jest.fn().mockResolvedValue({ [token]: 0 }),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+      reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
     };
     const mockTakeOwnershipSpawnRepository = {
       listSpawns: jest.fn().mockReturnValue([]),
@@ -9721,6 +9725,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
         getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+        reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
       },
       {
         listSpawns: jest.fn().mockReturnValue([]),
@@ -9808,6 +9813,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
         getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+        reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
       },
       {
         listSpawns: jest.fn().mockReturnValue([]),
@@ -9898,6 +9904,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
         getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+        reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
       },
       {
         listSpawns: jest.fn().mockReturnValue([]),
@@ -10019,6 +10026,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
           getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
           proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+          reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
         },
         {
           listSpawns: jest.fn().mockReturnValue([]),
@@ -10099,6 +10107,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         getAvailableTokenUsages: jest.fn(),
         getTokenInFlightCounts: jest.fn(),
         proxyBaseUrl: jest.fn(),
+        reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
       },
       {
         listSpawns: jest.fn().mockReturnValue([]),

@@ -1,11 +1,28 @@
+import { createHash, randomUUID } from 'crypto';
 import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
+import { isRecord } from '../../domain/usecases/isRecord';
 import { ensureProxyRunning } from '../proxy/ensureProxyRunning';
 import { PROXY_PORT, readRateLimit } from '../proxy/RateLimitCache';
 import { loadTokenEntries } from '../proxy/TokenListLoader';
+import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
+import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerSessionReader';
 
 const PROC_DIRECTORY = '/proc';
+
+const TOKEN_RESERVATION_LOCK_FILE_NAME = '.write.lock';
+
+export const TOKEN_LAUNCH_RESERVATION_TTL_MS = 60_000;
+
+interface TokenLaunchReservation {
+  reservedAt: number;
+}
+
+const isTokenLaunchReservation = (
+  value: unknown,
+): value is TokenLaunchReservation =>
+  isRecord(value) && typeof value.reservedAt === 'number';
 
 export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageRepository {
   private readonly workerSessionReader =
@@ -14,6 +31,9 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
   constructor(
     private readonly tokenListJsonPath: string | null,
     private readonly port: number = PROXY_PORT,
+    private readonly tokenLaunchReservationCacheRepository: LocalStorageCacheRepository = new LocalStorageCacheRepository(
+      new LocalStorageRepository(),
+    ),
   ) {}
 
   ensureObservable = async (): Promise<void> => {
@@ -128,6 +148,58 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       counts[session.sessionToken] = (counts[session.sessionToken] ?? 0) + 1;
     }
     return counts;
+  };
+
+  reserveTokenLaunchSlot = async (params: {
+    token: string;
+    concurrentLimit: number;
+  }): Promise<boolean> => {
+    const tokenHash = createHash('sha256').update(params.token).digest('hex');
+    const reservationDirectoryKey = `token-reservations/${tokenHash}`;
+    return this.tokenLaunchReservationCacheRepository.withLock(
+      reservationDirectoryKey,
+      async (): Promise<boolean> => {
+        const reservationDirectoryPath = `${this.tokenLaunchReservationCacheRepository.cachePath}/${reservationDirectoryKey}`;
+        const localStorageRepository =
+          this.tokenLaunchReservationCacheRepository.localStorageRepository;
+        const nowMs = Date.now();
+        const reservationFileNames = localStorageRepository
+          .listFiles(reservationDirectoryPath)
+          .filter((fileName) => fileName !== TOKEN_RESERVATION_LOCK_FILE_NAME);
+        let nonExpiredReservationCount = 0;
+        for (const fileName of reservationFileNames) {
+          const filePath = `${reservationDirectoryPath}/${fileName}`;
+          const fileContent = localStorageRepository.readOrNull(filePath);
+          if (fileContent === null) {
+            continue;
+          }
+          const parsedFileContent: unknown = JSON.parse(fileContent);
+          if (!isTokenLaunchReservation(parsedFileContent)) {
+            continue;
+          }
+          if (
+            nowMs - parsedFileContent.reservedAt >
+            TOKEN_LAUNCH_RESERVATION_TTL_MS
+          ) {
+            localStorageRepository.remove(filePath);
+            continue;
+          }
+          nonExpiredReservationCount += 1;
+        }
+        const realInFlightCounts = await this.getTokenInFlightCounts();
+        const realInFlightCount = realInFlightCounts[params.token] ?? 0;
+        const combinedCount = realInFlightCount + nonExpiredReservationCount;
+        if (combinedCount >= params.concurrentLimit) {
+          return false;
+        }
+        const reservationFilePath = `${reservationDirectoryPath}/${randomUUID()}.json`;
+        localStorageRepository.write(
+          reservationFilePath,
+          JSON.stringify({ reservedAt: nowMs } satisfies TokenLaunchReservation),
+        );
+        return true;
+      },
+    );
   };
 
   proxyBaseUrl = (): string => `http://127.0.0.1:${this.port}`;
