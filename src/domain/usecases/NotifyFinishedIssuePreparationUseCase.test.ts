@@ -5919,6 +5919,107 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
+  describe('when promptTooLongOnResume is true', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    it('returns the issue to Awaiting Workspace without posting a NO_REPORT comment', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('NO_REPORT'),
+      );
+    });
+
+    it('does not call updateNextActionDate unlike deferPreparation', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('does not move to Failed Preparation even when 2 prior NO_REPORT_FROM_AGENT_BOT rejections exist', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+        }),
+        createMockComment({
+          content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+    });
+
+    it('does not trigger promptTooLongOnResume behavior when promptTooLongOnResume is false (pinned existing behavior)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: false,
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+  });
+
   describe('nextStepAgent validation against agents list', () => {
     it('creates a workflow blocker issue and returns original task to Awaiting Workspace when nextStepAgent is not in configured agents list', async () => {
       const issueUrl = 'https://github.com/user/repo/issues/1';

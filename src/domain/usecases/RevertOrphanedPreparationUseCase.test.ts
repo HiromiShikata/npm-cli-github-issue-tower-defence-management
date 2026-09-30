@@ -1540,7 +1540,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ]);
   });
 
-  it('should leave issue untouched when pgrep exits zero and aw log file is recent', async () => {
+  it('should leave issue in Preparation but apply the alive-with-fresh-log exception when pgrep exits zero and aw log file is recent', async () => {
     const activeIssue = createMockIssue({
       url: 'https://github.com/myorg/myrepo/issues/42',
       org: 'myorg',
@@ -1581,10 +1581,17 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(
       mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
-    ).toHaveLength(0);
+    ).toHaveLength(1);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+      1,
+    );
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+    );
   });
 
-  it('should leave issue untouched when pgrep exits zero and no aw log files exist yet', async () => {
+  it('should leave issue in Preparation but apply the alive-with-fresh-log exception when pgrep exits zero and no aw log files exist yet', async () => {
     const newIssue = createMockIssue({
       url: 'https://github.com/myorg/myrepo/issues/42',
       org: 'myorg',
@@ -1616,7 +1623,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(
       mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
-    ).toHaveLength(0);
+    ).toHaveLength(1);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+      1,
+    );
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+    );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
   });
 
@@ -3185,6 +3199,189 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
+    });
+  });
+
+  describe('alive-with-fresh-log exception bound', () => {
+    it('applies the exception and posts a (1/3) marker comment when no prior marker exists', async () => {
+      const activeIssue = createMockIssue({
+        url: 'https://github.com/myorg/myrepo/issues/42',
+        org: 'myorg',
+        repo: 'myrepo',
+        number: 42,
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [activeIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand
+        .mockResolvedValueOnce({
+          stdout: 'xfce4-terminal found',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+        thresholdForAutoReject: 3,
+        awLogDirectoryPath: '/home/user/logs-aw',
+        awLogStaleThresholdMinutes: 15,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        1,
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][0]).toBe(
+        activeIssue,
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+        'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+      );
+    });
+
+    it('treats the issue as orphaned again once the exception has applied thresholdForAutoReject times with no PR progress', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/myorg/myrepo/issues/42',
+        org: 'myorg',
+        repo: 'myrepo',
+        number: 42,
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand
+        .mockResolvedValueOnce({
+          stdout: 'xfce4-terminal found',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'agent-bot',
+          content:
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: []',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+        thresholdForAutoReject: 3,
+        awLogDirectoryPath: '/home/user/logs-aw',
+        awLogStaleThresholdMinutes: 15,
+      });
+
+      expect(
+        mockIssueCommentRepository.createComment.mock.calls.some(([, body]) =>
+          body.startsWith('Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED'),
+        ),
+      ).toBe(false);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        1,
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+        'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      );
+    });
+
+    it('resets the exception counter to (1/3) when the PR progress fingerprint changed since the last marker', async () => {
+      const activeIssue = createMockIssue({
+        url: 'https://github.com/myorg/myrepo/issues/42',
+        org: 'myorg',
+        repo: 'myrepo',
+        number: 42,
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [activeIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand
+        .mockResolvedValueOnce({
+          stdout: 'xfce4-terminal found',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      const passingPr = createPassingPr();
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([passingPr]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'agent-bot',
+          content:
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: []',
+          createdAt: new Date(),
+        },
+      ]);
+      const expectedFingerprint = JSON.stringify([
+        {
+          url: passingPr.url,
+          isPassedAllCiJob: passingPr.isPassedAllCiJob,
+          isCiStateSuccess: passingPr.isCiStateSuccess,
+          mergeable: passingPr.mergeable,
+          isBranchOutOfDate: passingPr.isBranchOutOfDate,
+          reviewDecision: passingPr.reviewDecision,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+        thresholdForAutoReject: 3,
+        awLogDirectoryPath: '/home/user/logs-aw',
+        awLogStaleThresholdMinutes: 15,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        1,
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+        `Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: ${expectedFingerprint}`,
+      );
     });
   });
 });
