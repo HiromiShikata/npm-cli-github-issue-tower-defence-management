@@ -1568,7 +1568,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
         stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
         stderr: '',
         exitCode: 0,
-      });
+      })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 1 });
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1585,7 +1586,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
     );
   });
 
@@ -1608,7 +1609,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
         stderr: '',
         exitCode: 0,
       })
-      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 1 });
 
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
@@ -1625,9 +1627,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+      'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
     );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
   });
 
   it('should skip aw log check when awLogDirectoryPath is not configured', async () => {
@@ -3227,7 +3229,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
           stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
           stderr: '',
           exitCode: 0,
-        });
+        })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 1 });
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -3247,7 +3250,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         activeIssue,
       );
       expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-        'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
+        'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
       );
     });
 
@@ -3279,13 +3282,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
           stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
           stderr: '',
           exitCode: 0,
-        });
+        })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 1 });
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'agent-bot',
           content:
-            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: []',
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
           createdAt: new Date(),
         },
       ]);
@@ -3343,25 +3347,90 @@ describe('RevertOrphanedPreparationUseCase', () => {
           stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
           stderr: '',
           exitCode: 0,
-        });
+        })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 1 });
       const passingPr = createPassingPr();
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([passingPr]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'agent-bot',
           content:
-            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: []',
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (3/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
           createdAt: new Date(),
         },
       ]);
-      const expectedFingerprint = JSON.stringify([
+      const expectedFingerprint = JSON.stringify({
+        latestLocalCommitSha: null,
+        relatedPullRequests: [
+          {
+            url: passingPr.url,
+            isPassedAllCiJob: passingPr.isPassedAllCiJob,
+            isCiStateSuccess: passingPr.isCiStateSuccess,
+            mergeable: passingPr.mergeable,
+            isBranchOutOfDate: passingPr.isBranchOutOfDate,
+            reviewDecision: passingPr.reviewDecision,
+          },
+        ],
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "Please handover {URL}"',
+        thresholdForAutoReject: 3,
+        awLogDirectoryPath: '/home/user/logs-aw',
+        awLogStaleThresholdMinutes: 15,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        1,
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+        `Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: ${expectedFingerprint}`,
+      );
+    });
+
+    it('resets the exception counter to (1/3) when a new local commit is detected even with no open pull request', async () => {
+      const activeIssue = createMockIssue({
+        url: 'https://github.com/myorg/myrepo/issues/42',
+        org: 'myorg',
+        repo: 'myrepo',
+        number: 42,
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [activeIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand
+        .mockResolvedValueOnce({
+          stdout: 'xfce4-terminal found',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '/home/user/logs-aw/myorg_myrepo_42_2024.log\n',
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
-          url: passingPr.url,
-          isPassedAllCiJob: passingPr.isPassedAllCiJob,
-          isCiStateSuccess: passingPr.isCiStateSuccess,
-          mergeable: passingPr.mergeable,
-          isBranchOutOfDate: passingPr.isBranchOutOfDate,
-          reviewDecision: passingPr.reviewDecision,
+          author: 'agent-bot',
+          content:
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (2/3)\nfingerprint: {"latestLocalCommitSha":null,"relatedPullRequests":[]}',
+          createdAt: new Date(),
         },
       ]);
 
@@ -3378,7 +3447,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         1,
       );
       expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-        `Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: ${expectedFingerprint}`,
+        'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: {"latestLocalCommitSha":"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2","relatedPullRequests":[]}',
       );
     });
   });
