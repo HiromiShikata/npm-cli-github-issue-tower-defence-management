@@ -40,9 +40,11 @@ const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
+export const DEFAULT_MINIMUM_ISSUE_AGE_MS = 5 * 60 * 1000;
 
 export type SpawnCandidateExclusionReason =
   | 'dependedIssueUrls'
+  | 'recentlyCreated'
   | 'futureNextActionDate'
   | 'nextActionHourNotReached'
   | 'authorNotAllowed'
@@ -202,9 +204,13 @@ export class StartPreparationUseCase {
     allowedIssueAuthors: string[] | null,
     manager: string,
     now: Date,
+    minimumIssueAgeMs: number = DEFAULT_MINIMUM_ISSUE_AGE_MS,
   ): SpawnCandidateExclusionReason | null => {
     if (issue.dependedIssueUrls.length > 0) {
       return 'dependedIssueUrls';
+    }
+    if (now.getTime() - issue.createdAt.getTime() < minimumIssueAgeMs) {
+      return 'recentlyCreated';
     }
     if (issueReactivationTriggerIsPending(issue, now)) {
       const startOfTomorrow = new Date(
@@ -232,6 +238,7 @@ export class StartPreparationUseCase {
     manager: string,
     now: Date,
     project: Project,
+    minimumIssueAgeMs: number,
   ): Promise<{
     selectedIssue: Issue | null;
     offProjectBoardIssueUrls: Set<string>;
@@ -244,6 +251,7 @@ export class StartPreparationUseCase {
           allowedIssueAuthors,
           manager,
           now,
+          minimumIssueAgeMs,
         ) !== null
       ) {
         continue;
@@ -471,6 +479,7 @@ export class StartPreparationUseCase {
     normalConcurrentLimit?: number;
     maxConcurrentWorkers?: number | null;
     graphqlRateLimitFloor?: number | null;
+    minimumIssueAgeMs?: number;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const normalConcurrentLimit =
       params.normalConcurrentLimit ?? NORMAL_CONCURRENT_LIMIT;
@@ -563,6 +572,7 @@ export class StartPreparationUseCase {
     let tokenInFlightCountsRefreshed = false;
     const exclusionCounts = {
       dependedIssueUrls: 0,
+      recentlyCreated: 0,
       futureNextActionDate: 0,
       nextActionHourNotReached: 0,
       authorNotAllowed: 0,
@@ -570,6 +580,8 @@ export class StartPreparationUseCase {
     };
 
     const now = new Date();
+    const minimumIssueAgeMs =
+      params.minimumIssueAgeMs ?? DEFAULT_MINIMUM_ISSUE_AGE_MS;
 
     const isUnstoriedAwaitingWorkspaceIssue = (issue: Issue): boolean =>
       issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
@@ -598,6 +610,7 @@ export class StartPreparationUseCase {
         params.manager,
         now,
         project,
+        minimumIssueAgeMs,
       );
     const remainingUnstoriedAwaitingWorkspaceIssues =
       unstoriedAwaitingWorkspaceIssuesOldestFirst.filter(
@@ -653,6 +666,7 @@ export class StartPreparationUseCase {
               params.allowedIssueAuthors,
               params.manager,
               now,
+              minimumIssueAgeMs,
             ) === null,
         )
         .map((issue) => issue.url)
@@ -678,6 +692,7 @@ export class StartPreparationUseCase {
           params.allowedIssueAuthors,
           params.manager,
           now,
+          minimumIssueAgeMs,
         );
         if (exclusionReason !== 'authorNotAllowed') continue;
         const commentBody = `authorNotAllowed: 著者 ${issue.author} は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。`;
@@ -750,6 +765,7 @@ export class StartPreparationUseCase {
         params.allowedIssueAuthors,
         params.manager,
         now,
+        minimumIssueAgeMs,
       );
       if (exclusionReason !== null) {
         exclusionCounts[exclusionReason]++;
@@ -1134,7 +1150,7 @@ export class StartPreparationUseCase {
       updatedCurrentPreparationIssueCount++;
     }
     console.log(
-      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`,
+      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, recentlyCreated=${exclusionCounts.recentlyCreated}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`,
     );
     return { rotationOrder };
   };
