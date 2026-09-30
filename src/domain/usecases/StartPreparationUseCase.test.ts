@@ -4939,7 +4939,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {
           seven_day: {
             rejected: false,
-            resetsAt: nowEpochSeconds + 60 * 3600,
+            resetsAt: nowEpochSeconds + 84 * 3600,
           },
         },
       },
@@ -4955,7 +4955,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {
           seven_day: {
             rejected: false,
-            resetsAt: nowEpochSeconds + 70 * 3600,
+            resetsAt: nowEpochSeconds + 94 * 3600,
           },
         },
       },

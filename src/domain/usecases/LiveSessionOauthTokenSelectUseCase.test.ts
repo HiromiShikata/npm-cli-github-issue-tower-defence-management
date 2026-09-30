@@ -1237,7 +1237,7 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
           'twentyFivePercentFree',
           snapshot({
             sevenDayUtilization: 0.75,
-            sevenDayReset: NOW + 72 * HOUR,
+            sevenDayReset: NOW + 96 * HOUR,
           }),
         ),
         candidate(
@@ -1350,14 +1350,14 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
           'drainableSoonerReset',
           snapshot({
             sevenDayUtilization: 0.7,
-            sevenDayReset: NOW + 72 * HOUR,
+            sevenDayReset: NOW + 96 * HOUR,
           }),
         ),
         candidate(
           'undrainableLaterReset',
           snapshot({
             sevenDayUtilization: 0,
-            sevenDayReset: NOW + 80 * HOUR,
+            sevenDayReset: NOW + 104 * HOUR,
           }),
         ),
       ],
@@ -1416,15 +1416,15 @@ describe('sevenDayShareDrainableBeforeSpendDeadlineOf', () => {
     LiveSessionOauthTokenSelectionSettings,
     number,
   ][] = [
-    ['a reset inside the 48-hour deadline window', 28 * HOUR, SETTINGS, 0],
-    ['a reset 72 hours away', 72 * HOUR, SETTINGS, 0.672],
-    ['a reset seven days away', 7 * DAY, SETTINGS, 3.36],
+    ['a reset inside the 72-hour deadline window', 28 * HOUR, SETTINGS, 0],
+    ['a reset 96 hours away', 96 * HOUR, SETTINGS, 0.672],
+    ['a reset seven days away', 7 * DAY, SETTINGS, 2.688],
     ['a reset already in the past', -HOUR, SETTINGS, 0],
     [
       'a reset seven days away when each session consumes only 0.1% of the five hour window per hour',
       7 * DAY,
       settingsWhereFiveHourSustainabilityNeverBindsWith({}),
-      0.168,
+      0.1344,
     ],
   ];
 
@@ -1446,8 +1446,8 @@ describe('sevenDayBudgetUndrainableBeforeSpendDeadlineOf', () => {
   const undrainableCases: [number, number, boolean][] = [
     [0.02, 28 * HOUR, true],
     [0, 28 * HOUR, false],
-    [0.5, 72 * HOUR, false],
-    [0.7, 72 * HOUR, true],
+    [0.5, 96 * HOUR, false],
+    [0.7, 96 * HOUR, true],
     [1, 80 * HOUR, true],
     [1, 7 * DAY, false],
   ];
