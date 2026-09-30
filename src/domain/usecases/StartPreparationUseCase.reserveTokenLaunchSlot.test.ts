@@ -377,4 +377,167 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         ?.CLAUDE_CODE_OAUTH_TOKEN,
     ).toBe('second-token');
   });
+
+  it('reverts the first candidate to Awaiting Workspace without spawning it when reserveTokenLaunchSlot rejects, and still spawns the next candidate', async () => {
+    const mockProject = createMockProject();
+    const firstAwaitingIssue = createMockIssue({
+      url: 'url1',
+      title: 'Issue 1',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 1,
+      itemId: 'item-1',
+    });
+    const secondAwaitingIssue = createMockIssue({
+      url: 'url2',
+      title: 'Issue 2',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      number: 2,
+      itemId: 'item-2',
+    });
+    const mockProjectRepository: Mocked<
+      Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
+    > = {
+      getByUrl: jest.fn().mockResolvedValue(mockProject),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
+    };
+    const mockIssueRepository: Mocked<
+      Pick<
+        IssueRepository,
+        | 'getStoryObjectMap'
+        | 'getAllOpened'
+        | 'updateStatus'
+        | 'findRelatedOpenPRs'
+        | 'getOpenPullRequest'
+        | 'closePullRequest'
+        | 'deletePullRequestBranch'
+        | 'createCommentByUrl'
+        | 'getIssueOrPullRequestComments'
+        | 'setIssueAgentField'
+        | 'removeLabel'
+        | 'getIssueByUrl'
+        | 'get'
+        | 'removeIssueFromProjectCache'
+        | 'appendIssueToProjectCache'
+      >
+    > = {
+      getStoryObjectMap: jest
+        .fn()
+        .mockResolvedValue(
+          createMockStoryObjectMap([firstAwaitingIssue, secondAwaitingIssue]),
+        ),
+      getAllOpened: jest.fn().mockResolvedValue([]),
+      updateStatus: jest.fn(),
+      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+      getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      closePullRequest: jest.fn().mockResolvedValue(undefined),
+      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      removeLabel: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      get: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
+      appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockLocalCommandRunner: Mocked<LocalCommandRunner> = {
+      runCommand: jest.fn().mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      }),
+      spawnInteractive: jest.fn(),
+    };
+    const mockReserveTokenLaunchSlot = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new Error('Timed out waiting for project cache lock'),
+      )
+      .mockResolvedValueOnce(true);
+    const claudeTokenUsageRepositoryWithReservation: ClaudeTokenUsageRepository =
+      {
+        ensureObservable: jest.fn().mockResolvedValue(undefined),
+        getAvailableTokenUsages: jest.fn().mockResolvedValue([
+          {
+            name: 'token-a',
+            token: 'token-a',
+            fiveHourUtilization: 0.1,
+            sevenDayUtilization: 0.1,
+            blocked: false,
+            rejected: false,
+            fiveHourRejected: false,
+            blockedUntilEpoch: 0,
+            modelWeeklyLimits: {},
+          },
+        ]),
+        getTokenInFlightCounts: jest.fn().mockResolvedValue({ 'token-a': 0 }),
+        proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+        reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
+      };
+    const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
+      {
+        listSpawns: jest.fn().mockReturnValue([]),
+        listRunningIssueUrls: jest.fn().mockReturnValue([]),
+      };
+    const mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository> =
+      {
+        getRemainingRequestCount: jest.fn().mockResolvedValue(null),
+      };
+    const useCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      claudeTokenUsageRepositoryWithReservation,
+      mockTakeOwnershipSpawnRepository,
+      mockGitHubGraphqlRateLimitRepository,
+      new InMemoryIssueLatestSessionBranchRepository(),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockReserveTokenLaunchSlot.mock.calls).toHaveLength(2);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
+    expect(mockIssueRepository.updateStatus.mock.calls[0]?.[1]).toMatchObject({
+      url: 'url1',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0]?.[2]).toBe('2');
+    expect(mockIssueRepository.updateStatus.mock.calls[1]?.[1]).toMatchObject({
+      url: 'url1',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[1]?.[2]).toBe('1');
+    expect(mockIssueRepository.updateStatus.mock.calls[2]?.[1]).toMatchObject({
+      url: 'url2',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[2]?.[2]).toBe('2');
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0]?.[1]).toContain(
+      'url2',
+    );
+  });
 });

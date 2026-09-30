@@ -207,6 +207,50 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     expect(fs.existsSync(staleReservationFilePath)).toBe(false);
   });
 
+  it('still counts a reservation for a shorter issue URL toward the limit when a live worker is only running for a different issue whose URL happens to start with that same prefix', async () => {
+    const shorterIssueUrl = 'https://github.com/user/repo/issues/29';
+    const unrelatedLongerIssueUrl = 'https://github.com/user/repo/issues/2970';
+    const tokenReservationDirectoryPath = path.join(
+      tempCacheDir,
+      'token-reservations',
+      hashTokenForReservationDirectory('token-g'),
+    );
+    fs.mkdirSync(tokenReservationDirectoryPath, { recursive: true });
+    const staleReservationFilePath = path.join(
+      tokenReservationDirectoryPath,
+      `${randomUUID()}.json`,
+    );
+    fs.writeFileSync(
+      staleReservationFilePath,
+      JSON.stringify({ reservedAt: Date.now(), issueUrl: shorterIssueUrl }),
+    );
+    const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+      path.join(tempCacheDir, 'nonexistent-proc'),
+    );
+    workerSessionReader.listWorkerSessions = () => [
+      {
+        rootProcessId: 4,
+        sessionToken: 'unrelated-session-token',
+        workerProcesses: [
+          {
+            processId: 4,
+            rawCommandLine: `claude --model opus "Take ownership of ${unrelatedLongerIssueUrl}"`,
+          },
+        ],
+      },
+    ];
+    const repository = buildRepository(workerSessionReader);
+
+    const denied = await repository.reserveTokenLaunchSlot({
+      token: 'token-g',
+      concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/999',
+    });
+
+    expect(denied).toBe(false);
+    expect(fs.existsSync(staleReservationFilePath)).toBe(true);
+  });
+
   it('does not double count a reservation once the real in-flight worker for its issue URL is running under that same token, still granting a slot for a different issue under the same token', async () => {
     const issueUrl = 'https://github.com/user/repo/issues/55';
     const tokenReservationDirectoryPath = path.join(

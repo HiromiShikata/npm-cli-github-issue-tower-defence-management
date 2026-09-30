@@ -20,6 +20,9 @@ const TOKEN_RESERVATION_DIRECTORY_KEY_SALT =
 
 const TAKE_OWNERSHIP_OF_ISSUE_URL_COMMAND_LINE_INFIX = 'Take ownership of ';
 
+const escapeRegExpSpecialCharacters = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export const hashTokenForReservationDirectory = (token: string): string =>
   pbkdf2Sync(
     token,
@@ -218,10 +221,14 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
             localStorageRepository.remove(filePath);
             continue;
           }
-          const reservedIssueCommandLineInfix = `${TAKE_OWNERSHIP_OF_ISSUE_URL_COMMAND_LINE_INFIX}${parsedFileContent.issueUrl}`;
+          const reservedIssueCommandLineInfixPattern = new RegExp(
+            `${escapeRegExpSpecialCharacters(
+              `${TAKE_OWNERSHIP_OF_ISSUE_URL_COMMAND_LINE_INFIX}${parsedFileContent.issueUrl}`,
+            )}(?:$|[\\s\\0"])`,
+          );
           const reservationBecameLiveWorker = liveWorkerCommandLines.some(
             (rawCommandLine) =>
-              rawCommandLine.includes(reservedIssueCommandLineInfix),
+              reservedIssueCommandLineInfixPattern.test(rawCommandLine),
           );
           if (reservationBecameLiveWorker) {
             localStorageRepository.remove(filePath);

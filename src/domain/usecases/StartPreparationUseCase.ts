@@ -1031,6 +1031,7 @@ export class StartPreparationUseCase {
             })),
           );
         let reservedTokenToFill: { token: string; model: string } | null = null;
+        let reservationFailureReason: string | null = null;
         for (;;) {
           let candidate = tokenToFillOf();
           if (candidate === null && !tokenInFlightCountsRefreshed) {
@@ -1046,17 +1047,30 @@ export class StartPreparationUseCase {
           const candidateLimit = selectedTokensWithLimits.find(
             (t) => t.token === currentCandidate.token,
           )?.limit;
-          const reserved =
-            await this.claudeTokenUsageRepository.reserveTokenLaunchSlot({
-              token: currentCandidate.token,
-              concurrentLimit: candidateLimit ?? 0,
-              issueUrl: issue.url,
-            });
+          let reserved: boolean;
+          try {
+            reserved =
+              await this.claudeTokenUsageRepository.reserveTokenLaunchSlot({
+                token: currentCandidate.token,
+                concurrentLimit: candidateLimit ?? 0,
+                issueUrl: issue.url,
+              });
+          } catch (error) {
+            console.error(
+              `Token launch slot reservation failed for ${issue.url}: ${String(error)}`,
+            );
+            reservationFailureReason = `token launch slot reservation failed: ${String(error)}`;
+            break;
+          }
           if (reserved) {
             reservedTokenToFill = currentCandidate;
             break;
           }
           tokensDeniedThisAttempt.add(currentCandidate.token);
+        }
+        if (reservationFailureReason !== null) {
+          await revertToAwaitingWorkspace(reservationFailureReason);
+          continue;
         }
         if (reservedTokenToFill === null) {
           await revertToAwaitingWorkspace(
