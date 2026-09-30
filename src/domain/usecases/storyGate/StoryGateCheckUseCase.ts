@@ -861,7 +861,10 @@ export class StoryGateCheckUseCase {
     try {
       issue = await this.issueRepository.findIssue(issueReference);
     } catch (error) {
-      if (error instanceof StoryGateGithubRequestError) {
+      if (
+        error instanceof StoryGateGithubRequestError &&
+        error.status === 403
+      ) {
         return null;
       }
       throw error;
