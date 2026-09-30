@@ -122,16 +122,47 @@ describe('GithubStoryGateIssueRepository', () => {
       await expect(repositoryCreate().findIssue(ISSUE)).resolves.toBeNull();
     });
 
-    it('rejects with the failing request for HTTP 500', async () => {
-      jest
+    it('rejects with the failing request after HTTP 500 persists', async () => {
+      const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(jsonResponse({ message: 'Server Error' }, 500));
+        .mockResolvedValue(jsonResponse({ message: 'Server Error' }, 500));
 
       const promise = repositoryCreate().findIssue(ISSUE);
 
       await expect(promise).rejects.toThrow(StoryGateGithubRequestError);
       await expect(promise).rejects.toThrow(ISSUE_API_URL);
       await expect(promise).rejects.toThrow('500');
+      const thrown = await promise.catch((caught: unknown) => caught);
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(thrown.status).toBe(500);
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(noWait).toHaveBeenCalledTimes(3);
+      expect(noWait).toHaveBeenNthCalledWith(1, 1000);
+      expect(noWait).toHaveBeenNthCalledWith(2, 2000);
+      expect(noWait).toHaveBeenNthCalledWith(3, 4000);
+    });
+
+    it('retries HTTP 500 once and then returns the successful response', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(jsonResponse({ message: 'Server Error' }, 500))
+        .mockResolvedValueOnce(
+          jsonResponse({ state: 'open', body: 'After retry', labels: [] }),
+        );
+
+      const issue = await repositoryCreate().findIssue(ISSUE);
+
+      expect(issue).toEqual({
+        url: ISSUE.url,
+        state: 'OPEN',
+        body: 'After retry',
+        labels: [],
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(noWait).toHaveBeenCalledTimes(1);
+      expect(noWait).toHaveBeenCalledWith(1000);
     });
 
     it('retries HTTP 429 after the injected wait', async () => {
@@ -172,14 +203,40 @@ describe('GithubStoryGateIssueRepository', () => {
       expect(noWait).toHaveBeenCalled();
     });
 
-    it('rejects when fetch throws', async () => {
-      jest
+    it('rejects when fetch throws for every attempt', async () => {
+      const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockRejectedValueOnce(new Error('network down'));
+        .mockRejectedValue(new Error('network down'));
 
       await expect(repositoryCreate().findIssue(ISSUE)).rejects.toThrow(
         StoryGateGithubRequestError,
       );
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(noWait).toHaveBeenCalledTimes(3);
+      expect(noWait).toHaveBeenNthCalledWith(1, 1000);
+      expect(noWait).toHaveBeenNthCalledWith(2, 2000);
+      expect(noWait).toHaveBeenNthCalledWith(3, 4000);
+    });
+
+    it('retries a network error once and then returns the successful response', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce(
+          jsonResponse({ state: 'open', body: 'After retry', labels: [] }),
+        );
+
+      const issue = await repositoryCreate().findIssue(ISSUE);
+
+      expect(issue).toEqual({
+        url: ISSUE.url,
+        state: 'OPEN',
+        body: 'After retry',
+        labels: [],
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(noWait).toHaveBeenCalledTimes(1);
+      expect(noWait).toHaveBeenCalledWith(1000);
     });
   });
 
@@ -227,14 +284,19 @@ describe('GithubStoryGateIssueRepository', () => {
       expect(new URL(secondRequest.url).searchParams.get('page')).toBe('2');
     });
 
-    it('rejects for HTTP 500', async () => {
-      jest
+    it('rejects for HTTP 500 after every retry is exhausted', async () => {
+      const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(jsonResponse({ message: 'Server Error' }, 500));
+        .mockResolvedValue(jsonResponse({ message: 'Server Error' }, 500));
 
       await expect(repositoryCreate().listIssueComments(ISSUE)).rejects.toThrow(
         StoryGateGithubRequestError,
       );
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(noWait).toHaveBeenCalledTimes(3);
+      expect(noWait).toHaveBeenNthCalledWith(1, 1000);
+      expect(noWait).toHaveBeenNthCalledWith(2, 2000);
+      expect(noWait).toHaveBeenNthCalledWith(3, 4000);
     });
   });
 
@@ -426,14 +488,19 @@ describe('GithubStoryGateIssueRepository', () => {
       await expect(promise).rejects.toThrow('Resource not accessible');
     });
 
-    it('rejects with the GraphQL URL for HTTP 500', async () => {
-      jest
+    it('rejects with the GraphQL URL after HTTP 500 persists', async () => {
+      const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(jsonResponse({ message: 'Server Error' }, 500));
+        .mockResolvedValue(jsonResponse({ message: 'Server Error' }, 500));
 
       await expect(
         repositoryCreate().findIssueProjectItems(ISSUE),
       ).rejects.toThrow(GRAPHQL_URL);
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(noWait).toHaveBeenCalledTimes(3);
+      expect(noWait).toHaveBeenNthCalledWith(1, 1000);
+      expect(noWait).toHaveBeenNthCalledWith(2, 2000);
+      expect(noWait).toHaveBeenNthCalledWith(3, 4000);
     });
 
     it('retries HTTP 429 after the injected wait', async () => {

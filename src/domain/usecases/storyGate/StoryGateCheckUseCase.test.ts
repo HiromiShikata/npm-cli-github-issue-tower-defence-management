@@ -10,6 +10,7 @@ import {
   IssueProjectItemsSnapshot,
   ProjectItemSingleSelectValueUpdate,
   ProjectSingleSelectOption,
+  StoryGateGithubRequestError,
   StoryGateIssue,
   StoryGateIssueComment,
   StoryGateIssueRepository,
@@ -186,7 +187,12 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
   readonly issueReads: string[] = [];
   readonly projectItemReads: string[] = [];
   readonly updates: ProjectItemSingleSelectValueUpdate[] = [];
+  readonly issueReadFailureStatusByUrl = new Map<string, number | null>();
   appliesUpdates = true;
+
+  issueUnreadableUrlAdd = (url: string, status: number | null = 403): void => {
+    this.issueReadFailureStatusByUrl.set(url, status);
+  };
 
   issueAdd = (fixture: IssueFixture): void => {
     const url = issueUrl(fixture.number);
@@ -213,6 +219,13 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
     issue: GithubIssueReference,
   ): Promise<StoryGateIssue | null> => {
     this.issueReads.push(issue.url);
+    if (this.issueReadFailureStatusByUrl.has(issue.url)) {
+      const status = this.issueReadFailureStatusByUrl.get(issue.url) ?? null;
+      throw new StoryGateGithubRequestError(
+        `GET ${issue.url} returned HTTP ${status ?? 'unknown'}`,
+        status,
+      );
+    }
     return this.issues.get(issue.url) ?? null;
   };
 
@@ -891,6 +904,71 @@ describe('StoryGateCheckUseCase', () => {
     });
   });
 
+  describe('triage agent self-routing guard', () => {
+    it('proceeds instead of routing to itself when ISSUE_NOT_IN_BOARD_CACHE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: null,
+        inCache: false,
+        liveItems: [liveItem(BOARD_PROJECT_ID, null, `ITEM_${ASSIGNED}`)],
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('resolves itself instead of routing to itself when STORY_NOT_ADOPTABLE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({ story: null });
+      scenario.configs = [];
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('proceeds instead of routing to itself when STORY_ISSUE_NOT_FOUND would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        storyIssueUrlByOptionName: {},
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('proceeds instead of routing to itself when STORY_ISSUES_NOT_READABLE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        storyIssueUrlByOptionName: { 'feature A': issueUrl(108) },
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+  });
+
   describe('story issue lookup', () => {
     it('takes the story issue URL from the map of another board cache', async () => {
       const scenario = new StoryGateScenario({
@@ -1425,6 +1503,43 @@ describe('StoryGateCheckUseCase', () => {
         },
       ]);
       expect(result.specification?.detectedUrl).toBe(issueUrl(5));
+    });
+
+    it('lists an unreadable linked candidate separately and decides from the readable candidates', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: bodyLinking(PROSE_COMPLETION_BODY),
+        comments: [],
+      });
+      scenario.repository.issueAdd({
+        number: 7,
+        body: 'No specification here',
+      });
+      scenario.repository.issueUnreadableUrlAdd(issueUrl(5));
+
+      const { result } = await scenario.run();
+
+      expect(result.specification?.unreadableUrls).toEqual([issueUrl(5)]);
+      expect(
+        result.specification?.candidates.map((candidate) => candidate.url),
+      ).toEqual([issueUrl(ASSIGNED), issueUrl(7)]);
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('REGULAR_STORY');
+    });
+
+    it('propagates a linked candidate read failure that is not HTTP 403 or 404', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: bodyLinking(PROSE_COMPLETION_BODY),
+        comments: [],
+      });
+      scenario.repository.issueAdd({
+        number: 7,
+        body: 'No specification here',
+      });
+      scenario.repository.issueUnreadableUrlAdd(issueUrl(5), 500);
+
+      await expect(scenario.run()).rejects.toThrow('returned HTTP 500');
     });
 
     it.each([
