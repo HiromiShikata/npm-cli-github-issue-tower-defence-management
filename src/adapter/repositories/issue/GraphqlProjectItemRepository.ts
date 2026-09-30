@@ -19,6 +19,7 @@ export type ProjectItem = {
   closingIssueReferenceUrls: string[];
   plainCrossRepoIssueReferenceUrls: string[];
   isRepoArchived: boolean;
+  isArchivedFromProject?: boolean;
   stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;
   customFields: {
     name: string;
@@ -741,6 +742,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           item.content.repository.nameWithOwner,
         ),
       isRepoArchived: item.content.repository.isArchived ?? false,
+      isArchivedFromProject: false,
       stateReason: toStateReason(item.content.stateReason),
       customFields: item.fieldValues.nodes
         .filter((field) => !!field.field)
@@ -1200,6 +1202,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems(first: 10) {
         nodes {
           id
+          isArchived
           project {
             id
           }
@@ -1285,6 +1288,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems(first: 10) {
         nodes {
           id
+          isArchived
           project {
             id
           }
@@ -1364,6 +1368,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       projectItems: {
         nodes: {
           id: string;
+          isArchived: boolean;
           project: { id: string } | null;
           fieldValues: {
             nodes: {
@@ -1380,19 +1385,21 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         }[];
       };
     };
-    const response = await postGithubGraphqlJson<{
-      data?: {
-        repository: {
-          issue: ContentNode | null;
-          pullRequest: ContentNode | null;
-        } | null;
-      };
-      errors?: { message: string }[];
-    }>({
-      ghToken: this.ghToken,
-      query: graphqlQuery.query,
-      variables: graphqlQuery.variables,
-    });
+    const response = await callWithRateLimitRetry(() =>
+      postGithubGraphqlJson<{
+        data?: {
+          repository: {
+            issue: ContentNode | null;
+            pullRequest: ContentNode | null;
+          } | null;
+        };
+        errors?: { message: string }[];
+      }>({
+        ghToken: this.ghToken,
+        query: graphqlQuery.query,
+        variables: graphqlQuery.variables,
+      }),
+    );
     if (!response.data) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
@@ -1412,6 +1419,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     const buildProjectItem = (
       itemId: string,
       customFields: ProjectItem['customFields'],
+      isArchivedFromProject: boolean,
     ): ProjectItem => ({
       id: itemId,
       nameWithOwner: content.repository.nameWithOwner,
@@ -1443,6 +1451,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           content.repository.nameWithOwner,
         ),
       isRepoArchived: content.repository.isArchived ?? false,
+      isArchivedFromProject,
       stateReason: toStateReason(content.stateReason),
       customFields,
     });
@@ -1473,6 +1482,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             null,
           optionId: field.optionId,
         })),
+      item.isArchived ?? false,
     );
   };
   convertStrToState = (state: string): 'OPEN' | 'CLOSED' | 'MERGED' => {
