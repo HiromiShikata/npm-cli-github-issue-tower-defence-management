@@ -1239,16 +1239,27 @@ export class ApiV3CheerioRestIssueRepository
         Issue['itemId'],
         ProjectItem | null
       >();
-      for (const issue of issuesAbsentFromFetchResult) {
-        const liveProjectItem =
-          await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-            issue.url,
-            projectId,
+      if (issuesAbsentFromFetchResult.length > 0) {
+        const fetchedLiveProjectItems =
+          await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+            issuesAbsentFromFetchResult.map((issue) => issue.itemId),
           );
-        liveProjectItemsByItemIdAbsentFromFetchResult.set(
-          issue.itemId,
-          liveProjectItem,
+        const liveProjectItemsAbsentFromFetchResultById = new Map(
+          fetchedLiveProjectItems.map((liveProjectItem) => [
+            liveProjectItem.id,
+            liveProjectItem,
+          ]),
         );
+        for (const issue of issuesAbsentFromFetchResult) {
+          const liveProjectItem =
+            liveProjectItemsAbsentFromFetchResultById.get(issue.itemId) ?? null;
+          liveProjectItemsByItemIdAbsentFromFetchResult.set(
+            issue.itemId,
+            liveProjectItem && !liveProjectItem.isArchivedFromProject
+              ? liveProjectItem
+              : null,
+          );
+        }
       }
       const nowIso = now.toISOString();
       const { mergedIssues: issues, mergedProject } =

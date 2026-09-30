@@ -60,6 +60,7 @@ type ProjectV2ItemContentNode = {
 };
 type ProjectV2ItemNode = {
   id: string;
+  isArchived: boolean;
   fieldValues: {
     nodes: ProjectV2ItemFieldValueNode[];
   };
@@ -77,6 +78,7 @@ export const PROJECT_ITEM_LABELS_FIRST = 20;
 export const PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 
 const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
+          isArchived
           fieldValues(first: 10) {
             nodes {
               ... on ProjectV2ItemFieldTextValue {
@@ -441,6 +443,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           };
           nodes: {
             id: string;
+            isArchived: boolean;
             fieldValues: {
               nodes: {
                 text: string;
@@ -491,6 +494,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                 };
                 nodes: {
                   id: string;
+                  isArchived: boolean;
                   fieldValues: {
                     nodes: {
                       text: string;
@@ -564,6 +568,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           };
           nodes: {
             id: string;
+            isArchived: boolean;
             fieldValues: {
               nodes: {
                 text: string;
@@ -742,7 +747,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           item.content.repository.nameWithOwner,
         ),
       isRepoArchived: item.content.repository.isArchived ?? false,
-      isArchivedFromProject: false,
+      isArchivedFromProject: item.isArchived ?? false,
       stateReason: toStateReason(item.content.stateReason),
       customFields: item.fieldValues.nodes
         .filter((field) => !!field.field)

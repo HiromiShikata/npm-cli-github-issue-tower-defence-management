@@ -2031,8 +2031,14 @@ describe('GraphqlProjectItemRepository', () => {
         },
       });
 
-    const makeDetailNode = (id: string, url: string, title: string) => ({
+    const makeDetailNode = (
+      id: string,
+      url: string,
+      title: string,
+      isArchived?: boolean,
+    ) => ({
       id,
+      ...(isArchived === undefined ? {} : { isArchived }),
       fieldValues: {
         nodes: [
           {
@@ -2140,6 +2146,54 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(firstBatch?.ids).toHaveLength(100);
       expect(secondBatch?.ids).toHaveLength(50);
+    });
+
+    it('maps isArchived from the ProjectV2Item node to isArchivedFromProject on the result of fetchProjectItemsByIds', async () => {
+      const isArchivedMappingCases: {
+        name: string;
+        isArchived: boolean | undefined;
+        expectedIsArchivedFromProject: boolean;
+      }[] = [
+        {
+          name: 'isArchived true maps to isArchivedFromProject true',
+          isArchived: true,
+          expectedIsArchivedFromProject: true,
+        },
+        {
+          name: 'isArchived false maps to isArchivedFromProject false',
+          isArchived: false,
+          expectedIsArchivedFromProject: false,
+        },
+        {
+          name: 'isArchived absent maps to isArchivedFromProject false',
+          isArchived: undefined,
+          expectedIsArchivedFromProject: false,
+        },
+      ];
+
+      for (const testCase of isArchivedMappingCases) {
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+        mockPost.mockReturnValueOnce(
+          makeByIdsResponse([
+            makeDetailNode(
+              'PVTI_1',
+              'https://github.com/o/r/issues/1',
+              'title',
+              testCase.isArchived,
+            ),
+          ]),
+        );
+
+        const result = await repository.fetchProjectItemsByIds(['PVTI_1']);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].isArchivedFromProject).toBe(
+          testCase.expectedIsArchivedFromProject,
+        );
+      }
     });
 
     it('returns accessible items without throwing when a FORBIDDEN error appears on a nodes-batch content path', async () => {
