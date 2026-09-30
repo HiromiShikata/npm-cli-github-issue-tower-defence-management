@@ -187,11 +187,11 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
   readonly issueReads: string[] = [];
   readonly projectItemReads: string[] = [];
   readonly updates: ProjectItemSingleSelectValueUpdate[] = [];
-  readonly unreadableIssueUrls = new Set<string>();
+  readonly issueReadFailureStatusByUrl = new Map<string, number | null>();
   appliesUpdates = true;
 
-  issueUnreadableUrlAdd = (url: string): void => {
-    this.unreadableIssueUrls.add(url);
+  issueUnreadableUrlAdd = (url: string, status: number | null = 403): void => {
+    this.issueReadFailureStatusByUrl.set(url, status);
   };
 
   issueAdd = (fixture: IssueFixture): void => {
@@ -219,9 +219,11 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
     issue: GithubIssueReference,
   ): Promise<StoryGateIssue | null> => {
     this.issueReads.push(issue.url);
-    if (this.unreadableIssueUrls.has(issue.url)) {
+    if (this.issueReadFailureStatusByUrl.has(issue.url)) {
+      const status = this.issueReadFailureStatusByUrl.get(issue.url) ?? null;
       throw new StoryGateGithubRequestError(
-        `GET ${issue.url} returned HTTP 403`,
+        `GET ${issue.url} returned HTTP ${status ?? 'unknown'}`,
+        status,
       );
     }
     return this.issues.get(issue.url) ?? null;
@@ -1523,6 +1525,21 @@ describe('StoryGateCheckUseCase', () => {
       ).toEqual([issueUrl(ASSIGNED), issueUrl(7)]);
       expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('REGULAR_STORY');
+    });
+
+    it('propagates a linked candidate read failure that is not HTTP 403 or 404', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: bodyLinking(PROSE_COMPLETION_BODY),
+        comments: [],
+      });
+      scenario.repository.issueAdd({
+        number: 7,
+        body: 'No specification here',
+      });
+      scenario.repository.issueUnreadableUrlAdd(issueUrl(5), 500);
+
+      await expect(scenario.run()).rejects.toThrow('returned HTTP 500');
     });
 
     it.each([
