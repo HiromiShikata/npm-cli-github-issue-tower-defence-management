@@ -96,6 +96,7 @@ export class StartPreparationUseCase {
       | 'removeLabel'
       | 'get'
       | 'removeIssueFromProjectCache'
+      | 'appendIssueToProjectCache'
     >,
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
@@ -930,21 +931,33 @@ export class StartPreparationUseCase {
         continue;
       }
 
-      const refetchedIssue = await this.issueRepository.get(issue.url, project);
-      if (refetchedIssue === null) {
-        console.warn(
-          `Dropping ${issue.url} from the preparation candidates: it is no longer on the project board.`,
-        );
-        await this.issueRepository.removeIssueFromProjectCache(
-          project.id,
-          issue,
-        );
+      const staleness = await issueSnapshotStalenessCheck({
+        issueRepository: this.issueRepository,
+        project,
+        snapshotIssue: issue,
+        checkedFieldNames: ['status', 'isClosed'],
+        skippedWriteDescription: `the Preparation status write for a spawn candidate`,
+      });
+      if (staleness.type === 'removedFromProject') {
         continue;
       }
-      if (
-        refetchedIssue.dependedIssueUrls.length > 0 ||
-        refetchedIssue.status !== AWAITING_WORKSPACE_STATUS_NAME
-      ) {
+      if (staleness.type === 'stale') {
+        console.warn(
+          `Skipping ${issue.url}: re-fetch shows issue is no longer eligible for spawning.`,
+        );
+        if (staleness.changedFieldNames.includes('isClosed')) {
+          await this.issueRepository.removeIssueFromProjectCache(
+            project.id,
+            issue,
+          );
+          await this.issueRepository.appendIssueToProjectCache(
+            project.id,
+            staleness.liveIssue,
+          );
+        }
+        continue;
+      }
+      if (staleness.liveIssue.dependedIssueUrls.length > 0) {
         console.warn(
           `Skipping ${issue.url}: re-fetch shows issue is no longer eligible for spawning.`,
         );

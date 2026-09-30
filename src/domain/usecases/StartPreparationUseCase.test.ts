@@ -129,6 +129,7 @@ describe('StartPreparationUseCase', () => {
       | 'getIssueByUrl'
       | 'get'
       | 'removeIssueFromProjectCache'
+      | 'appendIssueToProjectCache'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -169,6 +170,7 @@ describe('StartPreparationUseCase', () => {
         }),
       ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
+      appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -8216,6 +8218,69 @@ describe('StartPreparationUseCase', () => {
     },
   );
 
+  it('does not spawn and self-heals the project cache when the re-fetched issue is already closed', async () => {
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+      isClosed: false,
+    });
+    const refetchedClosedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+      isClosed: true,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+    mockIssueRepository.get.mockResolvedValue(refetchedClosedIssue);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueRepository.removeIssueFromProjectCache.mock.calls,
+    ).toContainEqual([
+      mockProject.id,
+      expect.objectContaining({
+        url: awaitingIssue.url,
+        itemId: awaitingIssue.itemId,
+        isClosed: false,
+      }),
+    ]);
+    expect(
+      mockIssueRepository.appendIssueToProjectCache.mock.calls,
+    ).toContainEqual([
+      mockProject.id,
+      expect.objectContaining({
+        url: refetchedClosedIssue.url,
+        itemId: refetchedClosedIssue.itemId,
+        isClosed: true,
+      }),
+    ]);
+  });
+
   it('spawns the next-ranked eligible candidate in the same run when the top-ranked candidate has no prefetched branch source and fails the live re-fetch eligibility check', async () => {
     const topCandidate = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -8918,6 +8983,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'removeLabel'
       | 'get'
       | 'removeIssueFromProjectCache'
+      | 'appendIssueToProjectCache'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -8933,6 +8999,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     removeLabel: jest.fn(),
     get: jest.fn().mockResolvedValue(null),
     removeIssueFromProjectCache: jest.fn(),
+    appendIssueToProjectCache: jest.fn(),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -9233,6 +9300,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         removeLabel: jest.fn(),
         get: jest.fn().mockResolvedValue(null),
         removeIssueFromProjectCache: jest.fn(),
+        appendIssueToProjectCache: jest.fn(),
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
@@ -9330,6 +9398,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
         }),
       ),
       removeIssueFromProjectCache: jest.fn(),
+      appendIssueToProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9430,6 +9499,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         }),
       ),
       removeIssueFromProjectCache: jest.fn(),
+      appendIssueToProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9516,6 +9586,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         }),
       ),
       removeIssueFromProjectCache: jest.fn(),
+      appendIssueToProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9605,6 +9676,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         }),
       ),
       removeIssueFromProjectCache: jest.fn(),
+      appendIssueToProjectCache: jest.fn(),
     };
     const mockLocalCommandRunner = {
       runCommand: jest
@@ -9725,6 +9797,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
           }),
         ),
         removeIssueFromProjectCache: jest.fn(),
+        appendIssueToProjectCache: jest.fn(),
       };
       const mockLocalCommandRunner = {
         runCommand: jest
@@ -9812,6 +9885,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         removeLabel: jest.fn(),
         get: jest.fn().mockResolvedValue(null),
         removeIssueFromProjectCache: jest.fn(),
+        appendIssueToProjectCache: jest.fn(),
         ...issueRepositoryOverrides,
       },
       { runCommand: jest.fn(), spawnInteractive: jest.fn() },
