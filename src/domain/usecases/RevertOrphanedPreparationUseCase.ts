@@ -585,9 +585,7 @@ export class RevertOrphanedPreparationUseCase {
       if (!countMatch || !fingerprintLine.startsWith('fingerprint: ')) {
         return 0;
       }
-      const embeddedFingerprint = fingerprintLine.slice(
-        'fingerprint: '.length,
-      );
+      const embeddedFingerprint = fingerprintLine.slice('fingerprint: '.length);
       return embeddedFingerprint === fingerprint ? Number(countMatch[1]) : 0;
     })();
 

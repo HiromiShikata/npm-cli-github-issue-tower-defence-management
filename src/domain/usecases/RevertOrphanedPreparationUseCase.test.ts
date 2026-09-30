@@ -1583,9 +1583,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
     ).toHaveLength(1);
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      1,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
       'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
     );
@@ -1625,9 +1623,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
     ).toHaveLength(1);
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      1,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
       'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED (1/3)\nfingerprint: []',
     );
@@ -3304,7 +3300,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(
         mockIssueCommentRepository.createComment.mock.calls.some(([, body]) =>
-          body.startsWith('Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED'),
+          body.startsWith(
+            'Auto Status Check: ORPHANED_ALIVE_EXCEPTION_APPLIED',
+          ),
         ),
       ).toBe(false);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
