@@ -1193,9 +1193,9 @@ export class ApiV3CheerioRestIssueRepository
       >();
       if (issuesAbsentFromFetchResult.length > 0) {
         const fetchedLiveProjectItems =
-          (await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+          await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
             issuesAbsentFromFetchResult.map((issue) => issue.itemId),
-          )) ?? [];
+          );
         const liveProjectItemsAbsentFromFetchResultById = new Map(
           fetchedLiveProjectItems.map((liveProjectItem) => [
             liveProjectItem.id,
