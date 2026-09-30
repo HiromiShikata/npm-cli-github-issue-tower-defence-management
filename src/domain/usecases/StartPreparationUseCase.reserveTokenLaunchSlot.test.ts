@@ -12,9 +12,7 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-class InMemoryIssueLatestSessionBranchRepository
-  implements IssueLatestSessionBranchRepository
-{
+class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
   findBranchNameByIssue = async (): Promise<string | null> => null;
 }
 
@@ -140,16 +138,18 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
-      get: jest
-        .fn()
-        .mockResolvedValue(
-          createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
-        ),
+      getIssueByUrl: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
+      get: jest.fn().mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+        }),
+      ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
       appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
     };

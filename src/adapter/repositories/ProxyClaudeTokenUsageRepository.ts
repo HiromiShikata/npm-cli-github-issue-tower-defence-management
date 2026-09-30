@@ -195,7 +195,9 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         const reservationFilePath = `${reservationDirectoryPath}/${randomUUID()}.json`;
         localStorageRepository.write(
           reservationFilePath,
-          JSON.stringify({ reservedAt: nowMs } satisfies TokenLaunchReservation),
+          JSON.stringify({
+            reservedAt: nowMs,
+          } satisfies TokenLaunchReservation),
         );
         return true;
       },

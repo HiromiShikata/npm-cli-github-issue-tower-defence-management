@@ -1023,17 +1023,14 @@ export class StartPreparationUseCase {
               model: t.model,
               sevenDayFreeRatio: t.sevenDayFreeRatio,
               secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
-              remainingConcurrentSlotCount: tokensDeniedThisAttempt.has(
-                t.token,
-              )
+              remainingConcurrentSlotCount: tokensDeniedThisAttempt.has(t.token)
                 ? 0
                 : t.limit -
                   (tokenInFlightCounts[t.token] ?? 0) -
                   (spawnedInThisRunByToken[t.token] ?? 0),
             })),
           );
-        let reservedTokenToFill: { token: string; model: string } | null =
-          null;
+        let reservedTokenToFill: { token: string; model: string } | null = null;
         for (;;) {
           let candidate = tokenToFillOf();
           if (candidate === null && !tokenInFlightCountsRefreshed) {

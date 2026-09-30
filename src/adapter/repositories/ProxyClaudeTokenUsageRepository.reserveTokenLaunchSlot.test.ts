@@ -12,7 +12,10 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     new ProxyClaudeTokenUsageRepository(
       null,
       8787,
-      new LocalStorageCacheRepository(new LocalStorageRepository(), tempCacheDir),
+      new LocalStorageCacheRepository(
+        new LocalStorageRepository(),
+        tempCacheDir,
+      ),
     );
 
   beforeEach(() => {
