@@ -1084,32 +1084,6 @@ export class ApiV3CheerioRestIssueRepository
     return Array.from(mergedIssuesByUrl.values());
   };
 
-  private reconcileIssuesAbsentFromFullFetchResult = (
-    mergedIssues: Issue[],
-    liveProjectItemsByItemIdAbsentFromFetchResult: ReadonlyMap<
-      Issue['itemId'],
-      ProjectItem | null
-    >,
-  ): Issue[] => {
-    if (liveProjectItemsByItemIdAbsentFromFetchResult.size === 0) {
-      return mergedIssues;
-    }
-    const reconciledIssues: Issue[] = [];
-    for (const issue of mergedIssues) {
-      if (!liveProjectItemsByItemIdAbsentFromFetchResult.has(issue.itemId)) {
-        reconciledIssues.push(issue);
-        continue;
-      }
-      const liveProjectItem =
-        liveProjectItemsByItemIdAbsentFromFetchResult.get(issue.itemId) ?? null;
-      if (liveProjectItem === null || liveProjectItem.isArchivedFromProject) {
-        continue;
-      }
-      reconciledIssues.push(this.convertProjectItemToIssue(liveProjectItem));
-    }
-    return reconciledIssues;
-  };
-
   private mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight = (
     projectPresentInCacheAtMergeTime: Project | null,
     projectPresentInCacheBeforeFetchStarted: Project | null,
@@ -1182,26 +1156,6 @@ export class ApiV3CheerioRestIssueRepository
       );
       const items =
         await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
-      const cachedIssuesKnownBeforeFetch = cache?.issues ?? [];
-      const itemIdsPresentInFetchResult = new Set(items.map((item) => item.id));
-      const issuesAbsentFromFetchResult = cachedIssuesKnownBeforeFetch.filter(
-        (issue) => !itemIdsPresentInFetchResult.has(issue.itemId),
-      );
-      const liveProjectItemsByItemIdAbsentFromFetchResult = new Map<
-        Issue['itemId'],
-        ProjectItem | null
-      >();
-      for (const issue of issuesAbsentFromFetchResult) {
-        const liveProjectItem =
-          await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-            issue.url,
-            projectId,
-          );
-        liveProjectItemsByItemIdAbsentFromFetchResult.set(
-          issue.itemId,
-          liveProjectItem,
-        );
-      }
       const nowIso = now.toISOString();
       const { mergedIssues: issues, mergedProject } =
         await this.projectIssuesCacheRepository.withLock(
@@ -1214,11 +1168,6 @@ export class ApiV3CheerioRestIssueRepository
                 itemIdsKnownBeforeFetch,
                 items,
               );
-            const reconciledIssues =
-              this.reconcileIssuesAbsentFromFullFetchResult(
-                mergedIssues,
-                liveProjectItemsByItemIdAbsentFromFetchResult,
-              );
             const mergedProject =
               this.mergeFetchedProjectPreservingCacheChangeWhileFetchWasInFlight(
                 freshCache?.project ?? null,
@@ -1229,14 +1178,14 @@ export class ApiV3CheerioRestIssueRepository
               lastFetchedAt: nowIso,
               lastFullFetchAt: nowIso,
               project: mergedProject,
-              issues: reconciledIssues,
+              issues: mergedIssues,
               storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
-                reconciledIssues,
+                mergedIssues,
                 project.story?.stories ?? [],
               ),
               storyOptions: buildStoryOptions(project),
             });
-            return { mergedIssues: reconciledIssues, mergedProject };
+            return { mergedIssues, mergedProject };
           },
         );
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
