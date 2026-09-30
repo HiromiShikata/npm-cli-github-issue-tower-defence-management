@@ -62,7 +62,8 @@ export type StoryGateReason =
   | 'AGENT_NOT_IN_PROJECT_AGENTS'
   | 'OPEN_PULL_REQUEST_EXISTS'
   | 'COMMENT_HISTORY_OVER_LIMIT'
-  | 'WORK_MERGED_WITHOUT_APPROVED_SPECIFICATION';
+  | 'WORK_MERGED_WITHOUT_APPROVED_SPECIFICATION'
+  | 'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF';
 
 export type StorySource = 'BOARD_CACHE' | 'LIVE' | 'ADOPTED' | 'NONE';
 
@@ -352,6 +353,13 @@ export class StoryGateCheckUseCase {
     input: StoryGateCheckInput,
     reason: StoryGateReason,
   ): StoryGateCheckOutput => {
+    if (input.agentName === input.triageAgentName) {
+      return this.decide(
+        state,
+        'SELF_RESOLVE_STORY',
+        'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF',
+      );
+    }
     state.result.routingJson = {
       nextStepAgent: input.triageAgentName,
       returnToAgent: input.agentName,
