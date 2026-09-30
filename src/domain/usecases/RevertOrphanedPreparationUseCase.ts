@@ -548,18 +548,44 @@ export class RevertOrphanedPreparationUseCase {
     return this.applyAliveWithFreshLogException(
       issue,
       params.thresholdForAutoReject,
+      awLogDirectoryPath,
     );
+  };
+
+  private findLatestLocalCommitShaForIssue = async (
+    issue: Issue,
+    awLogDirectoryPath: string,
+  ): Promise<string | null> => {
+    const logPattern = `${issue.org}_${issue.repo}_${issue.number}_*`;
+    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+      'sh',
+      [
+        '-c',
+        'D=$(head -c 65536 "$(find "$1" -name "$2" | sort | tail -1)" 2>/dev/null | sed -n "s/^Current directory: //p" | head -1); [ -n "$D" ] && git -C "$D" rev-parse HEAD 2>/dev/null',
+        '--',
+        awLogDirectoryPath,
+        logPattern,
+      ],
+    );
+    const sha = stdout.trim();
+    return exitCode === 0 && sha ? sha : null;
   };
 
   private applyAliveWithFreshLogException = async (
     issue: Issue,
     thresholdForAutoReject: number,
+    awLogDirectoryPath: string,
   ): Promise<boolean> => {
     const relatedPullRequests = await this.issueRepository.findRelatedOpenPRs(
       issue.url,
     );
-    const fingerprint = JSON.stringify(
-      [...relatedPullRequests]
+    const latestLocalCommitSha = await this.findLatestLocalCommitShaForIssue(
+      issue,
+      awLogDirectoryPath,
+    );
+    const fingerprint = JSON.stringify({
+      latestLocalCommitSha,
+      relatedPullRequests: [...relatedPullRequests]
         .sort((a, b) => a.url.localeCompare(b.url))
         .map((pr: RelatedPullRequest) => ({
           url: pr.url,
@@ -569,7 +595,7 @@ export class RevertOrphanedPreparationUseCase {
           isBranchOutOfDate: pr.isBranchOutOfDate,
           reviewDecision: pr.reviewDecision,
         })),
-    );
+    });
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
     const lastMarker = [...comments]
