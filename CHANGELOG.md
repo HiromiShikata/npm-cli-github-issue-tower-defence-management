@@ -1,3 +1,10 @@
+## [2.154.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.6...v2.154.7) (2026-09-30)
+
+
+### Bug Fixes
+
+* **scheduler:** move Story fallback assignment out of the 600-second-gated slow sweep ([#2952](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2952)) ([6283429](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6283429df212cad9e5598be594800fd29f7fc221))
+
 ## [2.154.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.5...v2.154.6) (2026-09-30)
 
 
