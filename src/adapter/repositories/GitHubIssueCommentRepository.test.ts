@@ -560,6 +560,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user1',
                 content: 'Page 1 comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
               },
             ],
             hasNextPage: true,
@@ -727,6 +728,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user1',
                 content: 'Page 1 comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
               },
             ],
             hasNextPage: true,
@@ -738,6 +740,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user2',
                 content: 'Page 2 comment',
                 createdAt: '2024-01-02T00:00:00.000Z',
+                updatedAt: '2024-01-02T00:00:00.000Z',
               },
             ],
             hasNextPage: false,
@@ -779,6 +782,7 @@ describe('GitHubIssueCommentRepository', () => {
         author: `user${i}`,
         content: `Cached comment ${i}`,
         createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`,
       }));
       const newCommentPayload = [
         {
@@ -838,6 +842,7 @@ describe('GitHubIssueCommentRepository', () => {
         author: `user${i}`,
         content: `Cached comment ${i}`,
         createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`,
       }));
 
       const cache = buildCommentCacheRepository();
@@ -866,6 +871,59 @@ describe('GitHubIssueCommentRepository', () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(50);
+    });
+
+    it('treats a cached page whose comments lack updatedAt as an invalid cache entry and refetches fresh data without sending If-None-Match', async () => {
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-legacy"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Legacy cached comment without updatedAt',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      const freshCommentPayloads = [
+        {
+          id: 2001,
+          user: { login: 'user-fresh' },
+          body: 'Freshly fetched comment',
+          created_at: '2024-03-01T00:00:00Z',
+          updated_at: '2024-03-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(freshCommentPayloads), {
+          status: 200,
+          headers: { ETag: '"etag-fresh"' },
+        }),
+      );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
+      expect(result.map((c) => c.content)).toEqual(['Freshly fetched comment']);
     });
   });
 

@@ -94,6 +94,7 @@ const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
   author: 'test-user',
   content: '```json\n{"nextStep": null}\n```',
   createdAt: new Date(),
+  updatedAt: new Date(),
   ...overrides,
 });
 

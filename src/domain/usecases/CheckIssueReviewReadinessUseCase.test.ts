@@ -38,6 +38,7 @@ const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
   author: 'agent-bot',
   content: '```json\n{"nextStep": null}\n```',
   createdAt: new Date('2000-01-01T00:00:00Z'),
+  updatedAt: new Date('2000-01-01T00:00:00Z'),
   ...overrides,
 });
 
