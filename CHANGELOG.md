@@ -1,3 +1,10 @@
+## [2.153.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.5...v2.153.6) (2026-09-30)
+
+
+### Bug Fixes
+
+* **StaleTaskPullRequestCloseUseCase:** look up related open pull requests with one batched query per run ([#2915](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2915)) ([591a365](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/591a365d49f7dc01b71a2ea15669dac7a76db027))
+
 ## [2.153.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.4...v2.153.5) (2026-09-30)
 
 
