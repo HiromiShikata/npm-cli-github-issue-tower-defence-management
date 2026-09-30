@@ -33,17 +33,21 @@ export class ClosedStoryIssueReopenUseCase {
       );
       let closedStoryIssue: Issue | null = closedStoryIssueInCache ?? null;
       if (!closedStoryIssueInCache) {
-        const openStoryIssueAlreadyExists = await this.hasOpenStoryIssue(
-          storyObject.story.name,
-          params.storyIssueOwnerRepo,
-        );
-        if (openStoryIssueAlreadyExists) {
-          continue;
+        const archivedClosedStoryIssue =
+          await this.findArchivedClosedStoryIssue(
+            storyObject.story.name,
+            params.storyIssueOwnerRepo,
+          );
+        if (archivedClosedStoryIssue) {
+          const openStoryIssueAlreadyExists = await this.hasOpenStoryIssue(
+            storyObject.story.name,
+            params.storyIssueOwnerRepo,
+          );
+          if (openStoryIssueAlreadyExists) {
+            continue;
+          }
         }
-        closedStoryIssue = await this.findArchivedClosedStoryIssue(
-          storyObject.story.name,
-          params.storyIssueOwnerRepo,
-        );
+        closedStoryIssue = archivedClosedStoryIssue;
       }
       if (!closedStoryIssue) {
         continue;
