@@ -124,6 +124,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
   let issueCheckpointRepository: Mocked<
     Pick<IssueCheckpointRepository, 'postCheckpoint'>
   >;
+  let stateRepository: Mocked<
+    Pick<TokenExhaustionHandoverStateRepository, 'save'>
+  >;
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -150,6 +153,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
     issueCheckpointRepository = {
       postCheckpoint: jest.fn().mockResolvedValue(undefined),
     };
+    stateRepository = {
+      save: jest.fn(),
+    };
 
     useCase = new TokenExhaustionHandoverUseCase(
       handoverSessionRepository,
@@ -157,6 +163,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
       tmuxSessionRepository,
       processSignalRepository,
       issueCheckpointRepository,
+      stateRepository,
     );
   });
 
@@ -906,20 +913,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
   });
 
   describe('per-session state persistence (issue #2878)', () => {
-    it('saves the handover state through an injected repository after each session is processed, not only once after the whole run resolves', async () => {
-      const stateRepository: Mocked<
-        Pick<TokenExhaustionHandoverStateRepository, 'save'>
-      > = {
-        save: jest.fn(),
-      };
-      const useCaseWithStateRepository = new TokenExhaustionHandoverUseCase(
-        handoverSessionRepository,
-        snapshotRepository,
-        tmuxSessionRepository,
-        processSignalRepository,
-        issueCheckpointRepository,
-        stateRepository,
-      );
+    it('saves the handover state through the injected repository after each session is processed, not only once after the whole run resolves', async () => {
       const sessionA: ClaudeHandoverSession = {
         ...issueUrlLeaderSession(),
         pid: 2001,
@@ -943,7 +937,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
         snapshot(TOKEN_FRESH),
       ]);
 
-      await useCaseWithStateRepository.run(defaultInput());
+      await useCase.run(defaultInput());
 
       expect(stateRepository.save).toHaveBeenCalledTimes(2);
       expect(stateRepository.save).toHaveBeenNthCalledWith(1, {

@@ -12,6 +12,7 @@ import {
   TokenRateLimitSnapshot,
   TokenRateLimitSnapshotRepository,
 } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
+import { TokenExhaustionHandoverStateRepository } from './adapter-interfaces/TokenExhaustionHandoverStateRepository';
 
 export const TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS = 900;
 export const TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS = 3600;
@@ -66,6 +67,10 @@ export class TokenExhaustionHandoverUseCase {
     private readonly issueCheckpointRepository: Pick<
       IssueCheckpointRepository,
       'postCheckpoint'
+    >,
+    private readonly stateRepository: Pick<
+      TokenExhaustionHandoverStateRepository,
+      'save'
     >,
   ) {}
 
@@ -174,6 +179,7 @@ export class TokenExhaustionHandoverUseCase {
           }`,
         );
       }
+      this.stateRepository.save({ entries: { ...nextEntries } });
     }
 
     console.log(

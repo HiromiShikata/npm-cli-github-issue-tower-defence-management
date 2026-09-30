@@ -58,6 +58,7 @@ export const handleTokenExhaustionHandover = async (
     new NodeTmuxSessionRepository(localCommandRunner),
     new NodeProcessSignalRepository(),
     new GitHubIssueCheckpointRepository(process.env.GH_TOKEN ?? ''),
+    stateRepository,
   );
 
   const result = await useCase.run({
