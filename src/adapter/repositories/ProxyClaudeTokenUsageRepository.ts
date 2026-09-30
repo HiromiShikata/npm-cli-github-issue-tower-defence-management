@@ -173,7 +173,16 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           if (fileContent === null) {
             continue;
           }
-          const parsedFileContent: unknown = JSON.parse(fileContent);
+          let parsedFileContent: unknown;
+          try {
+            parsedFileContent = JSON.parse(fileContent);
+          } catch (parseError) {
+            console.error(
+              `Discarding token launch reservation file '${filePath}' because its content is not valid JSON: ${String(parseError)}`,
+            );
+            localStorageRepository.remove(filePath);
+            continue;
+          }
           if (!isTokenLaunchReservation(parsedFileContent)) {
             continue;
           }
