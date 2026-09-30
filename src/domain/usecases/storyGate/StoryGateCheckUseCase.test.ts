@@ -1192,6 +1192,44 @@ describe('StoryGateCheckUseCase', () => {
 
     it.each([
       {
+        name: 'stops silently when another agent meets the posted routing to the specification agent',
+        agentName: 'developer',
+        action: 'STOP_SILENT',
+        reason: 'SPECIFICATION_ROUTING_ALREADY_POSTED',
+      },
+      {
+        name: 'proceeds when the specification agent itself meets the posted routing to it',
+        agentName: 'spec-creator',
+        action: 'PROCEED',
+        reason: 'REGULAR_STORY',
+      },
+    ])('$name', async ({ agentName, action, reason }) => {
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: [
+          '## Requirements',
+          '1. Show the list',
+          '',
+          '## Acceptance Criteria',
+          '1. The list is shown',
+        ].join('\n'),
+        comments: [
+          'owner question',
+          specificationRoutingComment('spec-creator'),
+        ],
+      });
+
+      const { result } = await scenario.run({
+        agentName,
+        specificationAgentName: 'spec-creator',
+      });
+
+      expect(result.action).toBe(action);
+      expect(result.reason).toBe(reason);
+    });
+
+    it.each([
+      {
         name: '41 comments without the story label',
         labels: [],
         comments: numbered('comment', 41),
