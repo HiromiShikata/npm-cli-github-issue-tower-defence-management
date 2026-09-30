@@ -4,15 +4,19 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   ProxyClaudeTokenUsageRepository,
+  TOKEN_LAUNCH_RESERVATION_TTL_MS,
   hashTokenForReservationDirectory,
 } from './ProxyClaudeTokenUsageRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerSessionReader';
 
 describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
   let tempCacheDir: string;
 
-  const buildRepository = (): ProxyClaudeTokenUsageRepository =>
+  const buildRepository = (
+    workerSessionReader?: ProcTakeOwnershipWorkerSessionReader,
+  ): ProxyClaudeTokenUsageRepository =>
     new ProxyClaudeTokenUsageRepository(
       null,
       8787,
@@ -20,6 +24,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         new LocalStorageRepository(),
         tempCacheDir,
       ),
+      workerSessionReader,
     );
 
   beforeEach(() => {
@@ -39,10 +44,12 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     const first = await repository.reserveTokenLaunchSlot({
       token: 'token-a',
       concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/101',
     });
     const second = await repository.reserveTokenLaunchSlot({
       token: 'token-a',
       concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/102',
     });
 
     expect(first).toBe(true);
@@ -55,16 +62,19 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     const granted = await repository.reserveTokenLaunchSlot({
       token: 'token-b',
       concurrentLimit: 2,
+      issueUrl: 'https://github.com/user/repo/issues/201',
     });
 
     const otherRepository = buildRepository();
     const secondGranted = await otherRepository.reserveTokenLaunchSlot({
       token: 'token-b',
       concurrentLimit: 2,
+      issueUrl: 'https://github.com/user/repo/issues/202',
     });
     const thirdDenied = await otherRepository.reserveTokenLaunchSlot({
       token: 'token-b',
       concurrentLimit: 2,
+      issueUrl: 'https://github.com/user/repo/issues/203',
     });
 
     expect(granted).toBe(true);
@@ -72,9 +82,8 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     expect(thirdDenied).toBe(false);
   });
 
-  it('does not count a reservation older than the 60 second reservation TTL toward the limit', async () => {
+  it('does not count a reservation older than the configured reservation TTL toward the limit, and the TTL is set to survive the 420 second launcher hold', async () => {
     jest.useFakeTimers({ advanceTimers: false });
-    const reservationTtlMs = 60_000;
     const start = new Date('2026-01-01T00:00:00.000Z');
     jest.setSystemTime(start);
     const repository = buildRepository();
@@ -82,20 +91,28 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     const fillGranted = await repository.reserveTokenLaunchSlot({
       token: 'token-c',
       concurrentLimit: 1,
-    });
-    const blockedBeforeExpiry = await repository.reserveTokenLaunchSlot({
-      token: 'token-c',
-      concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/301',
     });
 
-    jest.setSystemTime(new Date(start.getTime() + reservationTtlMs + 1));
+    jest.setSystemTime(new Date(start.getTime() + 420_000));
+    const stillBlockedAfterLauncherHoldDuration =
+      await repository.reserveTokenLaunchSlot({
+        token: 'token-c',
+        concurrentLimit: 1,
+        issueUrl: 'https://github.com/user/repo/issues/302',
+      });
+
+    jest.setSystemTime(
+      new Date(start.getTime() + TOKEN_LAUNCH_RESERVATION_TTL_MS + 1),
+    );
     const grantedAfterExpiry = await repository.reserveTokenLaunchSlot({
       token: 'token-c',
       concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/303',
     });
 
     expect(fillGranted).toBe(true);
-    expect(blockedBeforeExpiry).toBe(false);
+    expect(stillBlockedAfterLauncherHoldDuration).toBe(false);
     expect(grantedAfterExpiry).toBe(true);
   });
 
@@ -110,6 +127,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         (i % 2 === 0 ? repositoryA : repositoryB).reserveTokenLaunchSlot({
           token: 'shared-token',
           concurrentLimit,
+          issueUrl: `https://github.com/user/repo/issues/${400 + i}`,
         }),
       ),
     );
@@ -139,9 +157,120 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     const granted = await repository.reserveTokenLaunchSlot({
       token: 'token-a',
       concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/501',
     });
 
     expect(granted).toBe(true);
     expect(fs.existsSync(corruptReservationFilePath)).toBe(false);
+  });
+
+  it("excludes and removes a reservation whose issue URL already appears in a live worker's command line, regardless of which token that worker runs on", async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/42';
+    const tokenReservationDirectoryPath = path.join(
+      tempCacheDir,
+      'token-reservations',
+      hashTokenForReservationDirectory('token-d'),
+    );
+    fs.mkdirSync(tokenReservationDirectoryPath, { recursive: true });
+    const staleReservationFilePath = path.join(
+      tokenReservationDirectoryPath,
+      `${randomUUID()}.json`,
+    );
+    fs.writeFileSync(
+      staleReservationFilePath,
+      JSON.stringify({ reservedAt: Date.now(), issueUrl }),
+    );
+    const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+      path.join(tempCacheDir, 'nonexistent-proc'),
+    );
+    workerSessionReader.listWorkerSessions = () => [
+      {
+        rootProcessId: 1,
+        sessionToken: 'unused-session-token',
+        workerProcesses: [
+          {
+            processId: 1,
+            rawCommandLine: `claude --model opus "Take ownership of ${issueUrl}"`,
+          },
+        ],
+      },
+    ];
+    const repository = buildRepository(workerSessionReader);
+
+    const granted = await repository.reserveTokenLaunchSlot({
+      token: 'token-d',
+      concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/999',
+    });
+
+    expect(granted).toBe(true);
+    expect(fs.existsSync(staleReservationFilePath)).toBe(false);
+  });
+
+  it('does not double count a reservation once the real in-flight worker for its issue URL is running under that same token, still granting a slot for a different issue under the same token', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/55';
+    const tokenReservationDirectoryPath = path.join(
+      tempCacheDir,
+      'token-reservations',
+      hashTokenForReservationDirectory('token-f'),
+    );
+    fs.mkdirSync(tokenReservationDirectoryPath, { recursive: true });
+    const staleReservationFilePath = path.join(
+      tokenReservationDirectoryPath,
+      `${randomUUID()}.json`,
+    );
+    fs.writeFileSync(
+      staleReservationFilePath,
+      JSON.stringify({ reservedAt: Date.now(), issueUrl }),
+    );
+    const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+      path.join(tempCacheDir, 'nonexistent-proc'),
+    );
+    workerSessionReader.listWorkerSessions = () => [
+      {
+        rootProcessId: 3,
+        sessionToken: 'token-f',
+        workerProcesses: [
+          {
+            processId: 3,
+            rawCommandLine: `claude --model opus "Take ownership of ${issueUrl}"`,
+          },
+        ],
+      },
+    ];
+    const repository = buildRepository(workerSessionReader);
+
+    const granted = await repository.reserveTokenLaunchSlot({
+      token: 'token-f',
+      concurrentLimit: 2,
+      issueUrl: 'https://github.com/user/repo/issues/56',
+    });
+
+    expect(granted).toBe(true);
+    expect(fs.existsSync(staleReservationFilePath)).toBe(false);
+  });
+
+  it("counts a real in-flight worker session running under a token toward that same token's concurrent limit, denying a further reservation for it", async () => {
+    const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+      path.join(tempCacheDir, 'nonexistent-proc'),
+    );
+    workerSessionReader.listWorkerSessions = () => [
+      {
+        rootProcessId: 2,
+        sessionToken: 'token-e',
+        workerProcesses: [
+          { processId: 2, rawCommandLine: 'claude --model opus' },
+        ],
+      },
+    ];
+    const repository = buildRepository(workerSessionReader);
+
+    const denied = await repository.reserveTokenLaunchSlot({
+      token: 'token-e',
+      concurrentLimit: 1,
+      issueUrl: 'https://github.com/user/repo/issues/7',
+    });
+
+    expect(denied).toBe(false);
   });
 });
