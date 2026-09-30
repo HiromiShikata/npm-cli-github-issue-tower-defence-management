@@ -4905,7 +4905,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should move a token whose 7-day budget cannot be spent by 48 hours before its reset at its concurrent limit ahead of a token with less budget and a sooner reset', async () => {
+  it('should move a token whose 7-day budget cannot be spent by 72 hours before its reset at its concurrent limit ahead of a token with less budget and a sooner reset', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 1 }, (_, i) =>
       createMockIssue({
         url: `url${i + 1}`,
@@ -4939,7 +4939,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {
           seven_day: {
             rejected: false,
-            resetsAt: nowEpochSeconds + 60 * 3600,
+            resetsAt: nowEpochSeconds + 84 * 3600,
           },
         },
       },
@@ -4955,7 +4955,7 @@ describe('StartPreparationUseCase', () => {
         modelWeeklyLimits: {
           seven_day: {
             rejected: false,
-            resetsAt: nowEpochSeconds + 70 * 3600,
+            resetsAt: nowEpochSeconds + 94 * 3600,
           },
         },
       },

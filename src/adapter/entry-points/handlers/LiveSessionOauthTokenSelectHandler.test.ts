@@ -9,6 +9,7 @@ import {
   DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
   LiveSessionOauthTokenSelectUseCase,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
+import { SEVEN_DAY_SPEND_DEADLINE_HOURS } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { FABLE_LIMIT_TYPE, hashToken } from '../../proxy/RateLimitCache';
 import { LiveSessionOauthTokenSelectHandler } from './LiveSessionOauthTokenSelectHandler';
 
@@ -346,7 +347,9 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(diagnostics).not.toContain('via fallback');
     expect(diagnostics).toContain('Selected fallbackToken (');
     expect(diagnostics).toContain('7d free ratio ascending');
-    expect(diagnostics).toContain('cannot be spent by 48h before the 7d reset');
+    expect(diagnostics).toContain(
+      `cannot be spent by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before the 7d reset`,
+    );
   });
 
   it('returns the token on the selected path when an eligible token exists', () => {
