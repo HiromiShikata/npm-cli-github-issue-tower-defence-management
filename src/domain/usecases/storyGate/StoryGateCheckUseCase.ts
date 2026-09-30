@@ -818,7 +818,15 @@ export class StoryGateCheckUseCase {
     if (issueReference === null) {
       return null;
     }
-    const issue = await this.issueRepository.findIssue(issueReference);
+    let issue: StoryGateIssue | null;
+    try {
+      issue = await this.issueRepository.findIssue(issueReference);
+    } catch (error) {
+      if (error instanceof StoryGateGithubRequestError) {
+        return null;
+      }
+      throw error;
+    }
     return issue?.body ?? null;
   };
 }
