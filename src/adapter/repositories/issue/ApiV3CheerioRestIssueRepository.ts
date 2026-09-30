@@ -476,30 +476,6 @@ function isIssueEventsResponse(
   );
 }
 
-type RepositoryIssueEventFeedResponseItem = {
-  id: number;
-  event: string;
-  created_at: string;
-  issue: { number: number };
-};
-
-function isRepositoryIssueEventFeedResponse(
-  value: unknown,
-): value is RepositoryIssueEventFeedResponseItem[] {
-  if (!Array.isArray(value)) return false;
-  return value.every((item) => {
-    if (!isRecord(item)) return false;
-    const issue: unknown = item.issue;
-    return (
-      typeof item.id === 'number' &&
-      typeof item.event === 'string' &&
-      typeof item.created_at === 'string' &&
-      isRecord(issue) &&
-      typeof issue.number === 'number'
-    );
-  });
-}
-
 type IssueEventListingReopenedEventScan =
   | {
       listingOutcome: 'listedEveryEvent';
@@ -507,9 +483,44 @@ type IssueEventListingReopenedEventScan =
     }
   | {
       listingOutcome: 'stoppedAtGitHubIssueEventListingLimit';
-      latestReopenedEventAt: Date | null;
-      latestListedEventAt: Date;
     };
+
+type IssueLatestReopenedTimelineItemResponse = {
+  data: {
+    repository: {
+      issue: {
+        timelineItems: {
+          nodes: { createdAt: string }[];
+        };
+      };
+    };
+  };
+};
+
+function isIssueLatestReopenedTimelineItemResponse(
+  value: unknown,
+): value is IssueLatestReopenedTimelineItemResponse {
+  if (!isRecord(value)) return false;
+  const data: unknown = value.data;
+  if (!isRecord(data)) return false;
+  const repository: unknown = data.repository;
+  if (!isRecord(repository)) return false;
+  const issue: unknown = repository.issue;
+  if (!isRecord(issue)) return false;
+  const timelineItems: unknown = issue.timelineItems;
+  if (!isRecord(timelineItems)) return false;
+  const nodes: unknown = timelineItems.nodes;
+  return (
+    Array.isArray(nodes) &&
+    nodes.every((node) => isRecord(node) && typeof node.createdAt === 'string')
+  );
+}
+
+function listGraphqlResponseErrors(value: unknown): unknown[] {
+  if (!isRecord(value)) return [];
+  const errors: unknown = value.errors;
+  return Array.isArray(errors) ? errors : [];
+}
 
 type RestPullRequestCiStatusResponse = {
   html_url: string;
@@ -3623,15 +3634,7 @@ export class ApiV3CheerioRestIssueRepository
     if (issueEventListingScan.listingOutcome === 'listedEveryEvent') {
       return issueEventListingScan.latestReopenedEventAt;
     }
-    const reopenedEventAtNewerThanIssueEventListing =
-      await this.findReopenedEventAtNewerThanIssueEventListing(
-        issue,
-        issueEventListingScan.latestListedEventAt,
-      );
-    return (
-      reopenedEventAtNewerThanIssueEventListing ??
-      issueEventListingScan.latestReopenedEventAt
-    );
+    return this.fetchLatestReopenedTimelineItemCreatedAt(issue);
   };
 
   private scanIssueEventListingForLatestReopenedEventAt = async (
@@ -3643,7 +3646,6 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasNextPage = true;
     let listedEventCount = 0;
-    let latestListedEventAt: Date | null = null;
     let latestReopenedEventAt: Date | null = null;
     while (hasNextPage) {
       const eventsUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}/events?per_page=${ISSUE_EVENTS_PAGE_SIZE}&page=${page}`;
@@ -3672,13 +3674,10 @@ export class ApiV3CheerioRestIssueRepository
       }
       listedEventCount += body.length;
       for (const eventItem of body) {
-        const eventAt = new Date(eventItem.created_at);
-        if (latestListedEventAt === null || eventAt > latestListedEventAt) {
-          latestListedEventAt = eventAt;
-        }
         if (eventItem.event !== 'reopened') continue;
-        if (latestReopenedEventAt === null || eventAt > latestReopenedEventAt) {
-          latestReopenedEventAt = eventAt;
+        const reopenedAt = new Date(eventItem.created_at);
+        if (latestReopenedEventAt === null || reopenedAt > latestReopenedEventAt) {
+          latestReopenedEventAt = reopenedAt;
         }
       }
       const linkHeader = response.headers.get('Link') ?? '';
@@ -3686,69 +3685,62 @@ export class ApiV3CheerioRestIssueRepository
       page++;
     }
     if (
-      listedEventCount <
-        ISSUE_EVENT_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_ISSUE_EVENTS ||
-      latestListedEventAt === null
+      listedEventCount >=
+      ISSUE_EVENT_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_ISSUE_EVENTS
     ) {
-      return { listingOutcome: 'listedEveryEvent', latestReopenedEventAt };
+      return { listingOutcome: 'stoppedAtGitHubIssueEventListingLimit' };
     }
-    return {
-      listingOutcome: 'stoppedAtGitHubIssueEventListingLimit',
-      latestReopenedEventAt,
-      latestListedEventAt,
-    };
+    return { listingOutcome: 'listedEveryEvent', latestReopenedEventAt };
   };
 
-  private findReopenedEventAtNewerThanIssueEventListing = async (
+  private fetchLatestReopenedTimelineItemCreatedAt = async (
     issue: Issue,
-    latestListedEventAt: Date,
   ): Promise<Date | null> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue.url);
-    const ownerSegment = encodeURIComponent(owner);
-    const repoSegment = encodeURIComponent(repo);
-    let page = 1;
-    let hasNextPage = true;
-    while (hasNextPage) {
-      const repositoryIssueEventFeedUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/events?per_page=${ISSUE_EVENTS_PAGE_SIZE}&page=${page}`;
-      const response = await this.fetchWithRateLimitRetry(
-        () =>
-          fetch(repositoryIssueEventFeedUrl, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${this.ghToken}`,
-              Accept: 'application/vnd.github+json',
-            },
-          }),
-        { method: 'GET', path: sanitizeRestPath(repositoryIssueEventFeedUrl) },
-      );
-      if (!response.ok) {
-        const reason = await this.formatGitHubErrorWithStatus(response);
-        throw new Error(
-          `Failed to fetch the repository issue events feed for issue ${issue.url}: ${reason}`,
-        );
-      }
-      const body: unknown = await response.json();
-      if (!isRepositoryIssueEventFeedResponse(body)) {
-        throw new Error(
-          `Unexpected response shape when fetching the repository issue events feed for issue ${issue.url}`,
-        );
-      }
-      for (const feedEvent of body) {
-        const feedEventAt = new Date(feedEvent.created_at);
-        if (feedEventAt < latestListedEventAt) return null;
-        if (
-          feedEvent.issue.number === issueNumber &&
-          feedEvent.event === 'reopened'
-        ) {
-          return feedEventAt;
+    const query = `
+      query IssueLatestReopenedTimelineItem($owner: String!, $repo: String!, $issueNumber: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issueNumber) {
+            timelineItems(last: 1, itemTypes: [REOPENED_EVENT]) {
+              nodes {
+                ... on ReopenedEvent {
+                  createdAt
+                }
+              }
+            }
+          }
         }
       }
-      const linkHeader = response.headers.get('Link') ?? '';
-      hasNextPage = linkHeader.includes('rel="next"');
-      page++;
+    `;
+    const variables = { owner, repo, issueNumber };
+    const response = await fetchGithubGraphql({
+      ghToken: this.ghToken,
+      query,
+      variables,
+    });
+    if (!response.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(
+        `Failed to fetch the latest reopened timeline item of issue ${issue.url} from GitHub GraphQL API: ${reason}`,
+      );
     }
-    throw new Error(
-      `The repository issue events feed ended before reaching the newest listed event of issue ${issue.url} at ${latestListedEventAt.toISOString()}`,
+    const responseBody: unknown = await response.json();
+    const graphqlErrors = listGraphqlResponseErrors(responseBody);
+    if (graphqlErrors.length > 0) {
+      throw new Error(
+        `GitHub GraphQL API returned errors for the latest reopened timeline item of issue ${issue.url}: ${JSON.stringify(graphqlErrors)}`,
+      );
+    }
+    if (!isIssueLatestReopenedTimelineItemResponse(responseBody)) {
+      throw new Error(
+        `GitHub GraphQL API returned no timeline items for issue ${issue.url}`,
+      );
+    }
+    const reopenedTimelineItems =
+      responseBody.data.repository.issue.timelineItems.nodes;
+    if (reopenedTimelineItems.length === 0) return null;
+    return new Date(
+      reopenedTimelineItems[reopenedTimelineItems.length - 1].createdAt,
     );
   };
 
