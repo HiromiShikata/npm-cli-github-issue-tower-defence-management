@@ -231,7 +231,7 @@ type IssueRelatedOpenPullRequestUrlsBatchResponse = {
             endCursor: string | null;
             hasNextPage: boolean;
           };
-          nodes: TimelineItem[];
+          nodes: (TimelineItem | null)[];
         };
       } | null;
     } | null
@@ -2928,11 +2928,12 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   private isRelatedOpenPullRequestTimelineItem = (
-    item: TimelineItem,
+    item: TimelineItem | null,
     issueUrl: string,
   ): item is TimelineItem & {
     source: NonNullable<TimelineItem['source']>;
   } => {
+    if (!item) return false;
     if (item.__typename !== 'CrossReferencedEvent') return false;
     if (!item.source || item.source.__typename !== 'PullRequest') return false;
     if (item.source.state !== 'OPEN') return false;
