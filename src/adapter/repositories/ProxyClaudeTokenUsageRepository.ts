@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto';
+import { pbkdf2Sync, randomUUID } from 'crypto';
 import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
 import { isRecord } from '../../domain/usecases/isRecord';
@@ -14,6 +14,22 @@ const PROC_DIRECTORY = '/proc';
 const TOKEN_RESERVATION_LOCK_FILE_NAME = '.write.lock';
 
 export const TOKEN_LAUNCH_RESERVATION_TTL_MS = 60_000;
+
+const TOKEN_RESERVATION_DIRECTORY_KEY_SALT =
+  'npm-cli-github-issue-tower-defence-management:token-launch-reservation';
+
+// The token is namespaced into a directory name via a computationally
+// expensive KDF (rather than a fast digest like sha256) so that a
+// reservation directory name cannot be cheaply brute-forced back into the
+// underlying OAuth token by anyone who can only see the cache directory.
+export const hashTokenForReservationDirectory = (token: string): string =>
+  pbkdf2Sync(
+    token,
+    TOKEN_RESERVATION_DIRECTORY_KEY_SALT,
+    100_000,
+    32,
+    'sha256',
+  ).toString('hex');
 
 interface TokenLaunchReservation {
   reservedAt: number;
@@ -154,7 +170,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
     token: string;
     concurrentLimit: number;
   }): Promise<boolean> => {
-    const tokenHash = createHash('sha256').update(params.token).digest('hex');
+    const tokenHash = hashTokenForReservationDirectory(params.token);
     const reservationDirectoryKey = `token-reservations/${tokenHash}`;
     return this.tokenLaunchReservationCacheRepository.withLock(
       reservationDirectoryKey,

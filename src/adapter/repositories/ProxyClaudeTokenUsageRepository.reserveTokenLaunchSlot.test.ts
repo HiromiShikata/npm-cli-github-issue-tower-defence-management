@@ -1,8 +1,11 @@
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ProxyClaudeTokenUsageRepository } from './ProxyClaudeTokenUsageRepository';
+import {
+  ProxyClaudeTokenUsageRepository,
+  hashTokenForReservationDirectory,
+} from './ProxyClaudeTokenUsageRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
@@ -123,7 +126,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     const tokenReservationDirectoryPath = path.join(
       tempCacheDir,
       'token-reservations',
-      createHash('sha256').update('token-a').digest('hex'),
+      hashTokenForReservationDirectory('token-a'),
     );
     fs.mkdirSync(tokenReservationDirectoryPath, { recursive: true });
     const corruptReservationFilePath = path.join(
