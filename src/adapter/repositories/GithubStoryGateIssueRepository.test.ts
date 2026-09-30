@@ -132,6 +132,11 @@ describe('GithubStoryGateIssueRepository', () => {
       await expect(promise).rejects.toThrow(StoryGateGithubRequestError);
       await expect(promise).rejects.toThrow(ISSUE_API_URL);
       await expect(promise).rejects.toThrow('500');
+      const thrown = await promise.catch((caught: unknown) => caught);
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(thrown.status).toBe(500);
       expect(fetchSpy).toHaveBeenCalledTimes(4);
       expect(noWait).toHaveBeenCalledTimes(3);
       expect(noWait).toHaveBeenNthCalledWith(1, 1000);
