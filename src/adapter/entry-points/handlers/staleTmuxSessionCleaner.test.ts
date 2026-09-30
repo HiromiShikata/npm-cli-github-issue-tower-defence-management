@@ -82,12 +82,13 @@ describe('cleanStaleTmuxSessions', () => {
     jest.restoreAllMocks();
   });
 
-  it('kills a session mapping to an open issue whose status is not the excluded status', async () => {
+  it('kills a session mapping to an open issue whose status is not the excluded status and is idle at least 24 hours', async () => {
     const runner = createMockRunner();
+    const idleActivity = NOW_EPOCH_SECONDS - 24 * 60 * 60;
     runner.runCommand.mockImplementation(async (program, args) => {
       if (program === 'tmux' && args[0] === 'list-sessions') {
         return {
-          stdout: `https_//github_com/demo/repo/issues/1 ${NOW_EPOCH_SECONDS}\n`,
+          stdout: `https_//github_com/demo/repo/issues/1 ${idleActivity}\n`,
           stderr: '',
           exitCode: 0,
         };
