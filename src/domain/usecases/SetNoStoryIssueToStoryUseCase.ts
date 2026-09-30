@@ -13,6 +13,8 @@ export class SetNoStoryIssueToStoryUseCase {
     >,
   ) {}
 
+  static readonly MAXIMUM_ISSUES_WRITTEN_PER_RUN = 5;
+
   run = async (input: {
     targetDates: Date[];
     project: Project;
@@ -30,6 +32,8 @@ export class SetNoStoryIssueToStoryUseCase {
         !issue.labels.some((label) =>
           label.toLowerCase().startsWith('story:'),
         ) &&
+        !issue.labels.includes('daily-routine') &&
+        !issue.isPr &&
         (issue.nextActionDate === null ||
           (earliestTargetDate !== null &&
             issue.nextActionDate.getTime() <= earliestTargetDate.getTime())) &&
@@ -44,8 +48,16 @@ export class SetNoStoryIssueToStoryUseCase {
       return;
     }
     const errors: unknown[] = [];
+    let eligibleIssuesProcessedCount = 0;
     for (const issue of input.issues) {
       if (!isTargetIssue(issue)) {
+        continue;
+      }
+      eligibleIssuesProcessedCount += 1;
+      if (
+        eligibleIssuesProcessedCount >
+        SetNoStoryIssueToStoryUseCase.MAXIMUM_ISSUES_WRITTEN_PER_RUN
+      ) {
         continue;
       }
       try {

@@ -871,5 +871,130 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
         ]);
       });
     });
+
+    describe('MAXIMUM_ISSUES_WRITTEN_PER_RUN cap (issue #2951)', () => {
+      const buildEligibleIssue = (index: number): Issue => ({
+        ...mock<Issue>(),
+        url: `https://github.com/o/r/issues/no-story-cap-${index}`,
+        labels: [],
+        isPr: false,
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      });
+
+      const testCases: {
+        eligibleIssueCount: number;
+        expectedWrittenCount: number;
+      }[] = [
+        { eligibleIssueCount: 0, expectedWrittenCount: 0 },
+        { eligibleIssueCount: 3, expectedWrittenCount: 3 },
+        { eligibleIssueCount: 5, expectedWrittenCount: 5 },
+        { eligibleIssueCount: 6, expectedWrittenCount: 5 },
+        { eligibleIssueCount: 20, expectedWrittenCount: 5 },
+      ];
+
+      it.each(testCases)(
+        'writes Story for $expectedWrittenCount of $eligibleIssueCount eligible issues in one run() call',
+        async ({ eligibleIssueCount, expectedWrittenCount }) => {
+          const issues: Issue[] = Array.from(
+            { length: eligibleIssueCount },
+            (_, i) => buildEligibleIssue(i),
+          );
+          mockIssueRepository.get.mockImplementation(async (url) => {
+            const found = issues.find((issue) => issue.url === url);
+            return found ? { ...found } : null;
+          });
+
+          const promise = useCase.run({
+            targetDates: [targetDate],
+            project: basicProject,
+            issues,
+            cacheUsed: false,
+          });
+          await jest.runAllTimersAsync();
+          await promise;
+
+          expect(mockIssueRepository.updateStory).toHaveBeenCalledTimes(
+            expectedWrittenCount,
+          );
+          expect(mockIssueRepository.get).toHaveBeenCalledTimes(
+            expectedWrittenCount,
+          );
+        },
+      );
+    });
+
+    describe('isTargetIssue exclusions (issue #2951)', () => {
+      const exclusionCases: {
+        name: string;
+        labels: string[];
+        isPr: boolean;
+        expectedTarget: boolean;
+      }[] = [
+        {
+          name: 'no story: label, no daily-routine label, and not a pull request',
+          labels: [],
+          isPr: false,
+          expectedTarget: true,
+        },
+        {
+          name: 'has a story:workflow-management label',
+          labels: ['story:workflow-management'],
+          isPr: false,
+          expectedTarget: false,
+        },
+        {
+          name: 'has a daily-routine label and no story: label',
+          labels: ['daily-routine'],
+          isPr: false,
+          expectedTarget: false,
+        },
+        {
+          name: 'is a pull request and has no story: label',
+          labels: [],
+          isPr: true,
+          expectedTarget: false,
+        },
+      ];
+
+      it.each(exclusionCases)(
+        'treats the issue as a target=$expectedTarget when $name',
+        async ({ labels, isPr, expectedTarget }) => {
+          const issue: Issue = {
+            ...mock<Issue>(),
+            labels,
+            isPr,
+            story: null,
+            state: 'OPEN',
+            nextActionDate: null,
+            nextActionHour: null,
+          };
+          mockIssueRepository.get.mockResolvedValue({ ...issue, story: null });
+
+          const promise = useCase.run({
+            targetDates: [targetDate],
+            project: basicProject,
+            issues: [issue],
+            cacheUsed: false,
+          });
+          await jest.runAllTimersAsync();
+          await promise;
+
+          if (expectedTarget) {
+            expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+              [
+                { ...basicProject, story: basicProject.story },
+                issue,
+                'noStoryId',
+              ],
+            ]);
+          } else {
+            expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+          }
+        },
+      );
+    });
   });
 });
