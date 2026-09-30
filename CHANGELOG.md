@@ -1,3 +1,10 @@
+## [2.154.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.5...v2.154.6) (2026-09-30)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** create the missing Story option before applying an agent report's story key ([#2946](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2946)) ([c627109](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c627109283977aae6cd85cd2e7b5a11ba3dd31f1)), closes [#2862](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2862)
+
 ## [2.154.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.4...v2.154.5) (2026-09-30)
 
 
