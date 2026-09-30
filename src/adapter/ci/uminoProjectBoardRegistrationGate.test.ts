@@ -162,6 +162,19 @@ describe('evaluateGitHubActionsExpression', () => {
   const precedenceContext: Record<string, GitHubActionsContextValue> = {
     config: { role: 'guest', status: 'enabled', tier: 'gold' },
   };
+  const truthinessAndInequalityContext: Record<
+    string,
+    GitHubActionsContextValue
+  > = {
+    config: {
+      role: 'admin',
+      status: 'enabled',
+      name: 'release-bot',
+      emptyName: '',
+      retryCount: 3,
+      failureCount: 0,
+    },
+  };
 
   it.each<[string, string, Record<string, GitHubActionsContextValue>, boolean]>(
     [
@@ -207,6 +220,42 @@ describe('evaluateGitHubActionsExpression', () => {
         precedenceContext,
         false,
       ],
+      [
+        'evaluates a differing != comparison as true',
+        "config.role != 'viewer'",
+        roleAndStatusContext,
+        true,
+      ],
+      [
+        'evaluates a matching != comparison as false',
+        "config.role != 'admin'",
+        roleAndStatusContext,
+        false,
+      ],
+      [
+        'treats a bare identifier resolving to a non-empty string as truthy',
+        'config.name',
+        truthinessAndInequalityContext,
+        true,
+      ],
+      [
+        'treats a bare identifier resolving to an empty string as falsy',
+        'config.emptyName',
+        truthinessAndInequalityContext,
+        false,
+      ],
+      [
+        'treats a bare identifier resolving to a non-zero number as truthy',
+        'config.retryCount',
+        truthinessAndInequalityContext,
+        true,
+      ],
+      [
+        'treats a bare identifier resolving to zero as falsy',
+        'config.failureCount',
+        truthinessAndInequalityContext,
+        false,
+      ],
     ],
   )('%s', (_description, candidateExpression, context, expected) => {
     expect(evaluateGitHubActionsExpression(candidateExpression, context)).toBe(
@@ -250,6 +299,18 @@ describe('evaluateGitHubActionsExpression', () => {
       "config == 'admin'",
       roleAndStatusContext,
       /^cannot compare an object value with == or != in a GitHub Actions expression$/,
+    ],
+    [
+      'throws when a primary expression starts with a logical operator',
+      "&& config.role == 'admin'",
+      roleAndStatusContext,
+      /^expected an identifier path, string literal, or parenthesized expression in GitHub Actions expression:/,
+    ],
+    [
+      'throws when a primary expression is a stray close parenthesis',
+      ')',
+      roleAndStatusContext,
+      /^expected an identifier path, string literal, or parenthesized expression in GitHub Actions expression:/,
     ],
   ])(
     '%s',
