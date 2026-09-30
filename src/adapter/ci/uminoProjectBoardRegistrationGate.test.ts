@@ -151,9 +151,7 @@ describe('umino-project board registration gate', () => {
       false,
     ],
   ])('%s', (_scenario, context, expected) => {
-    expect(evaluateGitHubActionsExpression(expression, context)).toBe(
-      expected,
-    );
+    expect(evaluateGitHubActionsExpression(expression, context)).toBe(expected);
   });
 });
 
@@ -165,50 +163,52 @@ describe('evaluateGitHubActionsExpression', () => {
     config: { role: 'guest', status: 'enabled', tier: 'gold' },
   };
 
-  it.each<[string, string, Record<string, GitHubActionsContextValue>, boolean]>([
+  it.each<[string, string, Record<string, GitHubActionsContextValue>, boolean]>(
     [
-      'evaluates a matching equality comparison as true',
-      "config.role == 'admin'",
-      roleAndStatusContext,
-      true,
+      [
+        'evaluates a matching equality comparison as true',
+        "config.role == 'admin'",
+        roleAndStatusContext,
+        true,
+      ],
+      [
+        'evaluates a non-matching equality comparison as false',
+        "config.role == 'viewer'",
+        roleAndStatusContext,
+        false,
+      ],
+      [
+        'requires both sides of && to hold',
+        "config.role == 'admin' && config.status == 'enabled'",
+        roleAndStatusContext,
+        true,
+      ],
+      [
+        'requires only one side of || to hold',
+        "config.role == 'viewer' || config.status == 'enabled'",
+        roleAndStatusContext,
+        true,
+      ],
+      [
+        'resolves a missing nested property to false for == rather than throwing',
+        "config.owner.name == 'someone'",
+        roleAndStatusContext,
+        false,
+      ],
+      [
+        'evaluates && before || when no parentheses are present',
+        "config.role == 'admin' && config.status == 'enabled' || config.tier == 'gold'",
+        precedenceContext,
+        true,
+      ],
+      [
+        'lets parentheses override the default && before || precedence',
+        "config.role == 'admin' && (config.status == 'enabled' || config.tier == 'gold')",
+        precedenceContext,
+        false,
+      ],
     ],
-    [
-      'evaluates a non-matching equality comparison as false',
-      "config.role == 'viewer'",
-      roleAndStatusContext,
-      false,
-    ],
-    [
-      'requires both sides of && to hold',
-      "config.role == 'admin' && config.status == 'enabled'",
-      roleAndStatusContext,
-      true,
-    ],
-    [
-      'requires only one side of || to hold',
-      "config.role == 'viewer' || config.status == 'enabled'",
-      roleAndStatusContext,
-      true,
-    ],
-    [
-      'resolves a missing nested property to false for == rather than throwing',
-      "config.owner.name == 'someone'",
-      roleAndStatusContext,
-      false,
-    ],
-    [
-      'evaluates && before || when no parentheses are present',
-      "config.role == 'admin' && config.status == 'enabled' || config.tier == 'gold'",
-      precedenceContext,
-      true,
-    ],
-    [
-      'lets parentheses override the default && before || precedence',
-      "config.role == 'admin' && (config.status == 'enabled' || config.tier == 'gold')",
-      precedenceContext,
-      false,
-    ],
-  ])('%s', (_description, candidateExpression, context, expected) => {
+  )('%s', (_description, candidateExpression, context, expected) => {
     expect(evaluateGitHubActionsExpression(candidateExpression, context)).toBe(
       expected,
     );

@@ -166,7 +166,10 @@ const parseGitHubActionsExpression = (expression: string): ExpressionNode => {
       position += 1;
       const inner = parseLogicalOrExpression();
       const closingToken = peekToken();
-      if (closingToken === undefined || closingToken.kind !== 'closeParenthesis') {
+      if (
+        closingToken === undefined ||
+        closingToken.kind !== 'closeParenthesis'
+      ) {
         throw new Error(
           `unbalanced parentheses in GitHub Actions expression: ${expression}`,
         );
@@ -258,14 +261,15 @@ const evaluateEqualityComparison = (
   if (isNullishContextValue(left) || isNullishContextValue(right)) {
     return isNullishContextValue(left) && isNullishContextValue(right);
   }
-  if (isGitHubActionsContextRecord(left) || isGitHubActionsContextRecord(right)) {
+  if (
+    isGitHubActionsContextRecord(left) ||
+    isGitHubActionsContextRecord(right)
+  ) {
     throw new Error(
       'cannot compare an object value with == or != in a GitHub Actions expression',
     );
   }
-  return (
-    toLowerCasedComparableText(left) === toLowerCasedComparableText(right)
-  );
+  return toLowerCasedComparableText(left) === toLowerCasedComparableText(right);
 };
 
 const toBooleanExpressionResult = (
