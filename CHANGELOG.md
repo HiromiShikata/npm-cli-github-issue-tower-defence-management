@@ -1,3 +1,10 @@
+# [2.154.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.9...v2.154.0) (2026-09-30)
+
+
+### Features
+
+* **cli:** add checkStoryGate, setIssueStoryIfUnset and startSpecificationTask commands ([#2933](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2933)) ([2d8ee1b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d8ee1bca80e60699001f924183a5f3c7e6c03a9))
+
 ## [2.153.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.8...v2.153.9) (2026-09-30)
 
 
