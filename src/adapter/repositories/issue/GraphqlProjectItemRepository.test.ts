@@ -3038,6 +3038,74 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.isArchivedFromProject).toBe(false);
     });
+
+    describe('rate limit retry', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should retry on a 429 rate-limit response then succeed', async () => {
+        const localStorageRepository = new LocalStorageRepository();
+        const repository = new GraphqlProjectItemRepository(
+          localStorageRepository,
+          'dummy-token',
+        );
+
+        mockPost
+          .mockReturnValueOnce(
+            mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '1' })),
+          )
+          .mockReturnValueOnce(
+            mockJsonResponse({
+              data: {
+                repository: {
+                  issue: makeContentNode(
+                    'https://github.com/owner/repo/issues/70',
+                    70,
+                    'Issue Title',
+                  ),
+                  pullRequest: null,
+                },
+              },
+            }),
+          );
+
+        const resultPromise = repository.fetchProjectItemByUrl(
+          'https://github.com/owner/repo/issues/70',
+        );
+        await jest.runAllTimersAsync();
+        const result = await resultPromise;
+
+        expect(result).not.toBeNull();
+        expect(result?.id).toBe('item-70');
+        expect(mockPost).toHaveBeenCalledTimes(2);
+      });
+
+      it('should give up and rethrow after exhausting rate-limit retries', async () => {
+        const localStorageRepository = new LocalStorageRepository();
+        const repository = new GraphqlProjectItemRepository(
+          localStorageRepository,
+          'dummy-token',
+        );
+
+        mockPost.mockReturnValue(
+          mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '1' })),
+        );
+
+        const resultPromise = repository
+          .fetchProjectItemByUrl('https://github.com/owner/repo/issues/71')
+          .catch((error: unknown) => error);
+        await jest.runAllTimersAsync();
+        const caught = await resultPromise;
+
+        expect(caught).toBeInstanceOf(HTTPError);
+        expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+      }, 30000);
+    });
   });
 
   describe('fetchItemId', () => {

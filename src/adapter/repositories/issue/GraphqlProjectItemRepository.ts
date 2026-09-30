@@ -1385,19 +1385,21 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         }[];
       };
     };
-    const response = await postGithubGraphqlJson<{
-      data?: {
-        repository: {
-          issue: ContentNode | null;
-          pullRequest: ContentNode | null;
-        } | null;
-      };
-      errors?: { message: string }[];
-    }>({
-      ghToken: this.ghToken,
-      query: graphqlQuery.query,
-      variables: graphqlQuery.variables,
-    });
+    const response = await callWithRateLimitRetry(() =>
+      postGithubGraphqlJson<{
+        data?: {
+          repository: {
+            issue: ContentNode | null;
+            pullRequest: ContentNode | null;
+          } | null;
+        };
+        errors?: { message: string }[];
+      }>({
+        ghToken: this.ghToken,
+        query: graphqlQuery.query,
+        variables: graphqlQuery.variables,
+      }),
+    );
     if (!response.data) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
