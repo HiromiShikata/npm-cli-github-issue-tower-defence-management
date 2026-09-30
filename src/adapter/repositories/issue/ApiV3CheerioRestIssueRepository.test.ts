@@ -5006,6 +5006,67 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(countRelatedOpenPrUrlsBatchQueries(fetchSpy)).toBe(2);
       expect(resolved.size).toBe(issueNumbers.length);
     });
+
+    it('includes a cross-referenced pull request whose source is open and marked to close the target issue', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(100),
+                  willCloseTarget: true,
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(100)]);
+    });
+
+    it('excludes a timeline item that is not a CrossReferencedEvent', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [{ __typename: 'IssueComment' }],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('resolves an issue whose timeline nodes include a null entry from the GitHub GraphQL API without discarding the rest of the batch', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                null,
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(100),
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(100)]);
+    });
   });
 
   describe('getOpenPullRequest CI state computation', () => {
