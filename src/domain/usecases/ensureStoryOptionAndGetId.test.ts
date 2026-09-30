@@ -91,7 +91,12 @@ const testCases: TestCase[] = [
     storyName: 'first story',
     updateStoryListCalled: true,
     updateStoryListReturnValue: [
-      { id: 'story-opt-first', name: 'first story', color: 'RED', description: '' },
+      {
+        id: 'story-opt-first',
+        name: 'first story',
+        color: 'RED',
+        description: '',
+      },
     ],
     expectedUpdateStoryListArg: [
       { id: null, name: 'first story', color: 'RED', description: '' },
