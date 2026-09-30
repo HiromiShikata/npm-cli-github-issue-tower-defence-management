@@ -1943,11 +1943,9 @@ describe('HandleScheduledEventUseCase', () => {
               callOrder.push('setWorkflowManagementIssueToStory');
             },
           );
-          mockSetNoStoryIssueToStoryUseCase.run.mockImplementation(
-            async () => {
-              callOrder.push('setNoStoryIssueToStory');
-            },
-          );
+          mockSetNoStoryIssueToStoryUseCase.run.mockImplementation(async () => {
+            callOrder.push('setNoStoryIssueToStory');
+          });
           mockIssueNoStatusUpdateUseCase.run.mockImplementation(async () => {
             callOrder.push('issueNoStatusUpdate');
           });
@@ -2018,9 +2016,7 @@ describe('HandleScheduledEventUseCase', () => {
           now,
         );
 
-        expect(mockSetNoStoryIssueToStoryUseCase.run).toHaveBeenCalledTimes(
-          1,
-        );
+        expect(mockSetNoStoryIssueToStoryUseCase.run).toHaveBeenCalledTimes(1);
         expect(mockIssueNoStatusUpdateUseCase.run).toHaveBeenCalledTimes(1);
         expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
       });
