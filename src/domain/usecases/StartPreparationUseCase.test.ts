@@ -1,6 +1,7 @@
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
 import type { FieldOption, Project } from '../entities/Project';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import type { StoryObjectMap } from '../entities/StoryObjectMap';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
@@ -7857,6 +7858,382 @@ describe('StartPreparationUseCase', () => {
           ],
         );
       });
+    });
+
+    it('with only 2 free slots, spawns both explicit NO STORY items oldest first and does not reach a real Story A item ranked after NO STORY', async () => {
+      const explicitNoStoryIssueOlder = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5000',
+        number: 5000,
+        title: 'Explicit NO STORY Issue Older',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 1, 0, 0, 0)),
+      });
+      const explicitNoStoryIssueNewer = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5001',
+        number: 5001,
+        title: 'Explicit NO STORY Issue Newer',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 1, 0, 0, 1)),
+      });
+      const storyAIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5002',
+        number: 5002,
+        title: 'Real Story A Issue',
+        status: 'Awaiting Workspace',
+        story: 'Default Story',
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 1, 0, 0, 2)),
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          explicitNoStoryIssueOlder,
+          explicitNoStoryIssueNewer,
+          storyAIssue,
+        ]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        explicitNoStoryIssueOlder,
+        explicitNoStoryIssueNewer,
+        storyAIssue,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 2,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssueOlder.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssueOlder.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssueNewer.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssueNewer.number}`,
+        ],
+      ]);
+    });
+
+    it('with 3 free slots, spawns both explicit NO STORY items followed by a real Story A item ranked after NO STORY', async () => {
+      const explicitNoStoryIssueOlder = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5100',
+        number: 5100,
+        title: 'Explicit NO STORY Issue Older',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 2, 0, 0, 0)),
+      });
+      const explicitNoStoryIssueNewer = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5101',
+        number: 5101,
+        title: 'Explicit NO STORY Issue Newer',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 2, 0, 0, 1)),
+      });
+      const storyAIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5102',
+        number: 5102,
+        title: 'Real Story A Issue',
+        status: 'Awaiting Workspace',
+        story: 'Default Story',
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 2, 0, 0, 2)),
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          explicitNoStoryIssueOlder,
+          explicitNoStoryIssueNewer,
+          storyAIssue,
+        ]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        explicitNoStoryIssueOlder,
+        explicitNoStoryIssueNewer,
+        storyAIssue,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 3,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssueOlder.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssueOlder.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssueNewer.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssueNewer.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
+        'aw',
+        [
+          storyAIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${storyAIssue.number}`,
+        ],
+      ]);
+    });
+
+    it('with only 2 free slots, spawns the genuinely storyless item then the explicit NO STORY item ranked before Story A, and does not reach Story A', async () => {
+      const storylessIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5200',
+        number: 5200,
+        title: 'Genuinely Storyless Issue',
+        status: 'Awaiting Workspace',
+        story: null,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 3, 0, 0, 0)),
+      });
+      const explicitNoStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5201',
+        number: 5201,
+        title: 'Explicit NO STORY Issue',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 3, 0, 0, 1)),
+      });
+      const storyAIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5202',
+        number: 5202,
+        title: 'Real Story A Issue',
+        status: 'Awaiting Workspace',
+        story: 'Default Story',
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 3, 0, 0, 2)),
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([explicitNoStoryIssue, storyAIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        storylessIssue,
+        explicitNoStoryIssue,
+        storyAIssue,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 2,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          storylessIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${storylessIssue.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssue.number}`,
+        ],
+      ]);
+    });
+
+    it('with 3 free slots, spawns the genuinely storyless item, then the explicit NO STORY item, then Story A', async () => {
+      const storylessIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5300',
+        number: 5300,
+        title: 'Genuinely Storyless Issue',
+        status: 'Awaiting Workspace',
+        story: null,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 4, 0, 0, 0)),
+      });
+      const explicitNoStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5301',
+        number: 5301,
+        title: 'Explicit NO STORY Issue',
+        status: 'Awaiting Workspace',
+        story: NO_STORY_STORY_NAME,
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 4, 0, 0, 1)),
+      });
+      const storyAIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/5302',
+        number: 5302,
+        title: 'Real Story A Issue',
+        status: 'Awaiting Workspace',
+        story: 'Default Story',
+        agent: null,
+        dependedIssueUrls: [],
+        createdAt: new Date(Date.UTC(2020, 0, 4, 0, 0, 2)),
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([explicitNoStoryIssue, storyAIssue]),
+      );
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        storylessIssue,
+        explicitNoStoryIssue,
+        storyAIssue,
+      ]);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: 3,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+        'aw',
+        [
+          storylessIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${storylessIssue.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
+        'aw',
+        [
+          explicitNoStoryIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${explicitNoStoryIssue.number}`,
+        ],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
+        'aw',
+        [
+          storyAIssue.url,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          `i${storyAIssue.number}`,
+        ],
+      ]);
     });
   });
 

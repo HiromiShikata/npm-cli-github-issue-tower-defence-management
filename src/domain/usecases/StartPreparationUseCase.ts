@@ -573,13 +573,14 @@ export class StartPreparationUseCase {
 
     const isUnstoriedAwaitingWorkspaceIssue = (issue: Issue): boolean =>
       issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
+    const isStorylessIssue = (issue: Issue): boolean => issue.story === null;
 
     const storiedAwaitingWorkspaceIssues = allOpenedIssues.filter(
       (issue) =>
         issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
         !issue.isClosed &&
         !issue.isPr &&
-        !isUnstoriedAwaitingWorkspaceIssue(issue),
+        !isStorylessIssue(issue),
     );
     const unstoriedAwaitingWorkspaceIssuesOldestFirst = allProjectOpenIssues
       .filter(
@@ -587,7 +588,7 @@ export class StartPreparationUseCase {
           issue.status === AWAITING_WORKSPACE_STATUS_NAME &&
           !issue.isClosed &&
           !issue.isPr &&
-          isUnstoriedAwaitingWorkspaceIssue(issue),
+          isStorylessIssue(issue),
       )
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const { selectedIssue: eligibleUnstoriedIssue, offProjectBoardIssueUrls } =
