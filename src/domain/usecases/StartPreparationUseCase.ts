@@ -428,7 +428,8 @@ export class StartPreparationUseCase {
         name: usage.name ?? '',
         fiveHourUtilization: usage.fiveHourUtilization,
         blocked: usage.blocked,
-        rejected: usage.fiveHourRejected,
+        rejected:
+          usage.fiveHourRejected || this.isModelWeeklyLimitRejected(usage),
         thresholdExcluded:
           !usage.blocked &&
           !usage.fiveHourRejected &&

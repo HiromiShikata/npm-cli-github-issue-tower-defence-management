@@ -9275,6 +9275,48 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     expect(excluded?.thresholdExcluded).toBe(false);
     expect(excluded?.cooldownExcluded).toBe(false);
   });
+
+  it('excludes a token whose 7-day weekly window is rejected and marks it rejected in the rotation entry', () => {
+    const nowEpochSeconds = Math.floor(Date.now() / 1000);
+    const tokenUsages: ClaudeTokenUsage[] = [
+      {
+        name: 'weekly-rejected',
+        token: 'sk-ant-weekly-rejected',
+        fiveHourUtilization: 0.1,
+        sevenDayUtilization: 1.0,
+        blocked: false,
+        rejected: false,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {
+          seven_day: {
+            rejected: true,
+            resetsAt: nowEpochSeconds + 20 * 3600,
+          },
+        },
+      },
+      {
+        name: 'available',
+        token: 'sk-ant-available',
+        fiveHourUtilization: 0.2,
+        sevenDayUtilization: 0,
+        blocked: false,
+        rejected: false,
+        fiveHourRejected: false,
+        blockedUntilEpoch: 0,
+        modelWeeklyLimits: {},
+      },
+    ];
+
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
+
+    expect(result[0].name).toBe('available');
+    const excluded = result.find((entry) => entry.name === 'weekly-rejected');
+    expect(excluded?.rejected).toBe(true);
+    expect(excluded?.blocked).toBe(false);
+    expect(excluded?.thresholdExcluded).toBe(false);
+    expect(excluded?.cooldownExcluded).toBe(false);
+  });
 });
 
 describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
