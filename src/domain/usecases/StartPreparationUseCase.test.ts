@@ -7965,6 +7965,169 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
+  describe('token in-flight count refresh call-count regression pin', () => {
+    it('calls getTokenInFlightCounts exactly once when the first read already has room for the selected token', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-a': 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(
+        mockClaudeTokenUsageRepository.getTokenInFlightCounts.mock.calls,
+      ).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    });
+
+    it('calls getTokenInFlightCounts exactly twice, and never a third time, when the refreshed read still leaves no token with room', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-a': 6,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(
+        mockClaudeTokenUsageRepository.getTokenInFlightCounts.mock.calls,
+      ).toHaveLength(2);
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    });
+
+    it('reverts the issue to Awaiting Workspace status via the existing fallback when every token has reached its concurrent worker limit even after the refresh', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-a': 6,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+        url: 'url1',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('1');
+    });
+  });
+
   it('only prefetches branch sources for candidates within the free preparation slots', async () => {
     // 5 candidates, 2 free preparation slots (maximumPreparingIssuesCount=2, currentPreparation=0).
     const candidates = Array.from({ length: 5 }, (_, i) =>
