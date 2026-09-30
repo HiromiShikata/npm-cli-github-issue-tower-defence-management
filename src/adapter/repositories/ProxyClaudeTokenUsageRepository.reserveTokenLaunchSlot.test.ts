@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -116,5 +117,28 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     expect(results.filter((granted) => granted === false)).toHaveLength(
       totalAttempts - concurrentLimit,
     );
+  });
+
+  it('grants the slot and deletes a reservation file whose content is truncated invalid JSON left by a crashed writer, instead of throwing or counting it toward the limit', async () => {
+    const tokenReservationDirectoryPath = path.join(
+      tempCacheDir,
+      'token-reservations',
+      createHash('sha256').update('token-a').digest('hex'),
+    );
+    fs.mkdirSync(tokenReservationDirectoryPath, { recursive: true });
+    const corruptReservationFilePath = path.join(
+      tokenReservationDirectoryPath,
+      `${randomUUID()}.json`,
+    );
+    fs.writeFileSync(corruptReservationFilePath, '{"reservedAt":');
+    const repository = buildRepository();
+
+    const granted = await repository.reserveTokenLaunchSlot({
+      token: 'token-a',
+      concurrentLimit: 1,
+    });
+
+    expect(granted).toBe(true);
+    expect(fs.existsSync(corruptReservationFilePath)).toBe(false);
   });
 });
