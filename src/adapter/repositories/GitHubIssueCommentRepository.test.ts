@@ -381,6 +381,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Cached comment',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-05T00:00:00Z',
         },
       ];
       const cache = buildCommentCacheRepository();
@@ -413,6 +414,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'testuser',
                   content: 'Cached comment',
                   createdAt: '2024-01-01T00:00:00.000Z',
+                  updatedAt: '2024-01-05T00:00:00.000Z',
                   id: '1006',
                 },
               ],
@@ -426,6 +428,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Cached comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-05T00:00:00Z'),
           id: '1006',
         },
       ]);
@@ -439,6 +442,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'testuser',
                 content: 'Cached comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-05T00:00:00.000Z',
               },
             ],
             hasNextPage: false,
@@ -465,6 +469,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Cached comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-05T00:00:00Z'),
         },
       ]);
     });
