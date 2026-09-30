@@ -688,6 +688,7 @@ export class StoryGateCheckUseCase {
     }
     const latestComment = comments[comments.length - 1];
     if (
+      input.agentName !== input.specificationAgentName &&
       latestComment !== undefined &&
       isSpecificationRoutingAlreadyPosted(
         latestComment.body,
