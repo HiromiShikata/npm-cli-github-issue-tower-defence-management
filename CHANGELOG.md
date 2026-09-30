@@ -1,3 +1,10 @@
+## [2.154.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.3...v2.154.4) (2026-09-30)
+
+
+### Bug Fixes
+
+* **story-gate:** an unreadable linked issue aborts the gate, and the triage agent is routed to itself ([#2937](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2937)) ([7d4e918](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7d4e918bfb7a02c8ec5bf205da294797ef906480))
+
 ## [2.154.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.2...v2.154.3) (2026-09-30)
 
 
