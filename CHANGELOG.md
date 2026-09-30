@@ -1,3 +1,10 @@
+## [2.153.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.3...v2.153.4) (2026-09-30)
+
+
+### Bug Fixes
+
+* **cache-reconciliation:** Fix TDPM full-fetch cache to reconcile items excluded from live GitHub item listing ([#2904](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2904)) ([b86e4e8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b86e4e89d68a6f1745c10dedaa3cf6081adcfa5d))
+
 ## [2.153.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.2...v2.153.3) (2026-09-30)
 
 
