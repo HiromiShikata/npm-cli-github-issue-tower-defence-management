@@ -1086,7 +1086,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         { length: absentItemCount },
         (_unused, index) => ({
           ...buildCachedIssueRecord(
-            `https://github.com/o/r/issues/${index}`,
+            `https://github.com/o/r/issues/${9000 + index}`,
             `Absent Issue ${index}`,
           ),
           itemId: `item-absent-${index}`,
