@@ -1,3 +1,10 @@
+## [2.154.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.2...v2.154.3) (2026-09-30)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** explicit regular / NO STORY items should follow Story order, not the story-unset one-slot cap ([#2941](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2941)) ([110de87](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/110de879facca2ccc1622ff53aeaae937a916e78))
+
 ## [2.154.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.1...v2.154.2) (2026-09-30)
 
 
