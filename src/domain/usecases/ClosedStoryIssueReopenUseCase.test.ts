@@ -330,7 +330,7 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         storyIssueOwnerRepo: 'owner/repo',
       });
 
-      expect(mockRepository.searchIssues).toHaveBeenCalledTimes(2);
+      expect(mockRepository.searchIssues).toHaveBeenCalledTimes(1);
       expect(mockRepository.getIssueByUrl).not.toHaveBeenCalled();
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
       expect(
@@ -458,31 +458,48 @@ describe('ClosedStoryIssueReopenUseCase', () => {
     });
   });
 
-  describe('live open-issue check before archived fallback', () => {
-    it('does not call is:closed search or reopen when a live is:open search finds an already-open story issue', async () => {
+  describe('live open-issue check after archived-fallback candidate is found', () => {
+    it('finds an archived closed duplicate via is:closed but skips reopening it when the subsequent is:open check finds an already-open story issue', async () => {
       mockRepository.searchIssues.mockImplementation(async (query: string) => {
         if (query.includes('is:open')) {
           return [
             createMockSearchedIssue({
-              url: 'https://github.com/owner/repo/issues/42',
-              number: 42,
+              url: 'https://github.com/owner/repo/issues/43',
+              number: 43,
               state: 'OPEN',
             }),
           ];
         }
-        return [];
+        return [
+          createMockSearchedIssue({
+            url: 'https://github.com/owner/repo/issues/42',
+            number: 42,
+          }),
+        ];
       });
-      mockRepository.getIssueByUrl.mockResolvedValue(
-        createMockIssue({
-          title: 'feature / X',
-          url: 'https://github.com/owner/repo/issues/42',
-          number: 42,
-          isClosed: false,
-          state: 'OPEN',
-          stateReason: null,
-          labels: ['story'],
-        }),
-      );
+      mockRepository.getIssueByUrl.mockImplementation(async (url: string) => {
+        if (url === 'https://github.com/owner/repo/issues/42') {
+          return createMockIssue({
+            title: 'feature / X',
+            url: 'https://github.com/owner/repo/issues/42',
+            number: 42,
+            isClosed: true,
+            labels: ['story'],
+          });
+        }
+        if (url === 'https://github.com/owner/repo/issues/43') {
+          return createMockIssue({
+            title: 'feature / X',
+            url: 'https://github.com/owner/repo/issues/43',
+            number: 43,
+            isClosed: false,
+            state: 'OPEN',
+            stateReason: null,
+            labels: ['story'],
+          });
+        }
+        return null;
+      });
 
       const storyObjectMap = buildStoryObjectMapFixture([
         { storyName: 'feature / X', storyIssue: null },
@@ -495,10 +512,10 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       });
 
       expect(mockRepository.searchIssues).toHaveBeenCalledWith(
-        'repo:owner/repo is:open label:story "feature / X" in:title',
-      );
-      expect(mockRepository.searchIssues).not.toHaveBeenCalledWith(
         'repo:owner/repo is:closed label:story "feature / X" in:title',
+      );
+      expect(mockRepository.searchIssues).toHaveBeenCalledWith(
+        'repo:owner/repo is:open label:story "feature / X" in:title',
       );
       expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
       expect(
@@ -506,7 +523,31 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       ).toBeNull();
     });
 
-    const openCheckMissTestCases: Array<{
+    it('calls searchIssues exactly once, with only the is:closed query, and never checks getIssueByUrl or reopenIssueByUrl when there is no cache match and the archived is:closed search also finds nothing', async () => {
+      mockRepository.searchIssues.mockResolvedValue([]);
+
+      const storyObjectMap = buildStoryObjectMapFixture([
+        { storyName: 'feature / X', storyIssue: null },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        storyObjectMap,
+        storyIssueOwnerRepo: 'owner/repo',
+      });
+
+      expect(mockRepository.searchIssues).toHaveBeenCalledTimes(1);
+      expect(mockRepository.searchIssues).toHaveBeenCalledWith(
+        'repo:owner/repo is:closed label:story "feature / X" in:title',
+      );
+      expect(mockRepository.getIssueByUrl).not.toHaveBeenCalled();
+      expect(mockRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+      expect(
+        storyObjectMap.get(createStoryOption('feature / X').id)?.storyIssue,
+      ).toBeNull();
+    });
+
+    const archivedFallbackReopenTestCases: Array<{
       description: string;
       openSearchResults: SearchedIssue[];
       openIssueLookup: Issue | null;
@@ -562,8 +603,8 @@ describe('ClosedStoryIssueReopenUseCase', () => {
       },
     ];
 
-    openCheckMissTestCases.forEach((tc) => {
-      it(`falls through to the archived closed-issue fallback and reopens it when ${tc.description}`, async () => {
+    archivedFallbackReopenTestCases.forEach((tc) => {
+      it(`reopens the archived closed duplicate found by the is:closed fallback when the subsequent is:open check finds nothing usable (${tc.description})`, async () => {
         mockRepository.searchIssues.mockImplementation(
           async (query: string) => {
             if (query.includes('is:open')) {
@@ -604,10 +645,10 @@ describe('ClosedStoryIssueReopenUseCase', () => {
         });
 
         expect(mockRepository.searchIssues).toHaveBeenCalledWith(
-          'repo:owner/repo is:open label:story "feature / X" in:title',
+          'repo:owner/repo is:closed label:story "feature / X" in:title',
         );
         expect(mockRepository.searchIssues).toHaveBeenCalledWith(
-          'repo:owner/repo is:closed label:story "feature / X" in:title',
+          'repo:owner/repo is:open label:story "feature / X" in:title',
         );
         expect(mockRepository.reopenIssueByUrl).toHaveBeenCalledWith(
           'https://github.com/owner/repo/issues/42',
