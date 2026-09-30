@@ -1,3 +1,10 @@
+## [2.153.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.4...v2.153.5) (2026-09-30)
+
+
+### Bug Fixes
+
+* **handover:** persist token-exhaustion handover state per-session to close a cross-process repeat-kill race window ([#2911](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2911)) ([2f88c70](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f88c703b8a95cd715fdffe26e34c7a664b401ee))
+
 ## [2.153.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.3...v2.153.4) (2026-09-30)
 
 
