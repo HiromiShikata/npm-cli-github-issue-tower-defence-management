@@ -1,3 +1,10 @@
+## [2.154.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.1...v2.154.2) (2026-09-30)
+
+
+### Reverts
+
+* **orphan-check:** stop reverting live workers that have no pull request ([#2939](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2939)) ([ec2809f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec2809f66aea5a0bca49b9bf7b4caf38f6208f0d)), closes [#2936](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2936)
+
 ## [2.154.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.0...v2.154.1) (2026-09-30)
 
 
