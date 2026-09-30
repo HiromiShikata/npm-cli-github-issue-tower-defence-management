@@ -311,6 +311,7 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     if (response.status < 200 || response.status >= 300) {
       throw new StoryGateGithubRequestError(
         `${method} ${url} returned HTTP ${response.status}`,
+        response.status,
       );
     }
   };
@@ -363,6 +364,7 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
         if (response.ok) {
           throw new StoryGateGithubRequestError(
             `${method} ${url} returned HTTP ${response.status} with a body that is not JSON`,
+            response.status,
           );
         }
         return { status: response.status, body: null };

@@ -62,9 +62,12 @@ export type ProjectItemSingleSelectValueUpdate = {
 };
 
 export class StoryGateGithubRequestError extends Error {
-  constructor(message: string) {
+  readonly status: number | null;
+
+  constructor(message: string, status: number | null = null) {
     super(message);
     this.name = 'StoryGateGithubRequestError';
+    this.status = status;
   }
 }
 
