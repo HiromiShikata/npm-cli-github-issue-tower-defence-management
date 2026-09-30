@@ -2,7 +2,10 @@ import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { IN_TMUX_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
+import {
+  IN_TMUX_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
+} from '../../../domain/entities/WorkflowStatus';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
@@ -128,6 +131,35 @@ describe('cleanStaleTmuxSessions', () => {
       project: makeProject(),
       issueRepository: createMockIssueRepository([
         makeIssue({ status: IN_TMUX_STATUS_NAME }),
+      ]),
+      localCommandRunner: runner,
+      now: NOW,
+    });
+
+    const killCalls = runner.runCommand.mock.calls.filter(
+      (call) => call[0] === 'tmux' && call[1][0] === 'kill-session',
+    );
+    expect(killCalls).toHaveLength(0);
+  });
+
+  it('never kills an "In Tmux by agent" session even when idle at least 24 hours', async () => {
+    const runner = createMockRunner();
+    const idleActivity = NOW_EPOCH_SECONDS - 24 * 60 * 60;
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'tmux' && args[0] === 'list-sessions') {
+        return {
+          stdout: `https_//github_com/demo/repo/issues/1 ${idleActivity}\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+
+    await cleanStaleTmuxSessions({
+      project: makeProject(),
+      issueRepository: createMockIssueRepository([
+        makeIssue({ status: IN_TMUX_BY_AGENT_STATUS_NAME }),
       ]),
       localCommandRunner: runner,
       now: NOW,

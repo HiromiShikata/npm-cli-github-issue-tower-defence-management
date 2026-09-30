@@ -1,6 +1,6 @@
 import {
   StaleTmuxSessionKillUseCase,
-  DEFAULT_EXCLUDED_STATUS,
+  DEFAULT_EXCLUDED_STATUS_NAMES,
   DEFAULT_IDLE_THRESHOLD_SECONDS,
 } from './StaleTmuxSessionKillUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
@@ -9,7 +9,10 @@ import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase
 import { Issue } from '../entities/Issue';
 import { LiveTmuxSession } from '../entities/LiveTmuxSession';
 import { Project } from '../entities/Project';
-import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
+import {
+  IN_TMUX_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -79,12 +82,12 @@ describe('StaleTmuxSessionKillUseCase', () => {
 
   const runParams = (): {
     project: Project;
-    excludedStatus: string;
+    excludedStatusNames: readonly string[];
     idleThresholdSeconds: number;
     now: Date;
   } => ({
     project: mockProject,
-    excludedStatus: DEFAULT_EXCLUDED_STATUS,
+    excludedStatusNames: DEFAULT_EXCLUDED_STATUS_NAMES,
     idleThresholdSeconds: DEFAULT_IDLE_THRESHOLD_SECONDS,
     now,
   });
@@ -112,9 +115,11 @@ describe('StaleTmuxSessionKillUseCase', () => {
     );
   });
 
-  it('exposes the excluded status and idle threshold as named constants', () => {
-    expect(DEFAULT_EXCLUDED_STATUS).toBe('In Tmux by human');
-    expect(DEFAULT_EXCLUDED_STATUS).toBe(IN_TMUX_STATUS_NAME);
+  it('exposes the excluded status names and idle threshold as named constants', () => {
+    expect(DEFAULT_EXCLUDED_STATUS_NAMES).toEqual([
+      IN_TMUX_STATUS_NAME,
+      IN_TMUX_BY_AGENT_STATUS_NAME,
+    ]);
     expect(DEFAULT_IDLE_THRESHOLD_SECONDS).toBe(86400);
   });
 
@@ -127,59 +132,212 @@ describe('StaleTmuxSessionKillUseCase', () => {
     expect(mockIssueRepository.getAllOpened).toHaveBeenCalledWith(mockProject);
   });
 
-  it('kills a session mapping to an open issue whose status is not the excluded status', async () => {
-    const issue = createMockIssue({ status: 'In Progress' });
-    const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
-    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    await useCase.run(runParams());
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      sessionName,
-    );
-  });
+  // Table-driven coverage for CC-1 (kill when not excluded and idle),
+  // CC-2 (spare when not excluded but recently active), CC-3 (never kill
+  // either "In Tmux by human" or "In Tmux by agent", regardless of next
+  // action date/hour or idle time), and CC-4 (unmapped session stays
+  // idle-threshold gated). Row numbers below match the parametrized test
+  // case table in the task issue.
+  const OTHER_STATUS_NAME = 'Awaiting Workspace';
 
-  it('kills a session mapping to an open issue whose status is null', async () => {
-    const issue = createMockIssue({ status: null });
-    const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
-    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    await useCase.run(runParams());
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      sessionName,
-    );
-  });
+  type KillDecisionRow = {
+    row: number;
+    name: string;
+    mappedToIssue: boolean;
+    issueStatus: string | null;
+    nextActionDate: Date | null;
+    nextActionHour: number | null;
+    idleAtOrBeyondThreshold: boolean;
+    expectedKilled: boolean;
+  };
 
-  it('kills an excluded-status session that has a next action date set', async () => {
-    const issue = createMockIssue({
-      status: DEFAULT_EXCLUDED_STATUS,
+  const killDecisionRows: KillDecisionRow[] = [
+    {
+      row: 1,
+      name: 'no mapped issue, idle >= threshold -> killed',
+      mappedToIssue: false,
+      issueStatus: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: true,
+      expectedKilled: true,
+    },
+    {
+      row: 2,
+      name: 'no mapped issue, recent activity -> not killed',
+      mappedToIssue: false,
+      issueStatus: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 3,
+      name: 'In Tmux by human, no trigger, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 4,
+      name: 'In Tmux by human, no trigger, idle -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: true,
+      expectedKilled: false,
+    },
+    {
+      row: 5,
+      name: 'In Tmux by human, next action date set, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_STATUS_NAME,
       nextActionDate: new Date('2026-06-27T00:00:00Z'),
-    });
-    const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
-    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    await useCase.run(runParams());
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      sessionName,
-    );
-  });
-
-  it('kills an excluded-status session that has a next action hour set', async () => {
-    const issue = createMockIssue({
-      status: DEFAULT_EXCLUDED_STATUS,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 6,
+      name: 'In Tmux by human, next action hour set, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_STATUS_NAME,
+      nextActionDate: null,
       nextActionHour: 9,
-    });
-    const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
-    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    await useCase.run(runParams());
-    expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      sessionName,
-    );
-  });
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 7,
+      name: 'In Tmux by agent, no trigger, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 8,
+      name: 'In Tmux by agent, no trigger, idle -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: true,
+      expectedKilled: false,
+    },
+    {
+      row: 9,
+      name: 'In Tmux by agent, next action date set, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
+      nextActionDate: new Date('2026-06-27T00:00:00Z'),
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 10,
+      name: 'In Tmux by agent, next action hour set, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: 9,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 11,
+      name: 'status not excluded (Awaiting Workspace), recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: OTHER_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 12,
+      name: 'status not excluded (Awaiting Workspace), idle -> killed',
+      mappedToIssue: true,
+      issueStatus: OTHER_STATUS_NAME,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: true,
+      expectedKilled: true,
+    },
+    {
+      row: 13,
+      name: 'null/unset status, recent activity -> not killed',
+      mappedToIssue: true,
+      issueStatus: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: false,
+      expectedKilled: false,
+    },
+    {
+      row: 14,
+      name: 'null/unset status, idle -> killed',
+      mappedToIssue: true,
+      issueStatus: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      idleAtOrBeyondThreshold: true,
+      expectedKilled: true,
+    },
+  ];
+
+  it.each(killDecisionRows)(
+    'row $row: $name',
+    async ({
+      mappedToIssue,
+      issueStatus,
+      nextActionDate,
+      nextActionHour,
+      idleAtOrBeyondThreshold,
+      expectedKilled,
+    }) => {
+      const activityEpochSeconds = idleAtOrBeyondThreshold
+        ? nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS
+        : nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS + 1;
+
+      let sessionName: string;
+      if (mappedToIssue) {
+        const issue = createMockIssue({
+          status: issueStatus,
+          nextActionDate,
+          nextActionHour,
+        });
+        sessionName = toTmuxSessionName(issue.url);
+        mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+      } else {
+        sessionName = 'no_task_session';
+        mockIssueRepository.getAllOpened.mockResolvedValue([]);
+      }
+      setLiveSessions([{ sessionName, activityEpochSeconds }]);
+
+      await useCase.run(runParams());
+
+      if (expectedKilled) {
+        expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
+          sessionName,
+        );
+      } else {
+        expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it('never kills an excluded-status session that has no reactivation trigger', async () => {
     const issue = createMockIssue({
-      status: DEFAULT_EXCLUDED_STATUS,
+      status: IN_TMUX_STATUS_NAME,
       nextActionDate: null,
       nextActionHour: null,
     });
@@ -224,7 +382,8 @@ describe('StaleTmuxSessionKillUseCase', () => {
     });
     const sessionName = 'https_//github_com/owner/repo/issues/9';
     expect(toTmuxSessionName(issue.url)).toBe(sessionName);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
+    const idleActivity = nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS;
+    setLiveSessions([{ sessionName, activityEpochSeconds: idleActivity }]);
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
     await useCase.run(runParams());
     expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
@@ -242,7 +401,8 @@ describe('StaleTmuxSessionKillUseCase', () => {
     );
     const issue = createMockIssue({ status: 'In Progress' });
     const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
+    const idleActivity = nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS;
+    setLiveSessions([{ sessionName, activityEpochSeconds: idleActivity }]);
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
 
     await useCase.run(runParams());
@@ -261,7 +421,8 @@ describe('StaleTmuxSessionKillUseCase', () => {
   it('does not suppress errors raised while killing a session', async () => {
     const issue = createMockIssue({ status: 'In Progress' });
     const sessionName = toTmuxSessionName(issue.url);
-    setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
+    const idleActivity = nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS;
+    setLiveSessions([{ sessionName, activityEpochSeconds: idleActivity }]);
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
     mockTmuxSessionRepository.killSession.mockRejectedValue(
       new Error('tmux kill failed'),
