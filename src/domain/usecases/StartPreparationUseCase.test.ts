@@ -7860,7 +7860,7 @@ describe('StartPreparationUseCase', () => {
       });
     });
 
-    it('with only 1 free slot, spawns both explicit NO STORY items oldest first and does not reach a real Story A item ranked after NO STORY', async () => {
+    it('with only 2 free slots, spawns both explicit NO STORY items oldest first and does not reach a real Story A item ranked after NO STORY', async () => {
       const explicitNoStoryIssueOlder = createMockIssue({
         url: 'https://github.com/user/repo/issues/5000',
         number: 5000,
