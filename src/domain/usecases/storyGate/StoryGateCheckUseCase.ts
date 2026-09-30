@@ -48,6 +48,11 @@ export type StoryGateAction =
   | 'FOLD_REQUIRED'
   | 'JUDGE';
 
+export type TriageAgentSelfRouteAction = Extract<
+  StoryGateAction,
+  'SELF_RESOLVE_STORY' | 'PROCEED'
+>;
+
 export type StoryGateReason =
   | 'NOT_ON_ANY_BOARD'
   | 'REGULAR_STORY'
@@ -246,7 +251,12 @@ export class StoryGateCheckUseCase {
           caches.some((cache) => cache.projectId === item.projectId),
         );
         if (itemsOnCachedBoards.length > 0) {
-          return this.routeToTriage(state, input, 'ISSUE_NOT_IN_BOARD_CACHE');
+          return this.routeToTriage(
+            state,
+            input,
+            'ISSUE_NOT_IN_BOARD_CACHE',
+            'PROCEED',
+          );
         }
         return this.assignedIssueEvaluate(
           state,
@@ -266,11 +276,21 @@ export class StoryGateCheckUseCase {
     }
     const storyIssueUrls = this.storyIssueUrlsFind(caches, storyValue);
     if (storyIssueUrls.length === 0) {
-      return this.routeToTriage(state, input, 'STORY_ISSUE_NOT_FOUND');
+      return this.routeToTriage(
+        state,
+        input,
+        'STORY_ISSUE_NOT_FOUND',
+        'PROCEED',
+      );
     }
     await this.storyIssuesRead(state, input, storyIssueUrls);
     if (state.result.storyIssues.length === 0) {
-      return this.routeToTriage(state, input, 'STORY_ISSUES_NOT_READABLE');
+      return this.routeToTriage(
+        state,
+        input,
+        'STORY_ISSUES_NOT_READABLE',
+        'PROCEED',
+      );
     }
     return this.assignedIssueEvaluate(state, input, caches, 'STORY_ISSUE_READ');
   };
@@ -352,11 +372,12 @@ export class StoryGateCheckUseCase {
     state: EvaluationState,
     input: StoryGateCheckInput,
     reason: StoryGateReason,
+    selfRouteAction: TriageAgentSelfRouteAction,
   ): StoryGateCheckOutput => {
     if (input.agentName === input.triageAgentName) {
       return this.decide(
         state,
-        'SELF_RESOLVE_STORY',
+        selfRouteAction,
         'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF',
       );
     }
@@ -517,7 +538,12 @@ export class StoryGateCheckUseCase {
         candidate.org.toLowerCase() === input.issue.owner.toLowerCase(),
     );
     if (config === undefined) {
-      return this.routeToTriage(state, input, 'STORY_NOT_ADOPTABLE');
+      return this.routeToTriage(
+        state,
+        input,
+        'STORY_NOT_ADOPTABLE',
+        'SELF_RESOLVE_STORY',
+      );
     }
     state.result.facts.projectConfigFilePath = config.filePath;
     const agentInProjectAgents = config.agents.includes(input.agentName);
@@ -539,7 +565,12 @@ export class StoryGateCheckUseCase {
         'OPEN_PULL_REQUEST_EXISTS',
       );
     }
-    return this.routeToTriage(state, input, 'STORY_NOT_ADOPTABLE');
+    return this.routeToTriage(
+      state,
+      input,
+      'STORY_NOT_ADOPTABLE',
+      'SELF_RESOLVE_STORY',
+    );
   };
 
   private closingPullRequestsRecord = async (
