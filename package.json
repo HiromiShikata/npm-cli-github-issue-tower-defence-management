@@ -129,6 +129,6 @@
   },
   "overrides": {
     "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat",
-    "npm": "12.0.2"
+    "npm": "12.1.0"
   }
 }
