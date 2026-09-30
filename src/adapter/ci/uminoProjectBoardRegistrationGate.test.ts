@@ -256,6 +256,18 @@ describe('evaluateGitHubActionsExpression', () => {
         truthinessAndInequalityContext,
         false,
       ],
+      [
+        'treats a bare identifier resolving to a missing property as falsy',
+        'config.missingField',
+        truthinessAndInequalityContext,
+        false,
+      ],
+      [
+        'treats a bare identifier resolving to an object as truthy',
+        'config',
+        truthinessAndInequalityContext,
+        true,
+      ],
     ],
   )('%s', (_description, candidateExpression, context, expected) => {
     expect(evaluateGitHubActionsExpression(candidateExpression, context)).toBe(
