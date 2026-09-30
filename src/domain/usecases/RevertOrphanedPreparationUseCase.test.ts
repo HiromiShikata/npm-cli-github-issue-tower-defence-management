@@ -1580,9 +1580,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      0,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(0);
   });
 
   it('leaves issue in Preparation and posts no exception comment when pgrep exits zero and no aw log files exist yet', async () => {
@@ -1616,9 +1614,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      0,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(0);
   });
 
   it('should skip aw log check when awLogDirectoryPath is not configured', async () => {
