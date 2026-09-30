@@ -1,3 +1,11 @@
+## [2.153.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.0...v2.153.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **overrides:** pin undici to 6.28.1 and 7.29.1 for GHSA-3wwx-pv8p-q78v ([#2906](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2906)) ([13100a4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/13100a4fd8c8ffd9469f27f7f4ada0aac756c9ba))
+* **StartPreparationUseCase:** skip closed issues at the pre-spawn refetch guard and self-heal the cached entry ([#2905](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2905)) ([4021a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4021a1f071faf8969932a6ff6f1b548977a8f88d))
+
 # [2.153.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.152.14...v2.153.0) (2026-09-30)
 
 
