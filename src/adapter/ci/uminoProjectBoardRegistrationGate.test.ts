@@ -213,4 +213,50 @@ describe('evaluateGitHubActionsExpression', () => {
       expected,
     );
   });
+
+  it.each<[string, string, Record<string, GitHubActionsContextValue>, RegExp]>([
+    [
+      'throws on an unterminated string literal',
+      "config.role == 'admin",
+      roleAndStatusContext,
+      /^unterminated string literal starting at position \d+ in GitHub Actions expression:/,
+    ],
+    [
+      'throws on an unsupported operator or character',
+      "config.role % 'admin'",
+      roleAndStatusContext,
+      /^unsupported operator or character '%' at position \d+ in GitHub Actions expression:/,
+    ],
+    [
+      'throws on an unexpected end of expression after a trailing &&',
+      "config.role == 'admin' &&",
+      roleAndStatusContext,
+      /^unexpected end of GitHub Actions expression:/,
+    ],
+    [
+      'throws on a missing closing parenthesis',
+      "(config.role == 'admin'",
+      roleAndStatusContext,
+      /^unbalanced parentheses in GitHub Actions expression:/,
+    ],
+    [
+      'throws on unbalanced parentheses with trailing content',
+      "config.role == 'admin')",
+      roleAndStatusContext,
+      /^unbalanced parentheses or trailing content in GitHub Actions expression:/,
+    ],
+    [
+      'throws when comparing an object value with ==',
+      "config == 'admin'",
+      roleAndStatusContext,
+      /^cannot compare an object value with == or != in a GitHub Actions expression$/,
+    ],
+  ])(
+    '%s',
+    (_description, candidateExpression, context, expectedErrorPattern) => {
+      expect(() =>
+        evaluateGitHubActionsExpression(candidateExpression, context),
+      ).toThrow(expectedErrorPattern);
+    },
+  );
 });
