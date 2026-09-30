@@ -903,7 +903,7 @@ describe('StoryGateCheckUseCase', () => {
   });
 
   describe('triage agent self-routing guard', () => {
-    it('resolves itself instead of routing to itself when ISSUE_NOT_IN_BOARD_CACHE would otherwise apply', async () => {
+    it('proceeds instead of routing to itself when ISSUE_NOT_IN_BOARD_CACHE would otherwise apply', async () => {
       const scenario = new StoryGateScenario({
         story: null,
         inCache: false,
@@ -915,7 +915,7 @@ describe('StoryGateCheckUseCase', () => {
         triageAgentName: 'triage-agent',
       });
 
-      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
       expect(result.routingJson).toBeNull();
     });
@@ -934,7 +934,7 @@ describe('StoryGateCheckUseCase', () => {
       expect(result.routingJson).toBeNull();
     });
 
-    it('resolves itself instead of routing to itself when STORY_ISSUE_NOT_FOUND would otherwise apply', async () => {
+    it('proceeds instead of routing to itself when STORY_ISSUE_NOT_FOUND would otherwise apply', async () => {
       const scenario = new StoryGateScenario({
         story: 'feature A',
         storyIssueUrlByOptionName: {},
@@ -945,12 +945,12 @@ describe('StoryGateCheckUseCase', () => {
         triageAgentName: 'triage-agent',
       });
 
-      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
       expect(result.routingJson).toBeNull();
     });
 
-    it('resolves itself instead of routing to itself when STORY_ISSUES_NOT_READABLE would otherwise apply', async () => {
+    it('proceeds instead of routing to itself when STORY_ISSUES_NOT_READABLE would otherwise apply', async () => {
       const scenario = new StoryGateScenario({
         story: 'feature A',
         storyIssueUrlByOptionName: { 'feature A': issueUrl(108) },
@@ -961,7 +961,7 @@ describe('StoryGateCheckUseCase', () => {
         triageAgentName: 'triage-agent',
       });
 
-      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
       expect(result.routingJson).toBeNull();
     });
