@@ -1500,5 +1500,60 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
       });
     });
+
+    describe('MAXIMUM_ISSUES_WRITTEN_PER_RUN cap (issue #2951)', () => {
+      const buildEligibleWorkflowIssue = (index: number): Issue => ({
+        ...mock<Issue>(),
+        url: `https://github.com/o/r/issues/cap-${index}`,
+        itemId: `item-cap-${index}`,
+        isPr: true,
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      });
+
+      const testCases: {
+        eligibleIssueCount: number;
+        expectedWrittenCount: number;
+      }[] = [
+        { eligibleIssueCount: 0, expectedWrittenCount: 0 },
+        { eligibleIssueCount: 3, expectedWrittenCount: 3 },
+        { eligibleIssueCount: 5, expectedWrittenCount: 5 },
+        { eligibleIssueCount: 6, expectedWrittenCount: 5 },
+        { eligibleIssueCount: 20, expectedWrittenCount: 5 },
+      ];
+
+      it.each(testCases)(
+        'writes Story for $expectedWrittenCount of $eligibleIssueCount eligible issues in one run() call',
+        async ({ eligibleIssueCount, expectedWrittenCount }) => {
+          const issues: Issue[] = Array.from(
+            { length: eligibleIssueCount },
+            (_, i) => buildEligibleWorkflowIssue(i),
+          );
+          mockIssueRepository.get.mockImplementation(async (url) => {
+            const found = issues.find((issue) => issue.url === url);
+            return found ? { ...found } : null;
+          });
+
+          const promise = useCase.run({
+            targetDates: [targetDate],
+            project: basicProject,
+            issues,
+            cacheUsed: false,
+          });
+          await jest.runAllTimersAsync();
+          await promise;
+
+          expect(mockIssueRepository.updateStory).toHaveBeenCalledTimes(
+            expectedWrittenCount,
+          );
+          expect(mockIssueRepository.get).toHaveBeenCalledTimes(
+            expectedWrittenCount,
+          );
+        },
+      );
+    });
   });
 });
