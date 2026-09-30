@@ -25,17 +25,26 @@ export class ClosedStoryIssueReopenUseCase {
       if (storyObject.story.name.startsWith('regular / ')) {
         continue;
       }
-      const closedStoryIssue =
-        params.issues.find(
-          (issue) =>
-            storyObject.story.name.startsWith(issue.title) &&
-            issue.isClosed &&
-            issue.labels.includes('story'),
-        ) ??
-        (await this.findArchivedClosedStoryIssue(
+      const closedStoryIssueInCache = params.issues.find(
+        (issue) =>
+          storyObject.story.name.startsWith(issue.title) &&
+          issue.isClosed &&
+          issue.labels.includes('story'),
+      );
+      let closedStoryIssue: Issue | null = closedStoryIssueInCache ?? null;
+      if (!closedStoryIssueInCache) {
+        const openStoryIssueAlreadyExists = await this.hasOpenStoryIssue(
           storyObject.story.name,
           params.storyIssueOwnerRepo,
-        ));
+        );
+        if (openStoryIssueAlreadyExists) {
+          continue;
+        }
+        closedStoryIssue = await this.findArchivedClosedStoryIssue(
+          storyObject.story.name,
+          params.storyIssueOwnerRepo,
+        );
+      }
       if (!closedStoryIssue) {
         continue;
       }
@@ -60,6 +69,19 @@ export class ClosedStoryIssueReopenUseCase {
       );
     }
     return reopenedCount;
+  };
+
+  private hasOpenStoryIssue = async (
+    storyName: string,
+    ownerRepo: string,
+  ): Promise<boolean> => {
+    const query = `repo:${ownerRepo} is:open label:story "${storyName}" in:title`;
+    const results = await this.issueRepository.searchIssues(query);
+    if (results.length === 0) {
+      return false;
+    }
+    const issue = await this.issueRepository.getIssueByUrl(results[0].url);
+    return !!issue && !issue.isClosed && issue.labels.includes('story');
   };
 
   private findArchivedClosedStoryIssue = async (
