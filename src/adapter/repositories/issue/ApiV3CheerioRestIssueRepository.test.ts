@@ -3237,6 +3237,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
     type RepositoryIssueEventFeedPageResponse =
       | { outcome: 'listed'; events: RepositoryIssueEventFeedEvent[] }
+      | { outcome: 'listedWithUnexpectedShape'; body: unknown }
       | { outcome: 'failed'; httpStatus: number };
 
     const buildPagedApiUrl = (apiUrl: string, page: number): string =>
@@ -3328,19 +3329,33 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         const page = pageIndex + 1;
         responseBuilderByRequestUrl.set(
           buildPagedApiUrl(repositoryIssueEventFeedApiUrl, page),
-          () =>
-            feedPage.outcome === 'listed'
-              ? new Response(JSON.stringify(feedPage.events), {
+          () => {
+            switch (feedPage.outcome) {
+              case 'listed':
+                return new Response(JSON.stringify(feedPage.events), {
                   status: 200,
                   headers: buildPaginationLinkHeader(
                     repositoryIssueEventFeedApiUrl,
                     page,
                     repositoryIssueEventFeedPages.length,
                   ),
-                })
-              : new Response(JSON.stringify({ message: 'Server Error' }), {
-                  status: feedPage.httpStatus,
-                }),
+                });
+              case 'listedWithUnexpectedShape':
+                return new Response(JSON.stringify(feedPage.body), {
+                  status: 200,
+                  headers: buildPaginationLinkHeader(
+                    repositoryIssueEventFeedApiUrl,
+                    page,
+                    repositoryIssueEventFeedPages.length,
+                  ),
+                });
+              case 'failed':
+                return new Response(
+                  JSON.stringify({ message: 'Server Error' }),
+                  { status: feedPage.httpStatus },
+                );
+            }
+          },
         );
       });
       jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
@@ -3985,6 +4000,79 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           issueEventListingPages: [1, 2, 3, 4],
           repositoryIssueEventFeedPages:
             testCase.expectedRepositoryIssueEventFeedPages,
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const repositoryIssueEventFeedUnexpectedShapeCases: {
+      name: string;
+      unexpectedFeedPageBody: unknown;
+    }[] = [
+      {
+        name: 'a feed item has no issue field',
+        unexpectedFeedPageBody: [
+          {
+            id: 1,
+            event: 'reopened',
+            created_at: '2026-09-30T07:00:00Z',
+          },
+        ],
+      },
+      {
+        name: 'a feed item has a string issue number',
+        unexpectedFeedPageBody: [
+          {
+            id: 1,
+            event: 'reopened',
+            created_at: '2026-09-30T07:00:00Z',
+            issue: { number: '42' },
+          },
+        ],
+      },
+      {
+        name: 'the feed body is an object instead of an array',
+        unexpectedFeedPageBody: {
+          message: 'unexpected object body',
+        },
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedUnexpectedShapeCases)(
+      'throws an error naming the issue URL when a repository-wide feed page responds with a body that is not an array of issue events: $name',
+      async (testCase) => {
+        const requestedUrls = mockIssueEventApisAndRecordRequestedUrls(
+          buildIssueEventListingOldestFirst(310, [100, 305]),
+          [
+            {
+              outcome: 'listedWithUnexpectedShape',
+              body: testCase.unexpectedFeedPageBody,
+            },
+            {
+              outcome: 'listed',
+              events: [
+                buildRepositoryIssueEventFeedEvent(
+                  42,
+                  'reopened',
+                  '2026-09-30T06:30:00Z',
+                ),
+              ],
+            },
+          ],
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const latestReopenedEventAt = repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        await expect(latestReopenedEventAt).rejects.toBeInstanceOf(Error);
+        await expect(latestReopenedEventAt).rejects.toThrow(
+          reopenedEventTestIssueUrl,
+        );
+        expect(summarizeRequestedUrls(requestedUrls)).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages: [1],
           unrecognizedRequestUrls: [],
         });
       },
