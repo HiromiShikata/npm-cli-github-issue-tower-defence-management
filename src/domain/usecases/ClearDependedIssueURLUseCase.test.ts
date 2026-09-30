@@ -840,26 +840,114 @@ describe('ClearDependedIssueURLUseCase', () => {
     );
 
     describe('iterationsExhausted guard', () => {
-      it('should not remove not-found dependency URL when last agent report has iterationsExhausted true', async () => {
+      const sameRepoDependingIssueWithIterationsExhausted = {
+        ...mock<Issue>(),
+        url: 'https://github.com/testowner/testrepo/issues/949',
+        org: 'testowner',
+        repo: 'testrepo',
+        dependedIssueUrls: ['https://github.com/testowner/testrepo/issues/959'],
+        isClosed: false,
+      };
+      const sameRepoDependedIssueUrl =
+        'https://github.com/testowner/testrepo/issues/959';
+      const iterationsExhaustedAgentReportComment = {
+        author: 'hs-bot-gh-app[bot]',
+        body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
+        createdAt: new Date('2026-09-17T14:59:07Z'),
+      };
+
+      it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it exists but is closed, even when last agent report has iterationsExhausted true', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-          {
-            author: 'hs-bot-gh-app[bot]',
-            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
-            createdAt: new Date('2026-09-17T14:59:07Z'),
-          },
+          iterationsExhaustedAgentReportComment,
         ]);
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'closed',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
+        );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
           project: basicProject,
-          issues: [
-            {
-              ...basicIssueTwo,
-              dependedIssueUrls: [
-                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
-              ],
-            },
+          issues: [sameRepoDependingIssueWithIterationsExhausted],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [
+            basicProject,
+            'fieldId',
+            sameRepoDependingIssueWithIterationsExhausted,
           ],
+        ]);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssueWithIterationsExhausted,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('should still remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it does not exist, even when last agent report has iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          iterationsExhaustedAgentReportComment,
+        ]);
+        mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+          new Error('HTTP 404 Not Found'),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssueWithIterationsExhausted],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [
+            basicProject,
+            'fieldId',
+            sameRepoDependingIssueWithIterationsExhausted,
+          ],
+        ]);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            sameRepoDependingIssueWithIterationsExhausted,
+            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
+          ],
+        ]);
+      });
+
+      it('should not remove a same-repo depended issue URL absent from project issues when a live GitHub check confirms it is still open, regardless of last agent report iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          iterationsExhaustedAgentReportComment,
+        ]);
+        mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+          async (url) =>
+            url === sameRepoDependedIssueUrl
+              ? {
+                  state: 'open',
+                  merged: false,
+                  isPullRequest: false,
+                  title: 'x',
+                }
+              : Promise.reject(new Error('HTTP 404 Not Found')),
+        );
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [sameRepoDependingIssueWithIterationsExhausted],
           cacheUsed: false,
         });
         expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
@@ -871,74 +959,10 @@ describe('ClearDependedIssueURLUseCase', () => {
         expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
       });
 
-      it('should still remove not-found dependency URL when last agent report does not have iterationsExhausted true', async () => {
+      it('should still remove a closed board-tracked dependency even when last agent report has iterationsExhausted true', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-          {
-            author: 'hs-bot-gh-app[bot]',
-            body: 'From: :robot: developer (model)\n\n```json\n{ "nextStep": null }\n```\n',
-            createdAt: new Date('2026-09-17T14:59:07Z'),
-          },
-        ]);
-        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
-        await useCase.run({
-          project: basicProject,
-          issues: [
-            {
-              ...basicIssueTwo,
-              dependedIssueUrls: [
-                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
-              ],
-            },
-          ],
-          cacheUsed: false,
-        });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
-          1,
-        );
-        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
-      });
-
-      it('should not remove not-found dependency URL when cacheUsed is false and iterationsExhausted true with multiple deps', async () => {
-        jest.clearAllMocks();
-        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-          {
-            author: 'hs-bot-gh-app[bot]',
-            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
-            createdAt: new Date('2026-09-17T14:59:07Z'),
-          },
-        ]);
-        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
-        await useCase.run({
-          project: basicProject,
-          issues: [
-            {
-              ...basicIssueTwo,
-              dependedIssueUrls: [
-                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
-                'https://github.com/xcare-medical/hubspot-automation/issues/3411',
-              ],
-            },
-          ],
-          cacheUsed: false,
-        });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
-          0,
-        );
-        expect(
-          mockIssueRepository.updateProjectTextField.mock.calls,
-        ).toHaveLength(0);
-        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
-      });
-
-      it('should still remove closed dependency even when iterationsExhausted true', async () => {
-        jest.clearAllMocks();
-        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-          {
-            author: 'hs-bot-gh-app[bot]',
-            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
-            createdAt: new Date('2026-09-17T14:59:07Z'),
-          },
+          iterationsExhaustedAgentReportComment,
         ]);
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -952,21 +976,91 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
-          1,
-        );
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url1'] },
+          ],
+        ]);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url1'] },
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+        ]);
       });
 
-      it('should preserve not-found URL and remove closed dep via updateProjectTextField when iterationsExhausted true and closed dep coexist', async () => {
+      it('should still remove an Icebox board-tracked dependency even when last agent report has iterationsExhausted true', async () => {
         jest.clearAllMocks();
-        const notFoundUrl =
-          'https://github.com/xcare-medical/hubspot-automation/issues/3410';
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-          {
-            author: 'hs-bot-gh-app[bot]',
-            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
-            createdAt: new Date('2026-09-17T14:59:07Z'),
-          },
+          iterationsExhaustedAgentReportComment,
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox'],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+          ],
+        ]);
+        expect(mockIssueRepository.createComment.mock.calls).toEqual([
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+            'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ]);
+      });
+
+      it('should not remove an allowed-external-repo dependency even when last agent report has iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          iterationsExhaustedAgentReportComment,
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        });
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+      });
+
+      it('should never remove a not-found dependency URL when cacheUsed is true, even when last agent report has iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          iterationsExhaustedAgentReportComment,
         ]);
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -975,21 +1069,18 @@ describe('ClearDependedIssueURLUseCase', () => {
             basicIssueOne,
             {
               ...basicIssueTwo,
-              dependedIssueUrls: ['url1', notFoundUrl],
+              dependedIssueUrls: ['url4'],
             },
           ],
-          cacheUsed: false,
+          cacheUsed: true,
         });
         expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
           0,
         );
         expect(
           mockIssueRepository.updateProjectTextField.mock.calls,
-        ).toHaveLength(1);
-        expect(
-          mockIssueRepository.updateProjectTextField.mock.calls[0][3],
-        ).toBe(notFoundUrl);
-        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
       });
     });
 
