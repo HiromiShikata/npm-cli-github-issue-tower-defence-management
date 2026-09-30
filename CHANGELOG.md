@@ -1,3 +1,10 @@
+## [2.153.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.7...v2.153.8) (2026-09-30)
+
+
+### Bug Fixes
+
+* reserve per-token launch slots across concurrent preparation runs ([#2918](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2918)) ([f4aa55d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f4aa55dd27e353ec15c0085a344a9e495d5bb9d0))
+
 ## [2.153.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.6...v2.153.7) (2026-09-30)
 
 
