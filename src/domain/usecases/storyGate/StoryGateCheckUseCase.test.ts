@@ -902,6 +902,71 @@ describe('StoryGateCheckUseCase', () => {
     });
   });
 
+  describe('triage agent self-routing guard', () => {
+    it('resolves itself instead of routing to itself when ISSUE_NOT_IN_BOARD_CACHE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: null,
+        inCache: false,
+        liveItems: [liveItem(BOARD_PROJECT_ID, null, `ITEM_${ASSIGNED}`)],
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('resolves itself instead of routing to itself when STORY_NOT_ADOPTABLE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({ story: null });
+      scenario.configs = [];
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('resolves itself instead of routing to itself when STORY_ISSUE_NOT_FOUND would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        storyIssueUrlByOptionName: {},
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+
+    it('resolves itself instead of routing to itself when STORY_ISSUES_NOT_READABLE would otherwise apply', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        storyIssueUrlByOptionName: { 'feature A': issueUrl(108) },
+      });
+
+      const { result } = await scenario.run({
+        agentName: 'triage-agent',
+        triageAgentName: 'triage-agent',
+      });
+
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
+      expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
+      expect(result.routingJson).toBeNull();
+    });
+  });
+
   describe('story issue lookup', () => {
     it('takes the story issue URL from the map of another board cache', async () => {
       const scenario = new StoryGateScenario({
