@@ -7,6 +7,7 @@ export interface ClaudeTokenUsageRepository {
   reserveTokenLaunchSlot(params: {
     token: string;
     concurrentLimit: number;
+    issueUrl: string;
   }): Promise<boolean>;
   proxyBaseUrl(): string;
 }

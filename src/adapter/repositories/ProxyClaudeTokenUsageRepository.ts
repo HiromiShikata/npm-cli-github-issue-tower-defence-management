@@ -13,15 +13,13 @@ const PROC_DIRECTORY = '/proc';
 
 const TOKEN_RESERVATION_LOCK_FILE_NAME = '.write.lock';
 
-export const TOKEN_LAUNCH_RESERVATION_TTL_MS = 60_000;
+export const TOKEN_LAUNCH_RESERVATION_TTL_MS = 600_000;
 
 const TOKEN_RESERVATION_DIRECTORY_KEY_SALT =
   'npm-cli-github-issue-tower-defence-management:token-launch-reservation';
 
-// The token is namespaced into a directory name via a computationally
-// expensive KDF (rather than a fast digest like sha256) so that a
-// reservation directory name cannot be cheaply brute-forced back into the
-// underlying OAuth token by anyone who can only see the cache directory.
+const TAKE_OWNERSHIP_OF_ISSUE_URL_COMMAND_LINE_INFIX = 'Take ownership of ';
+
 export const hashTokenForReservationDirectory = (token: string): string =>
   pbkdf2Sync(
     token,
@@ -33,22 +31,25 @@ export const hashTokenForReservationDirectory = (token: string): string =>
 
 interface TokenLaunchReservation {
   reservedAt: number;
+  issueUrl: string;
 }
 
 const isTokenLaunchReservation = (
   value: unknown,
 ): value is TokenLaunchReservation =>
-  isRecord(value) && typeof value.reservedAt === 'number';
+  isRecord(value) &&
+  typeof value.reservedAt === 'number' &&
+  typeof value.issueUrl === 'string';
 
 export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageRepository {
-  private readonly workerSessionReader =
-    new ProcTakeOwnershipWorkerSessionReader(PROC_DIRECTORY);
-
   constructor(
     private readonly tokenListJsonPath: string | null,
     private readonly port: number = PROXY_PORT,
     private readonly tokenLaunchReservationCacheRepository: LocalStorageCacheRepository = new LocalStorageCacheRepository(
       new LocalStorageRepository(),
+    ),
+    private readonly workerSessionReader: ProcTakeOwnershipWorkerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+      PROC_DIRECTORY,
     ),
   ) {}
 
@@ -169,6 +170,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
   reserveTokenLaunchSlot = async (params: {
     token: string;
     concurrentLimit: number;
+    issueUrl: string;
   }): Promise<boolean> => {
     const tokenHash = hashTokenForReservationDirectory(params.token);
     const reservationDirectoryKey = `token-reservations/${tokenHash}`;
@@ -182,6 +184,13 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         const reservationFileNames = localStorageRepository
           .listFiles(reservationDirectoryPath)
           .filter((fileName) => fileName !== TOKEN_RESERVATION_LOCK_FILE_NAME);
+        const liveWorkerCommandLines = this.workerSessionReader
+          .listWorkerSessions()
+          .flatMap((session) =>
+            session.workerProcesses.map(
+              (workerProcess) => workerProcess.rawCommandLine,
+            ),
+          );
         let nonExpiredReservationCount = 0;
         for (const fileName of reservationFileNames) {
           const filePath = `${reservationDirectoryPath}/${fileName}`;
@@ -209,6 +218,15 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
             localStorageRepository.remove(filePath);
             continue;
           }
+          const reservedIssueCommandLineInfix = `${TAKE_OWNERSHIP_OF_ISSUE_URL_COMMAND_LINE_INFIX}${parsedFileContent.issueUrl}`;
+          const reservationBecameLiveWorker = liveWorkerCommandLines.some(
+            (rawCommandLine) =>
+              rawCommandLine.includes(reservedIssueCommandLineInfix),
+          );
+          if (reservationBecameLiveWorker) {
+            localStorageRepository.remove(filePath);
+            continue;
+          }
           nonExpiredReservationCount += 1;
         }
         const realInFlightCounts = await this.getTokenInFlightCounts();
@@ -222,6 +240,7 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           reservationFilePath,
           JSON.stringify({
             reservedAt: nowMs,
+            issueUrl: params.issueUrl,
           } satisfies TokenLaunchReservation),
         );
         return true;

@@ -1050,6 +1050,7 @@ export class StartPreparationUseCase {
             await this.claudeTokenUsageRepository.reserveTokenLaunchSlot({
               token: currentCandidate.token,
               concurrentLimit: candidateLimit ?? 0,
+              issueUrl: issue.url,
             });
           if (reserved) {
             reservedTokenToFill = currentCandidate;
