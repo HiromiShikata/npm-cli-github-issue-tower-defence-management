@@ -105,6 +105,7 @@ type NotifyFinishedIssuePreparationParams = {
   defaultAgentName?: string | null;
   deferPreparation?: boolean | null;
   rateLimitRejected?: boolean | null;
+  promptTooLongOnResume?: boolean | null;
   moveToFailedPreparation?: boolean | null;
   workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
@@ -265,6 +266,15 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (params.rateLimitRejected) {
       await this.handleRateLimitRejected(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
+      );
+      return;
+    }
+
+    if (params.promptTooLongOnResume) {
+      await this.handlePromptTooLongOnResume(
         issue,
         project,
         awaitingWorkspaceStatusOption,
@@ -906,6 +916,25 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.issueCommentRepository.createComment(
       issue,
       'Session ended due to API rate limit; returning to Awaiting Workspace without incrementing the consecutive-no-report counter.',
+    );
+  };
+
+  private handlePromptTooLongOnResume = async (
+    issue: Issue,
+    project: Project,
+    awaitingWorkspaceStatusOption: { id: string },
+  ): Promise<void> => {
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.issueCommentRepository.createComment(
+      issue,
+      'Session ended because the resumed conversation exceeded the model prompt length limit; returning to Awaiting Workspace without incrementing the consecutive-no-report counter.',
     );
   };
 

@@ -166,6 +166,7 @@ type NotifyFinishedOptions = {
   sessionErrorLine?: string;
   deferPreparation?: boolean;
   rateLimitRejected?: boolean;
+  promptTooLongOnResume?: boolean;
   moveToFailedPreparation?: boolean;
   dispatchStartedAt?: string;
 };
@@ -712,6 +713,10 @@ program
     'Return the item to Awaiting Workspace without incrementing the consecutive-no-report counter; use when the session ended due to an API rate limit rejection',
   )
   .option(
+    '--promptTooLongOnResume',
+    'Return the item to Awaiting Workspace without incrementing the consecutive-no-report counter; use when a resumed session failed immediately because its carried-over conversation exceeded the model prompt length limit',
+  )
+  .option(
     '--moveToFailedPreparation',
     'Move the item to Failed Preparation status after reaching the consecutive failure threshold',
   )
@@ -907,6 +912,7 @@ program
         defaultAgentName: config.defaultAgentName ?? null,
         deferPreparation: options.deferPreparation ?? null,
         rateLimitRejected: options.rateLimitRejected ?? null,
+        promptTooLongOnResume: options.promptTooLongOnResume ?? null,
         moveToFailedPreparation: options.moveToFailedPreparation ?? null,
         workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
         tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
