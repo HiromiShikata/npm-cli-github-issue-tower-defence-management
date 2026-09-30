@@ -1,3 +1,10 @@
+## [2.153.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.1...v2.153.2) (2026-09-30)
+
+
+### Bug Fixes
+
+* **ClosedStoryIssueReopenUseCase:** skip reopening a new closed duplicate story issue once an open issue already exists ([#2910](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2910)) ([c3e313a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c3e313af76e88c8b896863cd413ba26b1ca427db))
+
 ## [2.153.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.0...v2.153.1) (2026-09-30)
 
 
