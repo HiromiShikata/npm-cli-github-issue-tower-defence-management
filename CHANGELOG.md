@@ -1,3 +1,10 @@
+## [2.153.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.8...v2.153.9) (2026-09-30)
+
+
+### Bug Fixes
+
+* **cache-reconciliation:** batch full-fetch reconciliation via fetchProjectItemsByIds instead of one GraphQL call per item ([#2922](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2922)) ([0f904e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0f904e3182b971a4c2d5dd2a695a00cf15513cfe))
+
 ## [2.153.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.7...v2.153.8) (2026-09-30)
 
 
