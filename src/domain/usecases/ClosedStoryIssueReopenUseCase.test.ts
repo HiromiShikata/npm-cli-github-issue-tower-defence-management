@@ -577,23 +577,21 @@ describe('ClosedStoryIssueReopenUseCase', () => {
             ];
           },
         );
-        mockRepository.getIssueByUrl.mockImplementation(
-          async (url: string) => {
-            if (url === 'https://github.com/owner/repo/issues/99') {
-              return tc.openIssueLookup;
-            }
-            if (url === 'https://github.com/owner/repo/issues/42') {
-              return createMockIssue({
-                title: 'feature / X',
-                url: 'https://github.com/owner/repo/issues/42',
-                number: 42,
-                isClosed: true,
-                labels: ['story'],
-              });
-            }
-            return null;
-          },
-        );
+        mockRepository.getIssueByUrl.mockImplementation(async (url: string) => {
+          if (url === 'https://github.com/owner/repo/issues/99') {
+            return tc.openIssueLookup;
+          }
+          if (url === 'https://github.com/owner/repo/issues/42') {
+            return createMockIssue({
+              title: 'feature / X',
+              url: 'https://github.com/owner/repo/issues/42',
+              number: 42,
+              isClosed: true,
+              labels: ['story'],
+            });
+          }
+          return null;
+        });
 
         const storyObjectMap = buildStoryObjectMapFixture([
           { storyName: 'feature / X', storyIssue: null },
