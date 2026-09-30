@@ -12,6 +12,7 @@ import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHand
 import { IssueCheckpointRepository } from './adapter-interfaces/IssueCheckpointRepository';
 import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
+import { TokenExhaustionHandoverStateRepository } from './adapter-interfaces/TokenExhaustionHandoverStateRepository';
 import {
   TokenModelWeeklyLimit,
   TokenRateLimitSnapshot,
@@ -902,5 +903,60 @@ describe('TokenExhaustionHandoverUseCase', () => {
         }
       },
     );
+  });
+
+  describe('per-session state persistence (issue #2878)', () => {
+    it('saves the handover state through an injected repository after each session is processed, not only once after the whole run resolves', async () => {
+      const stateRepository: Mocked<
+        Pick<TokenExhaustionHandoverStateRepository, 'save'>
+      > = {
+        save: jest.fn(),
+      };
+      const useCaseWithStateRepository = new TokenExhaustionHandoverUseCase(
+        handoverSessionRepository,
+        snapshotRepository,
+        tmuxSessionRepository,
+        processSignalRepository,
+        issueCheckpointRepository,
+        stateRepository,
+      );
+      const sessionA: ClaudeHandoverSession = {
+        ...issueUrlLeaderSession(),
+        pid: 2001,
+        sessionName: 'session-a',
+        name: 'session-a',
+        issueUrl: 'https://github.com/owner/repo/issues/2',
+      };
+      const sessionB: ClaudeHandoverSession = {
+        ...issueUrlLeaderSession(),
+        pid: 2002,
+        sessionName: 'session-b',
+        name: 'session-b',
+        issueUrl: 'https://github.com/owner/repo/issues/3',
+      };
+      handoverSessionRepository.listHandoverSessions.mockReturnValue([
+        sessionA,
+        sessionB,
+      ]);
+      snapshotRepository.listSnapshots.mockReturnValue([
+        snapshot(TOKEN_EXHAUSTED, { rejected: true }),
+        snapshot(TOKEN_FRESH),
+      ]);
+
+      await useCaseWithStateRepository.run(defaultInput());
+
+      expect(stateRepository.save).toHaveBeenCalledTimes(2);
+      expect(stateRepository.save).toHaveBeenNthCalledWith(1, {
+        entries: {
+          'session-a': { signaledAtEpoch: nowEpochSeconds, pid: 2001 },
+        },
+      });
+      expect(stateRepository.save).toHaveBeenNthCalledWith(2, {
+        entries: {
+          'session-a': { signaledAtEpoch: nowEpochSeconds, pid: 2001 },
+          'session-b': { signaledAtEpoch: nowEpochSeconds, pid: 2002 },
+        },
+      });
+    });
   });
 });
