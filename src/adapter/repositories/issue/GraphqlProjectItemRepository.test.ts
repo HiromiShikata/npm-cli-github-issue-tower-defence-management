@@ -3057,7 +3057,9 @@ describe('GraphqlProjectItemRepository', () => {
 
         mockPost
           .mockReturnValueOnce(
-            mockRejectedJsonResponse(makeHttpError(429, { 'retry-after': '1' })),
+            mockRejectedJsonResponse(
+              makeHttpError(429, { 'retry-after': '1' }),
+            ),
           )
           .mockReturnValueOnce(
             mockJsonResponse({
