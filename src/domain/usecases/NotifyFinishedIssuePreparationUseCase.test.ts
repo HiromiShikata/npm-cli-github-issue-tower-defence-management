@@ -102,6 +102,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockProjectRepository: {
     getByUrl: jest.Mock;
     updateAgentList: jest.Mock;
+    updateStoryList: jest.Mock;
     createField: jest.Mock;
   };
   let mockIssueRepository: {
@@ -156,6 +157,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository = {
       getByUrl: jest.fn(),
       updateAgentList: jest.fn().mockResolvedValue([]),
+      updateStoryList: jest.fn().mockResolvedValue([]),
       createField: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -8123,13 +8125,33 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
-    it('does not call updateStory when the story name does not match any project story option', async () => {
+    it('creates the missing Story option via updateStoryList and calls updateStory with the created option id when the story name does not match any project story option', async () => {
       const project = projectWithStoryAndAgent();
       const issue = createMockIssue({
         status: 'Preparation',
         agent: 'triager',
       });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockProjectRepository.updateStoryList.mockResolvedValue([
+        {
+          id: 'story-opt-wf',
+          name: 'regular / workflow improvement',
+          color: 'BLUE',
+          description: '',
+        },
+        {
+          id: 'story-opt-other',
+          name: 'regular / other',
+          color: 'GREEN',
+          description: '',
+        },
+        {
+          id: 'story-opt-nonexistent',
+          name: 'nonexistent story',
+          color: 'RED',
+          description: '',
+        },
+      ]);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -8147,7 +8169,34 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockProjectRepository.updateStoryList).toHaveBeenCalledWith(
+        project,
+        [
+          {
+            id: 'story-opt-wf',
+            name: 'regular / workflow improvement',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'story-opt-other',
+            name: 'regular / other',
+            color: 'GREEN',
+            description: '',
+          },
+          {
+            id: null,
+            name: 'nonexistent story',
+            color: 'RED',
+            description: '',
+          },
+        ],
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-nonexistent',
+      );
     });
 
     it('does not call updateStory when reporting agent does not match issue agent field', async () => {
