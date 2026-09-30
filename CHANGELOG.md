@@ -1,3 +1,11 @@
+## [2.153.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.2...v2.153.3) (2026-09-30)
+
+
+### Bug Fixes
+
+* **tdpm:** a null timeline node fails the whole related-open-PR batch and the per-issue fallback exhausts the shared GraphQL budget ([#2913](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2913)) ([206c81a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/206c81a94d2035713b5216b261ff267e3291b335))
+* **tdpm:** correctly compute rejected flag in rotation order for weekly-limit-rejected tokens ([#2912](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2912)) ([d0adccb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d0adccb4c4bd45c808e09876657345e589cb733d))
+
 ## [2.153.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.1...v2.153.2) (2026-09-30)
 
 
