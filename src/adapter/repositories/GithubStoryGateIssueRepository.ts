@@ -20,6 +20,8 @@ export const GITHUB_COMMENTS_PAGE_SIZE = 100;
 export const RATE_LIMIT_RETRY_LIMIT = 3;
 export const RATE_LIMIT_DEFAULT_WAIT_SECONDS = 30;
 export const RATE_LIMIT_MAXIMUM_WAIT_SECONDS = 120;
+export const TRANSIENT_FAILURE_RETRY_LIMIT = 3;
+export const TRANSIENT_FAILURE_RETRY_BASE_WAIT_MILLISECONDS = 1000;
 
 type HttpMethod = 'GET' | 'POST';
 
@@ -61,6 +63,9 @@ const retryAfterSecondsParse = (headers: Headers): number => {
       : RATE_LIMIT_DEFAULT_WAIT_SECONDS;
   return Math.min(parsed, RATE_LIMIT_MAXIMUM_WAIT_SECONDS);
 };
+
+const transientFailureRetryWaitMillisecondsOf = (attempt: number): number =>
+  TRANSIENT_FAILURE_RETRY_BASE_WAIT_MILLISECONDS * 2 ** attempt;
 
 const singleSelectFieldParse = (
   value: unknown,
@@ -328,6 +333,12 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
           body: requestBody === null ? undefined : JSON.stringify(requestBody),
         });
       } catch (error) {
+        if (attempt < TRANSIENT_FAILURE_RETRY_LIMIT) {
+          await this.waitForMilliseconds(
+            transientFailureRetryWaitMillisecondsOf(attempt),
+          );
+          continue;
+        }
         throw new StoryGateGithubRequestError(
           `${method} ${url} failed: ${error instanceof Error ? error.message : String(error)}`,
         );
@@ -335,6 +346,12 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
       if (response.status === 429 && attempt < RATE_LIMIT_RETRY_LIMIT) {
         await this.waitForMilliseconds(
           retryAfterSecondsParse(response.headers) * 1000,
+        );
+        continue;
+      }
+      if (response.status >= 500 && attempt < TRANSIENT_FAILURE_RETRY_LIMIT) {
+        await this.waitForMilliseconds(
+          transientFailureRetryWaitMillisecondsOf(attempt),
         );
         continue;
       }
