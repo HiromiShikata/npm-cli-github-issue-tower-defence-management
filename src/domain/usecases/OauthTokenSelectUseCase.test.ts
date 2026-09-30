@@ -89,7 +89,7 @@ describe('OauthTokenSelectUseCase', () => {
         }),
       },
       {
-        description: '7d window 0.5% free, more than 48 hours before its reset',
+        description: '7d window 0.5% free, more than 72 hours before its reset',
         snapshot: snapshot({
           sevenDayUtilization: 0.995,
           sevenDayReset: NOW + 100 * HOUR,
@@ -660,15 +660,15 @@ describe('sevenDayUrgencyFactor', () => {
     expect(almostReset).toBe(SEVEN_DAY_WINDOW_HOURS);
   });
 
-  it('treats a token at the 48-hour spend deadline as maximally urgent for its free ratio', () => {
-    const atDeadline = sevenDayUrgencyFactor(0.5, now + 48 * 3600, now);
+  it('treats a token at the 72-hour spend deadline as maximally urgent for its free ratio', () => {
+    const atDeadline = sevenDayUrgencyFactor(0.5, now + 72 * 3600, now);
 
     expect(atDeadline).toBe(0.5 * SEVEN_DAY_WINDOW_HOURS);
   });
 
-  it('gives higher urgency at 72h-to-reset than at 76h-to-reset using hours-to-deadline as the denominator', () => {
-    const closer = sevenDayUrgencyFactor(0.5, now + 72 * 3600, now);
-    const further = sevenDayUrgencyFactor(0.5, now + 76 * 3600, now);
+  it('gives higher urgency at 96h-to-reset than at 100h-to-reset using hours-to-deadline as the denominator', () => {
+    const closer = sevenDayUrgencyFactor(0.5, now + 96 * 3600, now);
+    const further = sevenDayUrgencyFactor(0.5, now + 100 * 3600, now);
 
     expect(closer).toBeGreaterThan(further);
     expect(closer).toBeCloseTo((0.5 * SEVEN_DAY_WINDOW_HOURS) / 24, 5);
@@ -678,7 +678,7 @@ describe('sevenDayUrgencyFactor', () => {
 describe('OauthTokenSelectUseCase spend-deadline bypass with CL script thresholds', () => {
   const useCase = new OauthTokenSelectUseCase();
 
-  it('allows a token with less than the minimum seven day free ratio when within 48 hours of the seven day reset', () => {
+  it('allows a token with less than the minimum seven day free ratio when within 72 hours of the seven day reset', () => {
     const result = useCase.run(
       [
         candidate(
@@ -699,14 +699,14 @@ describe('OauthTokenSelectUseCase spend-deadline bypass with CL script threshold
     expect(nearReset?.eligible).toBe(true);
   });
 
-  it('still excludes a token with less than the minimum seven day free ratio when more than 48 hours remain before reset', () => {
+  it('still excludes a token with less than the minimum seven day free ratio when more than 72 hours remain before reset', () => {
     const result = useCase.run(
       [
         candidate(
           'farReset7d',
           snapshot({
             sevenDayUtilization: 0.995,
-            sevenDayReset: NOW + 50 * HOUR,
+            sevenDayReset: NOW + 74 * HOUR,
           }),
         ),
       ],
@@ -880,7 +880,7 @@ describe('windowFreeRatioOfUtilization', () => {
 });
 
 describe('sevenDayFreeRatioSpendableBeforeSpendDeadlineOf', () => {
-  it('spends 14% of the 7d window per fully spent 5h window until 48 hours before the 7d reset', () => {
+  it('spends 14% of the 7d window per fully spent 5h window until 72 hours before the 7d reset', () => {
     const cases: Array<{
       description: string;
       secondsUntilSevenDayReset: number;
@@ -888,27 +888,27 @@ describe('sevenDayFreeRatioSpendableBeforeSpendDeadlineOf', () => {
     }> = [
       {
         description: 'one 5h window before the deadline',
-        secondsUntilSevenDayReset: 53 * HOUR,
+        secondsUntilSevenDayReset: 77 * HOUR,
         expectedSpendableFreeRatio: 0.14,
       },
       {
         description: 'two 5h windows before the deadline',
-        secondsUntilSevenDayReset: 58 * HOUR,
+        secondsUntilSevenDayReset: 82 * HOUR,
         expectedSpendableFreeRatio: 0.28,
       },
       {
         description: 'half a 5h window before the deadline',
-        secondsUntilSevenDayReset: 50.5 * HOUR,
+        secondsUntilSevenDayReset: 74.5 * HOUR,
         expectedSpendableFreeRatio: 0.07,
       },
       {
         description: 'ten 5h windows before the deadline',
-        secondsUntilSevenDayReset: 98 * HOUR,
+        secondsUntilSevenDayReset: 122 * HOUR,
         expectedSpendableFreeRatio: 1.4,
       },
       {
         description: 'exactly at the deadline',
-        secondsUntilSevenDayReset: 48 * HOUR,
+        secondsUntilSevenDayReset: 72 * HOUR,
         expectedSpendableFreeRatio: 0,
       },
       {
@@ -955,25 +955,25 @@ describe('isSevenDayBudgetUnspendableBeforeSpendDeadline', () => {
       {
         description: '15% left with one 5h window before the deadline',
         sevenDayFreeRatio: 0.15,
-        secondsUntilSevenDayReset: 53 * HOUR,
+        secondsUntilSevenDayReset: 77 * HOUR,
         expectedUnspendable: true,
       },
       {
         description: '13% left with one 5h window before the deadline',
         sevenDayFreeRatio: 0.13,
-        secondsUntilSevenDayReset: 53 * HOUR,
+        secondsUntilSevenDayReset: 77 * HOUR,
         expectedUnspendable: false,
       },
       {
         description: '90% left with 12 hours before the deadline',
         sevenDayFreeRatio: 0.9,
-        secondsUntilSevenDayReset: 60 * HOUR,
+        secondsUntilSevenDayReset: 84 * HOUR,
         expectedUnspendable: true,
       },
       {
         description: '30% left with 12 hours before the deadline',
         sevenDayFreeRatio: 0.3,
-        secondsUntilSevenDayReset: 60 * HOUR,
+        secondsUntilSevenDayReset: 84 * HOUR,
         expectedUnspendable: false,
       },
       {

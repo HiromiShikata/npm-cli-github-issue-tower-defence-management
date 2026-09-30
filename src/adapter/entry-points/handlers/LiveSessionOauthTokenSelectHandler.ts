@@ -7,6 +7,7 @@ import {
 import {
   DEFAULT_SELECTION_WEIGHT,
   type OauthTokenCandidate,
+  SEVEN_DAY_SPEND_DEADLINE_HOURS,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
@@ -123,7 +124,7 @@ export class LiveSessionOauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, 7d budget drainable by 48h before reset: ${metric.sevenDayBudgetUndrainableBeforeSpendDeadline ? 'no' : 'yes'}, weight ${metric.selectionWeight} -> ${status}`;
+      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, 7d budget drainable by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset: ${metric.sevenDayBudgetUndrainableBeforeSpendDeadline ? 'no' : 'yes'}, weight ${metric.selectionWeight} -> ${status}`;
     });
 
     if (result.selected === null) {
@@ -142,7 +143,7 @@ export class LiveSessionOauthTokenSelectHandler {
         );
       } else {
         lines.push(
-          `Selected ${result.selected.name} (eligible tokens are ordered with the tokens whose remaining 7d budget cannot be spent by 48h before the 7d reset at maxConcurrentSessionCount (${settings.maxConcurrentSessionCount}) sessions, one fully spent 5h window consuming 14% of the 7d window, moved to the front, then by 7d free ratio ascending; the first token still under its concurrent session limit is chosen, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
+          `Selected ${result.selected.name} (eligible tokens are ordered with the tokens whose remaining 7d budget cannot be spent by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before the 7d reset at maxConcurrentSessionCount (${settings.maxConcurrentSessionCount}) sessions, one fully spent 5h window consuming 14% of the 7d window, moved to the front, then by 7d free ratio ascending; the first token still under its concurrent session limit is chosen, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
         );
       }
     }

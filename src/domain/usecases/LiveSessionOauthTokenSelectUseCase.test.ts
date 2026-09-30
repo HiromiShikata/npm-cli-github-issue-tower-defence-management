@@ -211,7 +211,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('allows a nearly used token within 48 hours of its seven day reset so remaining capacity can be drained', () => {
+  it('allows a nearly used token within 72 hours of its seven day reset so remaining capacity can be drained', () => {
     const result = useCase.run(
       [
         candidate(
@@ -234,7 +234,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('earlyDrainSevenDay');
   });
 
-  it('prefers the token within the 48-hour deadline window over a token with a distant reset', () => {
+  it('prefers the token within the 72-hour deadline window over a token with a distant reset', () => {
     const result = useCase.run(
       [
         candidate(
@@ -836,7 +836,7 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase selects a nearly spent 7d budget within the 48-hour deadline window first', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a nearly spent 7d budget within the 72-hour deadline window first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   const exhaustedWithinDeadlineCases: [string, number, number][] = [
@@ -892,7 +892,7 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
     string | null,
   ][] = [
     [
-      'token at 3% seven day free more than 48 hours before reset is eligible',
+      'token at 3% seven day free within the 72-hour deadline window is eligible',
       0.97,
       50,
       0,
@@ -950,7 +950,7 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
   );
 });
 
-describe('LiveSessionOauthTokenSelectUseCase selects a depleted-budget token within the 48-hour deadline window', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a depleted-budget token within the 72-hour deadline window', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   it('selects the only candidate when it has 3% seven-day-window free within 47 hours of reset', () => {
@@ -1203,7 +1203,7 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
 describe('LiveSessionOauthTokenSelectUseCase drains the token with the least seven day budget first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('selects a 2% free token inside the 48-hour deadline window first', () => {
+  it('selects a 2% free token inside the 72-hour deadline window first', () => {
     const result = useCase.run(
       [
         candidate('freshFirst', snapshot({})),
@@ -1237,7 +1237,7 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
           'twentyFivePercentFree',
           snapshot({
             sevenDayUtilization: 0.75,
-            sevenDayReset: NOW + 72 * HOUR,
+            sevenDayReset: NOW + 96 * HOUR,
           }),
         ),
         candidate(
@@ -1343,21 +1343,21 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
     },
   );
 
-  it('moves a token whose remaining seven day budget cannot be spent by 48 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
+  it('moves a token whose remaining seven day budget cannot be spent by 72 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
     const result = useCase.run(
       [
         candidate(
           'drainableSoonerReset',
           snapshot({
             sevenDayUtilization: 0.7,
-            sevenDayReset: NOW + 72 * HOUR,
+            sevenDayReset: NOW + 96 * HOUR,
           }),
         ),
         candidate(
           'undrainableLaterReset',
           snapshot({
             sevenDayUtilization: 0,
-            sevenDayReset: NOW + 80 * HOUR,
+            sevenDayReset: NOW + 104 * HOUR,
           }),
         ),
       ],
@@ -1416,15 +1416,15 @@ describe('sevenDayShareDrainableBeforeSpendDeadlineOf', () => {
     LiveSessionOauthTokenSelectionSettings,
     number,
   ][] = [
-    ['a reset inside the 48-hour deadline window', 28 * HOUR, SETTINGS, 0],
-    ['a reset 72 hours away', 72 * HOUR, SETTINGS, 0.672],
-    ['a reset seven days away', 7 * DAY, SETTINGS, 3.36],
+    ['a reset inside the 72-hour deadline window', 28 * HOUR, SETTINGS, 0],
+    ['a reset 96 hours away', 96 * HOUR, SETTINGS, 0.672],
+    ['a reset seven days away', 7 * DAY, SETTINGS, 2.688],
     ['a reset already in the past', -HOUR, SETTINGS, 0],
     [
       'a reset seven days away when each session consumes only 0.1% of the five hour window per hour',
       7 * DAY,
       settingsWhereFiveHourSustainabilityNeverBindsWith({}),
-      0.168,
+      0.1344,
     ],
   ];
 
@@ -1446,8 +1446,8 @@ describe('sevenDayBudgetUndrainableBeforeSpendDeadlineOf', () => {
   const undrainableCases: [number, number, boolean][] = [
     [0.02, 28 * HOUR, true],
     [0, 28 * HOUR, false],
-    [0.5, 72 * HOUR, false],
-    [0.7, 72 * HOUR, true],
+    [0.5, 96 * HOUR, false],
+    [0.7, 96 * HOUR, true],
     [1, 80 * HOUR, true],
     [1, 7 * DAY, false],
   ];

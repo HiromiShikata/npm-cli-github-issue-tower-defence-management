@@ -1,6 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import type { Issue } from '../entities/Issue';
+import { DUPLICATE_COMMENT_WINDOW_MS } from '../services/commentDeduplication';
 import type {
+  IssueComment,
   IssueRepository,
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
@@ -12,6 +14,15 @@ import {
 describe('StaleTaskPullRequestCloseUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
   const useCase = new StaleTaskPullRequestCloseUseCase(mockIssueRepository);
+  let consoleWarnSpy: jest.SpiedFunction<typeof console.warn>;
+
+  const expectedStaleClosingCommentBody = (
+    closingIssueReferenceUrls: string[],
+  ): string =>
+    `Closing this pull request because all referenced task issues are already closed: ${closingIssueReferenceUrls.join(', ')}`;
+
+  const consoleWarnMessageOfCall = (callIndex: number): string =>
+    consoleWarnSpy.mock.calls[callIndex].map(String).join(' ');
 
   const asRelatedPullRequest = (issue: Issue): RelatedPullRequest => ({
     url: issue.url,
@@ -28,13 +39,24 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     reviewDecision: null,
   });
 
-  const configureFindRelatedOpenPRsAndGetIssueByUrl = (
+  const stubRelatedOpenPullRequestLookupsAndGetIssueByUrl = (
     closedTaskIssueUrlToCandidatePrs: Record<string, Issue[]>,
   ): void => {
     mockIssueRepository.findRelatedOpenPRs.mockImplementation(
       async (issueUrl: string) =>
         (closedTaskIssueUrlToCandidatePrs[issueUrl] ?? []).map(
           asRelatedPullRequest,
+        ),
+    );
+    mockIssueRepository.findRelatedOpenPrUrls.mockImplementation(
+      async (issueUrls: string[]) =>
+        new Map<string, string[]>(
+          issueUrls.map((issueUrl): [string, string[]] => [
+            issueUrl,
+            (closedTaskIssueUrlToCandidatePrs[issueUrl] ?? []).map(
+              (candidatePr) => candidatePr.url,
+            ),
+          ]),
         ),
     );
     const allCandidatePrs = Object.values(
@@ -131,14 +153,18 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({});
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
   });
 
   it('should close an open pull request whose every closing issue reference is a closed task issue', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
 
@@ -161,7 +187,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that has no closing issue reference', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithoutTaskIssue],
     });
 
@@ -173,7 +199,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request whose closing issue reference is not among the given issues', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithUnknownTaskIssue],
     });
 
@@ -185,7 +211,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request when only some of its closing issue references are closed', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedAndOpenTaskIssues],
     });
 
@@ -201,7 +227,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should not close a pull request that is already closed', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [closedPrWithClosedTaskIssue],
     });
 
@@ -213,7 +239,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should continue with the remaining pull requests when closing one of them fails', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
       [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue],
     });
@@ -237,7 +263,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment with the closed task issue URLs when closing a stale pull request', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
 
@@ -252,7 +278,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
   });
 
   it('should post a comment before closing the pull request', async () => {
-    configureFindRelatedOpenPRsAndGetIssueByUrl({
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
       [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
     });
     const callOrder: string[] = [];
@@ -395,7 +421,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         };
 
         if (referencedTaskIssue && referencedTaskIssue.isClosed) {
-          configureFindRelatedOpenPRsAndGetIssueByUrl({
+          stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
             [referencedTaskIssue.url]: [targetPullRequest],
           });
         }
@@ -477,7 +503,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
           ),
         };
 
-        configureFindRelatedOpenPRsAndGetIssueByUrl({
+        stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
           [testCase.taskIssue.url]: [candidatePullRequest],
         });
 
@@ -499,5 +525,538 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
         }
       });
     });
+  });
+
+  const thirdClosedTaskIssue: Issue = {
+    ...mock<Issue>(),
+    url: 'https://github.com/owner/repo/issues/4',
+    isPr: false,
+    isClosed: true,
+    state: 'CLOSED',
+    closingIssueReferenceUrls: [],
+  };
+  const openPrWithTwoClosedTaskIssues: Issue = {
+    ...mock<Issue>(),
+    url: 'https://github.com/owner/repo/pull/107',
+    isPr: true,
+    isClosed: false,
+    state: 'OPEN',
+    closingIssueReferenceUrls: [
+      closedTaskIssue.url,
+      anotherClosedTaskIssue.url,
+    ],
+    createdAt: new Date('2020-01-01T00:00:00Z'),
+  };
+  const staleEvaluatedAt = new Date('2026-01-02T00:00:00Z');
+
+  describe('stale closing comment posted on a stale pull request', () => {
+    const testCases: {
+      name: string;
+      closedTaskIssues: Issue[];
+      stalePullRequest: Issue;
+      expectedCommentBody: string;
+    }[] = [
+      {
+        name: 'one closed task issue as its only closing issue reference',
+        closedTaskIssues: [closedTaskIssue],
+        stalePullRequest: openPrWithClosedTaskIssue,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+        ]),
+      },
+      {
+        name: 'two closed task issues as closing issue references that both return the pull request as related',
+        closedTaskIssues: [closedTaskIssue, anotherClosedTaskIssue],
+        stalePullRequest: openPrWithTwoClosedTaskIssues,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+          anotherClosedTaskIssue.url,
+        ]),
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should post the stale closing comment once and close the pull request once when it has ${testCase.name}`, async () => {
+        stubRelatedOpenPullRequestLookupsAndGetIssueByUrl(
+          Object.fromEntries(
+            testCase.closedTaskIssues.map((closedIssue): [string, Issue[]] => [
+              closedIssue.url,
+              [testCase.stalePullRequest],
+            ]),
+          ),
+        );
+
+        await useCase.run({
+          issues: testCase.closedTaskIssues,
+          evaluatedAt: staleEvaluatedAt,
+        });
+
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          testCase.stalePullRequest.url,
+          testCase.expectedCommentBody,
+        );
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+          testCase.stalePullRequest.url,
+        );
+      });
+    });
+  });
+
+  it('should neither comment on nor close a related pull request whose details cannot be fetched, and should continue with the remaining pull requests', async () => {
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+      [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue],
+    });
+    mockIssueRepository.getIssueByUrl.mockImplementation(async (url: string) =>
+      url === anotherOpenPrWithClosedTaskIssue.url
+        ? anotherOpenPrWithClosedTaskIssue
+        : null,
+    );
+
+    await useCase.run({
+      issues: [closedTaskIssue, anotherClosedTaskIssue],
+      evaluatedAt: staleEvaluatedAt,
+    });
+
+    expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalledWith(
+      openPrWithClosedTaskIssue.url,
+      expect.anything(),
+    );
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
+      openPrWithClosedTaskIssue.url,
+    );
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      anotherOpenPrWithClosedTaskIssue.url,
+    );
+  });
+
+  describe('failure while posting the stale closing comment or closing the pull request', () => {
+    const simulatedFailureMessage = 'simulated GitHub API failure';
+
+    const testCases: {
+      name: string;
+      arrangeFailureForPullRequestUrl: (failingPullRequestUrl: string) => void;
+      expectCloseAttemptedForFailingPullRequest: boolean;
+    }[] = [
+      {
+        name: 'posting the stale closing comment fails',
+        arrangeFailureForPullRequestUrl: (failingPullRequestUrl) => {
+          mockIssueRepository.createCommentByUrl.mockImplementation(
+            async (url: string, commentBody: string) => {
+              if (url === failingPullRequestUrl) {
+                throw new Error(simulatedFailureMessage);
+              }
+              return { author: '', body: commentBody, createdAt: new Date() };
+            },
+          );
+        },
+        expectCloseAttemptedForFailingPullRequest: false,
+      },
+      {
+        name: 'closing the pull request fails',
+        arrangeFailureForPullRequestUrl: (failingPullRequestUrl) => {
+          mockIssueRepository.closePullRequest.mockImplementation(
+            async (url: string) => {
+              if (url === failingPullRequestUrl) {
+                throw new Error(simulatedFailureMessage);
+              }
+            },
+          );
+        },
+        expectCloseAttemptedForFailingPullRequest: true,
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should warn once with the pull request URL and the error message and still close the other stale pull request when ${testCase.name}`, async () => {
+        stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+          [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue],
+        });
+        testCase.arrangeFailureForPullRequestUrl(openPrWithClosedTaskIssue.url);
+
+        await useCase.run({
+          issues: [closedTaskIssue, anotherClosedTaskIssue],
+          evaluatedAt: staleEvaluatedAt,
+        });
+
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+          anotherOpenPrWithClosedTaskIssue.url,
+        );
+        if (testCase.expectCloseAttemptedForFailingPullRequest) {
+          expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+            openPrWithClosedTaskIssue.url,
+          );
+        } else {
+          expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
+            openPrWithClosedTaskIssue.url,
+          );
+        }
+        expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+        expect(consoleWarnMessageOfCall(0)).toContain(
+          openPrWithClosedTaskIssue.url,
+        );
+        expect(consoleWarnMessageOfCall(0)).toContain(simulatedFailureMessage);
+      });
+    });
+  });
+
+  describe('duplicate stale closing comment suppression', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({
+        now: staleEvaluatedAt,
+        doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'],
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    const testCases: {
+      name: string;
+      existingComment: { body: string; ageMs: number } | null;
+      expectCommentPosted: boolean;
+    }[] = [
+      {
+        name: 'the pull request has no comment yet',
+        existingComment: null,
+        expectCommentPosted: true,
+      },
+      {
+        name: 'the same stale closing comment was posted 1 minute ago',
+        existingComment: {
+          body: expectedStaleClosingCommentBody([closedTaskIssue.url]),
+          ageMs: 60_000,
+        },
+        expectCommentPosted: false,
+      },
+      {
+        name: 'the same stale closing comment was posted 1 minute before the duplicate comment window starts',
+        existingComment: {
+          body: expectedStaleClosingCommentBody([closedTaskIssue.url]),
+          ageMs: DUPLICATE_COMMENT_WINDOW_MS + 60_000,
+        },
+        expectCommentPosted: true,
+      },
+      {
+        name: 'a different comment was posted 1 minute ago',
+        existingComment: {
+          body: 'Unrelated review comment',
+          ageMs: 60_000,
+        },
+        expectCommentPosted: true,
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should ${testCase.expectCommentPosted ? '' : 'not '}post the stale closing comment and should still close the pull request when ${testCase.name}`, async () => {
+        stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+        });
+        const existingComments: IssueComment[] =
+          testCase.existingComment === null
+            ? []
+            : [
+                {
+                  author: 'stale-closing-bot',
+                  body: testCase.existingComment.body,
+                  createdAt: new Date(
+                    staleEvaluatedAt.getTime() - testCase.existingComment.ageMs,
+                  ),
+                },
+              ];
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+          existingComments,
+        );
+
+        await useCase.run({
+          issues: [closedTaskIssue],
+          evaluatedAt: staleEvaluatedAt,
+        });
+
+        if (testCase.expectCommentPosted) {
+          expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+            openPrWithClosedTaskIssue.url,
+            expectedStaleClosingCommentBody([closedTaskIssue.url]),
+          );
+        } else {
+          expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        }
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+          openPrWithClosedTaskIssue.url,
+        );
+      });
+    });
+  });
+
+  describe('related open pull request lookup for closed task issues', () => {
+    const batchClosedTaskIssues: Issue[] = [...Array(250).keys()].map(
+      (index): Issue => ({
+        ...mock<Issue>(),
+        url: `https://github.com/owner/batch-repo/issues/${1000 + index}`,
+        isPr: false,
+        isClosed: true,
+        state: 'CLOSED',
+        closingIssueReferenceUrls: [],
+      }),
+    );
+
+    const testCases: {
+      name: string;
+      issues: Issue[];
+      expectedLookedUpIssueUrls: string[];
+    }[] = [
+      {
+        name: '250 closed task issues mixed with an open task issue, open pull requests and a closed pull request',
+        issues: [
+          openTaskIssue,
+          ...batchClosedTaskIssues.slice(0, 125),
+          openPrWithClosedTaskIssue,
+          closedPrWithClosedTaskIssue,
+          ...batchClosedTaskIssues.slice(125),
+          openPrWithOpenTaskIssue,
+        ],
+        expectedLookedUpIssueUrls: batchClosedTaskIssues.map(
+          (batchClosedTaskIssue) => batchClosedTaskIssue.url,
+        ),
+      },
+      {
+        name: 'a single closed task issue between an open task issue and an open pull request',
+        issues: [openTaskIssue, closedTaskIssue, openPrWithOpenTaskIssue],
+        expectedLookedUpIssueUrls: [closedTaskIssue.url],
+      },
+      {
+        name: 'no closed task issue among an open task issue, an open pull request and a closed pull request',
+        issues: [
+          openTaskIssue,
+          openPrWithOpenTaskIssue,
+          closedPrWithClosedTaskIssue,
+        ],
+        expectedLookedUpIssueUrls: [],
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should call findRelatedOpenPrUrls exactly once with the closed task issue URLs in input order and never call findRelatedOpenPRs for ${testCase.name}`, async () => {
+        await useCase.run({
+          issues: testCase.issues,
+          evaluatedAt: staleEvaluatedAt,
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPrUrls).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(mockIssueRepository.findRelatedOpenPrUrls).toHaveBeenCalledWith(
+          testCase.expectedLookedUpIssueUrls,
+        );
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('stale pull request found only through findRelatedOpenPrUrls', () => {
+    beforeEach(() => {
+      mockIssueRepository.findRelatedOpenPRs.mockReset();
+    });
+
+    const testCases: {
+      name: string;
+      issues: Issue[];
+      relatedOpenPrUrlsByIssueUrl: Record<string, string[]>;
+      stalePullRequest: Issue;
+      expectedCommentBody: string;
+    }[] = [
+      {
+        name: 'the pull request is not among the given issues',
+        issues: [closedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+        },
+        stalePullRequest: openPrWithClosedTaskIssue,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+        ]),
+      },
+      {
+        name: 'the pull request is also among the given issues',
+        issues: [closedTaskIssue, openPrWithClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+        },
+        stalePullRequest: openPrWithClosedTaskIssue,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+        ]),
+      },
+      {
+        name: 'the pull request references two closed task issues and is returned for both of them',
+        issues: [closedTaskIssue, anotherClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithTwoClosedTaskIssues.url],
+          [anotherClosedTaskIssue.url]: [openPrWithTwoClosedTaskIssues.url],
+        },
+        stalePullRequest: openPrWithTwoClosedTaskIssues,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+          anotherClosedTaskIssue.url,
+        ]),
+      },
+      {
+        name: 'the pull request is returned for one closed task issue while another closed task issue has no related open pull request',
+        issues: [closedTaskIssue, anotherClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+          [anotherClosedTaskIssue.url]: [],
+        },
+        stalePullRequest: openPrWithClosedTaskIssue,
+        expectedCommentBody: expectedStaleClosingCommentBody([
+          closedTaskIssue.url,
+        ]),
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should post the stale closing comment and close the pull request when ${testCase.name}`, async () => {
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+          new Map(Object.entries(testCase.relatedOpenPrUrlsByIssueUrl)),
+        );
+        mockIssueRepository.getIssueByUrl.mockImplementation(
+          async (url: string) =>
+            url === testCase.stalePullRequest.url
+              ? testCase.stalePullRequest
+              : null,
+        );
+
+        await expect(
+          useCase.run({
+            issues: testCase.issues,
+            evaluatedAt: staleEvaluatedAt,
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          testCase.stalePullRequest.url,
+          testCase.expectedCommentBody,
+        );
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+          testCase.stalePullRequest.url,
+        );
+      });
+    });
+  });
+
+  describe('closed task issues missing from the findRelatedOpenPrUrls result', () => {
+    const testCases: {
+      name: string;
+      issues: Issue[];
+      relatedOpenPrUrlsByIssueUrl: Record<string, string[]>;
+      expectedMissingIssueUrls: string[];
+      expectedClosedPullRequestUrls: string[];
+    }[] = [
+      {
+        name: 'one of two closed task issues is missing',
+        issues: [closedTaskIssue, anotherClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+        },
+        expectedMissingIssueUrls: [anotherClosedTaskIssue.url],
+        expectedClosedPullRequestUrls: [openPrWithClosedTaskIssue.url],
+      },
+      {
+        name: 'two of three closed task issues are missing',
+        issues: [closedTaskIssue, anotherClosedTaskIssue, thirdClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+        },
+        expectedMissingIssueUrls: [
+          anotherClosedTaskIssue.url,
+          thirdClosedTaskIssue.url,
+        ],
+        expectedClosedPullRequestUrls: [openPrWithClosedTaskIssue.url],
+      },
+      {
+        name: 'every closed task issue is missing',
+        issues: [closedTaskIssue, anotherClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {},
+        expectedMissingIssueUrls: [
+          closedTaskIssue.url,
+          anotherClosedTaskIssue.url,
+        ],
+        expectedClosedPullRequestUrls: [],
+      },
+      {
+        name: 'no closed task issue is missing',
+        issues: [closedTaskIssue, anotherClosedTaskIssue],
+        relatedOpenPrUrlsByIssueUrl: {
+          [closedTaskIssue.url]: [openPrWithClosedTaskIssue.url],
+          [anotherClosedTaskIssue.url]: [anotherOpenPrWithClosedTaskIssue.url],
+        },
+        expectedMissingIssueUrls: [],
+        expectedClosedPullRequestUrls: [
+          openPrWithClosedTaskIssue.url,
+          anotherOpenPrWithClosedTaskIssue.url,
+        ],
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should never call findRelatedOpenPRs, should ${testCase.expectedMissingIssueUrls.length === 0 ? 'not warn' : 'warn once with every missing closed task issue URL'}, and should close the stale pull requests returned for the other closed task issues when ${testCase.name}`, async () => {
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+          new Map(Object.entries(testCase.relatedOpenPrUrlsByIssueUrl)),
+        );
+        mockIssueRepository.getIssueByUrl.mockImplementation(
+          async (url: string) =>
+            [openPrWithClosedTaskIssue, anotherOpenPrWithClosedTaskIssue].find(
+              (candidatePr) => candidatePr.url === url,
+            ) ?? null,
+        );
+
+        await useCase.run({
+          issues: testCase.issues,
+          evaluatedAt: staleEvaluatedAt,
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        if (testCase.expectedMissingIssueUrls.length === 0) {
+          expect(consoleWarnSpy).not.toHaveBeenCalled();
+        } else {
+          expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+          testCase.expectedMissingIssueUrls.forEach((missingIssueUrl) => {
+            expect(consoleWarnMessageOfCall(0)).toContain(missingIssueUrl);
+          });
+        }
+        expect(mockIssueRepository.closePullRequest).toHaveBeenCalledTimes(
+          testCase.expectedClosedPullRequestUrls.length,
+        );
+        testCase.expectedClosedPullRequestUrls.forEach(
+          (expectedClosedPullRequestUrl) => {
+            expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+              expectedClosedPullRequestUrl,
+            );
+          },
+        );
+      });
+    });
+  });
+
+  it('should not warn and should treat the closed task issue as resolved with no candidate pull request when findRelatedOpenPrUrls returns an empty array for it', async () => {
+    mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+      new Map([[closedTaskIssue.url, []]]),
+    );
+
+    await useCase.run({
+      issues: [closedTaskIssue],
+      evaluatedAt: staleEvaluatedAt,
+    });
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
   });
 });

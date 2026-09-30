@@ -1,3 +1,18 @@
+## [2.153.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.6...v2.153.7) (2026-09-30)
+
+
+### Bug Fixes
+
+* **getLatestReopenedEventAt:** find reopens after GitHub stops listing an issue's events at 310 ([#2920](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2920)) ([65eb44f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/65eb44f77d8028bd33627567f0ffbf7d0304912b))
+* **oauth-token-select:** extend seven-day spend deadline from 48h to 72h before reset ([#2914](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2914)) ([abbd981](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/abbd98166d1fe3aec7ede3169e8fdf8440e7f6cc)), closes [#2859](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2859) [#2859](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2859)
+
+## [2.153.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.5...v2.153.6) (2026-09-30)
+
+
+### Bug Fixes
+
+* **StaleTaskPullRequestCloseUseCase:** look up related open pull requests with one batched query per run ([#2915](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2915)) ([591a365](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/591a365d49f7dc01b71a2ea15669dac7a76db027))
+
 ## [2.153.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.153.4...v2.153.5) (2026-09-30)
 
 
