@@ -965,9 +965,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         buildProjectItem(freshIssueUrl, 'Fresh Issue'),
       ]);
-      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
-        [],
-      );
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');

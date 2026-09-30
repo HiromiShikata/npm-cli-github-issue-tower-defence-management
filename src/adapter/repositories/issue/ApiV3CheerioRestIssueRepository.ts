@@ -1204,8 +1204,7 @@ export class ApiV3CheerioRestIssueRepository
         );
         for (const issue of issuesAbsentFromFetchResult) {
           const liveProjectItem =
-            liveProjectItemsAbsentFromFetchResultById.get(issue.itemId) ??
-            null;
+            liveProjectItemsAbsentFromFetchResultById.get(issue.itemId) ?? null;
           liveProjectItemsByItemIdAbsentFromFetchResult.set(
             issue.itemId,
             liveProjectItem && !liveProjectItem.isArchivedFromProject
