@@ -836,7 +836,7 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase selects a nearly spent 7d budget within the 48-hour deadline window first', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a nearly spent 7d budget within the 72-hour deadline window first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   const exhaustedWithinDeadlineCases: [string, number, number][] = [
@@ -892,7 +892,7 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
     string | null,
   ][] = [
     [
-      'token at 3% seven day free more than 48 hours before reset is eligible',
+      'token at 3% seven day free within the 72-hour deadline window is eligible',
       0.97,
       50,
       0,
@@ -950,7 +950,7 @@ describe('LiveSessionOauthTokenSelectUseCase 7d deadline window boundary and 5h 
   );
 });
 
-describe('LiveSessionOauthTokenSelectUseCase selects a depleted-budget token within the 48-hour deadline window', () => {
+describe('LiveSessionOauthTokenSelectUseCase selects a depleted-budget token within the 72-hour deadline window', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   it('selects the only candidate when it has 3% seven-day-window free within 47 hours of reset', () => {
@@ -1203,7 +1203,7 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
 describe('LiveSessionOauthTokenSelectUseCase drains the token with the least seven day budget first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('selects a 2% free token inside the 48-hour deadline window first', () => {
+  it('selects a 2% free token inside the 72-hour deadline window first', () => {
     const result = useCase.run(
       [
         candidate('freshFirst', snapshot({})),
@@ -1343,7 +1343,7 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
     },
   );
 
-  it('moves a token whose remaining seven day budget cannot be spent by 48 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
+  it('moves a token whose remaining seven day budget cannot be spent by 72 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
     const result = useCase.run(
       [
         candidate(

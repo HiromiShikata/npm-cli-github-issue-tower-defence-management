@@ -89,7 +89,7 @@ describe('OauthTokenSelectUseCase', () => {
         }),
       },
       {
-        description: '7d window 0.5% free, more than 48 hours before its reset',
+        description: '7d window 0.5% free, more than 72 hours before its reset',
         snapshot: snapshot({
           sevenDayUtilization: 0.995,
           sevenDayReset: NOW + 100 * HOUR,
