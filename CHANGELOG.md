@@ -1,3 +1,10 @@
+## [2.154.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.4...v2.154.5) (2026-09-30)
+
+
+### Bug Fixes
+
+* **deps:** resolve dompurify and brace-expansion CVEs from daily security scan ([#2942](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2942)) ([ebe0ead](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ebe0ead6a390a6fac3f3c0c1257b6832d2380d32))
+
 ## [2.154.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.3...v2.154.4) (2026-09-30)
 
 
