@@ -3676,7 +3676,10 @@ export class ApiV3CheerioRestIssueRepository
       for (const eventItem of body) {
         if (eventItem.event !== 'reopened') continue;
         const reopenedAt = new Date(eventItem.created_at);
-        if (latestReopenedEventAt === null || reopenedAt > latestReopenedEventAt) {
+        if (
+          latestReopenedEventAt === null ||
+          reopenedAt > latestReopenedEventAt
+        ) {
           latestReopenedEventAt = reopenedAt;
         }
       }
