@@ -3214,6 +3214,781 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(result).toBeNull();
     });
+
+    const reopenedEventTestIssueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/42';
+    const issueEventListingApiUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/42/events';
+    const repositoryIssueEventFeedApiUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/events';
+
+    type IssueEventListingEvent = {
+      id: number;
+      event: string;
+      created_at: string;
+    };
+
+    type RepositoryIssueEventFeedEvent = {
+      id: number;
+      event: string;
+      created_at: string;
+      issue: { number: number };
+    };
+
+    type RepositoryIssueEventFeedPageResponse =
+      | { outcome: 'listed'; events: RepositoryIssueEventFeedEvent[] }
+      | { outcome: 'failed'; httpStatus: number };
+
+    const buildPagedApiUrl = (apiUrl: string, page: number): string =>
+      `${apiUrl}?per_page=100&page=${page}`;
+
+    const buildPaginationLinkHeader = (
+      apiUrl: string,
+      page: number,
+      pageCount: number,
+    ): Record<string, string> => {
+      const linkParts = [
+        ...(page > 1
+          ? [`<${buildPagedApiUrl(apiUrl, page - 1)}>; rel="prev"`]
+          : []),
+        ...(page < pageCount
+          ? [
+              `<${buildPagedApiUrl(apiUrl, page + 1)}>; rel="next"`,
+              `<${buildPagedApiUrl(apiUrl, pageCount)}>; rel="last"`,
+            ]
+          : []),
+        ...(page > 1 ? [`<${buildPagedApiUrl(apiUrl, 1)}>; rel="first"`] : []),
+      ];
+      return linkParts.length === 0 ? {} : { Link: linkParts.join(', ') };
+    };
+
+    const buildIssueEventListingCreatedAt = (position: number): string =>
+      new Date(Date.parse('2026-09-30T00:00:00Z') + position * 60 * 1000)
+        .toISOString()
+        .replace('.000Z', 'Z');
+
+    const buildIssueEventListingOldestFirst = (
+      eventCount: number,
+      reopenedEventPositions: number[],
+    ): IssueEventListingEvent[] =>
+      Array.from({ length: eventCount }, (_, position) => ({
+        id: position + 1,
+        event: reopenedEventPositions.includes(position)
+          ? 'reopened'
+          : 'labeled',
+        created_at: buildIssueEventListingCreatedAt(position),
+      }));
+
+    const buildRepositoryIssueEventFeedEvent = (
+      issueNumber: number,
+      event: string,
+      createdAt: string,
+    ): RepositoryIssueEventFeedEvent => ({
+      id: Date.parse(createdAt) + issueNumber,
+      event,
+      created_at: createdAt,
+      issue: { number: issueNumber },
+    });
+
+    const splitIntoPagesOfOneHundred = <PageItem>(
+      items: PageItem[],
+    ): PageItem[][] =>
+      items.length === 0
+        ? [[]]
+        : Array.from(
+            { length: Math.ceil(items.length / 100) },
+            (_, pageIndex) =>
+              items.slice(pageIndex * 100, (pageIndex + 1) * 100),
+          );
+
+    const mockIssueEventApisAndRecordRequestedUrls = (
+      issueEventListing: IssueEventListingEvent[],
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedPageResponse[],
+    ): string[] => {
+      const requestedUrls: string[] = [];
+      const responseBuilderByRequestUrl = new Map<string, () => Response>();
+      const issueEventListingPages =
+        splitIntoPagesOfOneHundred(issueEventListing);
+      issueEventListingPages.forEach((pageEvents, pageIndex) => {
+        const page = pageIndex + 1;
+        responseBuilderByRequestUrl.set(
+          buildPagedApiUrl(issueEventListingApiUrl, page),
+          () =>
+            new Response(JSON.stringify(pageEvents), {
+              status: 200,
+              headers: buildPaginationLinkHeader(
+                issueEventListingApiUrl,
+                page,
+                issueEventListingPages.length,
+              ),
+            }),
+        );
+      });
+      repositoryIssueEventFeedPages.forEach((feedPage, pageIndex) => {
+        const page = pageIndex + 1;
+        responseBuilderByRequestUrl.set(
+          buildPagedApiUrl(repositoryIssueEventFeedApiUrl, page),
+          () =>
+            feedPage.outcome === 'listed'
+              ? new Response(JSON.stringify(feedPage.events), {
+                  status: 200,
+                  headers: buildPaginationLinkHeader(
+                    repositoryIssueEventFeedApiUrl,
+                    page,
+                    repositoryIssueEventFeedPages.length,
+                  ),
+                })
+              : new Response(JSON.stringify({ message: 'Server Error' }), {
+                  status: feedPage.httpStatus,
+                }),
+        );
+      });
+      jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+        const requestUrl =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        requestedUrls.push(requestUrl);
+        const buildResponse = responseBuilderByRequestUrl.get(requestUrl);
+        if (buildResponse === undefined) {
+          throw new Error(`unexpected request in test: ${requestUrl}`);
+        }
+        return buildResponse();
+      });
+      return requestedUrls;
+    };
+
+    const findPageNumberInPagedApiUrl = (
+      requestUrl: string,
+      apiUrl: string,
+    ): number | null => {
+      const pagedApiUrlPrefix = `${apiUrl}?per_page=100&page=`;
+      const pageNumberMatch = requestUrl.startsWith(pagedApiUrlPrefix)
+        ? /^\d+$/.exec(requestUrl.slice(pagedApiUrlPrefix.length))
+        : null;
+      return pageNumberMatch === null ? null : Number(pageNumberMatch[0]);
+    };
+
+    const summarizeRequestedUrls = (
+      requestedUrls: string[],
+    ): {
+      issueEventListingPages: number[];
+      repositoryIssueEventFeedPages: number[];
+      unrecognizedRequestUrls: string[];
+    } => {
+      const listRequestedPageNumbers = (apiUrl: string): number[] => [
+        ...new Set(
+          requestedUrls.flatMap((requestUrl) => {
+            const page = findPageNumberInPagedApiUrl(requestUrl, apiUrl);
+            return page === null ? [] : [page];
+          }),
+        ),
+      ];
+      return {
+        issueEventListingPages: listRequestedPageNumbers(
+          issueEventListingApiUrl,
+        ),
+        repositoryIssueEventFeedPages: listRequestedPageNumbers(
+          repositoryIssueEventFeedApiUrl,
+        ),
+        unrecognizedRequestUrls: requestedUrls.filter(
+          (requestUrl) =>
+            findPageNumberInPagedApiUrl(requestUrl, issueEventListingApiUrl) ===
+              null &&
+            findPageNumberInPagedApiUrl(
+              requestUrl,
+              repositoryIssueEventFeedApiUrl,
+            ) === null,
+        ),
+      };
+    };
+
+    const issueEventListingBelowThresholdCases: {
+      name: string;
+      eventCount: number;
+      reopenedEventPositions: number[];
+      expectedLatestReopenedAt: Date | null;
+      expectedIssueEventListingPages: number[];
+    }[] = [
+      {
+        name: '309 events whose newest reopened event is on the last page',
+        eventCount: 309,
+        reopenedEventPositions: [10, 305],
+        expectedLatestReopenedAt: new Date('2026-09-30T05:05:00Z'),
+        expectedIssueEventListingPages: [1, 2, 3, 4],
+      },
+      {
+        name: '309 events without a reopened event',
+        eventCount: 309,
+        reopenedEventPositions: [],
+        expectedLatestReopenedAt: null,
+        expectedIssueEventListingPages: [1, 2, 3, 4],
+      },
+      {
+        name: '3 events on a single page',
+        eventCount: 3,
+        reopenedEventPositions: [0, 1],
+        expectedLatestReopenedAt: new Date('2026-09-30T00:01:00Z'),
+        expectedIssueEventListingPages: [1],
+      },
+    ];
+
+    it.each(issueEventListingBelowThresholdCases)(
+      'returns the newest reopened created_at of an issue event listing below 310 events without requesting the repository-wide feed: $name',
+      async (testCase) => {
+        const requestedUrls = mockIssueEventApisAndRecordRequestedUrls(
+          buildIssueEventListingOldestFirst(
+            testCase.eventCount,
+            testCase.reopenedEventPositions,
+          ),
+          [
+            {
+              outcome: 'listed',
+              events: [
+                buildRepositoryIssueEventFeedEvent(
+                  42,
+                  'reopened',
+                  '2026-09-30T06:00:00Z',
+                ),
+              ],
+            },
+          ],
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(result).toEqual(testCase.expectedLatestReopenedAt);
+        expect(summarizeRequestedUrls(requestedUrls)).toEqual({
+          issueEventListingPages: testCase.expectedIssueEventListingPages,
+          repositoryIssueEventFeedPages: [],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    it('returns a reopened event of the issue from the repository-wide feed that is newer than every event of an issue event listing stopped at 310 events', async () => {
+      mockIssueEventApisAndRecordRequestedUrls(
+        buildIssueEventListingOldestFirst(310, [100, 305]),
+        [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T07:09:52Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T07:09:51Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T07:06:48Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T07:06:47Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:09:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+            ],
+          },
+        ],
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getLatestReopenedEventAt(
+        buildReopenedEventTestIssue(),
+      );
+
+      expect(result).toEqual(new Date('2026-09-30T07:09:52Z'));
+    });
+
+    const repositoryIssueEventFeedMatchCases: {
+      name: string;
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedPageResponse[];
+      expectedLatestReopenedAt: Date;
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'a newer reopened event of another issue precedes the match on the first page',
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T07:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:50:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:49:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:40:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: new Date('2026-09-30T06:50:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'newer closed and labeled events of the issue precede the match on the first page',
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T07:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:59:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:50:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:49:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: new Date('2026-09-30T06:50:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the first page holds only events of other issues and non-reopened events of the issue, and the match opens the second page',
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T07:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                44,
+                'reopened',
+                '2026-09-30T06:59:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:58:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T06:57:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:50:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:49:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: new Date('2026-09-30T06:50:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedMatchCases)(
+      'skips repository-wide feed events of other issues and non-reopened events and returns the first matching reopened event without requesting a further page: $name',
+      async (testCase) => {
+        const requestedUrls = mockIssueEventApisAndRecordRequestedUrls(
+          buildIssueEventListingOldestFirst(310, [100, 305]),
+          testCase.repositoryIssueEventFeedPages,
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(result).toEqual(testCase.expectedLatestReopenedAt);
+        expect(summarizeRequestedUrls(requestedUrls)).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const repositoryIssueEventFeedOlderEventCases: {
+      name: string;
+      reopenedEventPositions: number[];
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedPageResponse[];
+      expectedLatestReopenedAt: Date | null;
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'the issue event listing has a reopened event and the older feed event is on the first page',
+        reopenedEventPositions: [100, 305],
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T06:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T05:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:07:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:06:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: new Date('2026-09-30T05:05:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the issue event listing has no reopened event and the older feed event is on the first page',
+        reopenedEventPositions: [],
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T06:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T05:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:07:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:06:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: null,
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the issue event listing has a reopened event and the older feed event opens the second page',
+        reopenedEventPositions: [100, 305],
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T06:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T05:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                44,
+                'labeled',
+                '2026-09-30T05:20:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T05:08:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:07:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T05:06:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedLatestReopenedAt: new Date('2026-09-30T05:05:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedOlderEventCases)(
+      'stops paging the repository-wide feed at the first event older than the newest issue event listing event and returns the issue event listing result: $name',
+      async (testCase) => {
+        const requestedUrls = mockIssueEventApisAndRecordRequestedUrls(
+          buildIssueEventListingOldestFirst(
+            310,
+            testCase.reopenedEventPositions,
+          ),
+          testCase.repositoryIssueEventFeedPages,
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(result).toEqual(testCase.expectedLatestReopenedAt);
+        expect(summarizeRequestedUrls(requestedUrls)).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const repositoryIssueEventFeedUnfinishedScanCases: {
+      name: string;
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedPageResponse[];
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'the last feed page has no rel="next" link',
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T07:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:59:00Z',
+              ),
+            ],
+          },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'labeled',
+                '2026-09-30T06:30:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                44,
+                'reopened',
+                '2026-09-30T06:00:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+      {
+        name: 'the first feed page responds with HTTP 500',
+        repositoryIssueEventFeedPages: [
+          { outcome: 'failed', httpStatus: 500 },
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'reopened',
+                '2026-09-30T06:30:00Z',
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the second feed page responds with HTTP 404',
+        repositoryIssueEventFeedPages: [
+          {
+            outcome: 'listed',
+            events: [
+              buildRepositoryIssueEventFeedEvent(
+                43,
+                'reopened',
+                '2026-09-30T07:00:00Z',
+              ),
+              buildRepositoryIssueEventFeedEvent(
+                42,
+                'closed',
+                '2026-09-30T06:59:00Z',
+              ),
+            ],
+          },
+          { outcome: 'failed', httpStatus: 404 },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedUnfinishedScanCases)(
+      'throws an error naming the issue URL when the repository-wide feed ends or fails before a matching reopened event or an older event is reached: $name',
+      async (testCase) => {
+        const requestedUrls = mockIssueEventApisAndRecordRequestedUrls(
+          buildIssueEventListingOldestFirst(310, [100, 305]),
+          testCase.repositoryIssueEventFeedPages,
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const latestReopenedEventAt = repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        await expect(latestReopenedEventAt).rejects.toBeInstanceOf(Error);
+        await expect(latestReopenedEventAt).rejects.toThrow(
+          reopenedEventTestIssueUrl,
+        );
+        expect(summarizeRequestedUrls(requestedUrls)).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
   });
 
   describe('createCommentByUrl', () => {
