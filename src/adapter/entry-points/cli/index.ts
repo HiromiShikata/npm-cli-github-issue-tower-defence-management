@@ -55,6 +55,12 @@ import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import { unresumableSessionArchive } from './unresumableSessionArchive';
 import { checkIssueSilentDispatchAllowed } from './checkIssueSilentDispatchAllowed';
 import {
+  checkStoryGate,
+  setIssueStoryIfUnset,
+  startSpecificationTask,
+  StoryGateCommandOutput,
+} from './storyGateCommands';
+import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
   createConsoleProjectResolver,
@@ -261,6 +267,28 @@ type ArchiveUnresumableSessionOptions = {
 
 type CheckIssueSilentDispatchAllowedOptions = {
   issueUrl: string;
+};
+
+type CheckStoryGateOptions = {
+  issueUrl: string;
+  agentName: string;
+  triageAgentName: string;
+  specificationAgentName: string;
+  configDirectory: string;
+  outputDirectory: string;
+  dryRun?: boolean;
+};
+
+type SetIssueStoryIfUnsetOptions = {
+  issueUrl: string;
+  story: string;
+  dryRun?: boolean;
+};
+
+type StartSpecificationTaskOptions = {
+  issueUrl: string;
+  specificationAgentName: string;
+  dryRun?: boolean;
 };
 
 type RemovePullRequestProjectItemsOptions = {
@@ -1791,6 +1819,101 @@ program
     }
     return process.exit(output.exitCode);
   });
+
+const storyGateCommandOutputPrintAndExit = (
+  output: StoryGateCommandOutput,
+): never => {
+  if (output.stdout !== null) {
+    console.log(output.stdout);
+  }
+  if (output.stderr !== null) {
+    console.error(output.stderr);
+  }
+  return process.exit(output.exitCode);
+};
+
+program
+  .command('checkStoryGate')
+  .description(
+    'Evaluate the deterministic part of the story gate for one issue using the GH_TOKEN environment variable: board cache and live Story lookup, Story adoption from linked tasks, story issue lookup, closed, already-routed, merged-without-specification and comment-fold checks, and approved-specification detection. Writes story-gate-result.json and the story issue body and comment files into --outputDirectory, prints the result JSON as the last stdout line and exits 0. Exits 2 with a diagnostic on stderr when GH_TOKEN is missing, the URL is invalid or a GitHub request fails with a status other than 404.',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .requiredOption(
+    '--agentName <name>',
+    'Name of the agent running the gate, written as returnToAgent',
+  )
+  .requiredOption(
+    '--triageAgentName <name>',
+    'Agent name written as nextStepAgent when the Story cannot be resolved',
+  )
+  .requiredOption(
+    '--specificationAgentName <name>',
+    'Agent name that writes approved specifications',
+  )
+  .requiredOption(
+    '--configDirectory <path>',
+    'Directory holding the project config files whose org and agents keys are read',
+  )
+  .requiredOption(
+    '--outputDirectory <path>',
+    'Directory the result JSON and story issue files are written to',
+  )
+  .option('--dryRun', 'Send no GraphQL mutation', false)
+  .action(async (options: CheckStoryGateOptions) =>
+    storyGateCommandOutputPrintAndExit(
+      await checkStoryGate({
+        issueUrl: options.issueUrl,
+        agentName: options.agentName,
+        triageAgentName: options.triageAgentName,
+        specificationAgentName: options.specificationAgentName,
+        configDirectory: options.configDirectory,
+        outputDirectory: options.outputDirectory,
+        dryRun: options.dryRun === true,
+        ghToken: process.env.GH_TOKEN,
+      }),
+    ),
+  );
+
+program
+  .command('setIssueStoryIfUnset')
+  .description(
+    'Write the named Story option to the issue project item only while its live Story is empty or NO STORY, then read it back. Prints a JSON result whose outcome is WRITTEN, SKIPPED_DRY_RUN, LIVE_STORY_ALREADY_SET, OPTION_NOT_ACTIVE, ISSUE_NOT_IN_PROJECT or READ_BACK_MISMATCH and exits 0. Exits 2 on a missing GH_TOKEN, an invalid URL or a failed GitHub request.',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .requiredOption('--story <name>', 'Story option name to write')
+  .option('--dryRun', 'Send no GraphQL mutation', false)
+  .action(async (options: SetIssueStoryIfUnsetOptions) =>
+    storyGateCommandOutputPrintAndExit(
+      await setIssueStoryIfUnset({
+        issueUrl: options.issueUrl,
+        story: options.story,
+        dryRun: options.dryRun === true,
+        ghToken: process.env.GH_TOKEN,
+      }),
+    ),
+  );
+
+program
+  .command('startSpecificationTask')
+  .description(
+    'Set the issue Agent field to --specificationAgentName and its Status to Awaiting Workspace, then read both back. Prints a JSON result whose outcome is STARTED, ISSUE_CLOSED, AGENT_OPTION_NOT_FOUND, STATUS_OPTION_NOT_FOUND, ISSUE_NOT_IN_PROJECT, READ_BACK_MISMATCH or SKIPPED_DRY_RUN and exits 0. Exits 2 on a missing GH_TOKEN, an invalid URL or a failed GitHub request.',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .requiredOption(
+    '--specificationAgentName <name>',
+    'Agent option name to set on the issue',
+  )
+  .option('--dryRun', 'Send no GraphQL mutation', false)
+  .action(async (options: StartSpecificationTaskOptions) =>
+    storyGateCommandOutputPrintAndExit(
+      await startSpecificationTask({
+        issueUrl: options.issueUrl,
+        specificationAgentName: options.specificationAgentName,
+        dryRun: options.dryRun === true,
+        ghToken: process.env.GH_TOKEN,
+      }),
+    ),
+  );
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
   console.error(sanitizeErrorForLogging(error));
