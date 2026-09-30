@@ -28,6 +28,7 @@ import {
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { ensureStoryOptionAndGetId } from './ensureStoryOptionAndGetId';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
@@ -139,7 +140,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
-      'getByUrl' | 'updateAgentList' | 'createField'
+      'getByUrl' | 'updateAgentList' | 'createField' | 'updateStoryList'
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
@@ -704,10 +705,12 @@ export class NotifyFinishedIssuePreparationUseCase {
         );
       }
       if (storyName !== null && project.story !== null) {
-        const storyOptionId = project.story.stories.find(
-          (s) => s.name === storyName,
-        )?.id;
-        if (storyOptionId !== undefined) {
+        const storyOptionId = await ensureStoryOptionAndGetId(
+          this.projectRepository,
+          project,
+          storyName,
+        );
+        if (storyOptionId !== null) {
           await this.issueRepository.updateStory(
             { ...project, story: project.story },
             issue,
