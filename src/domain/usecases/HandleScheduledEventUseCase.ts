@@ -561,6 +561,32 @@ ${JSON.stringify(e)}
       defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
     try {
+      await this.setWorkflowManagementIssueToStoryUseCase.run({
+        targetDates: targetDateTimes,
+        project,
+        issues,
+        cacheUsed,
+      });
+    } catch (error) {
+      console.error(
+        `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
+        error,
+      );
+    }
+    try {
+      await this.setNoStoryIssueToStoryUseCase.run({
+        targetDates: targetDateTimes,
+        project,
+        issues,
+        cacheUsed,
+      });
+    } catch (error) {
+      console.error(
+        `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
+        error,
+      );
+    }
+    try {
       await this.updateIssueStatusByLabelUseCase.run({ project, issues });
     } catch (updateStatusByLabelError) {
       console.error(
@@ -714,28 +740,6 @@ ${JSON.stringify(e)}
     now: Date,
   ): Promise<void> => {
     const failures: string[] = [];
-    await this.runOperationIsolated(
-      `set workflow-management issues to Story for project ${project.url}`,
-      () =>
-        this.setWorkflowManagementIssueToStoryUseCase.run({
-          targetDates: targetDateTimes,
-          project,
-          issues,
-          cacheUsed,
-        }),
-      failures,
-    );
-    await this.runOperationIsolated(
-      `set NO STORY issues to Story for project ${project.url}`,
-      () =>
-        this.setNoStoryIssueToStoryUseCase.run({
-          targetDates: targetDateTimes,
-          project,
-          issues,
-          cacheUsed,
-        }),
-      failures,
-    );
     await this.runOperationIsolated(
       `run action announcements for project ${project.url}`,
       () =>

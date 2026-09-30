@@ -21,6 +21,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
   static readonly WORKFLOW_MANAGEMENT_LABEL = 'story:workflow-management';
   static readonly DAILY_ROUTINE_LABEL = 'daily-routine';
   static readonly REGULAR_STORY_PREFIX = 'regular / ';
+  static readonly MAXIMUM_ISSUES_WRITTEN_PER_RUN = 5;
 
   static normalizeCandidate = (candidate: string): string =>
     candidate.toLowerCase().replace(/[\s/_-]/g, '');
@@ -36,8 +37,16 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       return;
     }
     const errors: unknown[] = [];
+    let eligibleIssuesProcessedCount = 0;
     for (const issue of input.issues) {
       if (!this.isEligibleIssue(issue, input.targetDates)) {
+        continue;
+      }
+      eligibleIssuesProcessedCount += 1;
+      if (
+        eligibleIssuesProcessedCount >
+        SetWorkflowManagementIssueToStoryUseCase.MAXIMUM_ISSUES_WRITTEN_PER_RUN
+      ) {
         continue;
       }
 

@@ -758,6 +758,8 @@ The following use cases execute on every `schedule` trigger (cadence is determin
 - `ClearDependedIssueURLUseCase` (items with a closed depended issue, on cycles that do not run the slow sweep) — runs before `StartPreparationUseCase` on the issue list the cycle already fetched and does not fetch issues again. For every open item whose Depended Issue URL lists a closed issue, it removes the closed and Icebox URLs from the field, so a task whose blocker closed is dispatched in the same cycle. It calls GitHub only for an item it changes, with the same field write, comment read and notification comment the slow sweep would make for that item. Items whose depended issues are only open, in Icebox, absent from the issue list or circular are left to the slow sweep. A failure is logged with the failing item URLs and the cycle continues.
 - `StartPreparationUseCase` — starts preparation for issues ready to be worked on
 - `NotifyFinishedIssuePreparationUseCase` — checks preparation-status issues and advances them. When the issue carries one or more `change-target:<path>` labels and all auto status checks pass, the related pull request's full file list is fetched (paginated, no 100-file truncation) and the PR is auto-approved before transitioning to Awaiting Owner if every changed file is under at least one of the labeled paths. Matching is boundary-safe (`change-target:foo` matches `foo/bar.ts` but not `foobar/baz.ts`); multiple `change-target:` labels are OR-combined. When no `change-target:` label is present, behavior is unchanged. When the issue carries one or more `change-target-must:<path>` labels, the PR is also rejected with a `CHANGE_TARGET_MUST_PATH_NOT_CHANGED` status when no changed file falls under a required path. The rejection submits a "request changes" review containing an inline comment on the first changed file (or a PR-level comment when the PR has no changed files) that names the required directory. `change-target-must:` paths are also treated as allowed paths for the confinement check, behaving identically to `change-target:` in addition to requiring at least one change under the path. When the last agent comment's first fenced JSON block includes a non-empty `nextStepAgent` string property, the use case adds the label named by that value to the issue (creating the label in the repository if it does not already exist) and transitions the issue to Awaiting Workspace, allowing the next agent identified by the label to pick up the issue automatically.
+- `SetWorkflowManagementIssueToStoryUseCase`
+- `SetNoStoryIssueToStoryUseCase`
 - `UpdateIssueStatusByLabelUseCase`
 
 ### Slow path (runs at most once per 600 seconds)
@@ -766,8 +768,6 @@ The following use cases run only when at least 600 seconds have elapsed since th
 
 - `CreateNewStoryByLabelUseCase`
 - `ChangeStatusByStoryColorUseCase`
-- `SetWorkflowManagementIssueToStoryUseCase`
-- `SetNoStoryIssueToStoryUseCase`
 - `ActionAnnouncementUseCase`
 - `ClearPastNextActionDateHourUseCase`
 - `ClearDependedIssueURLUseCase` — removes closed and Icebox depended issue URLs, and absent and circular ones when the issue list came from a full fetch; on a slow sweep cycle it runs instead of the fast path removal
