@@ -211,7 +211,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('allows a nearly used token within 48 hours of its seven day reset so remaining capacity can be drained', () => {
+  it('allows a nearly used token within 72 hours of its seven day reset so remaining capacity can be drained', () => {
     const result = useCase.run(
       [
         candidate(
@@ -234,7 +234,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('earlyDrainSevenDay');
   });
 
-  it('prefers the token within the 48-hour deadline window over a token with a distant reset', () => {
+  it('prefers the token within the 72-hour deadline window over a token with a distant reset', () => {
     const result = useCase.run(
       [
         candidate(
