@@ -10,6 +10,7 @@ import {
   IssueProjectItemsSnapshot,
   ProjectItemSingleSelectValueUpdate,
   ProjectSingleSelectOption,
+  StoryGateGithubRequestError,
   StoryGateIssue,
   StoryGateIssueComment,
   StoryGateIssueRepository,
@@ -186,7 +187,12 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
   readonly issueReads: string[] = [];
   readonly projectItemReads: string[] = [];
   readonly updates: ProjectItemSingleSelectValueUpdate[] = [];
+  readonly unreadableIssueUrls = new Set<string>();
   appliesUpdates = true;
+
+  issueUnreadableUrlAdd = (url: string): void => {
+    this.unreadableIssueUrls.add(url);
+  };
 
   issueAdd = (fixture: IssueFixture): void => {
     const url = issueUrl(fixture.number);
@@ -213,6 +219,11 @@ class InMemoryStoryGateIssueRepository implements StoryGateIssueRepository {
     issue: GithubIssueReference,
   ): Promise<StoryGateIssue | null> => {
     this.issueReads.push(issue.url);
+    if (this.unreadableIssueUrls.has(issue.url)) {
+      throw new StoryGateGithubRequestError(
+        `GET ${issue.url} returned HTTP 403`,
+      );
+    }
     return this.issues.get(issue.url) ?? null;
   };
 
@@ -1425,6 +1436,28 @@ describe('StoryGateCheckUseCase', () => {
         },
       ]);
       expect(result.specification?.detectedUrl).toBe(issueUrl(5));
+    });
+
+    it('lists an unreadable linked candidate separately and decides from the readable candidates', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: bodyLinking(PROSE_COMPLETION_BODY),
+        comments: [],
+      });
+      scenario.repository.issueAdd({
+        number: 7,
+        body: 'No specification here',
+      });
+      scenario.repository.issueUnreadableUrlAdd(issueUrl(5));
+
+      const { result } = await scenario.run();
+
+      expect(result.specification?.unreadableUrls).toEqual([issueUrl(5)]);
+      expect(
+        result.specification?.candidates.map((candidate) => candidate.url),
+      ).toEqual([issueUrl(ASSIGNED), issueUrl(7)]);
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('REGULAR_STORY');
     });
 
     it.each([
