@@ -325,6 +325,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'removeLabel'
           | 'get'
           | 'removeIssueFromProjectCache'
+          | 'appendIssueToProjectCache'
         >
       >;
       let spawnMockProjectRepository: jest.Mocked<
@@ -412,6 +413,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
             }),
           ),
           removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
+          appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
         };
         spawnMockLocalCommandRunner = {
           runCommand: jest
