@@ -45,6 +45,7 @@ import { localStorageCacheBaseDirectory } from '../localStorageCacheDirectory';
 import { Member } from '../../../domain/entities/Member';
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+import { isTransientApiError } from '../../../domain/usecases/isTransientApiError';
 import {
   Sleep,
   realSleep,
@@ -1190,7 +1191,7 @@ export class ApiV3CheerioRestIssueRepository
       }
       project = freshProject;
     } catch (error) {
-      if (!isFullFetch && cache !== null) {
+      if (cache !== null && (!isFullFetch || isTransientApiError(error))) {
         console.warn(
           `Failed to refresh project metadata, using cached. projectId: ${projectId}, error: ${String(error)}`,
         );
@@ -1225,6 +1226,8 @@ export class ApiV3CheerioRestIssueRepository
       cacheHasIssuesMissingStoryOptionIdSchema;
 
     if (effectiveIsFullFetch) {
+      const projectMetadataFellBackToCache =
+        cache !== null && project === cache.project;
       const itemIdsKnownBeforeFetch = new Set(
         cache?.issues.map((issue) => issue.itemId) ?? [],
       );
@@ -1288,7 +1291,11 @@ export class ApiV3CheerioRestIssueRepository
           },
         );
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
-      return { issues, project: mergedProject, cacheUsed: false };
+      return {
+        issues,
+        project: mergedProject,
+        cacheUsed: projectMetadataFellBackToCache,
+      };
     }
 
     const itemIdsKnownBeforeFetch = new Set(
