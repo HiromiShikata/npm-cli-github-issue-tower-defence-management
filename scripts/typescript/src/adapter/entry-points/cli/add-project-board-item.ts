@@ -21,8 +21,12 @@ const run = async () => {
   const action = requireEnvironmentVariable('EVENT_ACTION');
   const issueNodeId = process.env.ISSUE_NODE_ID ?? '';
   const pullRequestNodeId = process.env.PULL_REQUEST_NODE_ID ?? '';
+  const ghApiBaseUrl = process.env.GH_API_BASE_URL;
 
-  const octokit = new Octokit({ auth: ghToken });
+  const octokit = new Octokit({
+    auth: ghToken,
+    ...(ghApiBaseUrl ? { baseUrl: ghApiBaseUrl } : {}),
+  });
   const repository = new OctokitProjectItemRepository(octokit);
   const useCase = new ProjectItemAddUseCase(repository);
   const result = await useCase.run({
