@@ -4159,129 +4159,80 @@ mysteryKey: 'value'
       expect(description).toMatch(/\bauto\b/);
     });
 
-    it('should write both --effort and --autocompact when both fields are set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmEffortLevel: 'xhigh',
-        defaultLlmAutocompactMode: 'auto',
-      });
+    it.each([
+      {
+        situation: 'both fields are set to xhigh and auto',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: 'xhigh',
+          defaultLlmAutocompactMode: 'auto',
+        },
+        expectedStdoutLine: '--effort xhigh --autocompact auto\n',
+      },
+      {
+        situation:
+          'both fields are set to values other than xhigh and auto, so both are forwarded verbatim',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: 'medium',
+          defaultLlmAutocompactMode: 'manual',
+        },
+        expectedStdoutLine: '--effort medium --autocompact manual\n',
+      },
+      {
+        situation:
+          'only defaultLlmEffortLevel is set to a value other than xhigh, so --autocompact falls back to auto',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: 'high',
+        },
+        expectedStdoutLine: '--effort high --autocompact auto\n',
+      },
+      {
+        situation:
+          'only defaultLlmAutocompactMode is set to a value other than auto, so --effort falls back to xhigh',
+        configuredLlmLaunchFields: {
+          defaultLlmAutocompactMode: 'manual',
+        },
+        expectedStdoutLine: '--effort xhigh --autocompact manual\n',
+      },
+      {
+        situation:
+          'neither field is set, so --effort falls back to xhigh and --autocompact falls back to auto',
+        configuredLlmLaunchFields: {},
+        expectedStdoutLine: '--effort xhigh --autocompact auto\n',
+      },
+      {
+        situation:
+          'both fields are set to the empty string, so --effort falls back to xhigh and --autocompact falls back to auto',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: '',
+          defaultLlmAutocompactMode: '',
+        },
+        expectedStdoutLine: '--effort xhigh --autocompact auto\n',
+      },
+    ])(
+      'should write both --effort and --autocompact on one stdout line when $situation',
+      async ({ configuredLlmLaunchFields, expectedStdoutLine }) => {
+        writeConfig({
+          ...defaultConfig,
+          ...configuredLlmLaunchFields,
+        });
 
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
+        const stdoutSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation(() => true);
 
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
+        await program.parseAsync([
+          'node',
+          'test',
+          'selectLlmLaunchFlags',
+          '--configFilePath',
+          configFilePath,
+        ]);
 
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort xhigh --autocompact auto\n',
-      );
+        expect(stdoutSpy).toHaveBeenCalledWith(expectedStdoutLine);
 
-      stdoutSpy.mockRestore();
-    });
-
-    it('should forward both configured values verbatim when they differ from the xhigh and auto fallback values', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmEffortLevel: 'medium',
-        defaultLlmAutocompactMode: 'manual',
-      });
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort medium --autocompact manual\n',
-      );
-
-      stdoutSpy.mockRestore();
-    });
-
-    it('should write the configured --effort and fall back to --autocompact auto when only defaultLlmEffortLevel is set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmEffortLevel: 'xhigh',
-      });
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort xhigh --autocompact auto\n',
-      );
-
-      stdoutSpy.mockRestore();
-    });
-
-    it('should write the configured --autocompact and fall back to --effort xhigh when only defaultLlmAutocompactMode is set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmAutocompactMode: 'auto',
-      });
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort xhigh --autocompact auto\n',
-      );
-
-      stdoutSpy.mockRestore();
-    });
-
-    it('should write both fallback flags when neither field is set', async () => {
-      writeConfig(defaultConfig);
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort xhigh --autocompact auto\n',
-      );
-
-      stdoutSpy.mockRestore();
-    });
+        stdoutSpy.mockRestore();
+      },
+    );
   });
 
   describe('checkIssueReviewReadiness', () => {
