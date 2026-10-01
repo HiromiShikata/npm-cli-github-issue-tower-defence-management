@@ -1,3 +1,4 @@
+import * as childProcess from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -1460,6 +1461,55 @@ describe('resumableSessionSelect', () => {
     expect(fs.existsSync(sourceTranscriptFilePath)).toBe(true);
     expect(fs.existsSync(deepestSourceFilePath)).toBe(true);
   });
+
+  it('resumes the copied transcript file and writes a warning when its session id directory holds an entry that is neither a regular file, a directory nor a symbolic link', () => {
+    const layout = sessionDirectoryLayoutCreate(
+      'session-id-directory-holds-named-pipe',
+    );
+    const sourceTranscriptFilePath = transcriptFileWrite({
+      directory: layout.otherSessionDir,
+      sessionId: secondByNameSessionId,
+      lines: resumableTranscriptLines(secondByNameSessionId),
+      modificationTimeSeconds: olderModificationTimeSeconds,
+    });
+    const sourceTranscriptFileContent = fs.readFileSync(
+      sourceTranscriptFilePath,
+      'utf8',
+    );
+    const sourceSessionIdDirectory = path.join(
+      layout.otherSessionDir,
+      secondByNameSessionId,
+    );
+    fs.mkdirSync(sourceSessionIdDirectory);
+    const namedPipePath = path.join(sourceSessionIdDirectory, 'named-pipe');
+    childProcess.execFileSync('mkfifo', [namedPipePath]);
+
+    const output = resumableSessionSelect({
+      sessionName,
+      sessionDir: layout.sessionDir,
+      otherSessionDirs: [layout.otherSessionDir],
+      archiveRoot: layout.archiveRoot,
+    });
+
+    expect(output).toEqual({
+      stdout: secondByNameSessionId,
+      stderrLines: [
+        sessionIdDirectoryCopyWarningLine(
+          sourceSessionIdDirectory,
+          layout.sessionDir,
+        ),
+        copiedLine(sourceTranscriptFilePath, layout.sessionDir),
+      ],
+      exitCode: 0,
+    });
+    expect(
+      fs.readFileSync(
+        path.join(layout.sessionDir, `${secondByNameSessionId}.jsonl`),
+        'utf8',
+      ),
+    ).toBe(sourceTranscriptFileContent);
+    expect(fs.statSync(namedPipePath).isFIFO()).toBe(true);
+  }, 10000);
 
   it('starts a new claude session without copying when the selected transcript file has no entry time', () => {
     const cases: {
