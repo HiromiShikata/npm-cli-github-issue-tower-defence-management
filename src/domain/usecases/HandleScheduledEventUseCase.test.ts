@@ -365,7 +365,7 @@ describe('HandleScheduledEventUseCase', () => {
         ).not.toHaveBeenCalled();
       });
 
-      it('still resolves run() and still attempts removal of the other pull-request items when removeIssueFromProject rejects for one of them (case d)', async () => {
+      it('still attempts removal of the other pull-request items but makes run() reject when removeIssueFromProject rejects for one of them (case d)', async () => {
         const mockProject: Project = { ...mock<Project>(), id: 'project-1' };
         const failingPrIssue = mock<Issue>();
         failingPrIssue.isPr = true;
@@ -386,7 +386,9 @@ describe('HandleScheduledEventUseCase', () => {
           },
         );
 
-        await useCase.run(removalSweepInput);
+        await expect(useCase.run(removalSweepInput)).rejects.toThrow(
+          /removeIssueFromProject exploded/,
+        );
 
         expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledWith(
           mockProject,
@@ -396,6 +398,9 @@ describe('HandleScheduledEventUseCase', () => {
           mockProject,
           succeedingPrIssue.url,
         );
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith('project-1', succeedingPrIssue);
       });
     });
 

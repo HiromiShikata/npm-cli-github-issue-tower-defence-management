@@ -252,22 +252,27 @@ export class HandleScheduledEventUseCase {
     const pullRequestProjectItems = fetchedIssues.filter(
       (issue) => issue.isPr === true,
     );
+    const pullRequestRemovalFailures: string[] = [];
     for (const pullRequestProjectItem of pullRequestProjectItems) {
-      try {
-        await this.issueRepository.removeIssueFromProject(
-          project,
-          pullRequestProjectItem.url,
-        );
-        await this.issueRepository.removeIssueFromProjectCache(
-          project.id,
-          pullRequestProjectItem,
-        );
-      } catch (removePullRequestItemError) {
-        console.error(
-          `[HandleScheduledEvent] Failed to remove pull-request item from project ${project.url}: issueUrl=${pullRequestProjectItem.url}: ${removePullRequestItemError instanceof Error ? removePullRequestItemError.message : String(removePullRequestItemError)}`,
-          removePullRequestItemError,
-        );
-      }
+      await this.runOperationIsolated(
+        `remove pull-request item ${pullRequestProjectItem.url} from project ${project.url}`,
+        async () => {
+          await this.issueRepository.removeIssueFromProject(
+            project,
+            pullRequestProjectItem.url,
+          );
+          await this.issueRepository.removeIssueFromProjectCache(
+            project.id,
+            pullRequestProjectItem,
+          );
+        },
+        pullRequestRemovalFailures,
+      );
+    }
+    if (pullRequestRemovalFailures.length > 0) {
+      throw new Error(
+        `Failed ${pullRequestRemovalFailures.length} operation(s) removing pull-request items from project ${project.url}: ${pullRequestRemovalFailures.join('; ')}`,
+      );
     }
     const issues =
       pullRequestProjectItems.length > 0
