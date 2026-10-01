@@ -1231,10 +1231,11 @@ describe('dashboardComposeInputHasProjectData', () => {
       },
       expected: false,
     },
-  ] satisfies { name: string; input: ComposeDashboardInput; expected: boolean }[])(
-    '$name',
-    ({ input, expected }) => {
-      expect(dashboardComposeInputHasProjectData(input)).toBe(expected);
-    },
-  );
+  ] satisfies {
+    name: string;
+    input: ComposeDashboardInput;
+    expected: boolean;
+  }[])('$name', ({ input, expected }) => {
+    expect(dashboardComposeInputHasProjectData(input)).toBe(expected);
+  });
 });
