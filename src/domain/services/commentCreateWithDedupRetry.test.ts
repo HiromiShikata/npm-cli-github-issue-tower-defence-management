@@ -38,7 +38,7 @@ describe('commentCreateWithDedupRetry', () => {
     expectedSleepCallCount: number;
   }>([
     {
-      label: 'case 1: succeeds immediately when the first attempt is 201',
+      label: 'succeeds immediately when the first attempt is 201',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS),
@@ -52,7 +52,7 @@ describe('commentCreateWithDedupRetry', () => {
     },
     {
       label:
-        'case 2: does not re-post when a 502 is followed by a duplicate found on re-check',
+        'does not re-post when a 502 is followed by a duplicate found on re-check',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS)
@@ -67,7 +67,7 @@ describe('commentCreateWithDedupRetry', () => {
     },
     {
       label:
-        'case 3: retries once and succeeds on the 2nd attempt when the re-check after a 502 finds no duplicate',
+        'retries once and succeeds on the 2nd attempt when the re-check after a 502 finds no duplicate',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS)
@@ -83,7 +83,7 @@ describe('commentCreateWithDedupRetry', () => {
     },
     {
       label:
-        'case 4: stops after the retry budget of 3 retries is exhausted and rethrows the 4th attempt 502 unmodified',
+        'stops after the retry budget of 3 retries is exhausted and rethrows the 4th attempt 502 unmodified',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValue(NO_DUPLICATE_COMMENTS),
@@ -99,7 +99,7 @@ describe('commentCreateWithDedupRetry', () => {
       expectedSleepCallCount: 3,
     },
     {
-      label: 'case 5: retries a 500 the same as a 502',
+      label: 'retries a 500 the same as a 502',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS)
@@ -114,7 +114,7 @@ describe('commentCreateWithDedupRetry', () => {
       expectedSleepCallCount: 1,
     },
     {
-      label: 'case 6: retries a 503 the same as a 502',
+      label: 'retries a 503 the same as a 502',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS)
@@ -129,7 +129,7 @@ describe('commentCreateWithDedupRetry', () => {
       expectedSleepCallCount: 1,
     },
     {
-      label: 'case 7: retries a 504 the same as a 502',
+      label: 'retries a 504 the same as a 502',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS)
@@ -144,8 +144,7 @@ describe('commentCreateWithDedupRetry', () => {
       expectedSleepCallCount: 1,
     },
     {
-      label:
-        'case 8: does not retry a 404 and propagates the error immediately',
+      label: 'does not retry a 404 and propagates the error immediately',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS),
@@ -159,7 +158,7 @@ describe('commentCreateWithDedupRetry', () => {
     },
     {
       label:
-        'case 9: does not retry a 422 validation error and propagates the error immediately',
+        'does not retry a 422 validation error and propagates the error immediately',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(NO_DUPLICATE_COMMENTS),
@@ -173,7 +172,7 @@ describe('commentCreateWithDedupRetry', () => {
     },
     {
       label:
-        'case 10: never calls postComment when a duplicate already exists before the first attempt',
+        'never calls postComment when a duplicate already exists before the first attempt',
       fetchExisting: jest
         .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
         .mockResolvedValueOnce(DUPLICATE_COMMENTS),
