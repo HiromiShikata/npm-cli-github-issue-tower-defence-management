@@ -8319,6 +8319,176 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'story-opt-wf',
       );
     });
+
+    describe('story application scoped by dispatchStartedAt', () => {
+      const DISPATCH_STARTED_AT = new Date('2024-01-01T00:00:00Z');
+      const REPORT_POSTED_AT = new Date('2024-01-02T00:00:00Z');
+
+      const buildReportContent = (
+        reportHasFromRobotPrefix: boolean,
+        storyKeyPresent: boolean,
+      ): string => {
+        const prefix = reportHasFromRobotPrefix
+          ? 'From: :robot: triager (model)\n'
+          : '';
+        const storyPart = storyKeyPresent
+          ? ', "story": "regular / workflow improvement"'
+          : '';
+        return (
+          prefix +
+          '```json\n{"nextStepAgent": "developer"' +
+          storyPart +
+          '}\n```'
+        );
+      };
+
+      type StoryApplicationTestCase = {
+        description: string;
+        dispatchStartedAt: Date | null;
+        issueAgent: string | null;
+        reportHasFromRobotPrefix: boolean;
+        storyKeyPresent: boolean;
+        hasAgentReportAtAll: boolean;
+        expectUpdateStoryCalled: boolean;
+      };
+
+      const testCases: StoryApplicationTestCase[] = [
+        {
+          description:
+            'dispatchStartedAt supplied, agent field null, story key present -> updateStory called',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: null,
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: true,
+        },
+        {
+          description:
+            'dispatchStartedAt supplied, agent field matches reporter, story key present -> updateStory called',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: 'triager',
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: true,
+        },
+        {
+          description:
+            'dispatchStartedAt supplied, agent field differs from reporter, story key present -> updateStory called (the fix)',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: 'chore',
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: true,
+        },
+        {
+          description:
+            'dispatchStartedAt omitted, agent field differs from reporter, story key present -> updateStory not called (existing protection unchanged)',
+          dispatchStartedAt: null,
+          issueAgent: 'chore',
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: false,
+        },
+        {
+          description:
+            'dispatchStartedAt omitted, agent field null, story key present -> updateStory called',
+          dispatchStartedAt: null,
+          issueAgent: null,
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: true,
+        },
+        {
+          description:
+            'dispatchStartedAt supplied, agent field differs from reporter, no story key -> updateStory not called',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: 'chore',
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: false,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: false,
+        },
+        {
+          description:
+            'dispatchStartedAt supplied, agent field differs from reporter, report has no From: :robot: prefix -> updateStory not called',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: 'chore',
+          reportHasFromRobotPrefix: false,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: true,
+          expectUpdateStoryCalled: false,
+        },
+        {
+          description:
+            'dispatchStartedAt supplied, agent field differs from reporter, no agent report at all -> updateStory not called',
+          dispatchStartedAt: DISPATCH_STARTED_AT,
+          issueAgent: 'chore',
+          reportHasFromRobotPrefix: true,
+          storyKeyPresent: true,
+          hasAgentReportAtAll: false,
+          expectUpdateStoryCalled: false,
+        },
+      ];
+
+      it.each(testCases)(
+        '$description',
+        async ({
+          dispatchStartedAt,
+          issueAgent,
+          reportHasFromRobotPrefix,
+          storyKeyPresent,
+          hasAgentReportAtAll,
+          expectUpdateStoryCalled,
+        }) => {
+          const project = projectWithStoryAndAgent();
+          const issue = createMockIssue({
+            status: 'Preparation',
+            agent: issueAgent,
+          });
+          mockProjectRepository.getByUrl.mockResolvedValue(project);
+          mockIssueRepository.get.mockResolvedValue(issue);
+          mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+          mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+            hasAgentReportAtAll
+              ? [
+                  createMockComment({
+                    content: buildReportContent(
+                      reportHasFromRobotPrefix,
+                      storyKeyPresent,
+                    ),
+                    createdAt: REPORT_POSTED_AT,
+                    updatedAt: REPORT_POSTED_AT,
+                  }),
+                ]
+              : [],
+          );
+
+          await useCase.run({
+            projectUrl: 'https://github.com/users/user/projects/1',
+            issueUrl: 'https://github.com/user/repo/issues/1',
+            thresholdForAutoReject: 3,
+            workflowBlockerResolvedWebhookUrl: null,
+            allowedIssueAuthors: ['test-user'],
+            ...(dispatchStartedAt !== null ? { dispatchStartedAt } : {}),
+          });
+
+          if (expectUpdateStoryCalled) {
+            expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+              expect.objectContaining({ story: project.story }),
+              issue,
+              'story-opt-wf',
+            );
+          } else {
+            expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+          }
+        },
+      );
+    });
   });
 
   describe('isNoStory determination ordering against a newly supplied story', () => {
