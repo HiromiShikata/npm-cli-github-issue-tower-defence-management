@@ -1,20 +1,7 @@
 import { OctokitProjectItemRepository } from './OctokitProjectItemRepository';
 
-type GraphqlCallArgs = [string, Record<string, unknown>];
-
-type JestMockUnspecifiedResolvedValueType<M> = M extends jest.Mock<
-  infer ResolvedValueType
->
-  ? ResolvedValueType
-  : never;
-
-type JestMockDefaultResolvedValueType =
-  JestMockUnspecifiedResolvedValueType<jest.Mock>;
-
-const createFakeGraphqlClient = (): {
-  graphql: jest.Mock<JestMockDefaultResolvedValueType, GraphqlCallArgs>;
-} => ({
-  graphql: jest.fn<JestMockDefaultResolvedValueType, GraphqlCallArgs>(),
+const createFakeGraphqlClient = (): { graphql: jest.Mock } => ({
+  graphql: jest.fn(),
 });
 
 describe('OctokitProjectItemRepository', () => {
@@ -46,11 +33,10 @@ describe('OctokitProjectItemRepository', () => {
         contentNodeId: 'I_theContentNodeId',
       });
 
-      expect(client.graphql.mock.calls[0][0]).toContain('addProjectV2ItemById');
-      expect(client.graphql.mock.calls[0][1]).toEqual({
-        projectId: 'PVT_theProjectId',
-        contentId: 'I_theContentNodeId',
-      });
+      expect(client.graphql).toHaveBeenCalledWith(
+        expect.stringContaining('addProjectV2ItemById'),
+        { projectId: 'PVT_theProjectId', contentId: 'I_theContentNodeId' },
+      );
     });
 
     test('resolves null when the mutation response has a null item', async () => {
@@ -212,15 +198,15 @@ describe('OctokitProjectItemRepository', () => {
         optionId: 'theOptionId',
       });
 
-      expect(client.graphql.mock.calls[0][0]).toContain(
-        'updateProjectV2ItemFieldValue',
+      expect(client.graphql).toHaveBeenCalledWith(
+        expect.stringContaining('updateProjectV2ItemFieldValue'),
+        {
+          projectId: 'PVT_theProjectId',
+          itemId: 'PVTI_xxx',
+          fieldId: 'PVTSSF_theFieldId',
+          optionId: 'theOptionId',
+        },
       );
-      expect(client.graphql.mock.calls[0][1]).toEqual({
-        projectId: 'PVT_theProjectId',
-        itemId: 'PVTI_xxx',
-        fieldId: 'PVTSSF_theFieldId',
-        optionId: 'theOptionId',
-      });
     });
 
     test('rejects (does not swallow) when the graphql client rejects', async () => {
