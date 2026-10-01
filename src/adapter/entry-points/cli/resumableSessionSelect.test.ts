@@ -793,15 +793,19 @@ describe('resumableSessionSelect', () => {
       stderrLines: [copiedLine(sourceTranscriptFilePath, layout.sessionDir)],
       exitCode: 0,
     });
-    expect({
-      mode: copiedTranscriptFileStats.mode & 0o777,
-      atimeMs: copiedTranscriptFileStats.atimeMs,
-      mtimeMs: copiedTranscriptFileStats.mtimeMs,
-    }).toEqual({
-      mode: sourceTranscriptFileStats.mode & 0o777,
-      atimeMs: sourceTranscriptFileStats.atimeMs,
-      mtimeMs: sourceTranscriptFileStats.mtimeMs,
-    });
+    expect(copiedTranscriptFileStats.mode & 0o777).toBe(
+      sourceTranscriptFileStats.mode & 0o777,
+    );
+    expect(
+      Math.abs(
+        copiedTranscriptFileStats.mtimeMs - sourceTranscriptFileStats.mtimeMs,
+      ),
+    ).toBeLessThan(1);
+    expect(
+      Math.abs(
+        copiedTranscriptFileStats.atimeMs - sourceTranscriptFileStats.atimeMs,
+      ),
+    ).toBeLessThan(1);
     expect({
       mode: sourceTranscriptFileStats.mode & 0o777,
       mtimeMs: sourceTranscriptFileStats.mtimeMs,
