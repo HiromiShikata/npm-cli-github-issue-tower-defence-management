@@ -7,7 +7,6 @@ import {
   ComposeDashboardInput,
   ComposeDashboardMachineStatus,
   ComposeDashboardProject,
-  ComposeDashboardUseCase,
 } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import {
@@ -350,31 +349,3 @@ export const buildComposeDashboardInput = (
   };
 };
 
-const isExistingFile = (filePath: string): boolean => {
-  try {
-    return fs.statSync(filePath).isFile();
-  } catch {
-    return false;
-  }
-};
-
-export const dashboardComposeFilesPresent = (
-  options: DashboardComposeOptions,
-): boolean => {
-  if (options.projectNames.length === 0) {
-    return false;
-  }
-  const requiredFiles = [
-    path.join(options.dashboardDataDir, 'machine-status.json'),
-    path.join(options.dashboardDataDir, 'token-status.json'),
-    ...options.projectNames.map((projectName) =>
-      path.join(options.dashboardDataDir, 'projects', `${projectName}.json`),
-    ),
-  ];
-  return requiredFiles.every((filePath) => isExistingFile(filePath));
-};
-
-export const composeDashboardText = (
-  options: DashboardComposeOptions,
-): string =>
-  new ComposeDashboardUseCase().run(buildComposeDashboardInput(options));

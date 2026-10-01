@@ -55,10 +55,11 @@ import {
   ConsoleGithubTokenResolver,
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
+import { buildComposeDashboardInput } from './dashboardComposeService';
 import {
-  composeDashboardText,
-  dashboardComposeFilesPresent,
-} from './dashboardComposeService';
+  ComposeDashboardUseCase,
+  dashboardComposeInputHasProjectData,
+} from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import {
   OWNER_CALL_FILE_DIRECTORY_NAME,
   OWNER_CALL_FILE_EXTENSION,
@@ -1039,19 +1040,18 @@ export const resolveDashboardContent = (
   options: WebServerOptions,
   requestPath: string,
 ): Buffer | null => {
-  if (
-    options.dashboardDataDir !== null &&
-    dashboardComposeFilesPresent({
-      dashboardDataDir: options.dashboardDataDir,
-      projectNames: options.dashboardProjectNames,
-    })
-  ) {
-    const dashboardText = composeDashboardText({
+  if (options.dashboardDataDir !== null) {
+    const composeDashboardInput = buildComposeDashboardInput({
       dashboardDataDir: options.dashboardDataDir,
       projectNames: options.dashboardProjectNames,
       consoleDataOutputDir: options.consoleDataOutputDir,
     });
-    return Buffer.from(dashboardText, 'utf-8');
+    if (dashboardComposeInputHasProjectData(composeDashboardInput)) {
+      const dashboardText = new ComposeDashboardUseCase().run(
+        composeDashboardInput,
+      );
+      return Buffer.from(dashboardText, 'utf-8');
+    }
   }
   return readStaticDashboardContent(options.dashboardDir, requestPath);
 };

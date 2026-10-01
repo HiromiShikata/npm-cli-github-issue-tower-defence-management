@@ -1515,7 +1515,7 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--dashboardDataDir <path>',
-      'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
+      'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and at least one listed project has its own data file present the server composes the /tdpm.txt fragment live from whatever data is available, showing -- for any project without a file, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
     )
     .option(
       '--dashboardProjectNames <names>',
