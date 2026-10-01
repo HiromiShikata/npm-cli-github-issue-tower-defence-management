@@ -342,6 +342,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is In Tmux by human; the owner is operating it directly in a terminal session`,
       );
       return;
+    } else if (issue.status === FAILED_PREPARATION_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Failed Preparation`,
+      );
+      return;
     } else if (
       issue.status !== PREPARATION_STATUS_NAME &&
       issue.status !== IN_TMUX_BY_AGENT_STATUS_NAME
