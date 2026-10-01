@@ -3296,9 +3296,26 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       variables: unknown;
     };
 
+    type RecordedGraphqlRequestWithReopenedTimelineItemSelection =
+      RecordedGraphqlRequest & {
+        readsTotalCountOfReopenedTimelineItems: boolean;
+        readsCreatedAtOfLatestReopenedTimelineItem: boolean;
+      };
+
     type RecordedRequests = {
       requestUrls: string[];
-      graphqlRequests: RecordedGraphqlRequest[];
+      graphqlRequests: RecordedGraphqlRequestWithReopenedTimelineItemSelection[];
+    };
+
+    type RepositoryIssueEventFeedEvent = {
+      event: string;
+      created_at: string;
+      issue: { number: number };
+    };
+
+    type RepositoryIssueEventFeedPageResponse = {
+      httpStatus: number;
+      body: unknown;
     };
 
     const expectedReopenedTimelineGraphqlRequest: RecordedGraphqlRequest = {
@@ -3310,14 +3327,27 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       },
     };
 
+    const expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt: RecordedGraphqlRequestWithReopenedTimelineItemSelection =
+      {
+        ...expectedReopenedTimelineGraphqlRequest,
+        readsTotalCountOfReopenedTimelineItems: true,
+        readsCreatedAtOfLatestReopenedTimelineItem: true,
+      };
+
     const buildReopenedTimelineGraphqlResponse = (
       reopenedNodes: { createdAt: string }[],
+      reopenedTimelineItemTotalCount: number,
     ): ReopenedTimelineGraphqlResponse => ({
       httpStatus: 200,
       body: {
         data: {
           repository: {
-            issue: { timelineItems: { nodes: reopenedNodes } },
+            issue: {
+              timelineItems: {
+                totalCount: reopenedTimelineItemTotalCount,
+                nodes: reopenedNodes,
+              },
+            },
           },
         },
       },
@@ -3374,9 +3404,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               items.slice(pageIndex * 100, (pageIndex + 1) * 100),
           );
 
+    const latestReopenedTimelineItemConnectionInCompactQuery =
+      'timelineItems(last:1,itemTypes:[REOPENED_EVENT])';
+
     const parseGraphqlRequest = (
       init: RequestInit | undefined,
-    ): RecordedGraphqlRequest => {
+    ): RecordedGraphqlRequestWithReopenedTimelineItemSelection => {
       const parsedBody: unknown =
         typeof init?.body === 'string' ? JSON.parse(init.body) : null;
       const query =
@@ -3392,10 +3425,25 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'variables' in parsedBody
           ? parsedBody.variables
           : null;
+      const compactQuery = query.replace(/\s+/g, '');
+      const connectionIndex = compactQuery.indexOf(
+        latestReopenedTimelineItemConnectionInCompactQuery,
+      );
+      const connectionSelectionSet =
+        connectionIndex === -1
+          ? ''
+          : compactQuery.slice(
+              connectionIndex +
+                latestReopenedTimelineItemConnectionInCompactQuery.length,
+            );
       return {
-        readsLatestReopenedTimelineItem: query
-          .replace(/\s+/g, '')
-          .includes('timelineItems(last:1,itemTypes:[REOPENED_EVENT])'),
+        readsLatestReopenedTimelineItem: connectionIndex !== -1,
+        readsTotalCountOfReopenedTimelineItems:
+          connectionSelectionSet.startsWith('{') &&
+          connectionSelectionSet.includes('totalCount'),
+        readsCreatedAtOfLatestReopenedTimelineItem:
+          connectionSelectionSet.startsWith('{') &&
+          connectionSelectionSet.includes('createdAt'),
         variables,
       };
     };
@@ -3403,6 +3451,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     const mockIssueEventListingAndGraphqlAndRecordRequests = (
       issueEventListing: IssueEventListingEvent[],
       reopenedTimelineGraphqlResponse: ReopenedTimelineGraphqlResponse,
+      repositoryIssueEventFeedPageResponses: RepositoryIssueEventFeedPageResponse[] = [],
     ): RecordedRequests => {
       const recordedRequests: RecordedRequests = {
         requestUrls: [],
@@ -3426,6 +3475,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             }),
         );
       });
+      repositoryIssueEventFeedPageResponses.forEach(
+        (pageResponse, pageIndex) => {
+          const page = pageIndex + 1;
+          responseBuilderByRequestUrl.set(
+            buildPagedApiUrl(repositoryIssueEventFeedApiUrl, page),
+            () =>
+              new Response(JSON.stringify(pageResponse.body), {
+                status: pageResponse.httpStatus,
+                headers: buildPaginationLinkHeader(
+                  repositoryIssueEventFeedApiUrl,
+                  page,
+                  repositoryIssueEventFeedPageResponses.length,
+                ),
+              }),
+          );
+        },
+      );
       jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
         const requestUrl =
           typeof input === 'string'
@@ -3450,15 +3516,38 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       return recordedRequests;
     };
 
-    const findIssueEventListingPageNumber = (
+    const findPagedApiUrlPageNumber = (
+      apiUrl: string,
       requestUrl: string,
     ): number | null => {
-      const pagedApiUrlPrefix = `${issueEventListingApiUrl}?per_page=100&page=`;
+      const pagedApiUrlPrefix = `${apiUrl}?per_page=100&page=`;
       const pageNumberMatch = requestUrl.startsWith(pagedApiUrlPrefix)
         ? /^\d+$/.exec(requestUrl.slice(pagedApiUrlPrefix.length))
         : null;
       return pageNumberMatch === null ? null : Number(pageNumberMatch[0]);
     };
+
+    const findIssueEventListingPageNumber = (
+      requestUrl: string,
+    ): number | null =>
+      findPagedApiUrlPageNumber(issueEventListingApiUrl, requestUrl);
+
+    const findRepositoryIssueEventFeedPageNumber = (
+      requestUrl: string,
+    ): number | null =>
+      findPagedApiUrlPageNumber(repositoryIssueEventFeedApiUrl, requestUrl);
+
+    const listDistinctRequestedPages = (
+      requestUrls: string[],
+      findPageNumber: (requestUrl: string) => number | null,
+    ): number[] => [
+      ...new Set(
+        requestUrls.flatMap((requestUrl) => {
+          const page = findPageNumber(requestUrl);
+          return page === null ? [] : [page];
+        }),
+      ),
+    ];
 
     const summarizeRecordedRequests = (
       recordedRequests: RecordedRequests,
@@ -3479,7 +3568,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       repositoryIssueEventFeedRequestUrls: recordedRequests.requestUrls.filter(
         (requestUrl) => requestUrl.startsWith(repositoryIssueEventFeedApiUrl),
       ),
-      graphqlRequests: recordedRequests.graphqlRequests,
+      graphqlRequests: recordedRequests.graphqlRequests.map(
+        (graphqlRequest) => ({
+          readsLatestReopenedTimelineItem:
+            graphqlRequest.readsLatestReopenedTimelineItem,
+          variables: graphqlRequest.variables,
+        }),
+      ),
       unrecognizedRequestUrls: recordedRequests.requestUrls.filter(
         (requestUrl) =>
           requestUrl !== githubGraphqlApiUrl &&
@@ -3487,6 +3582,78 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           !requestUrl.startsWith(repositoryIssueEventFeedApiUrl),
       ),
     });
+
+    const summarizeRecordedRequestsWithRepositoryIssueEventFeedPages = (
+      recordedRequests: RecordedRequests,
+    ): {
+      issueEventListingPages: number[];
+      repositoryIssueEventFeedPages: number[];
+      graphqlRequests: RecordedGraphqlRequestWithReopenedTimelineItemSelection[];
+      unrecognizedRequestUrls: string[];
+    } => ({
+      issueEventListingPages: listDistinctRequestedPages(
+        recordedRequests.requestUrls,
+        findIssueEventListingPageNumber,
+      ),
+      repositoryIssueEventFeedPages: listDistinctRequestedPages(
+        recordedRequests.requestUrls,
+        findRepositoryIssueEventFeedPageNumber,
+      ),
+      graphqlRequests: recordedRequests.graphqlRequests,
+      unrecognizedRequestUrls: recordedRequests.requestUrls.filter(
+        (requestUrl) =>
+          requestUrl !== githubGraphqlApiUrl &&
+          findIssueEventListingPageNumber(requestUrl) === null &&
+          findRepositoryIssueEventFeedPageNumber(requestUrl) === null,
+      ),
+    });
+
+    const reopenedTimelineItemCreatedAtAtListingLimit = '2026-10-01T03:15:10Z';
+
+    const shiftIsoTimestampBySeconds = (
+      isoTimestamp: string,
+      seconds: number,
+    ): string =>
+      new Date(Date.parse(isoTimestamp) + seconds * 1000)
+        .toISOString()
+        .replace('.000Z', 'Z');
+
+    const buildRepositoryIssueEventFeedEvent = (
+      event: string,
+      createdAt: string,
+      issueNumber: number,
+    ): RepositoryIssueEventFeedEvent => ({
+      event,
+      created_at: createdAt,
+      issue: { number: issueNumber },
+    });
+
+    const otherIssueFeedEventCycle: { event: string; issueNumber: number }[] = [
+      { event: 'labeled', issueNumber: 43 },
+      { event: 'reopened', issueNumber: 4 },
+      { event: 'closed', issueNumber: 420 },
+      { event: 'reopened', issueNumber: 142 },
+      { event: 'assigned', issueNumber: 7 },
+    ];
+
+    const buildOtherIssueFeedEventsNewestFirst = (
+      eventCount: number,
+      newestCreatedAt: string,
+    ): RepositoryIssueEventFeedEvent[] =>
+      Array.from({ length: eventCount }, (_, position) => {
+        const otherIssueFeedEvent =
+          otherIssueFeedEventCycle[position % otherIssueFeedEventCycle.length];
+        return buildRepositoryIssueEventFeedEvent(
+          otherIssueFeedEvent.event,
+          shiftIsoTimestampBySeconds(newestCreatedAt, -10 * position),
+          otherIssueFeedEvent.issueNumber,
+        );
+      });
+
+    const buildRepositoryIssueEventFeedPageResponses = (
+      feedPages: unknown[][],
+    ): RepositoryIssueEventFeedPageResponse[] =>
+      feedPages.map((pageEvents) => ({ httpStatus: 200, body: pageEvents }));
 
     const issueEventListingBelowThresholdCases: {
       name: string;
@@ -3527,9 +3694,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               testCase.eventCount,
               testCase.reopenedEventPositions,
             ),
-            buildReopenedTimelineGraphqlResponse([
-              { createdAt: '2026-09-30T06:00:00Z' },
-            ]),
+            buildReopenedTimelineGraphqlResponse(
+              [{ createdAt: '2026-09-30T06:00:00Z' }],
+              1,
+            ),
           );
 
         const { repository } = createApiV3CheerioRestIssueRepository();
@@ -3552,30 +3720,42 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       eventCount: number;
       reopenedEventPositions: number[];
       reopenedTimelineItemCreatedAt: string;
+      reopenedTimelineItemTotalCount: number;
     }[] = [
       {
         name: 'the reopened item is later than every event of a 310-event listing',
         eventCount: 310,
         reopenedEventPositions: [100, 305],
         reopenedTimelineItemCreatedAt: '2026-09-30T07:09:52Z',
+        reopenedTimelineItemTotalCount: 3,
       },
       {
         name: 'the reopened item is later than every event of a 310-event listing without a reopened event',
         eventCount: 310,
         reopenedEventPositions: [],
         reopenedTimelineItemCreatedAt: '2026-09-30T07:09:52Z',
+        reopenedTimelineItemTotalCount: 1,
       },
       {
         name: 'the reopened item is the newest reopened event of a 310-event listing',
         eventCount: 310,
         reopenedEventPositions: [100, 305],
         reopenedTimelineItemCreatedAt: '2026-09-30T05:05:00Z',
+        reopenedTimelineItemTotalCount: 2,
       },
       {
         name: 'the reopened item is the newest reopened event of a 400-event listing',
         eventCount: 400,
         reopenedEventPositions: [100, 399],
         reopenedTimelineItemCreatedAt: '2026-09-30T06:39:00Z',
+        reopenedTimelineItemTotalCount: 2,
+      },
+      {
+        name: 'the timeline reports 309 reopened items, one below the GraphQL listing limit of 310',
+        eventCount: 310,
+        reopenedEventPositions: [100, 305],
+        reopenedTimelineItemCreatedAt: '2026-09-30T07:09:52Z',
+        reopenedTimelineItemTotalCount: 309,
       },
     ];
 
@@ -3588,9 +3768,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               testCase.eventCount,
               testCase.reopenedEventPositions,
             ),
-            buildReopenedTimelineGraphqlResponse([
-              { createdAt: testCase.reopenedTimelineItemCreatedAt },
-            ]),
+            buildReopenedTimelineGraphqlResponse(
+              [{ createdAt: testCase.reopenedTimelineItemCreatedAt }],
+              testCase.reopenedTimelineItemTotalCount,
+            ),
           );
 
         const { repository } = createApiV3CheerioRestIssueRepository();
@@ -3633,7 +3814,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               310,
               testCase.reopenedEventPositions,
             ),
-            buildReopenedTimelineGraphqlResponse([]),
+            buildReopenedTimelineGraphqlResponse([], 0),
           );
 
         const { repository } = createApiV3CheerioRestIssueRepository();
@@ -3671,6 +3852,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               repository: {
                 issue: {
                   timelineItems: {
+                    totalCount: 1,
                     nodes: [{ createdAt: '2026-09-30T07:09:52Z' }],
                   },
                 },
@@ -3730,6 +3912,720 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           issueEventListingPages: [1, 2, 3, 4],
           repositoryIssueEventFeedRequestUrls: [],
           graphqlRequests: [expectedReopenedTimelineGraphqlRequest],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const reopenedTimelineGraphqlResponseAtListingLimit =
+      buildReopenedTimelineGraphqlResponse(
+        [{ createdAt: reopenedTimelineItemCreatedAtAtListingLimit }],
+        310,
+      );
+
+    const laterOtherIssueFeedPage = buildOtherIssueFeedEventsNewestFirst(
+      100,
+      '2026-10-01T04:49:37Z',
+    );
+
+    const reopenedTimelineGraphqlRequestCases: {
+      name: string;
+      reopenedTimelineGraphqlResponse: ReopenedTimelineGraphqlResponse;
+      repositoryIssueEventFeedPageResponses: RepositoryIssueEventFeedPageResponse[];
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'the timeline reports 5 reopened items',
+        reopenedTimelineGraphqlResponse: buildReopenedTimelineGraphqlResponse(
+          [{ createdAt: '2026-09-30T07:09:52Z' }],
+          5,
+        ),
+        repositoryIssueEventFeedPageResponses: [],
+        expectedRepositoryIssueEventFeedPages: [],
+      },
+      {
+        name: 'the timeline reports no reopened item',
+        reopenedTimelineGraphqlResponse: buildReopenedTimelineGraphqlResponse(
+          [],
+          0,
+        ),
+        repositoryIssueEventFeedPageResponses: [],
+        expectedRepositoryIssueEventFeedPages: [],
+      },
+      {
+        name: 'the timeline reports 310 reopened items and feed page 1 lists a later reopened event of the issue',
+        reopenedTimelineGraphqlResponse:
+          reopenedTimelineGraphqlResponseAtListingLimit,
+        repositoryIssueEventFeedPageResponses:
+          buildRepositoryIssueEventFeedPageResponses([
+            [
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:49:37Z',
+                42,
+              ),
+              ...buildOtherIssueFeedEventsNewestFirst(
+                99,
+                '2026-10-01T04:49:27Z',
+              ),
+            ],
+          ]),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+    ];
+
+    it.each(reopenedTimelineGraphqlRequestCases)(
+      'sends exactly one GraphQL request reading totalCount and the createdAt of the latest reopened timeline item of the issue when the issue event listing holds 310 or more events: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            testCase.reopenedTimelineGraphqlResponse,
+            testCase.repositoryIssueEventFeedPageResponses,
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const reopenedEventOfIssueInRepositoryIssueEventFeedCases: {
+      name: string;
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedEvent[][];
+      expectedLatestReopenedAt: Date;
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'a reopened event of the issue is the newest event on feed page 1 of 2',
+        repositoryIssueEventFeedPages: [
+          [
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:49:37Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(99, '2026-10-01T04:49:27Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T04:32:00Z'),
+        ],
+        expectedLatestReopenedAt: new Date('2026-10-01T04:49:37Z'),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a reopened event of the issue on feed page 1 follows reopened events of issues 420 and 4 and a closed event of the issue',
+        repositoryIssueEventFeedPages: [
+          [
+            buildRepositoryIssueEventFeedEvent(
+              'labeled',
+              '2026-10-01T04:49:50Z',
+              43,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:49:45Z',
+              420,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:49:40Z',
+              4,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'closed',
+              '2026-10-01T04:49:38Z',
+              42,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:48:04Z',
+              42,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'labeled',
+              '2026-10-01T04:47:00Z',
+              42,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:45:09Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(93, '2026-10-01T04:45:00Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T04:29:00Z'),
+        ],
+        expectedLatestReopenedAt: new Date('2026-10-01T04:48:04Z'),
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a reopened event of the issue is on feed page 2 after a full page of events of other issues, with a third page available',
+        repositoryIssueEventFeedPages: [
+          laterOtherIssueFeedPage,
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(30, '2026-10-01T04:32:00Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T04:27:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(69, '2026-10-01T04:26:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T04:15:00Z'),
+        ],
+        expectedLatestReopenedAt: new Date('2026-10-01T04:27:00Z'),
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+      {
+        name: 'the first reopened event of the issue in the feed is the latest reopened timeline item itself on feed page 2, with a third page available',
+        repositoryIssueEventFeedPages: [
+          laterOtherIssueFeedPage,
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(20, '2026-10-01T03:20:00Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              reopenedTimelineItemCreatedAtAtListingLimit,
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(79, '2026-10-01T03:15:00Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T03:01:00Z'),
+        ],
+        expectedLatestReopenedAt: new Date(
+          reopenedTimelineItemCreatedAtAtListingLimit,
+        ),
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+    ];
+
+    it.each(reopenedEventOfIssueInRepositoryIssueEventFeedCases)(
+      'returns the created_at of the first reopened event of the issue listed by the repository-wide issue event feed when the GraphQL timeline reports 310 reopened items: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            reopenedTimelineGraphqlResponseAtListingLimit,
+            buildRepositoryIssueEventFeedPageResponses(
+              testCase.repositoryIssueEventFeedPages,
+            ),
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(result).toEqual(testCase.expectedLatestReopenedAt);
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const eventEarlierThanReopenedTimelineItemInRepositoryIssueEventFeedCases: {
+      name: string;
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedEvent[][];
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'the newest event on feed page 1 is an event of another issue earlier than the latest reopened timeline item, followed by an older reopened event of the issue',
+        repositoryIssueEventFeedPages: [
+          [
+            buildRepositoryIssueEventFeedEvent(
+              'labeled',
+              '2026-10-01T03:15:00Z',
+              43,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:10:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(98, '2026-10-01T03:09:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T02:53:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a closed event of another issue one second earlier than the latest reopened timeline item follows later events on feed page 1',
+        repositoryIssueEventFeedPages: [
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(50, '2026-10-01T04:49:37Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'closed',
+              '2026-10-01T03:15:09Z',
+              43,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:14:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(48, '2026-10-01T03:13:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T03:05:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the newest event on feed page 2 is earlier than the latest reopened timeline item after a full page of later events, with a third page available',
+        repositoryIssueEventFeedPages: [
+          laterOtherIssueFeedPage,
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(10, '2026-10-01T03:15:00Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:13:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(89, '2026-10-01T03:12:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T02:58:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+      {
+        name: 'the event earlier than the latest reopened timeline item is a labeled event of the issue itself',
+        repositoryIssueEventFeedPages: [
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(10, '2026-10-01T04:49:37Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'labeled',
+              '2026-10-01T03:14:59Z',
+              42,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:00:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(88, '2026-10-01T02:59:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T02:45:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the event earlier than the latest reopened timeline item is a reopened event of issue 4',
+        repositoryIssueEventFeedPages: [
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(10, '2026-10-01T04:49:37Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:15:00Z',
+              4,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:05:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(88, '2026-10-01T03:04:50Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T02:50:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+    ];
+
+    it.each(
+      eventEarlierThanReopenedTimelineItemInRepositoryIssueEventFeedCases,
+    )(
+      'returns the createdAt of the latest reopened timeline item and stops reading the repository-wide issue event feed once it lists an event earlier than that item before any reopened event of the issue: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            reopenedTimelineGraphqlResponseAtListingLimit,
+            buildRepositoryIssueEventFeedPageResponses(
+              testCase.repositoryIssueEventFeedPages,
+            ),
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        expect(result).toEqual(
+          new Date(reopenedTimelineItemCreatedAtAtListingLimit),
+        );
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const repositoryIssueEventFeedEndingWithoutDecidingEventCases: {
+      name: string;
+      repositoryIssueEventFeedPages: RepositoryIssueEventFeedEvent[][];
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'the only feed page holds events of other issues later than the latest reopened timeline item',
+        repositoryIssueEventFeedPages: [
+          buildOtherIssueFeedEventsNewestFirst(40, '2026-10-01T04:49:37Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the last of two feed pages ends with later closed and labeled events of the issue and later events of other issues',
+        repositoryIssueEventFeedPages: [
+          laterOtherIssueFeedPage,
+          [
+            buildRepositoryIssueEventFeedEvent(
+              'closed',
+              '2026-10-01T04:20:00Z',
+              42,
+            ),
+            buildRepositoryIssueEventFeedEvent(
+              'labeled',
+              '2026-10-01T04:19:00Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(20, '2026-10-01T04:18:00Z'),
+          ],
+        ],
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+      {
+        name: 'the feed holds no event',
+        repositoryIssueEventFeedPages: [[]],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedEndingWithoutDecidingEventCases)(
+      'throws an error naming the issue URL when the last page of the repository-wide issue event feed ends before a reopened event of the issue and before an event earlier than the latest reopened timeline item: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            reopenedTimelineGraphqlResponseAtListingLimit,
+            buildRepositoryIssueEventFeedPageResponses(
+              testCase.repositoryIssueEventFeedPages,
+            ),
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const latestReopenedEventAt = repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        await expect(latestReopenedEventAt).rejects.toBeInstanceOf(Error);
+        await expect(latestReopenedEventAt).rejects.toThrow(
+          reopenedEventTestIssueUrl,
+        );
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const repositoryIssueEventFeedFailureCases: {
+      name: string;
+      repositoryIssueEventFeedPageResponses: RepositoryIssueEventFeedPageResponse[];
+      expectedRepositoryIssueEventFeedPages: number[];
+    }[] = [
+      {
+        name: 'feed page 1 responds with HTTP 502',
+        repositoryIssueEventFeedPageResponses: [
+          { httpStatus: 502, body: { message: 'Server Error' } },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'feed page 2 responds with HTTP 502 whose body would list a reopened event of the issue',
+        repositoryIssueEventFeedPageResponses: [
+          { httpStatus: 200, body: laterOtherIssueFeedPage },
+          {
+            httpStatus: 502,
+            body: [
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:20:00Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1, 2],
+      },
+      {
+        name: 'the feed page body is an object instead of a list of events',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: {
+              message: 'Not Found',
+              documentation_url:
+                'https://docs.github.com/rest/issues/events#list-issue-events-for-a-repository',
+            },
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed before a reopened event of the issue carries an issue without a number',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              {
+                event: 'labeled',
+                created_at: '2026-10-01T04:49:37Z',
+                issue: {},
+              },
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:48:04Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed before a reopened event of the issue carries a string issue number',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              {
+                event: 'reopened',
+                created_at: '2026-10-01T04:49:37Z',
+                issue: { number: '42' },
+              },
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:48:04Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed before a reopened event of the issue carries a null issue',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              {
+                event: 'labeled',
+                created_at: '2026-10-01T04:49:37Z',
+                issue: null,
+              },
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:48:04Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed before a reopened event of the issue has no created_at',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              { event: 'labeled', issue: { number: 43 } },
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:48:04Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed before a reopened event of the issue has no event',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              { created_at: '2026-10-01T04:49:37Z', issue: { number: 43 } },
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:48:04Z',
+                42,
+              ),
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'a feed item listed after the reopened event of the issue on the same page has no issue',
+        repositoryIssueEventFeedPageResponses: [
+          {
+            httpStatus: 200,
+            body: [
+              buildRepositoryIssueEventFeedEvent(
+                'reopened',
+                '2026-10-01T04:49:37Z',
+                42,
+              ),
+              { event: 'labeled', created_at: '2026-10-01T04:48:04Z' },
+            ],
+          },
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+    ];
+
+    it.each(repositoryIssueEventFeedFailureCases)(
+      'throws an error naming the issue URL when a repository-wide issue event feed page responds with a non-OK status or a body that is not a list of issue events: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            reopenedTimelineGraphqlResponseAtListingLimit,
+            testCase.repositoryIssueEventFeedPageResponses,
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const latestReopenedEventAt = repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        await expect(latestReopenedEventAt).rejects.toBeInstanceOf(Error);
+        await expect(latestReopenedEventAt).rejects.toThrow(
+          reopenedEventTestIssueUrl,
+        );
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages:
+            testCase.expectedRepositoryIssueEventFeedPages,
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
+          unrecognizedRequestUrls: [],
+        });
+      },
+    );
+
+    const reopenedTimelineGraphqlResponseWithoutTotalCountCases: {
+      name: string;
+      reopenedTimelineGraphqlResponse: ReopenedTimelineGraphqlResponse;
+    }[] = [
+      {
+        name: 'the timeline holds a reopened item but no totalCount',
+        reopenedTimelineGraphqlResponse: {
+          httpStatus: 200,
+          body: {
+            data: {
+              repository: {
+                issue: {
+                  timelineItems: {
+                    nodes: [
+                      {
+                        createdAt: reopenedTimelineItemCreatedAtAtListingLimit,
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        name: 'the timeline holds neither a reopened item nor a totalCount',
+        reopenedTimelineGraphqlResponse: {
+          httpStatus: 200,
+          body: {
+            data: { repository: { issue: { timelineItems: { nodes: [] } } } },
+          },
+        },
+      },
+    ];
+
+    it.each(reopenedTimelineGraphqlResponseWithoutTotalCountCases)(
+      'throws an error naming the issue URL without reading the repository-wide issue event feed when the GraphQL timeline of reopened items carries no totalCount: $name',
+      async (testCase) => {
+        const recordedRequests =
+          mockIssueEventListingAndGraphqlAndRecordRequests(
+            buildIssueEventListingOldestFirst(310, [100, 305]),
+            testCase.reopenedTimelineGraphqlResponse,
+          );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const latestReopenedEventAt = repository.getLatestReopenedEventAt(
+          buildReopenedEventTestIssue(),
+        );
+
+        await expect(latestReopenedEventAt).rejects.toBeInstanceOf(Error);
+        await expect(latestReopenedEventAt).rejects.toThrow(
+          reopenedEventTestIssueUrl,
+        );
+        expect(
+          summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
+            recordedRequests,
+          ),
+        ).toEqual({
+          issueEventListingPages: [1, 2, 3, 4],
+          repositoryIssueEventFeedPages: [],
+          graphqlRequests: [
+            expectedReopenedTimelineGraphqlRequestReadingTotalCountAndCreatedAt,
+          ],
           unrecognizedRequestUrls: [],
         });
       },
