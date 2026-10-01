@@ -233,31 +233,27 @@ describe('add-project-board-item CLI', () => {
     }
   };
 
-  test(
-    'exits 0 and prints the resolved project item id when run end to end against a mocked GraphQL endpoint',
-    async () => {
-      const fakeItemId = 'PVTI_fakeMockItemId';
-      const mockServer = await startProjectItemGraphqlMockServer(fakeItemId);
-      try {
-        const result = await runCliAsync({
-          GH_TOKEN: 'test-gh-token',
-          PROJECT_V2_ID: 'PVT_testProjectId',
-          STATUS_FIELD_ID: 'PVTSSF_testStatusFieldId',
-          AWAITING_WORKSPACE_OPTION_ID: 'testOptionId',
-          EVENT_ACTION: 'reopened',
-          ISSUE_NODE_ID: 'I_testIssueNodeId',
-          GH_API_BASE_URL: mockServer.baseUrl,
-        });
+  test('exits 0 and prints the resolved project item id when run end to end against a mocked GraphQL endpoint', async () => {
+    const fakeItemId = 'PVTI_fakeMockItemId';
+    const mockServer = await startProjectItemGraphqlMockServer(fakeItemId);
+    try {
+      const result = await runCliAsync({
+        GH_TOKEN: 'test-gh-token',
+        PROJECT_V2_ID: 'PVT_testProjectId',
+        STATUS_FIELD_ID: 'PVTSSF_testStatusFieldId',
+        AWAITING_WORKSPACE_OPTION_ID: 'testOptionId',
+        EVENT_ACTION: 'reopened',
+        ISSUE_NODE_ID: 'I_testIssueNodeId',
+        GH_API_BASE_URL: mockServer.baseUrl,
+      });
 
-        expect(result.status).toBe(0);
-        expect(result.stdout).toContain(
-          `Resolved project item id: ${fakeItemId}`,
-        );
-        expect(mockServer.receivedCallCount()).toBe(2);
-      } finally {
-        await mockServer.close();
-      }
-    },
-    30000,
-  );
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain(
+        `Resolved project item id: ${fakeItemId}`,
+      );
+      expect(mockServer.receivedCallCount()).toBe(2);
+    } finally {
+      await mockServer.close();
+    }
+  }, 30000);
 });
