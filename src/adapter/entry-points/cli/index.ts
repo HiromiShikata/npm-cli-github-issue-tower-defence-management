@@ -378,8 +378,10 @@ program
         loadConfigFile(options.config).errorReportingRepository ??
         process.env.TDPM_ERROR_REPORT_REPOSITORY ??
         '';
-      const { HandleScheduledEventUseCaseHandler } =
-        await import('../handlers/HandleScheduledEventUseCaseHandler');
+      const {
+        HandleScheduledEventUseCaseHandler,
+        ScheduledEventHandlerInputValidationError,
+      } = await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
       try {
         await handler.handle(
@@ -388,12 +390,7 @@ program
           parseInTmuxProjectOrder(options.inTmuxProjectOrder),
         );
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith(
-            'Invalid input: required credential fields are missing. Got:',
-          )
-        ) {
+        if (error instanceof ScheduledEventHandlerInputValidationError) {
           console.error(error.message);
           return process.exit(1);
         }
