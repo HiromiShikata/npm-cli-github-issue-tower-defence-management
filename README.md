@@ -19,6 +19,7 @@ Commands:
   schedule [options]                    Handle scheduled events (trigger: issue or schedule) (default)
   startDaemon [options]                 Start daemon to prepare GitHub issues
   notifyFinishedIssuePreparation [options]  Notify that issue preparation is finished
+  selectLlmLaunchFlags [options]        Print the --effort and --autocompact launch flags for a worker session, derived from the defaultLlmEffortLevel and defaultLlmAutocompactMode fields of the config file at --configFilePath. Writes "--effort <value>" using defaultLlmEffortLevel, falling back to "xhigh" when defaultLlmEffortLevel is unset or empty. Writes "--autocompact <value>" after it on the same stdout line only when defaultLlmAutocompactMode is set to a non-empty value. The launcher decides no value itself and only forwards these flags to claude-agent, the same split as the selectLiveSessionOauthToken command.
   checkIssueReviewReadiness [options]   Check whether an issue is review-ready (read-only; does not change Status or post any comment)
   serveWeb [options]                    Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)
   serveConsole [options]                Deprecated alias for serveWeb. Use serveWeb instead.
@@ -72,6 +73,9 @@ Options for notifyFinishedIssuePreparation:
   --sessionLogFilePath <path>                      Path to the log of the worker session that just ended. The command reads it once, before the notification, and sets --rateLimitRejected for a usage-limit ending, or for a rejected rate-limit event when the session ended neither with terminal_reason blocking_limit nor on an HTTP 429 session-limit error, --promptTooLongOnResume for a resumed session that ended with terminal_reason blocking_limit before any tool call, and --moveToFailedPreparation with its own --sessionErrorLine on the third consecutive ending with the same non-completed terminal_reason. The consecutive count is kept per issue under the TDPM cache directory (worker-session-failure-streaks) and is reset by a completed ending or a log without a terminal_reason. The result is combined with the explicit flags; usage-limit and rate-limit classification is skipped when a non-empty --missingAgentName is given, which also keeps the count from moving the item to Failed Preparation.
   --sessionWasResumed                              The worker session that just ended resumed a previous conversation; used with --sessionLogFilePath to decide --promptTooLongOnResume
   The notification is attempted up to 3 times, waiting 30 seconds and then 60 seconds after a failed attempt; the session log is classified only once. A GitHub API rate limit ends the command without an error and without a retry, and the third failure ends the command with that error.
+
+Options for selectLlmLaunchFlags:
+  --configFilePath <path>                          Path to config file for tower defence management (required)
 
 Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)

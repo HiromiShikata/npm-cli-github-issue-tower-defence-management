@@ -4149,97 +4149,103 @@ mysteryKey: 'value'
       expect(helpText).toContain('selectLlmLaunchFlags');
     });
 
-    it('should write both --effort and --autocompact when both fields are set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmEffortLevel: 'xhigh',
-        defaultLlmAutocompactMode: 'auto',
-      });
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith(
-        '--effort xhigh --autocompact auto\n',
+    it('should describe the xhigh fallback for --effort and that --autocompact is written only when defaultLlmAutocompactMode is set to a non-empty value', () => {
+      const selectLlmLaunchFlagsCommand = program.commands.find(
+        (command) => command.name() === 'selectLlmLaunchFlags',
       );
+      const description = selectLlmLaunchFlagsCommand?.description() ?? '';
+      const descriptionSentences = description.split(/(?<=\.)\s+/);
 
-      stdoutSpy.mockRestore();
+      expect(descriptionSentences).toContainEqual(
+        expect.stringMatching(
+          /^(?=[\s\S]*--effort\b)(?=[\s\S]*\bdefaultLlmEffortLevel\b)(?=[\s\S]*\bfall(?:s|ing)?\s+back\s+to\s+["'`]?xhigh\b)(?=[\s\S]*\bunset or empty\b)/,
+        ),
+      );
+      expect(descriptionSentences).toContainEqual(
+        expect.stringMatching(
+          /^(?=[\s\S]*--autocompact\b)(?=[\s\S]*\bdefaultLlmAutocompactMode\b)(?=[\s\S]*\bonly\s+(?:when|if)\b)(?=[\s\S]*\bnon-empty\b)/,
+        ),
+      );
+      expect(description).not.toMatch(
+        /\b(?:fall(?:s|ing)?\s+back|default(?:s|ing)?)\s+to\s+["'`]?auto\b/i,
+      );
     });
 
-    it('should write only --effort when only defaultLlmEffortLevel is set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmEffortLevel: 'xhigh',
-      });
+    it.each([
+      {
+        situation:
+          'only defaultLlmEffortLevel is set to a value other than xhigh, so the configured --effort is written and no --autocompact is written',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: 'high',
+        },
+        expectedStdoutLine: '--effort high\n',
+      },
+      {
+        situation:
+          'only defaultLlmAutocompactMode is set to a value other than auto, so --effort falls back to xhigh and the configured --autocompact is written',
+        configuredLlmLaunchFields: {
+          defaultLlmAutocompactMode: 'manual',
+        },
+        expectedStdoutLine: '--effort xhigh --autocompact manual\n',
+      },
+      {
+        situation:
+          'neither field is set, so --effort falls back to xhigh and no --autocompact is written',
+        configuredLlmLaunchFields: {},
+        expectedStdoutLine: '--effort xhigh\n',
+      },
+      {
+        situation:
+          'both fields are set to values other than xhigh and auto, so both are forwarded verbatim with no fallback applied',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: 'medium',
+          defaultLlmAutocompactMode: 'manual',
+        },
+        expectedStdoutLine: '--effort medium --autocompact manual\n',
+      },
+      {
+        situation:
+          'both fields are set to the empty string, so --effort falls back to xhigh and no --autocompact is written',
+        configuredLlmLaunchFields: {
+          defaultLlmEffortLevel: '',
+          defaultLlmAutocompactMode: '',
+        },
+        expectedStdoutLine: '--effort xhigh\n',
+      },
+      {
+        situation:
+          'only defaultLlmAutocompactMode is set to auto, as in every fleet project config file, so --effort falls back to xhigh and --autocompact auto is written',
+        configuredLlmLaunchFields: {
+          defaultLlmAutocompactMode: 'auto',
+        },
+        expectedStdoutLine: '--effort xhigh --autocompact auto\n',
+      },
+    ])(
+      'should write exactly one launch flags line to stdout when $situation',
+      async ({ configuredLlmLaunchFields, expectedStdoutLine }) => {
+        writeConfig({
+          ...defaultConfig,
+          ...configuredLlmLaunchFields,
+        });
 
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
+        const stdoutSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation(() => true);
 
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
+        await program.parseAsync([
+          'node',
+          'test',
+          'selectLlmLaunchFlags',
+          '--configFilePath',
+          configFilePath,
+        ]);
 
-      expect(stdoutSpy).toHaveBeenCalledWith('--effort xhigh\n');
+        expect(stdoutSpy).toHaveBeenCalledWith(expectedStdoutLine);
+        expect(stdoutSpy).toHaveBeenCalledTimes(1);
 
-      stdoutSpy.mockRestore();
-    });
-
-    it('should write only --autocompact when only defaultLlmAutocompactMode is set', async () => {
-      writeConfig({
-        ...defaultConfig,
-        defaultLlmAutocompactMode: 'auto',
-      });
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).toHaveBeenCalledWith('--autocompact auto\n');
-
-      stdoutSpy.mockRestore();
-    });
-
-    it('should write nothing when neither field is set', async () => {
-      writeConfig(defaultConfig);
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, 'write')
-        .mockImplementation(() => true);
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'selectLlmLaunchFlags',
-        '--configFilePath',
-        configFilePath,
-      ]);
-
-      expect(stdoutSpy).not.toHaveBeenCalled();
-
-      stdoutSpy.mockRestore();
-    });
+        stdoutSpy.mockRestore();
+      },
+    );
   });
 
   describe('checkIssueReviewReadiness', () => {

@@ -1072,7 +1072,7 @@ program
 program
   .command('selectLlmLaunchFlags')
   .description(
-    'Print the --effort and --autocompact launch flags for a worker session, derived from the defaultLlmEffortLevel and defaultLlmAutocompactMode fields of the config file at --configFilePath. Writes "--effort <value>" when defaultLlmEffortLevel is set and "--autocompact <value>" when defaultLlmAutocompactMode is set, both space-separated on a single stdout line when both are set, and writes nothing when neither is set. The launcher forwards this output to claude-agent verbatim and decides nothing itself, the same split as the selectLiveSessionOauthToken command.',
+    'Print the --effort and --autocompact launch flags for a worker session, derived from the defaultLlmEffortLevel and defaultLlmAutocompactMode fields of the config file at --configFilePath. Writes "--effort <value>" using defaultLlmEffortLevel, falling back to "xhigh" when defaultLlmEffortLevel is unset or empty. Writes "--autocompact <value>" after it on the same stdout line only when defaultLlmAutocompactMode is set to a non-empty value. The launcher decides no value itself and only forwards these flags to claude-agent, the same split as the selectLiveSessionOauthToken command.',
   )
   .requiredOption(
     '--configFilePath <path>',
@@ -1080,16 +1080,11 @@ program
   )
   .action((options: SelectLlmLaunchFlagsOptions) => {
     const config = loadConfigFile(options.configFilePath);
-    const flags: string[] = [];
-    if (config.defaultLlmEffortLevel) {
-      flags.push('--effort', config.defaultLlmEffortLevel);
-    }
-    if (config.defaultLlmAutocompactMode) {
-      flags.push('--autocompact', config.defaultLlmAutocompactMode);
-    }
-    if (flags.length > 0) {
-      process.stdout.write(`${flags.join(' ')}\n`);
-    }
+    const effortFlag = ['--effort', config.defaultLlmEffortLevel || 'xhigh'];
+    const autocompactFlag = config.defaultLlmAutocompactMode
+      ? ['--autocompact', config.defaultLlmAutocompactMode]
+      : [];
+    process.stdout.write(`${[...effortFlag, ...autocompactFlag].join(' ')}\n`);
   });
 
 program
