@@ -5695,14 +5695,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         )
         .map(([, value]) => Number(value));
 
-    const poisonedIssueResolvablePrUrlsByIssueNumber: Record<
-      number,
-      string[]
-    > = {
-      1: [relatedPrUrlOf(101)],
-      2: [relatedPrUrlOf(102)],
-      4: [relatedPrUrlOf(104)],
-    };
+    const poisonedIssueResolvablePrUrlsByIssueNumber: Record<number, string[]> =
+      {
+        1: [relatedPrUrlOf(101)],
+        2: [relatedPrUrlOf(102)],
+        4: [relatedPrUrlOf(104)],
+      };
     const poisonIssueNumber = 3;
 
     const buildPoisonedBatchRoute =
