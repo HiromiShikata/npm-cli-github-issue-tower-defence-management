@@ -287,9 +287,20 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         state: 'OPEN',
         author: 'dependabot',
         assignees: [],
+        isPr: true,
+      };
+      const searchedIssueNonPr: SearchedIssue = {
+        url: 'https://github.com/testOrg/testRepo/issues/11',
+        org: 'testOrg',
+        repo: 'testRepo',
+        number: 11,
+        state: 'OPEN',
+        author: 'dependabot',
+        assignees: [],
+        isPr: false,
       };
 
-      it('adds a matched issue that is not a project item to the project and assigns the manager', async () => {
+      it('does not add a matched pull request to the project but still assigns the manager', async () => {
         mockIssueRepository.searchIssues.mockResolvedValueOnce([searchedIssue]);
 
         await useCase.run({
@@ -305,15 +316,39 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
           ['repo:testOrg/testRepo is:open no:project'],
         ]);
-        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
-          [project, searchedIssue.url],
-        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
         expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
           [{ org: 'testOrg', repo: 'testRepo', number: 7 }, ['manager1']],
         ]);
       });
 
-      it('searches and adds a matched issue when cacheUsed is true', async () => {
+      it('adds a matched issue that is not a project item to the project and assigns the manager', async () => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([
+          searchedIssueNonPr,
+        ]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
+          ['repo:testOrg/testRepo is:open no:project'],
+        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+          [project, searchedIssueNonPr.url],
+        ]);
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+          [{ org: 'testOrg', repo: 'testRepo', number: 11 }, ['manager1']],
+        ]);
+      });
+
+      it('searches and does not add a matched pull request to the project when cacheUsed is true, but still assigns the manager', async () => {
         mockIssueRepository.searchIssues.mockResolvedValueOnce([searchedIssue]);
 
         await useCase.run({
@@ -329,9 +364,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
           ['repo:testOrg/testRepo is:open no:project'],
         ]);
-        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
-          [project, searchedIssue.url],
-        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
         expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
           [{ org: 'testOrg', repo: 'testRepo', number: 7 }, ['manager1']],
         ]);
@@ -471,13 +504,14 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       });
 
       it('logs and continues when adding a matched issue to the project fails', async () => {
+        const secondNonPrMatch = {
+          ...searchedIssueNonPr,
+          url: 'https://github.com/testOrg/testRepo/issues/12',
+          number: 12,
+        };
         mockIssueRepository.searchIssues.mockResolvedValueOnce([
-          searchedIssue,
-          {
-            ...searchedIssue,
-            url: 'https://github.com/testOrg/testRepo/pull/9',
-            number: 9,
-          },
+          searchedIssueNonPr,
+          secondNonPrMatch,
         ]);
         mockIssueRepository.addIssueToProject.mockRejectedValueOnce(
           new Error('Content not found'),
@@ -497,10 +531,10 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         });
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Failed to add issue https://github.com/testOrg/testRepo/pull/7 to project: Content not found',
+          `Failed to add issue ${searchedIssueNonPr.url} to project: Content not found`,
         );
         expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
-          [{ org: 'testOrg', repo: 'testRepo', number: 9 }, ['manager1']],
+          [{ org: 'testOrg', repo: 'testRepo', number: 12 }, ['manager1']],
         ]);
 
         consoleErrorSpy.mockRestore();

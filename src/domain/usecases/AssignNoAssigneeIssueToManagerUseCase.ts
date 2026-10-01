@@ -62,7 +62,10 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       ) {
         continue;
       }
-      if (!(await this.addToProject(project, searchedIssue))) {
+      if (
+        !searchedIssue.isPr &&
+        !(await this.addToProject(project, searchedIssue))
+      ) {
         continue;
       }
       if (

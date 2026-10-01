@@ -8,4 +8,5 @@ export type SearchedIssue = {
   state: 'OPEN' | 'CLOSED' | 'MERGED';
   author: string;
   assignees: Member['name'][];
+  isPr?: boolean;
 };

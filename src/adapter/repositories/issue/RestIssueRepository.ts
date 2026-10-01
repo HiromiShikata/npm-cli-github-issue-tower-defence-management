@@ -496,6 +496,7 @@ export class RestIssueRepository
           : 'CLOSED',
       author: (item.user?.login ?? '').replace(/\[bot\]$/, ''),
       assignees: item.assignees.map((assignee) => assignee.login),
+      isPr: Boolean(item.pull_request),
     };
   };
 }
