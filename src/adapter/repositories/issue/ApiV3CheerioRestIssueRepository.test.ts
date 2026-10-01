@@ -5739,6 +5739,96 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(100)]);
     });
+
+    const issueNumbersFromRequestVariables = (
+      variables: Record<string, unknown>,
+    ): number[] =>
+      Object.entries(variables)
+        .filter(([key]) => key.startsWith('issueNumber'))
+        .sort(
+          ([a], [b]) =>
+            Number(a.replace('issueNumber', '')) -
+            Number(b.replace('issueNumber', '')),
+        )
+        .map(([, value]) => Number(value));
+
+    const poisonedIssueResolvablePrUrlsByIssueNumber: Record<number, string[]> =
+      {
+        1: [relatedPrUrlOf(101)],
+        2: [relatedPrUrlOf(102)],
+        4: [relatedPrUrlOf(104)],
+      };
+    const poisonIssueNumber = 3;
+
+    const buildPoisonedBatchRoute =
+      () =>
+      (variables: Record<string, unknown>): Response | object => {
+        const issueNumbers = issueNumbersFromRequestVariables(variables);
+        if (issueNumbers.includes(poisonIssueNumber)) {
+          return {
+            data: null,
+            errors: [
+              {
+                message:
+                  'Something went wrong while executing your query on 2026-09-30T11:10:05Z.',
+                type: 'INTERNAL',
+              },
+            ],
+          };
+        }
+        return {
+          data: buildBatchData(
+            issueNumbers.map((issueNumber) => ({
+              nodes: (
+                poisonedIssueResolvablePrUrlsByIssueNumber[issueNumber] ?? []
+              ).map((prUrl) => buildCrossReferencedPullRequestNode({ prUrl })),
+            })),
+          ),
+        };
+      };
+
+    it('resolves every other issue of a batch by bisecting around the one issue whose request keeps failing', async () => {
+      const fetchSpy = mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: buildPoisonedBatchRoute(),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([
+        issueUrlOf(1),
+        issueUrlOf(2),
+        issueUrlOf(3),
+        issueUrlOf(4),
+      ]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(101)]);
+      expect(resolved.get(issueUrlOf(2))).toEqual([relatedPrUrlOf(102)]);
+      expect(resolved.get(issueUrlOf(4))).toEqual([relatedPrUrlOf(104)]);
+      expect(resolved.has(issueUrlOf(3))).toBe(false);
+      expect(countRelatedOpenPrUrlsBatchQueries(fetchSpy)).toBeGreaterThan(1);
+    });
+
+    it('logs the specific unresolved issue url of the issue whose request keeps failing, instead of a generic batch-skipped message naming no issue', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: buildPoisonedBatchRoute(),
+      });
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.findRelatedOpenPrUrls([
+        issueUrlOf(1),
+        issueUrlOf(2),
+        issueUrlOf(3),
+        issueUrlOf(4),
+      ]);
+
+      expect(
+        consoleWarnSpy.mock.calls.some(([message]) =>
+          String(message).includes(issueUrlOf(poisonIssueNumber)),
+        ),
+      ).toBe(true);
+    });
   });
 
   describe('getOpenPullRequest CI state computation', () => {
