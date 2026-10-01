@@ -43,6 +43,10 @@ export type ComposeDashboardInput = {
   nowMs?: number;
 };
 
+export const dashboardComposeInputHasProjectData = (
+  input: ComposeDashboardInput,
+): boolean => input.projects.some((project) => project.row !== null);
+
 type ProjectColumn = {
   header: string;
   key: keyof DashboardRow;

@@ -40,6 +40,8 @@ import { Issue } from '../../../domain/entities/Issue';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 import { ownerCallFileAppend } from '../handlers/ownerCallFileStore';
+import { formatProjectRowLine } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
+import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
@@ -1898,6 +1900,170 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       );
       expect(response.transferEncoding).toBeUndefined();
       expect(response.cacheControl).toBe('no-store');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('composes /tdpm.txt live when some but not all configured projects have a data file', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, 'projects', 'acme.json'),
+      JSON.stringify({
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 4,
+        dep: 1,
+        blocker: 0,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'machine-status.json'),
+      JSON.stringify({
+        memPct: 55,
+        cpuPct: 62,
+        diskPct: 89,
+        load: [16, 23, 40],
+        cycleMinutes: 14,
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'token-status.json'),
+      JSON.stringify({
+        tokens: [
+          {
+            name: 'alice',
+            fiveHourUtilizationPercent: 10,
+            fiveHourResetSeconds: 3600,
+            sevenDayUtilizationPercent: 12,
+            sevenDayResetSeconds: 432000,
+            color: 'G',
+            prep: 2,
+            hum: 1,
+          },
+        ],
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
+    try {
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toBe(staticDashboardRaw);
+      const presentProjectRowLine =
+        '<tt>' +
+        formatProjectRowLine({
+          code: toDashboardDisplayLabel('acme'),
+          row: {
+            todo: 1,
+            qc: 2,
+            fail: 0,
+            pr: 0,
+            ws: 4,
+            dep: 1,
+            blocker: 0,
+            humanPendingRed: 0,
+            humanPendingYellow: 0,
+            humanPendingBlue: 0,
+          },
+          closeEventCounts: { h1: 0, h3: 0, h5: 0 },
+        }).replace(/ /g, '&nbsp;') +
+        '</tt><br>';
+      const absentProjectRowLine =
+        '<tt>' +
+        formatProjectRowLine({
+          code: toDashboardDisplayLabel('initech'),
+          row: null,
+          closeEventCounts: { h1: 0, h3: 0, h5: 0 },
+        }).replace(/ /g, '&nbsp;') +
+        '</tt><br>';
+      expect(response.body).toContain(presentProjectRowLine);
+      expect(response.body).toContain(absentProjectRowLine);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('composes /tdpm.txt live when every project file is present but machine-status.json is absent', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-data-'));
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, 'projects', 'acme.json'),
+      JSON.stringify({
+        pjcode: 'acme',
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 4,
+        dep: 1,
+        blocker: 0,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'projects', 'initech.json'),
+      JSON.stringify({
+        pjcode: 'initech',
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 2,
+        dep: 0,
+        blocker: 0,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'token-status.json'),
+      JSON.stringify({
+        tokens: [
+          {
+            name: 'alice',
+            fiveHourUtilizationPercent: 10,
+            fiveHourResetSeconds: 3600,
+            sevenDayUtilizationPercent: 12,
+            sevenDayResetSeconds: 432000,
+            color: 'G',
+            prep: 2,
+            hum: 1,
+          },
+        ],
+        capturedAt: '2026-06-26T00:00:00.000Z',
+      }),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: dataDir,
+    });
+    try {
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toBe(staticDashboardRaw);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

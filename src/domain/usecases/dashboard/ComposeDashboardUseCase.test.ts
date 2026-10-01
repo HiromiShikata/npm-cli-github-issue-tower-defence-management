@@ -1,11 +1,14 @@
 import {
   ComposeDashboardInput,
+  ComposeDashboardMachineStatus,
+  ComposeDashboardProject,
   ComposeDashboardUseCase,
   PROJECT_ROW_WIDTH_BUDGET,
   SEVEN_DAY_UTILIZATION_COLUMN_START,
   STATUS_DOT_DISPLAY_WIDTH,
   TOKEN_SESSION_COLUMN_START,
   TOKEN_UTILIZATION_WIDTH,
+  dashboardComposeInputHasProjectData,
   formatElapsedMinutes,
   formatMachineStatusLines,
   formatProjectHeaderLine,
@@ -1147,5 +1150,92 @@ describe('formatTokenSessionTotalLine', () => {
       tokenStatus({ name: 'bob', prep: 0, hum: 60 }),
     ]);
     expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 99');
+  });
+});
+
+describe('dashboardComposeInputHasProjectData', () => {
+  const nonNullRowProject: ComposeDashboardProject = {
+    code: 'ac',
+    row: projectRow({}),
+    closeEventCounts: noCloseEvents,
+  };
+
+  const nullRowProject: ComposeDashboardProject = {
+    code: 'in',
+    row: null,
+    closeEventCounts: noCloseEvents,
+  };
+
+  const presentMachineStatus: ComposeDashboardMachineStatus = {
+    memPct: 10,
+    cpuPct: 10,
+    diskPct: 10,
+    load: [1, 1, 1],
+    cycleMinutes: 1,
+  };
+
+  const presentTokens = [tokenStatus({ name: 'alice' })];
+
+  it.each([
+    {
+      name: 'every project row is non-null, machine-status.json and token-status.json present',
+      input: {
+        projects: [nonNullRowProject, nonNullRowProject],
+        machineStatus: presentMachineStatus,
+        tokens: presentTokens,
+      },
+      expected: true,
+    },
+    {
+      name: 'some but not all project rows are non-null, machine-status.json and token-status.json present',
+      input: {
+        projects: [nonNullRowProject, nullRowProject],
+        machineStatus: presentMachineStatus,
+        tokens: presentTokens,
+      },
+      expected: true,
+    },
+    {
+      name: 'every project row is null, machine-status.json and token-status.json present',
+      input: {
+        projects: [nullRowProject, nullRowProject],
+        machineStatus: presentMachineStatus,
+        tokens: presentTokens,
+      },
+      expected: false,
+    },
+    {
+      name: 'every project row is null, machine-status.json and token-status.json absent',
+      input: {
+        projects: [nullRowProject, nullRowProject],
+        machineStatus: null,
+        tokens: [],
+      },
+      expected: false,
+    },
+    {
+      name: 'some but not all project rows are non-null, machine-status.json and token-status.json absent',
+      input: {
+        projects: [nonNullRowProject, nullRowProject],
+        machineStatus: null,
+        tokens: [],
+      },
+      expected: true,
+    },
+    {
+      name: 'input.projects is empty because projectNames was empty',
+      input: {
+        projects: [],
+        machineStatus: presentMachineStatus,
+        tokens: presentTokens,
+      },
+      expected: false,
+    },
+  ] satisfies {
+    name: string;
+    input: ComposeDashboardInput;
+    expected: boolean;
+  }[])('$name', ({ input, expected }) => {
+    expect(dashboardComposeInputHasProjectData(input)).toBe(expected);
   });
 });
