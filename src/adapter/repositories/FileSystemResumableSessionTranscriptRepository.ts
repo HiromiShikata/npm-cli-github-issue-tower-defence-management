@@ -13,6 +13,7 @@ const OWNER_ONLY_DIRECTORY_MODE = 0o700;
 const PERMISSION_BITS_MASK = 0o7777;
 const FIRST_LINE_READ_CHUNK_BYTE_LENGTH = 65536;
 const LINE_FEED_BYTE = 0x0a;
+const MILLISECONDS_PER_SECOND = 1000;
 
 const isDirectoryMissingError = (error: unknown): boolean =>
   typeof error === 'object' &&
@@ -151,8 +152,8 @@ export class FileSystemResumableSessionTranscriptRepository implements Resumable
       );
       fs.utimesSync(
         copyInProgressFilePath,
-        sourceStats.atime,
-        sourceStats.mtime,
+        sourceStats.atimeMs / MILLISECONDS_PER_SECOND,
+        sourceStats.mtimeMs / MILLISECONDS_PER_SECOND,
       );
       fs.renameSync(copyInProgressFilePath, destinationFilePath);
       return 'copied';
