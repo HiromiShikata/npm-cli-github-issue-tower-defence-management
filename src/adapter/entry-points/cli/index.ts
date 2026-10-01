@@ -60,6 +60,7 @@ import {
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import { unresumableSessionArchive } from './unresumableSessionArchive';
+import { resumableSessionSelect } from './resumableSessionSelect';
 import { checkIssueSilentDispatchAllowed } from './checkIssueSilentDispatchAllowed';
 import { notifyFinishedIssuePreparationRunWithRetry } from './notifyFinishedIssuePreparationRetry';
 import {
@@ -328,6 +329,13 @@ type ArchiveUnresumableSessionOptions = {
   logFile: string;
   sessionDir: string;
   archiveDir: string;
+};
+
+type SelectResumableSessionOptions = {
+  sessionName: string;
+  sessionDir: string;
+  archiveRoot: string;
+  otherSessionDir: string[];
 };
 
 type CheckIssueSilentDispatchAllowedOptions = {
@@ -1918,6 +1926,48 @@ program
     if (output.stderr !== null) {
       console.error(output.stderr);
     }
+    if (output.exitCode !== 0) {
+      return process.exit(output.exitCode);
+    }
+  });
+
+program
+  .command('select-resumable-session')
+  .description(
+    'Decide whether a dispatched worker resumes an earlier claude session of the same task and agent, and which session id it passes to claude --resume. Writes that session id followed by a newline to stdout, or nothing when the worker starts a new claude session, and writes each "Session resumption: ..." line to stderr. A transcript file is a regular <session id>.jsonl file whose name does not start with a dot; it is a candidate only when its first line contains "customTitle":"<session name>". A candidate is not resumable when it is archived under --archive-root, or when its last main-chain assistant entry is the "Prompt is too long" API error. In --session-dir the resumable candidate with the newest modification time is selected, a tie going to the ascending file name. When --session-dir yields none, the transcript files of every --other-session-dir are ranked together by modification time, a tie going to the directory given first and then to the ascending file name; a directory equal to --session-dir and a transcript file whose file name also exists in --session-dir are skipped. A selected transcript file without an entry time starts a new claude session. A transcript file selected from another session directory is copied into --session-dir, created with mode 700 when absent, keeping its mode and times, together with its session id directory <session id>/; the source stays where it is. Exits 0 in every case above.',
+  )
+  .requiredOption(
+    '--session-name <name>',
+    'Name the worker claude session is started with (claude --name); a transcript file is a candidate only when its first line contains "customTitle":"<name>"',
+  )
+  .requiredOption(
+    '--session-dir <path>',
+    'Session directory holding the transcript files (<session id>.jsonl) of the current working directory of the worker; claude --resume <session id> finds transcript files only in this directory',
+  )
+  .requiredOption(
+    '--archive-root <path>',
+    'Directory archive-unresumable-session moves transcript files into; a transcript file is archived when <archive-root>/<session id>.jsonl or <archive-root>/<directory>/<session id>.jsonl exists',
+  )
+  .option(
+    '--other-session-dir <path>',
+    'Session directory of another worktree of the same repository, searched when --session-dir yields no resumable transcript file; repeatable, and of transcript files with the same modification time the one in the directory given first wins',
+    (otherSessionDir: string, previousOtherSessionDirs: string[]) => [
+      ...previousOtherSessionDirs,
+      otherSessionDir,
+    ],
+    [],
+  )
+  .action((options: SelectResumableSessionOptions) => {
+    const output = resumableSessionSelect({
+      sessionName: options.sessionName,
+      sessionDir: options.sessionDir,
+      otherSessionDirs: options.otherSessionDir,
+      archiveRoot: options.archiveRoot,
+    });
+    if (output.stdout !== null) {
+      console.log(output.stdout);
+    }
+    output.stderrLines.forEach((stderrLine) => console.error(stderrLine));
     if (output.exitCode !== 0) {
       return process.exit(output.exitCode);
     }
