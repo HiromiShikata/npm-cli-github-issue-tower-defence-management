@@ -1,3 +1,15 @@
+# [2.156.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.8...v2.156.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** route non-developer agent completions with no owner-confirmation signal to Awaiting Workspace ([#3061](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3061)) ([e24dce3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e24dce3442b7d5091f6c5bcd7302f54a277bb02f))
+
+
+### Features
+
+* **console:** defer automatic cross-project navigation until write confirmed ([#3056](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3056)) ([2dda342](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2dda342f20ab5bf0430225e63097de8981d1b54b))
+
 ## [2.155.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.7...v2.155.8) (2026-10-01)
 
 
