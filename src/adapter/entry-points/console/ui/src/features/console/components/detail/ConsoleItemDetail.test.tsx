@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor, within } from '@testing-library/react';
+import type { ConsoleIssueState, ConsoleListItem } from '../../logic/types';
 import {
   consoleChangedFilesFixture,
   consoleCommentsFixture,
@@ -7,6 +8,7 @@ import {
   consoleRelatedPullRequestsFixture,
   consoleStatusOptionsFixture,
 } from '../../testing/fixtures';
+import { ConsoleReferenceLink } from '../content/ConsoleReferenceLink';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
 
 jest.mock('../../lib/mermaidLoader', () => ({
@@ -44,6 +46,251 @@ const baseProps = {
   commentComposer: <div>comment-composer</div>,
   operationBar: <div>operation-bar</div>,
 };
+
+const dependedIssueUrlResolvedOpen =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845';
+const dependedIssueUrlResolvedClosed =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692';
+const dependedIssueUrlResolvedMergedPr =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851';
+const dependedIssueUrlNotGitHub = 'https://example.com/not-a-github-reference';
+
+const dependedIssueUrlRowIssueItem = consoleListItemsFixture[3];
+const dependedIssueUrlRowPrItem = consoleListItemsFixture[1];
+
+const makeRenderReferenceLink =
+  (stateByUrl: Record<string, ConsoleIssueState | null>) =>
+  (href: string, fallbackText: string) => (
+    <ConsoleReferenceLink
+      href={href}
+      fallbackText={fallbackText}
+      state={stateByUrl[href] ?? null}
+    />
+  );
+
+type DependedIssueUrlReferenceExpectation =
+  | {
+      mode: 'resolved';
+      href: string;
+      iconLabel: string;
+      title: string;
+      number: number;
+    }
+  | { mode: 'plain'; href: string; text: string };
+
+type DependedIssueUrlCase = {
+  description: string;
+  item: ConsoleListItem;
+  stateByUrl: Record<string, ConsoleIssueState | null>;
+  expectedReferences: DependedIssueUrlReferenceExpectation[];
+};
+
+const dependedIssueUrlCases: DependedIssueUrlCase[] = [
+  {
+    description:
+      'one URL, unresolved, URL parses as a GitHub reference -> plain #{number}',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    },
+    stateByUrl: { [dependedIssueUrlResolvedOpen]: null },
+    expectedReferences: [
+      { mode: 'plain', href: dependedIssueUrlResolvedOpen, text: '#845' },
+    ],
+  },
+  {
+    description:
+      'one URL, unresolved, URL does not parse as a GitHub reference -> raw URL',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlNotGitHub],
+    },
+    stateByUrl: { [dependedIssueUrlNotGitHub]: null },
+    expectedReferences: [
+      {
+        mode: 'plain',
+        href: dependedIssueUrlNotGitHub,
+        text: dependedIssueUrlNotGitHub,
+      },
+    ],
+  },
+  {
+    description: 'one URL, resolved open issue -> icon, title and number',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedOpen]: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: 'Fix bug',
+      },
+    },
+    expectedReferences: [
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedOpen,
+        iconLabel: 'issueOpen',
+        title: 'Fix bug',
+        number: 845,
+      },
+    ],
+  },
+  {
+    description:
+      'one URL, resolved closed (not merged) issue -> icon, title and number',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedClosed],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedClosed]: {
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Old task',
+      },
+    },
+    expectedReferences: [
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedClosed,
+        iconLabel: 'issueClosed',
+        title: 'Old task',
+        number: 692,
+      },
+    ],
+  },
+  {
+    description:
+      'one URL, resolved merged pull request target -> icon, title and number',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedMergedPr],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedMergedPr]: {
+        state: 'closed',
+        merged: true,
+        isPullRequest: true,
+        title: 'Add feature',
+      },
+    },
+    expectedReferences: [
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedMergedPr,
+        iconLabel: 'prMerged',
+        title: 'Add feature',
+        number: 851,
+      },
+    ],
+  },
+  {
+    description:
+      'one URL, resolved but with an empty title -> falls back to plain #{number}',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedOpen]: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: '',
+      },
+    },
+    expectedReferences: [
+      { mode: 'plain', href: dependedIssueUrlResolvedOpen, text: '#845' },
+    ],
+  },
+  {
+    description:
+      'three URLs with the first two duplicated -> each duplicate renders as its own separate link',
+    item: {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [
+        dependedIssueUrlResolvedOpen,
+        dependedIssueUrlResolvedOpen,
+        dependedIssueUrlResolvedMergedPr,
+      ],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedOpen]: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: 'Fix bug',
+      },
+      [dependedIssueUrlResolvedMergedPr]: null,
+    },
+    expectedReferences: [
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedOpen,
+        iconLabel: 'issueOpen',
+        title: 'Fix bug',
+        number: 845,
+      },
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedOpen,
+        iconLabel: 'issueOpen',
+        title: 'Fix bug',
+        number: 845,
+      },
+      {
+        mode: 'plain',
+        href: dependedIssueUrlResolvedMergedPr,
+        text: '#851',
+      },
+    ],
+  },
+  {
+    description:
+      'two resolved URLs on a pull request item -> same display as an issue item',
+    item: {
+      ...dependedIssueUrlRowPrItem,
+      dependedIssueUrls: [
+        dependedIssueUrlResolvedOpen,
+        dependedIssueUrlResolvedClosed,
+      ],
+    },
+    stateByUrl: {
+      [dependedIssueUrlResolvedOpen]: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: 'Fix bug',
+      },
+      [dependedIssueUrlResolvedClosed]: {
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Old task',
+      },
+    },
+    expectedReferences: [
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedOpen,
+        iconLabel: 'issueOpen',
+        title: 'Fix bug',
+        number: 845,
+      },
+      {
+        mode: 'resolved',
+        href: dependedIssueUrlResolvedClosed,
+        iconLabel: 'issueClosed',
+        title: 'Old task',
+        number: 692,
+      },
+    ],
+  },
+];
 
 describe('ConsoleItemDetail', () => {
   it('docks the comment composer with the operation bar so it stays reachable while the body scrolls', () => {
@@ -875,5 +1122,117 @@ describe('ConsoleItemDetail', () => {
     fireEvent.click(getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(queryByRole('textbox')).toBeNull());
     expect(onTitleRename).toHaveBeenCalledWith('Renamed title');
+  });
+
+  it.each(dependedIssueUrlCases)(
+    'renders the Depended Issue URL row: $description',
+    ({ item, stateByUrl, expectedReferences }) => {
+      const { container, getByText } = render(
+        <ConsoleItemDetail
+          item={item}
+          {...baseProps}
+          renderReferenceLink={makeRenderReferenceLink(stateByUrl)}
+        />,
+      );
+      expect(getByText('Depended Issue URL')).toBeInTheDocument();
+      const targetHrefs = new Set(
+        expectedReferences.map((reference) => reference.href),
+      );
+      const matchingAnchors = Array.from(
+        container.querySelectorAll('a'),
+      ).filter((anchor) => targetHrefs.has(anchor.getAttribute('href') ?? ''));
+      expect(matchingAnchors).toHaveLength(expectedReferences.length);
+      matchingAnchors.forEach((anchor, index) => {
+        const expected = expectedReferences[index];
+        expect(anchor.getAttribute('href')).toBe(expected.href);
+        expect(anchor).toHaveAttribute('target', '_blank');
+        expect(anchor).toHaveAttribute('rel', 'noopener noreferrer');
+        if (expected.mode === 'resolved') {
+          const icon = anchor.querySelector('svg.console-item-icon');
+          expect(icon).not.toBeNull();
+          expect(icon?.getAttribute('aria-label')).toBe(expected.iconLabel);
+          expect(anchor).toHaveTextContent(expected.title);
+          expect(
+            anchor.querySelector('.console-markdown-reference-number')
+              ?.textContent,
+          ).toBe(`#${expected.number}`);
+        } else {
+          expect(anchor.querySelector('svg.console-item-icon')).toBeNull();
+          expect(anchor.textContent).toBe(expected.text);
+        }
+      });
+    },
+  );
+
+  it('does not render the Depended Issue URL row when the item has zero depended issue URLs', () => {
+    const itemWithNoDependedIssueUrls = {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [],
+    };
+    const { queryByText } = render(
+      <ConsoleItemDetail
+        item={itemWithNoDependedIssueUrls}
+        {...baseProps}
+        renderReferenceLink={makeRenderReferenceLink({})}
+      />,
+    );
+    expect(queryByText('Depended Issue URL')).toBeNull();
+  });
+
+  it('places the Depended Issue URL row between the badge row and the fetch-failure alert', () => {
+    const itemWithDependedIssueUrls = {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    };
+    const { container, getByText } = render(
+      <ConsoleItemDetail
+        item={itemWithDependedIssueUrls}
+        {...baseProps}
+        stateError="API rate limit already exceeded"
+        renderReferenceLink={makeRenderReferenceLink({
+          [dependedIssueUrlResolvedOpen]: null,
+        })}
+      />,
+    );
+    const topline = container.querySelector('.console-detail-topline');
+    const fetchFailureAlert = container.querySelector(
+      '.console-detail-fetch-error',
+    );
+    const dependedIssueUrlLabel = getByText('Depended Issue URL');
+    if (topline === null || fetchFailureAlert === null) {
+      throw new Error(
+        'topline and fetch failure alert must both render for this test to be meaningful',
+      );
+    }
+    expect(
+      topline.compareDocumentPosition(dependedIssueUrlLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      dependedIssueUrlLabel.compareDocumentPosition(fetchFailureAlert) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('falls back to a plain link built from formatReferenceFallbackText when renderReferenceLink is not supplied', () => {
+    const itemWithDependedIssueUrls = {
+      ...dependedIssueUrlRowIssueItem,
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    };
+    const { container } = render(
+      <ConsoleItemDetail item={itemWithDependedIssueUrls} {...baseProps} />,
+    );
+    const anchor = Array.from(container.querySelectorAll('a')).find(
+      (candidate) =>
+        candidate.getAttribute('href') === dependedIssueUrlResolvedOpen,
+    );
+    if (anchor === undefined) {
+      throw new Error('expected a fallback link for the depended issue URL');
+    }
+    expect(anchor).toHaveClass('console-markdown-reference');
+    expect(anchor).toHaveClass('console-markdown-reference-plain');
+    expect(anchor).toHaveAttribute('target', '_blank');
+    expect(anchor).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(anchor.textContent).toBe('#845');
   });
 });
