@@ -23,6 +23,12 @@ import {
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
+// StartPreparationUseCase.run() captures `new Date().toISOString()` immediately before spawning
+// `aw`, so the exact value is not deterministic across test runs; every assertion on the full
+// `awArgs` array matches this UTC ISO-8601 shape instead of a fixed string.
+const DISPATCH_STARTED_AT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
 class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
   constructor(
     private readonly latestSessionBranchNameByIssueUrl: ReadonlyMap<
@@ -253,8 +259,56 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
+  });
+
+  it('passes --dispatchStartedAt to aw as a UTC ISO-8601 timestamp captured at dispatch time', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const beforeDispatch = Date.now();
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    const afterDispatch = Date.now();
+
+    const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
+    const flagIndex = awArgs.indexOf('--dispatchStartedAt');
+    expect(flagIndex).toBeGreaterThan(-1);
+    const dispatchStartedAtValue = awArgs[flagIndex + 1];
+    expect(dispatchStartedAtValue).toMatch(DISPATCH_STARTED_AT_PATTERN);
+    const parsedMs = new Date(dispatchStartedAtValue).getTime();
+    expect(Number.isNaN(parsedMs)).toBe(false);
+    expect(parsedMs).toBeGreaterThanOrEqual(beforeDispatch);
+    expect(parsedMs).toBeLessThanOrEqual(afterDispatch);
   });
 
   describe('agent designation label migration to the Agent project field', () => {
@@ -996,6 +1050,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -1274,6 +1330,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -1398,6 +1456,8 @@ describe('StartPreparationUseCase', () => {
             '/path/to/config.yml',
             '--branch',
             'impl-i2161-signal-annotation-prisma-repos',
+            '--dispatchStartedAt',
+            expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
           ],
         ],
       ]);
@@ -1426,6 +1486,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'impl/i2161-signal-annotation-prisma-repos',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ]);
     });
 
@@ -1956,6 +2018,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2002,6 +2066,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2048,6 +2114,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2094,6 +2162,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2140,6 +2210,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2186,6 +2258,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -2287,6 +2361,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i2',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
     consoleErrorSpy.mockRestore();
@@ -3471,6 +3547,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -3520,6 +3598,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
   });
@@ -3569,6 +3649,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i1',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         '--codexHome',
         '.codex-dev1',
       ],
@@ -7885,6 +7967,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i32',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
     expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -7897,6 +7981,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i31',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
     expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
@@ -7909,6 +7995,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i33',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
     consoleWarnSpy.mockRestore();
@@ -7957,6 +8045,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           'i50',
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -8023,6 +8113,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${tierBIssues[0].number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -8035,6 +8127,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${tierAIssues[0].number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
@@ -8047,6 +8141,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${tierAIssues[1].number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -8098,6 +8194,8 @@ describe('StartPreparationUseCase', () => {
               '/path/to/config.yml',
               '--branch',
               `i${tierBIssues[slotIndex].number}`,
+              '--dispatchStartedAt',
+              expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
             ],
           ],
         );
@@ -8178,6 +8276,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssueOlder.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -8190,6 +8290,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssueNewer.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -8268,6 +8370,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssueOlder.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -8280,6 +8384,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssueNewer.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
@@ -8292,6 +8398,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${storyAIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -8366,6 +8474,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${storylessIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -8378,6 +8488,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -8452,6 +8564,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${storylessIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[1]).toEqual([
@@ -8464,6 +8578,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${explicitNoStoryIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
       expect(mockLocalCommandRunner.runCommand.mock.calls[2]).toEqual([
@@ -8476,6 +8592,8 @@ describe('StartPreparationUseCase', () => {
           '/path/to/config.yml',
           '--branch',
           `i${storyAIssue.number}`,
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
         ],
       ]);
     });
@@ -9131,6 +9249,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         'i2',
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ]);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -9479,7 +9599,7 @@ describe('StartPreparationUseCase', () => {
         createdAt,
       });
 
-    const expectedAwCommandFor = (issue: Issue): [string, string[]] => [
+    const expectedAwCommandFor = (issue: Issue): [string, unknown[]] => [
       'aw',
       [
         issue.url,
@@ -9489,6 +9609,8 @@ describe('StartPreparationUseCase', () => {
         '/path/to/config.yml',
         '--branch',
         `i${issue.number}`,
+        '--dispatchStartedAt',
+        expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
       ],
     ];
 

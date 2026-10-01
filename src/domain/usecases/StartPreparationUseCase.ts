@@ -1112,6 +1112,12 @@ export class StartPreparationUseCase {
         await revertToAwaitingWorkspace('no LLM model is configured');
         continue;
       }
+      // Captured here, at the moment this use case decides to dispatch `aw`, rather than left for
+      // `aw` to approximate with its own `date -u` call after the process has already started.
+      // `NotifyFinishedIssuePreparationUseCase` uses it (via `--dispatchStartedAt` on
+      // notifyFinishedIssuePreparation, passed through by `aw`) to ignore an agent report posted
+      // before this session was dispatched.
+      const dispatchStartedAt = new Date().toISOString();
       const awArgs: string[] = [
         issue.url,
         agent,
@@ -1120,6 +1126,8 @@ export class StartPreparationUseCase {
         params.configFilePath,
         '--branch',
         branchName,
+        '--dispatchStartedAt',
+        dispatchStartedAt,
       ];
       if (
         params.codexHomeCandidates !== null &&
