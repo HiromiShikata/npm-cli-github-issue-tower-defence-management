@@ -6993,7 +6993,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, recentlyCreated=0, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
@@ -7043,7 +7043,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, recentlyCreated=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
     );
     consoleLogSpy.mockRestore();
   });
