@@ -59,6 +59,68 @@ const firstLineBytes = (fileDescriptor: number): Buffer => {
   return Buffer.concat(readChunks);
 };
 
+const entryModeAndTimesCopy = (
+  sourceEntryPath: string,
+  destinationEntryPath: string,
+): void => {
+  const sourceStats = fs.lstatSync(sourceEntryPath);
+  fs.chmodSync(destinationEntryPath, sourceStats.mode & PERMISSION_BITS_MASK);
+  fs.utimesSync(
+    destinationEntryPath,
+    sourceStats.atimeMs / MILLISECONDS_PER_SECOND,
+    sourceStats.mtimeMs / MILLISECONDS_PER_SECOND,
+  );
+};
+
+const symbolicLinkTimesCopy = (
+  sourceLinkPath: string,
+  destinationLinkPath: string,
+): void => {
+  const sourceStats = fs.lstatSync(sourceLinkPath);
+  fs.lutimesSync(
+    destinationLinkPath,
+    sourceStats.atimeMs / MILLISECONDS_PER_SECOND,
+    sourceStats.mtimeMs / MILLISECONDS_PER_SECOND,
+  );
+};
+
+const directoryTreeCopy = (
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string,
+): void => {
+  fs.mkdirSync(destinationDirectoryPath);
+  fs.readdirSync(sourceDirectoryPath, { withFileTypes: true }).forEach(
+    (sourceEntry) => {
+      const sourceEntryPath = path.join(sourceDirectoryPath, sourceEntry.name);
+      const destinationEntryPath = path.join(
+        destinationDirectoryPath,
+        sourceEntry.name,
+      );
+      if (sourceEntry.isDirectory()) {
+        directoryTreeCopy(sourceEntryPath, destinationEntryPath);
+        return;
+      }
+      if (sourceEntry.isSymbolicLink()) {
+        fs.symlinkSync(fs.readlinkSync(sourceEntryPath), destinationEntryPath);
+        symbolicLinkTimesCopy(sourceEntryPath, destinationEntryPath);
+        return;
+      }
+      if (!sourceEntry.isFile()) {
+        throw new Error(
+          `Cannot copy ${sourceEntryPath}: it is not a regular file, a directory or a symbolic link`,
+        );
+      }
+      fs.copyFileSync(
+        sourceEntryPath,
+        destinationEntryPath,
+        fs.constants.COPYFILE_EXCL,
+      );
+      entryModeAndTimesCopy(sourceEntryPath, destinationEntryPath);
+    },
+  );
+  entryModeAndTimesCopy(sourceDirectoryPath, destinationDirectoryPath);
+};
+
 export class FileSystemResumableSessionTranscriptRepository implements ResumableSessionTranscriptRepository {
   listSessionTranscriptFiles = (
     sessionDirectoryPath: string,
@@ -167,19 +229,12 @@ export class FileSystemResumableSessionTranscriptRepository implements Resumable
     destinationSessionDirectoryPath: string,
   ): CopyOutcome => {
     try {
-      fs.cpSync(
+      directoryTreeCopy(
         sessionTranscriptFile.sessionIdDirectoryPath,
         path.join(
           destinationSessionDirectoryPath,
           sessionTranscriptFile.sessionId,
         ),
-        {
-          recursive: true,
-          preserveTimestamps: true,
-          errorOnExist: true,
-          force: false,
-          verbatimSymlinks: true,
-        },
       );
       return 'copied';
     } catch {
