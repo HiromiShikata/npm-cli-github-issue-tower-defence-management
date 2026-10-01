@@ -82,6 +82,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const fetchSpy = jest
@@ -106,6 +107,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1001',
         },
       ]);
@@ -118,6 +120,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user1' },
           body: 'Page 1 comment',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const page2Payloads = [
@@ -126,6 +129,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user2' },
           body: 'Page 2 comment',
           created_at: '2024-01-02T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
         },
       ];
 
@@ -163,12 +167,14 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1002',
         },
         {
           author: 'user2',
           content: 'Page 2 comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           id: '1003',
         },
       ]);
@@ -230,6 +236,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const fetchSpy = jest
@@ -253,6 +260,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1004',
         },
       ]);
@@ -271,6 +279,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const fetchSpy = jest
@@ -296,6 +305,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1005',
         },
       ]);
@@ -381,6 +391,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Cached comment',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-05T00:00:00Z',
         },
       ];
       const cache = buildCommentCacheRepository();
@@ -413,6 +424,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'testuser',
                   content: 'Cached comment',
                   createdAt: '2024-01-01T00:00:00.000Z',
+                  updatedAt: '2024-01-05T00:00:00.000Z',
                   id: '1006',
                 },
               ],
@@ -426,6 +438,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Cached comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-05T00:00:00Z'),
           id: '1006',
         },
       ]);
@@ -439,6 +452,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'testuser',
                 content: 'Cached comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-05T00:00:00.000Z',
               },
             ],
             hasNextPage: false,
@@ -465,6 +479,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Cached comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-05T00:00:00Z'),
         },
       ]);
     });
@@ -476,6 +491,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user-new' },
           body: 'New comment',
           created_at: '2024-02-01T00:00:00Z',
+          updated_at: '2024-02-01T00:00:00Z',
         },
       ];
       const cache = buildCommentCacheRepository();
@@ -511,6 +527,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user-new',
           content: 'New comment',
           createdAt: new Date('2024-02-01T00:00:00Z'),
+          updatedAt: new Date('2024-02-01T00:00:00Z'),
           id: '1007',
         },
       ]);
@@ -525,6 +542,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'user-new',
                   content: 'New comment',
                   createdAt: '2024-02-01T00:00:00.000Z',
+                  updatedAt: '2024-02-01T00:00:00.000Z',
                   id: '1007',
                 },
               ],
@@ -542,6 +560,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user2' },
           body: 'New comment on page 2',
           created_at: '2024-01-02T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
         },
       ];
 
@@ -555,6 +574,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user1',
                 content: 'Page 1 comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
               },
             ],
             hasNextPage: true,
@@ -586,11 +606,13 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
         },
         {
           author: 'user2',
           content: 'New comment on page 2',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           id: '1008',
         },
       ]);
@@ -603,6 +625,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'testuser' },
           body: 'Comment body',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const fetchSpy = jest
@@ -626,6 +649,7 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'testuser',
           content: 'Comment body',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1009',
         },
       ]);
@@ -638,6 +662,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user1' },
           body: 'Page 1 comment',
           created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
       const page2Payloads = [
@@ -646,6 +671,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user2' },
           body: 'Page 2 comment',
           created_at: '2024-01-02T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
         },
       ];
       const cache = buildCommentCacheRepository();
@@ -680,12 +706,14 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
           id: '1010',
         },
         {
           author: 'user2',
           content: 'Page 2 comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           id: '1011',
         },
       ]);
@@ -701,6 +729,7 @@ describe('GitHubIssueCommentRepository', () => {
                   author: 'user1',
                   content: 'Page 1 comment',
                   createdAt: '2024-01-01T00:00:00.000Z',
+                  updatedAt: '2024-01-01T00:00:00.000Z',
                   id: '1010',
                 },
               ],
@@ -722,6 +751,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user1',
                 content: 'Page 1 comment',
                 createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
               },
             ],
             hasNextPage: true,
@@ -733,6 +763,7 @@ describe('GitHubIssueCommentRepository', () => {
                 author: 'user2',
                 content: 'Page 2 comment',
                 createdAt: '2024-01-02T00:00:00.000Z',
+                updatedAt: '2024-01-02T00:00:00.000Z',
               },
             ],
             hasNextPage: false,
@@ -759,11 +790,13 @@ describe('GitHubIssueCommentRepository', () => {
           author: 'user1',
           content: 'Page 1 comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
         },
         {
           author: 'user2',
           content: 'Page 2 comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
         },
       ]);
       expect(cache.setSingle).not.toHaveBeenCalled();
@@ -774,6 +807,7 @@ describe('GitHubIssueCommentRepository', () => {
         author: `user${i}`,
         content: `Cached comment ${i}`,
         createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`,
       }));
       const newCommentPayload = [
         {
@@ -781,6 +815,7 @@ describe('GitHubIssueCommentRepository', () => {
           user: { login: 'user-new' },
           body: 'New comment on page 2',
           created_at: '2024-02-01T00:00:00Z',
+          updated_at: '2024-02-01T00:00:00Z',
         },
       ];
 
@@ -819,11 +854,13 @@ describe('GitHubIssueCommentRepository', () => {
         author: 'user0',
         content: 'Cached comment 0',
         createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
       });
       expect(result[100]).toEqual({
         author: 'user-new',
         content: 'New comment on page 2',
         createdAt: new Date('2024-02-01T00:00:00Z'),
+        updatedAt: new Date('2024-02-01T00:00:00Z'),
         id: '1012',
       });
     });
@@ -833,6 +870,7 @@ describe('GitHubIssueCommentRepository', () => {
         author: `user${i}`,
         content: `Cached comment ${i}`,
         createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`,
       }));
 
       const cache = buildCommentCacheRepository();
@@ -861,6 +899,59 @@ describe('GitHubIssueCommentRepository', () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(50);
+    });
+
+    it('treats a cached page whose comments lack updatedAt as an invalid cache entry and refetches fresh data without sending If-None-Match', async () => {
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-legacy"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Legacy cached comment without updatedAt',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      const freshCommentPayloads = [
+        {
+          id: 2001,
+          user: { login: 'user-fresh' },
+          body: 'Freshly fetched comment',
+          created_at: '2024-03-01T00:00:00Z',
+          updated_at: '2024-03-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(freshCommentPayloads), {
+          status: 200,
+          headers: { ETag: '"etag-fresh"' },
+        }),
+      );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
+      expect(result.map((c) => c.content)).toEqual(['Freshly fetched comment']);
     });
   });
 

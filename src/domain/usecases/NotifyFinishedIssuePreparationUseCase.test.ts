@@ -90,12 +90,16 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   ...overrides,
 });
 
-const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
-  author: 'test-user',
-  content: '```json\n{"nextStep": null}\n```',
-  createdAt: new Date(),
-  ...overrides,
-});
+const createMockComment = (overrides: Partial<Comment> = {}): Comment => {
+  const createdAt = overrides.createdAt ?? new Date();
+  return {
+    author: 'test-user',
+    content: '```json\n{"nextStep": null}\n```',
+    createdAt,
+    updatedAt: createdAt,
+    ...overrides,
+  };
+};
 
 describe('NotifyFinishedIssuePreparationUseCase', () => {
   let useCase: NotifyFinishedIssuePreparationUseCase;

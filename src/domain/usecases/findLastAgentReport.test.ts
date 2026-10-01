@@ -129,16 +129,19 @@ describe('findLastAgentReportPostedSince', () => {
     author: 'bot',
     content: report('impl'),
     createdAt: postedAt('2026-09-25T08:00:00Z'),
+    updatedAt: postedAt('2026-09-25T08:00:00Z'),
   };
   const laterReport = {
     author: 'bot',
     content: report('pr-reviewer'),
     createdAt: postedAt('2026-09-25T10:00:00Z'),
+    updatedAt: postedAt('2026-09-25T10:00:00Z'),
   };
   const laterPlainComment = {
     author: 'bot',
     content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
     createdAt: postedAt('2026-09-25T11:00:00Z'),
+    updatedAt: postedAt('2026-09-25T11:00:00Z'),
   };
 
   it.each([
@@ -179,5 +182,57 @@ describe('findLastAgentReportPostedSince', () => {
       findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince)
         ?.content ?? null,
     ).toBe(expectedContent);
+  });
+
+  it('returns the report content of a comment edited at or after the start time even though it was created before it, skipping an untrusted-author comment created in between', () => {
+    const postedSince = postedAt('2026-09-27T18:50:00Z');
+    const editedTrustedReport = {
+      author: 'bot',
+      content: report('impl'),
+      createdAt: postedAt('2026-09-27T18:46:11Z'),
+      updatedAt: postedAt('2026-09-27T18:56:07Z'),
+    };
+    const untrustedComment = {
+      author: 'stranger',
+      content: 'Working on it, will update shortly.',
+      createdAt: postedAt('2026-09-27T18:49:42Z'),
+      updatedAt: postedAt('2026-09-27T18:49:42Z'),
+    };
+    const isTrustedAuthor = (author: string): boolean => author === 'bot';
+
+    expect(
+      findLastAgentReportPostedSince(
+        [editedTrustedReport, untrustedComment],
+        isTrustedAuthor,
+        postedSince,
+      )?.content,
+    ).toBe(report('impl'));
+  });
+
+  it('returns the most recently edited survivor even when it sits after the staler-edited survivor in creation order', () => {
+    const postedSince = postedAt('2026-09-27T18:50:00Z');
+    const createdFirstButEditedLessRecentlyReport = {
+      author: 'bot',
+      content: report('impl'),
+      createdAt: postedAt('2026-09-27T18:40:00Z'),
+      updatedAt: postedAt('2026-09-27T18:56:00Z'),
+    };
+    const createdSecondButEditedMostRecentlyReport = {
+      author: 'bot',
+      content: report('pr-reviewer'),
+      createdAt: postedAt('2026-09-27T18:55:00Z'),
+      updatedAt: postedAt('2026-09-27T19:10:00Z'),
+    };
+
+    expect(
+      findLastAgentReportPostedSince(
+        [
+          createdFirstButEditedLessRecentlyReport,
+          createdSecondButEditedMostRecentlyReport,
+        ],
+        trustEveryAuthor,
+        postedSince,
+      )?.content,
+    ).toBe(report('pr-reviewer'));
   });
 });

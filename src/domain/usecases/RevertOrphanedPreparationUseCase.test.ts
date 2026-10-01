@@ -278,6 +278,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
     ]);
 
@@ -316,6 +317,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"unknown-agent"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
     ]);
 
@@ -374,16 +376,19 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
+        updatedAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
+        updatedAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
 
@@ -438,21 +443,25 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
+        updatedAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
         author: 'bot',
         content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T01:30:00Z'),
+        updatedAt: new Date('2024-01-02T01:30:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
+        updatedAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
 
@@ -494,12 +503,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
       content:
         'From: :robot: systems-analyst\n```json\n{"nextStep":null,"nextStepAgent":"system-design-reviewer"}\n```',
       createdAt: new Date('2024-01-02T00:00:00Z'),
+      updatedAt: new Date('2024-01-02T00:00:00Z'),
     };
     const namesAnalyst = {
       author: 'bot',
       content:
         'From: :robot: system-design-reviewer\n```json\n{"nextStep":null,"nextStepAgent":"systems-analyst"}\n```',
       createdAt: new Date('2024-01-02T01:00:00Z'),
+      updatedAt: new Date('2024-01-02T01:00:00Z'),
     };
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       namesReviewer,
@@ -564,16 +575,19 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
+        updatedAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
+        updatedAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
 
@@ -626,6 +640,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
     ]);
 
@@ -659,6 +674,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -700,6 +716,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(createPassingPr());
@@ -751,6 +768,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -790,6 +808,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -824,11 +843,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'agent-bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         author: 'agent-bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -870,6 +891,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -907,6 +929,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :robot: liaison (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -944,6 +967,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -986,6 +1010,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1022,6 +1047,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1058,6 +1084,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1095,6 +1122,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -1138,6 +1166,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1173,6 +1202,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -1215,6 +1245,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1252,6 +1283,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'From: :warning: This message is from https://github.com/user/repo/tree/i999 AI HS Implement AI Agent (claude-sonnet-4-6)',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1758,11 +1790,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1805,6 +1839,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1843,16 +1878,19 @@ describe('RevertOrphanedPreparationUseCase', () => {
         content:
           'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1890,6 +1928,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -1939,11 +1978,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         author: 'bot',
         content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -1964,7 +2005,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
   describe('live status re-read before writing', () => {
     const arrangeSnapshotSaysPreparation = (
       liveStatus: string | null,
-      comments: { author: string; content: string; createdAt: Date }[],
+      comments: {
+        author: string;
+        content: string;
+        createdAt: Date;
+        updatedAt: Date;
+      }[],
     ): Issue => {
       const snapshotIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
@@ -2000,17 +2046,20 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           author: 'bot',
           content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           author: 'bot',
           content:
             'Issue has next action date or hour set: nextActionDate=null, nextActionHour=null',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
 
@@ -2039,6 +2088,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2078,11 +2128,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           author: 'bot',
           content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
 
@@ -2218,6 +2270,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2274,6 +2327,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2313,6 +2367,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -2350,6 +2405,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2394,6 +2450,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2448,6 +2505,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2498,6 +2556,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2541,6 +2600,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2605,6 +2665,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2713,16 +2774,19 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'bot',
           content: `From: :robot: triager\n\n\`\`\`json\n{"nextStep":null,"nextStepAgent":"${agent}"}\n\`\`\``,
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
         },
         {
           author: 'bot',
           content: `Auto Status Check: DISPATCH_AGAIN ${agent}`,
           createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
         },
         {
           author: 'bot',
           content: `Auto Status Check: DISPATCH_AGAIN ${agent}`,
           createdAt: new Date('2024-01-02T02:00:00Z'),
+          updatedAt: new Date('2024-01-02T02:00:00Z'),
         },
       ]);
       return stuckIssue;
@@ -2956,18 +3020,21 @@ describe('RevertOrphanedPreparationUseCase', () => {
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
         },
         {
           author: 'bot',
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
         },
         {
           author: 'bot',
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T02:00:00Z'),
+          updatedAt: new Date('2024-01-02T02:00:00Z'),
         },
       ]);
       mockIssueRepository.get.mockResolvedValue(
@@ -3015,18 +3082,21 @@ describe('RevertOrphanedPreparationUseCase', () => {
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
         },
         {
           author: 'bot',
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
         },
         {
           author: 'bot',
           content:
             'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
           createdAt: new Date('2024-01-02T02:00:00Z'),
+          updatedAt: new Date('2024-01-02T02:00:00Z'),
         },
       ];
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
@@ -3164,6 +3234,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           content:
             'From: :robot: chore (model)\n\n```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ]);
       mockIssueRepository.get.mockResolvedValue(
