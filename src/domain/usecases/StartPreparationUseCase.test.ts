@@ -7388,7 +7388,7 @@ describe('StartPreparationUseCase', () => {
     consoleLogSpy.mockRestore();
   });
 
-  it('should post a comment and move to Todo by human for authorNotAllowed issues when the status option exists', async () => {
+  it('should post an English authorNotAllowed comment and never update status', async () => {
     const projectWithTodoByHuman: Project = {
       ...createMockProject(),
       status: {
@@ -7433,24 +7433,19 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.createCommentByUrl.mock.calls[0]).toEqual([
-      'https://github.com/user/repo/issues/100',
-      'authorNotAllowed: 著者 not-allowed-user は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。',
-    ]);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
-      projectWithTodoByHuman,
+    const [postedUrl, postedBody] =
+      mockIssueRepository.createCommentByUrl.mock.calls[0];
+    expect(postedUrl).toBe('https://github.com/user/repo/issues/100');
+    expect(postedBody).toBe(
+      "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
     );
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/100',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
-      'todo-by-human-id',
-    );
+    expect(postedBody).not.toContain('allowedIssueAuthors');
+    expect(postedBody).not.toMatch(/[぀-ヿ一-鿿]/);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
-  it('should not post a duplicate comment but still update status for authorNotAllowed issue', async () => {
+  it('should not post a duplicate authorNotAllowed comment even when the existing comment is many years old', async () => {
     const projectWithTodoByHuman: Project = {
       ...createMockProject(),
       status: {
@@ -7480,8 +7475,8 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
       {
         author: 'bot',
-        body: 'authorNotAllowed: 著者 not-allowed-user は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。',
-        createdAt: new Date(Date.now() - 60 * 1000),
+        body: "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
+        createdAt: new Date('2015-01-01T00:00:00Z'),
       },
     ]);
 
@@ -7501,20 +7496,11 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
-      projectWithTodoByHuman,
-    );
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/100',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
-      'todo-by-human-id',
-    );
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
-  it('should skip comment and status update for authorNotAllowed issues when Todo by human status option is absent', async () => {
+  it('should still post the authorNotAllowed comment when no Todo by human status option exists on the project', async () => {
     const authorNotAllowedIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/100',
       title: 'Disallowed Author Issue',
@@ -7542,7 +7528,15 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
+    const [postedUrl, postedBody] =
+      mockIssueRepository.createCommentByUrl.mock.calls[0];
+    expect(postedUrl).toBe('https://github.com/user/repo/issues/100');
+    expect(postedBody).toBe(
+      "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
+    );
+    expect(postedBody).not.toContain('allowedIssueAuthors');
+    expect(postedBody).not.toMatch(/[぀-ヿ一-鿿]/);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
@@ -7594,7 +7588,7 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
-  it('should post a comment and move to Todo by human for authorNotAllowed issue even when preparation queue is at capacity', async () => {
+  it('should post an English authorNotAllowed comment and never update status when the preparation queue is at capacity', async () => {
     const projectWithTodoByHuman: Project = {
       ...createMockProject(),
       status: {
@@ -7647,244 +7641,16 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.createCommentByUrl.mock.calls[0]).toEqual([
-      'https://github.com/user/repo/issues/100',
-      'authorNotAllowed: 著者 not-allowed-user は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。',
-    ]);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
-      projectWithTodoByHuman,
+    const [postedUrl, postedBody] =
+      mockIssueRepository.createCommentByUrl.mock.calls[0];
+    expect(postedUrl).toBe('https://github.com/user/repo/issues/100');
+    expect(postedBody).toBe(
+      "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
     );
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/100',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
-      'todo-by-human-id',
-    );
+    expect(postedBody).not.toContain('allowedIssueAuthors');
+    expect(postedBody).not.toMatch(/[぀-ヿ一-鿿]/);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should not move an authorNotAllowed issue to Todo by human when the live status changed away from Awaiting Workspace after the snapshot', async () => {
-    const projectWithTodoByHuman: Project = {
-      ...createMockProject(),
-      status: {
-        ...createMockProject().status,
-        statuses: [
-          ...createMockProject().status.statuses,
-          {
-            id: 'todo-by-human-id',
-            name: 'Todo by human',
-            color: 'PINK',
-            description: '',
-          },
-        ],
-      },
-    };
-    const authorNotAllowedIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Disallowed Author Issue',
-      status: 'Awaiting Workspace',
-      number: 100,
-      author: 'not-allowed-user',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([authorNotAllowedIssue]),
-    );
-    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/100',
-        status: 'Preparation',
-        isClosed: false,
-      }),
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-  });
-
-  it('should not move an authorNotAllowed issue to Todo by human when the live issue became closed after the snapshot', async () => {
-    const projectWithTodoByHuman: Project = {
-      ...createMockProject(),
-      status: {
-        ...createMockProject().status,
-        statuses: [
-          ...createMockProject().status.statuses,
-          {
-            id: 'todo-by-human-id',
-            name: 'Todo by human',
-            color: 'PINK',
-            description: '',
-          },
-        ],
-      },
-    };
-    const authorNotAllowedIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Disallowed Author Issue',
-      status: 'Awaiting Workspace',
-      number: 100,
-      author: 'not-allowed-user',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([authorNotAllowedIssue]),
-    );
-    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/100',
-        status: 'Awaiting Workspace',
-        isClosed: true,
-      }),
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-  });
-
-  it('should not move an authorNotAllowed issue to Todo by human when the live item read returns null because the issue left the project', async () => {
-    const projectWithTodoByHuman: Project = {
-      ...createMockProject(),
-      status: {
-        ...createMockProject().status,
-        statuses: [
-          ...createMockProject().status.statuses,
-          {
-            id: 'todo-by-human-id',
-            name: 'Todo by human',
-            color: 'PINK',
-            description: '',
-          },
-        ],
-      },
-    };
-    const authorNotAllowedIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Disallowed Author Issue',
-      status: 'Awaiting Workspace',
-      number: 100,
-      author: 'not-allowed-user',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([authorNotAllowedIssue]),
-    );
-    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.get.mockResolvedValue(null);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-  });
-
-  it('should move an authorNotAllowed issue to Todo by human and re-read the live issue when it still matches the snapshot', async () => {
-    const projectWithTodoByHuman: Project = {
-      ...createMockProject(),
-      status: {
-        ...createMockProject().status,
-        statuses: [
-          ...createMockProject().status.statuses,
-          {
-            id: 'todo-by-human-id',
-            name: 'Todo by human',
-            color: 'PINK',
-            description: '',
-          },
-        ],
-      },
-    };
-    const authorNotAllowedIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Disallowed Author Issue',
-      status: 'Awaiting Workspace',
-      number: 100,
-      author: 'not-allowed-user',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([authorNotAllowedIssue]),
-    );
-    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/100',
-        status: 'Awaiting Workspace',
-        isClosed: false,
-      }),
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
-      projectWithTodoByHuman,
-    );
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/100',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
-      'todo-by-human-id',
-    );
-    expect(mockIssueRepository.get.mock.calls[0]).toEqual([
-      'https://github.com/user/repo/issues/100',
-      projectWithTodoByHuman,
-    ]);
   });
 
   it('selects an issue whose body starts with the agent report prefix as a spawn candidate', () => {
@@ -9631,78 +9397,6 @@ describe('StartPreparationUseCase', () => {
   });
 
   describe('StaleProjectItemError handling in updateStatus calls', () => {
-    it('continues processing further authorNotAllowed issues after a StaleProjectItemError on the Todo by human status write', async () => {
-      const projectWithTodoByHuman: Project = {
-        ...createMockProject(),
-        status: {
-          ...createMockProject().status,
-          statuses: [
-            ...createMockProject().status.statuses,
-            {
-              id: 'todo-by-human-id',
-              name: 'Todo by human',
-              color: 'PINK',
-              description: '',
-            },
-          ],
-        },
-      };
-      const firstAuthorNotAllowedIssue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/100',
-        title: 'Stale Author Issue',
-        status: 'Awaiting Workspace',
-        number: 100,
-        author: 'not-allowed-user',
-      });
-      const secondAuthorNotAllowedIssue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/101',
-        title: 'Later Author Issue',
-        status: 'Awaiting Workspace',
-        number: 101,
-        author: 'not-allowed-user',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          firstAuthorNotAllowedIssue,
-          secondAuthorNotAllowedIssue,
-        ]),
-      );
-      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-      mockIssueRepository.updateStatus.mockImplementation(
-        async (_project, issue) => {
-          if (issue.url === firstAuthorNotAllowedIssue.url) {
-            throw new StaleProjectItemError('PVTI_stale_todo_by_human');
-          }
-          return undefined;
-        },
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(2);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
-        url: secondAuthorNotAllowedIssue.url,
-      });
-      expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe(
-        'todo-by-human-id',
-      );
-    });
-
     it('does not spawn a worker for an issue whose Preparation status write hits a StaleProjectItemError, but still spawns a later candidate', async () => {
       const staleIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',

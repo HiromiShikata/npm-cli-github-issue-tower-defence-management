@@ -5,7 +5,6 @@ import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
-  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
@@ -777,9 +776,6 @@ export class StartPreparationUseCase {
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
       (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
-    const todoByHumanStatusOption = project.status.statuses.find(
-      (s) => s.name === TODO_STATUS_NAME,
-    );
 
     const runningIssueUrls = new Set(
       this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
@@ -904,7 +900,6 @@ export class StartPreparationUseCase {
     );
 
     if (
-      todoByHumanStatusOption &&
       params.allowedIssueAuthors !== null &&
       params.allowedIssueAuthors.length > 0
     ) {
@@ -918,7 +913,7 @@ export class StartPreparationUseCase {
           minimumIssueAgeMs,
         );
         if (exclusionReason !== 'authorNotAllowed') continue;
-        const commentBody = `authorNotAllowed: 著者 ${issue.author} は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。`;
+        const commentBody = `This issue's author (${issue.author}) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.`;
         const existingComments =
           await this.issueRepository.getIssueOrPullRequestComments(issue.url);
         if (
@@ -929,32 +924,10 @@ export class StartPreparationUseCase {
               createdAt: c.createdAt,
             })),
             now,
+            null,
           )
         ) {
           await this.issueRepository.createCommentByUrl(issue.url, commentBody);
-        }
-        const staleness = await issueSnapshotStalenessCheck({
-          issueRepository: this.issueRepository,
-          project,
-          snapshotIssue: issue,
-          checkedFieldNames: ['status', 'isClosed'],
-          skippedWriteDescription: `the Todo by human status write for an author-not-allowed issue`,
-        });
-        if (staleness.type !== 'current') {
-          continue;
-        }
-        try {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            todoByHumanStatusOption.id,
-          );
-        } catch (error) {
-          if (!(error instanceof StaleProjectItemError)) throw error;
-          console.warn(
-            `Skipping stale project item while writing Todo by human status: ${issue.url}`,
-          );
-          continue;
         }
       }
     }
