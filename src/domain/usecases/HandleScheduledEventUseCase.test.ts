@@ -304,9 +304,9 @@ describe('HandleScheduledEventUseCase', () => {
         expect(
           mockIssueRepository.removeIssueFromProject,
         ).not.toHaveBeenCalledWith(mockProject, normalIssue.url);
-        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledTimes(
-          2,
-        );
+        expect(
+          mockIssueRepository.removeIssueFromProject,
+        ).toHaveBeenCalledTimes(2);
         expect(
           mockIssueRepository.removeIssueFromProjectCache,
         ).toHaveBeenCalledWith('project-1', prIssue1);

@@ -244,8 +244,11 @@ export class HandleScheduledEventUseCase {
       issues: fetchedIssues,
       project,
       cacheUsed,
-    }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(projectId);
+    }: {
+      issues: Issue[];
+      project: Project;
+      cacheUsed: boolean;
+    } = await this.issueRepository.getAllIssues(projectId);
     const pullRequestProjectItems = fetchedIssues.filter(
       (issue) => issue.isPr === true,
     );
