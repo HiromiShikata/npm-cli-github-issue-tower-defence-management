@@ -3077,21 +3077,59 @@ export class ApiV3CheerioRestIssueRepository
         start,
         start + RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE,
       );
-      let prUrlsByIssueUrl: Map<string, string[]>;
-      try {
-        prUrlsByIssueUrl =
-          await this.fetchRelatedOpenPrUrlsInOneQuery(batchReferences);
-      } catch (error) {
-        console.warn(
-          `ApiV3CheerioRestIssueRepository: batched related open pull request query failed, leaving ${batchReferences.length} issue(s) to per-issue resolution. error: ${error instanceof Error ? error.message : String(error)}`,
+      const prUrlsByIssueUrl =
+        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+          batchReferences,
         );
-        continue;
-      }
       for (const [issueUrl, prUrls] of prUrlsByIssueUrl) {
         resolved.set(issueUrl, prUrls);
       }
     }
     return resolved;
+  };
+
+  // Retries a batch whose single aliased GraphQL request failed by splitting
+  // it in half and retrying each half the same way, sequentially, so a batch
+  // containing one issue whose data makes GitHub's GraphQL API return a
+  // persistent server-side error (rather than a per-alias attributed error)
+  // does not cause every other issue in the batch to be silently dropped.
+  // Bisection stops at a single reference: when that single reference's own
+  // request still fails, the underlying error is logged by issue url and
+  // that one issue is left absent from the returned map.
+  private resolveRelatedOpenPrUrlsByBisectingFailedBatches = async (
+    references: {
+      issueUrl: string;
+      owner: string;
+      repo: string;
+      issueNumber: number;
+    }[],
+  ): Promise<Map<string, string[]>> => {
+    try {
+      return await this.fetchRelatedOpenPrUrlsInOneQuery(references);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (references.length === 1) {
+        console.warn(
+          `ApiV3CheerioRestIssueRepository: related open pull request query failed for issue ${references[0].issueUrl}, leaving it unresolved. error: ${errorMessage}`,
+        );
+        return new Map<string, string[]>();
+      }
+      const splitPoint = Math.ceil(references.length / 2);
+      const firstHalfResolved =
+        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+          references.slice(0, splitPoint),
+        );
+      const secondHalfResolved =
+        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+          references.slice(splitPoint),
+        );
+      const merged = new Map<string, string[]>(firstHalfResolved);
+      for (const [issueUrl, prUrls] of secondHalfResolved) {
+        merged.set(issueUrl, prUrls);
+      }
+      return merged;
+    }
   };
 
   private fetchRelatedOpenPrUrlsInOneQuery = async (
