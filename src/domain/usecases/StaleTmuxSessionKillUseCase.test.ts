@@ -132,12 +132,6 @@ describe('StaleTmuxSessionKillUseCase', () => {
     expect(mockIssueRepository.getAllOpened).toHaveBeenCalledWith(mockProject);
   });
 
-  // Table-driven coverage for CC-1 (kill when not excluded and idle),
-  // CC-2 (spare when not excluded but recently active), CC-3 (never kill
-  // either "In Tmux by human" or "In Tmux by agent", regardless of next
-  // action date/hour or idle time), and CC-4 (unmapped session stays
-  // idle-threshold gated). Row numbers below match the parametrized test
-  // case table in the task issue.
   const OTHER_STATUS_NAME = 'Awaiting Workspace';
 
   type KillDecisionRow = {
