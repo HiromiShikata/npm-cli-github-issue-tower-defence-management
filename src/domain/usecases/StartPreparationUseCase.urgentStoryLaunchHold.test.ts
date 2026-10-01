@@ -187,6 +187,8 @@ const expectedAwCall = [
     '/path/to/config.yml',
     '--branch',
     'i1',
+    '--dispatchStartedAt',
+    HOLD_START.toISOString(),
   ],
   {
     env: {
@@ -195,6 +197,11 @@ const expectedAwCall = [
     },
   },
 ];
+
+const dispatchStartedAtOf = (awArguments: string[]): string | null => {
+  const flagIndex = awArguments.indexOf('--dispatchStartedAt');
+  return flagIndex === -1 ? null : (awArguments[flagIndex + 1] ?? null);
+};
 
 type RunParams = Parameters<StartPreparationUseCase['run']>[0];
 
@@ -512,6 +519,16 @@ describe('StartPreparationUseCase.run urgent-story launch hold', () => {
     expect(harness.awStartedAtMilliseconds).toEqual([
       HOLD_START_MILLISECONDS + 20000,
     ]);
+    expect(
+      harness.localCommandRunner.runCommand.mock.calls.map(([, awArguments]) =>
+        dispatchStartedAtOf(awArguments),
+      ),
+    ).toEqual([HOLD_START.toISOString()]);
+    expect(
+      harness.localCommandRunner.runCommand.mock.calls.map(([, awArguments]) =>
+        dispatchStartedAtOf(awArguments),
+      ),
+    ).not.toEqual([new Date(HOLD_START_MILLISECONDS + 20000).toISOString()]);
     expect(
       harness.issueRepository.updateStatus.mock.calls.map(
         ([, , statusOptionId]) => statusOptionId,

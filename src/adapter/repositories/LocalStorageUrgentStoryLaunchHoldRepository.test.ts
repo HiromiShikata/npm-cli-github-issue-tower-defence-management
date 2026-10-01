@@ -306,14 +306,14 @@ describe('LocalStorageUrgentStoryLaunchHoldRepository', () => {
 
     expect(boardProjectsProjection(boardState)).toEqual([
       {
-        projectUrl: ALPHA_PROJECT_URL,
-        readmeMaximumPreparingIssuesCount: null,
-        issues: alphaCurrentIssues.map(boardIssueProjection),
-      },
-      {
         projectUrl: DELTA_PROJECT_URL,
         readmeMaximumPreparingIssuesCount: null,
         issues: deltaIssues.map(boardIssueProjection),
+      },
+      {
+        projectUrl: ALPHA_PROJECT_URL,
+        readmeMaximumPreparingIssuesCount: null,
+        issues: alphaCurrentIssues.map(boardIssueProjection),
       },
     ]);
   });

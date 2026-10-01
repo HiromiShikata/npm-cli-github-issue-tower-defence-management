@@ -231,8 +231,9 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
     consoleSpies.forEach((spy) => spy.mockRestore());
   });
 
-  it('moves the candidate to Preparation, reserves its token slot and then runs aw with the issue, agent, model, config path, branch and token environment', async () => {
+  it('moves the candidate to Preparation, reserves its token slot and then runs aw with the issue, agent, model, config path, branch, dispatch start time and token environment', async () => {
     const harness = harnessCreate();
+    const runStartedAtMilliseconds = Date.now();
 
     await harness.useCase.run({
       projectUrl: PROJECT_URL,
@@ -248,6 +249,7 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
+    const runFinishedAtMilliseconds = Date.now();
 
     expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
       [
@@ -260,6 +262,10 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
           '/path/to/config.yml',
           '--branch',
           'i1',
+          '--dispatchStartedAt',
+          expect.stringMatching(
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+          ),
         ],
         {
           env: {
@@ -269,6 +275,19 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
         },
       ],
     ]);
+    const dispatchStartedAtMilliseconds =
+      harness.localCommandRunner.runCommand.mock.calls.map(([, awArguments]) =>
+        new Date(
+          awArguments[awArguments.indexOf('--dispatchStartedAt') + 1],
+        ).getTime(),
+      );
+    expect(dispatchStartedAtMilliseconds).toHaveLength(1);
+    expect(dispatchStartedAtMilliseconds[0]).toBeGreaterThanOrEqual(
+      runStartedAtMilliseconds,
+    );
+    expect(dispatchStartedAtMilliseconds[0]).toBeLessThanOrEqual(
+      runFinishedAtMilliseconds,
+    );
     expect(
       harness.issueRepository.updateStatus.mock.calls.map((call) => call[2]),
     ).toEqual(['2']);

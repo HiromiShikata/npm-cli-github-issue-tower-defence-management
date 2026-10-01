@@ -805,7 +805,7 @@ describe('urgentStoryLaunchHoldDecide', () => {
     },
     {
       label:
-        'counts the urgent tasks of a project without a URL when there is no caller project',
+        'excludes the urgent tasks of a project without a URL when there is no caller project, because its URL equals the null caller project URL',
       input: decideInputCreate({
         configuredProjectUrl: UNMATCHED_PROJECT_URL,
         boardState: {
@@ -824,9 +824,53 @@ describe('urgentStoryLaunchHoldDecide', () => {
         callerProjectUrl: null,
         callerStory: null,
         freeSlotCount: 0,
+        waitingUrgentIssueUrls: [otherProjectIssueUrl(1)],
+      },
+    },
+    {
+      label:
+        'counts the urgent tasks of a project without a URL when the caller project has a URL',
+      input: decideInputCreate({
+        configuredProjectUrl: CALLER_PROJECT_URL,
+        boardState: {
+          projects: [
+            callerProject(),
+            boardProjectCreate(OTHER_PROJECT_URL, [
+              boardIssueCreate({ url: otherProjectIssueUrl(1) }),
+            ]),
+            boardProjectCreate(null, [
+              boardIssueCreate({ url: nullUrlProjectIssueUrl(1) }),
+            ]),
+          ],
+        },
+      }),
+      expectedDecision: holdWithRegularCaller([
+        otherProjectIssueUrl(1),
+        nullUrlProjectIssueUrl(1),
+      ]),
+    },
+    {
+      label:
+        'takes the first project without a URL as the caller project when no project URL is configured, ahead of the project containing the caller issue',
+      input: decideInputCreate({
+        configuredProjectUrl: null,
+        boardState: {
+          projects: [
+            boardProjectCreate(null, [
+              boardIssueCreate({ url: nullUrlProjectIssueUrl(1) }),
+            ]),
+            ...callerResolutionBoardProjects(CALLER_PROJECT_URL),
+          ],
+        },
+      }),
+      expectedDecision: {
+        kind: 'hold',
+        callerProjectUrl: null,
+        callerStory: null,
+        freeSlotCount: 0,
         waitingUrgentIssueUrls: [
+          callerProjectIssueUrl(1),
           otherProjectIssueUrl(1),
-          nullUrlProjectIssueUrl(1),
         ],
       },
     },
