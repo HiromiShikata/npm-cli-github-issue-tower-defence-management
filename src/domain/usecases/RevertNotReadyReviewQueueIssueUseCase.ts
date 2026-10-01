@@ -3,7 +3,11 @@ import {
   IssueRepository,
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  Sleep,
+  realSleep,
+} from '../services/commentCreateWithDedupRetry';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
@@ -66,6 +70,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       IssueCommentRepository,
       'getCommentsFromIssue' | 'createComment'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
     this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
@@ -433,17 +438,21 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     issue: Issue,
     commentBody: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (
-      isDuplicateWithinWindow(
-        commentBody,
-        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueCommentRepository.createComment(issue, commentBody);
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        return existing.map((c) => ({
+          text: c.content,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueCommentRepository.createComment(issue, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 }

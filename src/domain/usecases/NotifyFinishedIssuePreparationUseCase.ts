@@ -58,7 +58,11 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  Sleep,
+  realSleep,
+} from '../services/commentCreateWithDedupRetry';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -177,6 +181,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       'sendGetRequest'
     >,
     private readonly consoleTabsRepository?: ConsoleTabsRepository | null,
+    private readonly sleep: Sleep = realSleep,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
     this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
@@ -1323,17 +1328,21 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: Issue,
     body: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (
-      isDuplicateWithinWindow(
-        body,
-        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueCommentRepository.createComment(issue, body);
+    await commentCreateWithDedupRetry(
+      body,
+      async () => {
+        const existing =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        return existing.map((c) => ({
+          text: c.content,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueCommentRepository.createComment(issue, body);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 }
