@@ -34,8 +34,7 @@ export const findLastAgentReportPostedSince = <
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .find(
         (comment) =>
-          isTrustedAuthor(comment.author) &&
-          isAgentReportBody(comment.content),
+          isTrustedAuthor(comment.author) && isAgentReportBody(comment.content),
       ) ?? null
   );
 };
