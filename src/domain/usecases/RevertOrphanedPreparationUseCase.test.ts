@@ -951,7 +951,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with non-developer agent field to Awaiting Owner when no linked PRs exist', async () => {
+  it('should advance orphaned issue with non-developer agent field to Awaiting Workspace when no linked PRs exist and no trusted agent report requests owner confirmation', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -985,10 +985,10 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('skips orphaned issue with non-developer agent field when last trusted agent report has waitingForOwner true', async () => {
+  it('sets Awaiting Owner status without posting a comment when last trusted agent report has needOwnerConfirmationOrApproval true', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1009,7 +1009,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       {
         author: 'agent-bot',
         content:
-          'From: :robot: liaison (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+          'From: :robot: liaison (model)\n\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```\n',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -1023,8 +1023,217 @@ describe('RevertOrphanedPreparationUseCase', () => {
       allowedIssueAuthors: ['agent-bot'],
     });
 
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('keeps routing a non-developer agent issue to Awaiting Owner when its last trusted agent report has needOwnerConfirmationOrApproval true', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: [],
+      agent: 'chore',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: chore (model)\n\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```\n',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+      [mockProject, stuckIssue, '4'],
+    ]);
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('does not let an untrusted trailing comment override an earlier trusted report that requested owner confirmation', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: [],
+      agent: 'chore',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: chore (model)\n\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```\n',
+        createdAt: new Date('2024-01-02T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
+      },
+      {
+        author: 'untrusted-bot',
+        content: '```json\n{}\n```',
+        createdAt: new Date('2024-01-02T01:00:00Z'),
+        updatedAt: new Date('2024-01-02T01:00:00Z'),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+      [mockProject, stuckIssue, '4'],
+    ]);
+  });
+
+  it('keeps routing a non-developer agent issue to Awaiting Owner when it also carries a label in labelsNotRequiringPullRequest and its last trusted report is an empty completion', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['story'],
+      agent: 'chore',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content: 'From: :robot: chore (model)\n\n```json\n{}\n```',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      labelsNotRequiringPullRequest: ['story'],
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+      [mockProject, stuckIssue, '4'],
+    ]);
+  });
+
+  it('keeps routing a non-developer agent issue to Awaiting Owner when it also carries a non-e2e category label and its last trusted report is an empty completion', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['category:bug'],
+      agent: 'chore',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content: 'From: :robot: chore (model)\n\n```json\n{}\n```',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+      [mockProject, stuckIssue, '4'],
+    ]);
+  });
+
+  it('advances an orphaned issue with a developer agent field to Awaiting Owner when its single linked PR passes every check', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['llm-agent:developer'],
+      agent: 'developer',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: '```json\n{"nextStep": null}\n```',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      createPassingPr(),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      developerAgentNames: ['developer'],
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+      [mockProject, stuckIssue, '4'],
+    ]);
   });
 
   it('should reject orphaned issue with non-developer agent field to Awaiting Workspace when PR is conflicted', async () => {
@@ -2463,7 +2672,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       ).toContain('https://github.com/user/repo/pull/99');
     });
 
-    it('should advance to Awaiting Owner when chore agent has exactly one linked PR where all CI passes', async () => {
+    it('should advance to Awaiting Workspace when chore agent has exactly one linked PR where all CI passes and no trusted agent report requests owner confirmation', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2500,10 +2709,10 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('should advance to Awaiting Owner when chore agent has no linked PRs', async () => {
+    it('should advance to Awaiting Workspace when chore agent has no linked PRs and no trusted agent report requests owner confirmation', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2538,7 +2747,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
     it('should not trigger the new path when developer agent has a failing CI PR', async () => {
@@ -2586,7 +2795,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('should not trigger the new path when agent is pr-reviewer and PR has failing CI', async () => {
+    it('should not reassign to developer, and advances to Awaiting Workspace with no trusted owner-confirmation report, when agent is pr-reviewer and PR has failing CI but developerAgentNames is not configured', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2627,7 +2836,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
     it('should reassign to developer when pr-reviewer agent has a single failing CI PR and developerAgentNames is set', async () => {
@@ -2736,7 +2945,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('should not trigger the new path when chore agent has two linked PRs both with failing CI', async () => {
+    it('should not reassign to developer, and advances to Awaiting Workspace with no trusted owner-confirmation report, when chore agent has two linked PRs both with failing CI', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2782,7 +2991,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
     it('should reassign to the configured developerAgentNames when chore agent has a failing CI PR', async () => {
@@ -3365,7 +3574,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
     });
 
-    it('should advance orphaned non-developer agent issue to Done when Awaiting Owner status is absent from the project', async () => {
+    it('should advance orphaned non-developer agent issue to Awaiting Workspace, bypassing the Done fallback, when Awaiting Owner status is absent and no trusted report requests owner confirmation', async () => {
       const projectWithoutQualityCheck = createProjectWithoutAwaitingOwner();
       mockProjectRepository.getProject.mockResolvedValue(
         projectWithoutQualityCheck,
@@ -3410,7 +3619,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
   });
 
