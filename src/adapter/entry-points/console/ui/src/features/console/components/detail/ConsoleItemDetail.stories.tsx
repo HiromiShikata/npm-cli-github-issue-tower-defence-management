@@ -6,11 +6,24 @@ import {
   consoleCommitsFixture,
   consoleListItemsFixture,
   consoleMermaidBodyFixture,
+  consoleReferenceStatesFixture,
   consoleRelatedPullRequestsFixture,
   consoleStatusOptionsFixture,
 } from '../../testing/fixtures';
+import { ConsoleReferenceLink } from '../content/ConsoleReferenceLink';
 import { ConsoleOperationMenu } from '../operations/ConsoleOperationMenu';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
+
+const renderDependedIssueUrlReferenceLink = (
+  href: string,
+  fallbackText: string,
+) => (
+  <ConsoleReferenceLink
+    href={href}
+    fallbackText={fallbackText}
+    state={consoleReferenceStatesFixture[href] ?? null}
+  />
+);
 
 const noopOperationHandlers: ConsoleOperationHandlers = {
   onReview: () => {},
@@ -582,5 +595,236 @@ export const IssueWithCommentsDescriptionCollapsed: Story = {
     commitsError: null,
     pullRequestStatus: null,
     relatedPullRequests: [],
+  },
+};
+
+const dependedIssueUrlResolvedOpen =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845';
+const dependedIssueUrlResolvedClosed =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692';
+const dependedIssueUrlResolvedMergedPr =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851';
+const dependedIssueUrlUnresolvedGitHubReference =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/860';
+const dependedIssueUrlNotGitHub = 'https://example.com/not-a-github-reference';
+
+export const IssueWithNoDependedIssueUrls: Story = {
+  args: {
+    item: { ...consoleListItemsFixture[3], dependedIssueUrls: [] },
+    storyName: 'regular / workflow improvement',
+    storyColorEnum: 'GRAY',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    },
+    body: '## Issue body\n\nThis item has zero depended issue URLs, so no Depended Issue URL row renders.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+    renderReferenceLink: renderDependedIssueUrlReferenceLink,
+  },
+};
+
+export const IssueWithOneResolvedDependedIssueUrl: Story = {
+  args: {
+    item: {
+      ...consoleListItemsFixture[3],
+      dependedIssueUrls: [dependedIssueUrlResolvedOpen],
+    },
+    storyName: 'regular / workflow improvement',
+    storyColorEnum: 'GRAY',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    },
+    body: '## Issue body\n\nThis item depends on a resolved issue, so the row shows its title.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+    renderReferenceLink: renderDependedIssueUrlReferenceLink,
+  },
+};
+
+export const IssueWithOneUnresolvedDependedIssueUrlParsingAsGitHubReference: Story =
+  {
+    args: {
+      item: {
+        ...consoleListItemsFixture[3],
+        dependedIssueUrls: [dependedIssueUrlUnresolvedGitHubReference],
+      },
+      storyName: 'regular / workflow improvement',
+      storyColorEnum: 'GRAY',
+      overlayStatus: null,
+      state: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+      },
+      body: '## Issue body\n\nThis item depends on an unresolved issue URL that still parses as a GitHub reference, so the row falls back to the plain `#number` label.',
+      bodyIsLoading: false,
+      bodyError: null,
+      stateError: null,
+      pullRequestStatusError: null,
+      relatedPullRequestsError: null,
+      comments: [],
+      commentsAreLoading: false,
+      commentsError: null,
+      files: [],
+      filesAreLoading: false,
+      filesError: null,
+      commits: [],
+      commitsAreLoading: false,
+      commitsError: null,
+      pullRequestStatus: null,
+      relatedPullRequests: [],
+      renderReferenceLink: renderDependedIssueUrlReferenceLink,
+    },
+  };
+
+export const IssueWithOneUnresolvedDependedIssueUrlNotGitHub: Story = {
+  args: {
+    item: {
+      ...consoleListItemsFixture[3],
+      dependedIssueUrls: [dependedIssueUrlNotGitHub],
+    },
+    storyName: 'regular / workflow improvement',
+    storyColorEnum: 'GRAY',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    },
+    body: '## Issue body\n\nThis item depends on a URL that does not parse as a GitHub reference, so the row falls back to the raw URL.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+    renderReferenceLink: renderDependedIssueUrlReferenceLink,
+  },
+};
+
+export const IssueWithMultipleDependedIssueUrls: Story = {
+  args: {
+    item: {
+      ...consoleListItemsFixture[3],
+      dependedIssueUrls: [
+        dependedIssueUrlResolvedOpen,
+        dependedIssueUrlResolvedClosed,
+        dependedIssueUrlResolvedMergedPr,
+      ],
+    },
+    storyName: 'regular / workflow improvement',
+    storyColorEnum: 'GRAY',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    },
+    body: '## Issue body\n\nThis item depends on three separate issues and pull requests, each rendered as its own link.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+    renderReferenceLink: renderDependedIssueUrlReferenceLink,
+  },
+};
+
+export const IssueWithDuplicateDependedIssueUrls: Story = {
+  args: {
+    item: {
+      ...consoleListItemsFixture[3],
+      dependedIssueUrls: [
+        dependedIssueUrlResolvedOpen,
+        dependedIssueUrlResolvedOpen,
+      ],
+    },
+    storyName: 'regular / workflow improvement',
+    storyColorEnum: 'GRAY',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    },
+    body: '## Issue body\n\nThis item lists the same depended issue URL twice; each duplicate renders as its own separate link.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+    renderReferenceLink: renderDependedIssueUrlReferenceLink,
   },
 };
