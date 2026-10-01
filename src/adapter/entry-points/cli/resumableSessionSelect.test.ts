@@ -784,6 +784,7 @@ describe('resumableSessionSelect', () => {
       archiveRoot: layout.archiveRoot,
     });
 
+    const sourceTranscriptFileStats = fs.statSync(sourceTranscriptFilePath);
     const copiedTranscriptFileStats = fs.statSync(
       path.join(layout.sessionDir, `${secondByNameSessionId}.jsonl`),
     );
@@ -797,8 +798,15 @@ describe('resumableSessionSelect', () => {
       atimeMs: copiedTranscriptFileStats.atimeMs,
       mtimeMs: copiedTranscriptFileStats.mtimeMs,
     }).toEqual({
+      mode: sourceTranscriptFileStats.mode & 0o777,
+      atimeMs: sourceTranscriptFileStats.atimeMs,
+      mtimeMs: sourceTranscriptFileStats.mtimeMs,
+    });
+    expect({
+      mode: sourceTranscriptFileStats.mode & 0o777,
+      mtimeMs: sourceTranscriptFileStats.mtimeMs,
+    }).toEqual({
       mode: 0o640,
-      atimeMs: sourceAccessTimeSeconds * 1000,
       mtimeMs: olderModificationTimeSeconds * 1000,
     });
   });
