@@ -134,9 +134,7 @@ describe('OctokitProjectItemRepository', () => {
       });
       const repository = new OctokitProjectItemRepository(client);
 
-      const statusName = await repository.getStatusFieldOptionName(
-        'PVTI_xxx',
-      );
+      const statusName = await repository.getStatusFieldOptionName('PVTI_xxx');
 
       expect(statusName).toBe('In Progress');
     });
@@ -148,9 +146,7 @@ describe('OctokitProjectItemRepository', () => {
       });
       const repository = new OctokitProjectItemRepository(client);
 
-      const statusName = await repository.getStatusFieldOptionName(
-        'PVTI_xxx',
-      );
+      const statusName = await repository.getStatusFieldOptionName('PVTI_xxx');
 
       expect(statusName).toBe('');
     });

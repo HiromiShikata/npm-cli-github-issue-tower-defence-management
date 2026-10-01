@@ -26,9 +26,7 @@ describe('add-project-board-item CLI', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).not.toContain('ERR_MODULE_NOT_FOUND');
-    expect(result.stderr).toContain(
-      'GH_TOKEN environment variable is not set',
-    );
+    expect(result.stderr).toContain('GH_TOKEN environment variable is not set');
   });
 
   test('exits 1 and reports PROJECT_V2_ID missing when only GH_TOKEN is set', () => {
