@@ -3,7 +3,7 @@ import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import {
   StaleTmuxSessionKillUseCase,
-  DEFAULT_EXCLUDED_STATUS,
+  DEFAULT_EXCLUDED_STATUS_NAMES,
   DEFAULT_IDLE_THRESHOLD_SECONDS,
 } from '../../../domain/usecases/StaleTmuxSessionKillUseCase';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
@@ -25,7 +25,7 @@ export const cleanStaleTmuxSessions = async (
   );
   await useCase.run({
     project,
-    excludedStatus: DEFAULT_EXCLUDED_STATUS,
+    excludedStatusNames: DEFAULT_EXCLUDED_STATUS_NAMES,
     idleThresholdSeconds: DEFAULT_IDLE_THRESHOLD_SECONDS,
     now,
   });

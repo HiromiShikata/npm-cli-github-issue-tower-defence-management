@@ -1,12 +1,18 @@
 import { Issue } from '../entities/Issue';
 import { LiveTmuxSession } from '../entities/LiveTmuxSession';
 import { Project } from '../entities/Project';
-import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
+import {
+  IN_TMUX_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
+} from '../entities/WorkflowStatus';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase';
 
-export const DEFAULT_EXCLUDED_STATUS = IN_TMUX_STATUS_NAME;
+export const DEFAULT_EXCLUDED_STATUS_NAMES: readonly string[] = [
+  IN_TMUX_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
+];
 export const DEFAULT_IDLE_THRESHOLD_SECONDS = 24 * 60 * 60;
 
 type KillCandidate = {
@@ -25,7 +31,7 @@ export class StaleTmuxSessionKillUseCase {
 
   run = async (params: {
     project: Project;
-    excludedStatus: string;
+    excludedStatusNames: readonly string[];
     idleThresholdSeconds: number;
     now: Date;
   }): Promise<void> => {
@@ -44,7 +50,7 @@ export class StaleTmuxSessionKillUseCase {
         session,
         issueBySessionName.get(session.sessionName) ?? null,
         nowEpochSeconds,
-        params.excludedStatus,
+        params.excludedStatusNames,
         params.idleThresholdSeconds,
       );
       if (reason !== null) {
@@ -73,18 +79,19 @@ export class StaleTmuxSessionKillUseCase {
     session: LiveTmuxSession,
     issue: Issue | null,
     nowEpochSeconds: number,
-    excludedStatus: string,
+    excludedStatusNames: readonly string[],
     idleThresholdSeconds: number,
   ): string | null => {
     if (issue !== null) {
-      if (issue.status !== excludedStatus) {
-        return `mapped to open issue ${issue.url} with status "${issue.status ?? 'null'}" which is not the excluded status "${excludedStatus}"`;
+      const isExcludedStatus =
+        issue.status !== null && excludedStatusNames.includes(issue.status);
+      if (isExcludedStatus) {
+        return null;
       }
-      if (issue.nextActionDate !== null) {
-        return `mapped to open issue ${issue.url} which has a next action date set`;
-      }
-      if (issue.nextActionHour !== null) {
-        return `mapped to open issue ${issue.url} which has a next action hour set`;
+
+      const idleSeconds = nowEpochSeconds - session.activityEpochSeconds;
+      if (idleSeconds >= idleThresholdSeconds) {
+        return `mapped to open issue ${issue.url} with status "${issue.status ?? 'null'}" which is not an excluded status and has been idle for ${idleSeconds} seconds (threshold ${idleThresholdSeconds} seconds)`;
       }
       return null;
     }
