@@ -16,6 +16,7 @@ jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
 import {
   GitHubIssueCommentRepository,
   GitHubCommentFetchHttpError,
+  GitHubCommentCreateHttpError,
 } from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 
@@ -1019,6 +1020,55 @@ describe('GitHubIssueCommentRepository', () => {
       await expect(
         repository.createComment(issue, 'hello world'),
       ).rejects.toThrow('404');
+    });
+
+    it('throws a GitHubCommentCreateHttpError with statusCode 404 and the exact unchanged message on a 404 response', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response('Not Found', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      await expect(
+        repository.createComment(issue, 'hello world'),
+      ).rejects.toBeInstanceOf(GitHubCommentCreateHttpError);
+      await expect(
+        repository.createComment(issue, 'hello world'),
+      ).rejects.toMatchObject({
+        name: 'GitHubCommentCreateHttpError',
+        statusCode: 404,
+        message: 'Failed to create comment via GitHub REST API: 404 Not Found',
+      });
+    });
+
+    it('throws a GitHubCommentCreateHttpError with statusCode 500 and the exact unchanged message on a 500 response', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response('Internal Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/43',
+      );
+
+      await expect(
+        repository.createComment(issue, 'hello world'),
+      ).rejects.toBeInstanceOf(GitHubCommentCreateHttpError);
+      await expect(
+        repository.createComment(issue, 'hello world'),
+      ).rejects.toMatchObject({
+        name: 'GitHubCommentCreateHttpError',
+        statusCode: 500,
+        message:
+          'Failed to create comment via GitHub REST API: 500 Internal Server Error',
+      });
     });
 
     it('issues exactly one POST per call without a preflight GET', async () => {

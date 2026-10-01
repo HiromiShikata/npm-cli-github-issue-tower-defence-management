@@ -28,7 +28,11 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  Sleep,
+  realSleep,
+} from '../services/commentCreateWithDedupRetry';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -71,6 +75,7 @@ export class RevertOrphanedPreparationUseCase {
       'getCommentsFromIssue' | 'createComment'
     >,
     readonly localCommandRunner: LocalCommandRunner,
+    readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (params: {
@@ -381,18 +386,22 @@ export class RevertOrphanedPreparationUseCase {
     issue: Issue,
     body: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (
-      isDuplicateWithinWindow(
-        body,
-        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueCommentRepository.createComment(issue, body);
+    await commentCreateWithDedupRetry(
+      body,
+      async () => {
+        const existing =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        return existing.map((c) => ({
+          text: c.content,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueCommentRepository.createComment(issue, body);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 
   private isStillInStatus = async (

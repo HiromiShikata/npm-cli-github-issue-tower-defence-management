@@ -32,6 +32,16 @@ export class GitHubCommentFetchHttpError extends Error {
   }
 }
 
+export class GitHubCommentCreateHttpError extends Error {
+  readonly name = 'GitHubCommentCreateHttpError';
+  readonly statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 type RestCommentPayload = {
   id: number;
   user: { login: string } | null;
@@ -332,7 +342,8 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
           new Date(nowMs + backoffMs).toISOString(),
         );
       }
-      throw new Error(
+      throw new GitHubCommentCreateHttpError(
+        response.status,
         `Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`,
       );
     }
