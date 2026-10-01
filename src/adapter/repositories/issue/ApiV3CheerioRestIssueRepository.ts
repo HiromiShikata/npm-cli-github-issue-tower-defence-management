@@ -3088,14 +3088,6 @@ export class ApiV3CheerioRestIssueRepository
     return resolved;
   };
 
-  // Retries a batch whose single aliased GraphQL request failed by splitting
-  // it in half and retrying each half the same way, sequentially, so a batch
-  // containing one issue whose data makes GitHub's GraphQL API return a
-  // persistent server-side error (rather than a per-alias attributed error)
-  // does not cause every other issue in the batch to be silently dropped.
-  // Bisection stops at a single reference: when that single reference's own
-  // request still fails, the underlying error is logged by issue url and
-  // that one issue is left absent from the returned map.
   private resolveRelatedOpenPrUrlsByBisectingFailedBatches = async (
     references: {
       issueUrl: string;
