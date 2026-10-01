@@ -1,3 +1,10 @@
+## [2.155.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.6...v2.155.7) (2026-10-01)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** tolerate NOT_FOUND node errors in fetchProjectItemsByIds ([#2992](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2992)) ([210f538](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/210f538a0bb9f983581cf3e760b276a7d8a33929)), closes [#2973](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2973)
+
 ## [2.155.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.5...v2.155.6) (2026-10-01)
 
 
