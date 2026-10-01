@@ -39,6 +39,7 @@ module.exports = {
         '/bin/',
         '/dist/',
         '/src/adapter/entry-points/console/ui/',
+        '/scripts/typescript/',
       ],
     },
     {
