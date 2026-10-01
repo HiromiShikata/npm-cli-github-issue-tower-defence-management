@@ -1,3 +1,10 @@
+## [2.155.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.1...v2.155.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* **dashboard:** Dashboard /tdpm.txt falls back to frozen static snapshot when any one project's data file is missing ([#3035](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3035)) ([b2c68ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2c68ba628efe34c9460f557d667bcdc0903f912))
+
 ## [2.155.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.0...v2.155.1) (2026-10-01)
 
 
