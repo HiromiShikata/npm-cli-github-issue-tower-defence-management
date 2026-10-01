@@ -189,6 +189,18 @@ body {
   background: #21262d;
 }
 
+.console-tab-pjname-button[data-disabled='true'],
+.console-tab-pjname-option[data-disabled='true'] {
+  color: #8b949e;
+}
+
+.console-tab-pjname-disabled-label {
+  margin-left: 4px;
+  font-size: 0.625rem;
+  font-weight: 400;
+  color: #8b949e;
+}
+
 .console-tab-project-link {
   color: #8b949e;
   text-decoration: none;

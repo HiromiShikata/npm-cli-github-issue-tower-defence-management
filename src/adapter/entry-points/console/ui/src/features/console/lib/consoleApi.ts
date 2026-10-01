@@ -611,6 +611,7 @@ export type ProjectListResponse = {
   projectUrls: Record<string, string> | null;
   fleetTaskCreateUrl: string | null;
   nameWithOwnerByPjcode: Record<string, string> | null;
+  disabledPjcodes: string[];
 };
 
 const parseStringRecord = (value: unknown): Record<string, string> | null => {
@@ -640,6 +641,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       projectUrls: null,
       fleetTaskCreateUrl: null,
       nameWithOwnerByPjcode: null,
+      disabledPjcodes: [],
     };
   }
   const record = payload as Record<string, unknown>;
@@ -654,11 +656,17 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       ? record.fleetTaskCreateUrl
       : null;
   const nameWithOwnerByPjcode = parseStringRecord(record.nameWithOwnerByPjcode);
+  const disabledPjcodes = Array.isArray(record.disabledPjcodes)
+    ? record.disabledPjcodes.filter(
+        (entry): entry is string => typeof entry === 'string',
+      )
+    : [];
   return {
     pjcodes,
     projectUrls,
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
+    disabledPjcodes,
   };
 };
 

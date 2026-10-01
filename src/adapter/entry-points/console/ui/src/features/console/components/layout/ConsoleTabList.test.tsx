@@ -17,6 +17,7 @@ const NOW_30S_LATER = Date.parse('2026-06-19T08:42:41.000Z');
 const baseProps = {
   pjcode: 'acme',
   pjcodes: ['acme', 'beta', 'gamma', 'delta', 'epsilon'],
+  disabledPjcodes: [] as string[],
   generatedAt: GENERATED_AT,
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
@@ -467,5 +468,148 @@ describe('ConsoleTabList', () => {
     );
     fireEvent.click(getByRole('button', { name: /retry failed/i }));
     expect(onAirplaneModeRetryFailed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ConsoleTabList disabledPjcodes styling (issue #2966)', () => {
+  const getDropdownOption = (
+    baseElement: HTMLElement,
+    code: string,
+  ): HTMLElement => {
+    const options = Array.from(
+      baseElement.querySelectorAll('.console-tab-pjname-option'),
+    ) as HTMLElement[];
+    const match = options.find((option) =>
+      (option.textContent ?? '').startsWith(code),
+    );
+    if (match === undefined) {
+      throw new Error(`dropdown option for ${code} not found`);
+    }
+    return match;
+  };
+
+  it.each([
+    {
+      name: 'table row 1: no project disabled, acme selected',
+      pjcodes: ['acme', 'beta'],
+      disabledPjcodes: [] as string[],
+      selectedPjcode: 'acme',
+      expectDisabledOptions: [] as string[],
+      expectSelectorDisabled: false,
+    },
+    {
+      name: 'table row 2: sandbox disabled, acme selected',
+      pjcodes: ['acme', 'beta', 'sandbox'],
+      disabledPjcodes: ['sandbox'],
+      selectedPjcode: 'acme',
+      expectDisabledOptions: ['sandbox'],
+      expectSelectorDisabled: false,
+    },
+    {
+      name: 'table row 3: sandbox disabled, sandbox selected',
+      pjcodes: ['acme', 'beta', 'sandbox'],
+      disabledPjcodes: ['sandbox'],
+      selectedPjcode: 'sandbox',
+      expectDisabledOptions: ['sandbox'],
+      expectSelectorDisabled: true,
+    },
+    {
+      name: 'table row 4: acme and sandbox disabled, beta selected',
+      pjcodes: ['acme', 'beta', 'sandbox'],
+      disabledPjcodes: ['acme', 'sandbox'],
+      selectedPjcode: 'beta',
+      expectDisabledOptions: ['acme', 'sandbox'],
+      expectSelectorDisabled: false,
+    },
+    {
+      name: 'table row 5: no document on disk for either project, acme selected',
+      pjcodes: ['acme', 'beta'],
+      disabledPjcodes: [] as string[],
+      selectedPjcode: 'acme',
+      expectDisabledOptions: [] as string[],
+      expectSelectorDisabled: false,
+    },
+  ])(
+    '$name',
+    ({
+      pjcodes,
+      disabledPjcodes,
+      selectedPjcode,
+      expectDisabledOptions,
+      expectSelectorDisabled,
+    }) => {
+      const { getByRole, baseElement } = render(
+        <ConsoleTabList
+          {...baseProps}
+          activeTab="prs"
+          counts={counts}
+          pjcode={selectedPjcode}
+          pjcodes={pjcodes}
+          disabledPjcodes={disabledPjcodes}
+        />,
+      );
+
+      const selectorButton = getByRole('button', {
+        name: new RegExp(selectedPjcode, 'i'),
+      });
+      if (expectSelectorDisabled) {
+        expect(selectorButton).toHaveAttribute('data-disabled', 'true');
+        expect(selectorButton.textContent ?? '').toMatch(/disabled/i);
+      } else {
+        expect(selectorButton).not.toHaveAttribute('data-disabled');
+        expect(selectorButton.textContent ?? '').not.toMatch(/disabled/i);
+      }
+
+      fireEvent.click(selectorButton);
+
+      for (const code of pjcodes) {
+        const option = getDropdownOption(baseElement, code);
+        if (expectDisabledOptions.includes(code)) {
+          expect(option).toHaveAttribute('data-disabled', 'true');
+          expect(option.textContent ?? '').toMatch(/disabled/i);
+        } else {
+          expect(option).not.toHaveAttribute('data-disabled');
+          expect(option.textContent ?? '').not.toMatch(/disabled/i);
+        }
+      }
+    },
+  );
+
+  it('still calls onSelectProject and closes the dropdown when a disabled dropdown option is clicked (completion criterion 4)', () => {
+    const onSelectProject = jest.fn();
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        pjcode="acme"
+        pjcodes={['acme', 'beta', 'sandbox']}
+        disabledPjcodes={['sandbox']}
+        onSelectProject={onSelectProject}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    const sandboxOption = getDropdownOption(baseElement, 'sandbox');
+    fireEvent.click(sandboxOption);
+    expect(onSelectProject).toHaveBeenCalledWith('sandbox');
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+  });
+
+  it('does not show a disabled label anywhere when disabledPjcodes is empty (completion criterion 5)', () => {
+    const { baseElement, getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        pjcode="acme"
+        pjcodes={['acme', 'beta']}
+        disabledPjcodes={[]}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(baseElement.textContent ?? '').not.toMatch(/disabled/i);
+    expect(baseElement.querySelector('[data-disabled]')).toBeNull();
   });
 });

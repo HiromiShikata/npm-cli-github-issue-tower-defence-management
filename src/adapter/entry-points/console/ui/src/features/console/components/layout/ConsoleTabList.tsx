@@ -13,6 +13,7 @@ export type ConsoleTabBarProps = {
   counts: Record<ConsoleTabName, number>;
   pjcode: string | null;
   pjcodes: string[];
+  disabledPjcodes: string[];
   generatedAt: string | null;
   fromCache: boolean;
   tabHref: (tab: ConsoleTabName) => string;
@@ -37,6 +38,7 @@ export const ConsoleTabList = ({
   counts,
   pjcode,
   pjcodes,
+  disabledPjcodes,
   generatedAt,
   fromCache,
   tabHref,
@@ -103,9 +105,17 @@ export const ConsoleTabList = ({
               className="console-tab-pjname-button"
               aria-expanded={isDropdownOpen}
               aria-haspopup="menu"
+              data-disabled={
+                disabledPjcodes.includes(pjcode) ? 'true' : undefined
+              }
               onClick={handleButtonClick}
             >
               {pjcode}
+              {disabledPjcodes.includes(pjcode) && (
+                <span className="console-tab-pjname-disabled-label">
+                  disabled
+                </span>
+              )}
               <span className="console-tab-pjname-arrow" aria-hidden="true">
                 ▾
               </span>
@@ -131,12 +141,20 @@ export const ConsoleTabList = ({
                       role="menuitem"
                       className="console-tab-pjname-option"
                       data-active={code === pjcode ? 'true' : undefined}
+                      data-disabled={
+                        disabledPjcodes.includes(code) ? 'true' : undefined
+                      }
                       onClick={() => {
                         onSelectProject(code);
                         setIsDropdownOpen(false);
                       }}
                     >
                       {code}
+                      {disabledPjcodes.includes(code) && (
+                        <span className="console-tab-pjname-disabled-label">
+                          disabled
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>,

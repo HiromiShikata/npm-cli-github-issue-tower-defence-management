@@ -259,6 +259,68 @@ describe('mergeConfigs consoleGithubTokenFileDir', () => {
   });
 });
 
+describe('loadConfigFile consoleProjectConfigDirectory', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-project-config-dir-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses consoleProjectConfigDirectory from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\nconsoleProjectConfigDirectory: '/home/user/.config/tdpm/project-configs'\n",
+    );
+    expect(loadConfigFile(filePath).consoleProjectConfigDirectory).toBe(
+      '/home/user/.config/tdpm/project-configs',
+    );
+  });
+
+  it('yields undefined consoleProjectConfigDirectory when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(
+      loadConfigFile(filePath).consoleProjectConfigDirectory,
+    ).toBeUndefined();
+  });
+});
+
+describe('mergeConfigs consoleProjectConfigDirectory', () => {
+  it('prefers the cli override consoleProjectConfigDirectory over the config file value', () => {
+    const merged = mergeConfigs(
+      { consoleProjectConfigDirectory: '/config-dir' },
+      { consoleProjectConfigDirectory: '/cli-dir' },
+      {},
+    );
+    expect(merged.consoleProjectConfigDirectory).toBe('/cli-dir');
+  });
+
+  it('falls back to the config file consoleProjectConfigDirectory when no cli override is present', () => {
+    const merged = mergeConfigs(
+      { consoleProjectConfigDirectory: '/config-dir' },
+      {},
+      {},
+    );
+    expect(merged.consoleProjectConfigDirectory).toBe('/config-dir');
+  });
+
+  it('yields undefined consoleProjectConfigDirectory when neither source provides it', () => {
+    expect(
+      mergeConfigs({}, {}, {}).consoleProjectConfigDirectory,
+    ).toBeUndefined();
+  });
+});
+
 describe('loadConfigFile consoleGithubTokens', () => {
   let dir: string;
 

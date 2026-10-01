@@ -113,6 +113,47 @@ describe('useConsoleProjectList', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('starts with an empty disabledPjcodes array', () => {
+    global.fetch = jest.fn(
+      () => new Promise(() => undefined),
+    ) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    expect(result.current.disabledPjcodes).toEqual([]);
+  });
+
+  it('populates disabledPjcodes when the server returns disabled project codes', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme', 'beta', 'sandbox'],
+        disabledPjcodes: ['sandbox'],
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.disabledPjcodes).toEqual(['sandbox']);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('defaults disabledPjcodes to an empty array when the server omits it (completion criterion 5)', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ pjcodes: ['acme', 'beta'] }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.disabledPjcodes).toEqual([]);
+  });
+
   it('skips state update when component unmounts before fetch resolves', async () => {
     let resolveResponse!: (value: unknown) => void;
     const pendingFetch = new Promise<unknown>((resolve) => {

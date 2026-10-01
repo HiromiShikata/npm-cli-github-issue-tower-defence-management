@@ -763,6 +763,48 @@ describe('fetchProjectList', () => {
   });
 });
 
+describe('fetchProjectList disabledPjcodes', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('parses a disabledPjcodes array of strings from the response', async () => {
+    mockFetchOnce({
+      pjcodes: ['acme', 'sandbox'],
+      disabledPjcodes: ['sandbox'],
+    });
+    const result = await fetchProjectList();
+    expect(result.disabledPjcodes).toEqual(['sandbox']);
+  });
+
+  it('filters out non-string entries from disabledPjcodes', async () => {
+    mockFetchOnce({
+      pjcodes: ['acme'],
+      disabledPjcodes: ['acme', 42, null],
+    });
+    const result = await fetchProjectList();
+    expect(result.disabledPjcodes).toEqual(['acme']);
+  });
+
+  it('defaults disabledPjcodes to an empty array when the field is absent', async () => {
+    mockFetchOnce({ pjcodes: ['acme'] });
+    const result = await fetchProjectList();
+    expect(result.disabledPjcodes).toEqual([]);
+  });
+
+  it('defaults disabledPjcodes to an empty array when disabledPjcodes is not an array', async () => {
+    mockFetchOnce({ pjcodes: ['acme'], disabledPjcodes: 'sandbox' });
+    const result = await fetchProjectList();
+    expect(result.disabledPjcodes).toEqual([]);
+  });
+
+  it('defaults disabledPjcodes to an empty array on the fallback response when the payload is not an object', async () => {
+    mockFetchOnce(null);
+    const result = await fetchProjectList();
+    expect(result.disabledPjcodes).toEqual([]);
+  });
+});
+
 describe('postConsoleIssueRename', () => {
   it('posts issueUrl and newTitle to the renameissue endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
