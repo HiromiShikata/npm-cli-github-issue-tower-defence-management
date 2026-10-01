@@ -105,7 +105,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       },
     },
     {
-      name: 'row 5: stays with no switch while the remaining-count-triggering write is not confirmed succeeded (confirmed failed)',
+      name: 'row 5: identical to baseInput — this function has no write-confirmation gate for the remaining-count-zero trigger (a confirmed-failed write), that gate is enforced only by the caller never invoking this function while writeState is failed; see the sibling assertion after this table and "does not navigate while the write is confirmed failed, even when the remaining count is zero" in useConsoleAutomaticProjectNavigation.test.ts for the real proof',
       input: { ...baseInput, checkTimerElapsed: false },
       expected: {
         targetPjcode: null,
@@ -137,7 +137,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       },
     },
     {
-      name: 'row 8: stays with no switch when the remaining-count-triggering action was undone before any write was ever sent',
+      name: 'row 8: identical to baseInput — this function has no write-confirmation gate for the remaining-count-zero trigger (an action undone before any write was sent), that gate is enforced only by the caller never invoking this function while a write is unconfirmed; see the sibling assertion after this table and the undo-while-remaining-count-zero test in ConsolePage.test.tsx for the real proof',
       input: { ...baseInput, checkTimerElapsed: false },
       expected: {
         targetPjcode: null,
@@ -181,6 +181,16 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
 
   it.each(parameterizedIssueTableCases)('$name', ({ input, expected }) => {
     expect(consoleAutomaticProjectNavigationDecide(input)).toEqual(expected);
+  });
+
+  it('rows 5 and 8 (detail): calling this function directly with remainingCountIsZero true and checkTimerElapsed false switches regardless of why the write was never confirmed succeeded, proving the write-confirmation gate for the remaining-count-zero trigger lives entirely in the caller and not in this function', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      checkTimerElapsed: false,
+      timerElapsed: false,
+      remainingCountIsZero: true,
+    });
+    expect(decision.targetPjcode).toBe('beta');
   });
 
   it('row 6 (detail): the remaining-count branch bookkeeping is never advanced when the timer branch already decided', () => {

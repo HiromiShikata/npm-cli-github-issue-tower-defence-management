@@ -635,6 +635,27 @@ describe('useConsoleAutomaticProjectNavigation', () => {
     expect(navigatePush).not.toHaveBeenCalled();
   });
 
+  it('does not navigate while the write is confirmed failed, even when the remaining count is zero', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'failed', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
   it('navigates once the write becomes succeeded with a new attempt while the timer has elapsed', () => {
     renderHook(() =>
       useConsoleAutomaticProjectNavigation(
@@ -710,5 +731,26 @@ describe('useConsoleAutomaticProjectNavigation', () => {
 
     rerender({ writeState: { status: 'succeeded', attempt: 3 } });
     expect(navigatePush).toHaveBeenCalledTimes(2);
+  });
+
+  it('navigates via the remaining-count-zero path when the write becomes succeeded and the timer has not elapsed', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'succeeded', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
   });
 });

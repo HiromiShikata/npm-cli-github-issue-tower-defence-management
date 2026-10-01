@@ -2341,6 +2341,76 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('does not navigate automatically when the action is undone within the grace period, even though completing it would have brought the remaining count to zero', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
+    );
+    const fetchMock = jest.fn(
+      async (url: string, init?: { method?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'todo-by-human'
+                ? { ...listPayload(tab), items: [] }
+                : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          };
+        }
+        void init;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      const { navigatePush } = jest.requireMock<{
+        navigatePush: jest.Mock;
+      }>('../lib/navigation');
+      navigatePush.mockClear();
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      fireEvent.click(getByText('Undo'));
+
+      act(() => {
+        jest.advanceTimersByTime(6000);
+      });
+
+      const postCalls = fetchMock.mock.calls.filter(
+        (call) => call[1]?.method === 'POST',
+      );
+      expect(postCalls.length).toBe(0);
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('navigates exactly once when the timer-elapsed condition and the remaining-count-zero condition both hold at the same confirmed write', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
