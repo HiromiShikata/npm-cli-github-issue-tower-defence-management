@@ -259,6 +259,146 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    describe('removes pull-request items from the project before running downstream use cases (issue 3009)', () => {
+      const removalSweepInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('calls removeIssueFromProject and removeIssueFromProjectCache once per pull-request item, and not for ordinary issues (case a)', async () => {
+        const mockProject: Project = { ...mock<Project>(), id: 'project-1' };
+        const prIssue1 = mock<Issue>();
+        prIssue1.isPr = true;
+        prIssue1.url = 'https://github.com/test-org/test-repo/pull/10';
+        const normalIssue = mock<Issue>();
+        normalIssue.isPr = false;
+        normalIssue.url = 'https://github.com/test-org/test-repo/issues/20';
+        const prIssue2 = mock<Issue>();
+        prIssue2.isPr = true;
+        prIssue2.url = 'https://github.com/test-org/test-repo/pull/30';
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [prIssue1, normalIssue, prIssue2],
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run(removalSweepInput);
+
+        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledWith(
+          mockProject,
+          prIssue1.url,
+        );
+        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledWith(
+          mockProject,
+          prIssue2.url,
+        );
+        expect(
+          mockIssueRepository.removeIssueFromProject,
+        ).not.toHaveBeenCalledWith(mockProject, normalIssue.url);
+        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledTimes(
+          2,
+        );
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith('project-1', prIssue1);
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith('project-1', prIssue2);
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).not.toHaveBeenCalledWith('project-1', normalIssue);
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledTimes(2);
+      });
+
+      it('passes only non-pull-request issues to downstream use cases such as agentDesignationLabelAdoptUseCase (case b)', async () => {
+        const mockProject: Project = { ...mock<Project>(), id: 'project-1' };
+        const prIssue = mock<Issue>();
+        prIssue.isPr = true;
+        prIssue.url = 'https://github.com/test-org/test-repo/pull/10';
+        const normalIssue = mock<Issue>();
+        normalIssue.isPr = false;
+        normalIssue.url = 'https://github.com/test-org/test-repo/issues/20';
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [prIssue, normalIssue],
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run(removalSweepInput);
+
+        expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issues: [normalIssue],
+          }),
+        );
+      });
+
+      it('does not call removeIssueFromProject or removeIssueFromProjectCache when no pull-request items are present (case c)', async () => {
+        const mockProject: Project = { ...mock<Project>(), id: 'project-1' };
+        const normalIssue = mock<Issue>();
+        normalIssue.isPr = false;
+        normalIssue.url = 'https://github.com/test-org/test-repo/issues/20';
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [normalIssue],
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run(removalSweepInput);
+
+        expect(
+          mockIssueRepository.removeIssueFromProject,
+        ).not.toHaveBeenCalled();
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).not.toHaveBeenCalled();
+      });
+
+      it('still resolves run() and still attempts removal of the other pull-request items when removeIssueFromProject rejects for one of them (case d)', async () => {
+        const mockProject: Project = { ...mock<Project>(), id: 'project-1' };
+        const failingPrIssue = mock<Issue>();
+        failingPrIssue.isPr = true;
+        failingPrIssue.url = 'https://github.com/test-org/test-repo/pull/10';
+        const succeedingPrIssue = mock<Issue>();
+        succeedingPrIssue.isPr = true;
+        succeedingPrIssue.url = 'https://github.com/test-org/test-repo/pull/30';
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [failingPrIssue, succeedingPrIssue],
+          project: mockProject,
+          cacheUsed: false,
+        });
+        mockIssueRepository.removeIssueFromProject.mockImplementation(
+          async (_project, issueUrl) => {
+            if (issueUrl === failingPrIssue.url) {
+              throw new Error('removeIssueFromProject exploded');
+            }
+          },
+        );
+
+        await useCase.run(removalSweepInput);
+
+        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledWith(
+          mockProject,
+          failingPrIssue.url,
+        );
+        expect(mockIssueRepository.removeIssueFromProject).toHaveBeenCalledWith(
+          mockProject,
+          succeedingPrIssue.url,
+        );
+      });
+    });
+
     it('should pass defaultAgentName from startPreparation to agentDesignationLabelAdoptUseCase', async () => {
       const mockProject = mock<Project>();
       const mockIssues = [mock<Issue>()];

@@ -2626,6 +2626,163 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('setIssueAgentField', () => {
+    const agentFieldOptions: FieldOption[] = [];
+    const projectWithAgentField: Project = {
+      ...mock<Project>(),
+      id: 'test-project-id',
+      agent: {
+        name: 'Agent',
+        fieldId: 'agent-field-id',
+        options: agentFieldOptions,
+      },
+    };
+    const projectWithNoAgentField: Project = {
+      ...mock<Project>(),
+      id: 'test-project-id',
+      agent: null,
+    };
+    const issueUrl = 'https://github.com/owner/repo/issues/50';
+    const prUrl = 'https://github.com/owner/repo/pull/100';
+    const agentOptionId = 'agent-option-id';
+
+    const makeProjectItem = (id: string, url: string): ProjectItem => ({
+      ...mock<ProjectItem>(),
+      id,
+      url,
+      customFields: [],
+    });
+
+    it('should return immediately and call no repository method when project.agent is null (case 1)', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+
+      await repository.setIssueAgentField(
+        issueUrl,
+        projectWithNoAgentField,
+        agentOptionId,
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should create the project item and set the agent field when the target URL is an issue with no existing project item (case 2)', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        null,
+      );
+      graphqlProjectItemRepository.addIssueToProject.mockResolvedValue(
+        'new-project-item-id',
+      );
+
+      await repository.setIssueAgentField(
+        issueUrl,
+        projectWithAgentField,
+        agentOptionId,
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(issueUrl, 'test-project-id');
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).toHaveBeenCalledWith('test-project-id', issueUrl);
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'agent-field-id',
+        'new-project-item-id',
+        { singleSelectOptionId: agentOptionId },
+      );
+    });
+
+    it('should set the agent field on the existing project item without adding it when the target URL is an issue that already has a project item (case 3)', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        makeProjectItem('existing-project-item-id', issueUrl),
+      );
+
+      await repository.setIssueAgentField(
+        issueUrl,
+        projectWithAgentField,
+        agentOptionId,
+      );
+
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'agent-field-id',
+        'existing-project-item-id',
+        { singleSelectOptionId: agentOptionId },
+      );
+    });
+
+    it('should skip entirely, calling neither addIssueToProject nor updateProjectField, when the target URL is a pull request with no existing project item (case 4)', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        null,
+      );
+
+      await repository.setIssueAgentField(
+        prUrl,
+        projectWithAgentField,
+        agentOptionId,
+      );
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(prUrl, 'test-project-id');
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should set the agent field on the existing project item without adding it when the target URL is a pull request that already has a project item (case 5)', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        makeProjectItem('existing-pr-project-item-id', prUrl),
+      );
+
+      await repository.setIssueAgentField(
+        prUrl,
+        projectWithAgentField,
+        agentOptionId,
+      );
+
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'agent-field-id',
+        'existing-pr-project-item-id',
+        { singleSelectOptionId: agentOptionId },
+      );
+    });
+  });
+
   describe('getPullRequestChangedFilePaths', () => {
     afterEach(() => {
       jest.restoreAllMocks();
