@@ -11,8 +11,6 @@ import {
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
-import { isAgentReportBody } from './isAgentReportBody';
-import { extractIterationsExhausted } from './extractIterationsExhausted';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class ClearDependedIssueURLUseCase {
@@ -188,12 +186,7 @@ export class ClearDependedIssueURLUseCase {
             dependedIssueUrl,
           ),
       );
-    const iterationsExhaustedPreservesNotFound =
-      rawNotFoundDependedIssueUrls.length > 0 &&
-      (await this.lastAgentReportHasIterationsExhausted(issue.url));
-    const notFoundDependedIssueUrls = iterationsExhaustedPreservesNotFound
-      ? []
-      : rawNotFoundDependedIssueUrls;
+    const notFoundDependedIssueUrls = rawNotFoundDependedIssueUrls;
     const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
       (dependedIssueUrl) =>
         input.issues.some(
@@ -230,9 +223,6 @@ export class ClearDependedIssueURLUseCase {
           ...openDependedIssueUrls,
           ...allowedExternalDependedIssueUrls,
           ...liveConfirmedOpenSameRepoDependedIssueUrls,
-          ...(iterationsExhaustedPreservesNotFound
-            ? rawNotFoundDependedIssueUrls
-            : []),
         ]
       : issue.dependedIssueUrls.filter(
           (dependedIssueUrl) =>
@@ -319,19 +309,6 @@ export class ClearDependedIssueURLUseCase {
     return sameRepoDependedIssueUrls.filter(
       (_dependedIssueUrl, index) => liveConfirmedOpenFlags[index],
     );
-  };
-
-  private lastAgentReportHasIterationsExhausted = async (
-    issueUrl: string,
-  ): Promise<boolean> => {
-    const comments =
-      await this.issueRepository.getIssueOrPullRequestComments(issueUrl);
-    const lastAgentReport = [...comments]
-      .reverse()
-      .find((comment) => isAgentReportBody(comment.body));
-    return lastAgentReport
-      ? extractIterationsExhausted(lastAgentReport.body)
-      : false;
   };
 
   private createCommentWithDedup = async (
