@@ -537,6 +537,7 @@ export class RevertOrphanedPreparationUseCase {
     ) {
       const prsToCheck = await this.issueRepository.findRelatedOpenPRs(
         issue.url,
+        { bypassCache: true },
       );
       if (prsToCheck.some((pr) => pr.isConflicted)) {
         return { outcome: 'reject', comments, latestReopenedAt };
@@ -554,7 +555,10 @@ export class RevertOrphanedPreparationUseCase {
       return { outcome: 'advanceToQualityCheck', comments, latestReopenedAt };
     }
 
-    const prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
+    const prsToCheck = await this.issueRepository.findRelatedOpenPRs(
+      issue.url,
+      { bypassCache: true },
+    );
 
     if (prsToCheck.length !== 1) {
       return { outcome: 'reject', comments, latestReopenedAt };
