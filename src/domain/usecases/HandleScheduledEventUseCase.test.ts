@@ -2149,6 +2149,32 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockIssueRepository.getAllIssues).toHaveBeenCalledTimes(1);
       });
 
+      it('threads cacheUsed: true from a cache-fallback fetch cycle into the depended issue URL clear, so a cache-derived cycle is treated conservatively like any other', async () => {
+        scheduleSlowSweep();
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues,
+          project,
+          cacheUsed: true,
+        });
+        const callOrder = recordCallOrder();
+
+        await useCase.run({
+          ...baseInput,
+          allowedDependencyRepoNameWithOwner: 'some-org/some-repo',
+        });
+
+        expect(callOrder).toEqual(['run', 'startPreparation']);
+        const runCalls = mockClearDependedIssueURLUseCase.run.mock.calls;
+        expect(runCalls).toHaveLength(1);
+        expect(runCalls[0][0].project).toBe(project);
+        expect(runCalls[0][0].issues).toBe(issues);
+        expect(runCalls[0][0].cacheUsed).toBe(true);
+        expect(runCalls[0][0].allowedExternalRepoNameWithOwner).toBe(
+          'some-org/some-repo',
+        );
+        expect(mockIssueRepository.getAllIssues).toHaveBeenCalledTimes(1);
+      });
+
       it('removes the resolved depended issue URLs of issues with a closed depended issue when start preparation is not configured and the slow sweep is skipped', async () => {
         await useCase.runEachUseCases(
           { ...baseInput, startPreparation: null },
