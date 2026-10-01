@@ -21,6 +21,7 @@ import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/
 import { PullRequestProjectItemRemoveUseCase } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import { WorkerSessionEndClassifyUseCase } from '../../../domain/usecases/WorkerSessionEndClassifyUseCase';
 import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
@@ -30,7 +31,10 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
-import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import {
+  GitHubRateLimitError,
+  realSleep,
+} from '../../repositories/issue/githubRateLimitRetry';
 import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
@@ -44,6 +48,8 @@ import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHu
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
+import { FileSystemWorkerSessionFailureStreakRepository } from '../../repositories/FileSystemWorkerSessionFailureStreakRepository';
+import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSystemWorkerSessionLogRepository';
 import * as os from 'os';
 import {
   createConsoleGithubTokenResolver,
@@ -54,6 +60,7 @@ import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotato
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import { unresumableSessionArchive } from './unresumableSessionArchive';
 import { checkIssueSilentDispatchAllowed } from './checkIssueSilentDispatchAllowed';
+import { notifyFinishedIssuePreparationRunWithRetry } from './notifyFinishedIssuePreparationRetry';
 import {
   checkStoryGate,
   setIssueStoryIfUnset,
@@ -175,6 +182,59 @@ type NotifyFinishedOptions = {
   promptTooLongOnResume?: boolean;
   moveToFailedPreparation?: boolean;
   dispatchStartedAt?: string;
+  sessionLogFilePath?: string;
+  sessionWasResumed?: boolean;
+};
+
+type NotifyFinishedSessionEndFlags = {
+  sessionErrorLine: string | null;
+  rateLimitRejected: boolean | null;
+  promptTooLongOnResume: boolean | null;
+  moveToFailedPreparation: boolean | null;
+};
+
+const notifyFinishedSessionEndFlagsResolve = async (
+  options: NotifyFinishedOptions,
+): Promise<NotifyFinishedSessionEndFlags> => {
+  const explicitSessionEndFlags: NotifyFinishedSessionEndFlags = {
+    sessionErrorLine: options.sessionErrorLine ?? null,
+    rateLimitRejected: options.rateLimitRejected ?? null,
+    promptTooLongOnResume: options.promptTooLongOnResume ?? null,
+    moveToFailedPreparation: options.moveToFailedPreparation ?? null,
+  };
+  if (options.sessionLogFilePath === undefined) {
+    return explicitSessionEndFlags;
+  }
+  const workerSessionEndClassification =
+    await new WorkerSessionEndClassifyUseCase(
+      new FileSystemWorkerSessionLogRepository(),
+      new FileSystemWorkerSessionFailureStreakRepository(),
+    ).run({
+      issueUrl: options.issueUrl,
+      sessionLogFilePath: options.sessionLogFilePath,
+      sessionWasResumed: options.sessionWasResumed === true,
+      missingAgentNameReported:
+        options.missingAgentName !== undefined &&
+        options.missingAgentName !== '',
+    });
+  for (const diagnosticLine of workerSessionEndClassification.diagnosticLines) {
+    console.log(diagnosticLine);
+  }
+  return {
+    sessionErrorLine:
+      workerSessionEndClassification.sessionErrorLine ??
+      explicitSessionEndFlags.sessionErrorLine,
+    rateLimitRejected: workerSessionEndClassification.rateLimitRejected
+      ? true
+      : explicitSessionEndFlags.rateLimitRejected,
+    promptTooLongOnResume: workerSessionEndClassification.promptTooLongOnResume
+      ? true
+      : explicitSessionEndFlags.promptTooLongOnResume,
+    moveToFailedPreparation:
+      workerSessionEndClassification.moveToFailedPreparation
+        ? true
+        : explicitSessionEndFlags.moveToFailedPreparation,
+  };
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -770,7 +830,17 @@ program
     '--dispatchStartedAt <timestamp>',
     "ISO-8601 UTC timestamp (for example 2026-01-31T09:00:00Z) at which the item entered Preparation for the session that just ended; an agent report posted before it is not counted as that session's report, so a session that posts nothing is counted toward the consecutive-no-report threshold",
   )
+  .option(
+    '--sessionLogFilePath <path>',
+    'Path to the log of the worker session that just ended; it is classified once before the notification, and a usage-limit or rejected rate-limit ending, a prompt too long on resume, or a third consecutive ending with the same non-completed terminal_reason sets --rateLimitRejected, --promptTooLongOnResume, or --moveToFailedPreparation with its own session error line',
+  )
+  .option(
+    '--sessionWasResumed',
+    'The worker session that just ended resumed a previous conversation; with --sessionLogFilePath, a blocking_limit ending before any tool call then sets --promptTooLongOnResume',
+  )
   .action(async (options: NotifyFinishedOptions) => {
+    const sessionEndFlags = await notifyFinishedSessionEndFlagsResolve(options);
+
     const token = process.env.GH_TOKEN;
     if (!token) {
       console.error('GH_TOKEN environment variable is required');
@@ -857,62 +927,6 @@ program
       config.workflowBlockerResolvedWebhookUrl ?? null;
 
     const projectName = config.projectName ?? 'default';
-    const localStorageRepository = new LocalStorageRepository();
-    const cachePath = projectCacheDirectory(projectName);
-    const localStorageCacheRepository = new LocalStorageCacheRepository(
-      localStorageRepository,
-      cachePath,
-    );
-    const githubRepositoryParams = buildGithubRepositoryParams(
-      localStorageRepository,
-      token,
-    );
-    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-      config.githubAppPrivateKeyPaths ?? [],
-    );
-    const projectRepository = new GraphqlProjectRepository(
-      ...githubRepositoryParams,
-      localStorageCacheRepository,
-      readGhTokens,
-    );
-    const apiV3IssueRepository = new ApiV3IssueRepository(
-      ...githubRepositoryParams,
-    );
-    const restIssueRepository = new RestIssueRepository(
-      ...githubRepositoryParams,
-      readGhTokens,
-    );
-    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-      ...githubRepositoryParams,
-    );
-    const issueRepository = new ApiV3CheerioRestIssueRepository(
-      apiV3IssueRepository,
-      restIssueRepository,
-      graphqlProjectItemRepository,
-      localStorageCacheRepository,
-      projectRepository,
-      new SystemDateRepository(),
-      ...githubRepositoryParams,
-    );
-    const issueCommentRepository = new GitHubIssueCommentRepository(
-      token,
-      localStorageCacheRepository,
-    );
-    const webhookRepository = new FetchWebhookRepository();
-
-    const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
-    const consoleTabsRepository =
-      consoleDataOutputDir !== null
-        ? new FileSystemConsoleTabsRepository(consoleDataOutputDir, projectName)
-        : null;
-
-    const useCase = new NotifyFinishedIssuePreparationUseCase(
-      projectRepository,
-      issueRepository,
-      issueCommentRepository,
-      webhookRepository,
-      consoleTabsRepository,
-    );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
     const allowedIssueAuthors = rawAllowedIssueAuthors
@@ -934,42 +948,112 @@ program
       return process.exit(1);
     }
 
-    try {
-      await useCase.run({
-        projectUrl,
-        issueUrl: options.issueUrl,
-        thresholdForAutoReject,
-        thresholdForDispatchLoop,
-        workflowBlockerResolvedWebhookUrl,
-        allowedIssueAuthors,
-        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-        labelsNotRequiringPullRequest:
-          config.labelsNotRequiringPullRequest ?? null,
-        changeTargetPathAliases: config.changeTargetPathAliases ?? null,
-        agents: config.agents ?? null,
-        missingAgentName: options.missingAgentName ?? null,
-        sessionErrorLine: options.sessionErrorLine ?? null,
-        manager: config.manager ?? null,
-        developerAgentNames: config.developerAgentNames ?? null,
-        defaultAgentName: config.defaultAgentName ?? null,
-        deferPreparation: options.deferPreparation ?? null,
-        rateLimitRejected: options.rateLimitRejected ?? null,
-        promptTooLongOnResume: options.promptTooLongOnResume ?? null,
-        moveToFailedPreparation: options.moveToFailedPreparation ?? null,
-        workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
-        tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
-        projectName: config.projectName ?? null,
-        dispatchStartedAt,
-      });
-    } catch (e) {
-      if (e instanceof GitHubRateLimitError) {
-        console.warn(
-          `notifyFinishedIssuePreparation rate-limited, will retry next cycle: ${e.message}`,
+    await notifyFinishedIssuePreparationRunWithRetry(
+      async () => {
+        const localStorageRepository = new LocalStorageRepository();
+        const cachePath = projectCacheDirectory(projectName);
+        const localStorageCacheRepository = new LocalStorageCacheRepository(
+          localStorageRepository,
+          cachePath,
         );
-        return;
-      }
-      throw e;
-    }
+        const githubRepositoryParams = buildGithubRepositoryParams(
+          localStorageRepository,
+          token,
+        );
+        const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+          config.githubAppPrivateKeyPaths ?? [],
+        );
+        const projectRepository = new GraphqlProjectRepository(
+          ...githubRepositoryParams,
+          localStorageCacheRepository,
+          readGhTokens,
+        );
+        const apiV3IssueRepository = new ApiV3IssueRepository(
+          ...githubRepositoryParams,
+        );
+        const restIssueRepository = new RestIssueRepository(
+          ...githubRepositoryParams,
+          readGhTokens,
+        );
+        const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+          ...githubRepositoryParams,
+        );
+        const issueRepository = new ApiV3CheerioRestIssueRepository(
+          apiV3IssueRepository,
+          restIssueRepository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+          projectRepository,
+          new SystemDateRepository(),
+          ...githubRepositoryParams,
+        );
+        const issueCommentRepository = new GitHubIssueCommentRepository(
+          token,
+          localStorageCacheRepository,
+        );
+        const webhookRepository = new FetchWebhookRepository();
+
+        const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
+        const consoleTabsRepository =
+          consoleDataOutputDir !== null
+            ? new FileSystemConsoleTabsRepository(
+                consoleDataOutputDir,
+                projectName,
+              )
+            : null;
+
+        const useCase = new NotifyFinishedIssuePreparationUseCase(
+          projectRepository,
+          issueRepository,
+          issueCommentRepository,
+          webhookRepository,
+          consoleTabsRepository,
+        );
+
+        try {
+          await useCase.run({
+            projectUrl,
+            issueUrl: options.issueUrl,
+            thresholdForAutoReject,
+            thresholdForDispatchLoop,
+            workflowBlockerResolvedWebhookUrl,
+            allowedIssueAuthors,
+            labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+            labelsNotRequiringPullRequest:
+              config.labelsNotRequiringPullRequest ?? null,
+            changeTargetPathAliases: config.changeTargetPathAliases ?? null,
+            agents: config.agents ?? null,
+            missingAgentName: options.missingAgentName ?? null,
+            sessionErrorLine: sessionEndFlags.sessionErrorLine,
+            manager: config.manager ?? null,
+            developerAgentNames: config.developerAgentNames ?? null,
+            defaultAgentName: config.defaultAgentName ?? null,
+            deferPreparation: options.deferPreparation ?? null,
+            rateLimitRejected: sessionEndFlags.rateLimitRejected,
+            promptTooLongOnResume: sessionEndFlags.promptTooLongOnResume,
+            moveToFailedPreparation: sessionEndFlags.moveToFailedPreparation,
+            workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
+            tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
+            projectName: config.projectName ?? null,
+            dispatchStartedAt,
+          });
+        } catch (e) {
+          if (e instanceof GitHubRateLimitError) {
+            console.warn(
+              `notifyFinishedIssuePreparation rate-limited, will retry next cycle: ${e.message}`,
+            );
+            return;
+          }
+          throw e;
+        }
+      },
+      {
+        sleep: realSleep,
+        writeLine: (line) => console.log(line),
+        writeAttemptFailure: (error) =>
+          console.error(sanitizeErrorForLogging(error)),
+      },
+    );
   });
 
 program
