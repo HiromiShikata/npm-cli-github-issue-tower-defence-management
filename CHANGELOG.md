@@ -1,3 +1,10 @@
+## [2.154.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.7...v2.154.8) (2026-10-01)
+
+
+### Bug Fixes
+
+* **stale-tmux-session-cleaner:** stale tmux session cleanup must not kill a live session that is recently active or has an attended status ([#2954](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2954)) ([cf51d2c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf51d2ceede416f538840c2aac2dd3b34c3bc4d2))
+
 ## [2.154.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.6...v2.154.7) (2026-09-30)
 
 
