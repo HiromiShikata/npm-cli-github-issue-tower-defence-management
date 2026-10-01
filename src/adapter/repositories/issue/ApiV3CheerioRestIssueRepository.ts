@@ -2883,6 +2883,7 @@ export class ApiV3CheerioRestIssueRepository
 
   findRelatedOpenPRs = async (
     issueUrl: string,
+    options?: { bypassCache?: boolean },
   ): Promise<RelatedPullRequest[]> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issueUrl);
     if (isPr) {
@@ -2896,6 +2897,7 @@ export class ApiV3CheerioRestIssueRepository
     const cachedRaw =
       await this.localStorageCacheRepository.getSingle(cacheKey);
     if (
+      !options?.bypassCache &&
       isCachedRelatedOpenPrs(cachedRaw) &&
       nowMs - cachedRaw.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS
     ) {

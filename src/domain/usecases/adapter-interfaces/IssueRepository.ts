@@ -174,7 +174,10 @@ export interface IssueRepository {
   searchIssues: (query: string) => Promise<SearchedIssue[]>;
   get: (issueUrl: string, project: Project) => Promise<Issue | null>;
   update: (issue: Issue, project: Project) => Promise<void>;
-  findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
+  findRelatedOpenPRs: (
+    issueUrl: string,
+    options?: { bypassCache?: boolean },
+  ) => Promise<RelatedPullRequest[]>;
   findRelatedOpenPrUrls: (
     issueUrls: string[],
   ) => Promise<Map<string, string[]>>;
