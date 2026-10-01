@@ -1741,4 +1741,110 @@ describe('WorkerSessionEndClassifyUseCase', () => {
       },
     );
   });
+
+  describe('failing streak repository', () => {
+    const workerSessionFailureStreakRepositoryMock = (
+      storedStreak: WorkerSessionFailureStreak | null,
+    ): {
+      findByIssueUrl: jest.Mock<
+        Promise<WorkerSessionFailureStreak | null>,
+        [string]
+      >;
+      save: jest.Mock<Promise<void>, [string, WorkerSessionFailureStreak]>;
+      deleteByIssueUrl: jest.Mock<Promise<void>, [string]>;
+    } => ({
+      findByIssueUrl: jest
+        .fn<Promise<WorkerSessionFailureStreak | null>, [string]>()
+        .mockResolvedValue(storedStreak),
+      save: jest
+        .fn<Promise<void>, [string, WorkerSessionFailureStreak]>()
+        .mockResolvedValue(undefined),
+      deleteByIssueUrl: jest
+        .fn<Promise<void>, [string]>()
+        .mockResolvedValue(undefined),
+    });
+
+    const classifyWithStreakRepository = async (
+      logLines: string[],
+      workerSessionFailureStreakRepository: WorkerSessionFailureStreakRepository,
+    ): Promise<WorkerSessionEndClassification> =>
+      new WorkerSessionEndClassifyUseCase(
+        new InMemoryWorkerSessionLogRepository(
+          new Map([[sessionLogFilePath, logLines]]),
+        ),
+        workerSessionFailureStreakRepository,
+      ).run({
+        issueUrl,
+        sessionLogFilePath,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+
+    it('reports the unreadable streak, counts the api_error ending from one and does not move to Failed Preparation when findByIssueUrl rejects', async () => {
+      const workerSessionFailureStreakRepository =
+        workerSessionFailureStreakRepositoryMock(null);
+      workerSessionFailureStreakRepository.findByIssueUrl.mockRejectedValue(
+        new Error('EACCES: permission denied'),
+      );
+
+      const classification = await classifyWithStreakRepository(
+        [overloadedEndingLine],
+        workerSessionFailureStreakRepository,
+      );
+
+      expect(classification.diagnosticLines).toContain(
+        `worker-session-failure-streak-unreadable: ${issueUrl}: EACCES: permission denied`,
+      );
+      expect(workerSessionFailureStreakRepository.save).toHaveBeenCalledWith(
+        issueUrl,
+        { terminalReason: 'api_error', consecutiveFailureCount: 1 },
+      );
+      expect(classification.moveToFailedPreparation).toBe(false);
+    });
+
+    it('reports the unwritable streak and still moves the third consecutive api_error ending to Failed Preparation when save rejects', async () => {
+      const workerSessionFailureStreakRepository =
+        workerSessionFailureStreakRepositoryMock({
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 2,
+        });
+      workerSessionFailureStreakRepository.save.mockRejectedValue(
+        new Error('ENOSPC: no space left on device'),
+      );
+
+      const classification = await classifyWithStreakRepository(
+        [overloadedEndingLine],
+        workerSessionFailureStreakRepository,
+      );
+
+      expect(classification.moveToFailedPreparation).toBe(true);
+      expect(classification.sessionErrorLine).toBe(
+        failedPreparationSessionErrorLine('api_error', 3),
+      );
+      expect(classification.diagnosticLines).toContain(
+        `worker-session-failure-streak-unwritable: ${issueUrl}: ENOSPC: no space left on device`,
+      );
+    });
+
+    it('reports the undeletable streak in place of the reset line for a completed ending when deleteByIssueUrl rejects', async () => {
+      const workerSessionFailureStreakRepository =
+        workerSessionFailureStreakRepositoryMock({
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 2,
+        });
+      workerSessionFailureStreakRepository.deleteByIssueUrl.mockRejectedValue(
+        new Error('EACCES: permission denied'),
+      );
+
+      const classification = await classifyWithStreakRepository(
+        [assistantToolUseLine, completedEndingLine],
+        workerSessionFailureStreakRepository,
+      );
+
+      expect(classification.diagnosticLines).toContain(
+        `worker-session-failure-streak-undeletable: ${issueUrl}: EACCES: permission denied`,
+      );
+      expect(classification.diagnosticLines).not.toContain(streakResetLine);
+    });
+  });
 });

@@ -4070,6 +4070,76 @@ mysteryKey: 'value'
           consoleWarnSpy.mockRestore();
         }
       });
+
+      it('prints the unwritable-streak line, notifies once and does not exit with code 1 when a regular file stands at the streak directory', async () => {
+        jest.useFakeTimers();
+        const workerSessionFailureStreakDirectoryPath = path.dirname(
+          workerSessionFailureStreakFilePath(),
+        );
+        fs.mkdirSync(path.dirname(workerSessionFailureStreakDirectoryPath), {
+          recursive: true,
+        });
+        fs.writeFileSync(workerSessionFailureStreakDirectoryPath, '');
+        const sessionLogFilePath = writeWorkerSessionLog([
+          overloadedEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+            handleFatalError,
+          );
+
+          const unwritableLinePrefix = `worker-session-failure-streak-unwritable: ${workerSessionIssueUrl}: `;
+          expect(
+            printedConsoleLogLines().filter((line) =>
+              line.startsWith(unwritableLinePrefix),
+            ),
+          ).not.toHaveLength(0);
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalledWith(1);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it('prints the unreadable-streak line and notifies once when a directory stands at the streak file path of the issue', async () => {
+        jest.useFakeTimers();
+        fs.mkdirSync(workerSessionFailureStreakFilePath(), { recursive: true });
+        const sessionLogFilePath = writeWorkerSessionLog([
+          overloadedEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+            handleFatalError,
+          );
+
+          const unreadableLinePrefix = `worker-session-failure-streak-unreadable: ${workerSessionIssueUrl}: `;
+          expect(
+            printedConsoleLogLines().filter((line) =>
+              line.startsWith(unreadableLinePrefix),
+            ),
+          ).not.toHaveLength(0);
+          expect(mockRun).toHaveBeenCalledTimes(1);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
     });
   });
 
