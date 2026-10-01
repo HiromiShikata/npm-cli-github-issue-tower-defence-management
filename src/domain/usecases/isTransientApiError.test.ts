@@ -26,6 +26,21 @@ describe('isTransientApiError', () => {
       name: 'an API-prefixed status code not covered by the rate limit check',
       error: new Error('Failed to write to Internal Reporting API: 500'),
     },
+    {
+      name: 'a ky NetworkError raised after retries are exhausted',
+      error: Object.assign(
+        new Error(
+          'Request failed due to a network error: GET https://api.github.com/users/HiromiShikata/projectsV2/48/fields?per_page=100',
+        ),
+        { name: 'NetworkError' },
+      ),
+    },
+    {
+      name: 'a network-error message whose Error name was not set to NetworkError',
+      error: new Error(
+        'Request failed due to a network error: GET https://api.github.com/users/HiromiShikata/projectsV2/48/fields?per_page=100',
+      ),
+    },
   ];
 
   it.each(transientCases)(

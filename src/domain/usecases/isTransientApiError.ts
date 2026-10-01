@@ -13,6 +13,8 @@ export const isTransientApiError = (error: unknown): boolean => {
     error.name === 'TimeoutError' ||
     /request timed out/i.test(msg) ||
     /does not belong to the field/i.test(msg) ||
-    /^Something went wrong while executing your query on /i.test(msg)
+    /^Something went wrong while executing your query on /i.test(msg) ||
+    error.name === 'NetworkError' ||
+    /^request failed due to a network error/i.test(msg)
   );
 };

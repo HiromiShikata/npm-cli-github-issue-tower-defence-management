@@ -2016,6 +2016,63 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'project fetch failed',
       );
     });
+
+    it('falls back to cache.project when getProject fails with a transient network error during a full fetch with cache present', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [],
+      });
+      projectRepository.getProject.mockRejectedValue(
+        Object.assign(
+          new Error(
+            'Request failed due to a network error: GET https://api.github.com/users/HiromiShikata/projectsV2/48/fields?per_page=100',
+          ),
+          { name: 'NetworkError' },
+        ),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(result.cacheUsed).toBe(true);
+      expect(result.project).toBe(cachedProject);
+    });
+
+    it('re-throws the error when getProject fails with a non-transient error during a full fetch with cache present', async () => {
+      const {
+        repository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [],
+      });
+      projectRepository.getProject.mockRejectedValue(
+        new Error('project fetch failed'),
+      );
+
+      await expect(repository.getAllIssues('cached-project')).rejects.toThrow(
+        'project fetch failed',
+      );
+    });
   });
 
   describe('getLastIssuesFetchedAt', () => {
