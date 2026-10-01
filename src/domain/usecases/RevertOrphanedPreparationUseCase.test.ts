@@ -1741,7 +1741,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ]);
   });
 
-  it('should advance closed orphaned issue to Awaiting Owner without checking comments or PRs', async () => {
+  it('should advance closed orphaned issue to Awaiting Owner without checking PRs', async () => {
     const closedIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1764,9 +1764,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
       thresholdForAutoReject: 3,
     });
 
-    expect(
-      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
-    ).toHaveLength(0);
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
