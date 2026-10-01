@@ -208,4 +208,28 @@ describe('findLastAgentReportPostedSince', () => {
       )?.content,
     ).toBe(report('impl'));
   });
+
+  it('returns the most recently edited survivor when creation order and edit-recency order diverge', () => {
+    const postedSince = postedAt('2026-09-27T18:50:00Z');
+    const mostRecentlyEditedReport = {
+      author: 'bot',
+      content: report('impl'),
+      createdAt: postedAt('2026-09-27T18:40:00Z'),
+      updatedAt: postedAt('2026-09-27T19:10:00Z'),
+    };
+    const createdLaterButEditedEarlierReport = {
+      author: 'bot',
+      content: report('pr-reviewer'),
+      createdAt: postedAt('2026-09-27T18:55:00Z'),
+      updatedAt: postedAt('2026-09-27T18:56:00Z'),
+    };
+
+    expect(
+      findLastAgentReportPostedSince(
+        [mostRecentlyEditedReport, createdLaterButEditedEarlierReport],
+        trustEveryAuthor,
+        postedSince,
+      )?.content,
+    ).toBe(report('impl'));
+  });
 });
