@@ -8,6 +8,7 @@ const sessionName =
 const olderModificationTimeSeconds = 1790000000;
 const newerModificationTimeSeconds = 1790000600;
 const newestModificationTimeSeconds = 1790001200;
+const sourceAccessTimeSeconds = 1790001800;
 const entryTimestamp = '2026-09-30T10:00:00.000Z';
 const replyTimestamp = '2026-09-30T10:05:00.000Z';
 const linuxPathMaximumLength = 4095;
@@ -15,6 +16,8 @@ const linuxPathMaximumLength = 4095;
 const firstByNameSessionId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 const secondByNameSessionId = '5c4b3a29-1807-4f6e-9d5c-4b3a29180716';
 const thirdByNameSessionId = '9e8d7c6b-5a49-4382-a170-6f5e4d3c2b1a';
+
+const directoryPermissionEnforcedTest = process.getuid?.() === 0 ? it.skip : it;
 
 type SessionDirectoryLayout = {
   caseDirectory: string;
@@ -759,6 +762,47 @@ describe('resumableSessionSelect', () => {
     );
   });
 
+  it('keeps the source mode, access time and modification time on the transcript file copied from another session directory', () => {
+    const layout = sessionDirectoryLayoutCreate('copy-keeps-mode-and-times');
+    const sourceTranscriptFilePath = transcriptFileWrite({
+      directory: layout.otherSessionDir,
+      sessionId: secondByNameSessionId,
+      lines: resumableTranscriptLines(secondByNameSessionId),
+      modificationTimeSeconds: olderModificationTimeSeconds,
+    });
+    fs.chmodSync(sourceTranscriptFilePath, 0o640);
+    fs.utimesSync(
+      sourceTranscriptFilePath,
+      sourceAccessTimeSeconds,
+      olderModificationTimeSeconds,
+    );
+
+    const output = resumableSessionSelect({
+      sessionName,
+      sessionDir: layout.sessionDir,
+      otherSessionDirs: [layout.otherSessionDir],
+      archiveRoot: layout.archiveRoot,
+    });
+
+    const copiedTranscriptFileStats = fs.statSync(
+      path.join(layout.sessionDir, `${secondByNameSessionId}.jsonl`),
+    );
+    expect(output).toEqual({
+      stdout: secondByNameSessionId,
+      stderrLines: [copiedLine(sourceTranscriptFilePath, layout.sessionDir)],
+      exitCode: 0,
+    });
+    expect({
+      mode: copiedTranscriptFileStats.mode & 0o777,
+      atimeMs: copiedTranscriptFileStats.atimeMs,
+      mtimeMs: copiedTranscriptFileStats.mtimeMs,
+    }).toEqual({
+      mode: 0o640,
+      atimeMs: sourceAccessTimeSeconds * 1000,
+      mtimeMs: olderModificationTimeSeconds * 1000,
+    });
+  });
+
   it('creates the absent session directory with mode 700 before copying a match from another session directory', () => {
     const layout = sessionDirectoryLayoutCreate('create-session-dir');
     const absentSessionDir = path.join(
@@ -861,6 +905,89 @@ describe('resumableSessionSelect', () => {
     expect(directoryEntryNames(existingSessionIdDirectory)).toEqual([
       'already-here.txt',
     ]);
+  });
+
+  it('copies the transcript file and leaves the whole content of an existing session id directory in the session directory unchanged', () => {
+    const layout = sessionDirectoryLayoutCreate(
+      'existing-session-id-directory-content-kept',
+    );
+    const sourceTranscriptFilePath = transcriptFileWrite({
+      directory: layout.otherSessionDir,
+      sessionId: secondByNameSessionId,
+      lines: resumableTranscriptLines(secondByNameSessionId),
+      modificationTimeSeconds: olderModificationTimeSeconds,
+    });
+    const sourceTranscriptFileContent = fs.readFileSync(
+      sourceTranscriptFilePath,
+      'utf8',
+    );
+    const sourceNestedFilePath = path.join(
+      layout.otherSessionDir,
+      secondByNameSessionId,
+      'subagents',
+      'agent-from-other-worktree.jsonl',
+    );
+    fs.mkdirSync(path.dirname(sourceNestedFilePath), { recursive: true });
+    fs.writeFileSync(
+      sourceNestedFilePath,
+      'other worktree subagent transcript\n',
+      'utf8',
+    );
+    const existingSessionIdDirectory = path.join(
+      layout.sessionDir,
+      secondByNameSessionId,
+    );
+    const existingNestedFilePath = path.join(
+      existingSessionIdDirectory,
+      'subagents',
+      'agent-already-here.jsonl',
+    );
+    fs.mkdirSync(path.dirname(existingNestedFilePath), { recursive: true });
+    fs.writeFileSync(
+      existingNestedFilePath,
+      'session worktree subagent transcript\n',
+      'utf8',
+    );
+
+    const output = resumableSessionSelect({
+      sessionName,
+      sessionDir: layout.sessionDir,
+      otherSessionDirs: [layout.otherSessionDir],
+      archiveRoot: layout.archiveRoot,
+    });
+
+    expect(output).toEqual({
+      stdout: secondByNameSessionId,
+      stderrLines: [copiedLine(sourceTranscriptFilePath, layout.sessionDir)],
+      exitCode: 0,
+    });
+    expect(directoryEntryNames(layout.sessionDir)).toEqual([
+      secondByNameSessionId,
+      `${secondByNameSessionId}.jsonl`,
+    ]);
+    expect(
+      fs.readFileSync(
+        path.join(layout.sessionDir, `${secondByNameSessionId}.jsonl`),
+        'utf8',
+      ),
+    ).toBe(sourceTranscriptFileContent);
+    expect(
+      fs
+        .readdirSync(existingSessionIdDirectory, {
+          encoding: 'utf8',
+          recursive: true,
+        })
+        .sort(),
+    ).toEqual([
+      'subagents',
+      path.join('subagents', 'agent-already-here.jsonl'),
+    ]);
+    expect(fs.readFileSync(existingNestedFilePath, 'utf8')).toBe(
+      'session worktree subagent transcript\n',
+    );
+    expect(fs.readFileSync(sourceNestedFilePath, 'utf8')).toBe(
+      'other worktree subagent transcript\n',
+    );
   });
 
   it('resumes the session directory match without copying when another session directory holds a newer match', () => {
@@ -1182,6 +1309,71 @@ describe('resumableSessionSelect', () => {
       `${secondByNameSessionId}.jsonl`,
     ]);
   });
+
+  directoryPermissionEnforcedTest(
+    'starts a new claude session and reports the transcript file copy failure when the existing session directory is not writable',
+    () => {
+      const layout = sessionDirectoryLayoutCreate('session-dir-not-writable');
+      const sourceTranscriptFilePath = transcriptFileWrite({
+        directory: layout.otherSessionDir,
+        sessionId: secondByNameSessionId,
+        lines: resumableTranscriptLines(secondByNameSessionId),
+        modificationTimeSeconds: olderModificationTimeSeconds,
+      });
+      const sourceTranscriptFileContent = fs.readFileSync(
+        sourceTranscriptFilePath,
+        'utf8',
+      );
+      const sourceTranscriptFileMode = fs.statSync(
+        sourceTranscriptFilePath,
+      ).mode;
+      fs.chmodSync(layout.sessionDir, 0o500);
+
+      try {
+        const output = resumableSessionSelect({
+          sessionName,
+          sessionDir: layout.sessionDir,
+          otherSessionDirs: [layout.otherSessionDir],
+          archiveRoot: layout.archiveRoot,
+        });
+
+        expect(output).toEqual({
+          stdout: null,
+          stderrLines: [
+            copyFailedLine(sourceTranscriptFilePath, layout.sessionDir),
+          ],
+          exitCode: 0,
+        });
+        expect(
+          fs.existsSync(
+            path.join(layout.sessionDir, `${secondByNameSessionId}.jsonl`),
+          ),
+        ).toBe(false);
+        expect(
+          fs.existsSync(
+            path.join(
+              layout.sessionDir,
+              `${secondByNameSessionId}.jsonl.copying`,
+            ),
+          ),
+        ).toBe(false);
+        expect(directoryEntryNames(layout.otherSessionDir)).toEqual([
+          `${secondByNameSessionId}.jsonl`,
+        ]);
+        expect(fs.readFileSync(sourceTranscriptFilePath, 'utf8')).toBe(
+          sourceTranscriptFileContent,
+        );
+        expect(fs.statSync(sourceTranscriptFilePath).mode).toBe(
+          sourceTranscriptFileMode,
+        );
+        expect(fs.statSync(sourceTranscriptFilePath).mtimeMs).toBe(
+          olderModificationTimeSeconds * 1000,
+        );
+      } finally {
+        fs.chmodSync(layout.sessionDir, 0o700);
+      }
+    },
+  );
 
   it('resumes the copied transcript file and writes a warning when its session id directory cannot be copied', () => {
     const layout = sessionDirectoryLayoutCreate(
