@@ -4562,7 +4562,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       },
     );
 
-    const reopenedTimelineGraphqlResponseWithoutTotalCountCases: {
+    const reopenedTimelineGraphqlResponseWithoutTotalCountOrWithoutNodeAtListingLimitCases: {
       name: string;
       reopenedTimelineGraphqlResponse: ReopenedTimelineGraphqlResponse;
     }[] = [
@@ -4596,15 +4596,44 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           },
         },
       },
+      {
+        name: 'the timeline reports 310 reopened items but holds no reopened item',
+        reopenedTimelineGraphqlResponse: buildReopenedTimelineGraphqlResponse(
+          [],
+          310,
+        ),
+      },
+      {
+        name: 'the timeline reports 311 reopened items but holds no reopened item',
+        reopenedTimelineGraphqlResponse: buildReopenedTimelineGraphqlResponse(
+          [],
+          311,
+        ),
+      },
     ];
 
-    it.each(reopenedTimelineGraphqlResponseWithoutTotalCountCases)(
-      'throws an error naming the issue URL without reading the repository-wide issue event feed when the GraphQL timeline of reopened items carries no totalCount: $name',
+    it.each(
+      reopenedTimelineGraphqlResponseWithoutTotalCountOrWithoutNodeAtListingLimitCases,
+    )(
+      'throws an error naming the issue URL without reading the repository-wide issue event feed when the GraphQL timeline of reopened items carries no totalCount, or a totalCount of 310 or more without a reopened item: $name',
       async (testCase) => {
         const recordedRequests =
           mockIssueEventListingAndGraphqlAndRecordRequests(
             buildIssueEventListingOldestFirst(310, [100, 305]),
             testCase.reopenedTimelineGraphqlResponse,
+            buildRepositoryIssueEventFeedPageResponses([
+              [
+                buildRepositoryIssueEventFeedEvent(
+                  'reopened',
+                  '2026-10-01T04:49:37Z',
+                  42,
+                ),
+                ...buildOtherIssueFeedEventsNewestFirst(
+                  99,
+                  '2026-10-01T04:49:27Z',
+                ),
+              ],
+            ]),
           );
 
         const { repository } = createApiV3CheerioRestIssueRepository();
