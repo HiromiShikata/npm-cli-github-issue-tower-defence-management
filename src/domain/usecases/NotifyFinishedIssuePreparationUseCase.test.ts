@@ -133,6 +133,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     getIssueByUrl: jest.Mock;
     updateStoryByProjectItemId: jest.Mock;
     getLatestReopenedEventAt: jest.Mock;
+    closeIssueByUrl: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -199,6 +200,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       getIssueByUrl: jest.fn().mockResolvedValue(null),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
       getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
+      closeIssueByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
@@ -9982,6 +9984,492 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ url: issueUrl }),
         'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
       );
+    });
+  });
+
+  describe('closeIssueAs result JSON routing', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const projectUrl = 'https://github.com/users/user/projects/1';
+    const openClosingPullRequestUrl = 'https://github.com/user/repo/pull/7';
+    const invalidNotPlannedValueComment =
+      'Invalid closeIssueAs value "not planned": allowed values are "completed" and "not_planned". The issue was not closed.';
+
+    const statusOptionsWithoutDone: Project['status']['statuses'] = [
+      {
+        id: 'preparation-id',
+        name: 'Preparation',
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'awaiting-workspace-id',
+        name: 'Awaiting Workspace',
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'failed-preparation-id',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'awaiting-quality-check-id',
+        name: 'Awaiting Quality Check',
+        color: 'BLUE',
+        description: '',
+      },
+      {
+        id: 'todo-by-human-id',
+        name: 'Todo by human',
+        color: 'GREEN',
+        description: '',
+      },
+      {
+        id: 'awaiting-owner-id',
+        name: 'Awaiting Owner',
+        color: 'PINK',
+        description: '',
+      },
+    ];
+
+    const projectWithStatusOptions = (
+      statuses: Project['status']['statuses'],
+    ): Project =>
+      createMockProject({
+        status: { name: 'Status', fieldId: 'field-1', statuses },
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+        agent: {
+          name: 'Agent',
+          fieldId: 'agent-field-id',
+          options: [
+            {
+              id: 'opt-developer',
+              name: 'developer',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        },
+      });
+
+    const projectWithDoneStatus = (): Project =>
+      projectWithStatusOptions([
+        ...statusOptionsWithoutDone,
+        { id: 'done-id', name: 'Done', color: 'PURPLE', description: '' },
+      ]);
+
+    const projectWithoutDoneStatus = (): Project =>
+      projectWithStatusOptions(statusOptionsWithoutDone);
+
+    const agentReportEndingWith = (
+      resultJson: string,
+      createdAt: Date = new Date(),
+    ): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content: `From: :robot: chore (model)\n\nThe deliverable is finished and verified against every acceptance criterion.\n\n\`\`\`json\n${resultJson}\n\`\`\``,
+        createdAt,
+      });
+
+    const fiveEarlierReportsWithoutNextStepAgent = (): Comment[] =>
+      [0, 1, 2, 3, 4].map((hourOffset) =>
+        agentReportEndingWith(
+          '{"nextStep": null}',
+          new Date(Date.UTC(2026, 0, 2, hourOffset)),
+        ),
+      );
+
+    const sixthReportCreatedAt = new Date(Date.UTC(2026, 0, 2, 5));
+
+    const openClosingPullRequest = {
+      url: openClosingPullRequestUrl,
+      branchName: 'i1',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+
+    type CloseIssueAsScenario = {
+      project: Project;
+      comments: Comment[];
+      openPullRequests: (typeof openClosingPullRequest)[];
+      issueOverrides?: Partial<Issue>;
+      runOverrides?: { thresholdForDispatchLoop?: number; agents?: string[] };
+    };
+
+    const runScenario = async (
+      scenario: CloseIssueAsScenario,
+    ): Promise<void> => {
+      mockProjectRepository.getByUrl.mockResolvedValue(scenario.project);
+      mockIssueRepository.get.mockImplementation(async () =>
+        createMockIssue({
+          url: issueUrl,
+          status: 'Preparation',
+          story: 'regular / some story',
+          ...scenario.issueOverrides,
+        }),
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        scenario.comments,
+      );
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue(
+        scenario.openPullRequests,
+      );
+      await useCase.run({
+        projectUrl,
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        ...scenario.runOverrides,
+      });
+    };
+
+    const statusIdsPassedToUpdateStatus = (): unknown[] =>
+      mockIssueRepository.updateStatus.mock.calls.map(
+        (call: unknown[]) => call[2],
+      );
+
+    const statusIdsForScenario = async (
+      scenario: CloseIssueAsScenario,
+    ): Promise<unknown[]> => {
+      mockIssueRepository.updateStatus.mockClear();
+      await runScenario(scenario);
+      return statusIdsPassedToUpdateStatus();
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      { criterion: 1, stateReason: 'completed' },
+      { criterion: 2, stateReason: 'not_planned' },
+    ])(
+      'closes an open issue as $stateReason, then sets Done without a comment when no open pull request closes it (closeIssueAs criterion $criterion)',
+      async ({ stateReason }) => {
+        const project = projectWithDoneStatus();
+
+        await runScenario({
+          project,
+          comments: [
+            agentReportEndingWith(`{"closeIssueAs": "${stateReason}"}`),
+          ],
+          openPullRequests: [],
+        });
+
+        expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+          issueUrl,
+          stateReason,
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          project,
+          expect.objectContaining({ url: issueUrl }),
+          'done-id',
+        );
+        expect(statusIdsPassedToUpdateStatus()).toEqual(['done-id']);
+        expect(
+          mockIssueRepository.closeIssueByUrl.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          mockIssueRepository.updateStatus.mock.invocationCallOrder[0],
+        );
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      },
+    );
+
+    it('keeps nextStepAgent routing and does not close the issue when the same block also sets nextStepAgent (closeIssueAs criterion 3)', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "nextStepAgent": "developer"}',
+          ),
+        ],
+        openPullRequests: [],
+        runOverrides: { agents: ['developer'] },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        issueUrl,
+        project,
+        'opt-developer',
+      );
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'awaiting-workspace-id',
+      ]);
+    });
+
+    it('keeps workflowError routing and does not close the issue when the same block also sets a non-empty workflowError (closeIssueAs criterion 4)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "workflowError": "missing required configuration"}',
+          ),
+        ],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'failed-preparation-id',
+      ]);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Workflow error: missing required configuration',
+      );
+    });
+
+    it('keeps needOwnerConfirmationOrApproval routing and does not close the issue when the same block also sets it to true (closeIssueAs criterion 5)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "needOwnerConfirmationOrApproval": true}',
+          ),
+        ],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+    });
+
+    it('does not close the issue, warns naming the open pull request and routes exactly as without closeIssueAs when an open pull request closes the issue (closeIssueAs criterion 6)', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      const statusIdsWithCloseIssueAs = await statusIdsForScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [openClosingPullRequest],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `closeIssueAs not applied to ${issueUrl} because an open pull request closes it on merge: ${openClosingPullRequestUrl}`,
+      );
+
+      const statusIdsWithoutCloseIssueAs = await statusIdsForScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{}')],
+        openPullRequests: [openClosingPullRequest],
+      });
+
+      expect(statusIdsWithCloseIssueAs).toEqual(statusIdsWithoutCloseIssueAs);
+    });
+
+    it('does not call closeIssueByUrl and sets Done when the issue is already closed (closeIssueAs criterion 7)', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: {
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ url: issueUrl }),
+        'done-id',
+      );
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['done-id']);
+    });
+
+    it('posts the invalid-value comment once, does not close the issue and sets Awaiting Workspace when closeIssueAs is "not planned" (closeIssueAs criterion 8)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{"closeIssueAs": "not planned"}')],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        invalidNotPlannedValueComment,
+      );
+      expect(
+        mockIssueCommentRepository.createComment.mock.calls.filter(
+          (call: unknown[]) => call[1] === invalidNotPlannedValueComment,
+        ),
+      ).toHaveLength(1);
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'awaiting-workspace-id',
+      ]);
+    });
+
+    it('still applies the dispatch loop escalation to an invalid closeIssueAs value instead of posting the invalid-value comment (closeIssueAs requirement 8 ordering)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          ...fiveEarlierReportsWithoutNextStepAgent(),
+          agentReportEndingWith(
+            '{"closeIssueAs": "not planned"}',
+            sixthReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [],
+        runOverrides: { thresholdForDispatchLoop: 6 },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'failed-preparation-id',
+      ]);
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        invalidNotPlannedValueComment,
+      );
+    });
+
+    it('treats closeIssueAs null exactly like an absent field and does not close the issue (closeIssueAs criterion 9)', async () => {
+      const statusIdsWithNull = await statusIdsForScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{"closeIssueAs": null}')],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+
+      const statusIdsWithoutField = await statusIdsForScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{}')],
+        openPullRequests: [],
+      });
+
+      expect(statusIdsWithNull).toEqual(statusIdsWithoutField);
+    });
+
+    it('closes the issue, leaves Status unchanged and reports the missing Done option when the project has no Done status (closeIssueAs criterion 10)', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      await runScenario({
+        project: projectWithoutDoneStatus(),
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        issueUrl,
+        'completed',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `Done status option 'Done' not found in project ${projectUrl}; closed ${issueUrl} without changing its Status.`,
+      );
+    });
+
+    it('does not close the issue and sets Awaiting Workspace while the Depended Issue URL field holds an open issue (closeIssueAs criterion 11)', async () => {
+      const dependedOpenIssueUrl = 'https://github.com/user/repo/issues/2';
+      jest.spyOn(console, 'log').mockImplementation(() => undefined);
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(
+        createMockIssue({
+          url: dependedOpenIssueUrl,
+          number: 2,
+          status: 'Preparation',
+        }),
+      );
+
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: { dependedIssueUrls: [dependedOpenIssueUrl] },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'awaiting-workspace-id',
+      ]);
+    });
+
+    it('closes the issue and sets Done instead of the dispatch loop escalation when the sixth report at thresholdForDispatchLoop 6 requests closeIssueAs completed (closeIssueAs criterion 12)', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [
+          ...fiveEarlierReportsWithoutNextStepAgent(),
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed"}',
+            sixthReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [],
+        runOverrides: { thresholdForDispatchLoop: 6 },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        issueUrl,
+        'completed',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ url: issueUrl }),
+        'done-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+    });
+
+    it('escalates the criterion 12 input without closeIssueAs to Failed Preparation at thresholdForDispatchLoop 6 (dispatch loop pin for closeIssueAs criterion 12)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          ...fiveEarlierReportsWithoutNextStepAgent(),
+          agentReportEndingWith('{}', sixthReportCreatedAt),
+        ],
+        openPullRequests: [],
+        runOverrides: { thresholdForDispatchLoop: 6 },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'failed-preparation-id',
+      ]);
+    });
+
+    it('routes a closed Preparation issue whose last report carries no closeIssueAs to Awaiting Owner (closed issue pin for closeIssueAs criterion 7)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{}')],
+        openPullRequests: [],
+        issueOverrides: {
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
     });
   });
 });
