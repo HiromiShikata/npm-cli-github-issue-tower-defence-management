@@ -1613,6 +1613,158 @@ describe('StartPreparationUseCase', () => {
       'i4290',
     );
   });
+  it('should dispatch with the cross-repository PR head branch when the issue has no same-repository PR and exactly one cross-repository PR', async () => {
+    const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/4290';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: issueUrl,
+        title: 'Issue 4290',
+        nameWithOwner: 'HiromiShikata/secretary',
+        number: 4290,
+        org: 'HiromiShikata',
+        repo: 'secretary',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const crossRepoPR: RelatedPullRequest = {
+      url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
+      branchName: 'impl-i4290-cross-repo-fix',
+      createdAt: new Date('2026-08-28T10:55:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const crossRepoPrIssue = createMockIssue({
+      url: crossRepoPR.url,
+      number: 1813,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: [issueUrl],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([...awaitingIssues, crossRepoPrIssue]),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([crossRepoPR]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+    expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        [
+          issueUrl,
+          'agent1',
+          'claude-opus',
+          '--configFilePath',
+          '/path/to/config.yml',
+          '--branch',
+          'impl-i4290-cross-repo-fix',
+          '--dispatchStartedAt',
+          expect.stringMatching(DISPATCH_STARTED_AT_PATTERN),
+        ],
+      ],
+    ]);
+  });
+  it('should skip and not call wrapper when the issue has no same-repository PR and exactly one cross-repository PR with null branchName', async () => {
+    const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/4290';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: issueUrl,
+        title: 'Issue 4290',
+        nameWithOwner: 'HiromiShikata/secretary',
+        number: 4290,
+        org: 'HiromiShikata',
+        repo: 'secretary',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const crossRepoPRWithNullBranch: RelatedPullRequest = {
+      url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
+      branchName: null,
+      createdAt: new Date('2026-08-28T10:55:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const crossRepoPrIssueWithNullBranch = createMockIssue({
+      url: crossRepoPRWithNullBranch.url,
+      number: 1813,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: [issueUrl],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([
+        ...awaitingIssues,
+        crossRepoPrIssueWithNullBranch,
+      ]),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      crossRepoPRWithNullBranch,
+    ]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      `Skipping issue ${issueUrl}: related open PR has unavailable head branch.`,
+    );
+    consoleWarnSpy.mockRestore();
+  });
   it('should skip issue after resolving duplicates when adopted canonical PR has null branchName', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
