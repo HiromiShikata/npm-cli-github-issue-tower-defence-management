@@ -1,3 +1,10 @@
+## [2.155.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.5...v2.155.6) (2026-10-01)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** bypass related-open-PRs cache for the terminal reject decision ([#3044](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3044)) ([321280a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/321280a6cef4f33c622ec9df8eb6a363bf440988))
+
 ## [2.155.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.4...v2.155.5) (2026-10-01)
 
 
