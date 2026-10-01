@@ -1,3 +1,10 @@
+## [2.155.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.7...v2.155.8) (2026-10-01)
+
+
+### Bug Fixes
+
+* **IssueCreateModalDialog:** pin Cancel/Create buttons in console task-create dialog on short viewports ([#3057](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3057)) ([ab1e122](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ab1e122ad84cfc42901cb291f7942984cb4489f9))
+
 ## [2.155.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.6...v2.155.7) (2026-10-01)
 
 
