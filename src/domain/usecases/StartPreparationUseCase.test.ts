@@ -7570,9 +7570,7 @@ describe('StartPreparationUseCase', () => {
     const futureNextActionHour = now.getUTCHours() + 1;
 
     type ReactivationTriggerCase =
-      | 'none pending'
-      | 'pending (future date)'
-      | 'pending (hour not reached)';
+      'none pending' | 'pending (future date)' | 'pending (hour not reached)';
 
     const reactivationFieldsFor = (
       reactivationTrigger: ReactivationTriggerCase,
