@@ -3076,13 +3076,19 @@ describe('webServer GET /api/projects', () => {
     }
   });
 
-  it.each([
+  const disabledPjcodesTestCases: {
+    name: string;
+    configured: boolean;
+    pjcodes: string[];
+    fileContents: Record<string, string>;
+    expectedDisabledPjcodes: string[];
+  }[] = [
     {
       name: 'consoleProjectConfigDirectory is not configured (table row 1)',
       configured: false,
       pjcodes: ['acme', 'beta'],
-      fileContents: {} as Record<string, string>,
-      expectedDisabledPjcodes: [] as string[],
+      fileContents: {},
+      expectedDisabledPjcodes: [],
     },
     {
       name: 'consoleProjectConfigDirectory is configured with one disabled project (table rows 2 and 3)',
@@ -3120,7 +3126,9 @@ describe('webServer GET /api/projects', () => {
       fileContents: { acme: 'someOtherKey: value\n' },
       expectedDisabledPjcodes: [],
     },
-  ])(
+  ];
+
+  it.each(disabledPjcodesTestCases)(
     'returns disabledPjcodes=$expectedDisabledPjcodes when $name',
     async ({ configured, pjcodes, fileContents, expectedDisabledPjcodes }) => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
@@ -3153,8 +3161,9 @@ describe('webServer GET /api/projects', () => {
           `/api/projects?k=${testToken}`,
         );
         expect(response.statusCode).toBe(200);
-        const body = JSON.parse(response.body) as { disabledPjcodes: unknown };
-        expect(body.disabledPjcodes).toEqual(expectedDisabledPjcodes);
+        expect(JSON.parse(response.body)).toMatchObject({
+          disabledPjcodes: expectedDisabledPjcodes,
+        });
       } finally {
         await closeServer(server);
         fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -3188,8 +3197,7 @@ describe('webServer GET /api/projects', () => {
         `/api/projects?k=${testToken}`,
       );
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body) as { disabledPjcodes: unknown };
-      expect(body.disabledPjcodes).toEqual([]);
+      expect(JSON.parse(response.body)).toMatchObject({ disabledPjcodes: [] });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
