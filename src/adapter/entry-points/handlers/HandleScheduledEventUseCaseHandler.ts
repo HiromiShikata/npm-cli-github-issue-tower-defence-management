@@ -89,6 +89,13 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../../../domain/entities/WorkflowStatus';
 
+export class ScheduledEventHandlerInputValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ScheduledEventHandlerInputValidationError';
+  }
+}
+
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
 const readSilentSeconds = (
@@ -121,6 +128,14 @@ export class HandleScheduledEventUseCaseHandler {
   } | null> => {
     const configFileContent = fs.readFileSync(configFilePath, 'utf8');
     const input: unknown = YAML.parse(configFileContent);
+    if (
+      typeof input === 'object' &&
+      input !== null &&
+      'disabled' in input &&
+      input.disabled
+    ) {
+      return null;
+    }
     type inputType = Omit<
       Parameters<HandleScheduledEventUseCase['run']>[0],
       'allowedIssueAuthors' | 'autoAssignManagerAuthors'
@@ -238,12 +253,9 @@ export class HandleScheduledEventUseCaseHandler {
       return true;
     };
     if (!isInputType(input)) {
-      throw new Error(
+      throw new ScheduledEventHandlerInputValidationError(
         `Invalid input: required credential fields are missing. Got: ${JSON.stringify(input)}`,
       );
-    }
-    if (input.disabled) {
-      return null;
     }
 
     const localStorageRepository = new LocalStorageRepository();

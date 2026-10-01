@@ -282,6 +282,18 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     );
   });
 
+  it.each([
+    ['incomplete credentials section', { disabled: true }],
+    ['complete credentials section', { ...validConfig, disabled: true }],
+  ])(
+    'should resolve to null without throwing when disabled is true, regardless of credentials (%s)',
+    async (_description, config) => {
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(config));
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await expect(handler.handle('config.yml', false)).resolves.toBeNull();
+    },
+  );
+
   it('should pass bot token to repository constructors', async () => {
     const handler = new HandleScheduledEventUseCaseHandler();
     await handler.handle('config.yml', false);

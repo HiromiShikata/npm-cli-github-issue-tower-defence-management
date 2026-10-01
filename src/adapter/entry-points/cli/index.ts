@@ -378,14 +378,24 @@ program
         loadConfigFile(options.config).errorReportingRepository ??
         process.env.TDPM_ERROR_REPORT_REPOSITORY ??
         '';
-      const { HandleScheduledEventUseCaseHandler } =
-        await import('../handlers/HandleScheduledEventUseCaseHandler');
+      const {
+        HandleScheduledEventUseCaseHandler,
+        ScheduledEventHandlerInputValidationError,
+      } = await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
-      await handler.handle(
-        options.config,
-        options.verbose,
-        parseInTmuxProjectOrder(options.inTmuxProjectOrder),
-      );
+      try {
+        await handler.handle(
+          options.config,
+          options.verbose,
+          parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+        );
+      } catch (error) {
+        if (error instanceof ScheduledEventHandlerInputValidationError) {
+          console.error(error.message);
+          return process.exit(1);
+        }
+        throw error;
+      }
     }
   });
 
