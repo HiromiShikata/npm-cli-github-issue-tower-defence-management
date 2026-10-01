@@ -318,6 +318,13 @@ const isForbiddenNodesBatchContentError = (error: GraphqlError): boolean =>
   typeof error.path[1] === 'number' &&
   error.path[2] === 'content';
 
+const isNotFoundNodesBatchError = (error: GraphqlError): boolean =>
+  error.type === 'NOT_FOUND' &&
+  Array.isArray(error.path) &&
+  error.path.length === 2 &&
+  error.path[0] === 'nodes' &&
+  typeof error.path[1] === 'number';
+
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
@@ -950,16 +957,18 @@ query GetProjectItemsByIds($ids: [ID!]!) {
         }),
       );
       if (response.errors && response.errors.length > 0) {
-        const allForbiddenContent = response.errors.every(
-          isForbiddenNodesBatchContentError,
+        const allTolerated = response.errors.every(
+          (error) =>
+            isForbiddenNodesBatchContentError(error) ||
+            isNotFoundNodesBatchError(error),
         );
-        if (!allForbiddenContent || !response.data) {
+        if (!allTolerated || !response.data) {
           throw new Error(
             `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
           );
         }
         console.warn(
-          `fetchProjectItemsByIds: skipping ${response.errors.length} item(s) with FORBIDDEN content. paths: ${response.errors.map((e) => JSON.stringify(e.path)).join(', ')}`,
+          `fetchProjectItemsByIds: skipping ${response.errors.length} item(s) with FORBIDDEN content or NOT_FOUND node. paths: ${response.errors.map((e) => JSON.stringify(e.path)).join(', ')}`,
         );
       }
       if (!response.data) {
