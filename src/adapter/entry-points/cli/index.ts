@@ -1072,7 +1072,7 @@ program
 program
   .command('selectLlmLaunchFlags')
   .description(
-    'Print the --effort and --autocompact launch flags for a worker session, derived from the defaultLlmEffortLevel and defaultLlmAutocompactMode fields of the config file at --configFilePath. Writes "--effort <value>" using defaultLlmEffortLevel when it is set to a non-empty value and falling back to "xhigh" when it is unset or empty, and writes "--autocompact <value>" using defaultLlmAutocompactMode when it is set to a non-empty value and falling back to "auto" when it is unset or empty, both space-separated on a single stdout line. The launcher forwards this output to claude-agent verbatim and decides nothing itself, the same split as the selectLiveSessionOauthToken command.',
+    'Print the --effort and --autocompact launch flags for a worker session, derived from the defaultLlmEffortLevel and defaultLlmAutocompactMode fields of the config file at --configFilePath. Writes "--effort <value>" using defaultLlmEffortLevel, falling back to "xhigh" when defaultLlmEffortLevel is unset or empty. Writes "--autocompact <value>" after it on the same stdout line only when defaultLlmAutocompactMode is set to a non-empty value. The launcher decides no value itself and only forwards these flags to claude-agent, the same split as the selectLiveSessionOauthToken command.',
   )
   .requiredOption(
     '--configFilePath <path>',
@@ -1081,10 +1081,15 @@ program
   .action((options: SelectLlmLaunchFlagsOptions) => {
     const config = loadConfigFile(options.configFilePath);
     const effortLevel = config.defaultLlmEffortLevel || 'xhigh';
-    const autocompactMode = config.defaultLlmAutocompactMode || 'auto';
-    process.stdout.write(
-      `--effort ${effortLevel} --autocompact ${autocompactMode}\n`,
-    );
+    const launchFlags = config.defaultLlmAutocompactMode
+      ? [
+          '--effort',
+          effortLevel,
+          '--autocompact',
+          config.defaultLlmAutocompactMode,
+        ]
+      : ['--effort', effortLevel];
+    process.stdout.write(`${launchFlags.join(' ')}\n`);
   });
 
 program
