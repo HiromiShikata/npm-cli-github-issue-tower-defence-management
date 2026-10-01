@@ -816,6 +816,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'clearProjectField'
       | 'updateProjectTextField'
       | 'addIssueToProject'
+      | 'removeItemFromProjectByIssueUrl'
     >,
     readonly localStorageCacheRepository: Pick<
       LocalStorageCacheRepository,
@@ -1678,6 +1679,12 @@ export class ApiV3CheerioRestIssueRepository
         issueUrl,
         project.id,
       );
+    if (!existingProjectItem && this.parseIssueUrl(issueUrl).isPr) {
+      console.info(
+        `ApiV3CheerioRestIssueRepository: skipping project item creation for pull request not already on the board. issueUrl: ${issueUrl}`,
+      );
+      return;
+    }
     const projectItemId =
       existingProjectItem?.id ??
       (await this.graphqlProjectItemRepository.addIssueToProject(
@@ -1690,6 +1697,17 @@ export class ApiV3CheerioRestIssueRepository
       projectItemId,
       { singleSelectOptionId: agentOptionId },
     );
+  };
+
+  removeIssueFromProject = async (
+    project: Project,
+    issueUrl: string,
+  ): Promise<void> => {
+    await this.graphqlProjectItemRepository.removeItemFromProjectByIssueUrl(
+      issueUrl,
+      project.id,
+    );
+    this.pendingCacheUpdateByIssueUrl.delete(issueUrl);
   };
 
   updateNextActionDate = async (

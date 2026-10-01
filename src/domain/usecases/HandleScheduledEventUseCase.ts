@@ -241,11 +241,35 @@ export class HandleScheduledEventUseCase {
     }
     const now: Date = await this.dateRepository.now();
     const {
-      issues,
+      issues: fetchedIssues,
       project,
       cacheUsed,
     }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
       await this.issueRepository.getAllIssues(projectId);
+    const pullRequestProjectItems = fetchedIssues.filter(
+      (issue) => issue.isPr === true,
+    );
+    for (const pullRequestProjectItem of pullRequestProjectItems) {
+      try {
+        await this.issueRepository.removeIssueFromProject(
+          project,
+          pullRequestProjectItem.url,
+        );
+        await this.issueRepository.removeIssueFromProjectCache(
+          project.id,
+          pullRequestProjectItem,
+        );
+      } catch (removePullRequestItemError) {
+        console.error(
+          `[HandleScheduledEvent] Failed to remove pull-request item from project ${project.url}: issueUrl=${pullRequestProjectItem.url}: ${removePullRequestItemError instanceof Error ? removePullRequestItemError.message : String(removePullRequestItemError)}`,
+          removePullRequestItemError,
+        );
+      }
+    }
+    const issues =
+      pullRequestProjectItems.length > 0
+        ? fetchedIssues.filter((issue) => issue.isPr !== true)
+        : fetchedIssues;
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
       issues,

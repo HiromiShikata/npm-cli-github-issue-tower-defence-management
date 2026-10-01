@@ -196,6 +196,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       writeRepository.createCommentByUrl(issueOrPrUrl, commentBody),
     addIssueToProject: (project: Project, issueUrl: string) =>
       writeRepository.addIssueToProject(project, issueUrl),
+    removeIssueFromProject: (project: Project, issueUrl: string) =>
+      writeRepository.removeIssueFromProject(project, issueUrl),
     updateStoryByProjectItemId: (
       project: Project & { story: NonNullable<Project['story']> },
       projectItemId: string,
