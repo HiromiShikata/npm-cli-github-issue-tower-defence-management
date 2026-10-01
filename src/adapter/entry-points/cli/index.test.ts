@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -3211,6 +3212,861 @@ mysteryKey: 'value'
           if (fs.existsSync(fleetConfigFilePath)) {
             fs.unlinkSync(fleetConfigFilePath);
           }
+        }
+      });
+    });
+
+    describe('worker session ending classification and notification retry', () => {
+      const workerSessionIssueUrl = 'https://github.com/test/repo/issues/1';
+      const launcherSessionResumptionTextLine =
+        'Session resumption: resuming the previous conversation of this task';
+      const sessionLimitEndingLine =
+        '{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"terminal_reason":"api_error","result":"You\'ve hit your session limit · resets 6:50am (UTC)"}';
+      const overloadedEndingLine =
+        '{"type":"result","is_error":true,"result":"API Error: Overloaded","api_error_status":529,"terminal_reason":"api_error"}';
+      const promptTooLongEndingLine =
+        '{"type":"result","is_error":true,"terminal_reason":"blocking_limit","result":"Prompt is too long"}';
+      const completedEndingLine =
+        '{"type":"result","subtype":"success","is_error":false,"terminal_reason":"completed","result":"Posted the completion report on the task issue"}';
+      const rejectedRateLimitEventLine =
+        '{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","rateLimitType":"five_hour"}}';
+      const failedPreparationSessionErrorLine = `Task failed 3 consecutive times with terminal_reason=api_error; moving to Failed Preparation status. URL=${workerSessionIssueUrl}`;
+      const usageLimitEndingDetectedLine =
+        'usage-limit-ending-detected: consecutive failure counter not incremented';
+      const rateLimitRejectionDetectedLine =
+        'rate-limit-rejection-detected: consecutive failure counter not incremented';
+      const streakResetLine =
+        'consecutive-same-reason-failure: reset (run succeeded or no terminal_reason)';
+
+      let workerSessionTemporaryDirectory: string;
+      let processExitSpy: jest.SpyInstance;
+      let consoleLogSpy: jest.SpyInstance;
+
+      const workerSessionFailureStreakFilePath = (): string =>
+        path.join(
+          workerSessionTemporaryDirectory,
+          'tdpm',
+          'worker-session-failure-streaks',
+          `${createHash('sha256').update(workerSessionIssueUrl).digest('hex').slice(0, 16)}.json`,
+        );
+
+      const writeStoredWorkerSessionFailureStreak = (
+        terminalReason: string,
+        consecutiveFailureCount: number,
+      ): void => {
+        fs.mkdirSync(path.dirname(workerSessionFailureStreakFilePath()), {
+          recursive: true,
+        });
+        fs.writeFileSync(
+          workerSessionFailureStreakFilePath(),
+          JSON.stringify({
+            issueUrl: workerSessionIssueUrl,
+            terminalReason,
+            consecutiveFailureCount,
+          }),
+        );
+      };
+
+      const readStoredWorkerSessionFailureStreak = (): unknown => {
+        if (!fs.existsSync(workerSessionFailureStreakFilePath())) {
+          return null;
+        }
+        const storedStreak: unknown = JSON.parse(
+          fs.readFileSync(workerSessionFailureStreakFilePath(), 'utf8'),
+        );
+        return storedStreak;
+      };
+
+      const writeWorkerSessionLog = (logLines: string[]): string => {
+        const sessionLogFilePath = path.join(
+          workerSessionTemporaryDirectory,
+          'worker-session.log',
+        );
+        fs.writeFileSync(sessionLogFilePath, `${logLines.join('\n')}\n`);
+        return sessionLogFilePath;
+      };
+
+      const printedConsoleLogLines = (): string[] =>
+        consoleLogSpy.mock.calls.map((call: unknown[]) => String(call[0]));
+
+      const notifyFinishedArgv = (extraArgs: string[]): string[] => [
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        workerSessionIssueUrl,
+        ...extraArgs,
+      ];
+
+      const useNotifyRun = (mockRun: jest.Mock): void => {
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+      };
+
+      const runCliProgramUnderFakeTimers = async (
+        argv: string[],
+        handleFatalError: (error: unknown) => void,
+      ): Promise<void> => {
+        let finished = false;
+        const running = runCliProgram(argv, handleFatalError).then(() => {
+          finished = true;
+        });
+        while (!finished) {
+          await jest.advanceTimersByTimeAsync(10000);
+        }
+        await running;
+      };
+
+      beforeEach(() => {
+        workerSessionTemporaryDirectory = fs.mkdtempSync(
+          path.join(tmpDir, 'notify-worker-session-'),
+        );
+        process.env.XDG_CACHE_HOME = workerSessionTemporaryDirectory;
+        jest.spyOn(global, 'fetch').mockImplementation(
+          async () =>
+            new Response(JSON.stringify({ data: {} }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+        processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+        consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => undefined);
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+        processExitSpy.mockRestore();
+        consoleLogSpy.mockRestore();
+        fs.rmSync(workerSessionTemporaryDirectory, {
+          recursive: true,
+          force: true,
+        });
+      });
+
+      it.each([
+        {
+          label: 'no flag',
+          extraArgs: [],
+          expectedRunParams: {
+            missingAgentName: null,
+            sessionErrorLine: null,
+            deferPreparation: null,
+            rateLimitRejected: null,
+            promptTooLongOnResume: null,
+            moveToFailedPreparation: null,
+          },
+        },
+        {
+          label: '--moveToFailedPreparation with --sessionErrorLine',
+          extraArgs: [
+            '--moveToFailedPreparation',
+            '--sessionErrorLine',
+            'Task failed 3 consecutive times with terminal_reason=api_error; moving to Failed Preparation status. URL=https://github.com/test/repo/issues/1',
+          ],
+          expectedRunParams: {
+            missingAgentName: null,
+            sessionErrorLine:
+              'Task failed 3 consecutive times with terminal_reason=api_error; moving to Failed Preparation status. URL=https://github.com/test/repo/issues/1',
+            deferPreparation: null,
+            rateLimitRejected: null,
+            promptTooLongOnResume: null,
+            moveToFailedPreparation: true,
+          },
+        },
+        {
+          label: '--rateLimitRejected',
+          extraArgs: ['--rateLimitRejected'],
+          expectedRunParams: {
+            missingAgentName: null,
+            sessionErrorLine: null,
+            deferPreparation: null,
+            rateLimitRejected: true,
+            promptTooLongOnResume: null,
+            moveToFailedPreparation: null,
+          },
+        },
+        {
+          label: '--promptTooLongOnResume',
+          extraArgs: ['--promptTooLongOnResume'],
+          expectedRunParams: {
+            missingAgentName: null,
+            sessionErrorLine: null,
+            deferPreparation: null,
+            rateLimitRejected: null,
+            promptTooLongOnResume: true,
+            moveToFailedPreparation: null,
+          },
+        },
+        {
+          label: '--deferPreparation with --sessionErrorLine',
+          extraArgs: [
+            '--deferPreparation',
+            '--sessionErrorLine',
+            'API credits exhausted (1M context credit limit).',
+          ],
+          expectedRunParams: {
+            missingAgentName: null,
+            sessionErrorLine:
+              'API credits exhausted (1M context credit limit).',
+            deferPreparation: true,
+            rateLimitRejected: null,
+            promptTooLongOnResume: null,
+            moveToFailedPreparation: null,
+          },
+        },
+        {
+          label: '--missingAgentName with --sessionErrorLine',
+          extraArgs: [
+            '--missingAgentName',
+            'ghost-agent',
+            '--sessionErrorLine',
+            'Agent definition ghost-agent was not found',
+          ],
+          expectedRunParams: {
+            missingAgentName: 'ghost-agent',
+            sessionErrorLine: 'Agent definition ghost-agent was not found',
+            deferPreparation: null,
+            rateLimitRejected: null,
+            promptTooLongOnResume: null,
+            moveToFailedPreparation: null,
+          },
+        },
+      ])(
+        'passes $label to run unchanged when --sessionLogFilePath is absent',
+        async ({ extraArgs, expectedRunParams }) => {
+          const mockRun = jest.fn().mockResolvedValue(undefined);
+          useNotifyRun(mockRun);
+
+          await program.parseAsync(notifyFinishedArgv(extraArgs));
+
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining(expectedRunParams),
+          );
+        },
+      );
+
+      it('runs no classification and leaves the stored streak untouched when --sessionLogFilePath is absent', async () => {
+        writeStoredWorkerSessionFailureStreak('api_error', 2);
+        writeWorkerSessionLog([overloadedEndingLine]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(notifyFinishedArgv([]));
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            moveToFailedPreparation: null,
+            rateLimitRejected: null,
+            promptTooLongOnResume: null,
+            sessionErrorLine: null,
+          }),
+        );
+        expect(readStoredWorkerSessionFailureStreak()).toEqual({
+          issueUrl: workerSessionIssueUrl,
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 2,
+        });
+        expect(
+          printedConsoleLogLines().filter((line) =>
+            line.startsWith('consecutive-same-reason-failure'),
+          ),
+        ).toEqual([]);
+      });
+
+      it('ends without an error and without a retry when run rejects with GitHubRateLimitError and --sessionLogFilePath is absent', async () => {
+        jest.useFakeTimers();
+        const { GitHubRateLimitError } =
+          await import('../../repositories/issue/githubRateLimitRetry');
+        const mockRun = jest
+          .fn()
+          .mockRejectedValue(
+            new GitHubRateLimitError(
+              'HTTP 403 GitHub API rate limit exceeded',
+              null,
+            ),
+          );
+        useNotifyRun(mockRun);
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv([]),
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('rate-limited'),
+          );
+        } finally {
+          consoleWarnSpy.mockRestore();
+        }
+      });
+
+      it('ends in the fatal error handler with the error when run rejects with an error other than GitHubRateLimitError', async () => {
+        jest.useFakeTimers();
+        const runError = new Error('GitHub API returned 502 Bad Gateway');
+        const mockRun = jest.fn().mockRejectedValue(runError);
+        useNotifyRun(mockRun);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv([]),
+            handleFatalError,
+          );
+
+          expect(handleFatalError).toHaveBeenCalledTimes(1);
+          expect(handleFatalError).toHaveBeenCalledWith(runError);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it('classifies a resumed session log once, prints its diagnostic line and passes promptTooLongOnResume to run', async () => {
+        const sessionLogFilePath = writeWorkerSessionLog([
+          launcherSessionResumptionTextLine,
+          promptTooLongEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv([
+            '--sessionLogFilePath',
+            sessionLogFilePath,
+            '--sessionWasResumed',
+          ]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issueUrl: workerSessionIssueUrl,
+            promptTooLongOnResume: true,
+          }),
+        );
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.not.objectContaining({ moveToFailedPreparation: true }),
+        );
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.not.objectContaining({ rateLimitRejected: true }),
+        );
+        expect(printedConsoleLogLines()).toContain(
+          'consecutive-same-reason-failure[blocking_limit]:1/3',
+        );
+        expect(readStoredWorkerSessionFailureStreak()).toEqual({
+          issueUrl: workerSessionIssueUrl,
+          terminalReason: 'blocking_limit',
+          consecutiveFailureCount: 1,
+        });
+      });
+
+      it('does not pass promptTooLongOnResume for the same log when --sessionWasResumed is absent', async () => {
+        const sessionLogFilePath = writeWorkerSessionLog([
+          launcherSessionResumptionTextLine,
+          promptTooLongEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.not.objectContaining({ promptTooLongOnResume: true }),
+        );
+        expect(readStoredWorkerSessionFailureStreak()).toEqual({
+          issueUrl: workerSessionIssueUrl,
+          terminalReason: 'blocking_limit',
+          consecutiveFailureCount: 1,
+        });
+      });
+
+      it('passes rateLimitRejected to run, prints both rate-limit lines in order and keeps the stored streak for a session-limit ending', async () => {
+        writeStoredWorkerSessionFailureStreak('api_error', 2);
+        const sessionLogFilePath = writeWorkerSessionLog([
+          rejectedRateLimitEventLine,
+          sessionLimitEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({ rateLimitRejected: true }),
+        );
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.not.objectContaining({ moveToFailedPreparation: true }),
+        );
+        const usageLimitLineIndex = printedConsoleLogLines().indexOf(
+          usageLimitEndingDetectedLine,
+        );
+        expect(usageLimitLineIndex).toBeGreaterThanOrEqual(0);
+        expect(
+          printedConsoleLogLines().slice(usageLimitLineIndex + 1),
+        ).toContain(rateLimitRejectionDetectedLine);
+        expect(readStoredWorkerSessionFailureStreak()).toEqual({
+          issueUrl: workerSessionIssueUrl,
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 2,
+        });
+      });
+
+      it('passes moveToFailedPreparation and the classification sessionErrorLine in place of --sessionErrorLine on the third consecutive failure', async () => {
+        writeStoredWorkerSessionFailureStreak('api_error', 2);
+        const sessionLogFilePath = writeWorkerSessionLog([
+          overloadedEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv([
+            '--sessionLogFilePath',
+            sessionLogFilePath,
+            '--sessionErrorLine',
+            'Launcher captured line',
+          ]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            moveToFailedPreparation: true,
+            sessionErrorLine: failedPreparationSessionErrorLine,
+          }),
+        );
+        expect(printedConsoleLogLines()).toContain(
+          'consecutive-same-reason-failure[api_error]:3/3',
+        );
+        expect(printedConsoleLogLines()).toContain(
+          `consecutive-same-reason-failure-max-reached: moving to Failed Preparation, count=3, reason=api_error, url=${workerSessionIssueUrl}`,
+        );
+        expect(readStoredWorkerSessionFailureStreak()).toEqual({
+          issueUrl: workerSessionIssueUrl,
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 3,
+        });
+      });
+
+      it.each([
+        {
+          label: '--rateLimitRejected',
+          extraArgs: ['--rateLimitRejected'],
+          expectedRunParams: {
+            rateLimitRejected: true,
+            sessionErrorLine: null,
+          },
+        },
+        {
+          label: '--promptTooLongOnResume',
+          extraArgs: ['--promptTooLongOnResume'],
+          expectedRunParams: {
+            promptTooLongOnResume: true,
+            sessionErrorLine: null,
+          },
+        },
+        {
+          label: '--moveToFailedPreparation with --sessionErrorLine',
+          extraArgs: [
+            '--moveToFailedPreparation',
+            '--sessionErrorLine',
+            'Explicit launcher session error line',
+          ],
+          expectedRunParams: {
+            moveToFailedPreparation: true,
+            sessionErrorLine: 'Explicit launcher session error line',
+          },
+        },
+        {
+          label: '--deferPreparation with --sessionErrorLine',
+          extraArgs: [
+            '--deferPreparation',
+            '--sessionErrorLine',
+            'API credits exhausted (1M context credit limit).',
+          ],
+          expectedRunParams: {
+            deferPreparation: true,
+            sessionErrorLine:
+              'API credits exhausted (1M context credit limit).',
+          },
+        },
+      ])(
+        'keeps explicit $label when the classification of a completed session sets nothing',
+        async ({ extraArgs, expectedRunParams }) => {
+          writeStoredWorkerSessionFailureStreak('api_error', 2);
+          const sessionLogFilePath = writeWorkerSessionLog([
+            completedEndingLine,
+          ]);
+          const mockRun = jest.fn().mockResolvedValue(undefined);
+          useNotifyRun(mockRun);
+
+          await program.parseAsync(
+            notifyFinishedArgv([
+              '--sessionLogFilePath',
+              sessionLogFilePath,
+              ...extraArgs,
+            ]),
+          );
+
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining(expectedRunParams),
+          );
+          expect(printedConsoleLogLines()).toContain(streakResetLine);
+          expect(readStoredWorkerSessionFailureStreak()).toBeNull();
+        },
+      );
+
+      it.each([
+        {
+          label: 'a session-limit ending with no stored streak',
+          logLines: [rejectedRateLimitEventLine, sessionLimitEndingLine],
+          storedStreak: null,
+          expectedStreak: {
+            issueUrl: workerSessionIssueUrl,
+            terminalReason: 'api_error',
+            consecutiveFailureCount: 1,
+          },
+        },
+        {
+          label: 'a third consecutive API Error: Overloaded ending',
+          logLines: [overloadedEndingLine],
+          storedStreak: { terminalReason: 'api_error', count: 2 },
+          expectedStreak: {
+            issueUrl: workerSessionIssueUrl,
+            terminalReason: 'api_error',
+            consecutiveFailureCount: 3,
+          },
+        },
+      ])(
+        'classifies $label as missing-agent with a non-empty --missingAgentName, counting it without rateLimitRejected or moveToFailedPreparation',
+        async ({ logLines, storedStreak, expectedStreak }) => {
+          if (storedStreak !== null) {
+            writeStoredWorkerSessionFailureStreak(
+              storedStreak.terminalReason,
+              storedStreak.count,
+            );
+          }
+          const sessionLogFilePath = writeWorkerSessionLog(logLines);
+          const mockRun = jest.fn().mockResolvedValue(undefined);
+          useNotifyRun(mockRun);
+
+          await program.parseAsync(
+            notifyFinishedArgv([
+              '--sessionLogFilePath',
+              sessionLogFilePath,
+              '--missingAgentName',
+              'ghost-agent',
+              '--sessionErrorLine',
+              'Agent definition ghost-agent was not found',
+            ]),
+          );
+
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({
+              missingAgentName: 'ghost-agent',
+              sessionErrorLine: 'Agent definition ghost-agent was not found',
+            }),
+          );
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.not.objectContaining({ rateLimitRejected: true }),
+          );
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.not.objectContaining({ moveToFailedPreparation: true }),
+          );
+          expect(readStoredWorkerSessionFailureStreak()).toEqual(
+            expectedStreak,
+          );
+        },
+      );
+
+      it('classifies a session-limit ending as rate-limited when --missingAgentName is empty', async () => {
+        const sessionLogFilePath = writeWorkerSessionLog([
+          rejectedRateLimitEventLine,
+          sessionLimitEndingLine,
+        ]);
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv([
+            '--sessionLogFilePath',
+            sessionLogFilePath,
+            '--missingAgentName',
+            '',
+          ]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({ rateLimitRejected: true }),
+        );
+        expect(readStoredWorkerSessionFailureStreak()).toBeNull();
+      });
+
+      it('prints the unreadable-log diagnostic and the reset line and deletes the stored streak when --sessionLogFilePath names a missing file', async () => {
+        writeStoredWorkerSessionFailureStreak('api_error', 2);
+        const missingSessionLogFilePath = path.join(
+          workerSessionTemporaryDirectory,
+          'missing-worker-session.log',
+        );
+        const mockRun = jest.fn().mockResolvedValue(undefined);
+        useNotifyRun(mockRun);
+
+        await program.parseAsync(
+          notifyFinishedArgv([
+            '--sessionLogFilePath',
+            missingSessionLogFilePath,
+            '--sessionWasResumed',
+          ]),
+        );
+
+        expect(mockRun).toHaveBeenCalledTimes(1);
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({ sessionErrorLine: null }),
+        );
+        for (const flagName of [
+          'moveToFailedPreparation',
+          'rateLimitRejected',
+          'promptTooLongOnResume',
+        ]) {
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.not.objectContaining({ [flagName]: true }),
+          );
+        }
+        const unreadableLinePrefix = `worker-session-log-unreadable: ${missingSessionLogFilePath}: `;
+        expect(
+          printedConsoleLogLines().filter(
+            (line) =>
+              line.startsWith(unreadableLinePrefix) &&
+              line.slice(unreadableLinePrefix.length).includes('ENOENT'),
+          ),
+        ).toHaveLength(1);
+        expect(printedConsoleLogLines()).toContain(streakResetLine);
+        expect(readStoredWorkerSessionFailureStreak()).toBeNull();
+      });
+
+      it('classifies once before retrying run, so a retried notification does not count the session again', async () => {
+        jest.useFakeTimers();
+        writeStoredWorkerSessionFailureStreak('api_error', 2);
+        const sessionLogFilePath = writeWorkerSessionLog([
+          overloadedEndingLine,
+        ]);
+        const mockRun = jest
+          .fn()
+          .mockRejectedValueOnce(new Error('GitHub API returned 502'))
+          .mockRejectedValueOnce(new Error('GitHub API returned 503'))
+          .mockResolvedValueOnce(undefined);
+        useNotifyRun(mockRun);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledTimes(3);
+          for (const callNumber of [1, 2, 3]) {
+            expect(mockRun).toHaveBeenNthCalledWith(
+              callNumber,
+              expect.objectContaining({
+                moveToFailedPreparation: true,
+                sessionErrorLine: failedPreparationSessionErrorLine,
+              }),
+            );
+          }
+          expect(
+            printedConsoleLogLines().filter((line) =>
+              line.startsWith('consecutive-same-reason-failure[api_error]'),
+            ),
+          ).toEqual(['consecutive-same-reason-failure[api_error]:3/3']);
+          expect(readStoredWorkerSessionFailureStreak()).toEqual({
+            issueUrl: workerSessionIssueUrl,
+            terminalReason: 'api_error',
+            consecutiveFailureCount: 3,
+          });
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it('retries run without --sessionLogFilePath, printing the attempt lines and the sanitized attempt error', async () => {
+        jest.useFakeTimers();
+        const firstAttemptError = Object.assign(
+          new Error('GitHub API returned 502 Bad Gateway'),
+          {
+            request: new Request('https://api.github.com/graphql', {
+              method: 'POST',
+              headers: { Authorization: 'bearer test-token' },
+            }),
+          },
+        );
+        const mockRun = jest
+          .fn()
+          .mockRejectedValueOnce(firstAttemptError)
+          .mockResolvedValueOnce(undefined);
+        useNotifyRun(mockRun);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv(['--rateLimitRejected']),
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledTimes(2);
+          expect(mockRun).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({
+              rateLimitRejected: true,
+              moveToFailedPreparation: null,
+            }),
+          );
+          expect(printedConsoleLogLines()).toContain(
+            'Calling notifyFinishedIssuePreparation (attempt 1/3)...',
+          );
+          expect(printedConsoleLogLines()).toContain(
+            'notifyFinishedIssuePreparation failed, retrying in 30 seconds...',
+          );
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              message: 'GitHub API returned 502 Bad Gateway',
+              request: {
+                url: 'https://api.github.com/graphql',
+                method: 'POST',
+              },
+            }),
+          );
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
+      it.each([
+        {
+          label: 'without --sessionLogFilePath',
+          writeLogAndBuildExtraArgs: (): string[] => [],
+        },
+        {
+          label: 'with --sessionLogFilePath naming a completed session log',
+          writeLogAndBuildExtraArgs: (): string[] => [
+            '--sessionLogFilePath',
+            writeWorkerSessionLog([completedEndingLine]),
+          ],
+        },
+      ])(
+        'ends in the fatal error handler with the third error after three attempts when run rejects every time $label',
+        async ({ writeLogAndBuildExtraArgs }) => {
+          jest.useFakeTimers();
+          const thirdAttemptError = new Error('GitHub API returned 504');
+          const mockRun = jest
+            .fn()
+            .mockRejectedValueOnce(new Error('GitHub API returned 502'))
+            .mockRejectedValueOnce(new Error('GitHub API returned 503'))
+            .mockRejectedValueOnce(thirdAttemptError);
+          useNotifyRun(mockRun);
+          const consoleErrorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+          const handleFatalError = jest.fn();
+
+          try {
+            await runCliProgramUnderFakeTimers(
+              notifyFinishedArgv(writeLogAndBuildExtraArgs()),
+              handleFatalError,
+            );
+
+            expect(mockRun).toHaveBeenCalledTimes(3);
+            expect(handleFatalError).toHaveBeenCalledTimes(1);
+            expect(handleFatalError).toHaveBeenCalledWith(thirdAttemptError);
+            expect(printedConsoleLogLines()).toContain(
+              'notifyFinishedIssuePreparation failed after 3 attempts, orphaned-preparation detection will handle cleanup.',
+            );
+          } finally {
+            consoleErrorSpy.mockRestore();
+          }
+        },
+      );
+
+      it('ends without an error and without a retry when run rejects with GitHubRateLimitError after classifying a session log', async () => {
+        jest.useFakeTimers();
+        const { GitHubRateLimitError } =
+          await import('../../repositories/issue/githubRateLimitRetry');
+        writeStoredWorkerSessionFailureStreak('api_error', 1);
+        const sessionLogFilePath = writeWorkerSessionLog([
+          overloadedEndingLine,
+        ]);
+        const mockRun = jest
+          .fn()
+          .mockRejectedValue(
+            new GitHubRateLimitError(
+              'HTTP 403 GitHub API rate limit exceeded',
+              null,
+            ),
+          );
+        useNotifyRun(mockRun);
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgramUnderFakeTimers(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('rate-limited'),
+          );
+          expect(readStoredWorkerSessionFailureStreak()).toEqual({
+            issueUrl: workerSessionIssueUrl,
+            terminalReason: 'api_error',
+            consecutiveFailureCount: 2,
+          });
+        } finally {
+          consoleWarnSpy.mockRestore();
         }
       });
     });
