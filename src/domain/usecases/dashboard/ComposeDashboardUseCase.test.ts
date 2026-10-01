@@ -1,5 +1,6 @@
 import {
   ComposeDashboardInput,
+  ComposeDashboardMachineStatus,
   ComposeDashboardProject,
   ComposeDashboardUseCase,
   PROJECT_ROW_WIDTH_BUDGET,
@@ -1165,11 +1166,11 @@ describe('dashboardComposeInputHasProjectData', () => {
     closeEventCounts: noCloseEvents,
   };
 
-  const presentMachineStatus = {
+  const presentMachineStatus: ComposeDashboardMachineStatus = {
     memPct: 10,
     cpuPct: 10,
     diskPct: 10,
-    load: [1, 1, 1] as [number, number, number],
+    load: [1, 1, 1],
     cycleMinutes: 1,
   };
 
