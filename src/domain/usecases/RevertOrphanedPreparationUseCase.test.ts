@@ -150,6 +150,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
       | 'getLatestReopenedEventAt'
+      | 'closeIssueByUrl'
     >
   >;
   let mockIssueCommentRepository: Mocked<
@@ -190,6 +191,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       addIssueToProject: jest.fn().mockResolvedValue(''),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
       getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
+      closeIssueByUrl: jest.fn().mockResolvedValue(undefined),
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
@@ -1739,7 +1741,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ]);
   });
 
-  it('should advance closed orphaned issue to Awaiting Owner without checking comments or PRs', async () => {
+  it('should advance closed orphaned issue to Awaiting Owner without checking PRs', async () => {
     const closedIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1762,9 +1764,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
       thresholdForAutoReject: 3,
     });
 
-    expect(
-      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
-    ).toHaveLength(0);
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
@@ -3254,5 +3253,373 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
     });
+  });
+
+  describe('closeIssueAs result JSON routing for orphaned Preparation issues', () => {
+    const orphanIssueUrl = 'https://github.com/user/repo/issues/10';
+    const revertProjectUrl = 'https://github.com/user/repo';
+    const lastOrphanReportCreatedAt = new Date(Date.UTC(2026, 0, 2, 5));
+
+    const orphanAgentReportEndingWith = (
+      resultJson: string,
+      createdAt: Date,
+    ) => ({
+      author: 'bot',
+      content: `From: :robot: chore (model)\n\nThe deliverable is finished and verified against every acceptance criterion.\n\n\`\`\`json\n${resultJson}\n\`\`\``,
+      createdAt,
+      updatedAt: createdAt,
+    });
+
+    const fiveEarlierOrphanReportsWithoutNextStepAgent = () =>
+      [0, 1, 2, 3, 4].map((hourOffset) =>
+        orphanAgentReportEndingWith(
+          '{"nextStep": null}',
+          new Date(Date.UTC(2026, 0, 2, hourOffset)),
+        ),
+      );
+
+    type OrphanScenario = {
+      comments: ReturnType<typeof orphanAgentReportEndingWith>[];
+      openPullRequests: ReturnType<typeof createPassingPr>[];
+      issueOverrides?: Partial<Issue>;
+      project?: Project;
+    };
+
+    const runOrphanScenario = async (
+      scenario: OrphanScenario,
+    ): Promise<void> => {
+      const project = scenario.project ?? mockProject;
+      const orphanIssueFields: Partial<Issue> = {
+        status: 'Preparation',
+        author: 'bot',
+        story: 'Default Story',
+        ...scenario.issueOverrides,
+      };
+      mockProjectRepository.getProject.mockResolvedValue(project);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project,
+        issues: [
+          createMockIssue({ url: orphanIssueUrl, ...orphanIssueFields }),
+        ],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+        createMockIssue({ url: issueUrl, ...orphanIssueFields }),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        scenario.comments,
+      );
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue(
+        scenario.openPullRequests,
+      );
+      await useCase.run({
+        projectUrl: revertProjectUrl,
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        allowedIssueAuthors: ['bot'],
+      });
+    };
+
+    const statusIdsPassedToUpdateStatus = (): string[] =>
+      mockIssueRepository.updateStatus.mock.calls.map(
+        ([, , statusId]) => statusId,
+      );
+
+    const statusIdsForOrphanScenario = async (
+      scenario: OrphanScenario,
+    ): Promise<string[]> => {
+      mockIssueRepository.updateStatus.mockClear();
+      await runOrphanScenario(scenario);
+      return statusIdsPassedToUpdateStatus();
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('closes the orphaned issue and sets Done instead of the dispatch loop escalation when the last of six reports at thresholdForDispatchLoop 6 requests closeIssueAs completed (closeIssueAs criterion 13)', async () => {
+      await runOrphanScenario({
+        comments: [
+          ...fiveEarlierOrphanReportsWithoutNextStepAgent(),
+          orphanAgentReportEndingWith(
+            '{"closeIssueAs": "completed"}',
+            lastOrphanReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        orphanIssueUrl,
+        'completed',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ url: orphanIssueUrl }),
+        '3',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        '5',
+      );
+      expect(
+        mockIssueRepository.closeIssueByUrl.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        mockIssueRepository.updateStatus.mock.invocationCallOrder[0],
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('escalates the criterion 13 input without closeIssueAs to Failed Preparation at thresholdForDispatchLoop 6 (dispatch loop pin for closeIssueAs criterion 13)', async () => {
+      await runOrphanScenario({
+        comments: [
+          ...fiveEarlierOrphanReportsWithoutNextStepAgent(),
+          orphanAgentReportEndingWith('{}', lastOrphanReportCreatedAt),
+        ],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['5']);
+    });
+
+    it('does not close the orphaned issue, warns naming the open pull request and routes exactly as without closeIssueAs when an open pull request closes it (closeIssueAs criterion 14)', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const openClosingPullRequest = createPassingPr();
+
+      const statusIdsWithCloseIssueAs = await statusIdsForOrphanScenario({
+        comments: [
+          ...fiveEarlierOrphanReportsWithoutNextStepAgent(),
+          orphanAgentReportEndingWith(
+            '{"closeIssueAs": "completed"}',
+            lastOrphanReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [openClosingPullRequest],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `closeIssueAs not applied to ${orphanIssueUrl} because an open pull request closes it on merge: ${openClosingPullRequest.url}`,
+      );
+
+      const statusIdsWithoutCloseIssueAs = await statusIdsForOrphanScenario({
+        comments: [
+          ...fiveEarlierOrphanReportsWithoutNextStepAgent(),
+          orphanAgentReportEndingWith('{}', lastOrphanReportCreatedAt),
+        ],
+        openPullRequests: [openClosingPullRequest],
+      });
+
+      expect(statusIdsWithCloseIssueAs).toEqual(statusIdsWithoutCloseIssueAs);
+    });
+
+    it('does not call closeIssueByUrl and sets Done for an already closed orphaned issue whose last trusted report requests closeIssueAs completed (closeIssueAs criterion 15)', async () => {
+      await runOrphanScenario({
+        comments: [
+          orphanAgentReportEndingWith(
+            '{"closeIssueAs": "completed"}',
+            lastOrphanReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ url: orphanIssueUrl }),
+        '3',
+      );
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['3']);
+    });
+
+    it('advances an already closed orphaned issue whose last trusted report carries no closeIssueAs to Awaiting Owner (closed orphan pin for closeIssueAs criterion 15)', async () => {
+      await runOrphanScenario({
+        comments: [
+          orphanAgentReportEndingWith('{}', lastOrphanReportCreatedAt),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['4']);
+    });
+
+    it.each([
+      {
+        failure: 'a non-403 error',
+        commentReadError: new Error(
+          'Failed to fetch comments from GitHub REST API: 500 Internal Server Error',
+        ),
+      },
+      {
+        failure: 'a 403 GitHubCommentFetchHttpError',
+        commentReadError: buildGitHubCommentFetchHttpError(403),
+      },
+    ])(
+      'advances an already closed orphaned issue to Awaiting Owner without closing it when reading its comments fails with $failure (closed orphan comment read failure pin)',
+      async ({ commentReadError }) => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        const closedOrphanIssueFields: Partial<Issue> = {
+          status: 'Preparation',
+          author: 'bot',
+          story: 'Default Story',
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        };
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [
+            createMockIssue({
+              url: orphanIssueUrl,
+              ...closedOrphanIssueFields,
+            }),
+          ],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+          createMockIssue({ url: issueUrl, ...closedOrphanIssueFields }),
+        );
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 1,
+        });
+        mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+          commentReadError,
+        );
+
+        await useCase.run({
+          projectUrl: revertProjectUrl,
+          preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+          thresholdForAutoReject: 3,
+          thresholdForDispatchLoop: 6,
+          allowedIssueAuthors: ['bot'],
+        });
+
+        expect(statusIdsPassedToUpdateStatus()).toEqual(['4']);
+        expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      },
+    );
+
+    it('closes the orphaned issue, leaves Status unchanged and reports the missing Done option when the project has no Done status (closeIssueAs requirement 9 applying requirement 7)', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const projectWithoutDoneStatus: Project = {
+        ...createMockProject(),
+        status: {
+          name: 'Status',
+          fieldId: 'status-field-id',
+          statuses: createMockProject().status.statuses.filter(
+            (statusOption) => statusOption.name !== 'Done',
+          ),
+        },
+      };
+
+      await runOrphanScenario({
+        comments: [
+          orphanAgentReportEndingWith(
+            '{"closeIssueAs": "completed"}',
+            lastOrphanReportCreatedAt,
+          ),
+        ],
+        openPullRequests: [],
+        project: projectWithoutDoneStatus,
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        orphanIssueUrl,
+        'completed',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `Done status option 'Done' not found in project ${revertProjectUrl}; closed ${orphanIssueUrl} without changing its Status.`,
+      );
+    });
+
+    it.each([
+      {
+        overridingField: 'nextStepAgent',
+        resultJsonWithCloseIssueAs:
+          '{"closeIssueAs": "completed", "nextStepAgent": "developer"}',
+        resultJsonWithoutCloseIssueAs: '{"nextStepAgent": "developer"}',
+      },
+      {
+        overridingField: 'workflowError',
+        resultJsonWithCloseIssueAs:
+          '{"closeIssueAs": "completed", "workflowError": "missing required configuration"}',
+        resultJsonWithoutCloseIssueAs:
+          '{"workflowError": "missing required configuration"}',
+      },
+      {
+        overridingField: 'needOwnerConfirmationOrApproval',
+        resultJsonWithCloseIssueAs:
+          '{"closeIssueAs": "completed", "needOwnerConfirmationOrApproval": true}',
+        resultJsonWithoutCloseIssueAs:
+          '{"needOwnerConfirmationOrApproval": true}',
+      },
+    ])(
+      'does not close the orphaned issue and routes it exactly as without closeIssueAs when the same block sets $overridingField (closeIssueAs requirement 9 applying requirement 2)',
+      async ({ resultJsonWithCloseIssueAs, resultJsonWithoutCloseIssueAs }) => {
+        mockProject.agent = {
+          name: 'agent',
+          fieldId: 'agent-field-id',
+          options: [
+            {
+              id: 'agent-option-developer',
+              name: 'developer',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        };
+
+        const statusIdsWithCloseIssueAs = await statusIdsForOrphanScenario({
+          comments: [
+            orphanAgentReportEndingWith(
+              resultJsonWithCloseIssueAs,
+              lastOrphanReportCreatedAt,
+            ),
+          ],
+          openPullRequests: [],
+        });
+
+        expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+
+        const statusIdsWithoutCloseIssueAs = await statusIdsForOrphanScenario({
+          comments: [
+            orphanAgentReportEndingWith(
+              resultJsonWithoutCloseIssueAs,
+              lastOrphanReportCreatedAt,
+            ),
+          ],
+          openPullRequests: [],
+        });
+
+        expect(statusIdsWithCloseIssueAs).toEqual(statusIdsWithoutCloseIssueAs);
+      },
+    );
   });
 });

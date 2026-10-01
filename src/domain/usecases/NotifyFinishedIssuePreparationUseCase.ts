@@ -29,6 +29,11 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { ensureStoryOptionAndGetId } from './ensureStoryOptionAndGetId';
+import {
+  CloseIssueAsRequest,
+  extractCloseIssueAs,
+} from './extractCloseIssueAs';
+import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
@@ -140,6 +145,7 @@ const parseOrgRepo = (
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
+  private readonly closeIssueAsRequestApplier: CloseIssueAsRequestApplier;
 
   constructor(
     private readonly projectRepository: Pick<
@@ -171,6 +177,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'getIssueByUrl'
       | 'updateStoryByProjectItemId'
       | 'getLatestReopenedEventAt'
+      | 'closeIssueByUrl'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -185,6 +192,9 @@ export class NotifyFinishedIssuePreparationUseCase {
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
     this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
+      issueRepository,
+    );
+    this.closeIssueAsRequestApplier = new CloseIssueAsRequestApplier(
       issueRepository,
     );
   }
@@ -454,6 +464,40 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
+    const workflowError = lastAgentReport
+      ? extractWorkflowError(lastAgentReport.content)
+      : null;
+    const needOwnerConfirmationOrApproval = lastAgentReport
+      ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
+      : false;
+    const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
+      ? extractCloseIssueAs(lastAgentReport.content)
+      : { kind: 'notRequested' };
+    const isCloseIssueAsOverriddenByReportRouting =
+      nextStepAgent !== null ||
+      workflowError !== null ||
+      needOwnerConfirmationOrApproval;
+    if (
+      closeIssueAsRequest.kind === 'requested' &&
+      !isCloseIssueAsOverriddenByReportRouting
+    ) {
+      const closeIssueAsRequestApplication =
+        await this.closeIssueAsRequestApplier.apply({
+          issue,
+          project,
+          projectUrl: params.projectUrl,
+          stateReason: closeIssueAsRequest.stateReason,
+        });
+      if (closeIssueAsRequestApplication === 'issueClosedAndStatusSetToDone') {
+        issue.status = DONE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.patchConsoleTab(issue);
+        return;
+      }
+      if (closeIssueAsRequestApplication === 'issueClosedWithStatusUnchanged') {
+        return;
+      }
+    }
     let storyName = lastAgentReport
       ? extractStory(lastAgentReport.content)
       : null;
@@ -766,9 +810,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const workflowError = lastAgentReport
-      ? extractWorkflowError(lastAgentReport.content)
-      : null;
     if (workflowError !== null) {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
@@ -795,9 +836,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const needOwnerConfirmationOrApproval = lastAgentReport
-      ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
-      : false;
     if (needOwnerConfirmationOrApproval) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
@@ -807,6 +845,22 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
+      return;
+    }
+
+    if (closeIssueAsRequest.kind === 'invalidValue') {
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.createCommentWithDedup(
+        issue,
+        `Invalid closeIssueAs value ${closeIssueAsRequest.receivedValueJson}: allowed values are "completed" and "not_planned". The issue was not closed.`,
+      );
       return;
     }
 
