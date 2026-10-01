@@ -4252,6 +4252,37 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
         expectedRepositoryIssueEventFeedPages: [1],
       },
+      {
+        name: 'the event earlier than the latest reopened timeline item is a reopened event of the issue itself sixty seconds earlier, following later events of other issues on feed page 1',
+        repositoryIssueEventFeedPages: [
+          [
+            ...buildOtherIssueFeedEventsNewestFirst(50, '2026-10-01T04:49:37Z'),
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:14:10Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(49, '2026-10-01T03:14:00Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T03:05:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
+      {
+        name: 'the newest event on feed page 1 is a reopened event of the issue itself sixty seconds earlier than the latest reopened timeline item',
+        repositoryIssueEventFeedPages: [
+          [
+            buildRepositoryIssueEventFeedEvent(
+              'reopened',
+              '2026-10-01T03:14:10Z',
+              42,
+            ),
+            ...buildOtherIssueFeedEventsNewestFirst(99, '2026-10-01T03:14:00Z'),
+          ],
+          buildOtherIssueFeedEventsNewestFirst(100, '2026-10-01T02:57:00Z'),
+        ],
+        expectedRepositoryIssueEventFeedPages: [1],
+      },
     ];
 
     it.each(
