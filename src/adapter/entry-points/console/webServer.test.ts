@@ -2948,6 +2948,7 @@ describe('webServer GET /api/projects', () => {
         projectUrls: null,
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
+        disabledPjcodes: [],
       });
     } finally {
       await closeServer(server);
@@ -2980,6 +2981,7 @@ describe('webServer GET /api/projects', () => {
         projectUrls: null,
         fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
         nameWithOwnerByPjcode: null,
+        disabledPjcodes: [],
       });
     } finally {
       await closeServer(server);
@@ -3018,6 +3020,7 @@ describe('webServer GET /api/projects', () => {
         },
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
+        disabledPjcodes: [],
       });
     } finally {
       await closeServer(server);
@@ -3065,7 +3068,128 @@ describe('webServer GET /api/projects', () => {
         nameWithOwnerByPjcode: {
           alpha: 'HiromiShikata/umino-corporait-operation',
         },
+        disabledPjcodes: [],
       });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    {
+      name: 'consoleProjectConfigDirectory is not configured (table row 1)',
+      configured: false,
+      pjcodes: ['acme', 'beta'],
+      fileContents: {} as Record<string, string>,
+      expectedDisabledPjcodes: [] as string[],
+    },
+    {
+      name: 'consoleProjectConfigDirectory is configured with one disabled project (table rows 2 and 3)',
+      configured: true,
+      pjcodes: ['acme', 'beta', 'sandbox'],
+      fileContents: {
+        acme: 'disabled: false\n',
+        beta: 'disabled: false\n',
+        sandbox: 'disabled: true\n',
+      },
+      expectedDisabledPjcodes: ['sandbox'],
+    },
+    {
+      name: 'consoleProjectConfigDirectory is configured with two disabled projects (table row 4)',
+      configured: true,
+      pjcodes: ['acme', 'beta', 'sandbox'],
+      fileContents: {
+        acme: 'disabled: true\n',
+        beta: 'disabled: false\n',
+        sandbox: 'disabled: true\n',
+      },
+      expectedDisabledPjcodes: ['acme', 'sandbox'],
+    },
+    {
+      name: 'consoleProjectConfigDirectory is configured but no document exists on disk for either project (table row 5)',
+      configured: true,
+      pjcodes: ['acme', 'beta'],
+      fileContents: {},
+      expectedDisabledPjcodes: [],
+    },
+    {
+      name: 'the disabled key is omitted from the document (completion criterion 2)',
+      configured: true,
+      pjcodes: ['acme'],
+      fileContents: { acme: 'someOtherKey: value\n' },
+      expectedDisabledPjcodes: [],
+    },
+  ])(
+    'returns disabledPjcodes=$expectedDisabledPjcodes when $name',
+    async ({ configured, pjcodes, fileContents, expectedDisabledPjcodes }) => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+      let configDir: string | null = null;
+      if (configured) {
+        configDir = path.join(tmpDir, 'project-config');
+        fs.mkdirSync(configDir, { recursive: true });
+        for (const [pjcode, content] of Object.entries(fileContents)) {
+          fs.writeFileSync(
+            path.join(configDir, `${pjcode}.config.yaml`),
+            content,
+          );
+        }
+      }
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: null,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: pjcodes,
+        dashboardProjectConfigDirectory: configDir,
+        port: 0,
+      });
+      try {
+        const response = await request(
+          server,
+          'GET',
+          `/api/projects?k=${testToken}`,
+        );
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body) as { disabledPjcodes: unknown };
+        expect(body.disabledPjcodes).toEqual(expectedDisabledPjcodes);
+      } finally {
+        await closeServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('treats a scheduling-configuration document that fails to parse as not disabled, with no error (completion criterion 6)', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const configDir = path.join(tmpDir, 'project-config');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(configDir, 'acme.config.yaml'),
+      'foo: [1, 2,\n',
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['acme'],
+      dashboardProjectConfigDirectory: configDir,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body) as { disabledPjcodes: unknown };
+      expect(body.disabledPjcodes).toEqual([]);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
