@@ -1,3 +1,10 @@
+## [2.155.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.2...v2.155.3) (2026-10-01)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** stop forcing Status to Todo by human and stop repeating the authorNotAllowed notice ([#3036](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3036)) ([86c4c2d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/86c4c2d542147b0cb00aabd9f865defea34d4f5b))
+
 ## [2.155.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.1...v2.155.2) (2026-10-01)
 
 
