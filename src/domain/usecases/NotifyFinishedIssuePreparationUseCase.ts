@@ -435,10 +435,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
 
+    const dispatchStartedAt = params.dispatchStartedAt ?? null;
     const lastAgentReport = findLastAgentReportPostedSince(
       comments,
       isTrustedAuthor,
-      params.dispatchStartedAt ?? null,
+      dispatchStartedAt,
     );
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
@@ -453,7 +454,8 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (
       lastAgentReport === null ||
       reporterName === null ||
-      (issue.agent !== null &&
+      (dispatchStartedAt === null &&
+        issue.agent !== null &&
         !isAgentReportBodyFromAgent(
           lastAgentReport.content,
           reporterName,
