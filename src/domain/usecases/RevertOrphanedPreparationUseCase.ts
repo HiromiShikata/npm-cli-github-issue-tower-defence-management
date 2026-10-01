@@ -22,7 +22,6 @@ import {
 import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
-import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -46,6 +45,7 @@ const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 type OrphanedPreparationOutcome =
   | 'advanceToQualityCheck'
   | 'advanceClosedIssueToQualityCheck'
+  | 'advanceToWorkspace'
   | 'reject'
   | 'reassignToDeveloper'
   | 'skip';
@@ -335,8 +335,15 @@ export class RevertOrphanedPreparationUseCase {
       if (
         nextStepAgent === null &&
         lastAgentReport !== null &&
-        extractWaitingForOwner(lastAgentReport.content)
+        extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
       ) {
+        if (awaitingOwnerStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingOwnerStatusOption.id,
+          );
+        }
         continue;
       }
 
@@ -377,6 +384,14 @@ export class RevertOrphanedPreparationUseCase {
           project,
           issue,
           advanceToQualityCheckStatusOptionId,
+        );
+        continue;
+      }
+      if (outcome === 'advanceToWorkspace') {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
         );
         continue;
       }
@@ -530,10 +545,12 @@ export class RevertOrphanedPreparationUseCase {
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
+    const hasNonE2eCategoryLabel =
+      categoryLabels.length > 0 && !categoryLabels.includes('category:e2e');
     if (
       isNonDeveloperAgent ||
       hasLabelNotRequiringPullRequest ||
-      (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))
+      hasNonE2eCategoryLabel
     ) {
       const prsToCheck = await this.issueRepository.findRelatedOpenPRs(
         issue.url,
@@ -551,6 +568,27 @@ export class RevertOrphanedPreparationUseCase {
             latestReopenedAt,
           };
         }
+      }
+      if (
+        isNonDeveloperAgent &&
+        !hasLabelNotRequiringPullRequest &&
+        !hasNonE2eCategoryLabel
+      ) {
+        const lastTrustedAgentReport = findLastAgentReport(comments, (author) =>
+          isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+        );
+        const needsOwnerConfirmation = lastTrustedAgentReport
+          ? extractNeedOwnerConfirmationOrApproval(
+              lastTrustedAgentReport.content,
+            )
+          : false;
+        return {
+          outcome: needsOwnerConfirmation
+            ? 'advanceToQualityCheck'
+            : 'advanceToWorkspace',
+          comments,
+          latestReopenedAt,
+        };
       }
       return { outcome: 'advanceToQualityCheck', comments, latestReopenedAt };
     }
