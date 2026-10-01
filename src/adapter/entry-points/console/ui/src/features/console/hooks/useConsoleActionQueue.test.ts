@@ -797,4 +797,154 @@ describe('useConsoleActionQueue', () => {
     }).not.toThrow();
     expect(result.current.pending).toBeNull();
   });
+
+  describe('writeState', () => {
+    it('starts idle with attempt zero before any action is enqueued', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      expect(result.current.writeState).toEqual({
+        status: 'idle',
+        attempt: 0,
+      });
+    });
+
+    it('becomes unconfirmed with attempt one as soon as the commit is triggered, before it resolves', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction();
+      act(() => {
+        result.current.enqueue(action);
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'idle',
+        attempt: 0,
+      });
+
+      act(() => {
+        result.current.dismiss();
+      });
+      expect(action.commit).toHaveBeenCalledTimes(1);
+      expect(result.current.writeState).toEqual({
+        status: 'unconfirmed',
+        attempt: 1,
+      });
+    });
+
+    it('becomes succeeded with attempt one once the commit resolves', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction();
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        result.current.dismiss();
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'succeeded',
+        attempt: 1,
+      });
+    });
+
+    it('becomes failed with attempt one when the commit rejects with a non-network error', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        commit: jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 1,
+      });
+    });
+
+    it('becomes offline with attempt one when the commit rejects with a network error and an offline payload is provided', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        commit: jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(new TypeError('Failed to fetch')),
+        offline: offlinePayload,
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'offline',
+        attempt: 1,
+      });
+    });
+
+    it('increments attempt on retry and becomes succeeded when the retry commit resolves', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const commit = jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValueOnce(new Error('HTTP 422'))
+        .mockResolvedValue(undefined);
+      const action = makeAction({ commit });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 1,
+      });
+
+      const retry = result.current.error?.retry;
+      await act(async () => {
+        retry?.();
+        await flushMicrotasks();
+      });
+      expect(commit).toHaveBeenCalledTimes(2);
+      expect(result.current.writeState).toEqual({
+        status: 'succeeded',
+        attempt: 2,
+      });
+    });
+
+    it('increments attempt on retry and stays failed with the new attempt when the retry commit also rejects', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const commit = jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValueOnce(new Error('HTTP 422'))
+        .mockRejectedValueOnce(new Error('HTTP 500'));
+      const action = makeAction({ commit });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 1,
+      });
+
+      const retry = result.current.error?.retry;
+      await act(async () => {
+        retry?.();
+        await flushMicrotasks();
+      });
+      expect(commit).toHaveBeenCalledTimes(2);
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 2,
+      });
+    });
+  });
 });
