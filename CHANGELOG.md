@@ -1,3 +1,10 @@
+## [2.154.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.8...v2.154.9) (2026-10-01)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** exclude issues created within the last 5 minutes from preparation-cycle spawn candidates ([#2955](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2955)) ([c437aa0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c437aa0a7e6092764ffe7cf3dce1900cfa48556b)), closes [#2879](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2879)
+
 ## [2.154.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.7...v2.154.8) (2026-10-01)
 
 
