@@ -398,6 +398,95 @@ describe('CLI', () => {
     });
   });
 
+  describe('schedule handler error guard', () => {
+    it('writes the error to stderr and exits 1 without calling the global fatal error handler when handler.handle rejects with a validation-style error', async () => {
+      const validationErrorMessage =
+        'Invalid input: required credential fields are missing. Got: {}';
+      mockScheduleHandle.mockRejectedValueOnce(
+        new Error(validationErrorMessage),
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(
+          jest.fn<never, Parameters<typeof process.exit>>(),
+        );
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain(validationErrorMessage);
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        expect(handleFatalError).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('proceeds normally and calls handler.handle when it resolves (non-regression)', async () => {
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(
+          jest.fn<never, Parameters<typeof process.exit>>(),
+        );
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(mockScheduleHandle).toHaveBeenCalled();
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('propagates an error from handler.handle that is not the validation error to the global fatal error handler', async () => {
+      const unrelatedError = new Error('unrelated failure');
+      mockScheduleHandle.mockRejectedValueOnce(unrelatedError);
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(
+          jest.fn<never, Parameters<typeof process.exit>>(),
+        );
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).toHaveBeenCalledWith(unrelatedError);
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+  });
+
   describe('loadConfigFile', () => {
     it('should load config from YAML file', () => {
       const config = {
