@@ -11,6 +11,7 @@ const workflowDirectory = path.join(repositoryRoot, '.github', 'workflows');
 const uminoProjectWorkflowFileName = 'umino-project.yml';
 const uminoJobId = 'umino-job';
 const boardRegistrationRunCommandSubstring = 'addProjectV2ItemById';
+const boardRegistrationScriptInvocationPattern = /add-project-board-item\.ts\b/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -65,9 +66,13 @@ const boardRegistrationStepCondition = (): string => {
       `${uminoProjectWorkflowFileName} does not declare job ${uminoJobId}`,
     );
   }
-  const step = jobSteps(job).find((candidate) =>
-    stepRunCommand(candidate).includes(boardRegistrationRunCommandSubstring),
-  );
+  const step = jobSteps(job).find((candidate) => {
+    const runCommand = stepRunCommand(candidate);
+    return (
+      runCommand.includes(boardRegistrationRunCommandSubstring) ||
+      boardRegistrationScriptInvocationPattern.test(runCommand)
+    );
+  });
   if (step === undefined) {
     throw new Error(
       `job ${uminoJobId} in ${uminoProjectWorkflowFileName} declares no step whose run script includes ${boardRegistrationRunCommandSubstring}`,
