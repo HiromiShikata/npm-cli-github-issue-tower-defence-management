@@ -1080,16 +1080,11 @@ program
   )
   .action((options: SelectLlmLaunchFlagsOptions) => {
     const config = loadConfigFile(options.configFilePath);
-    const effortLevel = config.defaultLlmEffortLevel || 'xhigh';
-    const launchFlags = config.defaultLlmAutocompactMode
-      ? [
-          '--effort',
-          effortLevel,
-          '--autocompact',
-          config.defaultLlmAutocompactMode,
-        ]
-      : ['--effort', effortLevel];
-    process.stdout.write(`${launchFlags.join(' ')}\n`);
+    const effortFlag = ['--effort', config.defaultLlmEffortLevel || 'xhigh'];
+    const autocompactFlag = config.defaultLlmAutocompactMode
+      ? ['--autocompact', config.defaultLlmAutocompactMode]
+      : [];
+    process.stdout.write(`${[...effortFlag, ...autocompactFlag].join(' ')}\n`);
   });
 
 program
