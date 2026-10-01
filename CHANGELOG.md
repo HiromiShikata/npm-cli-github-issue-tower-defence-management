@@ -1,3 +1,27 @@
+# [2.155.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.10...v2.155.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* **comment-create:** retry comment-create with dedup re-check on transient 500/502/503/504 GitHub REST errors ([#2976](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2976)) ([e311ae6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e311ae60cd4ef56b105d6d8a759dba71ac421aa7)), closes [#2930](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2930)
+* **getLatestReopenedEventAt:** returns a stale reopen once GitHub stops listing an issue's reopened events at 310 ([#3019](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3019)) ([c12e19c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c12e19cf8271e023e10bf2a788a053ebc784fbde))
+* **NotifyFinishedIssuePreparationUseCase:** do not require Agent-field match for a dispatch-scoped report story ([#2990](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2990)) ([58ccd36](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/58ccd36459ce5b7143d679edfd7518320155921e))
+* **NotifyFinishedIssuePreparationUseCase:** skip Failed Preparation status instead of throwing IllegalIssueStatusError ([#2987](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2987)) ([0ca6ca3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0ca6ca3e18cffc4b13e625286c0282fb3f4ed3ec))
+* **StartPreparationUseCase:** pass dispatchStartedAt to aw ([#3000](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3000)) ([809b0df](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/809b0dfb09e07441f42ecab3f5b7ac3859b08370))
+* **StartPreparationUseCase:** resolve branchName from cross-repo related pull requests ([#3014](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3014)) ([90e9768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90e976865de4defea7935c040e4d5b145ab5ea29))
+* **WorkerSessionEndClassifyUseCase:** notify even when the failure streak file cannot be read or written ([#3029](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3029)) ([33bde2d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/33bde2d79db8626b5b873767a038f97a42768959)), closes [#3024](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3024)
+
+
+### Features
+
+* **cli:** add selectLlmLaunchFlags command for worker effort/autocompact flags ([#2997](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2997)) ([b848e79](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b848e79e82a4f026a52085850b13c02a9173d71b))
+* **cli:** add workerRequestTextRead command that prints the worker request text ([#3004](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3004)) ([a12a35e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a12a35eccf21e59c6efa283721b317877e185f62))
+* **console:** mark disabled projects with muted style and a disabled label ([#2978](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2978)) ([e107a71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e107a71d60a17b9a5914cfd8cbef2841bda41a18))
+* **notifyFinishedIssuePreparation:** classify worker session ending from its log and retry inside the command ([#3010](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3010)) ([b520d49](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b520d49d1f77524e563114509f71c4da13881341))
+* **notifyFinishedIssuePreparation:** close the task issue from the result JSON closeIssueAs value in notifyFinishedIssuePreparation ([#2999](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2999)) ([a126f6c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a126f6cf3c6e1e2067992cf47ee105061612f1b6))
+* **select-resumable-session:** add select-resumable-session command that picks the claude session id a dispatched worker passes to claude --resume ([#3011](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3011)) ([f3666df](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f3666dfb93cb49905eea51fb187c336a97fe3005))
+* **StartPreparationUseCase:** hold non-urgent launches while urgent-story tasks of other projects wait for worker slots ([#3020](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3020)) ([9cbe91a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9cbe91ac2cbb8a4dbce8c1e66ff72c7dea639af1))
+
 ## [2.154.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.9...v2.154.10) (2026-10-01)
 
 
