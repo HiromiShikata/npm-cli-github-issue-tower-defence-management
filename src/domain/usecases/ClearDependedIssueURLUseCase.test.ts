@@ -839,7 +839,7 @@ describe('ClearDependedIssueURLUseCase', () => {
       },
     );
 
-    describe('iterationsExhausted guard', () => {
+    describe('not-found dependency removal is unaffected by iterationsExhausted', () => {
       const sameRepoDependingIssueWithIterationsExhausted = {
         ...mock<Issue>(),
         url: 'https://github.com/testowner/testrepo/issues/949',
