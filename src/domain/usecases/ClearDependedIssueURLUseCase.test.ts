@@ -991,6 +991,44 @@ describe('ClearDependedIssueURLUseCase', () => {
         ]);
       });
 
+      it('should retry once and succeed when createComment first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+          [],
+        );
+        const mockSleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
+        const retryingUseCase = new ClearDependedIssueURLUseCase(
+          mockIssueRepository,
+          mockSleep,
+        );
+        const transientError = Object.assign(
+          new Error(
+            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+          ),
+          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+        );
+        mockIssueRepository.createComment
+          .mockRejectedValueOnce(transientError)
+          .mockResolvedValueOnce(undefined);
+
+        await retryingUseCase.run({
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url1'],
+            },
+          ],
+          cacheUsed: false,
+        });
+
+        expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+      });
+
       it('should still remove an Icebox board-tracked dependency even when last agent report has iterationsExhausted true', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([

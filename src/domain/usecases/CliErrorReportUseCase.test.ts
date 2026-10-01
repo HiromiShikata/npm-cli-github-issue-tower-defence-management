@@ -69,6 +69,42 @@ describe('CliErrorReportUseCase', () => {
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
     });
 
+    it('should retry once and succeed when createCommentByUrl first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+      const error = new Error('something went wrong');
+      error.name = 'TypeError';
+      const title = 'CLI error: TypeError: something went wrong';
+      const existingIssueUrl =
+        'https://github.com/test-owner/test-repo/issues/10';
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        { url: existingIssueUrl, title, number: '10' },
+      ]);
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new CliErrorReportUseCase(
+        mockIssueRepository,
+        mockSleep,
+      );
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createCommentByUrl
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce({
+          author: 'bot',
+          body: 'CLI error: TypeError: something went wrong',
+          createdAt: new Date(0),
+        });
+
+      await retryingUseCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+
     it('should not call createCommentByUrl when searchIssue returns a result with a different title', async () => {
       const error = new Error('something went wrong');
       error.name = 'TypeError';
