@@ -1332,9 +1332,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           '2026-07-07T00:44:00.000Z',
         ),
       ]);
-      // Simulates fetchProjectItemsByIds tolerating a NOT_FOUND node for
-      // 'item-deleted' (deleted from the project board since the light scan)
-      // and returning only the items it could resolve.
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
         buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
       ]);
