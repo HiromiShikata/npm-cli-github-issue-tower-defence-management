@@ -15,7 +15,9 @@ import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import {
+  DEFAULT_MINIMUM_ISSUE_AGE_MS,
   SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
+  SpawnCandidateExclusionReason,
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
 
@@ -76,7 +78,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isPr: false,
   isInProgress: false,
   isClosed: false,
-  createdAt: new Date(),
+  createdAt: new Date('2020-01-01T00:00:00Z'),
   author: 'testuser',
   closingIssueReferenceUrls: [],
   plainCrossRepoIssueReferenceUrls: [],
@@ -6991,7 +6993,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, recentlyCreated=0, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
@@ -7041,7 +7043,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, recentlyCreated=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
     );
     consoleLogSpy.mockRestore();
   });
@@ -7560,6 +7562,248 @@ describe('StartPreparationUseCase', () => {
       new Date(),
     );
     expect(result).toBeNull();
+  });
+
+  describe('minimum issue age guard (recentlyCreated exclusion reason)', () => {
+    const now = new Date('2026-01-15T10:00:00Z');
+    const startOfTomorrow = new Date('2026-01-16T00:00:00Z');
+    const futureNextActionHour = now.getUTCHours() + 1;
+
+    type ReactivationTriggerCase =
+      'none pending' | 'pending (future date)' | 'pending (hour not reached)';
+
+    const reactivationFieldsFor = (
+      reactivationTrigger: ReactivationTriggerCase,
+    ): { nextActionDate: Date | null; nextActionHour: number | null } => {
+      if (reactivationTrigger === 'pending (future date)') {
+        return { nextActionDate: startOfTomorrow, nextActionHour: null };
+      }
+      if (reactivationTrigger === 'pending (hour not reached)') {
+        return { nextActionDate: null, nextActionHour: futureNextActionHour };
+      }
+      return { nextActionDate: null, nextActionHour: null };
+    };
+
+    it.each<{
+      rowNumber: number;
+      ageMs: number;
+      dependedIssueUrls: string[];
+      reactivationTrigger: ReactivationTriggerCase;
+      authorAllowed: boolean;
+      assignedToManager: boolean;
+      expectedReason: SpawnCandidateExclusionReason | null;
+    }>([
+      {
+        rowNumber: 1,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'recentlyCreated',
+      },
+      {
+        rowNumber: 2,
+        ageMs: 4 * 60 * 1000 + 59 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'recentlyCreated',
+      },
+      {
+        rowNumber: 3,
+        ageMs: DEFAULT_MINIMUM_ISSUE_AGE_MS,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: null,
+      },
+      {
+        rowNumber: 4,
+        ageMs: DEFAULT_MINIMUM_ISSUE_AGE_MS + 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: null,
+      },
+      {
+        rowNumber: 5,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: null,
+      },
+      {
+        rowNumber: 6,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: ['https://github.com/user/repo/issues/999'],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'dependedIssueUrls',
+      },
+      {
+        rowNumber: 7,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: ['https://github.com/user/repo/issues/999'],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'dependedIssueUrls',
+      },
+      {
+        rowNumber: 8,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'pending (future date)',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'futureNextActionDate',
+      },
+      {
+        rowNumber: 9,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'pending (hour not reached)',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'nextActionHourNotReached',
+      },
+      {
+        rowNumber: 10,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: false,
+        assignedToManager: true,
+        expectedReason: 'authorNotAllowed',
+      },
+      {
+        rowNumber: 11,
+        ageMs: 10 * 60 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: false,
+        expectedReason: 'notAssignedToManager',
+      },
+      {
+        rowNumber: 12,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'pending (future date)',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'recentlyCreated',
+      },
+      {
+        rowNumber: 13,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'pending (hour not reached)',
+        authorAllowed: true,
+        assignedToManager: true,
+        expectedReason: 'recentlyCreated',
+      },
+      {
+        rowNumber: 14,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: false,
+        assignedToManager: true,
+        expectedReason: 'recentlyCreated',
+      },
+      {
+        rowNumber: 15,
+        ageMs: 30 * 1000,
+        dependedIssueUrls: [],
+        reactivationTrigger: 'none pending',
+        authorAllowed: true,
+        assignedToManager: false,
+        expectedReason: 'recentlyCreated',
+      },
+    ])(
+      'row $rowNumber: ageMs=$ageMs, dependedIssueUrls.length=$dependedIssueUrls.length, reactivationTrigger=$reactivationTrigger, authorAllowed=$authorAllowed, assignedToManager=$assignedToManager -> $expectedReason',
+      ({
+        ageMs,
+        dependedIssueUrls,
+        reactivationTrigger,
+        authorAllowed,
+        assignedToManager,
+        expectedReason,
+      }) => {
+        const { nextActionDate, nextActionHour } =
+          reactivationFieldsFor(reactivationTrigger);
+        const issue = createMockIssue({
+          createdAt: new Date(now.getTime() - ageMs),
+          dependedIssueUrls,
+          nextActionDate,
+          nextActionHour,
+          author: authorAllowed ? 'testuser' : 'not-allowed-user',
+          assignees: assignedToManager ? ['manager-user'] : ['someone-else'],
+        });
+
+        const result = useCase.spawnCandidateExclusionReasonOf(
+          issue,
+          ['testuser'],
+          'manager-user',
+          now,
+        );
+
+        expect(result).toBe(expectedReason);
+      },
+    );
+
+    it('logs a recentlyCreated count in the Spawn candidate exclusion summary line for an issue younger than the minimum issue age', async () => {
+      const recentlyCreatedIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/201',
+        title: 'Recently Created Issue',
+        status: 'Awaiting Workspace',
+        number: 201,
+        createdAt: new Date(Date.now() - 30 * 1000),
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([recentlyCreatedIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('Spawn candidate exclusion summary'),
+      );
+      expect(summaryCalls).toHaveLength(1);
+      expect(summaryCalls[0][0]).toContain('recentlyCreated=1');
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      consoleLogSpy.mockRestore();
+    });
   });
 
   it('should never warn about Story-unset Awaiting Workspace issues and should spawn them as Tier B candidates alongside real-story issues', async () => {

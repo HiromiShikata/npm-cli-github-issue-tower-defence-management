@@ -38,7 +38,7 @@ const createMinimalIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isPr: false,
   isInProgress: false,
   isClosed: false,
-  createdAt: new Date(),
+  createdAt: new Date('2020-01-01T00:00:00Z'),
   author: 'testuser',
   closingIssueReferenceUrls: [],
   plainCrossRepoIssueReferenceUrls: [],
