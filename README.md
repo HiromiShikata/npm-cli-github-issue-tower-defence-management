@@ -202,6 +202,21 @@ preparationWorker:
   graphqlRateLimitFloor: 500
 ```
 
+The `schedule` command (trigger `schedule`) supports a `startPreparation` mapping in the fleet-wide config file named by the `TDPM_FLEET_CONFIG` environment variable. Supported keys:
+
+- `maximumPreparingIssuesCount` (integer of at least 1, default `80`): the maximum number of issues in preparation status, used when neither the project README nor the project config sets `maximumPreparingIssuesCount`.
+- `urgentStoryNames` (list of strings, default empty): the names of the stories whose tasks are urgent. When the list is non-empty, every preparation worker launch is held before `aw` starts while an urgent-story task of another project waits in `Awaiting Workspace` and the free worker slots across all Claude OAuth tokens do not exceed the number of such waiting tasks. A task whose own story is urgent, or that an urgent-story task in `Awaiting Workspace` depends on, is never held. The hold is re-evaluated every 10 seconds; after 300 seconds the still-waiting urgent-story tasks are recorded as timed out, are not waited for again during the next 1800 seconds, and the launch goes ahead; the whole hold is bounded at 420 seconds, and any error during the hold is logged as `urgentStoryLaunchHold: failed (<message>); the spawn goes ahead`. While a launch is held, other projects' launches do not wait for that project's urgent-story tasks. Each evaluation logs one line prefixed by `urgentStoryLaunchHold: `. The free worker slots are counted from the token list named by the project config's `claudeCodeOauthTokenListJsonPath`, otherwise by the fleet config's top-level `claudeCodeOauthTokenListJsonPath` (a leading `~/` is expanded to the home directory); when neither is set, or the token list has no available token, the launch goes ahead without the hold.
+
+A key the file omits keeps its built-in value; a `urgentStoryNames` value that is not a list of strings, or a top-level `claudeCodeOauthTokenListJsonPath` that is not a string, is reported as an error. Example:
+
+```yaml
+claudeCodeOauthTokenListJsonPath: ~/.config/tdpm/claude-code-oauth-tokens.json
+startPreparation:
+  maximumPreparingIssuesCount: 80
+  urgentStoryNames:
+    - urgent / production incident
+```
+
 The `notifyFinishedIssuePreparation` and `revertOrphanedPreparation` commands support a `workflowIssueReporter` mapping in the fleet-wide config file named by `--fleetConfigFilePath` or the `TDPM_FLEET_CONFIG` environment variable. When a silent-redispatch escalation fires (an agent is dispatched and returns no report three consecutive times, indicating a TDPM process-level problem rather than a task-specific one), TDPM automatically creates a tracking issue in the configured repository or, when an open issue with the same title already exists, adds a comment to it instead of opening a duplicate. Supported keys:
 
 - `owner` (string, required): GitHub owner (organisation or user) of the repository where the workflow issue is created.

@@ -17,6 +17,8 @@ export const START_PREPARATION_SECTION_KEY = 'startPreparation';
 export const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
 export const WORKFLOW_ISSUE_REPORTER_SECTION_KEY = 'workflowIssueReporter';
 export const SILENT_NOTIFICATION_ENABLED_KEY = 'silentNotificationEnabled';
+export const CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH_KEY =
+  'claudeCodeOauthTokenListJsonPath';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
@@ -37,11 +39,13 @@ export const DEFAULT_PREPARATION_WORKER_SETTINGS: PreparationWorkerSettings = {
 
 export type StartPreparationFleetSettings = {
   maximumPreparingIssuesCount: number;
+  urgentStoryNames: string[];
 };
 
 export const DEFAULT_START_PREPARATION_FLEET_SETTINGS: StartPreparationFleetSettings =
   {
     maximumPreparingIssuesCount: DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+    urgentStoryNames: [],
   };
 
 export const resolveFleetConfigFilePath = (
@@ -119,6 +123,28 @@ const readBoundedNumber = (
   if (!isAccepted(value)) {
     throw new Error(
       `${sectionKey}.${key} in ${fleetConfigFilePath} must be a number ${requirement}, but it is ${value}.`,
+    );
+  }
+  return value;
+};
+
+const readStringList = (
+  section: Record<string, unknown>,
+  sectionKey: string,
+  key: string,
+  fleetConfigFilePath: string,
+  fallback: string[],
+): string[] => {
+  const value = section[key];
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  if (
+    !Array.isArray(value) ||
+    !value.every((item): item is string => typeof item === 'string')
+  ) {
+    throw new Error(
+      `${sectionKey}.${key} in ${fleetConfigFilePath} must be a list of strings.`,
     );
   }
   return value;
@@ -253,7 +279,36 @@ export const loadStartPreparationFleetSettings = (
       (value) => Number.isInteger(value) && value >= 1,
       'integer of at least 1',
     ),
+    urgentStoryNames: readStringList(
+      section,
+      START_PREPARATION_SECTION_KEY,
+      'urgentStoryNames',
+      fleetConfigFilePath,
+      DEFAULT_START_PREPARATION_FLEET_SETTINGS.urgentStoryNames,
+    ),
   };
+};
+
+export const loadFleetClaudeCodeOauthTokenListJsonPath = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const value = top[CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(
+      `${CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH_KEY} in ${fleetConfigFilePath} must be a string path.`,
+    );
+  }
+  return value;
 };
 
 export const loadWorkflowIssueReporterSettings = (

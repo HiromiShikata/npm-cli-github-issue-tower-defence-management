@@ -25,6 +25,7 @@ import {
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
 import {
+  loadFleetClaudeCodeOauthTokenListJsonPath,
   loadSilentNotificationEnabled,
   loadStartPreparationFleetSettings,
   loadWorkflowIssueReporterSettings,
@@ -41,7 +42,10 @@ import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlPr
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
-import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
+import {
+  localStorageCacheBaseDirectory,
+  projectCacheDirectory,
+} from '../../repositories/localStorageCacheDirectory';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from '../../../domain/usecases/ClearPastNextActionDateHourUseCase';
@@ -64,6 +68,9 @@ import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHu
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { LocalStorageUrgentStoryLaunchHoldRepository } from '../../repositories/LocalStorageUrgentStoryLaunchHoldRepository';
+import { RealSleeper } from '../../repositories/RealSleeper';
+import { expandHome } from '../../proxy/TokenListLoader';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
@@ -358,6 +365,7 @@ export class HandleScheduledEventUseCaseHandler {
             codexHomeCandidates:
               readmeConfig.codexHomeCandidates ??
               input.startPreparation.codexHomeCandidates,
+            urgentStoryNames: startPreparationFleetSettings.urgentStoryNames,
           }
         : input.startPreparation,
     };
@@ -497,6 +505,21 @@ export class HandleScheduledEventUseCaseHandler {
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
       mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
     );
+    const urgentStoryLaunchHoldTokenListJsonPath =
+      input.claudeCodeOauthTokenListJsonPath ??
+      loadFleetClaudeCodeOauthTokenListJsonPath(fleetConfigFilePath);
+    const urgentStoryLaunchHoldRepository =
+      new LocalStorageUrgentStoryLaunchHoldRepository({
+        cacheBaseDirectoryPath: localStorageCacheBaseDirectory(),
+        procDirectoryPath: '/proc',
+        processId: process.pid,
+        claudeTokenUsageRepository:
+          urgentStoryLaunchHoldTokenListJsonPath === null
+            ? null
+            : new ProxyClaudeTokenUsageRepository(
+                expandHome(urgentStoryLaunchHoldTokenListJsonPath),
+              ),
+      });
     const startPreparationUseCase = new StartPreparationUseCase(
       projectRepository,
       issueRepository,
@@ -507,6 +530,8 @@ export class HandleScheduledEventUseCaseHandler {
       new AwLogIssueLatestSessionBranchRepository(
         mergedInput.startPreparation?.awLogDirectoryPath ?? null,
       ),
+      urgentStoryLaunchHoldRepository,
+      new RealSleeper(),
     );
     const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(
       mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
