@@ -127,6 +127,12 @@ const assistantTextAndToolUseLine =
   '{"type":"assistant","message":{"content":[{"type":"text","text":"Running the tests"},{"type":"tool_use","id":"t5","name":"Bash","input":{}}]}}';
 const standardErrorWrappedAssistantToolUseLine =
   '[stderr] {"type":"assistant","message":{"content":[{"type":"tool_use","id":"t6","name":"Bash","input":{}}]}}';
+const assistantObjectContentHoldingToolUseLine =
+  '{"type":"assistant","message":{"content":{"first":{"type":"tool_use","name":"Bash"}}}}';
+const assistantStringContentQuotingToolUseLine =
+  '{"type":"assistant","message":{"content":"plain text mentioning \\"type\\":\\"tool_use\\""}}';
+const assistantStringContentBesideToolUseTypeLine =
+  '{"type":"assistant","message":{"content":"plain text"},"note":{"type":"tool_use"}}';
 
 const launcherThreeSessionLimitEndingLines = [
   '{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1790318400,"rateLimitType":"five_hour","overageStatus":"rejected","overageDisabledReason":"org_level_disabled","isUsingOverage":false,"unifiedWindows":{"five_hour":{"utilization":1,"resetsAt":1790318400},"seven_day":{"utilization":0.6,"resetsAt":1790632800}}}}',
@@ -1566,6 +1572,39 @@ describe('WorkerSessionEndClassifyUseCase', () => {
           promptTooLongEndingLine,
         ],
         expectedPromptTooLongOnResume: false,
+      },
+      {
+        label:
+          'a resumed session whose assistant message content is an object holding a tool_use value',
+        sessionWasResumed: true,
+        logLines: [
+          launcherSessionResumptionTextLine,
+          assistantObjectContentHoldingToolUseLine,
+          promptTooLongEndingLine,
+        ],
+        expectedPromptTooLongOnResume: false,
+      },
+      {
+        label:
+          'a resumed session whose assistant message content is a string quoting tool_use',
+        sessionWasResumed: true,
+        logLines: [
+          launcherSessionResumptionTextLine,
+          assistantStringContentQuotingToolUseLine,
+          promptTooLongEndingLine,
+        ],
+        expectedPromptTooLongOnResume: true,
+      },
+      {
+        label:
+          'a resumed session whose assistant message content is a string while "type":"tool_use" sits outside the content',
+        sessionWasResumed: true,
+        logLines: [
+          launcherSessionResumptionTextLine,
+          assistantStringContentBesideToolUseTypeLine,
+          promptTooLongEndingLine,
+        ],
+        expectedPromptTooLongOnResume: true,
       },
     ])(
       'decides promptTooLongOnResume for $label',

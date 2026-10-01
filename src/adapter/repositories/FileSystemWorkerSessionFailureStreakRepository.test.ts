@@ -210,6 +210,58 @@ describe('FileSystemWorkerSessionFailureStreakRepository', () => {
     }
   });
 
+  it.each([
+    {
+      label: 'an object without any streak field',
+      storedContent: JSON.stringify({ unexpected: true }),
+    },
+    {
+      label: 'an array holding a streak',
+      storedContent: JSON.stringify([
+        {
+          issueUrl,
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 2,
+        },
+      ]),
+    },
+    {
+      label: 'an object whose streak fields have the wrong types',
+      storedContent: JSON.stringify({
+        issueUrl,
+        terminalReason: 5,
+        consecutiveFailureCount: 'x',
+      }),
+    },
+    {
+      label: 'the JSON literal null',
+      storedContent: 'null',
+    },
+  ])(
+    'treats a stored file holding valid JSON that is $label as no stored streak and writes a warning naming the file to standard error',
+    async ({ storedContent }) => {
+      const invalidStreakFilePath = path.join(
+        streakDirectoryPath,
+        streakFileNameOf(issueUrl),
+      );
+      fs.mkdirSync(streakDirectoryPath, { recursive: true });
+      fs.writeFileSync(invalidStreakFilePath, storedContent);
+      const repository = new FileSystemWorkerSessionFailureStreakRepository(
+        streakDirectoryPath,
+      );
+      const standardErrorOutput = collectStandardErrorOutput();
+
+      try {
+        expect(await repository.findByIssueUrl(issueUrl)).toBeNull();
+        expect(standardErrorOutput.joinedOutput()).toContain(
+          invalidStreakFilePath,
+        );
+      } finally {
+        standardErrorOutput.restore();
+      }
+    },
+  );
+
   it('defaults to the worker-session-failure-streaks directory under the TDPM cache directory', () => {
     const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
     process.env.XDG_CACHE_HOME = temporaryDirectory;
