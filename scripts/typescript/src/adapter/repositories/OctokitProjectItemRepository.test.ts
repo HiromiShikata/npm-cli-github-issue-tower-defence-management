@@ -1,13 +1,20 @@
 import { OctokitProjectItemRepository } from './OctokitProjectItemRepository';
 
-type GraphqlCall = [string, Record<string, unknown>];
+type GraphqlCallArgs = [string, Record<string, unknown>];
+
+type JestMockUnspecifiedResolvedValueType<M> = M extends jest.Mock<
+  infer ResolvedValueType
+>
+  ? ResolvedValueType
+  : never;
+
+type JestMockDefaultResolvedValueType =
+  JestMockUnspecifiedResolvedValueType<jest.Mock>;
 
 const createFakeGraphqlClient = (): {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  graphql: jest.Mock<any, GraphqlCall>;
+  graphql: jest.Mock<JestMockDefaultResolvedValueType, GraphqlCallArgs>;
 } => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  graphql: jest.fn<any, GraphqlCall>(),
+  graphql: jest.fn<JestMockDefaultResolvedValueType, GraphqlCallArgs>(),
 });
 
 describe('OctokitProjectItemRepository', () => {
