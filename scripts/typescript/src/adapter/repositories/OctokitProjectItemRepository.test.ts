@@ -1,7 +1,13 @@
 import { OctokitProjectItemRepository } from './OctokitProjectItemRepository';
 
-const createFakeGraphqlClient = (): { graphql: jest.Mock } => ({
-  graphql: jest.fn(),
+type GraphqlCall = [string, Record<string, unknown>];
+
+const createFakeGraphqlClient = (): {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  graphql: jest.Mock<any, GraphqlCall>;
+} => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  graphql: jest.fn<any, GraphqlCall>(),
 });
 
 describe('OctokitProjectItemRepository', () => {
