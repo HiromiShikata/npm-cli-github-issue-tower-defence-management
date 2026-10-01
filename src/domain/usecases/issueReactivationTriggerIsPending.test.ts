@@ -1,3 +1,4 @@
+import { mock, MockProxy } from 'jest-mock-extended';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import {
   issueReactivationTriggerIsPending,
@@ -309,25 +310,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
   describe.each(agreementCases)(
     '$label',
     ({ now, nextActionDate, nextActionHour }) => {
-      let spawnMockIssueRepository: jest.Mocked<
-        Pick<
-          IssueRepository,
-          | 'getStoryObjectMap'
-          | 'getAllOpened'
-          | 'updateStatus'
-          | 'findRelatedOpenPRs'
-          | 'getOpenPullRequest'
-          | 'closePullRequest'
-          | 'deletePullRequestBranch'
-          | 'createCommentByUrl'
-          | 'getIssueOrPullRequestComments'
-          | 'setIssueAgentField'
-          | 'removeLabel'
-          | 'get'
-          | 'removeIssueFromProjectCache'
-          | 'appendIssueToProjectCache'
-        >
-      >;
+      let spawnMockIssueRepository: MockProxy<IssueRepository>;
       let spawnMockProjectRepository: jest.Mocked<
         Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
       >;
@@ -392,33 +375,44 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           createField: jest.fn().mockResolvedValue(undefined),
           updateAgentList: jest.fn().mockResolvedValue([]),
         };
-        spawnMockIssueRepository = {
-          getStoryObjectMap: jest
-            .fn()
-            .mockResolvedValue(
-              createStoryObjectMap([
-                createMinimalIssue({ nextActionDate, nextActionHour }),
-              ]),
-            ),
-          getAllOpened: jest.fn().mockResolvedValue([]),
-          updateStatus: jest.fn().mockResolvedValue(undefined),
-          findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-          getOpenPullRequest: jest.fn().mockResolvedValue(null),
-          closePullRequest: jest.fn().mockResolvedValue(undefined),
-          deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-          createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-          getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
-          setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-          removeLabel: jest.fn().mockResolvedValue(undefined),
-          get: jest.fn().mockResolvedValue(
-            createMinimalIssue({
-              status: 'Awaiting Workspace',
-              dependedIssueUrls: [],
-            }),
-          ),
-          removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
-          appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
-        };
+        spawnMockIssueRepository = mock<IssueRepository>();
+        spawnMockIssueRepository.getStoryObjectMap.mockResolvedValue(
+          createStoryObjectMap([
+            createMinimalIssue({ nextActionDate, nextActionHour }),
+          ]),
+        );
+        spawnMockIssueRepository.getAllOpened.mockResolvedValue([]);
+        spawnMockIssueRepository.updateStatus.mockResolvedValue(undefined);
+        spawnMockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+        spawnMockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
+        spawnMockIssueRepository.closePullRequest.mockResolvedValue(undefined);
+        spawnMockIssueRepository.deletePullRequestBranch.mockResolvedValue(
+          undefined,
+        );
+        spawnMockIssueRepository.createCommentByUrl.mockResolvedValue({
+          author: '',
+          body: '',
+          createdAt: new Date(0),
+        });
+        spawnMockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+          [],
+        );
+        spawnMockIssueRepository.setIssueAgentField.mockResolvedValue(
+          undefined,
+        );
+        spawnMockIssueRepository.removeLabel.mockResolvedValue(undefined);
+        spawnMockIssueRepository.get.mockResolvedValue(
+          createMinimalIssue({
+            status: 'Awaiting Workspace',
+            dependedIssueUrls: [],
+          }),
+        );
+        spawnMockIssueRepository.removeIssueFromProjectCache.mockResolvedValue(
+          undefined,
+        );
+        spawnMockIssueRepository.appendIssueToProjectCache.mockResolvedValue(
+          undefined,
+        );
         spawnMockLocalCommandRunner = {
           runCommand: jest
             .fn()
