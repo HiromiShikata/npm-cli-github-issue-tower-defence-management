@@ -790,6 +790,7 @@ const createStubIssueRepository = (
     return map;
   },
   addIssueToProject: async (): Promise<string> => '',
+  removeIssueFromProject: async (): Promise<void> => undefined,
   updateStoryByProjectItemId: async (): Promise<void> => undefined,
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>

@@ -241,11 +241,43 @@ export class HandleScheduledEventUseCase {
     }
     const now: Date = await this.dateRepository.now();
     const {
-      issues,
+      issues: fetchedIssues,
       project,
       cacheUsed,
-    }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(projectId);
+    }: {
+      issues: Issue[];
+      project: Project;
+      cacheUsed: boolean;
+    } = await this.issueRepository.getAllIssues(projectId);
+    const pullRequestProjectItems = fetchedIssues.filter(
+      (issue) => issue.isPr === true,
+    );
+    const pullRequestRemovalFailures: string[] = [];
+    for (const pullRequestProjectItem of pullRequestProjectItems) {
+      await this.runOperationIsolated(
+        `remove pull-request item ${pullRequestProjectItem.url} from project ${project.url}`,
+        async () => {
+          await this.issueRepository.removeIssueFromProject(
+            project,
+            pullRequestProjectItem.url,
+          );
+          await this.issueRepository.removeIssueFromProjectCache(
+            project.id,
+            pullRequestProjectItem,
+          );
+        },
+        pullRequestRemovalFailures,
+      );
+    }
+    if (pullRequestRemovalFailures.length > 0) {
+      throw new Error(
+        `Failed ${pullRequestRemovalFailures.length} operation(s) removing pull-request items from project ${project.url}: ${pullRequestRemovalFailures.join('; ')}`,
+      );
+    }
+    const issues =
+      pullRequestProjectItems.length > 0
+        ? fetchedIssues.filter((issue) => issue.isPr !== true)
+        : fetchedIssues;
     const storyIssues: StoryObjectMap = await this.storyIssues({
       project,
       issues,
