@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
+import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -243,6 +244,7 @@ export type WebServerOptions = {
   dashboardDir: string | null;
   dashboardDataDir: string | null;
   dashboardProjectNames: string[];
+  dashboardProjectConfigDirectory?: string | null;
   dashboardProjectUrls?: Record<string, string> | null;
   fleetTaskCreateUrl?: string | null;
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
@@ -547,6 +549,24 @@ const handleReadApi = async (
         } catch {}
       }
     }
+    const disabledPjcodes: string[] = [];
+    const dashboardProjectConfigDirectory =
+      options.dashboardProjectConfigDirectory ?? null;
+    if (dashboardProjectConfigDirectory !== null) {
+      for (const pjcode of options.dashboardProjectNames) {
+        const projectConfigPath = path.join(
+          dashboardProjectConfigDirectory,
+          `${pjcode}.config.yaml`,
+        );
+        try {
+          const raw = fs.readFileSync(projectConfigPath, 'utf-8');
+          const parsed: unknown = YAML.parse(raw);
+          if (isRecord(parsed) && parsed['disabled'] === true) {
+            disabledPjcodes.push(pjcode);
+          }
+        } catch {}
+      }
+    }
     return {
       statusCode: 200,
       body: {
@@ -557,6 +577,7 @@ const handleReadApi = async (
           Object.keys(nameWithOwnerByPjcode).length > 0
             ? nameWithOwnerByPjcode
             : null,
+        disabledPjcodes,
       },
     };
   }

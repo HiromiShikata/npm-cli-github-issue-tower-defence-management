@@ -173,6 +173,7 @@ export const ConsolePage = () => {
     projectUrls,
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
+    disabledPjcodes,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
@@ -1075,6 +1076,7 @@ export const ConsolePage = () => {
         counts={counts}
         pjcode={pjcode}
         pjcodes={pjcodes}
+        disabledPjcodes={disabledPjcodes}
         generatedAt={generatedAt}
         fromCache={fromCache}
         tabHref={navigation.tabHref}

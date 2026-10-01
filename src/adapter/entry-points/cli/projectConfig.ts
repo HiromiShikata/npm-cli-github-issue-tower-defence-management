@@ -33,6 +33,7 @@ export type ConfigFile = {
   consoleProjects?: Record<string, string>;
   consoleGithubTokens?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
+  consoleProjectConfigDirectory?: string;
   githubAppPrivateKeyPaths?: string[];
   disks?: DiskConfig[];
   errorReportingRepository?: string;
@@ -230,6 +231,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       consoleGithubTokenFileDir: getStringValue(
         parsed,
         'consoleGithubTokenFileDir',
+      ),
+      consoleProjectConfigDirectory: getStringValue(
+        parsed,
+        'consoleProjectConfigDirectory',
       ),
       githubAppPrivateKeyPaths: getStringArrayValue(
         parsed,
@@ -442,6 +447,9 @@ export const mergeConfigs = (
   consoleGithubTokenFileDir:
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
+  consoleProjectConfigDirectory:
+    cliOverrides.consoleProjectConfigDirectory ??
+    configFile.consoleProjectConfigDirectory,
   githubAppPrivateKeyPaths:
     cliOverrides.githubAppPrivateKeyPaths ??
     configFile.githubAppPrivateKeyPaths,

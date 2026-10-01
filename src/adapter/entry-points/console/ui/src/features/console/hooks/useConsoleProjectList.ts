@@ -6,6 +6,7 @@ export type ConsoleProjectListState = {
   projectUrls: Record<string, string> | null;
   fleetTaskCreateUrl: string | null;
   nameWithOwnerByPjcode: Record<string, string> | null;
+  disabledPjcodes: string[];
   isLoading: boolean;
   error: Error | null;
 };
@@ -22,6 +23,7 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
     string,
     string
   > | null>(null);
+  const [disabledPjcodes, setDisabledPjcodes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -37,6 +39,7 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
           setProjectUrls(result.projectUrls);
           setFleetTaskCreateUrl(result.fleetTaskCreateUrl);
           setNameWithOwnerByPjcode(result.nameWithOwnerByPjcode);
+          setDisabledPjcodes(result.disabledPjcodes);
           setIsLoading(false);
         }
       })
@@ -57,6 +60,7 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
     projectUrls,
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
+    disabledPjcodes,
     isLoading,
     error,
   };

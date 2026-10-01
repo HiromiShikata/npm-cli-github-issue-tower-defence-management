@@ -11,6 +11,7 @@ const meta: Meta<typeof ConsoleTabList> = {
   args: {
     pjcode: 'acme',
     pjcodes: allPjcodes,
+    disabledPjcodes: [],
     generatedAt: '2026-06-19T08:42:11.000Z',
     fromCache: false,
     tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
@@ -199,5 +200,26 @@ export const WithProjectUrl: Story = {
     activeTab: 'prs',
     counts,
     projectUrl: 'https://github.com/users/HiromiShikata/projects/48',
+  },
+};
+
+export const WithDisabledProjectInOpenDropdown: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    pjcode: 'acme',
+    pjcodes: allPjcodes,
+    disabledPjcodes: ['gamma'],
+  },
+  render: (args) => <DropdownOpen {...args} />,
+};
+
+export const WithDisabledProjectSelected: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    pjcode: 'gamma',
+    pjcodes: allPjcodes,
+    disabledPjcodes: ['gamma'],
   },
 };
