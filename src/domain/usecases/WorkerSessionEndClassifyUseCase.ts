@@ -40,6 +40,11 @@ type WorkerSessionFailureStreakOutcome = {
   diagnosticLines: string[];
 };
 
+type WorkerSessionFailureStreakFindResult = {
+  storedStreak: WorkerSessionFailureStreak | null;
+  diagnosticLines: string[];
+};
+
 const TERMINAL_REASON_KEY_TEXT = '"terminal_reason"';
 const TERMINAL_REASON_STRING_VALUE_PREFIX_TEXT = '"terminal_reason":"';
 const COMPLETED_TERMINAL_REASON = 'completed';
@@ -166,6 +171,9 @@ const rateLimitRejectionOf = (
   return { rateLimitRejected: false, diagnosticLines: [] };
 };
 
+const errorMessageOf = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 const failureStreakOutcomeWithoutMoveOf = (
   diagnosticLines: string[],
 ): WorkerSessionFailureStreakOutcome => ({
@@ -246,10 +254,8 @@ export class WorkerSessionEndClassifyUseCase {
         RATE_LIMIT_REJECTION_DETECTED_LINE,
       ]);
     }
-    const storedStreak =
-      await this.workerSessionFailureStreakRepository.findByIssueUrl(
-        input.issueUrl,
-      );
+    const { storedStreak, diagnosticLines: storedStreakFindDiagnosticLines } =
+      await this.failureStreakFind(input.issueUrl);
     const countedStreak: WorkerSessionFailureStreak = {
       terminalReason: logEnding.terminalReason,
       consecutiveFailureCount:
@@ -258,32 +264,82 @@ export class WorkerSessionEndClassifyUseCase {
           ? storedStreak.consecutiveFailureCount + 1
           : 1,
     };
-    await this.workerSessionFailureStreakRepository.save(
+    const countedStreakSaveDiagnosticLines = await this.failureStreakSave(
       input.issueUrl,
       countedStreak,
     );
-    const countedStreakLine = `consecutive-same-reason-failure[${countedStreak.terminalReason}]:${countedStreak.consecutiveFailureCount}/${WORKER_SESSION_CONSECUTIVE_FAILURE_THRESHOLD}`;
+    const countedStreakLines = [
+      ...storedStreakFindDiagnosticLines,
+      ...countedStreakSaveDiagnosticLines,
+      `consecutive-same-reason-failure[${countedStreak.terminalReason}]:${countedStreak.consecutiveFailureCount}/${WORKER_SESSION_CONSECUTIVE_FAILURE_THRESHOLD}`,
+    ];
     if (
       countedStreak.consecutiveFailureCount <
         WORKER_SESSION_CONSECUTIVE_FAILURE_THRESHOLD ||
       input.missingAgentNameReported
     ) {
-      return failureStreakOutcomeWithoutMoveOf([countedStreakLine]);
+      return failureStreakOutcomeWithoutMoveOf(countedStreakLines);
     }
     return {
       moveToFailedPreparation: true,
       sessionErrorLine: `Task failed ${countedStreak.consecutiveFailureCount} consecutive times with terminal_reason=${countedStreak.terminalReason}; moving to Failed Preparation status. URL=${input.issueUrl}`,
       diagnosticLines: [
-        countedStreakLine,
+        ...countedStreakLines,
         `consecutive-same-reason-failure-max-reached: moving to Failed Preparation, count=${countedStreak.consecutiveFailureCount}, reason=${countedStreak.terminalReason}, url=${input.issueUrl}`,
       ],
     };
   };
 
   private failureStreakReset = async (issueUrl: string): Promise<string[]> => {
-    const storedStreak =
-      await this.workerSessionFailureStreakRepository.findByIssueUrl(issueUrl);
-    await this.workerSessionFailureStreakRepository.deleteByIssueUrl(issueUrl);
-    return storedStreak === null ? [] : [FAILURE_STREAK_RESET_LINE];
+    const { storedStreak, diagnosticLines: storedStreakFindDiagnosticLines } =
+      await this.failureStreakFind(issueUrl);
+    try {
+      await this.workerSessionFailureStreakRepository.deleteByIssueUrl(
+        issueUrl,
+      );
+    } catch (error) {
+      return [
+        ...storedStreakFindDiagnosticLines,
+        `worker-session-failure-streak-undeletable: ${issueUrl}: ${errorMessageOf(error)}`,
+      ];
+    }
+    return storedStreak === null
+      ? storedStreakFindDiagnosticLines
+      : [...storedStreakFindDiagnosticLines, FAILURE_STREAK_RESET_LINE];
+  };
+
+  private failureStreakFind = async (
+    issueUrl: string,
+  ): Promise<WorkerSessionFailureStreakFindResult> => {
+    try {
+      return {
+        storedStreak:
+          await this.workerSessionFailureStreakRepository.findByIssueUrl(
+            issueUrl,
+          ),
+        diagnosticLines: [],
+      };
+    } catch (error) {
+      return {
+        storedStreak: null,
+        diagnosticLines: [
+          `worker-session-failure-streak-unreadable: ${issueUrl}: ${errorMessageOf(error)}`,
+        ],
+      };
+    }
+  };
+
+  private failureStreakSave = async (
+    issueUrl: string,
+    streak: WorkerSessionFailureStreak,
+  ): Promise<string[]> => {
+    try {
+      await this.workerSessionFailureStreakRepository.save(issueUrl, streak);
+      return [];
+    } catch (error) {
+      return [
+        `worker-session-failure-streak-unwritable: ${issueUrl}: ${errorMessageOf(error)}`,
+      ];
+    }
   };
 }
