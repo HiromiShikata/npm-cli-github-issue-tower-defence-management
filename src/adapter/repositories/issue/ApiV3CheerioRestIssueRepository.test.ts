@@ -9249,6 +9249,134 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].createdAt).toBeInstanceOf(Date);
       expect(result[0].createdAt.toISOString()).toBe(prCreatedAt);
     });
+
+    it('performs a live fetch and returns the live value when { bypassCache: true } is passed even though the cache is fresh', async () => {
+      const { repository, localStorageCacheRepository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const t = new Date('2026-01-01T00:00:00.000Z');
+      dateRepository.now.mockResolvedValue(t);
+
+      const prUrl = 'https://github.com/HiromiShikata/secretary/pull/100';
+      const cachedEntry = {
+        fetchedAtMs: t.getTime(),
+        prs: [
+          {
+            url: prUrl,
+            branchName: 'feature/x',
+            createdAt: '2025-06-01T12:00:00.000Z',
+            isDraft: false,
+            isConflicted: false,
+            mergeable: 'MERGEABLE',
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+          },
+        ],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedEntry);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const timelineFn = jest.fn(() => ({
+        data: {
+          repository: {
+            issue: {
+              timelineItems: {
+                pageInfo: { endCursor: null, hasNextPage: false },
+                nodes: [
+                  {
+                    __typename: 'CrossReferencedEvent',
+                    willCloseTarget: true,
+                    source: {
+                      __typename: 'PullRequest',
+                      url: prUrl,
+                      number: 100,
+                      body: null,
+                      state: 'OPEN',
+                      createdAt: '2025-06-01T12:00:00Z',
+                      isDraft: false,
+                      mergeable: 'MERGEABLE',
+                      headRefName: 'feature-branch',
+                      baseRefName: 'main',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }));
+      mockFetchRoutes({
+        timeline: timelineFn,
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: prUrl,
+            headRefOid: 'sha-bypass-live-fetch',
+          }),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
+      const result = await repository.findRelatedOpenPRs(issueUrl, {
+        bypassCache: true,
+      });
+
+      expect(timelineFn).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(prUrl);
+      expect(result[0].isPassedAllCiJob).toBe(true);
+    });
+
+    it('returns the cached value and issues no additional GraphQL query when bypassCache is omitted or false, under a fresh cache', async () => {
+      const { repository, localStorageCacheRepository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const t = new Date('2026-01-01T00:00:00.000Z');
+      dateRepository.now.mockResolvedValue(t);
+
+      const prUrl = 'https://github.com/HiromiShikata/secretary/pull/100';
+      const cachedEntry = {
+        fetchedAtMs: t.getTime(),
+        prs: [
+          {
+            url: prUrl,
+            branchName: 'feature/x',
+            createdAt: '2025-06-01T12:00:00.000Z',
+            isDraft: false,
+            isConflicted: false,
+            mergeable: 'MERGEABLE',
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+          },
+        ],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedEntry);
+
+      const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
+      mockFetchRoutes({ timeline: timelineFn });
+
+      const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
+
+      const resultWithNoOptions = await repository.findRelatedOpenPRs(issueUrl);
+      const resultWithExplicitFalse = await repository.findRelatedOpenPRs(
+        issueUrl,
+        { bypassCache: false },
+      );
+
+      expect(timelineFn).not.toHaveBeenCalled();
+      expect(resultWithNoOptions).toHaveLength(1);
+      expect(resultWithNoOptions[0].url).toBe(prUrl);
+      expect(resultWithNoOptions[0].isPassedAllCiJob).toBe(false);
+      expect(resultWithExplicitFalse).toHaveLength(1);
+      expect(resultWithExplicitFalse[0].url).toBe(prUrl);
+      expect(resultWithExplicitFalse[0].isPassedAllCiJob).toBe(false);
+    });
   });
 
   describe('getOpenPullRequestCiStatus', () => {
