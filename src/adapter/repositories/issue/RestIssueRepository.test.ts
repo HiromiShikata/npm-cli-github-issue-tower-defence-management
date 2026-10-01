@@ -664,6 +664,38 @@ describe('RestIssueRepository', () => {
           state: 'OPEN',
           author: 'dependabot',
           assignees: [],
+          isPr: true,
+        },
+      ]);
+    });
+
+    it('sets isPr to false for an issue (non-pull-request) search result', async () => {
+      mockGet.mockReturnValueOnce(
+        mockJsonResponse({
+          items: [
+            buildSearchItem({
+              html_url:
+                'https://github.com/HiromiShikata/test-repository/issues/13',
+              pull_request: null,
+            }),
+          ],
+        }),
+      );
+
+      const searchedIssues = await restIssueRepository.searchIssues(
+        'repo:HiromiShikata/test-repository is:open no:project',
+      );
+
+      expect(searchedIssues).toEqual([
+        {
+          url: 'https://github.com/HiromiShikata/test-repository/issues/13',
+          org: 'HiromiShikata',
+          repo: 'test-repository',
+          number: 13,
+          state: 'OPEN',
+          author: 'dependabot',
+          assignees: [],
+          isPr: false,
         },
       ]);
     });
