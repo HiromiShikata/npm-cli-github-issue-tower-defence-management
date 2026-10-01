@@ -48,11 +48,7 @@ export type ConsoleActionError = {
 };
 
 export type ConsoleActionWriteStatus =
-  | 'idle'
-  | 'unconfirmed'
-  | 'succeeded'
-  | 'failed'
-  | 'offline';
+  'idle' | 'unconfirmed' | 'succeeded' | 'failed' | 'offline';
 
 export type ConsoleActionWriteState = {
   status: ConsoleActionWriteStatus;

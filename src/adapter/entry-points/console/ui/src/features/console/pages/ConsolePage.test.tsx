@@ -2218,33 +2218,31 @@ describe('ConsolePage auto-advance tab', () => {
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
     );
-    global.fetch = jest.fn(
-      async (url: string, init?: { method?: string }) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => listPayload(listMatch[1]),
-          };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme', 'beta'] }),
-          };
-        }
-        if (init?.method === 'POST') {
-          return {
-            ok: false,
-            status: 500,
-            text: async () => JSON.stringify({ error: 'merge failed' }),
-          };
-        }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-      },
-    ) as unknown as typeof fetch;
+    global.fetch = jest.fn(async (url: string, init?: { method?: string }) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      if (init?.method === 'POST') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => JSON.stringify({ error: 'merge failed' }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
     jest.useFakeTimers({ now: 0 });
     try {
       const { getByText, findByText } = render(<ConsolePage />);
@@ -2302,7 +2300,11 @@ describe('ConsolePage auto-advance tab', () => {
           };
         }
         void init;
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       },
     );
     global.fetch = fetchMock as unknown as typeof fetch;

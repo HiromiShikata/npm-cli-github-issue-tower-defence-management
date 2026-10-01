@@ -48,7 +48,9 @@ export const useConsoleAutomaticProjectNavigation = (
 
     const decision = consoleAutomaticProjectNavigationDecide({
       checkTimerElapsed,
-      timerElapsed: isTimerExpired(projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES),
+      timerElapsed: isTimerExpired(
+        projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES,
+      ),
       remainingCountIsZero: prsCount === 0 && todoByHumanCount === 0,
       snapshotsReady:
         prsSnapshotLoaded &&
@@ -56,7 +58,8 @@ export const useConsoleAutomaticProjectNavigation = (
         !prsSnapshotFromCache &&
         !todoByHumanSnapshotFromCache,
       explicitlySelectedPjcodeMatchesCurrent:
-        explicitlySelectedPjcode !== null && pjcode === explicitlySelectedPjcode,
+        explicitlySelectedPjcode !== null &&
+        pjcode === explicitlySelectedPjcode,
       pjcode,
       pjcodes,
       projectMinutes,
