@@ -9,6 +9,8 @@ export type ConfigFile = {
   developerAgentNames?: string[];
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
+  defaultLlmEffortLevel?: string;
+  defaultLlmAutocompactMode?: string;
   defaultLlmAgentName?: string;
   maximumPreparingIssuesCount?: number;
   utilizationPercentageThreshold?: number;
@@ -176,6 +178,11 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       developerAgentNames: getDeveloperAgentNamesValue(parsed),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
+      defaultLlmEffortLevel: getStringValue(parsed, 'defaultLlmEffortLevel'),
+      defaultLlmAutocompactMode: getStringValue(
+        parsed,
+        'defaultLlmAutocompactMode',
+      ),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
       maximumPreparingIssuesCount: getNumberValue(
         parsed,

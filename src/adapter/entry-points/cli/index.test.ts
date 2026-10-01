@@ -3216,6 +3216,105 @@ mysteryKey: 'value'
     });
   });
 
+  describe('selectLlmLaunchFlags', () => {
+    it('should appear in the CLI help output', () => {
+      const helpText = program.helpInformation();
+      expect(helpText).toContain('selectLlmLaunchFlags');
+    });
+
+    it('should write both --effort and --autocompact when both fields are set', async () => {
+      writeConfig({
+        ...defaultConfig,
+        defaultLlmEffortLevel: 'xhigh',
+        defaultLlmAutocompactMode: 'auto',
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'selectLlmLaunchFlags',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(stdoutSpy).toHaveBeenCalledWith(
+        '--effort xhigh --autocompact auto\n',
+      );
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should write only --effort when only defaultLlmEffortLevel is set', async () => {
+      writeConfig({
+        ...defaultConfig,
+        defaultLlmEffortLevel: 'xhigh',
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'selectLlmLaunchFlags',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(stdoutSpy).toHaveBeenCalledWith('--effort xhigh\n');
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should write only --autocompact when only defaultLlmAutocompactMode is set', async () => {
+      writeConfig({
+        ...defaultConfig,
+        defaultLlmAutocompactMode: 'auto',
+      });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'selectLlmLaunchFlags',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(stdoutSpy).toHaveBeenCalledWith('--autocompact auto\n');
+
+      stdoutSpy.mockRestore();
+    });
+
+    it('should write nothing when neither field is set', async () => {
+      writeConfig(defaultConfig);
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'selectLlmLaunchFlags',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(stdoutSpy).not.toHaveBeenCalled();
+
+      stdoutSpy.mockRestore();
+    });
+  });
+
   describe('checkIssueReviewReadiness', () => {
     it('should appear in the CLI help output', () => {
       const helpText = program.helpInformation();
