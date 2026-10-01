@@ -1,3 +1,15 @@
+## [2.154.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.9...v2.154.10) (2026-10-01)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** Batched related-open-PR GraphQL query fails with INTERNAL error and the claimed per-issue fallback never runs ([#2970](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2970)) ([90ed07a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90ed07a5ff9fb3412067237a9ea3728826aa5310))
+* **ApiV3CheerioRestIssueRepository:** fall back to cached project metadata on transient network errors during full-fetch cycles ([#2968](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2968)) ([0c97246](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0c972461f8535ed955291f203c6e1ca35249ecc6))
+* **AssignNoAssigneeIssueToManagerUseCase:** AssignNoAssigneeIssueToManagerUseCase adds unassigned pull requests to the project board via queryToAddProject ([#2971](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2971)) ([4f8580b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f8580bacc5039d838c294798c48bda8d1af256b))
+* **ci:** uminoProjectBoardRegistrationGate.test.ts fails after common-file sync moved addProjectV2ItemById out of umino-job's inline script into add-project-board-item.ts ([#2972](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2972)) ([f76e3d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f76e3d16926ad6d7bfdd2897a9f5f891087360a8))
+* **findLastAgentReport:** select agent report by updatedAt, not just createdAt ([#2960](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2960)) ([8d35790](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d357908a7c0d0e7cbeede596da6284304d07c53))
+* **schedule:** HandleScheduledEventUseCaseHandler validates credentials before checking disabled, causing spurious CLI error issues ([#2963](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2963)) ([24ea179](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/24ea1793ee01d90376e8754fbacb4b8f6485bca8))
+
 ## [2.154.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.8...v2.154.9) (2026-10-01)
 
 
