@@ -3465,6 +3465,64 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(statusIdsPassedToUpdateStatus()).toEqual(['4']);
     });
 
+    it.each([
+      {
+        failure: 'a non-403 error',
+        commentReadError: new Error(
+          'Failed to fetch comments from GitHub REST API: 500 Internal Server Error',
+        ),
+      },
+      {
+        failure: 'a 403 GitHubCommentFetchHttpError',
+        commentReadError: buildGitHubCommentFetchHttpError(403),
+      },
+    ])(
+      'advances an already closed orphaned issue to Awaiting Owner without closing it when reading its comments fails with $failure (closed orphan comment read failure pin)',
+      async ({ commentReadError }) => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        const closedOrphanIssueFields: Partial<Issue> = {
+          status: 'Preparation',
+          author: 'bot',
+          story: 'Default Story',
+          state: 'CLOSED',
+          isClosed: true,
+          stateReason: 'COMPLETED',
+        };
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [
+            createMockIssue({
+              url: orphanIssueUrl,
+              ...closedOrphanIssueFields,
+            }),
+          ],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+          createMockIssue({ url: issueUrl, ...closedOrphanIssueFields }),
+        );
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 1,
+        });
+        mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+          commentReadError,
+        );
+
+        await useCase.run({
+          projectUrl: revertProjectUrl,
+          preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+          thresholdForAutoReject: 3,
+          thresholdForDispatchLoop: 6,
+          allowedIssueAuthors: ['bot'],
+        });
+
+        expect(statusIdsPassedToUpdateStatus()).toEqual(['4']);
+        expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      },
+    );
+
     it('closes the orphaned issue, leaves Status unchanged and reports the missing Done option when the project has no Done status (closeIssueAs requirement 9 applying requirement 7)', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
