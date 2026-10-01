@@ -18,8 +18,8 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import {
   CloseIssueAsRequest,
   extractCloseIssueAs,
-  IssueCloseStateReason,
 } from './extractCloseIssueAs';
+import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractWaitingForOwner } from './extractWaitingForOwner';
@@ -50,8 +50,6 @@ type OrphanedPreparationOutcome =
   | 'reassignToDeveloper'
   | 'skip';
 
-type CloseIssueAsApplication = 'issueClosed' | 'closingPullRequestOpen';
-
 const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
   error instanceof Error &&
   error.name === 'GitHubCommentFetchHttpError' &&
@@ -59,6 +57,8 @@ const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
   error.statusCode === 403;
 
 export class RevertOrphanedPreparationUseCase {
+  private readonly closeIssueAsRequestApplier: CloseIssueAsRequestApplier;
+
   constructor(
     readonly projectRepository: Pick<
       ProjectRepository,
@@ -90,7 +90,11 @@ export class RevertOrphanedPreparationUseCase {
     >,
     readonly localCommandRunner: LocalCommandRunner,
     readonly sleep: Sleep = realSleep,
-  ) {}
+  ) {
+    this.closeIssueAsRequestApplier = new CloseIssueAsRequestApplier(
+      issueRepository,
+    );
+  }
 
   run = async (params: {
     projectUrl: string;
@@ -187,22 +191,24 @@ export class RevertOrphanedPreparationUseCase {
       const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
         ? extractCloseIssueAs(lastAgentReport.content)
         : { kind: 'notRequested' };
-      const isCloseIssueAsOverriddenByReportRouting =
-        lastAgentReport !== null &&
-        (nextStepAgent !== null ||
-          extractWorkflowError(lastAgentReport.content) !== null ||
-          extractNeedOwnerConfirmationOrApproval(lastAgentReport.content));
       if (
+        lastAgentReport !== null &&
         closeIssueAsRequest.kind === 'requested' &&
-        !isCloseIssueAsOverriddenByReportRouting
+        nextStepAgent === null &&
+        extractWorkflowError(lastAgentReport.content) === null &&
+        !extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
       ) {
-        const closeIssueAsApplication = await this.applyCloseIssueAsRequest(
-          issue,
-          project,
-          params.projectUrl,
-          closeIssueAsRequest.stateReason,
-        );
-        if (closeIssueAsApplication === 'issueClosed') {
+        const closeIssueAsRequestApplication =
+          await this.closeIssueAsRequestApplier.apply({
+            issue,
+            project,
+            projectUrl: params.projectUrl,
+            stateReason: closeIssueAsRequest.stateReason,
+          });
+        if (
+          closeIssueAsRequestApplication !==
+          'notAppliedBecauseClosingPullRequestIsOpen'
+        ) {
           continue;
         }
       }
@@ -417,41 +423,6 @@ export class RevertOrphanedPreparationUseCase {
     }
   };
 
-  private applyCloseIssueAsRequest = async (
-    issue: Issue,
-    project: Project,
-    projectUrl: string,
-    stateReason: IssueCloseStateReason,
-  ): Promise<CloseIssueAsApplication> => {
-    if (!issue.isClosed) {
-      const closingPullRequestUrls = (
-        await this.issueRepository.findRelatedOpenPRs(issue.url)
-      ).map((pullRequest) => pullRequest.url);
-      if (closingPullRequestUrls.length > 0) {
-        console.warn(
-          `closeIssueAs not applied to ${issue.url} because an open pull request closes it on merge: ${closingPullRequestUrls.join(', ')}`,
-        );
-        return 'closingPullRequestOpen';
-      }
-      await this.issueRepository.closeIssueByUrl(issue.url, stateReason);
-    }
-    const doneStatusOption = project.status.statuses.find(
-      (s) => s.name === DONE_STATUS_NAME,
-    );
-    if (!doneStatusOption) {
-      console.error(
-        `Done status option '${DONE_STATUS_NAME}' not found in project ${projectUrl}; closed ${issue.url} without changing its Status.`,
-      );
-      return 'issueClosed';
-    }
-    await this.issueRepository.updateStatus(
-      project,
-      issue,
-      doneStatusOption.id,
-    );
-    return 'issueClosed';
-  };
-
   private createCommentWithDedup = async (
     issue: Issue,
     body: string,
@@ -510,6 +481,26 @@ export class RevertOrphanedPreparationUseCase {
     ciFailingPrUrl?: string;
     latestReopenedAt: Date | null;
   }> => {
+    if (issue.isClosed) {
+      try {
+        return {
+          outcome: 'advanceClosedIssueToQualityCheck',
+          comments:
+            await this.issueCommentRepository.getCommentsFromIssue(issue),
+          latestReopenedAt: null,
+        };
+      } catch (error) {
+        console.error(
+          `Failed to fetch comments for closed orphaned preparation issue ${issue.url}, advancing it without evaluating closeIssueAs:`,
+          error,
+        );
+        return {
+          outcome: 'advanceClosedIssueToQualityCheck',
+          comments: [],
+          latestReopenedAt: null,
+        };
+      }
+    }
     let comments: Comment[];
     try {
       comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
@@ -522,13 +513,6 @@ export class RevertOrphanedPreparationUseCase {
         return { outcome: 'skip', comments: [], latestReopenedAt: null };
       }
       return { outcome: 'reject', comments: [], latestReopenedAt: null };
-    }
-    if (issue.isClosed) {
-      return {
-        outcome: 'advanceClosedIssueToQualityCheck',
-        comments,
-        latestReopenedAt: null,
-      };
     }
     const latestReopenedAt =
       await this.issueRepository.getLatestReopenedEventAt(issue);

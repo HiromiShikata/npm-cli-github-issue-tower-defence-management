@@ -32,8 +32,8 @@ import { ensureStoryOptionAndGetId } from './ensureStoryOptionAndGetId';
 import {
   CloseIssueAsRequest,
   extractCloseIssueAs,
-  IssueCloseStateReason,
 } from './extractCloseIssueAs';
+import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
@@ -97,7 +97,6 @@ type RejectedReasonType =
   | 'NO_REPORT_FROM_AGENT_BOT'
   | 'STORY_SET_WITH_EMPTY_BODY'
   | PrRejectedReasonType;
-type CloseIssueAsApplication = 'issueClosed' | 'closingPullRequestOpen';
 type NotifyFinishedIssuePreparationParams = {
   projectUrl: string;
   issueUrl: string;
@@ -146,6 +145,7 @@ const parseOrgRepo = (
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
+  private readonly closeIssueAsRequestApplier: CloseIssueAsRequestApplier;
 
   constructor(
     private readonly projectRepository: Pick<
@@ -192,6 +192,9 @@ export class NotifyFinishedIssuePreparationUseCase {
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
     this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover(
+      issueRepository,
+    );
+    this.closeIssueAsRequestApplier = new CloseIssueAsRequestApplier(
       issueRepository,
     );
   }
@@ -478,13 +481,20 @@ export class NotifyFinishedIssuePreparationUseCase {
       closeIssueAsRequest.kind === 'requested' &&
       !isCloseIssueAsOverriddenByReportRouting
     ) {
-      const closeIssueAsApplication = await this.applyCloseIssueAsRequest(
-        issue,
-        project,
-        params.projectUrl,
-        closeIssueAsRequest.stateReason,
-      );
-      if (closeIssueAsApplication === 'issueClosed') {
+      const closeIssueAsRequestApplication =
+        await this.closeIssueAsRequestApplier.apply({
+          issue,
+          project,
+          projectUrl: params.projectUrl,
+          stateReason: closeIssueAsRequest.stateReason,
+        });
+      if (closeIssueAsRequestApplication === 'issueClosedAndStatusSetToDone') {
+        issue.status = DONE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.patchConsoleTab(issue);
+        return;
+      }
+      if (closeIssueAsRequestApplication === 'issueClosedWithStatusUnchanged') {
         return;
       }
     }
@@ -912,44 +922,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
 
     await this.createCommentWithDedup(issue, rejectionStatusMessage);
-  };
-
-  private applyCloseIssueAsRequest = async (
-    issue: Issue,
-    project: Project,
-    projectUrl: string,
-    stateReason: IssueCloseStateReason,
-  ): Promise<CloseIssueAsApplication> => {
-    if (!issue.isClosed) {
-      const closingPullRequestUrls = (
-        await this.issueRepository.findRelatedOpenPRs(issue.url)
-      ).map((pullRequest) => pullRequest.url);
-      if (closingPullRequestUrls.length > 0) {
-        console.warn(
-          `closeIssueAs not applied to ${issue.url} because an open pull request closes it on merge: ${closingPullRequestUrls.join(', ')}`,
-        );
-        return 'closingPullRequestOpen';
-      }
-      await this.issueRepository.closeIssueByUrl(issue.url, stateReason);
-    }
-    const doneStatusOption = project.status.statuses.find(
-      (s) => s.name === DONE_STATUS_NAME,
-    );
-    if (!doneStatusOption) {
-      console.error(
-        `Done status option '${DONE_STATUS_NAME}' not found in project ${projectUrl}; closed ${issue.url} without changing its Status.`,
-      );
-      return 'issueClosed';
-    }
-    issue.status = DONE_STATUS_NAME;
-    await this.issueRepository.update(issue, project);
-    await this.issueRepository.updateStatus(
-      project,
-      issue,
-      doneStatusOption.id,
-    );
-    await this.patchConsoleTab(issue);
-    return 'issueClosed';
   };
 
   private handleConsecutiveFailureMaxReached = async (
