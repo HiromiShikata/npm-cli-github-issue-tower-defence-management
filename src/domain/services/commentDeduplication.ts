@@ -15,9 +15,15 @@ export function isDuplicateWithinWindow(
   newBody: string,
   existingComments: ReadonlyArray<{ text: string; createdAt: Date }>,
   now: Date,
+  windowMs: number | null = DUPLICATE_COMMENT_WINDOW_MS,
 ): boolean {
   const normalizedNew = normalizeTimestamps(newBody);
-  const windowStart = new Date(now.getTime() - DUPLICATE_COMMENT_WINDOW_MS);
+  if (windowMs === null) {
+    return existingComments.some(
+      (c) => normalizeTimestamps(c.text) === normalizedNew,
+    );
+  }
+  const windowStart = new Date(now.getTime() - windowMs);
   return existingComments.some(
     (c) =>
       c.createdAt >= windowStart &&
