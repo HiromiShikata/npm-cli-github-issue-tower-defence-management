@@ -1,3 +1,10 @@
+## [2.155.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.0...v2.155.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **selectLlmLaunchFlags:** fall back to --effort xhigh and print --autocompact only when the config sets it ([#3023](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3023)) ([fc2f6ca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fc2f6caf8fe384e301d3b0243f73acc9662e183d))
+
 # [2.155.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.154.10...v2.155.0) (2026-10-01)
 
 
