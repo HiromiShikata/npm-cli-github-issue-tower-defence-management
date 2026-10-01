@@ -1,3 +1,10 @@
+## [2.155.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.4...v2.155.5) (2026-10-01)
+
+
+### Bug Fixes
+
+* **ClearDependedIssueURLUseCase:** remove iterationsExhausted not-found preservation to prevent permanent dependency deadlock ([#2994](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2994)) ([a856bc2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a856bc20ed6b351ee118d129dcae9ec0cf6bbeef))
+
 ## [2.155.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.3...v2.155.4) (2026-10-01)
 
 
