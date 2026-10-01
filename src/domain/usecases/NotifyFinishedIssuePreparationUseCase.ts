@@ -29,6 +29,11 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { ensureStoryOptionAndGetId } from './ensureStoryOptionAndGetId';
+import {
+  CloseIssueAsRequest,
+  extractCloseIssueAs,
+  IssueCloseStateReason,
+} from './extractCloseIssueAs';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
@@ -92,6 +97,7 @@ type RejectedReasonType =
   | 'NO_REPORT_FROM_AGENT_BOT'
   | 'STORY_SET_WITH_EMPTY_BODY'
   | PrRejectedReasonType;
+type CloseIssueAsApplication = 'issueClosed' | 'closingPullRequestOpen';
 type NotifyFinishedIssuePreparationParams = {
   projectUrl: string;
   issueUrl: string;
@@ -171,6 +177,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'getIssueByUrl'
       | 'updateStoryByProjectItemId'
       | 'getLatestReopenedEventAt'
+      | 'closeIssueByUrl'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -454,6 +461,33 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
+    const workflowError = lastAgentReport
+      ? extractWorkflowError(lastAgentReport.content)
+      : null;
+    const needOwnerConfirmationOrApproval = lastAgentReport
+      ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
+      : false;
+    const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
+      ? extractCloseIssueAs(lastAgentReport.content)
+      : { kind: 'notRequested' };
+    const isCloseIssueAsOverriddenByReportRouting =
+      nextStepAgent !== null ||
+      workflowError !== null ||
+      needOwnerConfirmationOrApproval;
+    if (
+      closeIssueAsRequest.kind === 'requested' &&
+      !isCloseIssueAsOverriddenByReportRouting
+    ) {
+      const closeIssueAsApplication = await this.applyCloseIssueAsRequest(
+        issue,
+        project,
+        params.projectUrl,
+        closeIssueAsRequest.stateReason,
+      );
+      if (closeIssueAsApplication === 'issueClosed') {
+        return;
+      }
+    }
     let storyName = lastAgentReport
       ? extractStory(lastAgentReport.content)
       : null;
@@ -766,9 +800,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const workflowError = lastAgentReport
-      ? extractWorkflowError(lastAgentReport.content)
-      : null;
     if (workflowError !== null) {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
@@ -795,9 +826,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const needOwnerConfirmationOrApproval = lastAgentReport
-      ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
-      : false;
     if (needOwnerConfirmationOrApproval) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
@@ -807,6 +835,22 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
+      return;
+    }
+
+    if (closeIssueAsRequest.kind === 'invalidValue') {
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.createCommentWithDedup(
+        issue,
+        `Invalid closeIssueAs value ${closeIssueAsRequest.receivedValueJson}: allowed values are "completed" and "not_planned". The issue was not closed.`,
+      );
       return;
     }
 
@@ -868,6 +912,44 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
 
     await this.createCommentWithDedup(issue, rejectionStatusMessage);
+  };
+
+  private applyCloseIssueAsRequest = async (
+    issue: Issue,
+    project: Project,
+    projectUrl: string,
+    stateReason: IssueCloseStateReason,
+  ): Promise<CloseIssueAsApplication> => {
+    if (!issue.isClosed) {
+      const closingPullRequestUrls = (
+        await this.issueRepository.findRelatedOpenPRs(issue.url)
+      ).map((pullRequest) => pullRequest.url);
+      if (closingPullRequestUrls.length > 0) {
+        console.warn(
+          `closeIssueAs not applied to ${issue.url} because an open pull request closes it on merge: ${closingPullRequestUrls.join(', ')}`,
+        );
+        return 'closingPullRequestOpen';
+      }
+      await this.issueRepository.closeIssueByUrl(issue.url, stateReason);
+    }
+    const doneStatusOption = project.status.statuses.find(
+      (s) => s.name === DONE_STATUS_NAME,
+    );
+    if (!doneStatusOption) {
+      console.error(
+        `Done status option '${DONE_STATUS_NAME}' not found in project ${projectUrl}; closed ${issue.url} without changing its Status.`,
+      );
+      return 'issueClosed';
+    }
+    issue.status = DONE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      doneStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    return 'issueClosed';
   };
 
   private handleConsecutiveFailureMaxReached = async (

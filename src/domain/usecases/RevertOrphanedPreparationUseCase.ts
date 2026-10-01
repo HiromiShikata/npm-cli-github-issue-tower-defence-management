@@ -15,6 +15,13 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import {
+  CloseIssueAsRequest,
+  extractCloseIssueAs,
+  IssueCloseStateReason,
+} from './extractCloseIssueAs';
+import { extractWorkflowError } from './extractWorkflowError';
+import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
@@ -37,7 +44,13 @@ import {
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper' | 'skip';
+  | 'advanceToQualityCheck'
+  | 'advanceClosedIssueToQualityCheck'
+  | 'reject'
+  | 'reassignToDeveloper'
+  | 'skip';
+
+type CloseIssueAsApplication = 'issueClosed' | 'closingPullRequestOpen';
 
 const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
   error instanceof Error &&
@@ -69,6 +82,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
       | 'getLatestReopenedEventAt'
+      | 'closeIssueByUrl'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -132,6 +146,11 @@ export class RevertOrphanedPreparationUseCase {
       (s) => s.name === DONE_STATUS_NAME,
     );
 
+    const advanceToQualityCheckStatusOptionId =
+      awaitingOwnerStatusOption?.id ??
+      doneStatusOption?.id ??
+      awaitingWorkspaceStatusOption.id;
+
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
       if (!isOrphaned) {
@@ -165,6 +184,36 @@ export class RevertOrphanedPreparationUseCase {
       const nextStepAgent = lastAgentReport
         ? extractNextStepAgent(lastAgentReport.content)
         : null;
+      const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
+        ? extractCloseIssueAs(lastAgentReport.content)
+        : { kind: 'notRequested' };
+      const isCloseIssueAsOverriddenByReportRouting =
+        lastAgentReport !== null &&
+        (nextStepAgent !== null ||
+          extractWorkflowError(lastAgentReport.content) !== null ||
+          extractNeedOwnerConfirmationOrApproval(lastAgentReport.content));
+      if (
+        closeIssueAsRequest.kind === 'requested' &&
+        !isCloseIssueAsOverriddenByReportRouting
+      ) {
+        const closeIssueAsApplication = await this.applyCloseIssueAsRequest(
+          issue,
+          project,
+          params.projectUrl,
+          closeIssueAsRequest.stateReason,
+        );
+        if (closeIssueAsApplication === 'issueClosed') {
+          continue;
+        }
+      }
+      if (outcome === 'advanceClosedIssueToQualityCheck') {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          advanceToQualityCheckStatusOptionId,
+        );
+        continue;
+      }
       if (
         nextStepAgent !== null &&
         params.agents &&
@@ -318,25 +367,11 @@ export class RevertOrphanedPreparationUseCase {
         continue;
       }
       if (outcome === 'advanceToQualityCheck') {
-        if (awaitingOwnerStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingOwnerStatusOption.id,
-          );
-        } else if (doneStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            doneStatusOption.id,
-          );
-        } else {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingWorkspaceStatusOption.id,
-          );
-        }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          advanceToQualityCheckStatusOptionId,
+        );
         continue;
       }
 
@@ -380,6 +415,41 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
+  };
+
+  private applyCloseIssueAsRequest = async (
+    issue: Issue,
+    project: Project,
+    projectUrl: string,
+    stateReason: IssueCloseStateReason,
+  ): Promise<CloseIssueAsApplication> => {
+    if (!issue.isClosed) {
+      const closingPullRequestUrls = (
+        await this.issueRepository.findRelatedOpenPRs(issue.url)
+      ).map((pullRequest) => pullRequest.url);
+      if (closingPullRequestUrls.length > 0) {
+        console.warn(
+          `closeIssueAs not applied to ${issue.url} because an open pull request closes it on merge: ${closingPullRequestUrls.join(', ')}`,
+        );
+        return 'closingPullRequestOpen';
+      }
+      await this.issueRepository.closeIssueByUrl(issue.url, stateReason);
+    }
+    const doneStatusOption = project.status.statuses.find(
+      (s) => s.name === DONE_STATUS_NAME,
+    );
+    if (!doneStatusOption) {
+      console.error(
+        `Done status option '${DONE_STATUS_NAME}' not found in project ${projectUrl}; closed ${issue.url} without changing its Status.`,
+      );
+      return 'issueClosed';
+    }
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      doneStatusOption.id,
+    );
+    return 'issueClosed';
   };
 
   private createCommentWithDedup = async (
@@ -440,13 +510,6 @@ export class RevertOrphanedPreparationUseCase {
     ciFailingPrUrl?: string;
     latestReopenedAt: Date | null;
   }> => {
-    if (issue.isClosed) {
-      return {
-        outcome: 'advanceToQualityCheck',
-        comments: [],
-        latestReopenedAt: null,
-      };
-    }
     let comments: Comment[];
     try {
       comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
@@ -459,6 +522,13 @@ export class RevertOrphanedPreparationUseCase {
         return { outcome: 'skip', comments: [], latestReopenedAt: null };
       }
       return { outcome: 'reject', comments: [], latestReopenedAt: null };
+    }
+    if (issue.isClosed) {
+      return {
+        outcome: 'advanceClosedIssueToQualityCheck',
+        comments,
+        latestReopenedAt: null,
+      };
     }
     const latestReopenedAt =
       await this.issueRepository.getLatestReopenedEventAt(issue);
