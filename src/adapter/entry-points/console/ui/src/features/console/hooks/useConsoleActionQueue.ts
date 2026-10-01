@@ -47,6 +47,18 @@ export type ConsoleActionError = {
   retry?: () => void;
 };
 
+export type ConsoleActionWriteStatus =
+  | 'idle'
+  | 'unconfirmed'
+  | 'succeeded'
+  | 'failed'
+  | 'offline';
+
+export type ConsoleActionWriteState = {
+  status: ConsoleActionWriteStatus;
+  attempt: number;
+};
+
 const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
 
 const isConsoleOfflineQueuedAction = (
@@ -117,6 +129,7 @@ export type ConsoleActionQueue = {
   pending: ConsolePendingActionView | null;
   error: ConsoleActionError | null;
   offlineActions: ConsoleOfflineQueuedAction[];
+  writeState: ConsoleActionWriteState;
   enqueue: (action: ConsoleQueuedAction) => void;
   showError: (message: string, reason: string) => void;
   undo: () => void;
@@ -140,6 +153,11 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const committedRef = useRef<boolean>(false);
   const runCommitRef = useRef<(action: ConsoleQueuedAction) => void>(() => {});
+  const attemptRef = useRef(0);
+  const [writeState, setWriteState] = useState<ConsoleActionWriteState>({
+    status: 'idle',
+    attempt: 0,
+  });
 
   const clearTimer = useCallback((): void => {
     if (timerRef.current !== null) {
@@ -166,17 +184,27 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
 
   const runCommit = useCallback(
     (action: ConsoleQueuedAction): void => {
-      action.commit().catch((cause: unknown) => {
-        if (isNetworkError(cause) && action.offline !== undefined) {
-          addToOfflineQueue(action);
-        } else {
-          setError({
-            message: action.message,
-            reason: errorReason(cause),
-            retry: () => runCommitRef.current(action),
-          });
-        }
-      });
+      const attempt = attemptRef.current + 1;
+      attemptRef.current = attempt;
+      setWriteState({ status: 'unconfirmed', attempt });
+      action
+        .commit()
+        .then(() => {
+          setWriteState({ status: 'succeeded', attempt });
+        })
+        .catch((cause: unknown) => {
+          if (isNetworkError(cause) && action.offline !== undefined) {
+            addToOfflineQueue(action);
+            setWriteState({ status: 'offline', attempt });
+          } else {
+            setError({
+              message: action.message,
+              reason: errorReason(cause),
+              retry: () => runCommitRef.current(action),
+            });
+            setWriteState({ status: 'failed', attempt });
+          }
+        });
     },
     [addToOfflineQueue],
   );
@@ -289,6 +317,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     pending,
     error,
     offlineActions,
+    writeState,
     enqueue,
     showError,
     undo,

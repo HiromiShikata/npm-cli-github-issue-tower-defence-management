@@ -21,7 +21,11 @@ import {
   ConsoleUndoToast,
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
-import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
+import {
+  type ConsoleActionWriteState,
+  useConsoleActionQueue,
+} from '../hooks/useConsoleActionQueue';
+import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
@@ -40,7 +44,6 @@ import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
 import { useConsoleTimerFirstItemAutoOpen } from '../hooks/useConsoleTimerFirstItemAutoOpen';
-import { useConsoleTimerProjectSkipNavigation } from '../hooks/useConsoleTimerProjectSkipNavigation';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
   encodeAttachmentContent,
@@ -79,10 +82,7 @@ import {
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
-import {
-  DEFAULT_TIMER_MINUTES,
-  findNextPjcodeWithMinutes,
-} from '../logic/timerSettings';
+import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
@@ -530,8 +530,18 @@ export const ConsolePage = () => {
     }
   }, [pjcode, timerMode, pjcodes, projectMinutes]);
 
-  useConsoleTimerProjectSkipNavigation(
+  const isQueuedActionAwaitingCommit = actionQueue.pending !== null;
+  const writeStateForAutomaticNavigation = useMemo<ConsoleActionWriteState>(
+    () =>
+      isQueuedActionAwaitingCommit
+        ? { status: 'unconfirmed', attempt: actionQueue.writeState.attempt }
+        : actionQueue.writeState,
+    [isQueuedActionAwaitingCommit, actionQueue.writeState],
+  );
+
+  useConsoleAutomaticProjectNavigation(
     timerMode,
+    isTimerExpired,
     counts.prs,
     counts['todo-by-human'],
     pjcode,
@@ -542,6 +552,7 @@ export const ConsolePage = () => {
     snapshots.prs?.fromCache ?? false,
     snapshots['todo-by-human']?.fromCache ?? false,
     explicitlySelectedPjcode,
+    writeStateForAutomaticNavigation,
   );
 
   useConsoleTimerFirstItemAutoOpen(
@@ -641,39 +652,12 @@ export const ConsolePage = () => {
         advance: () => {
           input.onAdvance?.();
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
-            if (
-              timerMode &&
-              isTimerExpired(
-                projectMinutes[pjcode ?? ''] ?? DEFAULT_TIMER_MINUTES,
-              )
-            ) {
-              const nextPjcode = findNextPjcodeWithMinutes(
-                pjcodes,
-                pjcode,
-                projectMinutes,
-              );
-              if (nextPjcode !== null) {
-                navigatePush(`/projects/${nextPjcode}/todo-by-human`);
-              }
-            } else {
-              advanceToNext(actedKey);
-            }
+            advanceToNext(actedKey);
           }
         },
       });
     },
-    [
-      actionQueue,
-      activeTab,
-      advanceToNext,
-      airplaneMode.status,
-      overlayState,
-      timerMode,
-      isTimerExpired,
-      projectMinutes,
-      pjcode,
-      pjcodes,
-    ],
+    [actionQueue, activeTab, advanceToNext, airplaneMode.status, overlayState],
   );
 
   const handleSwipe = useCallback(
