@@ -712,6 +712,47 @@ describe('IssueCreateModalDialog', () => {
     expect(cancelIndex).toBeLessThan(createIndex);
   });
 
+  it('renders .console-task-create-dialog-footer as a sibling of .console-task-create-dialog-body, placed after it', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const dialog = document.body.querySelector(
+      '.console-task-create-dialog',
+    ) as HTMLElement;
+    const body = dialog.querySelector(
+      '.console-task-create-dialog-body',
+    ) as HTMLElement;
+    const footer = dialog.querySelector(
+      '.console-task-create-dialog-footer',
+    ) as HTMLElement;
+    expect(body).not.toBeNull();
+    expect(footer).not.toBeNull();
+    expect(footer.parentElement).toBe(dialog);
+    expect(body.nextElementSibling).toBe(footer);
+  });
+
+  it('renders the Cancel/Create buttons inside .console-task-create-dialog-footer and not inside .console-task-create-dialog-body', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const body = document.body.querySelector(
+      '.console-task-create-dialog-body',
+    ) as HTMLElement;
+    const footer = document.body.querySelector(
+      '.console-task-create-dialog-footer',
+    ) as HTMLElement;
+    expect(
+      body.querySelector('.console-task-create-dialog-actions'),
+    ).toBeNull();
+    expect(body.querySelector('.console-task-create-dialog-cancel')).toBeNull();
+    expect(body.querySelector('.console-task-create-dialog-submit')).toBeNull();
+    expect(
+      footer.querySelector('.console-task-create-dialog-actions'),
+    ).not.toBeNull();
+    expect(
+      footer.querySelector('.console-task-create-dialog-cancel'),
+    ).not.toBeNull();
+    expect(
+      footer.querySelector('.console-task-create-dialog-submit'),
+    ).not.toBeNull();
+  });
+
   it('renders new issue tab link when newIssueUrl is provided', () => {
     const newIssueUrl =
       'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/new';

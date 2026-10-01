@@ -370,7 +370,8 @@ export const IssueCreateModalDialog = ({
               {submitError}
             </p>
           )}
-
+        </div>
+        <div className="console-task-create-dialog-footer">
           <div className="console-task-create-dialog-actions">
             <button
               type="button"

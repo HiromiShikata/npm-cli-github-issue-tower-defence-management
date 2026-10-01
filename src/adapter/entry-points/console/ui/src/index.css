@@ -2555,6 +2555,13 @@ body {
   overflow-y: auto;
 }
 
+.console-task-create-dialog-footer {
+  flex-shrink: 0;
+  padding: 12px 18px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+}
+
 .console-task-create-dialog-section-label {
   color: #e6edf3;
   font-size: 0.875rem;
