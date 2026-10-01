@@ -340,36 +340,61 @@ describe('HandleScheduledEventUseCaseHandler urgent-story launch hold wiring', (
     label: string;
     projectTokenListJsonPath: string | null;
     fleetTokenListJsonPath: string | null;
-    expectedTokenListJsonPath: string;
+    expectedClaudeTokenUsageRepository: { tokenListJsonPath: string } | null;
   }>([
     {
       label: 'the project config value when the project config sets one',
       projectTokenListJsonPath: '/srv/project/claude-code-oauth-tokens.json',
       fleetTokenListJsonPath: '/srv/fleet/claude-code-oauth-tokens.json',
-      expectedTokenListJsonPath: '/srv/project/claude-code-oauth-tokens.json',
+      expectedClaudeTokenUsageRepository: {
+        tokenListJsonPath: '/srv/project/claude-code-oauth-tokens.json',
+      },
+    },
+    {
+      label:
+        'the project config value with its leading ~/ expanded to the home directory',
+      projectTokenListJsonPath: '~/project/claude-code-oauth-tokens.json',
+      fleetTokenListJsonPath: '/srv/fleet/claude-code-oauth-tokens.json',
+      expectedClaudeTokenUsageRepository: {
+        tokenListJsonPath: path.join(
+          os.homedir(),
+          'project/claude-code-oauth-tokens.json',
+        ),
+      },
     },
     {
       label: 'the fleet value when the project config sets none',
       projectTokenListJsonPath: null,
       fleetTokenListJsonPath: '/srv/fleet/claude-code-oauth-tokens.json',
-      expectedTokenListJsonPath: '/srv/fleet/claude-code-oauth-tokens.json',
+      expectedClaudeTokenUsageRepository: {
+        tokenListJsonPath: '/srv/fleet/claude-code-oauth-tokens.json',
+      },
     },
     {
       label:
         'the fleet value with its leading ~/ expanded to the home directory',
       projectTokenListJsonPath: null,
       fleetTokenListJsonPath: '~/fleet/claude-code-oauth-tokens.json',
-      expectedTokenListJsonPath: path.join(
-        os.homedir(),
-        'fleet/claude-code-oauth-tokens.json',
-      ),
+      expectedClaudeTokenUsageRepository: {
+        tokenListJsonPath: path.join(
+          os.homedir(),
+          'fleet/claude-code-oauth-tokens.json',
+        ),
+      },
+    },
+    {
+      label:
+        'no token repository when neither the project config nor the fleet config sets a token list',
+      projectTokenListJsonPath: null,
+      fleetTokenListJsonPath: null,
+      expectedClaudeTokenUsageRepository: null,
     },
   ])(
     'reads token usages for the hold from $label',
     async ({
       projectTokenListJsonPath,
       fleetTokenListJsonPath,
-      expectedTokenListJsonPath,
+      expectedClaudeTokenUsageRepository,
     }) => {
       projectConfigUse(
         projectTokenListJsonPath === null
@@ -391,9 +416,7 @@ describe('HandleScheduledEventUseCaseHandler urgent-story launch hold wiring', (
       ).toEqual([
         [
           expect.objectContaining({
-            claudeTokenUsageRepository: {
-              tokenListJsonPath: expectedTokenListJsonPath,
-            },
+            claudeTokenUsageRepository: expectedClaudeTokenUsageRepository,
           }),
         ],
       ]);

@@ -466,6 +466,7 @@ describe('loadStartPreparationFleetSettings', () => {
 
     expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
       maximumPreparingIssuesCount: 100,
+      urgentStoryNames: [],
     });
   });
 
