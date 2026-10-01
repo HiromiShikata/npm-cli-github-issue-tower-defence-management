@@ -31,6 +31,7 @@ import {
   PullRequestProjectItemRemoveUseCase,
   PullRequestProjectItemBackupRecord,
 } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
+import { ScheduledEventHandlerInputValidationError } from '../handlers/HandleScheduledEventUseCaseHandler';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -111,11 +112,17 @@ jest.mock('../../repositories/FetchWebhookRepository', () => ({
   })),
 }));
 const mockScheduleHandle = jest.fn().mockResolvedValue(null);
-jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => ({
-  HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
-    handle: mockScheduleHandle,
-  })),
-}));
+jest.mock('../handlers/HandleScheduledEventUseCaseHandler', () => {
+  const actual = jest.requireActual<
+    typeof import('../handlers/HandleScheduledEventUseCaseHandler')
+  >('../handlers/HandleScheduledEventUseCaseHandler');
+  return {
+    ...actual,
+    HandleScheduledEventUseCaseHandler: jest.fn().mockImplementation(() => ({
+      handle: mockScheduleHandle,
+    })),
+  };
+});
 const mockLiveSessionOauthTokenSelectHandlerHandle = jest.fn().mockReturnValue({
   selectedToken: null,
   selectedName: null,
@@ -403,13 +410,11 @@ describe('CLI', () => {
       const validationErrorMessage =
         'Invalid input: required credential fields are missing. Got: {}';
       mockScheduleHandle.mockRejectedValueOnce(
-        new Error(validationErrorMessage),
+        new ScheduledEventHandlerInputValidationError(validationErrorMessage),
       );
       const processExitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation(
-          jest.fn<never, Parameters<typeof process.exit>>(),
-        );
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -437,9 +442,7 @@ describe('CLI', () => {
     it('proceeds normally and calls handler.handle when it resolves (non-regression)', async () => {
       const processExitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation(
-          jest.fn<never, Parameters<typeof process.exit>>(),
-        );
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -465,9 +468,7 @@ describe('CLI', () => {
       mockScheduleHandle.mockRejectedValueOnce(unrelatedError);
       const processExitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation(
-          jest.fn<never, Parameters<typeof process.exit>>(),
-        );
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -480,6 +481,33 @@ describe('CLI', () => {
         );
 
         expect(handleFatalError).toHaveBeenCalledWith(unrelatedError);
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('propagates a plain Error whose message happens to match the validation message text, because it is not an instance of the validation error class', async () => {
+      const validationErrorMessage =
+        'Invalid input: required credential fields are missing. Got: {}';
+      const lookalikeError = new Error(validationErrorMessage);
+      mockScheduleHandle.mockRejectedValueOnce(lookalikeError);
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).toHaveBeenCalledWith(lookalikeError);
+        expect(processExitSpy).not.toHaveBeenCalled();
       } finally {
         processExitSpy.mockRestore();
         consoleErrorSpy.mockRestore();
