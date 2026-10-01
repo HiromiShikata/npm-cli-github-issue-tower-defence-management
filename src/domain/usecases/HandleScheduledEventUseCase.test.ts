@@ -839,6 +839,99 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('passes the startPreparation settings, the project URL and the manager to StartPreparationUseCase.run', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        agents: ['agent1', 'agent2'],
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: 'claude-sonnet',
+          defaultLlmAgentName: 'llm-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: 12,
+          utilizationPercentageThreshold: 75,
+          codexHomeCandidates: ['/codex/home-a', '/codex/home-b'],
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
+      await useCase.run(input);
+
+      expect(mockStartPreparationUseCase.run.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            projectUrl: 'https://github.com/test-org/test-project',
+            manager: 'test-manager',
+            defaultAgentName: 'agent1',
+            defaultLlmModelName: 'claude-opus',
+            fallbackLlmModelName: 'claude-sonnet',
+            defaultLlmAgentName: 'llm-agent',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: 12,
+            utilizationPercentageThreshold: 75,
+            codexHomeCandidates: ['/codex/home-a', '/codex/home-b'],
+            agents: ['agent1', 'agent2'],
+          }),
+        ],
+      ]);
+    });
+
+    it('passes startPreparation.urgentStoryNames to StartPreparationUseCase.run as urgentStoryNames', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          urgentStoryNames: [
+            'urgent / production incident',
+            'urgent / customer escalation',
+          ],
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
+      await useCase.run(input);
+
+      expect(mockStartPreparationUseCase.run.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            urgentStoryNames: [
+              'urgent / production incident',
+              'urgent / customer escalation',
+            ],
+          }),
+        ],
+      ]);
+    });
+
     it('should invoke UpdateRateLimitCacheUseCase before StartPreparationUseCase when startPreparation is configured', async () => {
       const callOrder: string[] = [];
       mockUpdateRateLimitCacheUseCase.run.mockImplementation(async () => {

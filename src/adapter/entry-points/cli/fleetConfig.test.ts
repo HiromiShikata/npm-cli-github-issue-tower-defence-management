@@ -520,6 +520,139 @@ describe('loadStartPreparationFleetSettings', () => {
   });
 });
 
+describe('loadStartPreparationFleetSettings urgentStoryNames', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('reads urgentStoryNames from the startPreparation section', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  maximumPreparingIssuesCount: 100',
+        '  urgentStoryNames:',
+        "    - 'urgent / production incident'",
+        "    - 'urgent / customer escalation'",
+      ].join('\n'),
+    );
+
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+      maximumPreparingIssuesCount: 100,
+      urgentStoryNames: [
+        'urgent / production incident',
+        'urgent / customer escalation',
+      ],
+    });
+  });
+
+  it('keeps reading maximumPreparingIssuesCount when the startPreparation section also lists urgentStoryNames', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  maximumPreparingIssuesCount: 100',
+        '  urgentStoryNames:',
+        "    - 'urgent / production incident'",
+      ].join('\n'),
+    );
+
+    expect(
+      loadStartPreparationFleetSettings(fleetConfigFilePath)
+        .maximumPreparingIssuesCount,
+    ).toBe(100);
+  });
+
+  it('reads an empty urgentStoryNames list as no urgent story names', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['startPreparation:', '  urgentStoryNames: []'].join('\n'),
+    );
+
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual(
+      expect.objectContaining({ urgentStoryNames: [] }),
+    );
+  });
+
+  it('returns no urgent story names when the startPreparation section omits urgentStoryNames', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['startPreparation:', '  maximumPreparingIssuesCount: 100'].join('\n'),
+    );
+
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+      maximumPreparingIssuesCount: 100,
+      urgentStoryNames: [],
+    });
+  });
+
+  it.each<{ label: string; fleetConfigFilePathOf: () => string | null }>([
+    {
+      label: 'no fleet config path is given',
+      fleetConfigFilePathOf: () => null,
+    },
+    {
+      label: 'the fleet config has no startPreparation section',
+      fleetConfigFilePathOf: () =>
+        writeFleetConfig('inTmuxLauncherCommand: cl\n'),
+    },
+    {
+      label: 'the fleet config file is empty',
+      fleetConfigFilePathOf: () => writeFleetConfig(''),
+    },
+  ])(
+    'returns no urgent story names when $label',
+    ({ fleetConfigFilePathOf }) => {
+      expect(
+        loadStartPreparationFleetSettings(fleetConfigFilePathOf()),
+      ).toEqual(expect.objectContaining({ urgentStoryNames: [] }));
+    },
+  );
+
+  it.each<{ label: string; urgentStoryNamesYamlLines: string[] }>([
+    {
+      label: 'a single string',
+      urgentStoryNamesYamlLines: [
+        "  urgentStoryNames: 'urgent / production incident'",
+      ],
+    },
+    {
+      label: 'a list holding a number',
+      urgentStoryNamesYamlLines: [
+        '  urgentStoryNames:',
+        "    - 'urgent / production incident'",
+        '    - 42',
+      ],
+    },
+    {
+      label: 'a mapping',
+      urgentStoryNamesYamlLines: [
+        '  urgentStoryNames:',
+        "    urgent: 'urgent / production incident'",
+      ],
+    },
+  ])(
+    'throws naming urgentStoryNames when urgentStoryNames is $label',
+    ({ urgentStoryNamesYamlLines }) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        ['startPreparation:', ...urgentStoryNamesYamlLines].join('\n'),
+      );
+
+      expect(() =>
+        loadStartPreparationFleetSettings(fleetConfigFilePath),
+      ).toThrow('urgentStoryNames');
+    },
+  );
+});
+
 describe('loadWorkflowImprovementIssueUrl', () => {
   let tempDir: string;
 
