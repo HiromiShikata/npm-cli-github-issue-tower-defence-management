@@ -5809,3 +5809,240 @@ mysteryKey: 'value'
     });
   });
 });
+
+describe('select-resumable-session command', () => {
+  let workingDirectory: string;
+
+  beforeEach(() => {
+    workingDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'select-resumable-session-command-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(workingDirectory, { force: true, recursive: true });
+  });
+
+  const sessionName =
+    'https://github.com/example-org/example-repo/issues/42/developer';
+  const resumableSessionId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+  const transcriptFileModificationTimeSeconds = 1790000000;
+
+  type SelectResumableSessionCommandOutput = {
+    stdoutText: string;
+    stderrText: string;
+    exitCodes: number[];
+  };
+
+  const resumableTranscriptFileWrite = (
+    directory: string,
+    sessionId: string,
+  ): string => {
+    fs.mkdirSync(directory, { recursive: true });
+    const transcriptFilePath = path.join(directory, `${sessionId}.jsonl`);
+    const transcriptLines = [
+      JSON.stringify({
+        type: 'custom-title',
+        customTitle: sessionName,
+        sessionId,
+      }),
+      JSON.stringify({
+        type: 'queue-operation',
+        operation: 'enqueue',
+        timestamp: '2026-09-30T10:00:00.000Z',
+        sessionId,
+        content: 'x',
+      }),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-09-30T10:05:00.000Z',
+        isSidechain: false,
+        message: { content: [{ type: 'text', text: 'working' }] },
+      }),
+    ];
+    fs.writeFileSync(
+      transcriptFilePath,
+      `${transcriptLines.join('\n')}\n`,
+      'utf8',
+    );
+    fs.utimesSync(
+      transcriptFilePath,
+      transcriptFileModificationTimeSeconds,
+      transcriptFileModificationTimeSeconds,
+    );
+    return transcriptFilePath;
+  };
+
+  const selectResumableSessionCommandRun = async (
+    commandArguments: string[],
+  ): Promise<SelectResumableSessionCommandOutput> => {
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+
+    try {
+      await program.parseAsync([
+        'node',
+        'test',
+        'select-resumable-session',
+        ...commandArguments,
+      ]);
+
+      return {
+        stdoutText: [
+          ...consoleLogSpy.mock.calls.map(
+            (printedValues) => `${printedValues.map(String).join(' ')}\n`,
+          ),
+          ...stdoutWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+        ].join(''),
+        stderrText: [
+          ...consoleErrorSpy.mock.calls.map(
+            (printedValues) => `${printedValues.map(String).join(' ')}\n`,
+          ),
+          ...stderrWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+        ].join(''),
+        exitCodes: processExitSpy.mock.calls.map(([exitCode]) =>
+          Number(exitCode ?? 0),
+        ),
+      };
+    } finally {
+      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      stdoutWriteSpy.mockRestore();
+      stderrWriteSpy.mockRestore();
+      processExitSpy.mockRestore();
+    }
+  };
+
+  it('lists all four options in its help', async () => {
+    const stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(() => {
+        throw new Error('process.exit called');
+      });
+
+    try {
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'select-resumable-session',
+          '--help',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      const helpText = stdoutWriteSpy.mock.calls
+        .map(([chunk]) => String(chunk))
+        .join('');
+      expect(helpText).toContain('--session-name');
+      expect(helpText).toContain('--session-dir');
+      expect(helpText).toContain('--archive-root');
+      expect(helpText).toContain('--other-session-dir');
+    } finally {
+      stdoutWriteSpy.mockRestore();
+      processExitSpy.mockRestore();
+    }
+  });
+
+  it('exits non-zero naming --session-name when it is omitted', async () => {
+    const stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(() => {
+        throw new Error('process.exit called');
+      });
+
+    try {
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'select-resumable-session',
+          '--session-dir',
+          path.join(workingDirectory, 'sessions'),
+          '--archive-root',
+          path.join(workingDirectory, 'archived-sessions'),
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      const stderrText = stderrWriteSpy.mock.calls
+        .map(([chunk]) => String(chunk))
+        .join('');
+      expect(stderrText).toContain('--session-name');
+      expect(processExitSpy).toHaveBeenCalledTimes(1);
+      expect(Number(processExitSpy.mock.calls[0][0])).toBeGreaterThan(0);
+    } finally {
+      stdoutWriteSpy.mockRestore();
+      stderrWriteSpy.mockRestore();
+      processExitSpy.mockRestore();
+    }
+  });
+
+  it('writes the session id of the resumable transcript file in the session directory followed by a newline to stdout and exits 0', async () => {
+    const sessionDir = path.join(workingDirectory, 'session-dir');
+    resumableTranscriptFileWrite(sessionDir, resumableSessionId);
+
+    const output = await selectResumableSessionCommandRun([
+      '--session-name',
+      sessionName,
+      '--session-dir',
+      sessionDir,
+      '--archive-root',
+      path.join(workingDirectory, 'archived-sessions'),
+    ]);
+
+    expect(output.stdoutText).toBe(`${resumableSessionId}\n`);
+    expect(output.stderrText).toBe('');
+    expect(output.exitCodes.filter((exitCode) => exitCode !== 0)).toEqual([]);
+  });
+
+  it('writes the copied line to stderr when the transcript file is copied from another session directory', async () => {
+    const sessionDir = path.join(workingDirectory, 'session-dir');
+    fs.mkdirSync(sessionDir, { recursive: true });
+    const otherSessionDir = path.join(workingDirectory, 'other-session-dir');
+    const sourceTranscriptFilePath = resumableTranscriptFileWrite(
+      otherSessionDir,
+      resumableSessionId,
+    );
+
+    const output = await selectResumableSessionCommandRun([
+      '--session-name',
+      sessionName,
+      '--session-dir',
+      sessionDir,
+      '--other-session-dir',
+      otherSessionDir,
+      '--archive-root',
+      path.join(workingDirectory, 'archived-sessions'),
+    ]);
+
+    expect(output.stdoutText).toBe(`${resumableSessionId}\n`);
+    expect(output.stderrText).toContain(
+      `Session resumption: copied ${sourceTranscriptFilePath} into ${sessionDir} (original kept)\n`,
+    );
+    expect(output.exitCodes.filter((exitCode) => exitCode !== 0)).toEqual([]);
+    expect(
+      fs.existsSync(path.join(sessionDir, `${resumableSessionId}.jsonl`)),
+    ).toBe(true);
+  });
+});
