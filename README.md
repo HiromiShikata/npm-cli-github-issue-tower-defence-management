@@ -31,6 +31,7 @@ Commands:
   ownerCallFileDelete [options]         Delete the per-session owner call file (writes nothing to stdout; an already absent file is not an error)
   archive-unresumable-session [options]  Move aside the conversation record of a session that ended because its prompt exceeded the model context limit, so the next launch starts a fresh conversation
   check-issue-silent-dispatch-allowed [options]  Check whether an issue's body allows a dispatch cycle to end with no agent comment (read-only)
+  workerRequestTextRead [options]       Print the request text a worker session receives for an issue, "Take ownership of <issue url>" (read-only)
   help [command]                        display help for command
 
 Options for schedule:
@@ -121,6 +122,9 @@ Options for archive-unresumable-session:
 
 Options for check-issue-silent-dispatch-allowed:
   --issue-url <url>                                GitHub issue URL (required)
+
+Options for workerRequestTextRead:
+  --issueUrl <url>                                 GitHub issue URL the worker session takes ownership of (required)
 ```
 
 The `serveWeb` sub-command starts a local HTTP server that serves the TDPM web surface — the console tabs, the dashboard, and the in-tmux-by-human session list. `serveConsole` remains available as a deprecated alias that maps to the same handler, so existing invokers keep working during rollout; new usage should prefer `serveWeb`. One running instance serves every project: the user opens a per-project URL path `/projects/{pjcode}` (or `/projects/{pjcode}/{workflow-blocker|prs|triage|unread|failed-preparation|todo-by-human}`) and the bundled UI reads the `pjcode` from its own URL path and loads that project's list data. The server serves the bundled single-page-application `index.html` at `/`, `/index.html`, and every `/projects/{pjcode}` and `/projects/{pjcode}/{tab}` app route. Every response is sent with `Cache-Control: no-store`. Any request path containing a segment that begins with a dot (for example `/.git` or `/.env`) is rejected with HTTP 404. The UI bootstrap assets (HTML and JS) are served without authentication; served `*.json` files and `/api/*` paths require an access token supplied either as the `k` query parameter (`?k=<token>`) or the `X-PV-Token` request header. The access token is read from the `consoleAccessToken` config value and never appears on the command line. When the built UI bundle directory (`ui-dist`) is absent the server still starts and serves a minimal placeholder index for `/`, `/index.html`, and the per-project app routes.
@@ -221,6 +225,8 @@ The `archive-unresumable-session` sub-command moves aside the stored conversatio
 
 The `check-issue-silent-dispatch-allowed` sub-command reports whether the issue named by `--issue-url` declares, in its own body, that a dispatch cycle ending with no agent comment is expected and must not be treated as a missing report. This lets `notifyFinishedIssuePreparation` skip the `NO_REPORT_FROM_AGENT_BOT` rejection for a task whose body already instructs the assigned agent to stay silent during some or all dispatch cycles, a design used for certain recurring, owner-directed tasks. It parses `owner`, `repo`, and the issue number from `--issue-url`, fetches that issue's body from the GitHub REST API using the `GH_TOKEN` environment variable, and evaluates it against the exact literal marker `<!-- TDPM_SILENT_DISPATCH_ALLOWED -->`: the marker must appear as a contiguous substring of the body, so the bare token without its `<!-- -->` wrapper does not count. It writes nothing to stdout. It exits 0 when the marker is present, 1 when it is absent, and 2 with a diagnostic on stderr when `--issue-url` cannot be parsed or the GitHub API call fails.
 
+The `workerRequestTextRead` sub-command prints the request text a worker session receives for the issue named by `--issueUrl`, exactly `Take ownership of <issue url>` followed by one newline, to stdout, writes nothing to stderr, and exits 0. The worker launcher calls it and passes the printed text to the worker session unchanged, so the text is defined in one place in this CLI, the same CLI that parses it back out of running worker processes to find which issues already have a running worker. It reads nothing and changes nothing. When `--issueUrl` is missing, it prints nothing to stdout, prints an error naming `--issueUrl` to stderr, and exits non-zero.
+
 ## Example 📖
 
 Here's a quick example to illustrate its usage:
@@ -259,6 +265,10 @@ TOKEN=$(npx github-issue-tower-defence-management selectLiveSessionOauthToken --
 
 ```
 npx github-issue-tower-defence-management countInTmuxByHumanSessionsPerToken --configFilePath ./preparator-config.yml --tokenListJsonPath ./claudeCodeOauthTokenList.json
+```
+
+```
+REQUEST_TEXT=$(npx github-issue-tower-defence-management workerRequestTextRead --issueUrl https://github.com/HiromiShikata/test-repository/issues/1)
 ```
 
 ## Config

@@ -11,6 +11,7 @@ export {
 } from './projectConfig';
 
 import * as path from 'path';
+import { workerRequestTextOf } from '../../../domain/entities/WorkerRequestText';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 import { CliErrorReportUseCase } from '../../../domain/usecases/CliErrorReportUseCase';
@@ -270,6 +271,10 @@ type ArchiveUnresumableSessionOptions = {
 };
 
 type CheckIssueSilentDispatchAllowedOptions = {
+  issueUrl: string;
+};
+
+type WorkerRequestTextReadOptions = {
   issueUrl: string;
 };
 
@@ -1857,6 +1862,19 @@ program
       console.error(output.stderr);
     }
     return process.exit(output.exitCode);
+  });
+
+program
+  .command('workerRequestTextRead')
+  .description(
+    'Print the request text a worker session receives for one issue, "Take ownership of <issue url>", followed by one newline to stdout and exit 0. The worker launcher passes the printed text to the worker session unchanged, so this CLI, which also parses that text back out of running processes, is the single place that defines it. Reads nothing and changes nothing.',
+  )
+  .requiredOption(
+    '--issueUrl <url>',
+    'GitHub issue URL the worker session takes ownership of',
+  )
+  .action((options: WorkerRequestTextReadOptions) => {
+    console.log(workerRequestTextOf(options.issueUrl));
   });
 
 const storyGateCommandOutputPrintAndExit = (

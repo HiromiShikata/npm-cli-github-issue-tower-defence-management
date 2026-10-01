@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { format } from 'util';
 import YAML from 'yaml';
 
 jest.mock('fs', () => {
@@ -4262,6 +4263,108 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('workerRequestTextRead', () => {
+    type CommandRunResult = {
+      stdout: string;
+      stderr: string;
+      exitCode: number;
+    };
+
+    const chunkToText = (chunk: string | Uint8Array): string =>
+      typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
+
+    const runWorkerRequestTextRead = async (
+      commandArguments: string[],
+    ): Promise<CommandRunResult> => {
+      const stdoutChunks: string[] = [];
+      const stderrChunks: string[] = [];
+      const exitCodes: number[] = [];
+      const processExitCalledError = new Error('process.exit called');
+      const spies = [
+        jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation((chunk: string | Uint8Array) => {
+            stdoutChunks.push(chunkToText(chunk));
+            return true;
+          }),
+        jest
+          .spyOn(process.stderr, 'write')
+          .mockImplementation((chunk: string | Uint8Array) => {
+            stderrChunks.push(chunkToText(chunk));
+            return true;
+          }),
+        jest
+          .spyOn(console, 'log')
+          .mockImplementation((...messages: unknown[]) => {
+            stdoutChunks.push(`${format(...messages)}\n`);
+          }),
+        jest
+          .spyOn(console, 'info')
+          .mockImplementation((...messages: unknown[]) => {
+            stdoutChunks.push(`${format(...messages)}\n`);
+          }),
+        jest
+          .spyOn(console, 'error')
+          .mockImplementation((...messages: unknown[]) => {
+            stderrChunks.push(`${format(...messages)}\n`);
+          }),
+        jest
+          .spyOn(console, 'warn')
+          .mockImplementation((...messages: unknown[]) => {
+            stderrChunks.push(`${format(...messages)}\n`);
+          }),
+        jest
+          .spyOn(process, 'exit')
+          .mockImplementation((code?: number | string | null) => {
+            exitCodes.push(Number(code ?? 0));
+            throw processExitCalledError;
+          }),
+      ];
+
+      try {
+        await program.parseAsync([
+          'node',
+          'test',
+          'workerRequestTextRead',
+          ...commandArguments,
+        ]);
+      } catch (error) {
+        if (error !== processExitCalledError) {
+          throw error;
+        }
+      } finally {
+        spies.forEach((spy) => spy.mockRestore());
+      }
+
+      return {
+        stdout: stdoutChunks.join(''),
+        stderr: stderrChunks.join(''),
+        exitCode: exitCodes.length === 0 ? 0 : exitCodes[0],
+      };
+    };
+
+    it('prints the Take ownership text of --issueUrl and one newline to stdout, nothing to stderr, and exits 0', async () => {
+      const commandRunResult = await runWorkerRequestTextRead([
+        '--issueUrl',
+        'https://github.com/octo/repo/issues/12',
+      ]);
+
+      expect(commandRunResult).toEqual({
+        stdout: 'Take ownership of https://github.com/octo/repo/issues/12\n',
+        stderr: '',
+        exitCode: 0,
+      });
+    });
+
+    it('prints nothing to stdout, an error naming --issueUrl to stderr, and exits non-zero when --issueUrl is missing', async () => {
+      const commandRunResult = await runWorkerRequestTextRead([]);
+
+      expect(commandRunResult.stdout).toBe('');
+      expect(commandRunResult.stderr).toContain('--issueUrl');
+      expect(commandRunResult.exitCode).not.toBe(0);
     });
   });
 
