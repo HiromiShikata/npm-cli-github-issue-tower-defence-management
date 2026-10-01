@@ -144,8 +144,8 @@ export class FileSystemResumableSessionTranscriptRepository implements Resumable
     );
     const copyInProgressFilePath = `${destinationFilePath}${COPY_IN_PROGRESS_FILE_SUFFIX}`;
     try {
-      const sourceStats = fs.statSync(sessionTranscriptFile.filePath);
       fs.copyFileSync(sessionTranscriptFile.filePath, copyInProgressFilePath);
+      const sourceStats = fs.statSync(sessionTranscriptFile.filePath);
       fs.chmodSync(
         copyInProgressFilePath,
         sourceStats.mode & PERMISSION_BITS_MASK,
