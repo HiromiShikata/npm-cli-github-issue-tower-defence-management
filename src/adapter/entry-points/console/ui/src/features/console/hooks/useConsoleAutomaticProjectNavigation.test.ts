@@ -1,13 +1,20 @@
 import { renderHook } from '@testing-library/react';
 import { navigatePush } from '../lib/navigation';
-import { useConsoleTimerProjectSkipNavigation } from './useConsoleTimerProjectSkipNavigation';
+import type { ConsoleActionWriteState } from './useConsoleActionQueue';
+import { useConsoleAutomaticProjectNavigation } from './useConsoleAutomaticProjectNavigation';
 
 jest.mock('../lib/navigation', () => ({
   navigatePush: jest.fn(),
 }));
 
+const isTimerNeverExpired = (): boolean => false;
+const isTimerAlwaysExpired = (): boolean => true;
+
+const idleWriteState: ConsoleActionWriteState = { status: 'idle', attempt: 0 };
+
 const defaultArgs = {
   timerMode: true,
+  isTimerExpired: isTimerNeverExpired,
   prsCount: 0,
   todoByHumanCount: 0,
   pjcode: 'acme' as string | null,
@@ -18,17 +25,19 @@ const defaultArgs = {
   prsSnapshotFromCache: false,
   todoByHumanSnapshotFromCache: false,
   explicitlySelectedPjcode: null as string | null,
+  writeState: idleWriteState,
 };
 
-describe('useConsoleTimerProjectSkipNavigation', () => {
+describe('useConsoleAutomaticProjectNavigation', () => {
   beforeEach(() => {
     (navigatePush as jest.Mock).mockClear();
   });
 
   it('navigates to next project when prs and todo-by-human are both zero on arrival', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         defaultArgs.timerMode,
+        defaultArgs.isTimerExpired,
         defaultArgs.prsCount,
         defaultArgs.todoByHumanCount,
         defaultArgs.pjcode,
@@ -39,6 +48,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         defaultArgs.prsSnapshotFromCache,
         defaultArgs.todoByHumanSnapshotFromCache,
         defaultArgs.explicitlySelectedPjcode,
+        defaultArgs.writeState,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -46,8 +56,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when timer mode is off', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         false,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -58,6 +69,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -65,8 +77,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when prs count is greater than zero', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         1,
         0,
         'acme',
@@ -77,6 +90,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -84,8 +98,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when todo-by-human count is greater than zero', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         1,
         'acme',
@@ -96,6 +111,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -103,8 +119,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when prs snapshot is not yet loaded', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -115,6 +132,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -122,8 +140,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when todo-by-human snapshot is not yet loaded', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -134,6 +153,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -141,8 +161,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when prs snapshot is from cache', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -153,6 +174,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         true,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -160,8 +182,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when todo-by-human snapshot is from cache', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -172,6 +195,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         true,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -179,8 +203,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when no other project has minutes configured', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -191,6 +216,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -198,8 +224,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when pjcode is null', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         null,
@@ -210,6 +237,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -217,8 +245,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not re-navigate for the same pjcode on re-render', () => {
     const { rerender } = renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -229,6 +258,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     rerender();
@@ -238,8 +268,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('stops skipping after all projects with minutes are exhausted', () => {
     const { rerender } = renderHook(
       ({ pjcode }: { pjcode: string }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           0,
           0,
           pjcode,
@@ -250,6 +281,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -263,8 +295,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('resets skip counter and navigates again when arriving at a project with items', () => {
     const { rerender } = renderHook(
       ({ pjcode, prsCount }: { pjcode: string; prsCount: number }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           prsCount,
           0,
           pjcode,
@@ -275,6 +308,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -291,8 +325,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('navigates to next project including unconfigured ones that use DEFAULT_TIMER_MINUTES', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -303,6 +338,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith(
@@ -313,8 +349,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('completes full skip cycle through unconfigured projects', () => {
     const { rerender } = renderHook(
       ({ pjcode }: { pjcode: string }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           0,
           0,
           pjcode,
@@ -325,6 +362,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -344,8 +382,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('navigates when pjcodes loads after snapshots (race condition)', () => {
     const { rerender } = renderHook(
       ({ pjcodes }: { pjcodes: string[] }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           0,
           0,
           'beta',
@@ -356,6 +395,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { pjcodes: [] as string[] } },
     );
@@ -368,8 +408,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('navigates to next project when counts drop to zero from non-zero while already on a project', () => {
     const { rerender } = renderHook(
       ({ prsCount }: { prsCount: number }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           prsCount,
           0,
           'acme',
@@ -380,6 +421,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { prsCount: 1 } },
     );
@@ -392,8 +434,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('navigates to next project when todo-by-human count drops to zero from non-zero while already on a project', () => {
     const { rerender } = renderHook(
       ({ todoByHumanCount }: { todoByHumanCount: number }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           0,
           todoByHumanCount,
           'acme',
@@ -404,6 +447,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { todoByHumanCount: 3 } },
     );
@@ -416,8 +460,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
   it('navigates from a previously-skipped project when returning after visiting a project with tasks', () => {
     const { rerender } = renderHook(
       ({ pjcode, prsCount }: { pjcode: string; prsCount: number }) =>
-        useConsoleTimerProjectSkipNavigation(
+        useConsoleAutomaticProjectNavigation(
           true,
+          isTimerNeverExpired,
           prsCount,
           0,
           pjcode,
@@ -428,6 +473,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
           false,
           false,
           null,
+          idleWriteState,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -444,8 +490,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('does not navigate when explicitlySelectedPjcode matches current pjcode', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -456,6 +503,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         'acme',
+        idleWriteState,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -463,8 +511,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('navigates when explicitlySelectedPjcode is null', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -475,6 +524,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         null,
+        idleWriteState,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -482,8 +532,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('navigates when explicitlySelectedPjcode is set to a different project than current pjcode', () => {
     renderHook(() =>
-      useConsoleTimerProjectSkipNavigation(
+      useConsoleAutomaticProjectNavigation(
         true,
+        isTimerNeverExpired,
         0,
         0,
         'acme',
@@ -494,6 +545,210 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
         false,
         'beta',
+        idleWriteState,
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate while the write is unconfirmed, even when the timer has elapsed', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerAlwaysExpired,
+        1,
+        1,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'unconfirmed', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate while the write is unconfirmed, even when the remaining count is zero', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'unconfirmed', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate while the write is confirmed failed, even when the timer has elapsed', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerAlwaysExpired,
+        1,
+        1,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'failed', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate while the write is queued offline, even when the remaining count is zero', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'offline', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate while the write is confirmed failed, even when the remaining count is zero', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'failed', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('navigates once the write becomes succeeded with a new attempt while the timer has elapsed', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerAlwaysExpired,
+        1,
+        1,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'succeeded', attempt: 1 },
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate again on a second render with the same succeeded attempt (dedup)', () => {
+    const { rerender } = renderHook(
+      ({ writeState }: { writeState: ConsoleActionWriteState }) =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          isTimerAlwaysExpired,
+          1,
+          1,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+          null,
+          writeState,
+        ),
+      { initialProps: { writeState: { status: 'succeeded', attempt: 1 } } },
+    );
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+
+    rerender({ writeState: { status: 'succeeded', attempt: 1 } });
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates again once a new succeeded attempt arrives after a prior succeeded attempt was already handled', () => {
+    const { rerender } = renderHook(
+      ({ writeState }: { writeState: ConsoleActionWriteState }) =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          isTimerAlwaysExpired,
+          1,
+          1,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+          null,
+          writeState,
+        ),
+      { initialProps: { writeState: { status: 'succeeded', attempt: 1 } } },
+    );
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+
+    rerender({ writeState: { status: 'failed', attempt: 2 } });
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+
+    rerender({ writeState: { status: 'succeeded', attempt: 3 } });
+    expect(navigatePush).toHaveBeenCalledTimes(2);
+  });
+
+  it('navigates via the remaining-count-zero path when the write becomes succeeded and the timer has not elapsed', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        null,
+        { status: 'succeeded', attempt: 1 },
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');

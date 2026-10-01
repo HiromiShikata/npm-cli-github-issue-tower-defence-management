@@ -1,10 +1,14 @@
+export {
+  DEFAULT_TIMER_MINUTES,
+  findNextPjcodeWithMinutes,
+} from '../../../../../../../../domain/usecases/ConsoleAutomaticProjectNavigationDecideUseCase';
+
 export type TimerSettings = {
   timerMode: boolean;
   projectMinutes: Record<string, number>;
 };
 
 export const TIMER_SETTINGS_KEY = 'tdpm-timer-settings';
-export const DEFAULT_TIMER_MINUTES = 15;
 
 const defaultSettings = (): TimerSettings => ({
   timerMode: false,
@@ -52,27 +56,4 @@ export const writeTimerSettings = (settings: TimerSettings): void => {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(TIMER_SETTINGS_KEY, JSON.stringify(settings));
   }
-};
-
-export const findNextPjcodeWithMinutes = (
-  pjcodes: string[],
-  currentPjcode: string | null,
-  projectMinutes: Record<string, number>,
-): string | null => {
-  if (pjcodes.length === 0) {
-    return null;
-  }
-  const currentIndex =
-    currentPjcode !== null ? pjcodes.indexOf(currentPjcode) : -1;
-  const startIndex =
-    currentIndex === -1 ? 0 : (currentIndex + 1) % pjcodes.length;
-  const count = currentIndex === -1 ? pjcodes.length : pjcodes.length - 1;
-  for (let i = 0; i < count; i++) {
-    const index = (startIndex + i) % pjcodes.length;
-    const pjcode = pjcodes[index];
-    if ((projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) > 0) {
-      return pjcode;
-    }
-  }
-  return null;
 };
