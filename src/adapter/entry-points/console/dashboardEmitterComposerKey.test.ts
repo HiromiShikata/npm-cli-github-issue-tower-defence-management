@@ -2,12 +2,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { Issue } from '../../../domain/entities/Issue';
+import {
+  ComposeDashboardUseCase,
+  dashboardComposeInputHasProjectData,
+} from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { writeDashboardRow } from '../handlers/dashboardRowWriter';
-import {
-  composeDashboardText,
-  dashboardComposeFilesPresent,
-} from './dashboardComposeService';
+import { buildComposeDashboardInput } from './dashboardComposeService';
 
 const ASSIGNEE = 'HiromiShikata';
 
@@ -112,10 +113,12 @@ describe('dashboard emitter filename matches composer lookup key', () => {
     );
 
     expect(
-      dashboardComposeFilesPresent({
-        dashboardDataDir: dir,
-        projectNames: CONFIGURED_PROJECT_NAMES,
-      }),
+      dashboardComposeInputHasProjectData(
+        buildComposeDashboardInput({
+          dashboardDataDir: dir,
+          projectNames: CONFIGURED_PROJECT_NAMES,
+        }),
+      ),
     ).toBe(true);
   });
 
@@ -154,10 +157,12 @@ describe('dashboard emitter filename matches composer lookup key', () => {
       JSON.stringify({ tokens: [] }),
     );
 
-    const composed = composeDashboardText({
-      dashboardDataDir: dir,
-      projectNames: CONFIGURED_PROJECT_NAMES,
-    });
+    const composed = new ComposeDashboardUseCase().run(
+      buildComposeDashboardInput({
+        dashboardDataDir: dir,
+        projectNames: CONFIGURED_PROJECT_NAMES,
+      }),
+    );
 
     const wrap = (line: string): string =>
       `<tt>${line.replace(/ /g, '&nbsp;')}</tt><br>`;
