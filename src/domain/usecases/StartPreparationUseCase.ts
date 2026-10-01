@@ -847,10 +847,18 @@ export class StartPreparationUseCase {
       }
       let branchName: string;
       const relatedPRs = branchSource.relatedOpenPullRequests;
-      const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
+      const isPullRequestInIssueRepository = (
+        pr: RelatedPullRequest,
+      ): boolean => {
         const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
         return match === null || match[1] === issue.nameWithOwner;
-      });
+      };
+      const sameRepoRelatedPRs = relatedPRs.filter(
+        isPullRequestInIssueRepository,
+      );
+      const crossRepoRelatedPRs = relatedPRs.filter(
+        (pr) => !isPullRequestInIssueRepository(pr),
+      );
       if (sameRepoRelatedPRs.length > 1) {
         const latestSessionBranchName =
           await this.issueLatestSessionBranchRepository.findBranchNameByIssue(
@@ -938,6 +946,14 @@ export class StartPreparationUseCase {
           continue;
         }
         branchName = sameRepoRelatedPRs[0].branchName;
+      } else if (crossRepoRelatedPRs.length === 1) {
+        if (crossRepoRelatedPRs[0].branchName === null) {
+          console.warn(
+            `Skipping issue ${issue.url}: related open PR has unavailable head branch.`,
+          );
+          continue;
+        }
+        branchName = crossRepoRelatedPRs[0].branchName;
       } else {
         branchName = `i${issue.number}`;
       }
