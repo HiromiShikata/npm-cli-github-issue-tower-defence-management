@@ -381,11 +381,24 @@ program
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
-      await handler.handle(
-        options.config,
-        options.verbose,
-        parseInTmuxProjectOrder(options.inTmuxProjectOrder),
-      );
+      try {
+        await handler.handle(
+          options.config,
+          options.verbose,
+          parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith(
+            'Invalid input: required credential fields are missing. Got:',
+          )
+        ) {
+          console.error(error.message);
+          return process.exit(1);
+        }
+        throw error;
+      }
     }
   });
 
