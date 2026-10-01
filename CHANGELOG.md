@@ -1,3 +1,10 @@
+## [2.155.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.3...v2.155.4) (2026-10-01)
+
+
+### Bug Fixes
+
+* **project-board:** Pull requests still get added to the shared board after the AssignNoAssigneeIssueToManagerUseCase fix deployed ([#3037](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3037)) ([d4ed5b7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d4ed5b78ca5750d9623a4dce7d4bae75cd139247))
+
 ## [2.155.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.2...v2.155.3) (2026-10-01)
 
 
