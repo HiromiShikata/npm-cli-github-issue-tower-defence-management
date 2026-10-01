@@ -610,8 +610,6 @@ describe('ConsoleTabList disabledPjcodes styling (issue #2966)', () => {
     );
     fireEvent.click(getByRole('button', { name: /acme/i }));
     expect(baseElement.textContent ?? '').not.toMatch(/disabled/i);
-    expect(
-      baseElement.querySelector('[data-disabled]'),
-    ).toBeNull();
+    expect(baseElement.querySelector('[data-disabled]')).toBeNull();
   });
 });

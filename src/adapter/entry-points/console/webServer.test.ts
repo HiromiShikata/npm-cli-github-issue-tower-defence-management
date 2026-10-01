@@ -3175,10 +3175,7 @@ describe('webServer GET /api/projects', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const configDir = path.join(tmpDir, 'project-config');
     fs.mkdirSync(configDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(configDir, 'acme.config.yaml'),
-      'foo: [1, 2,\n',
-    );
+    fs.writeFileSync(path.join(configDir, 'acme.config.yaml'), 'foo: [1, 2,\n');
     const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
