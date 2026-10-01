@@ -37,12 +37,14 @@ type RestCommentPayload = {
   user: { login: string } | null;
   body: string;
   created_at: string;
+  updated_at: string;
 };
 
 type SerializedComment = {
   author: string;
   content: string;
   createdAt: string;
+  updatedAt: string;
   id?: string;
 };
 
@@ -84,6 +86,8 @@ function isPageCacheEntry(value: unknown): value is PageCacheEntry {
       typeof c.content === 'string' &&
       'createdAt' in c &&
       typeof c.createdAt === 'string' &&
+      'updatedAt' in c &&
+      typeof c.updatedAt === 'string' &&
       (!('id' in c) || typeof c.id === 'string'),
   );
 }
@@ -221,6 +225,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             author: c.author,
             content: c.content,
             createdAt: new Date(c.createdAt),
+            updatedAt: new Date(c.updatedAt),
             id: c.id,
           });
         }
@@ -248,6 +253,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         author: payload.user?.login ?? '',
         content: payload.body,
         createdAt: new Date(payload.created_at),
+        updatedAt: new Date(payload.updated_at),
         id: String(payload.id),
       }));
 
@@ -266,6 +272,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             author: c.author,
             content: c.content,
             createdAt: c.createdAt.toISOString(),
+            updatedAt: c.updatedAt.toISOString(),
             id: c.id,
           })),
           hasNextPage,
