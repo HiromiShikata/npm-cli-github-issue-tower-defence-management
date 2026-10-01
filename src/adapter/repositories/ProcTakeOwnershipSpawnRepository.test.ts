@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { workerRequestTextOf } from '../../domain/entities/WorkerRequestText';
 import { TakeOwnershipSpawn } from '../../domain/usecases/adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ProcTakeOwnershipSpawnRepository } from './ProcTakeOwnershipSpawnRepository';
 
@@ -349,6 +350,30 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
       expect(repository.listRunningIssueUrls()).toEqual([issueUrl, issueUrl2]);
+    });
+
+    it('extracts the issue URL from a worker spawn whose -p argument is the worker request text of that issue URL', () => {
+      const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
+      writeProcess({
+        pid: 406,
+        cmdline: argv(
+          'timeout',
+          '--kill-after=60s',
+          '3h',
+          'claude-agent',
+          '--agent',
+          'impl',
+          '-p',
+          workerRequestTextOf(requestedIssueUrl),
+          '--model',
+          'claude-sonnet-4-6',
+        ),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-f' },
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([requestedIssueUrl]);
     });
 
     it('returns empty list when the proc directory does not exist', () => {
