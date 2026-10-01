@@ -2199,7 +2199,7 @@ describe('GraphqlProjectItemRepository', () => {
       }
     });
 
-    it('throws when a non-FORBIDDEN error appears in fetchProjectItemsByIds', async () => {
+    it('throws when response.data is entirely null even if the error type would otherwise be tolerated', async () => {
       const repository = new GraphqlProjectItemRepository(
         new LocalStorageRepository(),
         'dummy-token',
@@ -2267,6 +2267,157 @@ describe('GraphqlProjectItemRepository', () => {
       await expect(
         repository.fetchProjectItemsByIds(['PVTI_1']),
       ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
+    describe('batch error tolerance (parameterized)', () => {
+      type BatchErrorToleranceTestCase = {
+        name: string;
+        errors:
+          | { type: string; path: (string | number)[]; message: string }[]
+          | undefined;
+        data: { nodes: (Record<string, unknown> | null)[] } | null;
+        expectedItemIds: string[] | 'throws';
+        expectsWarning: boolean;
+      };
+
+      const item1 = makeDetailNode(
+        'PVTI_1',
+        'https://github.com/o/r/issues/1',
+        'first',
+      );
+      const item2 = makeDetailNode(
+        'PVTI_2',
+        'https://github.com/o/r/issues/2',
+        'second',
+      );
+
+      const cases: BatchErrorToleranceTestCase[] = [
+        {
+          name: 'no errors and both nodes present returns both items',
+          errors: undefined,
+          data: { nodes: [item1, item2] },
+          expectedItemIds: ['PVTI_1', 'PVTI_2'],
+          expectsWarning: false,
+        },
+        {
+          name: 'FORBIDDEN error at nodes[index].content is tolerated and the null node is skipped',
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 1, 'content'],
+              message: 'forbidden content',
+            },
+          ],
+          data: { nodes: [item1, null] },
+          expectedItemIds: ['PVTI_1'],
+          expectsWarning: true,
+        },
+        {
+          name: 'NOT_FOUND error at bare nodes[index] path is tolerated and the null node is skipped',
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['nodes', 0],
+              message: 'Could not resolve to a node',
+            },
+          ],
+          data: { nodes: [null, item2] },
+          expectedItemIds: ['PVTI_2'],
+          expectsWarning: true,
+        },
+        {
+          name: 'NOT_FOUND error with data entirely null still throws',
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['nodes', 0],
+              message: 'Could not resolve to a node',
+            },
+          ],
+          data: null,
+          expectedItemIds: 'throws',
+          expectsWarning: false,
+        },
+        {
+          name: 'FORBIDDEN content-path error with data entirely null still throws',
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content'],
+              message: 'forbidden content',
+            },
+          ],
+          data: null,
+          expectedItemIds: 'throws',
+          expectsWarning: false,
+        },
+        {
+          name: 'an untolerated error type alongside a tolerated NOT_FOUND still throws',
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['nodes', 0],
+              message: 'Could not resolve to a node',
+            },
+            {
+              type: 'INTERNAL',
+              path: ['nodes', 1],
+              message: 'Internal error',
+            },
+          ],
+          data: { nodes: [null, null] },
+          expectedItemIds: 'throws',
+          expectsWarning: false,
+        },
+        {
+          name: 'FORBIDDEN error whose path does not end in content still throws',
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'id'],
+              message: 'forbidden',
+            },
+          ],
+          data: { nodes: [null] },
+          expectedItemIds: 'throws',
+          expectsWarning: false,
+        },
+      ];
+
+      it.each(cases)(
+        '$name',
+        async ({ errors, data, expectedItemIds, expectsWarning }) => {
+          const repository = new GraphqlProjectItemRepository(
+            new LocalStorageRepository(),
+            'dummy-token',
+          );
+          mockPost.mockReturnValueOnce(mockJsonResponse({ data, errors }));
+          const consoleWarnSpy = jest
+            .spyOn(console, 'warn')
+            .mockImplementation(() => {});
+
+          try {
+            if (expectedItemIds === 'throws') {
+              await expect(
+                repository.fetchProjectItemsByIds(['PVTI_1', 'PVTI_2']),
+              ).rejects.toThrow('GitHub GraphQL errors');
+            } else {
+              const result = await repository.fetchProjectItemsByIds([
+                'PVTI_1',
+                'PVTI_2',
+              ]);
+              expect(result.map((projectItem) => projectItem.id)).toEqual(
+                expectedItemIds,
+              );
+            }
+            if (expectsWarning) {
+              expect(consoleWarnSpy).toHaveBeenCalled();
+            }
+          } finally {
+            consoleWarnSpy.mockRestore();
+          }
+        },
+      );
     });
   });
 

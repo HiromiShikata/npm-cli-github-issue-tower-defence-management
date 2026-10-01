@@ -1297,6 +1297,64 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('completes without throwing and updates the cache with only the items received when fetchProjectItemsByIds returns a partial list because one changed item id was tolerated as deleted from the project board', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      const freshProject = buildTestProject('cached-project');
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [
+          buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'stale title',
+          ),
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
+        buildLightItem(
+          'item-fresh',
+          'https://github.com/o/r/issues/1',
+          '2026-07-07T00:40:00.000Z',
+        ),
+        buildLightItem(
+          'item-deleted',
+          'https://github.com/o/r/issues/2',
+          '2026-07-07T00:44:00.000Z',
+        ),
+      ]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-fresh', 'item-deleted']);
+      expect(result.cacheUsed).toBe(true);
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].title).toBe('fresh title');
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toEqual(
+        expect.objectContaining({
+          lastFetchedAt: '2026-07-07T00:45:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+          issues: [expect.objectContaining({ title: 'fresh title' })],
+        }),
+      );
+    });
+
     it('includes items within the clock-skew buffer before lastFetchedAt and excludes items older than the buffer', async () => {
       const {
         repository,
