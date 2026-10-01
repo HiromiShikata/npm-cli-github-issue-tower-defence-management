@@ -1826,6 +1826,28 @@ describe('WorkerSessionEndClassifyUseCase', () => {
       );
     });
 
+    it('reports the unwritable streak with the string form of a non-Error value that save rejects with', async () => {
+      const workerSessionFailureStreakRepository =
+        workerSessionFailureStreakRepositoryMock({
+          terminalReason: 'api_error',
+          consecutiveFailureCount: 1,
+        });
+      workerSessionFailureStreakRepository.save.mockRejectedValue(
+        'disk quota exceeded',
+      );
+
+      const classificationRun = classifyWithStreakRepository(
+        [overloadedEndingLine],
+        workerSessionFailureStreakRepository,
+      );
+
+      await expect(classificationRun).resolves.toBeDefined();
+      const classification = await classificationRun;
+      expect(classification.diagnosticLines).toContain(
+        `worker-session-failure-streak-unwritable: ${issueUrl}: disk quota exceeded`,
+      );
+    });
+
     it('reports the undeletable streak in place of the reset line for a completed ending when deleteByIssueUrl rejects', async () => {
       const workerSessionFailureStreakRepository =
         workerSessionFailureStreakRepositoryMock({
