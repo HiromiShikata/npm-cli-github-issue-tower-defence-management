@@ -2461,7 +2461,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     };
 
     it('does not revert and does not comment when the last trusted-agent report is an unanswered owner confirmation request and the related PR has failing CI (row 1)', async () => {
-      const issue = buildCiFailingIssueWithLinkedPr();
+      buildCiFailingIssueWithLinkedPr();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
       ]);
@@ -2476,7 +2476,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     });
 
     it('does not revert and does not comment when the last trusted-agent report is an unanswered owner confirmation request and the related PR is conflicted with updateBranch failing (row 2)', async () => {
-      const issue = buildConflictedIssueWithLinkedPr();
+      buildConflictedIssueWithLinkedPr();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
       ]);
@@ -2514,7 +2514,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     });
 
     it('does not revert when a trusted human reply exists only before the owner confirmation report, not after (row 4 regression guard)', async () => {
-      const issue = buildCiFailingIssueWithLinkedPr();
+      buildCiFailingIssueWithLinkedPr();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         trustedHumanReply(new Date('2026-01-01T00:00:00Z')),
         ownerConfirmationReport(new Date('2026-01-02T00:00:00Z')),
@@ -2568,7 +2568,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     });
 
     it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when one report block carries both the owner confirmation flag and a nextStepAgent that also matches the dispatch-loop escalation pattern (row 7)', async () => {
-      const issue = buildCiFailingIssueWithLinkedPr();
+      buildCiFailingIssueWithLinkedPr();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReportWithNextStepAgent(
           new Date('2026-01-01T00:00:00Z'),
