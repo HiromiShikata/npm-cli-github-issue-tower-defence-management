@@ -496,4 +496,266 @@ describe('ConsoleOperationMenu', () => {
     }) as HTMLSelectElement;
     expect(storySelect.value).toBe('story_2');
   });
+
+  it('collapsing the Actions area hides every button group (AC-1)', () => {
+    const {
+      getByText,
+      getByTitle,
+      getByRole,
+      queryByText,
+      queryByTitle,
+      queryByRole,
+    } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    expect(getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
+    expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+
+    const toggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    expect(toggleButton).not.toBeNull();
+    expect(getByText('▾')).toBeInTheDocument();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.click(toggleButton);
+
+    expect(getByText('▸')).toBeInTheDocument();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
+    expect(getByText('Actions')).toBeInTheDocument();
+    expect(queryByText('Approve & Merge')).toBeNull();
+    expect(queryByText('+1d')).toBeNull();
+    expect(queryByText('Awaiting Workspace')).toBeNull();
+    expect(queryByTitle('Change agent or story')).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set agent' })).toBeNull();
+    expect(queryByTitle('Rare actions')).toBeNull();
+    expect(queryByText('⚠')).toBeNull();
+    expect(queryByText('Close')).toBeNull();
+  });
+
+  it('re-expanding brings back every button group in the same order (AC-2)', () => {
+    const { getByText, getByTitle, queryByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={[]}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    const toggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+
+    fireEvent.click(toggleButton);
+    expect(queryByText('Close')).toBeNull();
+
+    fireEvent.click(toggleButton);
+
+    expect(getByText('▾')).toBeInTheDocument();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+    expect(getByText('Approve & Merge')).toBeInTheDocument();
+    expect(getByText('+1d')).toBeInTheDocument();
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    expect(getByTitle('Change agent or story')).toBeInTheDocument();
+    expect(getByTitle('Rare actions')).toBeInTheDocument();
+    expect(getByText('⚠')).toBeInTheDocument();
+    expect(getByText('Close')).toBeInTheDocument();
+
+    const rareButton = getByTitle('Rare actions');
+    const dangerButton = getByText('⚠');
+    const closeButton = getByText('Close');
+    const bottomRow = rareButton.closest('.console-op-group-bottom-row');
+    expect(bottomRow).not.toBeNull();
+    expect(bottomRow).toBe(
+      dangerButton.closest('.console-op-group-bottom-row'),
+    );
+    expect(bottomRow).toBe(closeButton.closest('.console-op-group-bottom-row'));
+  });
+
+  it('remounting with a different key resets the Actions area to expanded (AC-3)', () => {
+    const { getByText, rerender } = render(
+      <ConsoleOperationMenu
+        key="task-a"
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={[]}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    const firstToggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    fireEvent.click(firstToggleButton);
+    expect(firstToggleButton.getAttribute('aria-expanded')).toBe('false');
+
+    rerender(
+      <ConsoleOperationMenu
+        key="task-b"
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={[]}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+
+    const secondToggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    expect(getByText('▾')).toBeInTheDocument();
+    expect(secondToggleButton.getAttribute('aria-expanded')).toBe('true');
+    expect(getByText('Close')).toBeInTheDocument();
+  });
+
+  it('collapsing the Actions area calls none of the update handlers (AC-4)', () => {
+    const freshHandlers: ConsoleOperationHandlers = {
+      onReview: jest.fn(),
+      onSetNextActionDate: jest.fn(),
+      onSetStory: jest.fn(),
+      onSetAgent: jest.fn(),
+      onSetStatus: jest.fn(),
+      onSetInTmuxByHuman: jest.fn(),
+      onClose: jest.fn(),
+      onOkAndAwaitingWorkspace: jest.fn(),
+      onDeleteAllComments: jest.fn(),
+      onDeleteStory: null,
+      onSetDependedIssueUrl: jest.fn(),
+    };
+    const onCommentAndClose = jest.fn(async () => {});
+    const onOkAndClose = jest.fn(async () => {});
+
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={freshHandlers}
+        onCommentAndClose={onCommentAndClose}
+        onOkAndClose={onOkAndClose}
+      />,
+    );
+
+    fireEvent.click(
+      getByText('Actions').closest('button') as HTMLButtonElement,
+    );
+
+    expect(freshHandlers.onReview).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetNextActionDate).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetStory).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetAgent).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetStatus).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetInTmuxByHuman).not.toHaveBeenCalled();
+    expect(freshHandlers.onClose).not.toHaveBeenCalled();
+    expect(freshHandlers.onDeleteAllComments).not.toHaveBeenCalled();
+    expect(freshHandlers.onSetDependedIssueUrl).not.toHaveBeenCalled();
+    expect(onCommentAndClose).not.toHaveBeenCalled();
+    expect(onOkAndClose).not.toHaveBeenCalled();
+  });
+
+  it('preserves showFieldSelectors across an Actions collapse/expand cycle (AC-6)', () => {
+    const { getByTitle, getByRole, getByText, queryByTitle, queryByRole } =
+      render(
+        <ConsoleOperationMenu
+          tab="todo-by-human"
+          item={issueItem}
+          hasPullRequest={false}
+          rejectEnabled={false}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={consoleStoryOptionsFixture}
+          currentStoryName={null}
+          currentStoryOptionId={null}
+          agentOptions={consoleAgentOptionsFixture}
+          currentAgentName={null}
+          handlers={handlers}
+        />,
+      );
+
+    fireEvent.click(getByTitle('Change agent or story'));
+    expect(getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
+    expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+
+    const toggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    fireEvent.click(toggleButton);
+
+    expect(queryByTitle('Change agent or story')).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set agent' })).toBeNull();
+
+    fireEvent.click(toggleButton);
+
+    expect(getByTitle('Change agent or story')).toBeInTheDocument();
+    expect(getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
+    expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+  });
+
+  it('clicking the ⚙ field-selector toggle never changes the Actions toggle state (AC-6)', () => {
+    const { getByTitle, getByText } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        currentStoryOptionId={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+
+    const toggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.click(getByTitle('Change agent or story'));
+
+    expect(getByText('▾')).toBeInTheDocument();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+  });
 });
