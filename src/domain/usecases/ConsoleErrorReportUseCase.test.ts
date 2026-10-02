@@ -104,6 +104,48 @@ describe('ConsoleErrorReportUseCase', () => {
       expect(mockSleep).toHaveBeenCalledTimes(1);
     });
 
+    it('should not re-post when createCommentByUrl first fails with a transient 502 error and a duplicate comment is found on re-check', async () => {
+      const error = new Error('something went wrong');
+      error.name = 'TypeError';
+      const title = 'Console error: TypeError: something went wrong';
+      const existingIssueUrl =
+        'https://github.com/test-owner/test-repo/issues/10';
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        { url: existingIssueUrl, title, number: '10' },
+      ]);
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new ConsoleErrorReportUseCase(
+        mockIssueRepository,
+        mockSleep,
+      );
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createCommentByUrl.mockRejectedValueOnce(
+        transientError,
+      );
+      mockIssueRepository.getIssueOrPullRequestComments
+        .mockResolvedValueOnce([])
+        .mockImplementationOnce(async () => [
+          {
+            author: 'bot',
+            body:
+              mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
+            createdAt: new Date(),
+          },
+        ]);
+
+      await retryingUseCase.run({ error, owner, repo, requestPath });
+
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+
     it('should not call createCommentByUrl when searchIssue returns a result with a different title', async () => {
       const error = new Error('something went wrong');
       error.name = 'TypeError';
