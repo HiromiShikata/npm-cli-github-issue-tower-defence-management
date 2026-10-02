@@ -561,6 +561,17 @@ ${JSON.stringify(e)}
     runSlowSweep: boolean,
     now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
+    try {
+      await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+        project,
+        issues,
+      });
+    } catch (setDependedIssueUrlForOpenTaskPRsError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to set depended issue URL for open task PRs for project ${project.url}: ${setDependedIssueUrlForOpenTaskPRsError instanceof Error ? setDependedIssueUrlForOpenTaskPRsError.message : String(setDependedIssueUrlForOpenTaskPRsError)}`,
+        setDependedIssueUrlForOpenTaskPRsError,
+      );
+    }
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
         input,
@@ -820,15 +831,6 @@ ${JSON.stringify(e)}
           cacheUsed,
           allowedExternalRepoNameWithOwner:
             input.allowedDependencyRepoNameWithOwner ?? null,
-        }),
-      failures,
-    );
-    await this.runOperationIsolated(
-      `set depended issue URL for open task PRs for project ${project.url}`,
-      () =>
-        this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
-          project,
-          issues,
         }),
       failures,
     );

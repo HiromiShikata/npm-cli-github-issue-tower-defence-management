@@ -1853,6 +1853,9 @@ describe('HandleScheduledEventUseCase', () => {
 
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
+        expect(
+          mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
+        ).toHaveBeenCalled();
       });
 
       it('should run the new story label use case on a loop where slow sweep is skipped', async () => {
@@ -3705,6 +3708,108 @@ describe('HandleScheduledEventUseCase', () => {
         for (const operationMock of allSlowSweepOperationMocks()) {
           expect(operationMock).toHaveBeenCalledTimes(1);
         }
+      });
+    });
+
+    describe('setDependedIssueUrlForOpenTaskPRsUseCase runs every cycle (issue #3016)', () => {
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+      const issues: Issue[] = [mock<Issue>()];
+      const storyObjectMap: StoryObjectMap = new Map();
+      const now = new Date('2024-01-01T00:10:00Z');
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'test-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      it('invokes setDependedIssueUrlForOpenTaskPRsUseCase.run exactly once per call to runEachUseCases whether runSlowSweep is true or false', async () => {
+        const runSlowSweepValues: boolean[] = [true, false];
+        for (const runSlowSweep of runSlowSweepValues) {
+          jest.clearAllMocks();
+
+          await useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            runSlowSweep,
+            now,
+          );
+
+          expect(
+            mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+        }
+      });
+    });
+
+    describe('runSlowSweepUseCases excludes setDependedIssueUrlForOpenTaskPRsUseCase (issue #3016)', () => {
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+      const issues: Issue[] = [mock<Issue>()];
+      const storyObjectMap: StoryObjectMap = new Map();
+      const now = new Date('2024-01-01T00:10:00Z');
+      const isolationInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      const otherSlowSweepOperationMocks = (): jest.Mock[] => [
+        mockActionAnnouncementUseCase.run,
+        mockClearPastNextActionDateHourUseCase.run,
+        mockClearDependedIssueURLUseCase.run,
+        mockStaleTaskPullRequestCloseUseCase.run,
+        mockCreateEstimationIssueUseCase.run,
+        mockChangeStatusByStoryColorUseCase.run,
+        mockAssignNoAssigneeIssueToManagerUseCase.run,
+      ];
+
+      it('calls each of the other 7 slow-sweep operations exactly once per SLOW_SWEEP_INTERVAL_SECONDS cycle but never calls setDependedIssueUrlForOpenTaskPRsUseCase.run', async () => {
+        await useCase.runSlowSweepUseCases(
+          isolationInput,
+          project,
+          issues,
+          false,
+          [],
+          storyObjectMap,
+          now,
+        );
+
+        for (const operationMock of otherSlowSweepOperationMocks()) {
+          expect(operationMock).toHaveBeenCalledTimes(1);
+        }
+        expect(
+          mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
+        ).not.toHaveBeenCalled();
       });
     });
   });
