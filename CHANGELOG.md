@@ -1,3 +1,10 @@
+## [2.157.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.3...v2.157.4) (2026-10-02)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** tie new PRs to their open task every cycle, not only during the slow sweep (redo) ([#3085](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3085)) ([8cc53fb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cc53fbca843103c26a4e6214b4f672185c441ef)), closes [#3016](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3016)
+
 ## [2.157.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.2...v2.157.3) (2026-10-02)
 
 
