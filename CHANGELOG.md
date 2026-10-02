@@ -1,3 +1,10 @@
+## [2.157.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.8...v2.157.9) (2026-10-02)
+
+
+### Bug Fixes
+
+* **checkStoryGate:** proceed instead of routing when a story-labeled issue's own Story field is unresolvable ([#3108](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3108)) ([bacb057](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bacb057569af8bb0a62566c55decf29b73587d01))
+
 ## [2.157.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.7...v2.157.8) (2026-10-02)
 
 
