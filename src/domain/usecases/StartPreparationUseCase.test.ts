@@ -45,20 +45,16 @@ class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBr
     ) ?? null;
 }
 
-// `storyColor` defaults to a non-GRAY color because GRAY is the "disabled story" semantic
-// (see ChangeStatusByStoryColorUseCase and the Story option color GRAY exclusion tests below):
-// callers that do not pass it are exercising scenarios unrelated to that semantic and must keep
-// being treated as an active, dispatchable story.
 const createMockStoryObjectMap = (
   issues: Issue[],
-  storyColor: FieldOption['color'] = 'BLUE',
+  nonGrayDefaultStoryColor: FieldOption['color'] = 'BLUE',
 ): StoryObjectMap => {
   const map: StoryObjectMap = new Map();
   map.set('Default Story', {
     story: {
       id: 'story-1',
       name: 'Default Story',
-      color: storyColor,
+      color: nonGrayDefaultStoryColor,
       description: '',
     },
     storyIssue: null,
