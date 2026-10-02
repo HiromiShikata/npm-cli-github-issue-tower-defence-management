@@ -22,6 +22,7 @@ import {
   realSleep,
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class ConflictedIssueRevertUseCase {
   constructor(
@@ -105,109 +106,119 @@ export class ConflictedIssueRevertUseCase {
       await this.issueRepository.getOpenPullRequests(allPrUrls);
 
     for (const issue of targetIssues) {
-      const prUrls = relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [];
-      if (prUrls.length === 0) {
-        continue;
-      }
+      try {
+        const prUrls = relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [];
+        if (prUrls.length === 0) {
+          continue;
+        }
 
-      const relatedPrs = prUrls
-        .map((url) => resolvedPrByUrl.get(url) ?? null)
-        .filter((pr): pr is NonNullable<typeof pr> => pr !== null);
+        const relatedPrs = prUrls
+          .map((url) => resolvedPrByUrl.get(url) ?? null)
+          .filter((pr): pr is NonNullable<typeof pr> => pr !== null);
 
-      const hasUnknownMergeable = relatedPrs.some(
-        (pr) => pr.mergeable === 'UNKNOWN',
-      );
-      if (hasUnknownMergeable) {
-        continue;
-      }
-
-      const conflictedPrs = relatedPrs.filter((pr) => pr.isConflicted);
-      const ciFailingPrs = relatedPrs.filter(
-        (pr) => !pr.isConflicted && pr.isCiFailing === true,
-      );
-      if (conflictedPrs.length === 0 && ciFailingPrs.length === 0) {
-        continue;
-      }
-
-      let hasUnresolvedConflict = false;
-      if (conflictedPrs.length > 0) {
-        const allBranchesUpdated = (
-          await Promise.all(
-            conflictedPrs.map((pr) =>
-              this.issueRepository.updateBranch(pr.url),
-            ),
-          )
-        ).every(Boolean);
-        hasUnresolvedConflict = !allBranchesUpdated;
-      }
-      const hasCiFailure = ciFailingPrs.length > 0;
-      if (!hasUnresolvedConflict && !hasCiFailure) {
-        continue;
-      }
-      const commentMessage = hasUnresolvedConflict
-        ? AUTO_STATUS_CHECK_CONFLICT_MESSAGE
-        : AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE;
-
-      const existingComments =
-        await this.issueCommentRepository.getCommentsFromIssue(issue);
-      const latestReopenedAt =
-        await this.issueRepository.getLatestReopenedEventAt(issue);
-      if (params.thresholdForAutoReject !== undefined) {
-        const nextStepAgent = extractNextStepAgentFromComments(
-          existingComments,
-          (author) =>
-            isAuthorAuthorizedForAutoStatusCheck(
-              author,
-              params.allowedIssueAuthors,
-            ),
+        const hasUnknownMergeable = relatedPrs.some(
+          (pr) => pr.mergeable === 'UNKNOWN',
         );
-        if (nextStepAgent !== null) {
-          const repetition = resolveNextStepAgentDispatchRepetition({
-            agentFieldValue: issue.agent,
-            nextStepAgent,
-            currentDispatchHasNoReportRejection: false,
-            comments: existingComments,
-            isTrustedAuthor: (author) =>
+        if (hasUnknownMergeable) {
+          continue;
+        }
+
+        const conflictedPrs = relatedPrs.filter((pr) => pr.isConflicted);
+        const ciFailingPrs = relatedPrs.filter(
+          (pr) => !pr.isConflicted && pr.isCiFailing === true,
+        );
+        if (conflictedPrs.length === 0 && ciFailingPrs.length === 0) {
+          continue;
+        }
+
+        let hasUnresolvedConflict = false;
+        if (conflictedPrs.length > 0) {
+          const allBranchesUpdated = (
+            await Promise.all(
+              conflictedPrs.map((pr) =>
+                this.issueRepository.updateBranch(pr.url),
+              ),
+            )
+          ).every(Boolean);
+          hasUnresolvedConflict = !allBranchesUpdated;
+        }
+        const hasCiFailure = ciFailingPrs.length > 0;
+        if (!hasUnresolvedConflict && !hasCiFailure) {
+          continue;
+        }
+        const commentMessage = hasUnresolvedConflict
+          ? AUTO_STATUS_CHECK_CONFLICT_MESSAGE
+          : AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE;
+
+        const existingComments =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        const latestReopenedAt =
+          await this.issueRepository.getLatestReopenedEventAt(issue);
+        if (params.thresholdForAutoReject !== undefined) {
+          const nextStepAgent = extractNextStepAgentFromComments(
+            existingComments,
+            (author) =>
               isAuthorAuthorizedForAutoStatusCheck(
                 author,
                 params.allowedIssueAuthors,
               ),
-            thresholdForAutoReject: params.thresholdForAutoReject,
-            thresholdForDispatchLoop:
-              params.thresholdForDispatchLoop ??
-              DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-            isNoStory: false,
-            latestReopenedAt,
-          });
-          if (repetition.type === 'escalateSilentRedispatch') {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              failedPreparationStatusOption.id,
-            );
-            await this.createCommentWithDedup(issue, repetition.comment);
-            continue;
-          }
-          if (
-            repetition.type === 'escalateReportingLoop' ||
-            repetition.type === 'escalateDispatchLoop'
-          ) {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              failedPreparationStatusOption.id,
-            );
-            await this.createCommentWithDedup(issue, repetition.comment);
-            continue;
+          );
+          if (nextStepAgent !== null) {
+            const repetition = resolveNextStepAgentDispatchRepetition({
+              agentFieldValue: issue.agent,
+              nextStepAgent,
+              currentDispatchHasNoReportRejection: false,
+              comments: existingComments,
+              isTrustedAuthor: (author) =>
+                isAuthorAuthorizedForAutoStatusCheck(
+                  author,
+                  params.allowedIssueAuthors,
+                ),
+              thresholdForAutoReject: params.thresholdForAutoReject,
+              thresholdForDispatchLoop:
+                params.thresholdForDispatchLoop ??
+                DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+              isNoStory: false,
+              latestReopenedAt,
+            });
+            if (repetition.type === 'escalateSilentRedispatch') {
+              await this.issueRepository.updateStatus(
+                project,
+                issue,
+                failedPreparationStatusOption.id,
+              );
+              await this.createCommentWithDedup(issue, repetition.comment);
+              continue;
+            }
+            if (
+              repetition.type === 'escalateReportingLoop' ||
+              repetition.type === 'escalateDispatchLoop'
+            ) {
+              await this.issueRepository.updateStatus(
+                project,
+                issue,
+                failedPreparationStatusOption.id,
+              );
+              await this.createCommentWithDedup(issue, repetition.comment);
+              continue;
+            }
           }
         }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.createCommentWithDedup(issue, commentMessage);
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `ConflictedIssueRevertUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+          );
+          continue;
+        }
+        throw error;
       }
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.createCommentWithDedup(issue, commentMessage);
     }
   };
 

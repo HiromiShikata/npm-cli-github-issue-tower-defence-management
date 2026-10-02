@@ -2,6 +2,7 @@ import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import {
   AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
   AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
@@ -2144,5 +2145,237 @@ describe('ConflictedIssueRevertUseCase', () => {
         );
       });
     });
+  });
+
+  describe('StaleProjectItemError containment', () => {
+    type IssueCommentFixture = {
+      author: string;
+      content: string;
+      createdAt: Date;
+    };
+
+    type StaleProjectItemBranchCase = {
+      branch: string;
+      staleIssueAgent: string | null;
+      staleIssueComments: IssueCommentFixture[];
+      thresholdForAutoReject: number;
+      thresholdForDispatchLoop: number;
+      expectedStaleIssueStatusId: string;
+    };
+
+    const agentReportNamingNextStepAgent = (
+      nextStepAgent: string,
+    ): IssueCommentFixture => ({
+      author: 'owner',
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      createdAt: new Date(),
+    });
+
+    const silentRedispatchCommentForDeveloper = (
+      dispatchCount: number,
+      thresholdForAutoReject: number,
+    ): IssueCommentFixture => ({
+      author: 'owner',
+      content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${dispatchCount}/${thresholdForAutoReject}).`,
+      createdAt: new Date(),
+    });
+
+    const humanContinueComment: IssueCommentFixture = {
+      author: 'owner',
+      content: 'please continue',
+      createdAt: new Date(),
+    };
+
+    const staleProjectItemBranchCases: StaleProjectItemBranchCase[] = [
+      {
+        branch: 'the silent redispatch escalation',
+        staleIssueAgent: 'developer',
+        staleIssueComments: [
+          agentReportNamingNextStepAgent('developer'),
+          humanContinueComment,
+          silentRedispatchCommentForDeveloper(1, 3),
+          silentRedispatchCommentForDeveloper(2, 3),
+        ],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the reporting loop escalation',
+        staleIssueAgent: 'developer',
+        staleIssueComments: [
+          humanContinueComment,
+          silentRedispatchCommentForDeveloper(1, 2),
+          agentReportNamingNextStepAgent('developer'),
+        ],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the dispatch loop escalation',
+        staleIssueAgent: null,
+        staleIssueComments: [
+          agentReportNamingNextStepAgent('developer'),
+          agentReportNamingNextStepAgent('developer'),
+          agentReportNamingNextStepAgent('developer'),
+        ],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the default conflict revert',
+        staleIssueAgent: null,
+        staleIssueComments: [],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+    ];
+
+    let warnSpy: jest.SpyInstance;
+
+    const arrangeStaleAndRemainingConflictedIssues = (
+      branchCase: StaleProjectItemBranchCase,
+      updateStatusErrorForStaleIssue: Error,
+    ): { staleIssue: Issue; remainingIssue: Issue } => {
+      const staleIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        number: 1,
+        itemId: 'stale-item',
+        status: AWAITING_OWNER_STATUS_NAME,
+        agent: branchCase.staleIssueAgent,
+      });
+      const remainingIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/2',
+        number: 2,
+        itemId: 'remaining-item',
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const stalePrItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/10',
+        number: 10,
+        closingIssueReferenceUrls: [staleIssue.url],
+      });
+      const remainingPrItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/20',
+        number: 20,
+        closingIssueReferenceUrls: [remainingIssue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [staleIssue, remainingIssue, stalePrItem, remainingPrItem],
+        cacheUsed: false,
+      });
+      const staleConflictedPr = createMockRelatedPullRequest({
+        url: stalePrItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      const remainingConflictedPr = createMockRelatedPullRequest({
+        url: remainingPrItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [staleConflictedPr.url, staleConflictedPr],
+          [remainingConflictedPr.url, remainingConflictedPr],
+        ]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        (issue: Issue) =>
+          Promise.resolve(
+            issue.url === staleIssue.url ? branchCase.staleIssueComments : [],
+          ),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === staleIssue.url
+            ? Promise.reject(updateStatusErrorForStaleIssue)
+            : Promise.resolve(undefined),
+      );
+      return { staleIssue, remainingIssue };
+    };
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it.each(staleProjectItemBranchCases)(
+      'skips the issue with a warning naming its url when updateStatus rejects with StaleProjectItemError in $branch, and still reverts the remaining conflicted issue',
+      async (branchCase) => {
+        const { staleIssue, remainingIssue } =
+          arrangeStaleAndRemainingConflictedIssues(
+            branchCase,
+            new StaleProjectItemError('stale-item'),
+          );
+
+        await expect(
+          useCase.run({
+            projectUrl,
+            allowedIssueAuthors: ['owner'],
+            thresholdForAutoReject: branchCase.thresholdForAutoReject,
+            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          remainingIssue,
+          'awaiting-workspace-id',
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(staleIssue, expect.anything());
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          remainingIssue,
+          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(staleIssue.url),
+        );
+      },
+    );
+
+    it.each(staleProjectItemBranchCases)(
+      'propagates an unrelated updateStatus error unchanged in $branch without reverting the remaining conflicted issue',
+      async (branchCase) => {
+        const unrelatedError = new Error('GraphQL rate limit exceeded');
+        const { staleIssue, remainingIssue } =
+          arrangeStaleAndRemainingConflictedIssues(branchCase, unrelatedError);
+
+        await expect(
+          useCase.run({
+            projectUrl,
+            allowedIssueAuthors: ['owner'],
+            thresholdForAutoReject: branchCase.thresholdForAutoReject,
+            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
+          }),
+        ).rejects.toBe(unrelatedError);
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+          expect.anything(),
+          remainingIssue,
+          expect.anything(),
+        );
+      },
+    );
   });
 });
