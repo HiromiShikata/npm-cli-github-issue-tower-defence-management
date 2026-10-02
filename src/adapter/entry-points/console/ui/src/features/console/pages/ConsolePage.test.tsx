@@ -1067,9 +1067,7 @@ describe('ConsolePage', () => {
       ).toBeInTheDocument();
     });
     expect(document.querySelector('.console-detail-screen')).not.toBeNull();
-    expect(
-      document.querySelector('.console-story-list-container'),
-    ).toBeNull();
+    expect(document.querySelector('.console-story-list-container')).toBeNull();
   });
 
   it('does not render reorder buttons in the Triage tab', async () => {
