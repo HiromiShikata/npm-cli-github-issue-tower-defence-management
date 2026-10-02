@@ -1,3 +1,10 @@
+# [2.161.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.160.0...v2.161.0) (2026-10-02)
+
+
+### Features
+
+* **console-ui:** Add Project/Workflow destination selector to task-creation dialog ([#3134](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3134)) ([8764016](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8764016c443627904ca68d15e5bdf57473676663))
+
 # [2.160.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.159.0...v2.160.0) (2026-10-02)
 
 
