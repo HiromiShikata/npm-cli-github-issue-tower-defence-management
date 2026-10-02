@@ -21,6 +21,7 @@ import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerC
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { PullRequestProjectItemRemoveUseCase } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { RevertOrphanedWaitConditionUseCase } from '../../../domain/usecases/RevertOrphanedWaitConditionUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { WorkerSessionEndClassifyUseCase } from '../../../domain/usecases/WorkerSessionEndClassifyUseCase';
 import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
@@ -718,6 +719,20 @@ program
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
         workflowIssueReporterSettings: workflowIssueReporterSettingsForRevert,
+      });
+
+      const revertOrphanedWaitConditionUseCase =
+        new RevertOrphanedWaitConditionUseCase(
+          projectRepository,
+          issueRepository,
+          revertIssueCommentRepository,
+          localCommandRunner,
+        );
+      await revertOrphanedWaitConditionUseCase.run({
+        projectUrl,
+        preparationProcessCheckCommand,
+        awLogDirectoryPath: config.awLogDirectoryPath,
+        awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
       });
     }
 
