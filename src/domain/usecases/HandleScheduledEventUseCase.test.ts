@@ -3941,6 +3941,27 @@ describe('HandleScheduledEventUseCase', () => {
           );
         }
       });
+
+      it('still calls startPreparationUseCase.run when changeStatusByStoryColorUseCase.run rejects in the non-slow-sweep branch', async () => {
+        mockChangeStatusByStoryColorUseCase.run.mockRejectedValue(
+          new Error('simulated changeStatusByStoryColorUseCase failure'),
+        );
+
+        await useCase
+          .runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            false,
+            now,
+          )
+          .catch(() => undefined);
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
     });
   });
 
