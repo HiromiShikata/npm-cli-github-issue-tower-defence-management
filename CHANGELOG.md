@@ -1,3 +1,10 @@
+## [2.157.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.1...v2.157.2) (2026-10-02)
+
+
+### Bug Fixes
+
+* **console:** allow opening detail screen for closed or blocked story items ([#3079](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3079)) ([04f29f0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/04f29f0e945e65ee93817d442146ce0f7d5c17e5)), closes [#3078](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3078)
+
 ## [2.157.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.0...v2.157.1) (2026-10-02)
 
 
