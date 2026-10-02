@@ -68,7 +68,8 @@ export type StoryGateReason =
   | 'OPEN_PULL_REQUEST_EXISTS'
   | 'COMMENT_HISTORY_OVER_LIMIT'
   | 'WORK_MERGED_WITHOUT_APPROVED_SPECIFICATION'
-  | 'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF';
+  | 'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF'
+  | 'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED';
 
 export type StorySource = 'BOARD_CACHE' | 'LIVE' | 'ADOPTED' | 'NONE';
 
@@ -267,7 +268,7 @@ export class StoryGateCheckUseCase {
       }
       storyValue = await this.storyAdopt(state, input, cacheHit);
       if (storyValue === null) {
-        return this.storyUnadoptableEvaluate(state, input);
+        return this.storyUnadoptableEvaluate(state, input, cacheHit, caches);
       }
     }
 
@@ -531,7 +532,33 @@ export class StoryGateCheckUseCase {
   private storyUnadoptableEvaluate = async (
     state: EvaluationState,
     input: StoryGateCheckInput,
+    cacheHit: BoardCacheHit,
+    caches: BoardCache[],
   ): Promise<StoryGateCheckOutput> => {
+    const liveIssue = await this.issueRepository.findIssue(input.issue);
+    if (liveIssue === null) {
+      throw new StoryGateGithubRequestError(
+        `Issue not found or not readable with the given token: ${input.issue.url}`,
+      );
+    }
+    if (hasStoryIssueLabel(liveIssue.labels)) {
+      const openClosingPullRequestUrls = (
+        await this.closingPullRequestsRecord(state, input.issue)
+      ).openUrls;
+      if (openClosingPullRequestUrls.length > 0) {
+        return this.decide(
+          state,
+          'SELF_RESOLVE_STORY',
+          'OPEN_PULL_REQUEST_EXISTS',
+        );
+      }
+      return this.assignedIssueEvaluate(
+        state,
+        input,
+        caches,
+        'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED',
+      );
+    }
     const configs = await this.projectConfigRepository.listProjectConfigs();
     const config = configs.find(
       (candidate) =>
