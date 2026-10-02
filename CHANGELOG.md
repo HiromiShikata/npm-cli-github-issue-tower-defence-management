@@ -1,3 +1,10 @@
+## [2.157.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.11...v2.157.12) (2026-10-02)
+
+
+### Bug Fixes
+
+* **TDPM:** make SILENT_REDISPATCH_ESCALATED and STORY_UNSET_ESCALATED dispatch counters rate-limit aware ([#3114](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3114)) ([0b37f0c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b37f0cc4a984f2e4efff21aaffa1ad3364fa3b2))
+
 ## [2.157.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.10...v2.157.11) (2026-10-02)
 
 
