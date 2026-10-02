@@ -259,9 +259,83 @@ export class HandleScheduledEventUseCaseHandler {
         return false;
       return true;
     };
+
+    const missingOrInvalidCredentialFieldPaths = (v: unknown): string[] => {
+      const paths: string[] = [];
+      const credentials =
+        typeof v === 'object' && v !== null && 'credentials' in v
+          ? v.credentials
+          : null;
+      const manager =
+        typeof credentials === 'object' &&
+        credentials !== null &&
+        'manager' in credentials
+          ? credentials.manager
+          : null;
+      const managerGithub =
+        typeof manager === 'object' && manager !== null && 'github' in manager
+          ? manager.github
+          : null;
+      if (!(
+        typeof managerGithub === 'object' &&
+        managerGithub !== null &&
+        'token' in managerGithub &&
+        typeof managerGithub.token === 'string'
+      )) {
+        paths.push('credentials.manager.github.token');
+      }
+      const managerSlack =
+        typeof manager === 'object' && manager !== null && 'slack' in manager
+          ? manager.slack
+          : null;
+      if (!(
+        typeof managerSlack === 'object' &&
+        managerSlack !== null &&
+        'userToken' in managerSlack &&
+        typeof managerSlack.userToken === 'string'
+      )) {
+        paths.push('credentials.manager.slack.userToken');
+      }
+      const managerGoogleServiceAccount =
+        typeof manager === 'object' &&
+        manager !== null &&
+        'googleServiceAccount' in manager
+          ? manager.googleServiceAccount
+          : null;
+      if (!(
+        typeof managerGoogleServiceAccount === 'object' &&
+        managerGoogleServiceAccount !== null &&
+        'serviceAccountKey' in managerGoogleServiceAccount &&
+        typeof managerGoogleServiceAccount.serviceAccountKey === 'string'
+      )) {
+        paths.push(
+          'credentials.manager.googleServiceAccount.serviceAccountKey',
+        );
+      }
+      const bot =
+        typeof credentials === 'object' &&
+        credentials !== null &&
+        'bot' in credentials
+          ? credentials.bot
+          : null;
+      const botGithub =
+        typeof bot === 'object' && bot !== null && 'github' in bot
+          ? bot.github
+          : null;
+      if (!(
+        typeof botGithub === 'object' &&
+        botGithub !== null &&
+        'token' in botGithub &&
+        typeof botGithub.token === 'string'
+      )) {
+        paths.push('credentials.bot.github.token');
+      }
+      return paths;
+    };
+
     if (!isInputType(input)) {
       throw new ScheduledEventHandlerInputValidationError(
-        `Invalid input: required credential fields are missing. Got: ${JSON.stringify(input)}`,
+        `Invalid input: required credential fields are missing or invalid: ${missingOrInvalidCredentialFieldPaths(input).join(', ')}`,
       );
     }
 

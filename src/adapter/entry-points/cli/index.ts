@@ -110,6 +110,7 @@ import {
   parseProjectReadmeConfig,
 } from './projectConfig';
 import { sanitizeErrorForLogging } from '../../repositories/errorSanitizer';
+import { redactSecrets } from '../../../domain/services/secretRedaction';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -468,7 +469,7 @@ program
         );
       } catch (error) {
         if (error instanceof ScheduledEventHandlerInputValidationError) {
-          console.error(error.message);
+          console.error(redactSecrets(error.message));
           return process.exit(1);
         }
         throw error;

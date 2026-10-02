@@ -284,6 +284,55 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     );
   });
 
+  it('should name the missing credential field path without leaking any other credential value when one field is missing', async () => {
+    const configWithMissingSlackToken = {
+      projectName: 'example-org/example-repo',
+      org: 'TestOrg',
+      projectUrl: 'https://github.com/orgs/example-org/projects/1',
+      manager: 'TestManager',
+      urlOfStoryView: 'https://github.com/orgs/example-org/projects/1/views/1',
+      disabled: false,
+      workingReport: {
+        repo: 'test-repo',
+        members: ['TestManager'],
+        spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/test/edit',
+      },
+      credentials: {
+        manager: {
+          github: { token: 'ghp_realisticManagerToken1234567890AB' },
+          googleServiceAccount: {
+            serviceAccountKey:
+              '-----BEGIN PRIVATE KEY-----\nMIIFAKEKEYDATAFORTESTONLY1234567890\n-----END PRIVATE KEY-----\n',
+          },
+        },
+        bot: { github: { token: 'ghp_realisticBotToken0987654321ZY' } },
+      },
+    };
+    jest
+      .mocked(fs.readFileSync)
+      .mockReturnValue(YAML.stringify(configWithMissingSlackToken));
+    const handler = new HandleScheduledEventUseCaseHandler();
+
+    let thrownError: Error | undefined;
+    try {
+      await handler.handle('config.yml', false);
+    } catch (error) {
+      thrownError = error instanceof Error ? error : undefined;
+    }
+
+    expect(thrownError).toBeDefined();
+    expect(thrownError?.message).toContain(
+      'credentials.manager.slack.userToken',
+    );
+    expect(thrownError?.message).not.toContain(
+      'ghp_realisticManagerToken1234567890AB',
+    );
+    expect(thrownError?.message).not.toContain(
+      'ghp_realisticBotToken0987654321ZY',
+    );
+    expect(thrownError?.message).not.toContain('BEGIN PRIVATE KEY');
+  });
+
   it.each([
     ['incomplete credentials section', { disabled: true }],
     ['complete credentials section', { ...validConfig, disabled: true }],

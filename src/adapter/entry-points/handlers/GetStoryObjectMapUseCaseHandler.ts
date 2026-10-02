@@ -67,9 +67,45 @@ export class GetStoryObjectMapUseCaseHandler {
         return false;
       return true;
     };
+
+    const missingOrInvalidFieldPaths = (v: unknown): string[] => {
+      const paths: string[] = [];
+      if (!(
+        typeof v === 'object' &&
+        v !== null &&
+        'projectName' in v &&
+        typeof v.projectName === 'string'
+      )) {
+        paths.push('projectName');
+      }
+      const credentials =
+        typeof v === 'object' && v !== null && 'credentials' in v
+          ? v.credentials
+          : null;
+      const bot =
+        typeof credentials === 'object' &&
+        credentials !== null &&
+        'bot' in credentials
+          ? credentials.bot
+          : null;
+      const botGithub =
+        typeof bot === 'object' && bot !== null && 'github' in bot
+          ? bot.github
+          : null;
+      if (!(
+        typeof botGithub === 'object' &&
+        botGithub !== null &&
+        'token' in botGithub &&
+        typeof botGithub.token === 'string'
+      )) {
+        paths.push('credentials.bot.github.token');
+      }
+      return paths;
+    };
+
     if (!isInputType(input)) {
       throw new Error(
-        `Invalid input: required fields projectName and credentials.bot.github.token must be strings. Got: ${JSON.stringify(input)}`,
+        `Invalid input: required fields are missing or invalid: ${missingOrInvalidFieldPaths(input).join(', ')}`,
       );
     }
     const localStorageRepository = new LocalStorageRepository();

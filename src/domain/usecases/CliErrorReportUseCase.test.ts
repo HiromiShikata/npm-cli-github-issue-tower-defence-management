@@ -225,6 +225,21 @@ describe('CliErrorReportUseCase', () => {
       expect(bodyArg).not.toContain('From: :robot:');
     });
 
+    it('should redact a secret-shaped substring from the error message before it reaches the title and issue body', async () => {
+      const secret = 'ghp_cliReporterRealisticToken998877AA';
+      const error = new Error(`token exchange failed for ${secret}`);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(7);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      const [, , titleArg, bodyArg] =
+        mockIssueRepository.createNewIssue.mock.calls[0];
+      expect(titleArg).not.toContain(secret);
+      expect(bodyArg).not.toContain(secret);
+      expect(bodyArg).toContain('token exchange failed for');
+    });
+
     it('should handle non-Error values', async () => {
       const error = 'plain string error';
       mockIssueRepository.searchIssue.mockResolvedValue([]);
