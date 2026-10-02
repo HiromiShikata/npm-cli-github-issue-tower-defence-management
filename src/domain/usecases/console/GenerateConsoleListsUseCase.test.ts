@@ -901,6 +901,29 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(alpha?.items).toHaveLength(1);
     });
 
+    it('includes a closed issue with a storyOptionId in story items while leaving openItemCount unaffected', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: true,
+          number: 42,
+          url: 'https://github.com/demo/repo/issues/42',
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          isClosed: false,
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.items.map((item) => item.number)).toContain(42);
+      expect(alpha?.items).toHaveLength(2);
+      expect(alpha?.openItemCount).toBe(1);
+    });
+
     it('includes issues in story items regardless of assignee or actionability', () => {
       const result = run([
         makeIssue({

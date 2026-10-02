@@ -1266,6 +1266,20 @@ describe('ConsoleStoryList', () => {
       expect(getByText('TDPM Console port')).toBeInTheDocument();
       expect(queryByText('Move to Okinawa tasks')).toBeNull();
     });
+
+    it('calls onOpenItem with the clicked item when its title is activated', () => {
+      const onOpenItem = jest.fn();
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={storyWithItems}
+          onOpenItem={onOpenItem}
+        />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      fireEvent.click(getByText('Fix login bug'));
+      expect(onOpenItem).toHaveBeenCalledWith(storyWithItems[0].items[0]);
+    });
   });
 
   describe('onStoryTaskCreateEdit', () => {

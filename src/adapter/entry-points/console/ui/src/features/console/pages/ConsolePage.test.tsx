@@ -997,6 +997,81 @@ describe('ConsolePage', () => {
     );
   });
 
+  it('shows the detail screen for an item that exists only inside a story entry nested items array while the stories tab is active', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/acme/stories?k=token#item/PVTI_NESTED',
+    );
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        const base = listPayload(tab);
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories'
+              ? {
+                  ...base,
+                  stories: [
+                    {
+                      storyName: 'TDPM Console port',
+                      storyOptionId: 'st1',
+                      color: 'BLUE',
+                      openItemCount: 1,
+                      storyViewUrl: null,
+                      items: [
+                        {
+                          number: 777,
+                          title: 'Nested story task not in flat items',
+                          url: 'https://github.com/o/r/issues/777',
+                          repo: 'o/r',
+                          nameWithOwner: 'o/r',
+                          projectItemId: 'PVTI_NESTED',
+                          itemId: 'PVTI_NESTED',
+                          isPr: false,
+                          relatedOpenPullRequestUrls: [],
+                          story: 'TDPM Console port',
+                          status: 'Done',
+                          agent: null,
+                          nextActionDate: null,
+                          nextActionHour: null,
+                          dependedIssueUrls: [],
+                          labels: [],
+                          createdAt: '2026-06-18T00:00:00.000Z',
+                        },
+                      ],
+                    },
+                  ],
+                }
+              : base,
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Nested story task not in flat items'),
+      ).toBeInTheDocument();
+    });
+    expect(document.querySelector('.console-detail-screen')).not.toBeNull();
+    expect(
+      document.querySelector('.console-story-list-container'),
+    ).toBeNull();
+  });
+
   it('does not render reorder buttons in the Triage tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/triage?k=token');
     const { queryAllByRole, container } = render(<ConsolePage />);
