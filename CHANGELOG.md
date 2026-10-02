@@ -1,3 +1,10 @@
+## [2.157.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.2...v2.157.3) (2026-10-02)
+
+
+### Bug Fixes
+
+* **graphql:** back off on GraphQL body-embedded RATE_LIMIT errors instead of halving page size ([#3083](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3083)) ([4dfc6ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4dfc6ce1d897f00699ced62eb977f7b9404bafb1))
+
 ## [2.157.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.1...v2.157.2) (2026-10-02)
 
 
