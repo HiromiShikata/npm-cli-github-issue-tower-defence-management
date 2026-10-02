@@ -13,7 +13,10 @@ import {
 } from './ApiV3CheerioRestIssueRepository';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { ProjectIssuesCacheRepository } from '../ProjectIssuesCacheRepository';
-import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
+import {
+  ClearDependedIssueURLUseCase,
+  GitHubConfirmedNotFoundError,
+} from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import type {
@@ -6204,21 +6207,64 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow('Unexpected response shape when fetching state for');
     });
 
-    it('should throw when the API responds with a non-2xx status', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Not Found', {
-          status: 404,
-          statusText: 'Not Found',
-        }),
-      );
+    const confirmedNotFoundVsTransientErrorCases: {
+      name: string;
+      url: string;
+      status: number;
+      statusText: string;
+      expectConfirmedNotFound: boolean;
+    }[] = [
+      {
+        name: 'an issue URL with a 404 response',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/42',
+        status: 404,
+        statusText: 'Not Found',
+        expectConfirmedNotFound: true,
+      },
+      {
+        name: 'an issue URL with a 500 response',
+        url: 'https://github.com/HiromiShikata/test-repository/issues/43',
+        status: 500,
+        statusText: 'Internal Server Error',
+        expectConfirmedNotFound: false,
+      },
+      {
+        name: 'a pull request URL with a 404 response',
+        url: 'https://github.com/HiromiShikata/test-repository/pull/42',
+        status: 404,
+        statusText: 'Not Found',
+        expectConfirmedNotFound: true,
+      },
+      {
+        name: 'a pull request URL with a 500 response',
+        url: 'https://github.com/HiromiShikata/test-repository/pull/43',
+        status: 500,
+        statusText: 'Internal Server Error',
+        expectConfirmedNotFound: false,
+      },
+    ];
+    it.each(confirmedNotFoundVsTransientErrorCases)(
+      'should reject with GitHubConfirmedNotFoundError only when the API responds with a 404, for $name',
+      async ({ url, status, statusText, expectConfirmedNotFound }) => {
+        jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(statusText, { status, statusText }),
+          );
 
-      const { repository } = createApiV3CheerioRestIssueRepository();
-      await expect(
-        repository.getIssueOrPullRequestState(
-          'https://github.com/HiromiShikata/test-repository/issues/42',
-        ),
-      ).rejects.toThrow('404');
-    });
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const promise = repository.getIssueOrPullRequestState(url);
+
+        await expect(promise).rejects.toThrow(Error);
+        if (expectConfirmedNotFound) {
+          await expect(promise).rejects.toThrow(GitHubConfirmedNotFoundError);
+        } else {
+          await expect(promise).rejects.not.toBeInstanceOf(
+            GitHubConfirmedNotFoundError,
+          );
+        }
+      },
+    );
   });
 
   describe('getPullRequestSummary', () => {
