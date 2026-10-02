@@ -333,12 +333,19 @@ describe('StartPreparationUseCase', () => {
         ],
       },
     };
-    const iceboxStatusId = projectWithIcebox.status.statuses.find(
-      (status) => status.name === 'Icebox',
-    )!.id;
-    const preparationStatusId = projectWithIcebox.status.statuses.find(
-      (status) => status.name === 'Preparation',
-    )!.id;
+    const findStatusIdByName = (statusName: string): string => {
+      const status = projectWithIcebox.status.statuses.find(
+        (candidate) => candidate.name === statusName,
+      );
+      if (!status) {
+        throw new Error(
+          `status '${statusName}' not found in projectWithIcebox fixture`,
+        );
+      }
+      return status.id;
+    };
+    const iceboxStatusId = findStatusIdByName('Icebox');
+    const preparationStatusId = findStatusIdByName('Preparation');
 
     it('starts no worker and sets Status to Icebox for an Awaiting Workspace issue whose Story option color is GRAY', async () => {
       const grayStoryIssue = createMockIssue({
