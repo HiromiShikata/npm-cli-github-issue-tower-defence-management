@@ -225,6 +225,12 @@ describe('RestIssueRepository', () => {
     it.each([
       { status: 403, statusText: 'Forbidden', bodyText: 'Forbidden' },
       { status: 502, statusText: 'Bad Gateway', bodyText: 'Bad Gateway' },
+      { status: 404, statusText: 'Not Found', bodyText: 'Not Found' },
+      {
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        bodyText: 'Unprocessable Entity',
+      },
     ])(
       'throws GitHubCommentCreateHttpError with statusCode $status and the exact message format when ky throws a non-rate-limit HTTPError with status $status',
       async ({ status, statusText, bodyText }) => {
@@ -261,6 +267,26 @@ describe('RestIssueRepository', () => {
         });
       },
     );
+
+    it('rethrows a non-HTTPError exception unchanged without converting it to GitHubCommentCreateHttpError', async () => {
+      const originalError = new Error('network socket hang up');
+      mockPost.mockImplementation(() => ({
+        json: jest.fn().mockRejectedValue(originalError),
+      }));
+
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/40',
+          'test comment',
+        );
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(thrownError).toBe(originalError);
+      expect(thrownError).not.toBeInstanceOf(MockHTTPError);
+    });
 
     it('throws GitHubRateLimitError even when clone() throws (body already consumed by ky 2.x)', async () => {
       const resetEpoch = 1725547200;
