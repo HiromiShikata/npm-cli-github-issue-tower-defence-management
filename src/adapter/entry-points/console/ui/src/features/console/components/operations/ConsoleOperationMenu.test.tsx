@@ -587,7 +587,9 @@ describe('ConsoleOperationMenu', () => {
     const closeButton = getByText('Close');
     const bottomRow = rareButton.closest('.console-op-group-bottom-row');
     expect(bottomRow).not.toBeNull();
-    expect(bottomRow).toBe(dangerButton.closest('.console-op-group-bottom-row'));
+    expect(bottomRow).toBe(
+      dangerButton.closest('.console-op-group-bottom-row'),
+    );
     expect(bottomRow).toBe(closeButton.closest('.console-op-group-bottom-row'));
   });
 
@@ -674,7 +676,9 @@ describe('ConsoleOperationMenu', () => {
       />,
     );
 
-    fireEvent.click(getByText('Actions').closest('button') as HTMLButtonElement);
+    fireEvent.click(
+      getByText('Actions').closest('button') as HTMLButtonElement,
+    );
 
     expect(freshHandlers.onReview).not.toHaveBeenCalled();
     expect(freshHandlers.onSetNextActionDate).not.toHaveBeenCalled();
