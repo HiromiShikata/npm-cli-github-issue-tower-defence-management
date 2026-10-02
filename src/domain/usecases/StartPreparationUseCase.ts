@@ -1073,7 +1073,7 @@ export class StartPreparationUseCase {
         this.issueRepository,
       );
       const isNoStory = isUnstoriedAwaitingWorkspaceIssue(issue);
-      const agent =
+      let agent =
         (isNoStory && issue.agent === null
           ? null
           : agentNameFromDesignation(issue.agent ?? '')) ||
@@ -1244,6 +1244,12 @@ export class StartPreparationUseCase {
         );
         continue;
       }
+
+      agent =
+        (isNoStory && staleness.liveIssue.agent === null
+          ? null
+          : agentNameFromDesignation(staleness.liveIssue.agent ?? '')) ||
+        params.defaultAgentName;
 
       try {
         await this.issueRepository.updateStatus(
