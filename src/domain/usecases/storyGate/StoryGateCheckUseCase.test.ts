@@ -1054,6 +1054,71 @@ describe('StoryGateCheckUseCase', () => {
       },
     );
 
+    const noMatchingOwnerConfigRows: {
+      name: string;
+      configs: StoryGateProjectConfig[];
+    }[] = [
+      {
+        name: 'no project config exists at all',
+        configs: [],
+      },
+      {
+        name: "the only project config's org does not match the issue owner",
+        configs: [{ ...DEFAULT_CONFIG, org: OTHER_ORG }],
+      },
+    ];
+
+    it.each(noMatchingOwnerConfigRows)(
+      'finds no story issue when $name, even though another board cache resolves the Story name to a readable story issue',
+      async ({ configs }) => {
+        const scenario = new StoryGateScenario({
+          story: 'feature A',
+          inCache: false,
+        });
+        scenario.configs = configs;
+        scenario.caches.push(
+          boardCache({
+            filePath: 'cache/other-board/allIssues-PVT_other/latest.json',
+            modifiedAt: new Date('2026-08-01T00:00:00Z'),
+            projectId: OTHER_PROJECT_ID,
+            issues: [],
+            storyIssueUrlByOptionName: { 'feature A': issueUrl(100) },
+          }),
+        );
+
+        const { result } = await scenario.run();
+
+        expect(result.storyIssues).toEqual([]);
+        expect(result.action).toBe('ROUTE');
+        expect(result.reason).toBe('STORY_ISSUE_NOT_FOUND');
+        expect(result.routingJson).toEqual(ROUTING_JSON);
+      },
+    );
+
+    it('excludes a board cache whose owner cannot be detected from the story issue search', async () => {
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        inCache: false,
+      });
+      scenario.caches.push(
+        boardCache({
+          filePath: 'cache/undetectable/allIssues-PVT_other/latest.json',
+          modifiedAt: new Date('2026-08-01T00:00:00Z'),
+          projectId: OTHER_PROJECT_ID,
+          issues: [],
+          storyIssueUrlByOptionName: {},
+        }),
+      );
+
+      const { result } = await scenario.run();
+
+      expect(result.storyIssues.map((storyIssue) => storyIssue.url)).toEqual([
+        issueUrl(100),
+      ]);
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('STORY_ISSUE_READ');
+    });
+
     it('skips the board-cache scoping for a story name starting with "regular /" even with multiple caches', async () => {
       const scenario = new StoryGateScenario({ story: 'regular / chores' });
       scenario.caches.push(
