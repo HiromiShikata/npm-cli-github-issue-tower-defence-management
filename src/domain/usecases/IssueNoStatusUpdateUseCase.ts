@@ -3,6 +3,7 @@ import { Project } from '../entities/Project';
 import { AWAITING_WORKSPACE_STATUS_NAME } from '../entities/WorkflowStatus';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const isArchivedProjectItemError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -45,6 +46,12 @@ export class IssueNoStatusUpdateUseCase {
           awaitingWorkspaceStatus.id,
         );
       } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `IssueNoStatusUpdateUseCase: project item no longer exists in GitHub, skipping. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+          );
+          continue;
+        }
         if (isArchivedProjectItemError(error)) {
           console.warn(
             `IssueNoStatusUpdateUseCase: project item is archived and cannot be updated, skipping. issueUrl: ${issue.url}`,

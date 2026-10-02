@@ -39,6 +39,7 @@ import {
   Sleep,
   realSleep,
 } from '../services/commentCreateWithDedupRetry';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -156,285 +157,295 @@ export class RevertOrphanedPreparationUseCase {
       awaitingWorkspaceStatusOption.id;
 
     for (const issue of preparationIssues) {
-      const isOrphaned = await this.isOrphanedIssue(issue, params);
-      if (!isOrphaned) {
-        continue;
-      }
-      const { outcome, comments, ciFailingPrUrl, latestReopenedAt } =
-        await this.evaluateOutcome(
-          issue,
-          resolveLabelsNotRequiringPullRequest(params),
-          params.allowedIssueAuthors,
-          params.developerAgentNames,
-        );
-      if (outcome === 'skip') {
-        continue;
-      }
-      const isStillInPreparation = await this.isStillInStatus(
-        issue,
-        project,
-        PREPARATION_STATUS_NAME,
-        'orphaned preparation',
-      );
-      if (!isStillInPreparation) {
-        continue;
-      }
-      const lastAgentReport = findLastAgentReport(comments, (author) =>
-        isAuthorAuthorizedForAutoStatusCheck(
-          author,
-          params.allowedIssueAuthors,
-        ),
-      );
-      const nextStepAgent = lastAgentReport
-        ? extractNextStepAgent(lastAgentReport.content)
-        : null;
-      const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
-        ? extractCloseIssueAs(lastAgentReport.content)
-        : { kind: 'notRequested' };
-      if (
-        lastAgentReport !== null &&
-        closeIssueAsRequest.kind === 'requested' &&
-        nextStepAgent === null &&
-        extractWorkflowError(lastAgentReport.content) === null &&
-        !extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
-      ) {
-        const closeIssueAsRequestApplication =
-          await this.closeIssueAsRequestApplier.apply({
-            issue,
-            project,
-            projectUrl: params.projectUrl,
-            stateReason: closeIssueAsRequest.stateReason,
-          });
-        if (
-          closeIssueAsRequestApplication !==
-          'notAppliedBecauseClosingPullRequestIsOpen'
-        ) {
+      try {
+        const isOrphaned = await this.isOrphanedIssue(issue, params);
+        if (!isOrphaned) {
           continue;
         }
-      }
-      if (outcome === 'advanceClosedIssueToQualityCheck') {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          advanceToQualityCheckStatusOptionId,
-        );
-        continue;
-      }
-      if (
-        nextStepAgent !== null &&
-        params.agents &&
-        params.agents.length > 0 &&
-        !params.agents.includes(nextStepAgent)
-      ) {
-        if (failedPreparationStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
+        const { outcome, comments, ciFailingPrUrl, latestReopenedAt } =
+          await this.evaluateOutcome(
             issue,
-            failedPreparationStatusOption.id,
+            resolveLabelsNotRequiringPullRequest(params),
+            params.allowedIssueAuthors,
+            params.developerAgentNames,
           );
+        if (outcome === 'skip') {
+          continue;
         }
-        await this.createCommentWithDedup(
+        const isStillInPreparation = await this.isStillInStatus(
           issue,
-          `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
+          project,
+          PREPARATION_STATUS_NAME,
+          'orphaned preparation',
         );
-        continue;
-      }
-      const isNoStory =
-        nextStepAgent !== null &&
-        (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
-      const repetition = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: issue.agent,
-        nextStepAgent,
-        currentDispatchHasNoReportRejection: false,
-        comments,
-        isTrustedAuthor: (author) =>
+        if (!isStillInPreparation) {
+          continue;
+        }
+        const lastAgentReport = findLastAgentReport(comments, (author) =>
           isAuthorAuthorizedForAutoStatusCheck(
             author,
             params.allowedIssueAuthors,
           ),
-        thresholdForAutoReject: params.thresholdForAutoReject,
-        thresholdForDispatchLoop:
-          params.thresholdForDispatchLoop ??
-          DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-        isNoStory,
-        latestReopenedAt,
-      });
-      if (
-        repetition.type === 'escalateSilentRedispatch' &&
-        failedPreparationStatusOption
-      ) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          failedPreparationStatusOption.id,
         );
-        await this.createCommentWithDedup(issue, repetition.comment);
-        if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
-          await reportSilentRedispatchWorkflowIssue(
-            nextStepAgent,
-            issue.url,
-            params.workflowIssueReporterSettings,
-            this.issueRepository,
-            this.projectRepository,
-          );
+        const nextStepAgent = lastAgentReport
+          ? extractNextStepAgent(lastAgentReport.content)
+          : null;
+        const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
+          ? extractCloseIssueAs(lastAgentReport.content)
+          : { kind: 'notRequested' };
+        if (
+          lastAgentReport !== null &&
+          closeIssueAsRequest.kind === 'requested' &&
+          nextStepAgent === null &&
+          extractWorkflowError(lastAgentReport.content) === null &&
+          !extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
+        ) {
+          const closeIssueAsRequestApplication =
+            await this.closeIssueAsRequestApplier.apply({
+              issue,
+              project,
+              projectUrl: params.projectUrl,
+              stateReason: closeIssueAsRequest.stateReason,
+            });
+          if (
+            closeIssueAsRequestApplication !==
+            'notAppliedBecauseClosingPullRequestIsOpen'
+          ) {
+            continue;
+          }
         }
-        continue;
-      }
-      if (
-        repetition.type === 'escalateReportingLoop' ||
-        (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
-      ) {
-        if (failedPreparationStatusOption) {
+        if (outcome === 'advanceClosedIssueToQualityCheck') {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            failedPreparationStatusOption.id,
+            advanceToQualityCheckStatusOptionId,
           );
+          continue;
         }
-        await this.createCommentWithDedup(issue, repetition.comment);
-        continue;
-      }
-      if (
-        repetition.type === 'escalateDispatchLoop' &&
-        nextStepAgent === null
-      ) {
-        if (failedPreparationStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
+        if (
+          nextStepAgent !== null &&
+          params.agents &&
+          params.agents.length > 0 &&
+          !params.agents.includes(nextStepAgent)
+        ) {
+          if (failedPreparationStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              failedPreparationStatusOption.id,
+            );
+          }
+          await this.createCommentWithDedup(
             issue,
-            failedPreparationStatusOption.id,
+            `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
           );
+          continue;
         }
-        await this.createCommentWithDedup(issue, repetition.comment);
-        continue;
-      }
-      if (nextStepAgent !== null) {
-        const agentOptionId = await ensureAgentOptionAndGetId(
-          this.projectRepository,
-          project,
+        const isNoStory =
+          nextStepAgent !== null &&
+          (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
+        const repetition = resolveNextStepAgentDispatchRepetition({
+          agentFieldValue: issue.agent,
           nextStepAgent,
-        );
-        if (agentOptionId !== null) {
-          await this.issueRepository.setIssueAgentField(
-            issue.url,
-            project,
-            agentOptionId,
-          );
-        }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
-        if (repetition.type !== 'notRepeated') {
-          await this.createCommentWithDedup(issue, repetition.comment);
-        }
-        continue;
-      }
-
-      if (
-        nextStepAgent === null &&
-        lastAgentReport !== null &&
-        extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
-      ) {
-        if (awaitingOwnerStatusOption) {
+          currentDispatchHasNoReportRejection: false,
+          comments,
+          isTrustedAuthor: (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(
+              author,
+              params.allowedIssueAuthors,
+            ),
+          thresholdForAutoReject: params.thresholdForAutoReject,
+          thresholdForDispatchLoop:
+            params.thresholdForDispatchLoop ??
+            DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+          isNoStory,
+          latestReopenedAt,
+        });
+        if (
+          repetition.type === 'escalateSilentRedispatch' &&
+          failedPreparationStatusOption
+        ) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            awaitingOwnerStatusOption.id,
+            failedPreparationStatusOption.id,
           );
+          await this.createCommentWithDedup(issue, repetition.comment);
+          if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
+            await reportSilentRedispatchWorkflowIssue(
+              nextStepAgent,
+              issue.url,
+              params.workflowIssueReporterSettings,
+              this.issueRepository,
+              this.projectRepository,
+            );
+          }
+          continue;
         }
-        continue;
-      }
-
-      if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
-        const firstDeveloperAgentName =
-          params.developerAgentNames?.length != null &&
-          params.developerAgentNames.length > 0
-            ? params.developerAgentNames[0]
-            : null;
-        const agentOptionId =
-          firstDeveloperAgentName !== null
-            ? await ensureAgentOptionAndGetId(
-                this.projectRepository,
-                project,
-                firstDeveloperAgentName,
-              )
-            : null;
-        if (agentOptionId !== null) {
-          await this.issueRepository.setIssueAgentField(
-            issue.url,
+        if (
+          repetition.type === 'escalateReportingLoop' ||
+          (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
+        ) {
+          if (failedPreparationStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              failedPreparationStatusOption.id,
+            );
+          }
+          await this.createCommentWithDedup(issue, repetition.comment);
+          continue;
+        }
+        if (
+          repetition.type === 'escalateDispatchLoop' &&
+          nextStepAgent === null
+        ) {
+          if (failedPreparationStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              failedPreparationStatusOption.id,
+            );
+          }
+          await this.createCommentWithDedup(issue, repetition.comment);
+          continue;
+        }
+        if (nextStepAgent !== null) {
+          const agentOptionId = await ensureAgentOptionAndGetId(
+            this.projectRepository,
             project,
-            agentOptionId,
+            nextStepAgent,
           );
+          if (agentOptionId !== null) {
+            await this.issueRepository.setIssueAgentField(
+              issue.url,
+              project,
+              agentOptionId,
+            );
+          }
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+          if (repetition.type !== 'notRepeated') {
+            await this.createCommentWithDedup(issue, repetition.comment);
+          }
+          continue;
         }
+
+        if (
+          nextStepAgent === null &&
+          lastAgentReport !== null &&
+          extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
+        ) {
+          if (awaitingOwnerStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingOwnerStatusOption.id,
+            );
+          }
+          continue;
+        }
+
+        if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
+          const firstDeveloperAgentName =
+            params.developerAgentNames?.length != null &&
+            params.developerAgentNames.length > 0
+              ? params.developerAgentNames[0]
+              : null;
+          const agentOptionId =
+            firstDeveloperAgentName !== null
+              ? await ensureAgentOptionAndGetId(
+                  this.projectRepository,
+                  project,
+                  firstDeveloperAgentName,
+                )
+              : null;
+          if (agentOptionId !== null) {
+            await this.issueRepository.setIssueAgentField(
+              issue.url,
+              project,
+              agentOptionId,
+            );
+          }
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+          await this.createCommentWithDedup(
+            issue,
+            `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+          );
+          continue;
+        }
+        if (outcome === 'advanceToQualityCheck') {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            advanceToQualityCheckStatusOptionId,
+          );
+          continue;
+        }
+        if (outcome === 'advanceToWorkspace') {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+          continue;
+        }
+
+        const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
+        const lastTargetComments = comments.slice(
+          -params.thresholdForAutoReject * 2,
+        );
+        const rejectionCommentCount = lastTargetComments.filter((comment) =>
+          comment.content.startsWith('Auto Status Check: REJECTED'),
+        ).length;
+        const alreadyEscalated = lastTargetComments.some((comment) =>
+          comment.content
+            .toLowerCase()
+            .includes('failed to pass the check automatically'),
+        );
+
+        if (
+          failedPreparationStatusOption &&
+          rejectionCommentCount + 1 >= params.thresholdForAutoReject &&
+          !alreadyEscalated
+        ) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            failedPreparationStatusOption.id,
+          );
+          await this.createCommentWithDedup(
+            issue,
+            `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
+          );
+          continue;
+        }
+
         await this.issueRepository.updateStatus(
           project,
           issue,
           awaitingWorkspaceStatusOption.id,
         );
-        await this.createCommentWithDedup(
+        await this.issueCommentRepository.createComment(
           issue,
-          `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+          rejectionStatusMessage,
         );
-        continue;
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `RevertOrphanedPreparationUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+          );
+          continue;
+        }
+        throw error;
       }
-      if (outcome === 'advanceToQualityCheck') {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          advanceToQualityCheckStatusOptionId,
-        );
-        continue;
-      }
-      if (outcome === 'advanceToWorkspace') {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
-        continue;
-      }
-
-      const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
-      const lastTargetComments = comments.slice(
-        -params.thresholdForAutoReject * 2,
-      );
-      const rejectionCommentCount = lastTargetComments.filter((comment) =>
-        comment.content.startsWith('Auto Status Check: REJECTED'),
-      ).length;
-      const alreadyEscalated = lastTargetComments.some((comment) =>
-        comment.content
-          .toLowerCase()
-          .includes('failed to pass the check automatically'),
-      );
-
-      if (
-        failedPreparationStatusOption &&
-        rejectionCommentCount + 1 >= params.thresholdForAutoReject &&
-        !alreadyEscalated
-      ) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          failedPreparationStatusOption.id,
-        );
-        await this.createCommentWithDedup(
-          issue,
-          `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
-        );
-        continue;
-      }
-
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.issueCommentRepository.createComment(
-        issue,
-        rejectionStatusMessage,
-      );
     }
   };
 

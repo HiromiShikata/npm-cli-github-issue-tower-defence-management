@@ -17,6 +17,7 @@ import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComm
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { Project } from '../entities/Project';
 import {
   AWAITING_OWNER_STATUS_NAME,
@@ -172,11 +173,21 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         ) {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `RevertNotReadyReviewQueueIssueUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         await this.createCommentWithDedup(
           issue,
           `Auto Status Check: REJECTED\n- Has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
@@ -197,11 +208,21 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         ) {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `RevertNotReadyReviewQueueIssueUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         await this.createCommentWithDedup(
           issue,
           'Auto Status Check: REJECTED\n- Reactivation trigger not yet reached',
@@ -317,6 +338,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               awaitingWorkspaceStatusOption.id,
             );
           } catch (error) {
+            if (error instanceof StaleProjectItemError) {
+              console.warn(
+                `RevertNotReadyReviewQueueIssueUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+              );
+              continue;
+            }
             if (isArchivedProjectItemError(error)) {
               console.warn(
                 `RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. issueUrl: ${issue.url}`,
@@ -338,6 +365,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           params.changeTargetPathAliases,
         );
       } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `RevertNotReadyReviewQueueIssueUseCase: project item no longer exists in GitHub, skipping revert. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+          );
+          continue;
+        }
         if (isTimeoutError(error)) {
           console.warn(
             `RevertNotReadyReviewQueueIssueUseCase: request timed out, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`,
