@@ -1355,6 +1355,37 @@ body {
   color: #e6edf3;
 }
 
+.console-markdown-inline-code-host {
+  position: relative;
+  display: inline-block;
+}
+
+.console-inline-code-copy-trigger {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.console-inline-code-copy-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #161b22;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
 .console-markdown blockquote {
   border-left: 3px solid #30363d;
   padding: 0 1em;
