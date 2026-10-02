@@ -3,6 +3,7 @@ import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 describe('IssueNoStatusUpdateUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -165,6 +166,57 @@ describe('IssueNoStatusUpdateUseCase', () => {
       await expect(
         useCase.run({ project: basicProject, issues: [openNullStatusIssue] }),
       ).rejects.toThrow('GraphQL rate limit exceeded');
+    });
+
+    describe('when updateStatus rejects with StaleProjectItemError for one issue', () => {
+      const staleIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/stale-project-item',
+        itemId: 'stale-item-id',
+        isClosed: false,
+        status: null,
+      };
+      const remainingIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/remaining-after-stale',
+        itemId: 'remaining-item-id',
+        isClosed: false,
+        status: null,
+      };
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        mockIssueRepository.updateStatus.mockImplementation(
+          async (_project, issue) => {
+            if (issue.url === staleIssue.url) {
+              throw new StaleProjectItemError('item-id');
+            }
+          },
+        );
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+        mockIssueRepository.updateStatus.mockReset();
+      });
+
+      it('skips the stale issue with a warning naming its url and still updates the remaining issue without throwing', async () => {
+        await expect(
+          useCase.run({
+            project: basicProject,
+            issues: [staleIssue, remainingIssue],
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, staleIssue, 'status-awaiting'],
+          [basicProject, remainingIssue, 'status-awaiting'],
+        ]);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(staleIssue.url),
+        );
+      });
     });
 
     describe('when the Status changed after the item snapshot was taken', () => {

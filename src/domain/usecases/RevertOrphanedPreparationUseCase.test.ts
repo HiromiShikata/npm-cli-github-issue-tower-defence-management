@@ -5,6 +5,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -3989,5 +3990,181 @@ describe('RevertOrphanedPreparationUseCase', () => {
         expect(statusIdsWithCloseIssueAs).toEqual(statusIdsWithoutCloseIssueAs);
       },
     );
+  });
+
+  describe('StaleProjectItemError containment', () => {
+    const staleIssueUrl = 'https://github.com/user/repo/issues/10';
+    const remainingIssueUrl = 'https://github.com/user/repo/issues/11';
+    const closeIssueAsCompletedReportCreatedAt = new Date(
+      Date.UTC(2026, 0, 2, 5),
+    );
+
+    type IssueComments = Awaited<
+      ReturnType<IssueCommentRepository['getCommentsFromIssue']>
+    >;
+
+    const closeIssueAsCompletedReport: IssueComments[number] = {
+      author: 'bot',
+      content:
+        'From: :robot: chore (model)\n\nThe deliverable is finished and verified against every acceptance criterion.\n\n```json\n{"closeIssueAs": "completed"}\n```',
+      createdAt: closeIssueAsCompletedReportCreatedAt,
+      updatedAt: closeIssueAsCompletedReportCreatedAt,
+    };
+
+    const closedStaleIssue = createMockIssue({
+      url: staleIssueUrl,
+      number: 10,
+      itemId: 'stale-item',
+      status: 'Preparation',
+      author: 'bot',
+      isClosed: true,
+      state: 'CLOSED',
+    });
+    const openStaleIssue = createMockIssue({
+      url: staleIssueUrl,
+      number: 10,
+      itemId: 'stale-item',
+      status: 'Preparation',
+      author: 'bot',
+    });
+    const remainingIssue = createMockIssue({
+      url: remainingIssueUrl,
+      number: 11,
+      itemId: 'remaining-item',
+      status: 'Preparation',
+      author: 'bot',
+    });
+
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    const arrangeStaleAndRemainingOrphanedIssues = ({
+      staleIssue,
+      staleIssueComments,
+      updateStatusErrorForStaleIssue,
+    }: {
+      staleIssue: Issue;
+      staleIssueComments: IssueComments;
+      updateStatusErrorForStaleIssue: Error;
+    }): void => {
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [staleIssue, remainingIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        async (issue) =>
+          issue.url === staleIssue.url ? staleIssueComments : [],
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        async (_project, issue) => {
+          if (issue.url === staleIssue.url) {
+            throw updateStatusErrorForStaleIssue;
+          }
+        },
+      );
+    };
+
+    const runOrphanedPreparationRevert = (): Promise<void> =>
+      useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        allowedIssueAuthors: ['bot'],
+      });
+
+    it.each<{
+      branch: string;
+      staleIssue: Issue;
+      staleIssueComments: IssueComments;
+      expectedStaleIssueStatusId: string;
+      expectedCloseIssueByUrlCalls: [string, string][];
+    }>([
+      {
+        branch: 'the closed issue advance to quality check',
+        staleIssue: closedStaleIssue,
+        staleIssueComments: [],
+        expectedStaleIssueStatusId: '4',
+        expectedCloseIssueByUrlCalls: [],
+      },
+      {
+        branch: 'the closeIssueAs request applier setting Done',
+        staleIssue: openStaleIssue,
+        staleIssueComments: [closeIssueAsCompletedReport],
+        expectedStaleIssueStatusId: '3',
+        expectedCloseIssueByUrlCalls: [[staleIssueUrl, 'completed']],
+      },
+    ])(
+      'skips the issue with a warning naming its url when updateStatus rejects with StaleProjectItemError in $branch, and still reverts the remaining issue',
+      async ({
+        staleIssue,
+        staleIssueComments,
+        expectedStaleIssueStatusId,
+        expectedCloseIssueByUrlCalls,
+      }) => {
+        arrangeStaleAndRemainingOrphanedIssues({
+          staleIssue,
+          staleIssueComments,
+          updateStatusErrorForStaleIssue: new StaleProjectItemError(
+            'stale-item',
+          ),
+        });
+
+        await expect(runOrphanedPreparationRevert()).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [mockProject, staleIssue, expectedStaleIssueStatusId],
+          [mockProject, remainingIssue, '1'],
+        ]);
+        expect(mockIssueRepository.closeIssueByUrl.mock.calls).toEqual(
+          expectedCloseIssueByUrlCalls,
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(staleIssue, expect.anything());
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          remainingIssue,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(staleIssue.url),
+        );
+      },
+    );
+
+    it('propagates an unrelated updateStatus error unchanged in the closed issue advance to quality check without reverting the remaining issue', async () => {
+      const unrelatedError = new Error('GraphQL rate limit exceeded');
+      arrangeStaleAndRemainingOrphanedIssues({
+        staleIssue: closedStaleIssue,
+        staleIssueComments: [],
+        updateStatusErrorForStaleIssue: unrelatedError,
+      });
+
+      await expect(runOrphanedPreparationRevert()).rejects.toBe(unrelatedError);
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        closedStaleIssue,
+        '4',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        remainingIssue,
+        expect.anything(),
+      );
+    });
   });
 });

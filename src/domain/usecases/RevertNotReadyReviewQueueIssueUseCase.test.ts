@@ -2,6 +2,7 @@ import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQue
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -1555,6 +1556,240 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
     });
+  });
+
+  describe('StaleProjectItemError containment', () => {
+    type IssueCommentFixture = {
+      author: string;
+      content: string;
+      createdAt: Date;
+    };
+
+    type StaleProjectItemBranchCase = {
+      branch: string;
+      staleIssueOverrides: Partial<Issue>;
+      staleIssueComments: IssueCommentFixture[];
+      thresholdForAutoReject: number;
+      thresholdForDispatchLoop: number;
+      expectedStaleIssueStatusId: string;
+    };
+
+    const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+
+    const agentReportNamingNextStepAgent = (
+      nextStepAgent: string,
+    ): IssueCommentFixture => ({
+      author: 'owner',
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      createdAt: new Date(),
+    });
+
+    const silentRedispatchCommentForDeveloper = (
+      dispatchCount: number,
+      thresholdForAutoReject: number,
+    ): IssueCommentFixture => ({
+      author: 'owner',
+      content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${dispatchCount}/${thresholdForAutoReject}).`,
+      createdAt: new Date(),
+    });
+
+    const humanContinueComment: IssueCommentFixture = {
+      author: 'owner',
+      content: 'please continue',
+      createdAt: new Date(),
+    };
+
+    const staleProjectItemBranchCases: StaleProjectItemBranchCase[] = [
+      {
+        branch: 'the dependent issue revert',
+        staleIssueOverrides: {
+          dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+        },
+        staleIssueComments: [],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+      {
+        branch: 'the pending reactivation trigger revert',
+        staleIssueOverrides: {
+          nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+        },
+        staleIssueComments: [],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+      {
+        branch: 'the silent redispatch escalation',
+        staleIssueOverrides: {},
+        staleIssueComments: [
+          agentReportNamingNextStepAgent('developer'),
+          humanContinueComment,
+          silentRedispatchCommentForDeveloper(1, 3),
+          silentRedispatchCommentForDeveloper(2, 3),
+        ],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the reporting loop escalation',
+        staleIssueOverrides: {},
+        staleIssueComments: [
+          humanContinueComment,
+          silentRedispatchCommentForDeveloper(1, 2),
+          agentReportNamingNextStepAgent('developer'),
+        ],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the dispatch loop escalation',
+        staleIssueOverrides: {},
+        staleIssueComments: [
+          agentReportNamingNextStepAgent('chore'),
+          agentReportNamingNextStepAgent('chore'),
+          agentReportNamingNextStepAgent('chore'),
+        ],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+        expectedStaleIssueStatusId: 'failed-preparation-id',
+      },
+      {
+        branch: 'the default rejection revert',
+        staleIssueOverrides: {},
+        staleIssueComments: [],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+    ];
+
+    let warnSpy: jest.SpyInstance;
+
+    const arrangeStaleAndRemainingIssues = (
+      branchCase: StaleProjectItemBranchCase,
+      updateStatusErrorForStaleIssue: Error,
+    ): { staleIssue: Issue; remainingIssue: Issue } => {
+      const staleIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'stale-item',
+        status: 'Awaiting Owner',
+        ...branchCase.staleIssueOverrides,
+      });
+      const remainingIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'remaining-item',
+        status: 'Awaiting Owner',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [staleIssue, remainingIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        (issue: Issue) =>
+          Promise.resolve(
+            issue.url === staleIssue.url ? branchCase.staleIssueComments : [],
+          ),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === staleIssue.url
+            ? Promise.reject(updateStatusErrorForStaleIssue)
+            : Promise.resolve(undefined),
+      );
+      return { staleIssue, remainingIssue };
+    };
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it.each(staleProjectItemBranchCases)(
+      'skips the issue with a warning naming its url when updateStatus rejects with StaleProjectItemError in $branch, and still reverts the remaining issue',
+      async (branchCase) => {
+        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
+          branchCase,
+          new StaleProjectItemError('stale-item'),
+        );
+
+        await expect(
+          useCase.run({
+            manager: 'manager-user',
+            projectUrl: 'https://github.com/users/user/projects/1',
+            allowedIssueAuthors: ['owner'],
+            developerAgentNames: ['developer'],
+            evaluatedAt,
+            thresholdForAutoReject: branchCase.thresholdForAutoReject,
+            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          remainingIssue,
+          'awaiting-workspace-id',
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(staleIssue, expect.anything());
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          remainingIssue,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(staleIssue.url),
+        );
+      },
+    );
+
+    it.each(staleProjectItemBranchCases)(
+      'propagates an unrelated updateStatus error unchanged in $branch without reverting the remaining issue',
+      async (branchCase) => {
+        const unrelatedError = new Error('GraphQL rate limit exceeded');
+        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
+          branchCase,
+          unrelatedError,
+        );
+
+        await expect(
+          useCase.run({
+            manager: 'manager-user',
+            projectUrl: 'https://github.com/users/user/projects/1',
+            allowedIssueAuthors: ['owner'],
+            developerAgentNames: ['developer'],
+            evaluatedAt,
+            thresholdForAutoReject: branchCase.thresholdForAutoReject,
+            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
+          }),
+        ).rejects.toBe(unrelatedError);
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+          expect.anything(),
+          remainingIssue,
+          expect.anything(),
+        );
+      },
+    );
   });
 
   describe('ky TimeoutError containment', () => {
