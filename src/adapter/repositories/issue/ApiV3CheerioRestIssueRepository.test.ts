@@ -744,6 +744,56 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
     });
 
+    it('includes story-labeled issues whose story field is the explicit NO STORY marker in storyIssueUrlByOptionName when title matches a story option name during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      const projectWithFindMaJob: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'find-ma-job-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/31124',
+            'find ma job',
+          ),
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'regular / NO STORY' }],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'find ma job': 'https://github.com/o/r/issues/31124',
+        },
+      });
+    });
+
     it('excludes story-labeled issues with null story field and non-matching title from storyIssueUrlByOptionName during full fetch', async () => {
       const {
         repository,
@@ -1614,6 +1664,62 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ),
             labels: ['story'],
             story: null,
+          },
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'find ma job': 'https://github.com/o/r/issues/31124',
+        },
+      });
+    });
+
+    it('includes story-labeled issues whose story field is the explicit NO STORY marker in storyIssueUrlByOptionName when title matches a story option name during incremental fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      const projectWithFindMaJob: Project = {
+        ...buildTestProject('cached-project'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'find-ma-job-id',
+              name: 'find ma job',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: projectWithFindMaJob,
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/31124',
+              'find ma job',
+            ),
+            labels: ['story'],
+            story: 'regular / NO STORY',
+            storyOptionId: 'no-story-option-id',
           },
         ],
       });
