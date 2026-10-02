@@ -17,6 +17,13 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
+export class GitHubConfirmedNotFoundError extends Error {
+  constructor(public readonly url: string) {
+    super(`GitHub confirmed not found (404): ${url}`);
+    this.name = 'GitHubConfirmedNotFoundError';
+  }
+}
+
 export class ClearDependedIssueURLUseCase {
   constructor(
     readonly issueRepository: Pick<
@@ -144,11 +151,12 @@ export class ClearDependedIssueURLUseCase {
       ? this.findCircularDependedIssueUrls(issue, input.issues)
       : [];
     if (circularDependedIssueUrls.length > 0) {
-      await this.issueRepository.clearProjectField(
-        input.project,
-        dependedIssueUrlSeparatedByComma.fieldId,
+      await this.applyDependedIssueUrlFieldMutation({
+        operation: 'clear',
+        project: input.project,
+        fieldId: dependedIssueUrlSeparatedByComma.fieldId,
         issue,
-      );
+      });
       await this.createCommentWithDedup(
         issue,
         `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
@@ -235,18 +243,21 @@ export class ClearDependedIssueURLUseCase {
             !iceboxDependedIssueUrls.includes(dependedIssueUrl),
         );
     if (remainingDependedIssueUrls.length === 0) {
-      await this.issueRepository.clearProjectField(
-        input.project,
-        dependedIssueUrlSeparatedByComma.fieldId,
+      await this.applyDependedIssueUrlFieldMutation({
+        operation: 'clear',
+        project: input.project,
+        fieldId: dependedIssueUrlSeparatedByComma.fieldId,
         issue,
-      );
+      });
     } else {
-      await this.issueRepository.updateProjectTextField(
-        input.project,
-        dependedIssueUrlSeparatedByComma.fieldId,
+      await this.applyDependedIssueUrlFieldMutation({
+        operation: 'update',
+        project: input.project,
+        fieldId: dependedIssueUrlSeparatedByComma.fieldId,
         issue,
-        remainingDependedIssueUrls.join(','),
-      );
+        remainingDependedIssueUrlsCommaSeparated:
+          remainingDependedIssueUrls.join(','),
+      });
     }
     if (closedDependedIssueUrls.length > 0) {
       const allCleared =
@@ -274,6 +285,41 @@ export class ClearDependedIssueURLUseCase {
         `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
     }
+  };
+
+  private applyDependedIssueUrlFieldMutation = async (
+    input:
+      | {
+          operation: 'clear';
+          project: Project;
+          fieldId: string;
+          issue: Issue;
+        }
+      | {
+          operation: 'update';
+          project: Project;
+          fieldId: string;
+          issue: Issue;
+          remainingDependedIssueUrlsCommaSeparated: string;
+        },
+  ): Promise<void> => {
+    console.log(
+      `Depended issue URL field mutation: operation=${input.operation} issueUrl=${input.issue.url}`,
+    );
+    if (input.operation === 'clear') {
+      await this.issueRepository.clearProjectField(
+        input.project,
+        input.fieldId,
+        input.issue,
+      );
+      return;
+    }
+    await this.issueRepository.updateProjectTextField(
+      input.project,
+      input.fieldId,
+      input.issue,
+      input.remainingDependedIssueUrlsCommaSeparated,
+    );
   };
 
   private isSameRepoDependedIssueUrl = (
@@ -304,10 +350,13 @@ export class ClearDependedIssueURLUseCase {
             );
           return liveState.state.toLowerCase() === 'open';
         } catch (error) {
+          if (error instanceof GitHubConfirmedNotFoundError) {
+            return false;
+          }
           console.warn(
-            `Failed to live-check depended issue state for ${dependedIssueUrl}, treating as not live-confirmed-open: ${error instanceof Error ? error.message : String(error)}`,
+            `Failed to live-check depended issue state for ${dependedIssueUrl}, preserving as live-confirmed-open because the live check failed with a non-404 error: ${error instanceof Error ? error.message : String(error)}`,
           );
-          return false;
+          return true;
         }
       }),
     );

@@ -1,6 +1,9 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
+import {
+  ClearDependedIssueURLUseCase,
+  GitHubConfirmedNotFoundError,
+} from './ClearDependedIssueURLUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
@@ -902,7 +905,7 @@ describe('ClearDependedIssueURLUseCase', () => {
           iterationsExhaustedAgentReportComment,
         ]);
         mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
-          new Error('HTTP 404 Not Found'),
+          new GitHubConfirmedNotFoundError(sameRepoDependedIssueUrl),
         );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -1207,7 +1210,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
         mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
-          new Error('HTTP 404 Not Found'),
+          new GitHubConfirmedNotFoundError(sameRepoDependedIssueUrl),
         );
         const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
         await useCase.run({
@@ -1263,7 +1266,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         ]);
       });
 
-      it('should still remove a same-repo depended issue URL absent from project issues and not crash when a live GitHub check fails with a transient error unrelated to 404', async () => {
+      it('should preserve a same-repo depended issue URL absent from project issues and post no comment when a live GitHub check fails with a transient error unrelated to 404', async () => {
         jest.clearAllMocks();
         mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
         mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
@@ -1275,15 +1278,13 @@ describe('ClearDependedIssueURLUseCase', () => {
           issues: [sameRepoDependingIssue],
           cacheUsed: false,
         });
-        expect(mockIssueRepository.clearProjectField.mock.calls).toEqual([
-          [basicProject, 'fieldId', sameRepoDependingIssue],
-        ]);
-        expect(mockIssueRepository.createComment.mock.calls).toEqual([
-          [
-            sameRepoDependingIssue,
-            `Dependency removed:\n- ${sameRepoDependedIssueUrl}`,
-          ],
-        ]);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
       });
 
       const mixedOutcomeOrderingCases: {
@@ -1339,7 +1340,11 @@ describe('ClearDependedIssueURLUseCase', () => {
                     isPullRequest: false,
                     title: 'x',
                   }
-                : Promise.reject(new Error('HTTP 404 Not Found')),
+                : Promise.reject(
+                    new GitHubConfirmedNotFoundError(
+                      liveNotFoundDependedIssueUrl,
+                    ),
+                  ),
           );
           const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
           await useCase.run({
@@ -1368,6 +1373,184 @@ describe('ClearDependedIssueURLUseCase', () => {
           ]);
         },
       );
+
+      const nonConfirmedNotFoundLiveCheckErrorCases: {
+        name: string;
+        dependedIssueUrl: string;
+        rejection: Error;
+      }[] = [
+        {
+          name: 'a transient server error (HTTP 500)',
+          dependedIssueUrl: sameRepoDependedIssueUrl,
+          rejection: new Error('HTTP 500 Internal Server Error'),
+        },
+        {
+          name: 'a rate-limit error (HTTP 429)',
+          dependedIssueUrl: sameRepoDependedIssueUrl,
+          rejection: new Error('HTTP 429 Too Many Requests'),
+        },
+        {
+          name: 'a network error with no status code',
+          dependedIssueUrl: sameRepoDependedIssueUrl,
+          rejection: new Error('fetch failed'),
+        },
+        {
+          name: 'a same-repo depended-issue URL whose issue number contains the substring "404"',
+          dependedIssueUrl: 'https://github.com/testowner/testrepo/issues/4046',
+          rejection: new Error('HTTP 500 Internal Server Error'),
+        },
+      ];
+      it.each(nonConfirmedNotFoundLiveCheckErrorCases)(
+        'should preserve a same-repo depended issue URL and post no comment when the live GitHub check fails with $name',
+        async ({ dependedIssueUrl, rejection }) => {
+          jest.clearAllMocks();
+          const issueWithNonConfirmedNotFoundDependency = {
+            ...sameRepoDependingIssue,
+            dependedIssueUrls: [dependedIssueUrl],
+          };
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          mockIssueRepository.getIssueOrPullRequestState.mockRejectedValue(
+            rejection,
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run({
+            project: basicProject,
+            issues: [issueWithNonConfirmedNotFoundDependency],
+            cacheUsed: false,
+          });
+          expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+            0,
+          );
+          expect(
+            mockIssueRepository.updateProjectTextField.mock.calls,
+          ).toHaveLength(0);
+          expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+        },
+      );
+
+      describe('depended issue URL field mutation diagnostic logging', () => {
+        afterEach(() => {
+          jest.restoreAllMocks();
+        });
+
+        it('should log operation=clear with the issue URL for the circular-dependency clear mutation', async () => {
+          jest.clearAllMocks();
+          const consoleLogSpy = jest
+            .spyOn(console, 'log')
+            .mockImplementation(() => undefined);
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run({
+            project: basicProject,
+            issues: [
+              {
+                ...basicIssueOne,
+                dependedIssueUrls: ['url3'],
+                isClosed: false,
+              },
+              basicIssueTwo,
+              basicIssueThree,
+            ],
+            cacheUsed: false,
+          });
+          expect(
+            consoleLogSpy.mock.calls.some(
+              (call) =>
+                typeof call[0] === 'string' &&
+                call[0].includes('operation=clear') &&
+                call[0].includes(`issueUrl=${basicIssueTwo.url}`),
+            ),
+          ).toBe(true);
+        });
+
+        it('should log operation=clear with the issue URL for the main clear mutation when nothing remains', async () => {
+          jest.clearAllMocks();
+          const consoleLogSpy = jest
+            .spyOn(console, 'log')
+            .mockImplementation(() => undefined);
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run({
+            project: basicProject,
+            issues: [
+              basicIssueOne,
+              {
+                ...basicIssueTwo,
+                dependedIssueUrls: ['url4'],
+              },
+              {
+                ...basicIssueThree,
+                dependedIssueUrls: ['url5', 'url6'],
+              },
+            ],
+            cacheUsed: false,
+          });
+          expect(
+            consoleLogSpy.mock.calls.some(
+              (call) =>
+                typeof call[0] === 'string' &&
+                call[0].includes('operation=clear') &&
+                call[0].includes(`issueUrl=${basicIssueTwo.url}`),
+            ),
+          ).toBe(true);
+        });
+
+        it('should log operation=update with the issue URL for the main update mutation when something remains', async () => {
+          jest.clearAllMocks();
+          const consoleLogSpy = jest
+            .spyOn(console, 'log')
+            .mockImplementation(() => undefined);
+          const liveOpenDependedIssueUrl =
+            'https://github.com/testowner/testrepo/issues/970';
+          const liveNotFoundDependedIssueUrl =
+            'https://github.com/testowner/testrepo/issues/971';
+          const issueWithMixedOutcomeDependencies = {
+            ...sameRepoDependingIssue,
+            dependedIssueUrls: [
+              liveOpenDependedIssueUrl,
+              liveNotFoundDependedIssueUrl,
+            ],
+          };
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          mockIssueRepository.getIssueOrPullRequestState.mockImplementation(
+            async (url) =>
+              url === liveOpenDependedIssueUrl
+                ? {
+                    state: 'open',
+                    merged: false,
+                    isPullRequest: false,
+                    title: 'x',
+                  }
+                : Promise.reject(
+                    new GitHubConfirmedNotFoundError(
+                      liveNotFoundDependedIssueUrl,
+                    ),
+                  ),
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run({
+            project: basicProject,
+            issues: [issueWithMixedOutcomeDependencies],
+            cacheUsed: false,
+          });
+          expect(
+            consoleLogSpy.mock.calls.some(
+              (call) =>
+                typeof call[0] === 'string' &&
+                call[0].includes('operation=update') &&
+                call[0].includes(`issueUrl=${sameRepoDependingIssue.url}`),
+            ),
+          ).toBe(true);
+        });
+      });
     });
 
     describe('stale project item isolation and failure aggregation (issue #2789)', () => {

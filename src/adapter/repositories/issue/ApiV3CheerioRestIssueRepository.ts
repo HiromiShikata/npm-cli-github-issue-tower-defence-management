@@ -10,6 +10,7 @@ import {
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { GitHubConfirmedNotFoundError } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { isStoryUnset } from '../../../domain/usecases/storyGate/storyValueClassify';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -4700,6 +4701,9 @@ export class ApiV3CheerioRestIssueRepository
         { method: 'GET', path: sanitizeRestPath(prStateUrl) },
       );
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new GitHubConfirmedNotFoundError(url);
+        }
         await this.throwGitHubError(
           `Failed to fetch state for ${url}`,
           response,
@@ -4731,6 +4735,9 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'GET', path: sanitizeRestPath(issueStateUrl) },
     );
     if (!response.ok) {
+      if (response.status === 404) {
+        throw new GitHubConfirmedNotFoundError(url);
+      }
       await this.throwGitHubError(`Failed to fetch state for ${url}`, response);
     }
     const body: unknown = await response.json();
