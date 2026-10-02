@@ -32,6 +32,10 @@ export const WithCodeFence: Story = {
   args: { body: consoleCodeFenceBodyFixture },
 };
 
+export const WithInlineCodeCopy: Story = {
+  args: { body: consoleMarkdownBodyFixture },
+};
+
 export const WithProxiedGitHubImages: Story = {
   args: {
     body: consoleMarkdownImageBodyFixture,

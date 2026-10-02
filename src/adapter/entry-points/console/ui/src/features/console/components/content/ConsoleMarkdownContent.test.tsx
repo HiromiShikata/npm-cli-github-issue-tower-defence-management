@@ -182,6 +182,109 @@ describe('ConsoleMarkdownContent', () => {
     });
   });
 
+  describe('inline code copy control', () => {
+    const writeText = jest.fn(async () => {});
+
+    beforeEach(() => {
+      writeText.mockClear();
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      });
+    });
+
+    it('copies the exact displayed text of a rendered inline code element', async () => {
+      const { container, findAllByRole } = render(
+        <ConsoleMarkdownContent body="See `foo` for details." />,
+      );
+      const buttons = await findAllByRole('button');
+      expect(buttons).toHaveLength(1);
+      expect(container.querySelector('code')?.textContent).toBe('foo');
+      await act(async () => {
+        fireEvent.click(buttons[0]);
+      });
+      expect(writeText).toHaveBeenCalledWith('foo');
+    });
+
+    it('leaves every other inline code element unchanged when one of several is clicked', async () => {
+      const { container, findAllByRole } = render(
+        <ConsoleMarkdownContent body="Compare `foo` and `bar`." />,
+      );
+      const buttons = await findAllByRole('button');
+      expect(buttons).toHaveLength(2);
+      const codeTextsBefore = Array.from(
+        container.querySelectorAll('code'),
+      ).map((element) => element.textContent);
+      expect(codeTextsBefore).toEqual(['foo', 'bar']);
+
+      await act(async () => {
+        fireEvent.click(buttons[0]);
+      });
+
+      const codeTextsAfter = Array.from(container.querySelectorAll('code')).map(
+        (element) => element.textContent,
+      );
+      expect(codeTextsAfter).toEqual(['foo', 'bar']);
+      expect(writeText).toHaveBeenCalledWith('foo');
+      expect(writeText).not.toHaveBeenCalledWith('bar');
+    });
+
+    it('renders only the fenced block copy control for a body with one fenced block and zero inline backtick spans', async () => {
+      const { findAllByRole } = render(
+        <ConsoleMarkdownContent body={multiLineCodeBody} />,
+      );
+      const buttons = await findAllByRole('button');
+      expect(buttons).toHaveLength(1);
+      const fencedBlockButtons = await findAllByRole('button', {
+        name: 'Copy code',
+      });
+      expect(fencedBlockButtons).toHaveLength(1);
+    });
+
+    it('adds exactly one inline copy target alongside an unrelated fenced code block', async () => {
+      const bodyWithFencedBlockAndInlineCode = [
+        multiLineCodeBody,
+        '',
+        'See `foo` for details.',
+      ].join('\n');
+      const { findAllByRole } = render(
+        <ConsoleMarkdownContent body={bodyWithFencedBlockAndInlineCode} />,
+      );
+      const allButtons = await findAllByRole('button');
+      expect(allButtons).toHaveLength(2);
+      const fencedBlockButtons = await findAllByRole('button', {
+        name: 'Copy code',
+      });
+      expect(fencedBlockButtons).toHaveLength(1);
+      const inlineCopyButtons = await findAllByRole('button', {
+        name: 'foo',
+      });
+      expect(inlineCopyButtons).toHaveLength(1);
+    });
+
+    it('leaves the fenced code block copy control unchanged when an inline code span is also present', async () => {
+      const bodyWithFencedBlockAndInlineCode = [
+        multiLineCodeBody,
+        '',
+        'See `foo` for details.',
+      ].join('\n');
+      const { findByRole } = render(
+        <ConsoleMarkdownContent body={bodyWithFencedBlockAndInlineCode} />,
+      );
+      const fencedButton = await findByRole('button', { name: 'Copy code' });
+      expect(fencedButton).toHaveTextContent('Copy code');
+
+      await act(async () => {
+        fireEvent.click(fencedButton);
+      });
+
+      expect(writeText).toHaveBeenCalledWith(multiLineCodeText);
+      expect(
+        await findByRole('button', { name: 'Code copied to clipboard' }),
+      ).toHaveTextContent('Copied');
+    });
+  });
+
   it('keeps reference links as plain anchors when no renderer is provided', () => {
     const { container } = render(
       <ConsoleMarkdownContent

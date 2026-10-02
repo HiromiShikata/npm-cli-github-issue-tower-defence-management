@@ -10,6 +10,7 @@ import {
   splitMarkdownSegments,
 } from '../../lib/markdown';
 import { parseGitHubReferenceUrl } from '../../logic/references';
+import { ConsoleInlineCodeCopy } from '../shared/ConsoleInlineCodeCopy';
 import { ConsoleCopyCodeButton } from './ConsoleCopyCodeButton';
 import { ConsoleMermaidDiagram } from './ConsoleMermaidDiagram';
 
@@ -82,6 +83,28 @@ const collectCodeBlockMounts = (container: HTMLElement): CodeBlockMount[] => {
   return mounts;
 };
 
+type InlineCodeMount = {
+  key: string;
+  host: HTMLElement;
+  code: string;
+};
+
+const collectInlineCodeMounts = (container: HTMLElement): InlineCodeMount[] => {
+  const codeElements = container.querySelectorAll<HTMLElement>('code');
+  const mounts: InlineCodeMount[] = [];
+  codeElements.forEach((codeElement, index) => {
+    if (codeElement.closest('pre') !== null) {
+      return;
+    }
+    const code = codeElement.textContent ?? '';
+    const host = document.createElement('span');
+    host.className = 'console-markdown-inline-code-host';
+    codeElement.replaceWith(host);
+    mounts.push({ key: `inline-code:${index}`, host, code });
+  });
+  return mounts;
+};
+
 const ConsoleMarkdownHtmlBlock = ({
   source,
   buildImageProxyUrl,
@@ -98,6 +121,9 @@ const ConsoleMarkdownHtmlBlock = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [referenceMounts, setReferenceMounts] = useState<ReferenceMount[]>([]);
   const [codeBlockMounts, setCodeBlockMounts] = useState<CodeBlockMount[]>([]);
+  const [inlineCodeMounts, setInlineCodeMounts] = useState<InlineCodeMount[]>(
+    [],
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -106,6 +132,7 @@ const ConsoleMarkdownHtmlBlock = ({
     }
     container.innerHTML = html;
     setCodeBlockMounts(collectCodeBlockMounts(container));
+    setInlineCodeMounts(collectInlineCodeMounts(container));
     setReferenceMounts(
       renderReferenceLink === undefined
         ? []
@@ -118,6 +145,13 @@ const ConsoleMarkdownHtmlBlock = ({
       {codeBlockMounts.map((mount) =>
         createPortal(
           <ConsoleCopyCodeButton code={mount.code} />,
+          mount.host,
+          mount.key,
+        ),
+      )}
+      {inlineCodeMounts.map((mount) =>
+        createPortal(
+          <ConsoleInlineCodeCopy code={mount.code} />,
           mount.host,
           mount.key,
         ),
