@@ -1,6 +1,10 @@
 import type { Issue } from '../entities/Issue';
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 
 export const DEFAULT_MINIMUM_PULL_REQUEST_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -14,6 +18,7 @@ export class StaleTaskPullRequestCloseUseCase {
       | 'findRelatedOpenPrUrls'
       | 'getIssueByUrl'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -93,17 +98,21 @@ export class StaleTaskPullRequestCloseUseCase {
     url: string,
     commentBody: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueRepository.getIssueOrPullRequestComments(url);
-    if (
-      isDuplicateWithinWindow(
-        commentBody,
-        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueRepository.createCommentByUrl(url, commentBody);
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createCommentByUrl(url, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 }

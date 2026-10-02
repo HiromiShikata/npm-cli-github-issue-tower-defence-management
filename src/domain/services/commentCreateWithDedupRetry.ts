@@ -28,10 +28,11 @@ export async function commentCreateWithDedupRetry(
   postComment: () => Promise<void>,
   clock: () => Date,
   sleep: Sleep,
+  windowMs?: number | null,
 ): Promise<void> {
   const isDuplicateNow = async (): Promise<boolean> => {
     const existing = await fetchExisting();
-    return isDuplicateWithinWindow(commentBody, existing, clock());
+    return isDuplicateWithinWindow(commentBody, existing, clock(), windowMs);
   };
 
   if (await isDuplicateNow()) {

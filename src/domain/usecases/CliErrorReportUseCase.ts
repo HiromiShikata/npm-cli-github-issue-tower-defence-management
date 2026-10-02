@@ -1,5 +1,9 @@
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { isTransientApiError } from './isTransientApiError';
 
 type CliErrorReportRepository = Pick<
@@ -24,7 +28,10 @@ const isGitHubRateLimitError = (error: unknown): boolean => {
 };
 
 export class CliErrorReportUseCase {
-  constructor(private readonly issueRepository: CliErrorReportRepository) {}
+  constructor(
+    private readonly issueRepository: CliErrorReportRepository,
+    private readonly sleep: Sleep = realSleep,
+  ) {}
 
   run = async (params: {
     error: unknown;
@@ -109,17 +116,21 @@ export class CliErrorReportUseCase {
     url: string,
     commentBody: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueRepository.getIssueOrPullRequestComments(url);
-    if (
-      isDuplicateWithinWindow(
-        commentBody,
-        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueRepository.createCommentByUrl(url, commentBody);
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createCommentByUrl(url, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 }

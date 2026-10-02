@@ -21,6 +21,7 @@ import {
   writeSecondaryRateLimitState,
 } from './githubSecondaryRateLimitBreaker';
 import { RepositoryArchivedError } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { GitHubCommentCreateHttpError } from '../GitHubIssueCommentRepository';
 
 type SearchIssuesResponseItem = {
   html_url: string;
@@ -143,6 +144,10 @@ export class RestIssueRepository
             computeRateLimitResetIso(e.response.headers),
           );
         }
+        throw new GitHubCommentCreateHttpError(
+          e.response.status,
+          `Failed to create comment via GitHub REST API: ${e.response.status} ${e.response.statusText}`,
+        );
       }
       throw e;
     }

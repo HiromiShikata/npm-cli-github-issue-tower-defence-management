@@ -12,9 +12,12 @@ import {
   writeSecondaryRateLimitState,
 } from './issue/githubSecondaryRateLimitBreaker';
 import {
+  computeBoundedBackoffMs,
   computeSecondaryRateLimitBackoffMs,
   GitHubRateLimitError,
   isSecondaryRateLimit,
+  isTransientServerErrorStatus,
+  RATE_LIMIT_MAX_RETRIES,
   realSleep,
   Sleep,
 } from './issue/githubRateLimitRetry';
@@ -377,17 +380,29 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     }
 
     const commentUrl = `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}`;
-    const response = await fetch(commentUrl, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ body: commentContent }),
-    });
+    const startMs = Date.now();
+    let attempt = 0;
+    for (;;) {
+      const response = await fetch(commentUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ body: commentContent }),
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        logGithubRestRateLimit({
+          headers: response.headers,
+          method: 'PATCH',
+          path: sanitizeRestPath(commentUrl),
+          caller,
+        });
+        return;
+      }
+
       const bodyText = await response.text().catch(() => '');
       const nowMs = Date.now();
       if (isSecondaryRateLimit(response.headers, bodyText)) {
@@ -401,15 +416,27 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
           new Date(nowMs + backoffMs).toISOString(),
         );
       }
+
+      if (
+        isTransientServerErrorStatus(response.status) &&
+        attempt < RATE_LIMIT_MAX_RETRIES
+      ) {
+        const elapsedMs = nowMs - startMs;
+        const backoffMs = computeBoundedBackoffMs(
+          response.headers,
+          attempt,
+          elapsedMs,
+        );
+        if (backoffMs > 0) {
+          await this.sleep(backoffMs);
+        }
+        attempt++;
+        continue;
+      }
+
       throw new Error(
         `Failed to update comment via GitHub REST API: ${response.status} ${response.statusText}`,
       );
     }
-    logGithubRestRateLimit({
-      headers: response.headers,
-      method: 'PATCH',
-      path: sanitizeRestPath(commentUrl),
-      caller,
-    });
   }
 }

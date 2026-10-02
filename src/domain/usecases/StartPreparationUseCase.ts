@@ -6,7 +6,11 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
@@ -134,7 +138,33 @@ export class StartPreparationUseCase {
     private readonly issueLatestSessionBranchRepository: IssueLatestSessionBranchRepository,
     private readonly urgentStoryLaunchHoldRepository: UrgentStoryLaunchHoldRepository | null = null,
     private readonly sleeper: Sleeper | null = null,
+    private readonly sleep: Sleep = realSleep,
   ) {}
+
+  private createCommentByUrlWithDedup = async (
+    url: string,
+    commentBody: string,
+    clock: () => Date,
+    windowMs?: number | null,
+  ): Promise<void> => {
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createCommentByUrl(url, commentBody);
+      },
+      clock,
+      this.sleep,
+      windowMs,
+    );
+  };
 
   private isWithinCooldown = (
     usage: ClaudeTokenUsage,
@@ -914,21 +944,12 @@ export class StartPreparationUseCase {
         );
         if (exclusionReason !== 'authorNotAllowed') continue;
         const commentBody = `This issue's author (${issue.author}) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.`;
-        const existingComments =
-          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
-        if (
-          !isDuplicateWithinWindow(
-            commentBody,
-            existingComments.map((c) => ({
-              text: c.body,
-              createdAt: c.createdAt,
-            })),
-            now,
-            null,
-          )
-        ) {
-          await this.issueRepository.createCommentByUrl(issue.url, commentBody);
-        }
+        await this.createCommentByUrlWithDedup(
+          issue.url,
+          commentBody,
+          () => now,
+          null,
+        );
       }
     }
 
@@ -1085,48 +1106,22 @@ export class StartPreparationUseCase {
               ? []
               : [adoptionReasonSentence]),
           ].join(' ');
-          const duplicatePrExistingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(
-              duplicatePR.url,
-            );
-          if (
-            !isDuplicateWithinWindow(
-              duplicatePrCommentBody,
-              duplicatePrExistingComments.map((c) => ({
-                text: c.body,
-                createdAt: c.createdAt,
-              })),
-              new Date(),
-            )
-          ) {
-            await this.issueRepository.createCommentByUrl(
-              duplicatePR.url,
-              duplicatePrCommentBody,
-            );
-          }
+          await this.createCommentByUrlWithDedup(
+            duplicatePR.url,
+            duplicatePrCommentBody,
+            () => new Date(),
+          );
         }
         const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
         const issueCommentBody = [
           `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
           ...(adoptionReasonSentence === null ? [] : [adoptionReasonSentence]),
         ].join('\n');
-        const issueExistingComments =
-          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
-        if (
-          !isDuplicateWithinWindow(
-            issueCommentBody,
-            issueExistingComments.map((c) => ({
-              text: c.body,
-              createdAt: c.createdAt,
-            })),
-            new Date(),
-          )
-        ) {
-          await this.issueRepository.createCommentByUrl(
-            issue.url,
-            issueCommentBody,
-          );
-        }
+        await this.createCommentByUrlWithDedup(
+          issue.url,
+          issueCommentBody,
+          () => new Date(),
+        );
         if (canonicalPR.branchName === null) {
           console.warn(
             `Skipping issue ${issue.url}: adopted canonical PR has unavailable head branch.`,

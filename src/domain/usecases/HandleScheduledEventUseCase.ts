@@ -45,7 +45,11 @@ import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 import { isTransientApiError } from './isTransientApiError';
 
@@ -143,6 +147,7 @@ export class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
     readonly issueRepository: IssueRepository,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -458,25 +463,10 @@ ${JSON.stringify(e)}
           title: WORKFLOW_INCIDENT_ISSUE_TITLE,
         });
         if (existingIncidentIssues.length > 0) {
-          const existingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(
-              existingIncidentIssues[0].url,
-            );
-          if (
-            !isDuplicateWithinWindow(
-              errorBody,
-              existingComments.map((c) => ({
-                text: c.body,
-                createdAt: c.createdAt,
-              })),
-              new Date(),
-            )
-          ) {
-            await this.issueRepository.createCommentByUrl(
-              existingIncidentIssues[0].url,
-              errorBody,
-            );
-          }
+          await this.createCommentByUrlWithDedup(
+            existingIncidentIssues[0].url,
+            errorBody,
+          );
         } else {
           await this.issueRepository.createNewIssue(
             input.org,
@@ -501,6 +491,29 @@ ${JSON.stringify(e)}
       storyOptionWriteFailures,
     };
   };
+
+  private createCommentByUrlWithDedup = async (
+    url: string,
+    commentBody: string,
+  ): Promise<void> => {
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createCommentByUrl(url, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
+  };
+
   private refetchAndWriteStoryOption = async (input: {
     projectId: Project['id'];
     storyName: string;
