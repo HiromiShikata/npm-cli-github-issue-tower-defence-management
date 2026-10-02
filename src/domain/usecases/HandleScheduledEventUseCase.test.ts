@@ -3582,6 +3582,50 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('revertOrphanedPreparationUseCase call-site isolation (criterion 5)', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          preparationProcessCheckCommand: 'pgrep -f "{URL}"',
+        },
+      };
+
+      it('logs the error and continues to startPreparationUseCase, without the cycle rejecting, when revertOrphanedPreparationUseCase.run rejects with an AggregateError', async () => {
+        mockRevertOrphanedPreparationUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GraphQL rate limit exceeded')],
+            'RevertOrphanedPreparationUseCase: failed to revert 1 issue(s): https://github.com/user/repo/issues/1 (GraphQL rate limit exceeded)',
+          ),
+        );
+
+        await useCase.run(baseInput);
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+
+      it('continues to startPreparationUseCase after revertOrphanedPreparationUseCase.run resolves normally (unchanged)', async () => {
+        mockRevertOrphanedPreparationUseCase.run.mockResolvedValue(undefined);
+
+        await useCase.run(baseInput);
+
+        expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalled();
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+    });
+
     describe('closedStoryIssueReopenUseCase', () => {
       const baseInput = {
         projectName: 'test-project',

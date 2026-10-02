@@ -590,16 +590,20 @@ describe('githubGraphqlClient', () => {
       expect(statusCodes).toContain(GRAPHQL_RETRY_STATUS_CODES[0]);
     });
 
-    it('throws an Error with diagnostic context when the API returns a non-JSON body', async () => {
+    it('retries a clear-field mutation that keeps failing to parse as JSON, and throws the diagnostic Error once the retry budget is exhausted', async () => {
       const syntaxError = new SyntaxError('Unexpected end of JSON input');
       mockPost.mockReturnValue({
         json: jest.fn().mockRejectedValue(syntaxError),
       });
-      const thrown = await postGithubGraphqlJson({
-        ghToken: 'token-a',
-        query:
-          'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
-      }).catch((e: unknown) => e);
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const thrown = await postGithubGraphqlJson(
+        {
+          ghToken: 'token-a',
+          query:
+            'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
+        },
+        sleepMock,
+      ).catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(Error);
       if (!(thrown instanceof Error))
         throw new Error('Expected Error instance');
@@ -607,6 +611,8 @@ describe('githubGraphqlClient', () => {
         'GitHub GraphQL API returned a non-JSON response: Unexpected end of JSON input',
       );
       expect(thrown.cause).toBe(syntaxError);
+      expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
+      expect(sleepMock).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT);
     });
 
     it('rethrows non-SyntaxError rejections from ky without wrapping', async () => {
@@ -621,6 +627,305 @@ describe('githubGraphqlClient', () => {
             'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
         }),
       ).rejects.toBe(networkError);
+    });
+
+    describe('retrying a response that fails to parse as JSON, based on whether the operation is safe to repeat', () => {
+      const PARSE_FAILURE_MESSAGE = 'Unexpected end of JSON input';
+      const EXPECTED_PARSE_FAILURE_ERROR_MESSAGE = `GitHub GraphQL API returned a non-JSON response: ${PARSE_FAILURE_MESSAGE}`;
+      const NETWORK_ERROR = new TypeError('socket hang up');
+
+      const READ_ONLY_QUERY = 'query GetProject { node(id: "x") { id } }';
+      const SET_FIELD_MUTATION =
+        'mutation UpdateProjectV2ItemFieldValue { updateProjectV2ItemFieldValue(input: {}) { clientMutationId } }';
+      const CLEAR_FIELD_MUTATION =
+        'mutation ClearProjectV2ItemFieldValue { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }';
+      const REPLACE_OPTIONS_MUTATION =
+        'mutation UpdateProjectV2Field { updateProjectV2Field(input: {}) { clientMutationId } }';
+      const ADD_ITEM_MUTATION =
+        'mutation AddIssueToProject { addProjectV2ItemById(input: {}) { item { id } } }';
+      const CREATE_FIELD_MUTATION =
+        'mutation CreateProjectV2Field { createProjectV2Field(input: {}) { projectV2Field { id } } }';
+      const DELETE_ITEM_MUTATION =
+        'mutation RemoveProjectV2Item { deleteProjectV2Item(input: {}) { deletedItemId } }';
+
+      const OPTIONS_ALL_WITH_ID = [
+        { id: 'OPT_A', name: 'a', color: 'RED', description: '' },
+        { id: 'OPT_B', name: 'b', color: 'BLUE', description: '' },
+      ];
+      const OPTIONS_ONE_MISSING_ID = [
+        { id: 'OPT_A', name: 'a', color: 'RED', description: '' },
+        { name: 'new', color: 'GREEN', description: '' },
+      ];
+
+      const TRANSIENT_ERROR_BODY = {
+        errors: [
+          { message: 'Something went wrong while executing your query.' },
+        ],
+      };
+
+      type ResponseSpec =
+        | { kind: 'parseFailure' }
+        | { kind: 'networkError' }
+        | { kind: 'json'; body: unknown };
+
+      const buildKyPostReturn = (spec: ResponseSpec): { json: jest.Mock } => {
+        if (spec.kind === 'parseFailure') {
+          return {
+            json: jest
+              .fn()
+              .mockRejectedValue(new SyntaxError(PARSE_FAILURE_MESSAGE)),
+          };
+        }
+        if (spec.kind === 'networkError') {
+          return { json: jest.fn().mockRejectedValue(NETWORK_ERROR) };
+        }
+        return { json: jest.fn().mockResolvedValue(spec.body) };
+      };
+
+      type RetryCase = {
+        name: string;
+        query: string;
+        variables?: Record<string, unknown>;
+        responses: ResponseSpec[];
+        expectedCallCount: number;
+        expectedSleepCount: number;
+        outcome:
+          | { type: 'returns'; expectedResult: unknown }
+          | { type: 'throwsParseFailure' }
+          | { type: 'throwsSameError' };
+      };
+
+      const cases: RetryCase[] = [
+        {
+          name: 'case 1: a read-only query retries once and returns the 2nd attempt result',
+          query: READ_ONLY_QUERY,
+          responses: [
+            { kind: 'parseFailure' },
+            { kind: 'json', body: { data: { node: { id: 'retried' } } } },
+          ],
+          expectedCallCount: 2,
+          expectedSleepCount: 1,
+          outcome: {
+            type: 'returns',
+            expectedResult: { data: { node: { id: 'retried' } } },
+          },
+        },
+        {
+          name: 'case 2: a set-field-value mutation retries once and returns the 2nd attempt result',
+          query: SET_FIELD_MUTATION,
+          responses: [
+            { kind: 'parseFailure' },
+            {
+              kind: 'json',
+              body: {
+                data: {
+                  updateProjectV2ItemFieldValue: { clientMutationId: null },
+                },
+              },
+            },
+          ],
+          expectedCallCount: 2,
+          expectedSleepCount: 1,
+          outcome: {
+            type: 'returns',
+            expectedResult: {
+              data: {
+                updateProjectV2ItemFieldValue: { clientMutationId: null },
+              },
+            },
+          },
+        },
+        {
+          name: 'case 3: a clear-field mutation retries once and returns the 2nd attempt result',
+          query: CLEAR_FIELD_MUTATION,
+          responses: [
+            { kind: 'parseFailure' },
+            {
+              kind: 'json',
+              body: {
+                data: {
+                  clearProjectV2ItemFieldValue: { clientMutationId: null },
+                },
+              },
+            },
+          ],
+          expectedCallCount: 2,
+          expectedSleepCount: 1,
+          outcome: {
+            type: 'returns',
+            expectedResult: {
+              data: {
+                clearProjectV2ItemFieldValue: { clientMutationId: null },
+              },
+            },
+          },
+        },
+        {
+          name: 'case 4: a replace-full-option-set mutation retries when every option already has an id',
+          query: REPLACE_OPTIONS_MUTATION,
+          variables: { options: OPTIONS_ALL_WITH_ID },
+          responses: [
+            { kind: 'parseFailure' },
+            {
+              kind: 'json',
+              body: {
+                data: { updateProjectV2Field: { clientMutationId: null } },
+              },
+            },
+          ],
+          expectedCallCount: 2,
+          expectedSleepCount: 1,
+          outcome: {
+            type: 'returns',
+            expectedResult: {
+              data: { updateProjectV2Field: { clientMutationId: null } },
+            },
+          },
+        },
+        {
+          name: 'case 5: a replace-full-option-set mutation with one option missing an id throws immediately without retry',
+          query: REPLACE_OPTIONS_MUTATION,
+          variables: { options: OPTIONS_ONE_MISSING_ID },
+          responses: [{ kind: 'parseFailure' }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'throwsParseFailure' },
+        },
+        {
+          name: 'case 6: an add-item-to-project mutation throws immediately without retry',
+          query: ADD_ITEM_MUTATION,
+          responses: [{ kind: 'parseFailure' }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'throwsParseFailure' },
+        },
+        {
+          name: 'case 7: a create-field mutation throws immediately without retry',
+          query: CREATE_FIELD_MUTATION,
+          responses: [{ kind: 'parseFailure' }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'throwsParseFailure' },
+        },
+        {
+          name: 'case 8: a delete-item mutation throws immediately without retry',
+          query: DELETE_ITEM_MUTATION,
+          responses: [{ kind: 'parseFailure' }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'throwsParseFailure' },
+        },
+        {
+          name: 'case 9: throws once the retry budget is exhausted while every attempt fails to parse',
+          query: READ_ONLY_QUERY,
+          responses: [
+            { kind: 'parseFailure' },
+            { kind: 'parseFailure' },
+            { kind: 'parseFailure' },
+          ],
+          expectedCallCount: GRAPHQL_RETRY_LIMIT + 1,
+          expectedSleepCount: GRAPHQL_RETRY_LIMIT,
+          outcome: { type: 'throwsParseFailure' },
+        },
+        {
+          name: 'case 10: a non-parse error on a retry-eligible mutation is rethrown immediately without retrying',
+          query: SET_FIELD_MUTATION,
+          responses: [{ kind: 'networkError' }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'throwsSameError' },
+        },
+        {
+          name: 'case 11: a mutation with a transient "something went wrong" message still retries and returns the 2nd attempt result (unchanged)',
+          query: SET_FIELD_MUTATION,
+          responses: [
+            { kind: 'json', body: TRANSIENT_ERROR_BODY },
+            {
+              kind: 'json',
+              body: {
+                data: {
+                  updateProjectV2ItemFieldValue: { clientMutationId: null },
+                },
+              },
+            },
+          ],
+          expectedCallCount: 2,
+          expectedSleepCount: 1,
+          outcome: {
+            type: 'returns',
+            expectedResult: {
+              data: {
+                updateProjectV2ItemFieldValue: { clientMutationId: null },
+              },
+            },
+          },
+        },
+        {
+          name: 'case 12: a read-only query with a transient "something went wrong" message is returned as-is without retrying (unchanged)',
+          query: READ_ONLY_QUERY,
+          responses: [{ kind: 'json', body: TRANSIENT_ERROR_BODY }],
+          expectedCallCount: 1,
+          expectedSleepCount: 0,
+          outcome: { type: 'returns', expectedResult: TRANSIENT_ERROR_BODY },
+        },
+      ];
+
+      it.each(cases)('$name', async (testCase) => {
+        mockPost.mockReset();
+        testCase.responses.forEach((spec) => {
+          mockPost.mockReturnValueOnce(buildKyPostReturn(spec));
+        });
+        const sleepMock = jest.fn().mockResolvedValue(undefined);
+
+        if (testCase.outcome.type === 'returns') {
+          const result = await postGithubGraphqlJson(
+            {
+              ghToken: 'token-a',
+              query: testCase.query,
+              variables: testCase.variables,
+            },
+            sleepMock,
+          );
+          expect(result).toEqual(testCase.outcome.expectedResult);
+        } else if (testCase.outcome.type === 'throwsParseFailure') {
+          const thrown = await postGithubGraphqlJson(
+            {
+              ghToken: 'token-a',
+              query: testCase.query,
+              variables: testCase.variables,
+            },
+            sleepMock,
+          ).catch((e: unknown) => e);
+          expect(thrown).toBeInstanceOf(Error);
+          if (!(thrown instanceof Error))
+            throw new Error('Expected Error instance');
+          expect(thrown.message).toBe(EXPECTED_PARSE_FAILURE_ERROR_MESSAGE);
+          const cause = thrown.cause;
+          expect(cause).toBeInstanceOf(SyntaxError);
+          if (!(cause instanceof SyntaxError))
+            throw new Error('Expected SyntaxError cause');
+          expect(cause.message).toBe(PARSE_FAILURE_MESSAGE);
+        } else {
+          const thrown = await postGithubGraphqlJson(
+            {
+              ghToken: 'token-a',
+              query: testCase.query,
+              variables: testCase.variables,
+            },
+            sleepMock,
+          ).catch((e: unknown) => e);
+          expect(thrown).toBe(NETWORK_ERROR);
+        }
+
+        expect(mockPost).toHaveBeenCalledTimes(testCase.expectedCallCount);
+        expect(sleepMock).toHaveBeenCalledTimes(testCase.expectedSleepCount);
+        for (let i = 0; i < testCase.expectedSleepCount; i++) {
+          expect(sleepMock).toHaveBeenNthCalledWith(
+            i + 1,
+            GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS,
+          );
+        }
+      });
     });
   });
 

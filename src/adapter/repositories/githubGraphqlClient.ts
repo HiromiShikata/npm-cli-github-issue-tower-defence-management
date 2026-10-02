@@ -148,6 +148,52 @@ export const isTransientGraphqlResponse = (response: unknown): boolean => {
 const realSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+const KNOWN_GRAPHQL_MUTATION_FIELD_NAMES = [
+  'updateProjectV2ItemFieldValue',
+  'clearProjectV2ItemFieldValue',
+  'updateProjectV2Field',
+  'addProjectV2ItemById',
+  'createProjectV2Field',
+  'deleteProjectV2Item',
+] as const;
+
+const extractInvokedGraphqlMutationFieldName = (
+  query: string,
+): (typeof KNOWN_GRAPHQL_MUTATION_FIELD_NAMES)[number] | null => {
+  const invokedFieldNames = KNOWN_GRAPHQL_MUTATION_FIELD_NAMES.filter(
+    (fieldName) => query.includes(`${fieldName}(`),
+  );
+  return invokedFieldNames.length === 1 ? invokedFieldNames[0] : null;
+};
+
+const hasDefinedNonNullId = (option: unknown): boolean => {
+  if (typeof option !== 'object' || option === null || !('id' in option)) {
+    return false;
+  }
+  return option.id !== undefined && option.id !== null;
+};
+
+export const isMutationSafeToRetryOnParseFailure = (
+  query: string,
+  variables?: Record<string, unknown>,
+): boolean => {
+  if (!isMutationOperation(query)) {
+    return true;
+  }
+  const invokedFieldName = extractInvokedGraphqlMutationFieldName(query);
+  if (
+    invokedFieldName === 'updateProjectV2ItemFieldValue' ||
+    invokedFieldName === 'clearProjectV2ItemFieldValue'
+  ) {
+    return true;
+  }
+  if (invokedFieldName === 'updateProjectV2Field') {
+    const options: unknown = variables?.options;
+    return Array.isArray(options) && options.every(hasDefinedNonNullId);
+  }
+  return false;
+};
+
 export const postGithubGraphqlJson = async <T>(
   params: {
     ghToken: string;
@@ -187,6 +233,18 @@ export const postGithubGraphqlJson = async <T>(
         .json<T>();
     } catch (error) {
       if (error instanceof SyntaxError) {
+        const isRetryEligible = isMutationSafeToRetryOnParseFailure(
+          params.query,
+          params.variables,
+        );
+        if (isRetryEligible && attempt < GRAPHQL_RETRY_LIMIT) {
+          console.log(
+            `postGithubGraphqlJson: GitHub GraphQL API returned a non-JSON response. Backing off ${GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS}ms before retry ${attempt + 1}/${GRAPHQL_RETRY_LIMIT}.`,
+          );
+          await sleep(GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS);
+          attempt++;
+          continue;
+        }
         throw new Error(
           `GitHub GraphQL API returned a non-JSON response: ${error.message}`,
           { cause: error },
