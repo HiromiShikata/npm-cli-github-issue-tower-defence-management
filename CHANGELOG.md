@@ -1,3 +1,10 @@
+## [2.157.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.10...v2.157.11) (2026-10-02)
+
+
+### Bug Fixes
+
+* **error-reporting:** redact credential values from config-validation error messages and the CLI/console error reporters ([#3105](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3105)) ([383c506](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/383c50612c09938e25cd5544e6d87502c0ef70cf))
+
 ## [2.157.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.9...v2.157.10) (2026-10-02)
 
 
