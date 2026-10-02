@@ -228,7 +228,8 @@ describe('GraphqlProjectItemRepository', () => {
       );
       mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(1);
       expect(result[0].body).toBe('body');
@@ -281,7 +282,8 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(1);
       expect(result[0].customFields).toEqual([
@@ -327,7 +329,8 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(1);
       expect(result[0].body).toBeNull();
@@ -385,7 +388,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       const resultPromise = repository.fetchProjectItems('test-project-id');
       await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(2);
@@ -542,7 +545,8 @@ describe('GraphqlProjectItemRepository', () => {
         );
 
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
 
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe('item-1');
@@ -587,7 +591,8 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(inconsistentPage());
 
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
 
         expect(result).toHaveLength(0);
         expect(mockPost).toHaveBeenCalledTimes(2);
@@ -664,7 +669,8 @@ describe('GraphqlProjectItemRepository', () => {
         );
 
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
 
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe('item-1');
@@ -689,7 +695,8 @@ describe('GraphqlProjectItemRepository', () => {
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
       mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(mockPost).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(1);
@@ -763,7 +770,8 @@ describe('GraphqlProjectItemRepository', () => {
         .spyOn(console, 'warn')
         .mockImplementation(() => {});
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
         expect(result).toHaveLength(1);
         expect(result[0].number).toBe(1);
         expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -872,7 +880,8 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(failingResponse)
         .mockReturnValueOnce(successPageResponse);
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(1);
@@ -985,7 +994,8 @@ describe('GraphqlProjectItemRepository', () => {
         .mockImplementation(() => {});
 
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
 
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe('item-1');
@@ -1076,7 +1086,7 @@ describe('GraphqlProjectItemRepository', () => {
       try {
         const resultPromise = repository.fetchProjectItems('test-project-id');
         await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
-        const result = await resultPromise;
+        const result = (await resultPromise).issues;
 
         expect(result).toHaveLength(2);
         expect(result.map((r) => r.id)).toEqual(['item-1', 'item-3']);
@@ -1217,7 +1227,8 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       try {
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
 
         expect(result).toHaveLength(1);
         expect(result[0].closingIssueReferenceUrls).toEqual([
@@ -1278,7 +1289,8 @@ describe('GraphqlProjectItemRepository', () => {
           }),
         );
 
-        const result = await repository.fetchProjectItems('test-project-id');
+        const result = (await repository.fetchProjectItems('test-project-id'))
+          .issues;
         expect(result).toHaveLength(1);
         return result[0].plainCrossRepoIssueReferenceUrls;
       };
@@ -1345,7 +1357,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       const resultPromise = repository.fetchProjectItems('test-project-id');
       await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(result).toHaveLength(2);
       expect(PAGINATION_DELAY_MS).toBe(5000);
@@ -1368,7 +1380,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       const resultPromise = repository.fetchProjectItems('test-project-id');
       await jest.advanceTimersByTimeAsync(3000);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(result).toHaveLength(1);
       expect(mockPost).toHaveBeenCalledTimes(2);
@@ -1391,7 +1403,7 @@ describe('GraphqlProjectItemRepository', () => {
       await jest.advanceTimersByTimeAsync(6999);
       expect(mockPost).toHaveBeenCalledTimes(1);
       await jest.advanceTimersByTimeAsync(1);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(result).toHaveLength(1);
       expect(mockPost).toHaveBeenCalledTimes(2);
@@ -1418,7 +1430,7 @@ describe('GraphqlProjectItemRepository', () => {
 
       const resultPromise = repository.fetchProjectItems('test-project-id');
       await jest.advanceTimersByTimeAsync(5000);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(result).toHaveLength(1);
       expect(mockPost).toHaveBeenCalledTimes(2);
@@ -1493,7 +1505,7 @@ describe('GraphqlProjectItemRepository', () => {
       await jest.advanceTimersByTimeAsync(RATE_LIMIT_DEFAULT_BACKOFF_MS - 1);
       expect(mockPost).toHaveBeenCalledTimes(1);
       await jest.advanceTimersByTimeAsync(1);
-      const result = await resultPromise;
+      const result = (await resultPromise).issues;
 
       expect(result).toHaveLength(1);
       expect(mockPost).toHaveBeenCalledTimes(2);
@@ -1568,7 +1580,8 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(0);
       expect(warnSpy).toHaveBeenCalledWith(
@@ -1634,7 +1647,8 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(1);
       expect(result[0].stateReason).toBe('REOPENED');
@@ -1647,7 +1661,8 @@ describe('GraphqlProjectItemRepository', () => {
       );
       mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
 
-      const result = await repository.fetchProjectItems('test-project-id');
+      const result = (await repository.fetchProjectItems('test-project-id'))
+        .issues;
 
       expect(result).toHaveLength(1);
       expect(result[0].stateReason).toBeNull();
@@ -1722,10 +1737,12 @@ describe('GraphqlProjectItemRepository', () => {
         ]),
       );
 
-      const result = await repository.fetchProjectItemsLight(
-        'test-project-id',
-        'updated:>=2026-07-07',
-      );
+      const result = (
+        await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        )
+      ).lightItems;
 
       const sentQuery = extractRequestedQueryFromMockCall(
         mockPost.mock.calls[0],
@@ -1788,7 +1805,7 @@ describe('GraphqlProjectItemRepository', () => {
         'updated:>=2026-07-07',
       );
       await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
-      const result = await resultPromise;
+      const result = (await resultPromise).lightItems;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result.map((item) => item.id)).toEqual(['PVTI_1', 'PVTI_2']);
@@ -1819,10 +1836,12 @@ describe('GraphqlProjectItemRepository', () => {
         ),
       );
 
-      const result = await repository.fetchProjectItemsLight(
-        'test-project-id',
-        'updated:>=2026-07-07',
-      );
+      const result = (
+        await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        )
+      ).lightItems;
 
       expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
     });
@@ -1868,10 +1887,12 @@ describe('GraphqlProjectItemRepository', () => {
           ),
         );
 
-      const result = await repository.fetchProjectItemsLight(
-        'test-project-id',
-        'updated:>=2026-07-07',
-      );
+      const result = (
+        await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        )
+      ).lightItems;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result.map((item) => item.id)).toEqual(['PVTI_1', 'PVTI_2']);
@@ -1906,10 +1927,12 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(inconsistentPage())
         .mockReturnValueOnce(inconsistentPage());
 
-      const result = await repository.fetchProjectItemsLight(
-        'test-project-id',
-        'updated:>=2026-07-07',
-      );
+      const result = (
+        await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        )
+      ).lightItems;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
@@ -1962,10 +1985,12 @@ describe('GraphqlProjectItemRepository', () => {
           ),
         );
 
-      const result = await repository.fetchProjectItemsLight(
-        'test-project-id',
-        'updated:>=2026-07-07',
-      );
+      const result = (
+        await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        )
+      ).lightItems;
 
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(result.map((item) => item.id)).toEqual(['PVTI_1']);
@@ -2021,10 +2046,12 @@ describe('GraphqlProjectItemRepository', () => {
         .spyOn(console, 'warn')
         .mockImplementation(() => {});
       try {
-        const result = await repository.fetchProjectItemsLight(
-          'test-project-id',
-          'updated:>=2026-07-07',
-        );
+        const result = (
+          await repository.fetchProjectItemsLight(
+            'test-project-id',
+            'updated:>=2026-07-07',
+          )
+        ).lightItems;
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe('PVTI_accessible');
         expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -2136,7 +2163,7 @@ describe('GraphqlProjectItemRepository', () => {
       await jest.advanceTimersByTimeAsync(RATE_LIMIT_DEFAULT_BACKOFF_MS - 1);
       expect(mockPost).toHaveBeenCalledTimes(1);
       await jest.advanceTimersByTimeAsync(1);
-      const result = await resultPromise;
+      const result = (await resultPromise).lightItems;
 
       expect(result).toHaveLength(1);
       expect(mockPost).toHaveBeenCalledTimes(2);
@@ -4155,7 +4182,7 @@ const findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition =
   ): Promise<
     | Awaited<
         ReturnType<GraphqlProjectItemRepository['fetchProjectItems']>
-      >[number]
+      >['issues'][number]
     | undefined
   > => {
     for (
@@ -4163,7 +4190,7 @@ const findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition =
       attempt < projectItemsConnectionReadRetryAttemptsAfterRecentAddition;
       attempt++
     ) {
-      const items =
+      const { issues: items } =
         await projectItemRepository.fetchProjectItems(targetProjectId);
       const found = items.find((item) => item.id === recentlyAddedItemId);
       if (found !== undefined) {
