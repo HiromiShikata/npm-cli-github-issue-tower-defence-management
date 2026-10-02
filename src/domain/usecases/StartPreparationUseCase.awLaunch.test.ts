@@ -1,3 +1,4 @@
+import { mock, MockProxy } from 'jest-mock-extended';
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
 import type { Project } from '../entities/Project';
@@ -124,54 +125,37 @@ const harnessCreate = () => {
     createField: jest.fn().mockResolvedValue(undefined),
     updateAgentList: jest.fn().mockResolvedValue([]),
   };
-  const issueRepository: Mocked<
-    Pick<
-      IssueRepository,
-      | 'getStoryObjectMap'
-      | 'getAllOpened'
-      | 'updateStatus'
-      | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
-      | 'closePullRequest'
-      | 'deletePullRequestBranch'
-      | 'createCommentByUrl'
-      | 'getIssueOrPullRequestComments'
-      | 'setIssueAgentField'
-      | 'removeLabel'
-      | 'getIssueByUrl'
-      | 'get'
-      | 'removeIssueFromProjectCache'
-      | 'appendIssueToProjectCache'
-    >
-  > = {
-    getStoryObjectMap: jest
-      .fn()
-      .mockResolvedValue(createMockStoryObjectMap([candidateIssue])),
-    getAllOpened: jest.fn().mockResolvedValue([]),
-    updateStatus: jest.fn(),
-    findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-    getOpenPullRequest: jest.fn().mockResolvedValue(null),
-    closePullRequest: jest.fn().mockResolvedValue(undefined),
-    deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-    createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-    getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
-    setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-    removeLabel: jest.fn().mockResolvedValue(undefined),
-    getIssueByUrl: jest.fn().mockResolvedValue(
-      createMockIssue({
-        status: 'Awaiting Workspace',
-        dependedIssueUrls: [],
-      }),
-    ),
-    get: jest.fn().mockResolvedValue(
-      createMockIssue({
-        status: 'Awaiting Workspace',
-        dependedIssueUrls: [],
-      }),
-    ),
-    removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
-    appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
-  };
+  const issueRepository: MockProxy<IssueRepository> = mock<IssueRepository>();
+  issueRepository.getStoryObjectMap.mockResolvedValue(
+    createMockStoryObjectMap([candidateIssue]),
+  );
+  issueRepository.getAllOpened.mockResolvedValue([]);
+  issueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+  issueRepository.getOpenPullRequest.mockResolvedValue(null);
+  issueRepository.closePullRequest.mockResolvedValue(undefined);
+  issueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
+  issueRepository.createCommentByUrl.mockResolvedValue({
+    author: '',
+    body: '',
+    createdAt: new Date(0),
+  });
+  issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+  issueRepository.setIssueAgentField.mockResolvedValue(undefined);
+  issueRepository.removeLabel.mockResolvedValue(undefined);
+  issueRepository.getIssueByUrl.mockResolvedValue(
+    createMockIssue({
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    }),
+  );
+  issueRepository.get.mockResolvedValue(
+    createMockIssue({
+      status: 'Awaiting Workspace',
+      dependedIssueUrls: [],
+    }),
+  );
+  issueRepository.removeIssueFromProjectCache.mockResolvedValue(undefined);
+  issueRepository.appendIssueToProjectCache.mockResolvedValue(undefined);
   const localCommandRunner: Mocked<LocalCommandRunner> = {
     runCommand: jest
       .fn()
