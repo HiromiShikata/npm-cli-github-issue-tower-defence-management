@@ -40,6 +40,7 @@ import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
 import { findLastAgentReportPostedSince } from './findLastAgentReport';
 import { isHumanAuthoredInvestigationTaskCloseOverride } from './isHumanAuthoredInvestigationTaskCloseOverride';
+import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
 import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 
@@ -262,6 +263,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
+    const isTrustedAuthor = (author: string): boolean =>
+      isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
+
     if (params.moveToFailedPreparation) {
       await this.handleConsecutiveFailureMaxReached(
         issue,
@@ -277,6 +281,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         project,
         awaitingWorkspaceStatusOption,
+        awaitingOwnerStatusOption,
+        isTrustedAuthor,
         params.sessionErrorLine ?? null,
       );
       return;
@@ -287,6 +293,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         project,
         awaitingWorkspaceStatusOption,
+        awaitingOwnerStatusOption,
+        isTrustedAuthor,
       );
       return;
     }
@@ -296,6 +304,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         project,
         awaitingWorkspaceStatusOption,
+        awaitingOwnerStatusOption,
+        isTrustedAuthor,
       );
       return;
     }
@@ -454,9 +464,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     const latestReopenedAt =
       await this.issueRepository.getLatestReopenedEventAt(issue);
 
-    const isTrustedAuthor = (author: string): boolean =>
-      isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
-
     const dispatchStartedAt = params.dispatchStartedAt ?? null;
     const lastAgentReport = findLastAgentReportPostedSince(
       comments,
@@ -607,6 +614,20 @@ export class NotifyFinishedIssuePreparationUseCase {
     const hasNoReportRejection = rejections.some(
       (r) => r.type === 'NO_REPORT_FROM_AGENT_BOT',
     );
+    if (
+      hasNoReportRejection &&
+      issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
+    ) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      return;
+    }
     if (hasNoReportRejection) {
       const consecutiveCount = countConsecutiveNoReportDispatches({
         comments,
@@ -971,8 +992,23 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: Issue,
     project: Project,
     awaitingWorkspaceStatusOption: { id: string },
+    awaitingOwnerStatusOption: { id: string },
+    isTrustedAuthor: (author: string) => boolean,
     sessionErrorLine: string | null,
   ): Promise<void> => {
+    const comments =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      return;
+    }
     const tomorrow = issueReactivationTriggerStartOfTomorrow(new Date());
     await this.issueRepository.updateNextActionDate(
       issue.url,
@@ -996,7 +1032,22 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: Issue,
     project: Project,
     awaitingWorkspaceStatusOption: { id: string },
+    awaitingOwnerStatusOption: { id: string },
+    isTrustedAuthor: (author: string) => boolean,
   ): Promise<void> => {
+    const comments =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      return;
+    }
     issue.status = AWAITING_WORKSPACE_STATUS_NAME;
     await this.issueRepository.update(issue, project);
     await this.issueRepository.updateStatus(
@@ -1015,7 +1066,22 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: Issue,
     project: Project,
     awaitingWorkspaceStatusOption: { id: string },
+    awaitingOwnerStatusOption: { id: string },
+    isTrustedAuthor: (author: string) => boolean,
   ): Promise<void> => {
+    const comments =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      return;
+    }
     issue.status = AWAITING_WORKSPACE_STATUS_NAME;
     await this.issueRepository.update(issue, project);
     await this.issueRepository.updateStatus(
