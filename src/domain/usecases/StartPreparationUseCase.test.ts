@@ -2095,6 +2095,148 @@ describe('StartPreparationUseCase', () => {
     expect(mockSleep).toHaveBeenCalledTimes(1);
     consoleWarnSpy.mockRestore();
   });
+  it('should not re-post the duplicate-PR comment when createCommentByUrl first fails with a transient 502 error and a duplicate comment is found on re-check, then still post the issue comment and close the duplicate PR', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const olderPRNullBranch: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/42',
+      branchName: null,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const newerPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/43',
+      branchName: 'i1-fix',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const olderPrIssueNullBranch = createMockIssue({
+      url: olderPRNullBranch.url,
+      number: 42,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: ['https://github.com/user/repo/issues/1'],
+    });
+    const newerPrIssue = createMockIssue({
+      url: newerPR.url,
+      number: 43,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: ['https://github.com/user/repo/issues/1'],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([
+        ...awaitingIssues,
+        olderPrIssueNullBranch,
+        newerPrIssue,
+      ]),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPRNullBranch,
+      newerPR,
+    ]);
+    const transientError = Object.assign(
+      new Error(
+        'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+      ),
+      { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+    );
+    mockIssueRepository.createCommentByUrl.mockRejectedValueOnce(
+      transientError,
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+      async (url: string) => {
+        if (url !== newerPR.url) {
+          return [];
+        }
+        const priorCallsToNewerPr =
+          mockIssueRepository.createCommentByUrl.mock.calls.filter(
+            (call) => call[0] === newerPR.url,
+          );
+        if (priorCallsToNewerPr.length === 0) {
+          return [];
+        }
+        return [
+          {
+            author: 'bot',
+            body: priorCallsToNewerPr[0][1],
+            createdAt: new Date(),
+          },
+        ];
+      },
+    );
+    const mockSleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    const retryingUseCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      mockClaudeTokenUsageRepository,
+      mockTakeOwnershipSpawnRepository,
+      mockGitHubGraphqlRateLimitRepository,
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
+      null,
+      null,
+      mockSleep,
+    );
+
+    await retryingUseCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      newerPR.url,
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      newerPR.url,
+      expect.stringContaining(olderPRNullBranch.url),
+    );
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      'https://github.com/user/repo/issues/1',
+      expect.stringContaining(newerPR.url),
+    );
+    expect(mockSleep).toHaveBeenCalledTimes(1);
+    consoleWarnSpy.mockRestore();
+  });
   it('should not post duplicate-PR comments when identical comments already exist within dedup window', async () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
     const olderPrUrl = 'https://github.com/user/repo/pull/42';
@@ -7836,6 +7978,71 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+    expect(mockSleep).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not re-post when createCommentByUrl first fails with a transient 502 error and a duplicate comment is found on re-check, when posting the authorNotAllowed comment', async () => {
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([authorNotAllowedIssue]),
+    );
+    const transientError = Object.assign(
+      new Error(
+        'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+      ),
+      { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+    );
+    mockIssueRepository.createCommentByUrl.mockRejectedValueOnce(
+      transientError,
+    );
+    mockIssueRepository.getIssueOrPullRequestComments
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          author: 'bot',
+          body: "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
+          createdAt: new Date(),
+        },
+      ]);
+    const mockSleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+    const retryingUseCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      mockClaudeTokenUsageRepository,
+      mockTakeOwnershipSpawnRepository,
+      mockGitHubGraphqlRateLimitRepository,
+      new InMemoryIssueLatestSessionBranchRepository(new Map()),
+      null,
+      null,
+      mockSleep,
+    );
+
+    await retryingUseCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
     expect(mockSleep).toHaveBeenCalledTimes(1);
   });
 

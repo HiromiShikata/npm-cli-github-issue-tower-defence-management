@@ -1263,6 +1263,92 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockSleep).toHaveBeenCalledTimes(1);
     });
 
+    it('should not re-post when createCommentByUrl first fails with a transient 502 error and a duplicate comment is found on re-check', async () => {
+      const { mockLocalCommandRunner, mockIssueRepository, ...deps } =
+        buildUseCase();
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new DailySecurityScanUseCase(
+        mockLocalCommandRunner,
+        mockIssueRepository,
+        deps.mockHttpRepository,
+        deps.mockKevReportWatermarkRepository,
+        mockSleep,
+      );
+
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: 'https://github.com/example-org/app/issues/42',
+          title: 'Daily security scan findings',
+          number: '42',
+        },
+      ]);
+
+      mockLocalCommandRunner.runCommand.mockImplementation(
+        async (program, args) => {
+          if (program === 'find') {
+            return {
+              stdout: '/repos/example-org/app/.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            return {
+              stdout: `/tmp/${args[args.length - 1].replace('XXXXXX', 'abc123')}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            return {
+              stdout: 'git@github.com:example-org/app.git\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return { stdout: 'vulnerability found', stderr: '', exitCode: 1 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createCommentByUrl.mockRejectedValueOnce(
+        transientError,
+      );
+      mockIssueRepository.getIssueOrPullRequestComments
+        .mockResolvedValueOnce([])
+        .mockImplementationOnce(async () => [
+          {
+            author: 'bot',
+            body:
+              mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
+            createdAt: new Date(),
+          },
+        ]);
+
+      await retryingUseCase.run({
+        targetDates: [new Date('2024-01-02T05:00:00Z')],
+        org: 'example-org',
+        manager: 'manager-name',
+        dailySecurityScan: {
+          scanBaseDirectory: '/repos',
+          targetHourUtc: 5,
+        },
+      });
+
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+
     it('creates a new issue when no existing open issue exists for the repository', async () => {
       const { useCase, mockLocalCommandRunner, mockIssueRepository } =
         buildUseCase();

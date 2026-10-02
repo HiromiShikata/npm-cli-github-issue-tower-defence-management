@@ -332,6 +332,57 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       expect(mockSleep).toHaveBeenCalledTimes(1);
     });
 
+    it('should not re-post when createComment first fails with a transient 502 error and a duplicate comment is found on re-check', async () => {
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new ChangeStatusByStoryColorUseCase(
+        mockDateRepository,
+        mockIssueRepository,
+        mockSleep,
+      );
+      mockIssueRepository.get.mockResolvedValue(basicStoryObject1.issues[0]);
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createComment.mockRejectedValueOnce(transientError);
+      mockIssueRepository.getIssueOrPullRequestComments
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            author: 'bot',
+            body: 'This issue status is changed because the story is disabled.',
+            createdAt: new Date(),
+          },
+        ]);
+
+      await retryingUseCase.run({
+        project: basicProject,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              ...basicStoryObject1,
+              story: {
+                ...basicStoryObject1.story,
+                color: 'GRAY',
+              },
+            },
+          ],
+          ['Story 2', basicStoryObject2],
+        ]),
+        manager,
+      });
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+
     it('should throw error when project has no statuses', async () => {
       const mockStatusWithNoStatuses = mock<Project['status']>();
       mockStatusWithNoStatuses.name = 'Status';

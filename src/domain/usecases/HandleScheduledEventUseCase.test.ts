@@ -2783,6 +2783,87 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockSleep).toHaveBeenCalledTimes(1);
       });
 
+      it('should not re-post when createCommentByUrl first fails with a transient 502 error while reporting to the existing incident issue and a duplicate comment is found on re-check, then still rethrow the original non-transient error', async () => {
+        const nonTransientError = new Error(
+          'something went wrong unexpectedly',
+        );
+        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+          nonTransientError,
+        );
+        const existingIssueUrl =
+          'https://github.com/test-org/test-repo/issues/42';
+        mockIssueRepository.searchIssue.mockResolvedValue([
+          {
+            url: existingIssueUrl,
+            title: 'Error in HandleScheduledEvent / workflow incident',
+            number: '42',
+          },
+        ]);
+        const transientCommentError = Object.assign(
+          new Error(
+            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+          ),
+          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+        );
+        mockIssueRepository.createCommentByUrl.mockRejectedValueOnce(
+          transientCommentError,
+        );
+        mockIssueRepository.getIssueOrPullRequestComments
+          .mockResolvedValueOnce([])
+          .mockImplementationOnce(async () => [
+            {
+              author: 'bot',
+              body:
+                mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ??
+                '',
+              createdAt: new Date(),
+            },
+          ]);
+        const mockSleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
+        const retryingUseCase = new HandleScheduledEventUseCase(
+          mockProjectRequiredFieldCreateUseCase,
+          mockSetupTowerDefenceProjectUseCase,
+          mockActionAnnouncementUseCase,
+          mockSetWorkflowManagementIssueToStoryUseCase,
+          mockClearPastNextActionDateHourUseCase,
+          mockClearDependedIssueURLUseCase,
+          mockSetDependedIssueUrlForOpenTaskPRsUseCase,
+          mockStaleTaskPullRequestCloseUseCase,
+          mockCreateEstimationIssueUseCase,
+          mockChangeStatusByStoryColorUseCase,
+          mockSetNoStoryIssueToStoryUseCase,
+          mockCreateNewStoryByLabelUseCase,
+          mockAssignNoAssigneeIssueToManagerUseCase,
+          mockUpdateIssueStatusByLabelUseCase,
+          mockIssueNoStatusUpdateUseCase,
+          mockStartPreparationUseCase,
+          mockRevertOrphanedPreparationUseCase,
+          mockNonPreparationWorkerScopeStopUseCase,
+          mockConflictedIssueRevertUseCase,
+          mockRevertNotReadyReviewQueueIssueUseCase,
+          mockAgentDesignationLabelAdoptUseCase,
+          mockUpdateRateLimitCacheUseCase,
+          mockDailySecurityScanUseCase,
+          mockAdvanceQualityCheckUseCase,
+          mockReopenedDoneIssueRevertUseCase,
+          mockClosedStoryIssueReopenUseCase,
+          mockDateRepository,
+          mockSpreadsheetRepository,
+          mockProjectRepository,
+          mockIssueRepository,
+          mockSleep,
+        );
+
+        await expect(retryingUseCase.run(errorInput)).rejects.toThrow(
+          'something went wrong unexpectedly',
+        );
+
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+      });
+
       it('should not create or comment an incident issue for a transient 401 error', async () => {
         const transientError = new Error('HttpError: 401 Unauthorized');
         mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(

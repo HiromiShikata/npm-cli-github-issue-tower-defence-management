@@ -273,6 +273,60 @@ describe('CreateEstimationIssueUseCase', () => {
       expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
       expect(mockSleep).toHaveBeenCalledTimes(1);
     });
+
+    it('should not re-post when createComment first fails with a transient 502 error and a duplicate comment is found on re-check', async () => {
+      mockDateRepository.formatDateWithDayOfWeek.mockReturnValue(
+        'Mon, Jun 01, 2026',
+      );
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new CreateEstimationIssueUseCase(
+        mockIssueRepository,
+        mockDateRepository,
+        mockSleep,
+      );
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createComment.mockRejectedValueOnce(transientError);
+      mockIssueRepository.getIssueOrPullRequestComments
+        .mockResolvedValueOnce([])
+        .mockImplementationOnce(async () => [
+          {
+            author: 'bot',
+            body: mockIssueRepository.createComment.mock.calls[0]?.[1] ?? '',
+            createdAt: new Date(),
+          },
+        ]);
+
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          { story: featureStory, storyIssue, issues: [issueInStory] },
+        ],
+      ]);
+
+      const runPromise = retryingUseCase.run({
+        project: projectWithCompletionField,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('stale project item isolation and failure aggregation (issue #2789)', () => {
