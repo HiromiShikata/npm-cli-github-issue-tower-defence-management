@@ -1538,7 +1538,10 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = {
+      onSubmitProject: jest.fn().mockResolvedValue(undefined),
+      onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+    };
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -1591,7 +1594,10 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = {
+      onSubmitProject: jest.fn().mockResolvedValue(undefined),
+      onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+    };
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"
@@ -1637,7 +1643,10 @@ describe('ConsoleItemDetailContainer', () => {
     };
     const commentCaches = buildCaches();
     commentCaches.comments = new ResourceCache(async () => [comment]);
-    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
+    const onCreateIssueFromComment = {
+      onSubmitProject: jest.fn().mockResolvedValue(undefined),
+      onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+    };
     const { container } = render(
       <ConsoleItemDetailContainer
         tab="prs"

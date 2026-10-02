@@ -459,7 +459,10 @@ describe('ConsoleCommentList', () => {
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateIssueFromComment = jest.fn();
+    const onCreateIssueFromComment = {
+      onSubmitProject: jest.fn().mockResolvedValue(undefined),
+      onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+    };
     const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
@@ -494,13 +497,14 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
-  it('calls onCreateIssueFromComment with comment body as blockquote when the dialog Create button is clicked', async () => {
+  it('calls onSubmitWorkflow with comment body as blockquote when the dialog Create button is clicked without switching destination', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateIssueFromComment = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
     const { container, getByRole, getByLabelText } = render(
       <ConsoleCommentList
         comments={[comment]}
@@ -509,7 +513,7 @@ describe('ConsoleCommentList', () => {
         now={now}
         issueUrl="https://github.com/owner/repo/issues/1"
         issueTitle="Source issue title"
-        onCreateIssueFromComment={onCreateIssueFromComment}
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
       />,
     );
     const btn = container.querySelector(
@@ -522,7 +526,7 @@ describe('ConsoleCommentList', () => {
     });
     fireEvent.click(getByRole('button', { name: 'Create' }));
     await waitFor(() => {
-      expect(onCreateIssueFromComment).toHaveBeenCalledWith({
+      expect(onSubmitWorkflow).toHaveBeenCalledWith({
         title: 'New task from comment',
         body: 'https://github.com/owner/repo/issues/1\n\nSource issue title\n\n\n\n\n\n> Please split the token validation into its own tested function.',
         storyName: null,
@@ -530,6 +534,7 @@ describe('ConsoleCommentList', () => {
         files: [],
       });
     });
+    expect(onSubmitProject).not.toHaveBeenCalled();
   });
 
   it('pre-populates dialog with empty title and comment body as blockquote prefixed by issue url and title', () => {
@@ -546,7 +551,10 @@ describe('ConsoleCommentList', () => {
         now={now}
         issueUrl="https://github.com/owner/repo/issues/1"
         issueTitle="My issue title"
-        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+        onCreateIssueFromComment={{
+          onSubmitProject: jest.fn().mockResolvedValue(undefined),
+          onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+        }}
       />,
     );
     const btn = container.querySelector(
@@ -575,7 +583,10 @@ describe('ConsoleCommentList', () => {
         error={null}
         now={now}
         issueTitle="Only title provided"
-        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+        onCreateIssueFromComment={{
+          onSubmitProject: jest.fn().mockResolvedValue(undefined),
+          onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+        }}
       />,
     );
     const btn = container.querySelector(
@@ -601,7 +612,10 @@ describe('ConsoleCommentList', () => {
         isLoading={false}
         error={null}
         now={now}
-        onCreateIssueFromComment={jest.fn().mockResolvedValue(undefined)}
+        onCreateIssueFromComment={{
+          onSubmitProject: jest.fn().mockResolvedValue(undefined),
+          onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
+        }}
       />,
     );
     const btn = container.querySelector(
@@ -615,14 +629,15 @@ describe('ConsoleCommentList', () => {
     );
   });
 
-  it('disables the dialog submit button while onCreateIssueFromComment is in progress', async () => {
+  it('disables the dialog submit button while onSubmitWorkflow is in progress', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
     let resolveSubmit!: () => void;
-    const onCreateIssueFromComment = jest.fn().mockReturnValue(
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockReturnValue(
       new Promise<void>((resolve) => {
         resolveSubmit = resolve;
       }),
@@ -633,7 +648,7 @@ describe('ConsoleCommentList', () => {
         isLoading={false}
         error={null}
         now={now}
-        onCreateIssueFromComment={onCreateIssueFromComment}
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
       />,
     );
     const btn = container.querySelector(
@@ -652,13 +667,14 @@ describe('ConsoleCommentList', () => {
     resolveSubmit();
   });
 
-  it('shows error in the dialog when onCreateIssueFromComment rejects', async () => {
+  it('shows error in the dialog when onSubmitWorkflow rejects', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateIssueFromComment = jest
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest
       .fn()
       .mockRejectedValue(new Error('Server error'));
     const { container, getByRole, getByText, getByLabelText } = render(
@@ -667,7 +683,7 @@ describe('ConsoleCommentList', () => {
         isLoading={false}
         error={null}
         now={now}
-        onCreateIssueFromComment={onCreateIssueFromComment}
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
       />,
     );
     const btn = container.querySelector(
@@ -690,14 +706,15 @@ describe('ConsoleCommentList', () => {
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateIssueFromComment = jest.fn();
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
     const { container, queryByRole } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onCreateIssueFromComment={onCreateIssueFromComment}
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
       />,
     );
     const btn = container.querySelector(
@@ -705,8 +722,76 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    expect(onCreateIssueFromComment).not.toHaveBeenCalled();
+    expect(onSubmitProject).not.toHaveBeenCalled();
+    expect(onSubmitWorkflow).not.toHaveBeenCalled();
     expect(queryByRole('dialog')).not.toBeNull();
+  });
+
+  it('opens the comment-triggered dialog with Workflow already selected as the destination', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Please split the token validation into its own tested function.',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('calls onSubmitProject and not onSubmitWorkflow when Project is selected before Create is clicked in the comment-triggered dialog', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Please split the token validation into its own tested function.',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
+    const { container, getByRole, getByLabelText } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueUrl="https://github.com/owner/repo/issues/1"
+        issueTitle="Source issue title"
+        onCreateIssueFromComment={{ onSubmitProject, onSubmitWorkflow }}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    fireEvent.click(getByRole('button', { name: 'Project' }));
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'Project destination from comment' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => {
+      expect(onSubmitProject).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Project destination from comment' }),
+      );
+    });
+    expect(onSubmitWorkflow).not.toHaveBeenCalled();
   });
 
   it('does not propagate click events from the expanded body to ancestor elements', () => {

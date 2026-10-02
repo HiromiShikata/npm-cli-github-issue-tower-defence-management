@@ -4072,6 +4072,174 @@ describe('ConsolePage workflow issue creation', () => {
       jest.useRealTimers();
     }
   });
+
+  it('opens the "Create new task" dialog with Project selected as the destination when a workflow repository is configured', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+    });
+    fireEvent.click(getByRole('button', { name: 'Create new task' }));
+    await waitFor(() => {
+      expect(
+        getByRole('dialog', { name: 'Create new task' }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('omits the Workflow destination option from the "Create new task" dialog when no workflow repository is configured', async () => {
+    installFetchWithFleetUrl(null);
+    const { getByRole, queryByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+    });
+    fireEvent.click(getByRole('button', { name: 'Create new task' }));
+    await waitFor(() => {
+      expect(
+        getByRole('dialog', { name: 'Create new task' }),
+      ).toBeInTheDocument();
+    });
+    expect(getByRole('button', { name: 'Project' })).toBeInTheDocument();
+    expect(queryByRole('button', { name: 'Workflow' })).toBeNull();
+  });
+
+  it('opens the "Create fleet task" dialog with Workflow selected as the destination', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRole('button', { name: 'Create fleet task' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+    await waitFor(() => {
+      expect(getByRole('dialog')).toBeInTheDocument();
+    });
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('sends the create request to the workflow repository when the destination is switched to Workflow from the "Create new task" dialog', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Workflow' }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Switched to workflow task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
+      expect(requestBody.title).toBe('Switched to workflow task');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('sends the create request to the current project\'s own repository when the destination is switched to Project from the "Create fleet task" dialog', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Project' }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Switched to project task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.nameWithOwner).toBe('o/r');
+      expect(requestBody.title).toBe('Switched to project task');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('renders both header task-creation buttons when a workflow repository is configured, and only the "Create new task" button when it is not', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByRole, unmount } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+    });
+    expect(
+      getByRole('button', { name: 'Create fleet task' }),
+    ).toBeInTheDocument();
+    unmount();
+
+    installFetchWithFleetUrl(null);
+    const { getByRole: getByRoleNoFleet, queryByRole: queryByRoleNoFleet } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRoleNoFleet('button', { name: 'Create new task' }),
+      ).toBeEnabled();
+    });
+    expect(
+      queryByRoleNoFleet('button', { name: 'Create fleet task' }),
+    ).toBeNull();
+  });
 });
 
 describe('ConsolePage stale cache snapshot tab lock', () => {
