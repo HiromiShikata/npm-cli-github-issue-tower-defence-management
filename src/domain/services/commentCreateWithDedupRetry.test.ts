@@ -217,4 +217,62 @@ describe('commentCreateWithDedupRetry', () => {
       expect(sleep).toHaveBeenCalledTimes(expectedSleepCallCount);
     },
   );
+
+  it('forwards an explicit windowMs override to the duplicate check, so a comment that is within the default 2-hour window but outside the shorter override window is not treated as a duplicate', async () => {
+    const existingCommentWithinDefaultWindow: ReadonlyArray<ExistingComment> = [
+      {
+        text: COMMENT_BODY,
+        createdAt: new Date(FIXED_NOW.getTime() - 90 * 60 * 1000),
+      },
+    ];
+    const fetchExisting = jest
+      .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
+      .mockResolvedValueOnce(existingCommentWithinDefaultWindow);
+    const postComment = jest
+      .fn<Promise<void>, []>()
+      .mockResolvedValueOnce(undefined);
+    const sleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+    const sixtyMinuteWindowMs = 60 * 60 * 1000;
+
+    await commentCreateWithDedupRetry(
+      COMMENT_BODY,
+      fetchExisting,
+      postComment,
+      clock,
+      sleep,
+      sixtyMinuteWindowMs,
+    );
+
+    expect(postComment).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards an explicit null windowMs override to the duplicate check, so a comment outside the default 2-hour window is still treated as a duplicate and never re-posted', async () => {
+    const existingCommentOutsideDefaultWindow: ReadonlyArray<ExistingComment> =
+      [
+        {
+          text: COMMENT_BODY,
+          createdAt: new Date(FIXED_NOW.getTime() - 3 * 60 * 60 * 1000),
+        },
+      ];
+    const fetchExisting = jest
+      .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
+      .mockResolvedValueOnce(existingCommentOutsideDefaultWindow);
+    const postComment = jest.fn<Promise<void>, []>();
+    const sleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+
+    await commentCreateWithDedupRetry(
+      COMMENT_BODY,
+      fetchExisting,
+      postComment,
+      clock,
+      sleep,
+      null,
+    );
+
+    expect(postComment).not.toHaveBeenCalled();
+  });
 });

@@ -6,7 +6,11 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class CreateEstimationIssueUseCase {
@@ -19,6 +23,7 @@ export class CreateEstimationIssueUseCase {
       | 'getIssueOrPullRequestComments'
     >,
     readonly dateRepository: Pick<DateRepository, 'formatDateWithDayOfWeek'>,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -166,19 +171,22 @@ export class CreateEstimationIssueUseCase {
     issue: Issue,
     commentBody: string,
   ): Promise<void> => {
-    const existing = await this.issueRepository.getIssueOrPullRequestComments(
-      issue.url,
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createComment(issue, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
     );
-    if (
-      isDuplicateWithinWindow(
-        commentBody,
-        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueRepository.createComment(issue, commentBody);
   };
 
   createEstimationIssueBody = (

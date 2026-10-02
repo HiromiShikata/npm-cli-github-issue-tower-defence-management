@@ -226,6 +226,53 @@ describe('CreateEstimationIssueUseCase', () => {
       expect(body).not.toContain('From: :robot:');
       expect(body).toContain('This issue is experimental workflow :pray:');
     });
+
+    it('should retry once and succeed when createComment first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+      mockDateRepository.formatDateWithDayOfWeek.mockReturnValue(
+        'Mon, Jun 01, 2026',
+      );
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new CreateEstimationIssueUseCase(
+        mockIssueRepository,
+        mockDateRepository,
+        mockSleep,
+      );
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createComment
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce(undefined);
+
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.id,
+          { story: featureStory, storyIssue, issues: [issueInStory] },
+        ],
+      ]);
+
+      const runPromise = retryingUseCase.run({
+        project: projectWithCompletionField,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('stale project item isolation and failure aggregation (issue #2789)', () => {

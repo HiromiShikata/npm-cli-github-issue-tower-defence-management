@@ -1232,6 +1232,103 @@ describe('GitHubIssueCommentRepository', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
+    describe('bounded retry for transient server errors', () => {
+      const buildMockSleep = (): jest.Mock<Promise<void>, [number]> =>
+        jest.fn<Promise<void>, [number]>().mockResolvedValue(undefined);
+
+      it.each([500, 502, 503, 504])(
+        'retries once and succeeds on the next PATCH attempt when the first attempt returns %i, backing off via the injected sleep before retrying',
+        async (transientStatus) => {
+          const mockSleep = buildMockSleep();
+          const retryingRepository = new GitHubIssueCommentRepository(
+            'test-token',
+            null,
+            mockSleep,
+          );
+          const fetchSpy = jest
+            .spyOn(global, 'fetch')
+            .mockResolvedValueOnce(
+              new Response('Service Unavailable', {
+                status: transientStatus,
+                statusText: 'Service Unavailable',
+              }),
+            )
+            .mockResolvedValueOnce(
+              new Response(JSON.stringify({ id: 400 }), { status: 200 }),
+            );
+
+          const issue = buildIssue(
+            'https://github.com/HiromiShikata/test-repository/issues/400',
+          );
+          await retryingRepository.updateComment(
+            issue,
+            '9100',
+            'retried update',
+          );
+
+          expect(fetchSpy).toHaveBeenCalledTimes(2);
+          expect(mockSleep).toHaveBeenCalledTimes(1);
+          expect(mockSleep).toHaveBeenCalledWith(expect.any(Number));
+        },
+      );
+
+      it('stops retrying once the bounded retry budget is exhausted and throws the plain error carrying the final attempt status and statusText when every attempt returns 503', async () => {
+        const mockSleep = buildMockSleep();
+        const retryingRepository = new GitHubIssueCommentRepository(
+          'test-token',
+          null,
+          mockSleep,
+        );
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+          new Response('Service Unavailable', {
+            status: 503,
+            statusText: 'Service Unavailable',
+          }),
+        );
+
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/401',
+        );
+
+        await expect(
+          retryingRepository.updateComment(issue, '9101', 'exhausted retries'),
+        ).rejects.toThrow(
+          'Failed to update comment via GitHub REST API: 503 Service Unavailable',
+        );
+
+        expect(fetchSpy).toHaveBeenCalledTimes(4);
+        expect(mockSleep).toHaveBeenCalledTimes(3);
+      });
+
+      it('does not call sleep and issues exactly one PATCH when the response is a non-transient 404', async () => {
+        const mockSleep = buildMockSleep();
+        const retryingRepository = new GitHubIssueCommentRepository(
+          'test-token',
+          null,
+          mockSleep,
+        );
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+          new Response('Not Found', {
+            status: 404,
+            statusText: 'Not Found',
+          }),
+        );
+
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/402',
+        );
+
+        await expect(
+          retryingRepository.updateComment(issue, '9102', 'non transient'),
+        ).rejects.toThrow(
+          'Failed to update comment via GitHub REST API: 404 Not Found',
+        );
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(mockSleep).not.toHaveBeenCalled();
+      });
+    });
+
     describe('circuit breaker', () => {
       it('issues the PATCH when the circuit breaker is not blocked', async () => {
         const fetchSpy = jest

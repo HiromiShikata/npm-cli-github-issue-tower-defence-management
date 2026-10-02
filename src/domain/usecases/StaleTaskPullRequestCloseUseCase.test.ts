@@ -302,6 +302,43 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     expect(callOrder).toEqual(['comment', 'close']);
   });
 
+  it('should retry once and succeed when createCommentByUrl first fails with a transient 502 error, backing off via the injected sleep before retrying, then still close the pull request', async () => {
+    stubRelatedOpenPullRequestLookupsAndGetIssueByUrl({
+      [closedTaskIssue.url]: [openPrWithClosedTaskIssue],
+    });
+    const mockSleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+    const retryingUseCase = new StaleTaskPullRequestCloseUseCase(
+      mockIssueRepository,
+      mockSleep,
+    );
+    const transientError = Object.assign(
+      new Error(
+        'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+      ),
+      { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+    );
+    mockIssueRepository.createCommentByUrl
+      .mockRejectedValueOnce(transientError)
+      .mockResolvedValueOnce({
+        author: '',
+        body: expectedStaleClosingCommentBody([closedTaskIssue.url]),
+        createdAt: new Date(),
+      });
+
+    await retryingUseCase.run({
+      issues: [closedTaskIssue, openPrWithClosedTaskIssue],
+    });
+
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+    expect(mockSleep).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      openPrWithClosedTaskIssue.url,
+    );
+  });
+
   describe('minimum pull request age guard', () => {
     const evaluatedAt = new Date('2026-01-02T00:00:00Z');
     const MINUTE_MS = 60 * 1000;

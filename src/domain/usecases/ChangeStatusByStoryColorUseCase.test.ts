@@ -288,6 +288,50 @@ describe('ChangeStatusByStoryColorUseCase', () => {
       });
     });
 
+    it('should retry once and succeed when createComment first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new ChangeStatusByStoryColorUseCase(
+        mockDateRepository,
+        mockIssueRepository,
+        mockSleep,
+      );
+      mockIssueRepository.get.mockResolvedValue(basicStoryObject1.issues[0]);
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createComment
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce(undefined);
+
+      await retryingUseCase.run({
+        project: basicProject,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map([
+          [
+            'Story 1',
+            {
+              ...basicStoryObject1,
+              story: {
+                ...basicStoryObject1.story,
+                color: 'GRAY',
+              },
+            },
+          ],
+          ['Story 2', basicStoryObject2],
+        ]),
+        manager,
+      });
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+
     it('should throw error when project has no statuses', async () => {
       const mockStatusWithNoStatuses = mock<Project['status']>();
       mockStatusWithNoStatuses.name = 'Status';

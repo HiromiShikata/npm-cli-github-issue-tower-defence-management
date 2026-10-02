@@ -119,6 +119,52 @@ describe('SubscriptionDisabledIssueUseCase', () => {
     });
   });
 
+  describe('when createCommentByUrl first fails with a transient 502 error', () => {
+    it('retries once and succeeds, backing off via the injected sleep before retrying', async () => {
+      const mockIssueRepository = mock<IssueRepository>();
+      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      const existingIssueUrl =
+        'https://github.com/test-org/test-repo/issues/99';
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: existingIssueUrl,
+          title: 'Restore Claude subscription access for dev3',
+          number: '99',
+        },
+      ]);
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createCommentByUrl
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce({
+          author: '',
+          body: 'restored',
+          createdAt: new Date(0),
+        });
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+
+      const useCase = new SubscriptionDisabledIssueUseCase(
+        mockIssueRepository,
+        mockSleep,
+      );
+
+      await useCase.run({
+        tokenEntries: [buildEntry('dev3', true)],
+        org: ORG,
+        repo: REPO,
+      });
+
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('when multiple tokens have different states', () => {
     it('only handles disabled tokens', async () => {
       const mockIssueRepository = mock<IssueRepository>();

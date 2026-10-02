@@ -13,11 +13,15 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import {
   AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
   AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
 } from './autoStatusCheckComments';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 
 export class ConflictedIssueRevertUseCase {
   constructor(
@@ -37,6 +41,7 @@ export class ConflictedIssueRevertUseCase {
       IssueCommentRepository,
       'getCommentsFromIssue' | 'createComment'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (params: {
@@ -180,10 +185,7 @@ export class ConflictedIssueRevertUseCase {
               issue,
               failedPreparationStatusOption.id,
             );
-            await this.issueCommentRepository.createComment(
-              issue,
-              repetition.comment,
-            );
+            await this.createCommentWithDedup(issue, repetition.comment);
             continue;
           }
           if (
@@ -195,10 +197,7 @@ export class ConflictedIssueRevertUseCase {
               issue,
               failedPreparationStatusOption.id,
             );
-            await this.issueCommentRepository.createComment(
-              issue,
-              repetition.comment,
-            );
+            await this.createCommentWithDedup(issue, repetition.comment);
             continue;
           }
         }
@@ -208,26 +207,30 @@ export class ConflictedIssueRevertUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      if (
-        isDuplicateWithinWindow(
-          commentMessage,
-          existingComments.map((c) => ({
-            text: c.content,
-            createdAt: c.createdAt,
-          })),
-          new Date(),
-        )
-      ) {
-        continue;
-      }
-      try {
-        await this.issueCommentRepository.createComment(issue, commentMessage);
-      } catch (error) {
-        console.error(
-          `Failed to post conflict comment on ${issue.url}: ${String(error)}`,
-        );
-      }
+      await this.createCommentWithDedup(issue, commentMessage);
     }
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        return existing.map((c) => ({
+          text: c.content,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueCommentRepository.createComment(issue, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 
   private buildRelatedOpenPrUrlsByIssueUrl = (

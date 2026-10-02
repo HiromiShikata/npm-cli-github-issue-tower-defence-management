@@ -1,6 +1,10 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 
 export type WorkflowIssueReporterSettings = {
   owner: string;
@@ -22,6 +26,7 @@ export const reportSilentRedispatchWorkflowIssue = async (
     | 'updateStoryByProjectItemId'
   >,
   projectRepository: Pick<ProjectRepository, 'getByUrl'>,
+  sleep: Sleep = realSleep,
 ): Promise<void> => {
   const title = `TDPM agent not reporting: ${agentName}`;
   try {
@@ -35,20 +40,22 @@ export const reportSilentRedispatchWorkflowIssue = async (
     const existing = existingIssues.find((i) => i.title === title);
     if (existing) {
       const commentBody = `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`;
-      const existingComments =
-        await issueRepository.getIssueOrPullRequestComments(existing.url);
-      if (
-        !isDuplicateWithinWindow(
-          commentBody,
-          existingComments.map((c) => ({
+      await commentCreateWithDedupRetry(
+        commentBody,
+        async () => {
+          const existingComments =
+            await issueRepository.getIssueOrPullRequestComments(existing.url);
+          return existingComments.map((c) => ({
             text: c.body,
             createdAt: c.createdAt,
-          })),
-          new Date(),
-        )
-      ) {
-        await issueRepository.createCommentByUrl(existing.url, commentBody);
-      }
+          }));
+        },
+        async () => {
+          await issueRepository.createCommentByUrl(existing.url, commentBody);
+        },
+        () => new Date(),
+        sleep,
+      );
     } else {
       const body = [
         `The TDPM preparation loop dispatched \`${agentName}\` and received no report, which indicates a TDPM process-level problem rather than a task-specific one.`,

@@ -112,6 +112,44 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
   });
 
+  it('retries once and succeeds when createCommentByUrl first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+    mockIssueRepository.searchIssue.mockResolvedValue([
+      {
+        url: 'https://github.com/wf-owner/wf-repo/issues/5',
+        title: 'TDPM agent not reporting: accounting',
+        number: '5',
+      },
+    ]);
+    const transientError = Object.assign(
+      new Error(
+        'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+      ),
+      { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+    );
+    mockIssueRepository.createCommentByUrl
+      .mockRejectedValueOnce(transientError)
+      .mockResolvedValueOnce({
+        author: '',
+        body: 'accounting',
+        createdAt: new Date(0),
+      });
+    const mockSleep = jest
+      .fn<Promise<void>, [number]>()
+      .mockResolvedValue(undefined);
+
+    await reportSilentRedispatchWorkflowIssue(
+      'accounting',
+      'https://github.com/user/repo/issues/1',
+      { owner: 'wf-owner', repo: 'wf-repo' },
+      mockIssueRepository,
+      mockProjectRepository,
+      mockSleep,
+    );
+
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
+    expect(mockSleep).toHaveBeenCalledTimes(1);
+  });
+
   it('adds the new issue to the project and sets workflow blocker story when projectUrl is set', async () => {
     const projectItemId = 'returned-project-item-id';
     const reporterProject = createMockProject({

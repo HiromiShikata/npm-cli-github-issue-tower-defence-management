@@ -21,12 +21,14 @@ jest.mock('./githubSecondaryRateLimitBreaker', () => ({
 class MockHTTPError extends Error {
   response: {
     status: number;
+    statusText?: string;
     headers: Headers;
     clone: () => { text: () => Promise<string> };
   };
   data?: unknown;
   constructor(response: {
     status: number;
+    statusText?: string;
     headers: Headers;
     clone: () => { text: () => Promise<string> };
   }) {
@@ -220,24 +222,70 @@ describe('RestIssueRepository', () => {
       });
     });
 
-    it('rethrows non-rate-limit HTTPError from ky unchanged', async () => {
-      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+    it.each([
+      { status: 403, statusText: 'Forbidden', bodyText: 'Forbidden' },
+      { status: 502, statusText: 'Bad Gateway', bodyText: 'Bad Gateway' },
+      { status: 404, statusText: 'Not Found', bodyText: 'Not Found' },
+      {
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        bodyText: 'Unprocessable Entity',
+      },
+    ])(
+      'throws GitHubCommentCreateHttpError with statusCode $status and the exact message format when ky throws a non-rate-limit HTTPError with status $status',
+      async ({ status, statusText, bodyText }) => {
+        const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+        mockPost.mockImplementation(() => ({
+          json: jest.fn().mockRejectedValue(
+            new MockHTTPError({
+              status,
+              statusText,
+              headers: mockHeaders,
+              clone: () => ({ text: async () => bodyText }),
+            }),
+          ),
+        }));
+
+        const { GitHubCommentCreateHttpError } =
+          await import('../GitHubIssueCommentRepository');
+
+        await expect(
+          restIssueRepository.createComment(
+            'https://github.com/HiromiShikata/test-repository/issues/40',
+            'test comment',
+          ),
+        ).rejects.toBeInstanceOf(GitHubCommentCreateHttpError);
+        await expect(
+          restIssueRepository.createComment(
+            'https://github.com/HiromiShikata/test-repository/issues/40',
+            'test comment',
+          ),
+        ).rejects.toMatchObject({
+          name: 'GitHubCommentCreateHttpError',
+          statusCode: status,
+          message: `Failed to create comment via GitHub REST API: ${status} ${statusText}`,
+        });
+      },
+    );
+
+    it('rethrows a non-HTTPError exception unchanged without converting it to GitHubCommentCreateHttpError', async () => {
+      const originalError = new Error('network socket hang up');
       mockPost.mockImplementation(() => ({
-        json: jest.fn().mockRejectedValue(
-          new MockHTTPError({
-            status: 403,
-            headers: mockHeaders,
-            clone: () => ({ text: async () => 'Forbidden' }),
-          }),
-        ),
+        json: jest.fn().mockRejectedValue(originalError),
       }));
 
-      await expect(
-        restIssueRepository.createComment(
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.createComment(
           'https://github.com/HiromiShikata/test-repository/issues/40',
           'test comment',
-        ),
-      ).rejects.toBeInstanceOf(MockHTTPError);
+        );
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(thrownError).toBe(originalError);
+      expect(thrownError).not.toBeInstanceOf(MockHTTPError);
     });
 
     it('throws GitHubRateLimitError even when clone() throws (body already consumed by ky 2.x)', async () => {

@@ -950,7 +950,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueRepository.getOpenPullRequests).not.toHaveBeenCalled();
     });
 
-    it('should continue processing next issue when createComment throws', async () => {
+    it('should propagate the error and stop processing further issues when createComment throws a non-transient error', async () => {
       const issue1 = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         number: 1,
@@ -994,23 +994,77 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       mockIssueRepository.updateBranch.mockResolvedValue(false);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
-      mockIssueCommentRepository.createComment
-        .mockRejectedValueOnce(
-          new Error('Failed to create comment via GitHub REST API: 403'),
-        )
-        .mockResolvedValueOnce(undefined);
+      const nonTransientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 422 Unprocessable Entity',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 422 },
+      );
+      mockIssueCommentRepository.createComment.mockRejectedValueOnce(
+        nonTransientError,
+      );
 
-      await expect(useCase.run({ projectUrl })).resolves.not.toThrow();
+      await expect(useCase.run({ projectUrl })).rejects.toThrow(
+        'Failed to create comment via GitHub REST API: 422 Unprocessable Entity',
+      );
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue1,
         AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue2,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry once and succeed when the first createComment attempt fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
+      const mockSleep = jest
+        .fn<Promise<void>, [number]>()
+        .mockResolvedValue(undefined);
+      const retryingUseCase = new ConflictedIssueRevertUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockIssueCommentRepository,
+        mockSleep,
       );
+      const issue1 = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        number: 1,
+        status: AWAITING_OWNER_STATUS_NAME,
+      });
+      const prItem1 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/10',
+        number: 10,
+        closingIssueReferenceUrls: [issue1.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue1, prItem1],
+        cacheUsed: false,
+      });
+      const conflictedPr1 = createMockRelatedPullRequest({
+        url: prItem1.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr1.url, conflictedPr1]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueCommentRepository.createComment
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce(undefined);
+
+      await expect(retryingUseCase.run({ projectUrl })).resolves.not.toThrow();
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockSleep).toHaveBeenCalledTimes(1);
     });
 
     it('should process multiple conflicted issues in one run when update-branch fails for both', async () => {

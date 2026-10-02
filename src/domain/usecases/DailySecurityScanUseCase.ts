@@ -2,7 +2,11 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
 import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { KevReportWatermark } from '../entities/KevReportWatermark';
 import { Member } from '../entities/Member';
 
@@ -171,6 +175,7 @@ export class DailySecurityScanUseCase {
     >,
     readonly httpRepository: HttpRepository,
     readonly kevReportWatermarkRepository: KevReportWatermarkRepository,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -319,25 +324,10 @@ export class DailySecurityScanUseCase {
           (issue) => issue.title === 'Daily security scan findings',
         );
         if (existingIssue) {
-          const existingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(
-              existingIssue.url,
-            );
-          if (
-            !isDuplicateWithinWindow(
-              findingsBody,
-              existingComments.map((c) => ({
-                text: c.body,
-                createdAt: c.createdAt,
-              })),
-              new Date(),
-            )
-          ) {
-            await this.issueRepository.createCommentByUrl(
-              existingIssue.url,
-              findingsBody,
-            );
-          }
+          await this.createCommentByUrlWithDedup(
+            existingIssue.url,
+            findingsBody,
+          );
         } else {
           await this.issueRepository.createNewIssue(
             repositoryOrg,
@@ -355,6 +345,28 @@ export class DailySecurityScanUseCase {
       }
     }
     return scannedVulnerablePackages;
+  };
+
+  private createCommentByUrlWithDedup = async (
+    url: string,
+    commentBody: string,
+  ): Promise<void> => {
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createCommentByUrl(url, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
+    );
   };
 
   private checkoutDefaultBranch = async (

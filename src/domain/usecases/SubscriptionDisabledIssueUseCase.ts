@@ -1,5 +1,9 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 
 export type SubscriptionDisabledTokenEntry = {
   name: string;
@@ -15,6 +19,7 @@ export class SubscriptionDisabledIssueUseCase {
       | 'createCommentByUrl'
       | 'getIssueOrPullRequestComments'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -55,25 +60,27 @@ export class SubscriptionDisabledIssueUseCase {
 
     if (existingIssue) {
       const commentBody = `The Claude subscription access for the token displayed as \`${tokenName}\` remains disabled. Please restore the account's Claude Code subscription access.`;
-      const existingComments =
-        await this.issueRepository.getIssueOrPullRequestComments(
-          existingIssue.url,
-        );
-      if (
-        !isDuplicateWithinWindow(
-          commentBody,
-          existingComments.map((c) => ({
+      await commentCreateWithDedupRetry(
+        commentBody,
+        async () => {
+          const existingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(
+              existingIssue.url,
+            );
+          return existingComments.map((c) => ({
             text: c.body,
             createdAt: c.createdAt,
-          })),
-          new Date(),
-        )
-      ) {
-        await this.issueRepository.createCommentByUrl(
-          existingIssue.url,
-          commentBody,
-        );
-      }
+          }));
+        },
+        async () => {
+          await this.issueRepository.createCommentByUrl(
+            existingIssue.url,
+            commentBody,
+          );
+        },
+        () => new Date(),
+        this.sleep,
+      );
       console.log(
         `SubscriptionDisabledIssue: commented on existing issue for token ${tokenName}: ${existingIssue.url}`,
       );

@@ -5,7 +5,11 @@ import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { Member } from '../entities/Member';
 import { Issue } from '../entities/Issue';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
@@ -20,6 +24,7 @@ export class ChangeStatusByStoryColorUseCase {
       | 'get'
       | 'removeIssueFromProjectCache'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: {
@@ -152,18 +157,21 @@ export class ChangeStatusByStoryColorUseCase {
     issue: Issue,
     commentBody: string,
   ): Promise<void> => {
-    const existing = await this.issueRepository.getIssueOrPullRequestComments(
-      issue.url,
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createComment(issue, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
     );
-    if (
-      isDuplicateWithinWindow(
-        commentBody,
-        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    await this.issueRepository.createComment(issue, commentBody);
   };
 }
