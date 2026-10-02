@@ -993,9 +993,7 @@ describe('ClearDependedIssueURLUseCase', () => {
 
       it('should retry once and succeed when createComment first fails with a transient 502 error, backing off via the injected sleep before retrying', async () => {
         jest.clearAllMocks();
-        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
-          [],
-        );
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
         const mockSleep = jest
           .fn<Promise<void>, [number]>()
           .mockResolvedValue(undefined);

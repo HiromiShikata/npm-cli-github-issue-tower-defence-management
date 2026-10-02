@@ -2775,9 +2775,7 @@ describe('HandleScheduledEventUseCase', () => {
           'something went wrong unexpectedly',
         );
 
-        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(
-          2,
-        );
+        expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledTimes(2);
         expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
           existingIssueUrl,
           expect.stringContaining('something went wrong unexpectedly'),

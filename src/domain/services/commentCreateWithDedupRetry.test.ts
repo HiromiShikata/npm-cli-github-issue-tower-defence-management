@@ -219,13 +219,12 @@ describe('commentCreateWithDedupRetry', () => {
   );
 
   it('forwards an explicit windowMs override to the duplicate check, so a comment that is within the default 2-hour window but outside the shorter override window is not treated as a duplicate', async () => {
-    const existingCommentWithinDefaultWindow: ReadonlyArray<ExistingComment> =
-      [
-        {
-          text: COMMENT_BODY,
-          createdAt: new Date(FIXED_NOW.getTime() - 90 * 60 * 1000),
-        },
-      ];
+    const existingCommentWithinDefaultWindow: ReadonlyArray<ExistingComment> = [
+      {
+        text: COMMENT_BODY,
+        createdAt: new Date(FIXED_NOW.getTime() - 90 * 60 * 1000),
+      },
+    ];
     const fetchExisting = jest
       .fn<Promise<ReadonlyArray<ExistingComment>>, []>()
       .mockResolvedValueOnce(existingCommentWithinDefaultWindow);

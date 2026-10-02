@@ -240,9 +240,8 @@ describe('RestIssueRepository', () => {
           ),
         }));
 
-        const { GitHubCommentCreateHttpError } = await import(
-          '../GitHubIssueCommentRepository'
-        );
+        const { GitHubCommentCreateHttpError } =
+          await import('../GitHubIssueCommentRepository');
 
         await expect(
           restIssueRepository.createComment(

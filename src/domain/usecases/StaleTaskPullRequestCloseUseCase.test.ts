@@ -314,7 +314,9 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
       mockSleep,
     );
     const transientError = Object.assign(
-      new Error('Failed to create comment via GitHub REST API: 502 Bad Gateway'),
+      new Error(
+        'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+      ),
       { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
     );
     mockIssueRepository.createCommentByUrl

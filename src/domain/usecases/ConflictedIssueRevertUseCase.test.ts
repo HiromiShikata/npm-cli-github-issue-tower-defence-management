@@ -1008,9 +1008,7 @@ describe('ConflictedIssueRevertUseCase', () => {
         'Failed to create comment via GitHub REST API: 422 Unprocessable Entity',
       );
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue1,
         AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
@@ -1065,9 +1063,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       await expect(retryingUseCase.run({ projectUrl })).resolves.not.toThrow();
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-        2,
-      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
       expect(mockSleep).toHaveBeenCalledTimes(1);
     });
 
