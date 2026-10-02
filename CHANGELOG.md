@@ -1,3 +1,10 @@
+## [2.158.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.1...v2.158.2) (2026-10-02)
+
+
+### Bug Fixes
+
+* **issue-repository:** recognize same-repo shorthand closing keyword when willCloseTarget is false ([#3118](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3118)) ([e15d3ab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e15d3ab087cc85192af71550ac74149109f46f74))
+
 ## [2.158.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.0...v2.158.1) (2026-10-02)
 
 
