@@ -3936,9 +3936,9 @@ describe('HandleScheduledEventUseCase', () => {
             now,
           );
 
-          expect(
-            mockChangeStatusByStoryColorUseCase.run,
-          ).toHaveBeenCalledTimes(1);
+          expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalledTimes(
+            1,
+          );
         }
       });
     });
