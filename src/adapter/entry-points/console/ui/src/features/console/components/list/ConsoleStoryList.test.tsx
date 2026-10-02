@@ -74,6 +74,7 @@ const defaultProps = {
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
+  onOpenItem: () => undefined,
 };
 
 describe('ConsoleStoryList', () => {
@@ -1182,16 +1183,14 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Add analytics')).toBeInTheDocument();
     });
 
-    it('renders task title as a link to the issue URL', () => {
-      const { getAllByRole, getByRole } = render(
+    it('renders task title as an internal button, not an external link', () => {
+      const { getAllByRole, getByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      const link = getByRole('link', { name: 'Fix login bug' });
-      expect(link).toHaveAttribute(
-        'href',
-        'https://github.com/demo/repo/issues/10',
-      );
+      const titleButton = getByRole('button', { name: 'Fix login bug' });
+      expect(titleButton).toHaveClass('console-story-task-title');
+      expect(queryByRole('link', { name: 'Fix login bug' })).toBeNull();
     });
 
     it('shows status value when set', () => {

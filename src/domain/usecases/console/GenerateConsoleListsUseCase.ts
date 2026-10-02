@@ -186,11 +186,13 @@ export class GenerateConsoleListsUseCase {
     const itemsByStoryOptionId = new Map<string, ConsoleListItem[]>();
     for (const issue of issues) {
       const storyOptionId = issue.storyOptionId;
-      if (!issue.isClosed && storyOptionId != null) {
-        openItemCountByStoryOptionId.set(
-          storyOptionId,
-          (openItemCountByStoryOptionId.get(storyOptionId) ?? 0) + 1,
-        );
+      if (storyOptionId != null) {
+        if (!issue.isClosed) {
+          openItemCountByStoryOptionId.set(
+            storyOptionId,
+            (openItemCountByStoryOptionId.get(storyOptionId) ?? 0) + 1,
+          );
+        }
         const storyItems = itemsByStoryOptionId.get(storyOptionId) ?? [];
         storyItems.push(
           this.projectItem(

@@ -128,6 +128,7 @@ const meta: Meta<typeof ConsoleStoryList> = {
     optimisticColors: {},
     colorChangeInFlight: null,
     colorErrors: {},
+    onOpenItem: () => undefined,
   },
 };
 

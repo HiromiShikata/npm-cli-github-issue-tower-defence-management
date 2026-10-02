@@ -501,11 +501,21 @@ export const ConsolePage = () => {
     if (selectedItemKey === null || activeSnapshot === null) {
       return null;
     }
-    return (
-      activeSnapshot.items.find(
-        (item) => item.projectItemId === selectedItemKey,
-      ) ?? null
+    const itemFromFlatList = activeSnapshot.items.find(
+      (item) => item.projectItemId === selectedItemKey,
     );
+    if (itemFromFlatList !== undefined) {
+      return itemFromFlatList;
+    }
+    for (const story of activeSnapshot.stories) {
+      const itemFromStory = story.items.find(
+        (item) => item.projectItemId === selectedItemKey,
+      );
+      if (itemFromStory !== undefined) {
+        return itemFromStory;
+      }
+    }
+    return null;
   }, [selectedItemKey, activeSnapshot]);
 
   useConsoleDetailPrefetch(caches, selectedItem, pendingItems);
@@ -1165,7 +1175,7 @@ export const ConsolePage = () => {
         timerTotalSeconds={activeSnapshot?.timerTotalSeconds ?? null}
         now={now}
       />
-      {activeTab === 'stories' ? (
+      {activeTab === 'stories' && selectedItem === null ? (
         <div className="console-list-screen">
           <ConsoleStoryList
             stories={storyEntries}
@@ -1184,6 +1194,7 @@ export const ConsolePage = () => {
             optimisticColors={storyOptimisticColors}
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}
+            onOpenItem={(item) => navigation.openItem(item.projectItemId)}
           />
         </div>
       ) : selectedItem === null ? (
