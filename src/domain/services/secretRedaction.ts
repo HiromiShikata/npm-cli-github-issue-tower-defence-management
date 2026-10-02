@@ -28,9 +28,6 @@ const redactJsonStyleKeyValues = (text: string): string =>
         : match,
   );
 
-const looksLikeQuotedJsonValue = (value: string): boolean =>
-  value.length >= 2 && value.startsWith('"') && value.endsWith('"');
-
 const redactYamlStyleKeyValues = (text: string): string =>
   text.replace(
     YAML_STYLE_KEY_VALUE_LINE_PATTERN,
@@ -39,12 +36,8 @@ const redactYamlStyleKeyValues = (text: string): string =>
       leadingWhitespace: string,
       key: string,
       separatorWhitespace: string,
-      value: string,
     ): string => {
       if (!CREDENTIAL_KEY_NAME_PATTERN.test(key)) {
-        return line;
-      }
-      if (looksLikeQuotedJsonValue(value.trim())) {
         return line;
       }
       return `${leadingWhitespace}${key}:${separatorWhitespace}${REDACTED_SECRET_PLACEHOLDER}`;
