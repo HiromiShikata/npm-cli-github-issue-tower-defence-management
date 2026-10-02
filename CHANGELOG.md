@@ -1,3 +1,10 @@
+## [2.157.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.4...v2.157.5) (2026-10-02)
+
+
+### Bug Fixes
+
+* **issue-repository:** apply title-match fallback when story is the NO STORY marker ([#3090](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3090)) ([78af0c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78af0c42871d64a9064ef3b139b32746bdf313d2))
+
 ## [2.157.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.3...v2.157.4) (2026-10-02)
 
 
