@@ -1805,4 +1805,108 @@ describe('ConsoleItemDetailContainer', () => {
       consoleErrorSpy.mockRestore();
     }
   });
+
+  it('leaves the Status, Agent, and Story chip text unchanged after the button area collapse control is clicked (AC-5)', () => {
+    const itemWithAgent = { ...issueItem, agent: 'developer' };
+    const { container, getByText, queryByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={itemWithAgent}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    const statusChipTextBeforeCollapse = container.querySelector(
+      '.console-detail-status-chip',
+    )?.textContent;
+    const agentChipTextBeforeCollapse = container.querySelector(
+      '.console-detail-agent-chip',
+    )?.textContent;
+    const storyTagTextBeforeCollapse = container.querySelector(
+      '.console-storytag',
+    )?.textContent;
+    expect(statusChipTextBeforeCollapse).toBe('Todo by human');
+    expect(agentChipTextBeforeCollapse).toBe('developer');
+    expect(storyTagTextBeforeCollapse).toBe('TDPM Console port');
+
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    const toggleButton = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.click(toggleButton);
+
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
+    expect(getByText('▸')).toBeInTheDocument();
+    expect(queryByText('Awaiting Workspace')).toBeNull();
+
+    expect(
+      container.querySelector('.console-detail-status-chip')?.textContent,
+    ).toBe(statusChipTextBeforeCollapse);
+    expect(
+      container.querySelector('.console-detail-agent-chip')?.textContent,
+    ).toBe(agentChipTextBeforeCollapse);
+    expect(
+      container.querySelector('.console-storytag')?.textContent,
+    ).toBe(storyTagTextBeforeCollapse);
+  });
+
+  it('toggles the comment composer open and closed through its own control while the button area stays collapsed (AC-6)', () => {
+    const {
+      getByText,
+      getByPlaceholderText,
+      queryByPlaceholderText,
+    } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+
+    const actionsToggle = getByText('Actions').closest(
+      'button',
+    ) as HTMLButtonElement;
+    fireEvent.click(actionsToggle);
+    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
+
+    const composerToggle = getByText('✕ Close').closest(
+      'button',
+    ) as HTMLButtonElement;
+    expect(composerToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
+
+    fireEvent.click(composerToggle);
+
+    expect(composerToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(getByText('💬 Add a comment')).toBeInTheDocument();
+    expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
+    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(composerToggle);
+
+    expect(composerToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(getByText('✕ Close')).toBeInTheDocument();
+    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
+    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
+  });
 });
