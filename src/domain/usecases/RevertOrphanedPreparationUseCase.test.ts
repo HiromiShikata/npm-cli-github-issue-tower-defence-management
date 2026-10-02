@@ -4145,7 +4145,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
     );
 
-    it('propagates an unrelated updateStatus error unchanged in the closed issue advance to quality check without reverting the remaining issue', async () => {
+    it('records an unrelated updateStatus error for the closed issue, still reverts the remaining issue, and throws an AggregateError naming the failed issue once the loop finishes', async () => {
       const unrelatedError = new Error('GraphQL rate limit exceeded');
       arrangeStaleAndRemainingOrphanedIssues({
         staleIssue: closedStaleIssue,
@@ -4153,17 +4153,127 @@ describe('RevertOrphanedPreparationUseCase', () => {
         updateStatusErrorForStaleIssue: unrelatedError,
       });
 
-      await expect(runOrphanedPreparationRevert()).rejects.toBe(unrelatedError);
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        closedStaleIssue,
-        '4',
+      const thrown = await runOrphanedPreparationRevert().catch(
+        (error: unknown) => error,
       );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        remainingIssue,
-        expect.anything(),
+
+      expect(thrown).toBeInstanceOf(AggregateError);
+      if (!(thrown instanceof AggregateError)) {
+        throw new Error('Expected an AggregateError');
+      }
+      expect(thrown.errors).toEqual([unrelatedError]);
+      expect(thrown.message).toBe(
+        `RevertOrphanedPreparationUseCase: failed to revert 1 issue(s): ${closedStaleIssue.url} (${unrelatedError.message})`,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+        [mockProject, closedStaleIssue, '4'],
+        [mockProject, remainingIssue, '1'],
+      ]);
+    });
+  });
+
+  describe('per-issue isolation for a non-StaleProjectItemError failure (criterion 4)', () => {
+    const targetIssueAUrl = 'https://github.com/user/repo/issues/30';
+    const targetIssueBUrl = 'https://github.com/user/repo/issues/31';
+    const issueA = createMockIssue({
+      url: targetIssueAUrl,
+      number: 30,
+      itemId: 'item-30',
+      status: 'Preparation',
+    });
+    const issueB = createMockIssue({
+      url: targetIssueBUrl,
+      number: 31,
+      itemId: 'item-31',
+      status: 'Preparation',
+    });
+
+    const runRevertOverIssues = (targetIssues: Issue[]): Promise<void> => {
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: targetIssues,
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      return useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+    };
+
+    it.each<{
+      name: string;
+      targetIssues: Issue[];
+      failingIssueUrls: string[];
+    }>([
+      {
+        name: 'case 1: issue A throws, issue B completes normally — B is still processed and one error listing A is thrown',
+        targetIssues: [issueA, issueB],
+        failingIssueUrls: [targetIssueAUrl],
+      },
+      {
+        name: 'case 2: both issue A and issue B throw — both are processed and one error listing both is thrown',
+        targetIssues: [issueA, issueB],
+        failingIssueUrls: [targetIssueAUrl, targetIssueBUrl],
+      },
+      {
+        name: 'case 3: a single issue completes normally — resolves without throwing (unchanged)',
+        targetIssues: [issueA],
+        failingIssueUrls: [],
+      },
+    ])('$name', async ({ targetIssues, failingIssueUrls }) => {
+      const errorsByUrl = new Map(
+        failingIssueUrls.map((url) => [
+          url,
+          new Error(`updateStatus failed for ${url}`),
+        ]),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        async (_project, issue) => {
+          const error = errorsByUrl.get(issue.url);
+          if (error) {
+            throw error;
+          }
+        },
+      );
+
+      const result = await runRevertOverIssues(targetIssues).then(
+        () => ({ type: 'resolved' as const }),
+        (error: unknown) => ({ type: 'rejected' as const, error }),
+      );
+
+      if (failingIssueUrls.length === 0) {
+        expect(result).toEqual({ type: 'resolved' });
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+          targetIssues.map((issue) => [mockProject, issue, '1']),
+        );
+        return;
+      }
+
+      expect(result.type).toBe('rejected');
+      if (result.type !== 'rejected') {
+        throw new Error('Expected the revert run to reject');
+      }
+      const thrown = result.error;
+      expect(thrown).toBeInstanceOf(AggregateError);
+      if (!(thrown instanceof AggregateError)) {
+        throw new Error('Expected an AggregateError');
+      }
+      expect(thrown.errors).toEqual(
+        failingIssueUrls.map((url) => errorsByUrl.get(url)),
+      );
+      const expectedMessage = `RevertOrphanedPreparationUseCase: failed to revert ${failingIssueUrls.length} issue(s): ${failingIssueUrls
+        .map((url) => `${url} (${errorsByUrl.get(url)?.message})`)
+        .join(', ')}`;
+      expect(thrown.message).toBe(expectedMessage);
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+        targetIssues.map((issue) => [mockProject, issue, '1']),
       );
     });
   });
