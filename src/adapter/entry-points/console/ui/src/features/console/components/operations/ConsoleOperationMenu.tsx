@@ -54,69 +54,85 @@ export const ConsoleOperationMenu = ({
   isDraftEmpty,
 }: ConsoleOperationBarProps) => {
   const [showFieldSelectors, setShowFieldSelectors] = useState(false);
+  const [isActionsExpanded, setIsActionsExpanded] = useState<boolean>(true);
   return (
     <div className="console-operation-bar">
-      {hasPullRequest && (
-        <ConsolePullRequestReviewActions
-          onReview={handlers.onReview}
-          rejectEnabled={rejectEnabled}
-        />
-      )}
-      <ConsoleNextActionDateActions
-        isManualTriage={isManualTriageTab(tab)}
-        onSetNextActionDate={handlers.onSetNextActionDate}
-      />
-      <ConsoleStatusActions
-        statusOptions={statusOptions}
-        onSetStatus={handlers.onSetStatus}
-        onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
-      />
-      {showFieldSelectors && (
+      <button
+        type="button"
+        className="console-actionbar-toggle"
+        aria-expanded={isActionsExpanded}
+        onClick={() => setIsActionsExpanded((prev) => !prev)}
+      >
+        <span className="console-actionbar-caret">
+          {isActionsExpanded ? '▾' : '▸'}
+        </span>
+        <span className="console-actionbar-title">Actions</span>
+      </button>
+      {isActionsExpanded && (
         <>
-          <ConsoleStorySelectActions
-            storyOptions={storyOptions}
-            currentStoryName={currentStoryName}
-            currentStoryOptionId={currentStoryOptionId}
-            onSetStory={handlers.onSetStory}
+          {hasPullRequest && (
+            <ConsolePullRequestReviewActions
+              onReview={handlers.onReview}
+              rejectEnabled={rejectEnabled}
+            />
+          )}
+          <ConsoleNextActionDateActions
+            isManualTriage={isManualTriageTab(tab)}
+            onSetNextActionDate={handlers.onSetNextActionDate}
           />
-          <ConsoleAgentSelectActions
-            agentOptions={agentOptions}
-            currentAgentName={currentAgentName}
-            currentAgentOptionId={currentAgentOptionId}
-            onSetAgent={handlers.onSetAgent}
+          <ConsoleStatusActions
+            statusOptions={statusOptions}
+            onSetStatus={handlers.onSetStatus}
+            onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
           />
+          {showFieldSelectors && (
+            <>
+              <ConsoleStorySelectActions
+                storyOptions={storyOptions}
+                currentStoryName={currentStoryName}
+                currentStoryOptionId={currentStoryOptionId}
+                onSetStory={handlers.onSetStory}
+              />
+              <ConsoleAgentSelectActions
+                agentOptions={agentOptions}
+                currentAgentName={currentAgentName}
+                currentAgentOptionId={currentAgentOptionId}
+                onSetAgent={handlers.onSetAgent}
+              />
+            </>
+          )}
+          <div className="console-op-group-bottom-row">
+            <div className="console-op-group-left-pair">
+              {(storyOptions.length > 0 || agentOptions.length > 0) && (
+                <div className="console-op-group">
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    onClick={() => setShowFieldSelectors((prev) => !prev)}
+                    title="Change agent or story"
+                  >
+                    ⚙
+                  </button>
+                </div>
+              )}
+              <ConsoleRareActions
+                onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
+              />
+              <ConsoleDangerousActions
+                onDeleteAllComments={handlers.onDeleteAllComments}
+                onDeleteStory={handlers.onDeleteStory}
+                storyNameForDeletion={storyNameForDeletion}
+              />
+            </div>
+            <ConsoleCloseActions
+              onClose={handlers.onClose}
+              onCommentAndClose={onCommentAndClose}
+              onOkAndClose={onOkAndClose}
+              isDraftEmpty={isDraftEmpty}
+            />
+          </div>
         </>
       )}
-      <div className="console-op-group-bottom-row">
-        <div className="console-op-group-left-pair">
-          {(storyOptions.length > 0 || agentOptions.length > 0) && (
-            <div className="console-op-group">
-              <button
-                type="button"
-                className="console-op-button"
-                onClick={() => setShowFieldSelectors((prev) => !prev)}
-                title="Change agent or story"
-              >
-                ⚙
-              </button>
-            </div>
-          )}
-          <ConsoleRareActions
-            onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
-          />
-          <ConsoleDangerousActions
-            onDeleteAllComments={handlers.onDeleteAllComments}
-            onDeleteStory={handlers.onDeleteStory}
-            storyNameForDeletion={storyNameForDeletion}
-          />
-        </div>
-        <ConsoleCloseActions
-          onClose={handlers.onClose}
-          onCommentAndClose={onCommentAndClose}
-          onOkAndClose={onOkAndClose}
-          isDraftEmpty={isDraftEmpty}
-        />
-      </div>
     </div>
   );
 };

@@ -1659,6 +1659,35 @@ body {
   padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
+.console-actionbar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #e6edf3;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.console-actionbar-toggle:hover {
+  background: #1a2029;
+}
+
+.console-actionbar-caret {
+  color: #8b949e;
+  font-size: 0.75rem;
+}
+
+.console-actionbar-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
 .console-operation-bar {
   display: flex;
   flex-direction: column;
