@@ -703,6 +703,13 @@ describe('StartPreparationUseCase', () => {
         },
       ]);
       arrangeIssue(project, ['chore']);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+          agent: 'chore',
+        }),
+      );
 
       await runWithAgents(['impl', 'chore', 'accounting']);
 
@@ -747,6 +754,13 @@ describe('StartPreparationUseCase', () => {
     it('creates the Agent field when the project has none, then sets it and removes the label', async () => {
       const project = createMockProject();
       arrangeIssue(project, ['chore']);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+          agent: 'chore',
+        }),
+      );
       mockProjectRepository.getByUrl.mockResolvedValueOnce(project);
       mockProjectRepository.getByUrl.mockResolvedValueOnce(
         projectWithAgentField([
@@ -779,6 +793,13 @@ describe('StartPreparationUseCase', () => {
     it('keeps the label and still uses it as the agent when the Agent field option cannot be resolved', async () => {
       const project = createMockProject();
       arrangeIssue(project, ['chore']);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+          agent: 'chore',
+        }),
+      );
       mockProjectRepository.getByUrl.mockResolvedValue(project);
 
       await runWithAgents(['chore']);
@@ -7274,6 +7295,13 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap(awaitingIssues),
       );
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+          agent: params.agent ?? null,
+        }),
+      );
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -7421,6 +7449,112 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
+  describe('dispatches using the live re-fetched Agent field value, not the stale cached one', () => {
+    const runWithCachedAndLiveAgent = async (params: {
+      cachedAgent: string | null;
+      liveAgent: string | null;
+      defaultAgentName: string;
+    }): Promise<string> => {
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            title: 'Issue 1',
+            labels: [],
+            status: 'Awaiting Workspace',
+            dependedIssueUrls: [],
+            agent: params.cachedAgent,
+          }),
+        ]),
+      );
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'url1',
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: [],
+          agent: params.liveAgent,
+        }),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: params.defaultAgentName,
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      return mockLocalCommandRunner.runCommand.mock.calls[0][1][1];
+    };
+
+    it.each<{
+      name: string;
+      cachedAgent: string | null;
+      liveAgent: string | null;
+      defaultAgentName: string;
+      expectedDispatchedAgent: string;
+    }>([
+      {
+        name: 'dispatches the live re-fetched agent when it differs from the stale cached agent',
+        cachedAgent: 'chore',
+        liveAgent: 'developer',
+        defaultAgentName: 'fallback-agent',
+        expectedDispatchedAgent: 'developer',
+      },
+      {
+        name: 'dispatches the cached agent unchanged when the live re-fetch confirms it is still current',
+        cachedAgent: 'chore',
+        liveAgent: 'chore',
+        defaultAgentName: 'fallback-agent',
+        expectedDispatchedAgent: 'chore',
+      },
+      {
+        name: 'falls back to defaultAgentName when the live re-fetch shows the Agent field cleared, even though the cached snapshot had an agent set',
+        cachedAgent: 'developer',
+        liveAgent: null,
+        defaultAgentName: 'default-agent',
+        expectedDispatchedAgent: 'default-agent',
+      },
+      {
+        name: 'dispatches the live re-fetched agent, not defaultAgentName, when the cached snapshot had no agent set',
+        cachedAgent: null,
+        liveAgent: 'developer',
+        defaultAgentName: 'default-agent',
+        expectedDispatchedAgent: 'developer',
+      },
+    ])(
+      '$name',
+      async ({
+        cachedAgent,
+        liveAgent,
+        defaultAgentName,
+        expectedDispatchedAgent,
+      }) => {
+        const dispatchedAgent = await runWithCachedAndLiveAgent({
+          cachedAgent,
+          liveAgent,
+          defaultAgentName,
+        });
+        expect(dispatchedAgent).toBe(expectedDispatchedAgent);
+      },
+    );
+  });
+
   describe('NO STORY story bypasses the Agent field for agent selection', () => {
     const projectWithAgentOption = (
       optionId: string,
@@ -7456,6 +7590,7 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getAllOpened.mockResolvedValue([
         noStoryIssueWithAgentSet,
       ]);
+      mockIssueRepository.get.mockResolvedValue(noStoryIssueWithAgentSet);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
@@ -7501,6 +7636,7 @@ describe('StartPreparationUseCase', () => {
       mockIssueRepository.getAllOpened.mockResolvedValue([
         noStoryIssueWithLiaisonAgent,
       ]);
+      mockIssueRepository.get.mockResolvedValue(noStoryIssueWithLiaisonAgent);
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
         stderr: '',
