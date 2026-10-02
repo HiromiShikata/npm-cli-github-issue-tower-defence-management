@@ -234,9 +234,7 @@ describe('RevertOrphanedWaitConditionUseCase', () => {
       awLogStaleThresholdMinutes: 15,
     });
 
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      1,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
       `Auto Status Check: REJECTED\n- ${ORPHANED_WAIT_CONDITION_REJECTION_DETAIL}`,
     );
@@ -295,9 +293,7 @@ describe('RevertOrphanedWaitConditionUseCase', () => {
     });
 
     expect(mockIssueRepository.getAllIssues.mock.calls).toHaveLength(1);
-    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-      1,
-    );
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(Object.keys(mockIssueRepository)).toEqual(['getAllIssues']);
   });
 
