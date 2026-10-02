@@ -1,3 +1,10 @@
+# [2.159.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.3...v2.159.0) (2026-10-02)
+
+
+### Features
+
+* **console-ui:** add collapse/expand toggle to ConsoleOperationMenu button area ([#3131](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3131)) ([db6f9e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db6f9e1273198018736fcffe5d0e754ebd7007a3))
+
 ## [2.158.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.2...v2.158.3) (2026-10-02)
 
 
