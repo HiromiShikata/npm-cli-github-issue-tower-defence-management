@@ -1831,9 +1831,8 @@ describe('ConsoleItemDetailContainer', () => {
     const agentChipTextBeforeCollapse = container.querySelector(
       '.console-detail-agent-chip',
     )?.textContent;
-    const storyTagTextBeforeCollapse = container.querySelector(
-      '.console-storytag',
-    )?.textContent;
+    const storyTagTextBeforeCollapse =
+      container.querySelector('.console-storytag')?.textContent;
     expect(statusChipTextBeforeCollapse).toBe('Todo by human');
     expect(agentChipTextBeforeCollapse).toBe('developer');
     expect(storyTagTextBeforeCollapse).toBe('TDPM Console port');
@@ -1856,17 +1855,13 @@ describe('ConsoleItemDetailContainer', () => {
     expect(
       container.querySelector('.console-detail-agent-chip')?.textContent,
     ).toBe(agentChipTextBeforeCollapse);
-    expect(
-      container.querySelector('.console-storytag')?.textContent,
-    ).toBe(storyTagTextBeforeCollapse);
+    expect(container.querySelector('.console-storytag')?.textContent).toBe(
+      storyTagTextBeforeCollapse,
+    );
   });
 
   it('toggles the comment composer open and closed through its own control while the button area stays collapsed (AC-6)', () => {
-    const {
-      getByText,
-      getByPlaceholderText,
-      queryByPlaceholderText,
-    } = render(
+    const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
