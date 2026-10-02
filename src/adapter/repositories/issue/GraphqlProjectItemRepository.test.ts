@@ -24,6 +24,7 @@ import {
   PAGINATION_DELAY_MS,
   PROJECT_ITEM_ASSIGNEES_FIRST,
   PROJECT_ITEM_LABELS_FIRST,
+  RATE_LIMIT_DEFAULT_BACKOFF_MS,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
@@ -1460,6 +1461,74 @@ describe('GraphqlProjectItemRepository', () => {
       expect(requestedFirstSeries.every((first) => first === 100)).toBe(true);
     }, 30000);
 
+    it('should back off and retry with the same page size (not halved) when GitHub reports a body-embedded RATE_LIMIT error, then succeed', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [
+              {
+                type: 'RATE_LIMIT',
+                code: 'graphql_rate_limit',
+                message: 'API rate limit exceeded for installation ID 123.',
+              },
+            ],
+          }),
+        )
+        .mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const resultPromise = repository.fetchProjectItems('test-project-id');
+      await jest.advanceTimersByTimeAsync(RATE_LIMIT_DEFAULT_BACKOFF_MS - 1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      const requestedFirstSeries = mockPost.mock.calls.map((call) =>
+        extractRequestedFirstFromMockCall(call),
+      );
+      expect(requestedFirstSeries).toEqual([100, 100]);
+    });
+
+    it('should throw after exhausting rate-limit retries on a persistent body-embedded RATE_LIMIT error without ever halving the page size', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              type: 'RATE_LIMIT',
+              code: 'graphql_rate_limit',
+              message: 'API rate limit exceeded for installation ID 123.',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .fetchProjectItems('test-project-id')
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      const caught = await resultPromise;
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+      const requestedFirstSeries = mockPost.mock.calls.map((call) =>
+        extractRequestedFirstFromMockCall(call),
+      );
+      expect(requestedFirstSeries.every((first) => first === 100)).toBe(true);
+    }, 30000);
+
     it('should emit a console.warn and skip items whose content or repository is null', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const localStorageRepository = new LocalStorageRepository();
@@ -2021,6 +2090,78 @@ describe('GraphqlProjectItemRepository', () => {
         ),
       ).rejects.toThrow('GitHub GraphQL errors:');
     });
+
+    it('should back off and retry once when GitHub reports a body-embedded RATE_LIMIT error, then succeed', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [
+              {
+                type: 'RATE_LIMIT',
+                code: 'graphql_rate_limit',
+                message: 'API rate limit exceeded for installation ID 123.',
+              },
+            ],
+          }),
+        )
+        .mockReturnValueOnce(
+          makeLightPageResponse(false, 'cursor-1', [
+            {
+              id: 'PVTI_1',
+              updatedAt: '2026-07-07T10:00:00Z',
+              content: {
+                url: 'https://github.com/o/r/issues/1',
+                number: 1,
+              },
+            },
+          ]),
+        );
+
+      const resultPromise = repository.fetchProjectItemsLight(
+        'test-project-id',
+        'updated:>=2026-07-07',
+      );
+      await jest.advanceTimersByTimeAsync(RATE_LIMIT_DEFAULT_BACKOFF_MS - 1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw after exhausting rate-limit retries on a persistent body-embedded RATE_LIMIT error', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              type: 'RATE_LIMIT',
+              code: 'graphql_rate_limit',
+              message: 'API rate limit exceeded for installation ID 123.',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .fetchProjectItemsLight('test-project-id', 'updated:>=2026-07-07')
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      const caught = await resultPromise;
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+    }, 30000);
   });
 
   describe('fetchProjectItemsByIds', () => {
@@ -2268,6 +2409,72 @@ describe('GraphqlProjectItemRepository', () => {
         repository.fetchProjectItemsByIds(['PVTI_1']),
       ).rejects.toThrow('GitHub GraphQL errors:');
     });
+
+    it('should back off and retry once when GitHub reports a body-embedded RATE_LIMIT error, then succeed', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [
+              {
+                type: 'RATE_LIMIT',
+                code: 'graphql_rate_limit',
+                message: 'API rate limit exceeded for installation ID 123.',
+              },
+            ],
+          }),
+        )
+        .mockReturnValueOnce(
+          makeByIdsResponse([
+            makeDetailNode(
+              'PVTI_1',
+              'https://github.com/o/r/issues/1',
+              'first',
+            ),
+          ]),
+        );
+
+      const resultPromise = repository.fetchProjectItemsByIds(['PVTI_1']);
+      await jest.advanceTimersByTimeAsync(RATE_LIMIT_DEFAULT_BACKOFF_MS - 1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toHaveLength(1);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw after exhausting rate-limit retries on a persistent body-embedded RATE_LIMIT error', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              type: 'RATE_LIMIT',
+              code: 'graphql_rate_limit',
+              message: 'API rate limit exceeded for installation ID 123.',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .fetchProjectItemsByIds(['PVTI_1'])
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      const caught = await resultPromise;
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+    }, 30000);
 
     describe('batch error tolerance (parameterized)', () => {
       type BatchErrorToleranceTestCase = {
