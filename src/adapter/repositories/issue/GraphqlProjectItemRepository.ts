@@ -252,8 +252,28 @@ const computeRateLimitBackoffMs = (
   return Math.max(RATE_LIMIT_MIN_BACKOFF_MS, exponentialMs);
 };
 
+type GraphqlError = {
+  message: string;
+  type?: string;
+  path?: (string | number)[];
+};
+
+export class GraphqlRateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GraphqlRateLimitError';
+  }
+}
+
+const isRateLimitGraphqlError = (error: GraphqlError): boolean =>
+  error.type === 'RATE_LIMIT';
+
 const isRateLimitStatus = (status: number): boolean =>
   status === 429 || status === 403;
+
+const isRetryableRateLimitError = (error: unknown): boolean =>
+  (error instanceof HTTPError && isRateLimitStatus(error.response.status)) ||
+  error instanceof GraphqlRateLimitError;
 
 export const callWithRateLimitRetry = async <T>(
   request: () => Promise<T>,
@@ -264,30 +284,25 @@ export const callWithRateLimitRetry = async <T>(
       return await request();
     } catch (error) {
       if (
-        !(error instanceof HTTPError) ||
-        !isRateLimitStatus(error.response.status) ||
+        !isRetryableRateLimitError(error) ||
         attempt >= RATE_LIMIT_MAX_RETRIES
       ) {
         throw error;
       }
-      const backoffMs = computeRateLimitBackoffMs(
-        error.response.headers,
-        attempt,
-        Date.now(),
-      );
+      const headers =
+        error instanceof HTTPError ? error.response.headers : undefined;
+      const backoffMs = computeRateLimitBackoffMs(headers, attempt, Date.now());
+      const rateLimitDescription =
+        error instanceof HTTPError
+          ? `HTTP ${error.response.status}`
+          : 'GraphQL RATE_LIMIT error';
       console.log(
-        `fetchProjectItems: GitHub returned ${error.response.status} (rate limit). Backing off ${backoffMs}ms before retry ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES}.`,
+        `fetchProjectItems: GitHub returned ${rateLimitDescription} (rate limit). Backing off ${backoffMs}ms before retry ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES}.`,
       );
       await sleep(backoffMs);
       attempt++;
     }
   }
-};
-
-type GraphqlError = {
-  message: string;
-  type?: string;
-  path?: (string | number)[];
 };
 
 const stringifyGraphqlErrorsForLog = (errors: GraphqlError[]): string => {
@@ -485,8 +500,8 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           query: query ?? null,
         },
       };
-      const response = await callWithRateLimitRetry(() =>
-        postGithubGraphqlJson<{
+      const response = await callWithRateLimitRetry(async () => {
+        const result = await postGithubGraphqlJson<{
           data: {
             node: {
               items: {
@@ -533,8 +548,14 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           ghToken: this.ghToken,
           query: graphqlQuery.query,
           variables: graphqlQuery.variables,
-        }),
-      );
+        });
+        if (result.errors?.some(isRateLimitGraphqlError)) {
+          throw new GraphqlRateLimitError(
+            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
+          );
+        }
+        return result;
+      });
       if (response.errors && response.errors.length > 0) {
         const allForbiddenContent = response.errors.every(
           isForbiddenContentError,
@@ -606,10 +627,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           return await callGraphql(projectId, after, attemptFirst);
         } catch (error) {
           lastError = error;
-          if (
-            error instanceof HTTPError &&
-            isRateLimitStatus(error.response.status)
-          ) {
+          if (isRetryableRateLimitError(error)) {
             throw error;
           }
           if (attemptFirst === 1) {
@@ -811,8 +829,8 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
         content: { url: string; number: number } | null;
       }[];
     }> => {
-      const response = await callWithRateLimitRetry(() =>
-        postGithubGraphqlJson<{
+      const response = await callWithRateLimitRetry(async () => {
+        const result = await postGithubGraphqlJson<{
           data: {
             node: {
               items: {
@@ -836,8 +854,14 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
             first: FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE,
             query: query ?? null,
           },
-        }),
-      );
+        });
+        if (result.errors?.some(isRateLimitGraphqlError)) {
+          throw new GraphqlRateLimitError(
+            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
+          );
+        }
+        return result;
+      });
       if (response.errors && response.errors.length > 0) {
         const allForbiddenContent = response.errors.every(
           isForbiddenContentError,
@@ -944,8 +968,8 @@ query GetProjectItemsByIds($ids: [ID!]!) {
     const callGraphql = async (
       batchIds: string[],
     ): Promise<(ProjectV2ItemNode | null)[]> => {
-      const response = await callWithRateLimitRetry(() =>
-        postGithubGraphqlJson<{
+      const response = await callWithRateLimitRetry(async () => {
+        const result = await postGithubGraphqlJson<{
           data: { nodes: (ProjectV2ItemNode | null)[] } | null;
           errors?: GraphqlError[];
         }>({
@@ -954,8 +978,14 @@ query GetProjectItemsByIds($ids: [ID!]!) {
           variables: {
             ids: batchIds,
           },
-        }),
-      );
+        });
+        if (result.errors?.some(isRateLimitGraphqlError)) {
+          throw new GraphqlRateLimitError(
+            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
+          );
+        }
+        return result;
+      });
       if (response.errors && response.errors.length > 0) {
         const allTolerated = response.errors.every(
           (error) =>
