@@ -1473,7 +1473,6 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
   it.each([
     {
-      caseNumber: 1,
       description:
         'human comment then 3 silent-failure detections with no rate-limit record escalates (regression check)',
       comments: [
@@ -1485,7 +1484,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: undefined,
     },
     {
-      caseNumber: 2,
       description:
         'rate-limit record then 2 silent-failure detections redispatches normally (threshold not reached)',
       comments: [rateLimitRecordComment(), repetitionComment('accounting')],
@@ -1493,7 +1491,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: '(2/3)',
     },
     {
-      caseNumber: 3,
       description:
         'rate-limit record then 3 silent-failure detections redispatches normally instead of escalating (bug reproduction)',
       comments: [
@@ -1505,7 +1502,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: '(3/3)',
     },
     {
-      caseNumber: 4,
       description:
         'rate-limit record then an agent response then 3 silent-failure detections escalates (response ends the exclusion)',
       comments: [
@@ -1518,7 +1514,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: 'Failed to receive a report',
     },
     {
-      caseNumber: 5,
       description:
         'rate-limit record then a human comment then 3 silent-failure detections escalates (human comment is the new boundary)',
       comments: [
@@ -1531,7 +1526,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: undefined,
     },
     {
-      caseNumber: 6,
       description:
         'two rate-limit records then 3 silent-failure detections redispatches normally (most recent rate-limit record is the boundary)',
       comments: [
@@ -1544,7 +1538,6 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: '(3/3)',
     },
     {
-      caseNumber: 7,
       description:
         '3 silent-failure detections with no human comment, reopened event, or rate-limit record ever posted still escalates (found-check guards against -1 === -1)',
       comments: [
@@ -1555,7 +1548,7 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedCommentContains: undefined,
     },
   ])(
-    'case $caseNumber: $description',
+    '$description',
     ({ comments, expectedType, expectedCommentContains }) => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
@@ -1577,7 +1570,7 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
 });
 
 describe('rate-limit record boundary with story-unset tracking (parameterized test cases 8-10)', () => {
-  it('case 8: advances the embedded count from (3/6) to (4/6) and updates the existing comment when no further rate-limit record occurs', () => {
+  it('advances the embedded count from (3/6) to (4/6) and updates the existing comment when no further rate-limit record occurs', () => {
     const history = buildStoryUnsetHistoryAfterRateLimitRecord({
       nextStepAgent: 'developer',
       thresholdForDispatchLoop: 6,
@@ -1604,7 +1597,7 @@ describe('rate-limit record boundary with story-unset tracking (parameterized te
     expect(result.existingCommentId).toBe('story-unset-comment-3');
   });
 
-  it('case 9: reaches the embedded count (6/6) but suppresses STORY_UNSET_ESCALATED because the rate-limit record is still the most recent boundary with no response since', () => {
+  it('reaches the embedded count (6/6) but suppresses STORY_UNSET_ESCALATED because the rate-limit record is still the most recent boundary with no response since', () => {
     const history = buildStoryUnsetHistoryAfterRateLimitRecord({
       nextStepAgent: 'developer',
       thresholdForDispatchLoop: 6,
@@ -1631,7 +1624,7 @@ describe('rate-limit record boundary with story-unset tracking (parameterized te
     expect(result.existingCommentId).toBe('story-unset-comment-5');
   });
 
-  it('case 10: fires STORY_UNSET_ESCALATED normally once an agent response recorded after the rate-limit record has ended the exclusion', () => {
+  it('fires STORY_UNSET_ESCALATED normally once an agent response recorded after the rate-limit record has ended the exclusion', () => {
     const history = buildStoryUnsetHistoryAfterRateLimitRecord({
       nextStepAgent: 'developer',
       thresholdForDispatchLoop: 6,
