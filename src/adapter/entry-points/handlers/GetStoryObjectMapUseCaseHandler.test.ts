@@ -67,6 +67,35 @@ describe('GetStoryObjectMapUseCaseHandler', () => {
     );
   });
 
+  it('should name the missing field without leaking the present credential value when projectName is missing', async () => {
+    const configWithMissingProjectName = {
+      credentials: {
+        bot: {
+          github: {
+            token: 'ghp_storyMapRealisticToken1122334455XY',
+          },
+        },
+      },
+    };
+    jest
+      .mocked(fs.readFileSync)
+      .mockReturnValue(YAML.stringify(configWithMissingProjectName));
+    const handler = new GetStoryObjectMapUseCaseHandler();
+
+    let thrownError: Error | undefined;
+    try {
+      await handler.handle('config.yml', false);
+    } catch (error) {
+      thrownError = error instanceof Error ? error : undefined;
+    }
+
+    expect(thrownError).toBeDefined();
+    expect(thrownError?.message).toContain('projectName');
+    expect(thrownError?.message).not.toContain(
+      'ghp_storyMapRealisticToken1122334455XY',
+    );
+  });
+
   it('should pass the parsed config to the use case', async () => {
     const handler = new GetStoryObjectMapUseCaseHandler();
     await handler.handle('config.yml', false);

@@ -441,6 +441,39 @@ describe('CLI', () => {
       }
     });
 
+    it('redacts a secret-shaped substring from the validation error message before writing it to stderr', async () => {
+      const secret = 'ghp_cliIndexRealisticToken443322DD';
+      mockScheduleHandle.mockRejectedValueOnce(
+        new ScheduledEventHandlerInputValidationError(
+          `Invalid input: required credential fields are missing or invalid: credentials.manager.slack.userToken (example secret that must not leak: ${secret})`,
+        ),
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).not.toContain(secret);
+        expect(errorOutput).toContain('credentials.manager.slack.userToken');
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
     it('proceeds normally and calls handler.handle when it resolves (non-regression)', async () => {
       const processExitSpy = jest
         .spyOn(process, 'exit')

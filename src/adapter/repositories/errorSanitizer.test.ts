@@ -135,6 +135,32 @@ describe('sanitizeErrorForLogging', () => {
     });
   });
 
+  describe('when the value carries a secret-shaped message or stack and no request property', () => {
+    it('does not include the secret-shaped substring in the sanitized message', () => {
+      const secret = 'ghp_sanitizerRealisticToken665544CC';
+      const error = new Error(`auth failed, token=${secret}`);
+
+      const sanitized = sanitizeErrorForLogging(error);
+
+      expect(sanitized).toBeInstanceOf(Error);
+      if (!(sanitized instanceof Error)) throw new Error('Expected Error');
+      expect(sanitized.message).not.toContain(secret);
+      expect(sanitized.message).toContain('auth failed, token=');
+    });
+
+    it('does not include the secret-shaped substring in the sanitized stack', () => {
+      const secret = 'ghp_' + 'sanitizerStackRealisticToken778899DD';
+      const error = new Error('generic failure');
+      error.stack = `Error: generic failure\n    at someFunction (token=${secret})`;
+
+      const sanitized = sanitizeErrorForLogging(error);
+
+      expect(sanitized).toBeInstanceOf(Error);
+      if (!(sanitized instanceof Error)) throw new Error('Expected Error');
+      expect(sanitized.stack).not.toContain(secret);
+    });
+  });
+
   describe('when the value does not carry an authorization header', () => {
     test.each`
       description                              | input

@@ -241,6 +241,28 @@ describe('ConsoleErrorReportUseCase', () => {
       expect(bodyArg).toContain('my-story');
     });
 
+    it('should redact a secret-shaped substring from the message and the serialized request body while preserving non-secret fields', async () => {
+      const messageSecret = 'sk-ant-consoleReporterRealisticSecret665544';
+      const requestBodySecret =
+        'ghp_' + 'consoleReporterRealisticToken554433BB';
+      const error = new Error(`auth failed, token=${messageSecret}`);
+      const requestBody = {
+        apiToken: requestBodySecret,
+        requestId: 'req-123',
+      };
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(9);
+
+      await useCase.run({ error, owner, repo, requestPath, requestBody });
+
+      const bodyArg = mockIssueRepository.createNewIssue.mock.calls[0][3];
+      expect(bodyArg).not.toContain(messageSecret);
+      expect(bodyArg).not.toContain(requestBodySecret);
+      expect(bodyArg).toContain('requestId');
+      expect(bodyArg).toContain('req-123');
+      expect(bodyArg).toContain('auth failed, token=');
+    });
+
     it('should not include a request body section when requestBody is not provided', async () => {
       const error = new Error('cmd error');
       mockIssueRepository.searchIssue.mockResolvedValue([]);
