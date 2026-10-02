@@ -1,3 +1,10 @@
+## [2.158.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.2...v2.158.3) (2026-10-02)
+
+
+### Bug Fixes
+
+* **TDPM:** preserve Awaiting Owner routing when a session ends without a fresh completion report ([#3120](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3120)) ([bed8147](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bed8147ccb977dfc3fda731daede76c1bdeb15a4))
+
 ## [2.158.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.1...v2.158.2) (2026-10-02)
 
 
