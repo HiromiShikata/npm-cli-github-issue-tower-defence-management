@@ -1,3 +1,10 @@
+## [2.158.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.0...v2.158.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **usecases:** prevent closeIssueAs from closing a human-authored investigation task without owner confirmation ([#3121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3121)) ([5de013b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5de013b0920cb73d88d1e33053ae71162b30a14d))
+
 # [2.158.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.13...v2.158.0) (2026-10-02)
 
 
