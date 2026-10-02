@@ -10,6 +10,7 @@ import {
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { isStoryUnset } from '../../../domain/usecases/storyGate/storyValueClassify';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
@@ -72,7 +73,7 @@ const buildStoryIssueUrlByOptionName = (
     if (!issue.labels.some((l) => l.toLowerCase() === 'story')) {
       continue;
     }
-    if (issue.story !== null) {
+    if (issue.story !== null && !isStoryUnset(issue.story)) {
       map[issue.story] = issue.url;
     } else {
       const matchedOption = storyOptions.find((o) => o.name === issue.title);
