@@ -1,3 +1,10 @@
+## [2.157.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.7...v2.157.8) (2026-10-02)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** dispatch worker as the re-fetched live Agent instead of the stale cached Agent ([#3104](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3104)) ([9654745](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/96547459009132b327086552695935d6161fd05d))
+
 ## [2.157.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.6...v2.157.7) (2026-10-02)
 
 
