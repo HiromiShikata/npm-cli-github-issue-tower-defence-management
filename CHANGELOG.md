@@ -1,3 +1,10 @@
+# [2.160.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.159.0...v2.160.0) (2026-10-02)
+
+
+### Features
+
+* **console-ui:** Add click-to-copy to inline code elements in the TDPM console Markdown renderer ([#3132](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3132)) ([d1a7407](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d1a7407f57ccc38c8b227ab401e61979aa685f61)), closes [#3127](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3127)
+
 # [2.159.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.158.3...v2.159.0) (2026-10-02)
 
 
