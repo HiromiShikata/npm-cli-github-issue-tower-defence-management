@@ -849,7 +849,7 @@ describe('GenerateConsoleListsUseCase', () => {
       );
     });
 
-    it('populates items with all open issues belonging to each story', () => {
+    it('populates items with all open and closed issues belonging to each story', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
@@ -878,16 +878,18 @@ describe('GenerateConsoleListsUseCase', () => {
       const beta = result.stories.stories.find(
         (s) => s.storyName === 'Story Beta',
       );
-      expect(alpha?.items).toHaveLength(2);
+      expect(alpha?.items).toHaveLength(3);
       expect(beta?.items).toHaveLength(1);
     });
 
-    it('excludes closed issues from story items', () => {
+    it('includes a closed issue with a storyOptionId in story items while leaving openItemCount unaffected', () => {
       const result = run([
         makeIssue({
           story: 'Story Alpha',
           storyOptionId: 's2',
           isClosed: true,
+          number: 42,
+          url: 'https://github.com/demo/repo/issues/42',
         }),
         makeIssue({
           story: 'Story Alpha',
@@ -898,7 +900,9 @@ describe('GenerateConsoleListsUseCase', () => {
       const alpha = result.stories.stories.find(
         (s) => s.storyName === 'Story Alpha',
       );
-      expect(alpha?.items).toHaveLength(1);
+      expect(alpha?.items.map((item) => item.number)).toContain(42);
+      expect(alpha?.items).toHaveLength(2);
+      expect(alpha?.openItemCount).toBe(1);
     });
 
     it('includes issues in story items regardless of assignee or actionability', () => {
@@ -1301,7 +1305,7 @@ describe('GenerateConsoleListsUseCase', () => {
       'stories',
     ] as const;
 
-    it('counts and lists open issues of uniquely named stories under their own story entry', () => {
+    it('counts open issues and lists all issues of uniquely named stories under their own story entry', () => {
       const result = run([
         makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
         makeIssue({ story: 'Story Alpha', storyOptionId: 's2' }),
@@ -1326,6 +1330,7 @@ describe('GenerateConsoleListsUseCase', () => {
           itemUrls: [
             'https://github.com/demo/repo/issues/1',
             'https://github.com/demo/repo/issues/2',
+            'https://github.com/demo/repo/issues/4',
           ],
         },
         {

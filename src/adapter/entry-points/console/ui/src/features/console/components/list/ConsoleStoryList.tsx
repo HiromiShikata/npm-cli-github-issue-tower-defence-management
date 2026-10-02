@@ -19,20 +19,20 @@ type RowReorderState = {
 
 type StoryTaskListProps = {
   items: ConsoleListItem[];
+  onOpenItem: (item: ConsoleListItem) => void;
 };
 
-const StoryTaskList = ({ items }: StoryTaskListProps) => (
+const StoryTaskList = ({ items, onOpenItem }: StoryTaskListProps) => (
   <ul className="console-story-task-list">
     {items.map((item) => (
       <li key={item.url} className="console-story-task-row">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className="console-story-task-title"
+          onClick={() => onOpenItem(item)}
         >
           {item.title}
-        </a>
+        </button>
         <span className="console-story-task-status">{item.status ?? '—'}</span>
         <span className="console-story-task-agent">{item.agent ?? '—'}</span>
         <span className="console-story-task-depended-urls">
@@ -79,6 +79,7 @@ export type ConsoleStoryListProps = {
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
+  onOpenItem: (item: ConsoleListItem) => void;
 };
 
 type StoryDeleteState = {
@@ -103,6 +104,7 @@ export const ConsoleStoryList = ({
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
+  onOpenItem,
 }: ConsoleStoryListProps) => {
   const [taskCreateDialogId, setTaskCreateDialogId] = useState<string | null>(
     null,
@@ -417,7 +419,9 @@ export const ConsoleStoryList = ({
                 {description !== '' && (
                   <p className="console-story-description">{description}</p>
                 )}
-                {isTasksExpanded && <StoryTaskList items={entry.items} />}
+                {isTasksExpanded && (
+                  <StoryTaskList items={entry.items} onOpenItem={onOpenItem} />
+                )}
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
                     {reorderError}
