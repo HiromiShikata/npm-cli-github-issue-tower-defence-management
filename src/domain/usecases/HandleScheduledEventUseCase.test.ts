@@ -1852,7 +1852,7 @@ describe('HandleScheduledEventUseCase', () => {
         await useCase.run(baseInput);
 
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
-        expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
+        expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalled();
         expect(
           mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
         ).toHaveBeenCalled();
@@ -3890,6 +3890,77 @@ describe('HandleScheduledEventUseCase', () => {
         expect(
           mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
         ).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('changeStatusByStoryColorUseCase runs every cycle (issue #3091)', () => {
+      const project: Project = {
+        ...mock<Project>(),
+        url: 'https://github.com/orgs/test-org/projects/1',
+      };
+      const issues: Issue[] = [mock<Issue>()];
+      const storyObjectMap: StoryObjectMap = new Map();
+      const now = new Date('2024-01-01T00:10:00Z');
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'test-agent',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      it('invokes changeStatusByStoryColorUseCase.run exactly once per call to runEachUseCases whether runSlowSweep is true or false', async () => {
+        const runSlowSweepValues: boolean[] = [true, false];
+        for (const runSlowSweep of runSlowSweepValues) {
+          jest.clearAllMocks();
+
+          await useCase.runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            runSlowSweep,
+            now,
+          );
+
+          expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalledTimes(
+            1,
+          );
+        }
+      });
+
+      it('still calls startPreparationUseCase.run when changeStatusByStoryColorUseCase.run rejects in the non-slow-sweep branch', async () => {
+        mockChangeStatusByStoryColorUseCase.run.mockRejectedValue(
+          new Error('simulated changeStatusByStoryColorUseCase failure'),
+        );
+
+        await useCase
+          .runEachUseCases(
+            baseInput,
+            project,
+            issues,
+            false,
+            [],
+            storyObjectMap,
+            false,
+            now,
+          )
+          .catch(() => undefined);
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
       });
     });
   });

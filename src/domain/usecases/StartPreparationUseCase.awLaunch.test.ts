@@ -26,7 +26,7 @@ const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
     story: {
       id: 'story-1',
       name: 'Default Story',
-      color: 'GRAY',
+      color: 'BLUE',
       description: '',
     },
     storyIssue: null,

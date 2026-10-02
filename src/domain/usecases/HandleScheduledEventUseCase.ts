@@ -593,6 +593,20 @@ ${JSON.stringify(e)}
           removalError,
         );
       }
+      try {
+        await this.changeStatusByStoryColorUseCase.run({
+          project,
+          org: input.org,
+          repo: input.workingReport.repo,
+          storyObjectMap,
+          manager: input.manager,
+        });
+      } catch (changeStatusByStoryColorError) {
+        console.error(
+          `[HandleScheduledEvent] Failed to change status by story color for project ${project.url}: ${changeStatusByStoryColorError instanceof Error ? changeStatusByStoryColorError.message : String(changeStatusByStoryColorError)}`,
+          changeStatusByStoryColorError,
+        );
+      }
     }
     await this.createNewStoryByLabelUseCase.run({
       project,

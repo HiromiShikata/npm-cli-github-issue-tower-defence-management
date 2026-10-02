@@ -45,13 +45,16 @@ class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBr
     ) ?? null;
 }
 
-const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
+const createMockStoryObjectMap = (
+  issues: Issue[],
+  nonGrayDefaultStoryColor: FieldOption['color'] = 'BLUE',
+): StoryObjectMap => {
   const map: StoryObjectMap = new Map();
   map.set('Default Story', {
     story: {
       id: 'story-1',
       name: 'Default Story',
-      color: 'GRAY',
+      color: nonGrayDefaultStoryColor,
       description: '',
     },
     storyIssue: null,
@@ -309,6 +312,338 @@ describe('StartPreparationUseCase', () => {
     expect(Number.isNaN(parsedMs)).toBe(false);
     expect(parsedMs).toBeGreaterThanOrEqual(beforeDispatch);
     expect(parsedMs).toBeLessThanOrEqual(afterDispatch);
+  });
+
+  describe('Story option color GRAY exclusion', () => {
+    const projectWithIcebox: Project = {
+      ...createMockProject(),
+      status: {
+        name: 'Status',
+        fieldId: 'status-field-id',
+        statuses: [
+          {
+            id: '1',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          { id: '2', name: 'Preparation', color: 'YELLOW', description: '' },
+          { id: '3', name: 'Done', color: 'GREEN', description: '' },
+          { id: '4', name: 'Icebox', color: 'GRAY', description: '' },
+        ],
+      },
+    };
+    const findStatusIdByName = (statusName: string): string => {
+      const status = projectWithIcebox.status.statuses.find(
+        (candidate) => candidate.name === statusName,
+      );
+      if (!status) {
+        throw new Error(
+          `status '${statusName}' not found in projectWithIcebox fixture`,
+        );
+      }
+      return status.id;
+    };
+    const iceboxStatusId = findStatusIdByName('Icebox');
+    const preparationStatusId = findStatusIdByName('Preparation');
+
+    it('starts no worker and sets Status to Icebox for an Awaiting Workspace issue whose Story option color is GRAY', async () => {
+      const grayStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/900',
+        title: 'Issue under a disabled story',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([grayStoryIssue], 'GRAY'),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+        projectWithIcebox,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+        url: 'https://github.com/user/repo/issues/900',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+        iceboxStatusId,
+      );
+    });
+
+    it('dispatches an Awaiting Workspace issue exactly as before when its Story option color is not GRAY', async () => {
+      const blueStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/901',
+        title: 'Issue under an active story',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([blueStoryIssue], 'BLUE'),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+        url: 'https://github.com/user/repo/issues/901',
+        status: 'Preparation',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+        preparationStatusId,
+      );
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    });
+
+    it('dispatches only the issue under the non-GRAY story and sends the GRAY-story issue to Icebox without starting a worker for it, when both are Awaiting Workspace in the same run', async () => {
+      const grayStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/902',
+        title: 'Issue under a disabled story',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        story: 'Disabled Story',
+      });
+      const blueStoryIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/903',
+        title: 'Issue under an active story',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        story: 'Active Story',
+      });
+      const mixedStoryObjectMap: StoryObjectMap = new Map();
+      mixedStoryObjectMap.set('story-gray', {
+        story: {
+          id: 'story-gray',
+          name: 'Disabled Story',
+          color: 'GRAY',
+          description: '',
+        },
+        storyIssue: null,
+        issues: [grayStoryIssue],
+      });
+      mixedStoryObjectMap.set('story-blue', {
+        story: {
+          id: 'story-blue',
+          name: 'Active Story',
+          color: 'BLUE',
+          description: '',
+        },
+        storyIssue: null,
+        issues: [blueStoryIssue],
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        mixedStoryObjectMap,
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+        'https://github.com/user/repo/issues/903',
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+      const updateStatusCallsByUrl = new Map(
+        mockIssueRepository.updateStatus.mock.calls.map((call) => [
+          call[1].url,
+          call[2],
+        ]),
+      );
+      expect(
+        updateStatusCallsByUrl.get('https://github.com/user/repo/issues/902'),
+      ).toBe(iceboxStatusId);
+      expect(
+        updateStatusCallsByUrl.get('https://github.com/user/repo/issues/903'),
+      ).toBe(preparationStatusId);
+    });
+
+    describe('moveDisabledStoryIssueToIcebox edge cases', () => {
+      it('writes no status and dispatches no worker for the GRAY-story issue when the project has no Icebox status option', async () => {
+        const projectWithoutIcebox = createMockProject();
+        const grayStoryIssue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/910',
+          title:
+            'Issue under a disabled story with no Icebox status configured',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+        });
+        mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutIcebox);
+        mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+          createMockStoryObjectMap([grayStoryIssue], 'GRAY'),
+        );
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+        expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+        expect(grayStoryIssue.status).toBe('Awaiting Workspace');
+      });
+
+      it('skips the Icebox status write and dispatches no worker when the live issue snapshot is stale', async () => {
+        const grayStoryIssue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/911',
+          title: 'Issue under a disabled story with a stale snapshot',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          isClosed: false,
+        });
+        mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+        mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+          createMockStoryObjectMap([grayStoryIssue], 'GRAY'),
+        );
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          if (url === grayStoryIssue.url) {
+            return { ...grayStoryIssue, status: 'Done', isClosed: true };
+          }
+          return createMockIssue({
+            status: 'Awaiting Workspace',
+            dependedIssueUrls: [],
+          });
+        });
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+        expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+        expect(grayStoryIssue.status).toBe('Awaiting Workspace');
+      });
+
+      it('swallows StaleProjectItemError from the Icebox status write without dispatching a worker or rethrowing', async () => {
+        const grayStoryIssue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/912',
+          title:
+            'Issue under a disabled story whose project item went stale on write',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          itemId: 'item-912',
+        });
+        mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+        mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+          createMockStoryObjectMap([grayStoryIssue], 'GRAY'),
+        );
+        mockIssueRepository.updateStatus.mockRejectedValue(
+          new StaleProjectItemError(grayStoryIssue.itemId),
+        );
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+        expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+        expect(grayStoryIssue.status).toBe('Awaiting Workspace');
+      });
+    });
   });
 
   describe('agent designation label migration to the Agent project field', () => {
@@ -3167,7 +3502,7 @@ describe('StartPreparationUseCase', () => {
       story: {
         id: 'story-1',
         name: 'Default Story',
-        color: 'GRAY',
+        color: 'BLUE',
         description: '',
       },
       storyIssue: null,
@@ -9405,7 +9740,7 @@ describe('StartPreparationUseCase', () => {
       story: {
         id: 'story-1',
         name: 'Default Story',
-        color: 'GRAY',
+        color: 'BLUE',
         description: '',
       },
       storyIssue: null,

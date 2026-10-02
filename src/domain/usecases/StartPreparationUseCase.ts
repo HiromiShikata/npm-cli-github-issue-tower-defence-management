@@ -1,9 +1,10 @@
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
-import type { Project } from '../entities/Project';
+import type { FieldOption, Project } from '../entities/Project';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
+  ICEBOX_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
@@ -13,6 +14,7 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
+import { DISABLED_STORY_OPTION_COLOR } from './storyGate/storyValueClassify';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
@@ -713,6 +715,43 @@ export class StartPreparationUseCase {
     );
   };
 
+  private moveDisabledStoryIssueToIcebox = async (
+    issue: Issue,
+    project: Project,
+    iceboxStatusOption: FieldOption | undefined,
+  ): Promise<void> => {
+    if (!iceboxStatusOption) {
+      console.error(
+        `Icebox status option '${ICEBOX_STATUS_NAME}' not found in project; cannot move GRAY-story spawn candidate ${issue.url} off the dispatch path.`,
+      );
+      return;
+    }
+    const staleness = await issueSnapshotStalenessCheck({
+      issueRepository: this.issueRepository,
+      project,
+      snapshotIssue: issue,
+      checkedFieldNames: ['status', 'isClosed'],
+      skippedWriteDescription: `the Icebox status write for a GRAY-story spawn candidate`,
+    });
+    if (staleness.type !== 'current') {
+      return;
+    }
+    try {
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        iceboxStatusOption.id,
+      );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      console.warn(
+        `Skipping stale project item while writing Icebox status for a GRAY-story spawn candidate: ${issue.url}`,
+      );
+      return;
+    }
+    issue.status = ICEBOX_STATUS_NAME;
+  };
+
   run = async (params: {
     projectUrl: string;
     defaultAgentName: string;
@@ -794,6 +833,12 @@ export class StartPreparationUseCase {
     const allOpenedIssues = Array.from(storyObjectMap.values()).flatMap(
       (storyObject) => storyObject.issues,
     );
+    const storyColorByIssueUrl = new Map<string, FieldOption['color']>();
+    for (const storyObject of storyObjectMap.values()) {
+      for (const storyIssue of storyObject.issues) {
+        storyColorByIssueUrl.set(storyIssue.url, storyObject.story.color);
+      }
+    }
     const preparationStatusOption = project.status.statuses.find(
       (s) => s.name === PREPARATION_STATUS_NAME,
     );
@@ -803,6 +848,9 @@ export class StartPreparationUseCase {
       );
       return { rotationOrder };
     }
+    const iceboxStatusOption = project.status.statuses.find(
+      (s) => s.name === ICEBOX_STATUS_NAME,
+    );
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
       (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
@@ -986,6 +1034,14 @@ export class StartPreparationUseCase {
       );
       if (exclusionReason !== null) {
         exclusionCounts[exclusionReason]++;
+        continue;
+      }
+      if (storyColorByIssueUrl.get(issue.url) === DISABLED_STORY_OPTION_COLOR) {
+        await this.moveDisabledStoryIssueToIcebox(
+          issue,
+          project,
+          iceboxStatusOption,
+        );
         continue;
       }
       let branchSource = branchSourceByIssueUrl.get(issue.url);
