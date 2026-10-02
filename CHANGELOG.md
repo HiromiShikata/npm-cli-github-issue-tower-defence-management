@@ -1,3 +1,10 @@
+## [2.157.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.9...v2.157.10) (2026-10-02)
+
+
+### Bug Fixes
+
+* **storyGate:** checkStoryGate returns story issues from other boards that share a story name ([#3109](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3109)) ([f57a918](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f57a918e8233b25c75e4285c19b140cd83ef9a2f))
+
 ## [2.157.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.8...v2.157.9) (2026-10-02)
 
 
