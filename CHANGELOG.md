@@ -1,3 +1,11 @@
+## [2.161.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.0...v2.161.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ClearDependedIssueURLUseCase:** distinguish confirmed-404 from transient errors in depended-issue live check ([#3138](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3138)) ([e704314](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e704314c39ab8940baa516830bbc19f95a27c8bb))
+* **ConflictedIssueRevertUseCase:** skip the CI/conflict revert when an owner confirmation request is unanswered ([#3137](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3137)) ([cc8093f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cc8093f91f737e8cb23d98be529c5d65dc17f4e4))
+
 # [2.161.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.160.0...v2.161.0) (2026-10-02)
 
 
