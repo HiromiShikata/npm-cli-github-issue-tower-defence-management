@@ -5749,6 +5749,108 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       consoleLogSpy.mockRestore();
     });
+
+    it('routes to Awaiting Owner and does not call updateNextActionDate when the last report asked for owner confirmation with no reply at all (row 9)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        deferPreparation: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('keeps Awaiting Workspace and sets the next action date to tomorrow when a reply followed the owner-confirmation report (row 10)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+        createMockComment({
+          author: 'the-owner',
+          content: 'Please go ahead.',
+          createdAt: new Date('2026-09-25T09:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        deferPreparation: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+        issueUrl,
+        mockProject,
+        expect.any(Date),
+      );
+    });
+
+    it('still routes to Awaiting Owner without calling updateNextActionDate when a reply exists only before the owner-confirmation report, none after (row 12 regression guard)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'the-owner',
+          content: 'Still working on it.',
+          createdAt: new Date('2026-09-25T07:00:00Z'),
+        }),
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        deferPreparation: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
   });
 
   describe('when moveToFailedPreparation is true', () => {
@@ -5970,6 +6072,131 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         RATE_LIMIT_SESSION_END_MESSAGE,
       );
     });
+
+    it('routes to Awaiting Owner and posts no comment when the last report asked for owner confirmation with no reply at all (row 1)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        rateLimitRejected: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('keeps Awaiting Workspace and posts the rate-limit comment when a reply followed the owner-confirmation report (row 2)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+        createMockComment({
+          author: 'the-owner',
+          content: 'Please go ahead.',
+          createdAt: new Date('2026-09-25T09:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        rateLimitRejected: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        RATE_LIMIT_SESSION_END_MESSAGE,
+      );
+    });
+
+    it('keeps Awaiting Workspace and posts the rate-limit comment when there is no trusted-agent report at all (row 3)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        rateLimitRejected: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        RATE_LIMIT_SESSION_END_MESSAGE,
+      );
+    });
+
+    it('still routes to Awaiting Owner when a reply exists only before the owner-confirmation report, none after (row 4 regression guard)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'the-owner',
+          content: 'Still working on it.',
+          createdAt: new Date('2026-09-25T07:00:00Z'),
+        }),
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        rateLimitRejected: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
   });
 
   describe('when promptTooLongOnResume is true', () => {
@@ -6070,6 +6297,135 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('routes to Awaiting Owner and posts no comment when the last report asked for owner confirmation with no reply at all (row 5)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('keeps Awaiting Workspace and posts the prompt-too-long comment when a reply followed the owner-confirmation report (row 6)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+        createMockComment({
+          author: 'the-owner',
+          content: 'Please go ahead.',
+          createdAt: new Date('2026-09-25T09:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining(
+          'the resumed conversation exceeded the model prompt length limit',
+        ),
+      );
+    });
+
+    it('keeps Awaiting Workspace and posts the prompt-too-long comment when there is no trusted-agent report at all (row 7)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining(
+          'the resumed conversation exceeded the model prompt length limit',
+        ),
+      );
+    });
+
+    it('still routes to Awaiting Owner when a reply exists only before the owner-confirmation report, none after (row 8 regression guard)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'the-owner',
+          content: 'Still working on it.',
+          createdAt: new Date('2026-09-25T07:00:00Z'),
+        }),
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        promptTooLongOnResume: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 
@@ -9690,6 +10046,124 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Failed Preparation' }),
         'failed-preparation-id',
       );
+    });
+  });
+
+  describe('NO_REPORT_FROM_AGENT_BOT path respects an unanswered owner-confirmation request from an earlier dispatch', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    beforeEach(() => {
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: issueUrl,
+          status: 'Preparation',
+          agent: 'chore',
+        }),
+      );
+    });
+
+    it('routes to Awaiting Owner instead of escalating NO_REPORT_FROM_AGENT_BOT when the unscoped last report asked for owner confirmation with no reply at all (row 13)', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: new Date('2026-09-25T08:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: new Date('2026-09-25T09:00:00Z'),
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+    });
+
+    it('keeps the existing no-report escalation when a reply followed the owner-confirmation report, even though both predate this dispatch (row 14)', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: new Date('2026-09-25T06:00:00Z'),
+        }),
+        createMockComment({
+          author: 'the-owner',
+          content: 'Go ahead.',
+          createdAt: new Date('2026-09-25T07:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: new Date('2026-09-25T09:00:00Z'),
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_AGAIN 1/3'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('still routes to Awaiting Owner when a reply exists only before the owner-confirmation report, none after (row 16 regression guard)', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'the-owner',
+          content: 'Still working on it.',
+          createdAt: new Date('2026-09-25T05:00:00Z'),
+        }),
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: new Date('2026-09-25T06:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: new Date('2026-09-25T09:00:00Z'),
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 
