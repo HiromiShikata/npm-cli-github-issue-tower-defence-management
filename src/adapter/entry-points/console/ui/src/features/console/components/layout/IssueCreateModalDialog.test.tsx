@@ -49,7 +49,8 @@ const agentOptions: ConsoleFieldOption[] = [
 const baseProps: IssueCreateModalDialogProps = {
   storyEntries,
   agentOptions,
-  onSubmit: jest.fn().mockResolvedValue(undefined),
+  initialDestination: 'project',
+  onSubmitProject: jest.fn().mockResolvedValue(undefined),
   onClose: jest.fn(),
 };
 
@@ -158,16 +159,19 @@ describe('IssueCreateModalDialog', () => {
     expect(agentIndex).toBeGreaterThan(storyIndex);
   });
 
-  it('calls onSubmit with correct params when the form is valid', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with correct params when the form is valid', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     const textarea = getByRole('textbox', { name: /title/i });
     fireEvent.change(textarea, { target: { value: 'My new task' } });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>({
         storyName: 'regular / workflow improvement',
         agentOptionId: null,
         title: 'My new task',
@@ -177,10 +181,13 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
-  it('calls onSubmit with body when body textarea is filled in', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with body when body textarea is filled in', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task with body' },
@@ -190,32 +197,38 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({ body: 'Some body text' }),
       ),
     );
   });
 
-  it('calls onSubmit with body null when body is blank', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with body null when body is blank', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task no body' },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({ body: null }),
       ),
     );
   });
 
-  it('calls onSubmit with agentOptionId when agent is selected', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with agentOptionId when agent is selected', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task with agent' },
@@ -223,16 +236,19 @@ describe('IssueCreateModalDialog', () => {
     fireEvent.click(getByRole('button', { name: /developer/i }));
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({ agentOptionId: 'agent-developer' }),
       ),
     );
   });
 
-  it('calls onSubmit with storyName from the selected story', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with storyName from the selected story', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task with story' },
@@ -244,7 +260,7 @@ describe('IssueCreateModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({
           storyName: 'regular / tdpm dashboard & console improvement',
         }),
@@ -261,13 +277,13 @@ describe('IssueCreateModalDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('calls onClose after onSubmit completes successfully', async () => {
+  it('calls onClose after onSubmitProject completes successfully', async () => {
     const onClose = jest.fn();
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
       <IssueCreateModalDialog
         {...baseProps}
-        onSubmit={onSubmit}
+        onSubmitProject={onSubmitProject}
         onClose={onClose}
       />,
     );
@@ -278,10 +294,15 @@ describe('IssueCreateModalDialog', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it('shows an error message when onSubmit rejects', async () => {
-    const onSubmit = jest.fn().mockRejectedValue(new Error('Network failure'));
+  it('shows an error message when onSubmitProject rejects', async () => {
+    const onSubmitProject = jest
+      .fn()
+      .mockRejectedValue(new Error('Network failure'));
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Failing task' },
@@ -295,12 +316,15 @@ describe('IssueCreateModalDialog', () => {
   });
 
   it('clears error on successful retry', async () => {
-    const onSubmit = jest
+    const onSubmitProject = jest
       .fn()
       .mockRejectedValueOnce(new Error('Network failure'))
       .mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     const textarea = getByRole('textbox', { name: /title/i });
     fireEvent.change(textarea, { target: { value: 'Retry task' } });
@@ -325,12 +349,12 @@ describe('IssueCreateModalDialog', () => {
   });
 
   it('submitting with zero storyEntries succeeds without story validation error', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole, queryByRole } = render(
       <IssueCreateModalDialog
         {...baseProps}
         storyEntries={[]}
-        onSubmit={onSubmit}
+        onSubmitProject={onSubmitProject}
       />,
     );
     expect(queryByRole('button', { name: /workflow improvement/i })).toBeNull();
@@ -339,7 +363,7 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>({
         storyName: null,
         agentOptionId: null,
         title: 'No story task',
@@ -634,10 +658,13 @@ describe('IssueCreateModalDialog', () => {
     expect(queryByText('remove-me.txt')).toBeNull();
   });
 
-  it('calls onSubmit with the selected files array', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with the selected files array', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task with files' },
@@ -651,23 +678,26 @@ describe('IssueCreateModalDialog', () => {
     fireEvent.change(fileInput, { target: { files: [mockFile] } });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({ files: [mockFile] }),
       ),
     );
   });
 
-  it('calls onSubmit with empty files array when no file is selected', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+  it('calls onSubmitProject with empty files array when no file is selected', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Task no files' },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({ files: [] }),
       ),
     );
@@ -781,9 +811,12 @@ describe('IssueCreateModalDialog', () => {
   });
 
   it('truncates title to 256 chars and moves overflow to body when title exceeds 256 characters', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     const longTitle = `${'A'.repeat(256)}overflow text here`;
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
@@ -791,7 +824,7 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({
           title: 'A'.repeat(256),
           body: 'overflow text here',
@@ -801,9 +834,12 @@ describe('IssueCreateModalDialog', () => {
   });
 
   it('prepends overflow to existing body when title exceeds 256 chars and body has content', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     const longTitle = `${'B'.repeat(256)}extra`;
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
@@ -814,7 +850,7 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({
           title: 'B'.repeat(256),
           body: 'extra\nexisting body',
@@ -837,9 +873,12 @@ describe('IssueCreateModalDialog', () => {
   });
 
   it('does not truncate title when it is exactly 256 characters', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitProject={onSubmitProject}
+      />,
     );
     const exactTitle = 'C'.repeat(256);
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
@@ -847,12 +886,340 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+      expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
         expect.objectContaining({
           title: exactTitle,
           body: null,
         }),
       ),
     );
+  });
+
+  it('renders Project and Workflow destination buttons when onSubmitWorkflow is provided', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(getByRole('button', { name: 'Project' })).not.toBeNull();
+    expect(getByRole('button', { name: 'Workflow' })).not.toBeNull();
+  });
+
+  it('omits the Workflow destination button entirely when onSubmitWorkflow is undefined', () => {
+    const { getByRole, queryByRole } = render(
+      <IssueCreateModalDialog {...baseProps} />,
+    );
+    expect(getByRole('button', { name: 'Project' })).not.toBeNull();
+    expect(queryByRole('button', { name: 'Workflow' })).toBeNull();
+  });
+
+  it('positions the destination selector immediately before the Close button with nothing else between', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const closeButton = getByRole('button', { name: 'Close' });
+    const elementBeforeClose = closeButton.previousElementSibling;
+    const projectButton = getByRole('button', { name: 'Project' });
+    const workflowButton = getByRole('button', { name: 'Workflow' });
+    expect(elementBeforeClose).not.toBeNull();
+    expect(
+      elementBeforeClose === projectButton ||
+        elementBeforeClose === workflowButton ||
+        (elementBeforeClose?.contains(projectButton) ?? false),
+    ).toBe(true);
+    expect(
+      elementBeforeClose === workflowButton ||
+        (elementBeforeClose?.contains(workflowButton) ?? false),
+    ).toBe(true);
+  });
+
+  it('renders Project pressed and Workflow not pressed when initialDestination is "project"', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('renders Workflow pressed and Project not pressed when initialDestination is "workflow"', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="workflow"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('flips the destination selection when Workflow then Project are clicked', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const projectButton = getByRole('button', { name: 'Project' });
+    const workflowButton = getByRole('button', { name: 'Workflow' });
+    expect(projectButton.getAttribute('aria-pressed')).toBe('true');
+    expect(workflowButton.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(workflowButton);
+    expect(workflowButton.getAttribute('aria-pressed')).toBe('true');
+    expect(projectButton.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(projectButton);
+    expect(projectButton.getAttribute('aria-pressed')).toBe('true');
+    expect(workflowButton.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('retains Title, Body, Story, and Agent values when the destination selection is switched to Workflow', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Persisted title' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'Persisted body' },
+    });
+    const secondStoryButton = getByRole('button', {
+      name: /regular \/ tdpm dashboard & console improvement/i,
+    });
+    fireEvent.click(secondStoryButton);
+    const developerButton = getByRole('button', { name: /developer/i });
+    fireEvent.click(developerButton);
+
+    fireEvent.click(getByRole('button', { name: 'Workflow' }));
+
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'Persisted title',
+    );
+    expect(getByRole('textbox', { name: /body/i })).toHaveValue(
+      'Persisted body',
+    );
+    expect(secondStoryButton.getAttribute('aria-pressed')).toBe('true');
+    expect(developerButton.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('retains Attachments when the destination selection is switched to Workflow', () => {
+    const { getByRole, getByText } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const mockFile = new File(['data'], 'persisted-attachment.png', {
+      type: 'image/png',
+    });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    expect(getByText('persisted-attachment.png')).not.toBeNull();
+
+    fireEvent.click(getByRole('button', { name: 'Workflow' }));
+
+    expect(getByText('persisted-attachment.png')).not.toBeNull();
+  });
+
+  it('calls onSubmitProject and not onSubmitWorkflow when Create is clicked with Project selected', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitProject={onSubmitProject}
+        onSubmitWorkflow={onSubmitWorkflow}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Project destination task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() => expect(onSubmitProject).toHaveBeenCalledTimes(1));
+    expect(onSubmitWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('calls onSubmitWorkflow and not onSubmitProject when Create is clicked with Workflow selected', async () => {
+    const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+    const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="workflow"
+        onSubmitProject={onSubmitProject}
+        onSubmitWorkflow={onSubmitWorkflow}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Workflow destination task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() => expect(onSubmitWorkflow).toHaveBeenCalledTimes(1));
+    expect(onSubmitProject).not.toHaveBeenCalled();
+  });
+
+  it('disables both destination buttons while a submit is in flight', async () => {
+    let resolveSubmit: (() => void) | undefined;
+    const onSubmitProject = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitProject={onSubmitProject}
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'In-flight task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() => expect(onSubmitProject).toHaveBeenCalled());
+    expect(getByRole('button', { name: 'Project' })).toBeDisabled();
+    expect(getByRole('button', { name: 'Workflow' })).toBeDisabled();
+    await act(async () => {
+      resolveSubmit?.();
+    });
+  });
+
+  it('keeps Title, Body, Story, Agent, and the Project destination selection unchanged when onSubmitProject rejects', async () => {
+    const onSubmitProject = jest
+      .fn()
+      .mockRejectedValue(new Error('Project submit failed'));
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitProject={onSubmitProject}
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Failing project task' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'Failing project body' },
+    });
+    const secondStoryButton = getByRole('button', {
+      name: /regular \/ tdpm dashboard & console improvement/i,
+    });
+    fireEvent.click(secondStoryButton);
+    const developerButton = getByRole('button', { name: /developer/i });
+    fireEvent.click(developerButton);
+
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+    await waitFor(() =>
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+        'Project submit failed',
+      ),
+    );
+    expect(
+      document.body.querySelector('.console-task-create-dialog'),
+    ).not.toBeNull();
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'Failing project task',
+    );
+    expect(getByRole('textbox', { name: /body/i })).toHaveValue(
+      'Failing project body',
+    );
+    expect(secondStoryButton.getAttribute('aria-pressed')).toBe('true');
+    expect(developerButton.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      getByRole('button', { name: 'Project' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('keeps Title, Body, and the Workflow destination selection unchanged when onSubmitWorkflow rejects', async () => {
+    const onSubmitWorkflow = jest
+      .fn()
+      .mockRejectedValue(new Error('Workflow submit failed'));
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="workflow"
+        onSubmitWorkflow={onSubmitWorkflow}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Failing workflow task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+    await waitFor(() =>
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+        'Workflow submit failed',
+      ),
+    );
+    expect(
+      document.body.querySelector('.console-task-create-dialog'),
+    ).not.toBeNull();
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'Failing workflow task',
+    );
+    expect(
+      getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('renders the same Story and Agent option names whether Project or Workflow is selected', () => {
+    const collectOptionTexts = (): string[] =>
+      [
+        ...document.body.querySelectorAll(
+          '.console-task-create-dialog-option-list button',
+        ),
+      ].map((button) => button.textContent ?? '');
+
+    const { unmount } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const projectOptionTexts = collectOptionTexts();
+    unmount();
+
+    render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="workflow"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const workflowOptionTexts = collectOptionTexts();
+
+    expect(projectOptionTexts.length).toBeGreaterThan(0);
+    expect(projectOptionTexts).toEqual(workflowOptionTexts);
   });
 });

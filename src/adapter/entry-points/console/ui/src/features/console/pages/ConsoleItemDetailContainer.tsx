@@ -150,7 +150,10 @@ export type ConsoleItemDetailContainerProps = {
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
   storyEntries?: ConsoleStoryEntry[];
-  onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
+  onCreateIssueFromComment?: {
+    onSubmitProject: (params: IssueCreateParams) => Promise<void>;
+    onSubmitWorkflow: (params: IssueCreateParams) => Promise<void>;
+  };
 };
 
 export const ConsoleItemDetailContainer = ({

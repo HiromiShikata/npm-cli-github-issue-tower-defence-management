@@ -18,10 +18,14 @@ export type IssueCreateDraft = {
   agentOptionId: string | null;
 };
 
+export type IssueCreateDestination = 'project' | 'workflow';
+
 export type IssueCreateModalDialogProps = {
   storyEntries: ConsoleStoryEntry[];
   agentOptions: ConsoleFieldOption[];
-  onSubmit: (params: IssueCreateParams) => Promise<void>;
+  initialDestination: IssueCreateDestination;
+  onSubmitProject: (params: IssueCreateParams) => Promise<void>;
+  onSubmitWorkflow?: (params: IssueCreateParams) => Promise<void>;
   onClose: () => void;
   initialDraft?: IssueCreateDraft;
   onDraftChange?: (draft: IssueCreateDraft) => void;
@@ -33,7 +37,9 @@ export type IssueCreateModalDialogProps = {
 export const IssueCreateModalDialog = ({
   storyEntries,
   agentOptions,
-  onSubmit,
+  initialDestination,
+  onSubmitProject,
+  onSubmitWorkflow,
   onClose,
   initialDraft,
   onDraftChange,
@@ -41,6 +47,8 @@ export const IssueCreateModalDialog = ({
   newIssueUrl,
   containerClassName,
 }: IssueCreateModalDialogProps) => {
+  const [destination, setDestination] =
+    useState<IssueCreateDestination>(initialDestination);
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
   >(() => {
@@ -144,13 +152,21 @@ export const IssueCreateModalDialog = ({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await onSubmit({
+      const submitParams = {
         storyName,
         agentOptionId: selectedAgentOptionId,
         title: finalTitle,
         body: finalBody,
         files: selectedFiles,
-      });
+      };
+      if (destination === 'project') {
+        await onSubmitProject(submitParams);
+      } else {
+        if (onSubmitWorkflow === undefined) {
+          throw new Error('No workflow repository is configured.');
+        }
+        await onSubmitWorkflow(submitParams);
+      }
       onClose();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
@@ -205,6 +221,28 @@ export const IssueCreateModalDialog = ({
                 New tab
               </a>
             )}
+            <div className="console-task-create-dialog-destination-selector">
+              <button
+                type="button"
+                className={`console-task-create-dialog-option-button${destination === 'project' ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                aria-pressed={destination === 'project'}
+                onClick={() => setDestination('project')}
+                disabled={submitting}
+              >
+                Project
+              </button>
+              {onSubmitWorkflow !== undefined && (
+                <button
+                  type="button"
+                  className={`console-task-create-dialog-option-button${destination === 'workflow' ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                  aria-pressed={destination === 'workflow'}
+                  onClick={() => setDestination('workflow')}
+                  disabled={submitting}
+                >
+                  Workflow
+                </button>
+              )}
+            </div>
             <button
               type="button"
               className="console-task-create-dialog-close"

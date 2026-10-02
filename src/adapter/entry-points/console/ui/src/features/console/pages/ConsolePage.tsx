@@ -1131,7 +1131,13 @@ export const ConsolePage = () => {
                   <IssueCreateModalDialog
                     storyEntries={storyEntries}
                     agentOptions={agentOptions}
-                    onSubmit={handleCreateIssueFromDialog}
+                    initialDestination="project"
+                    onSubmitProject={handleCreateIssueFromDialog}
+                    onSubmitWorkflow={
+                      fleetTaskCreateUrl !== null
+                        ? handleCreateFleetTaskFromDialog
+                        : undefined
+                    }
                     onClose={() => setIsDialogOpen(false)}
                     initialDraft={dialogDraft}
                     onDraftChange={setDialogDraft}
@@ -1165,7 +1171,9 @@ export const ConsolePage = () => {
           agentOptions={agentOptions}
           initialDraft={fleetDialogDraft}
           onDraftChange={setFleetDialogDraft}
-          onSubmit={handleCreateFleetTaskFromDialog}
+          initialDestination="workflow"
+          onSubmitProject={handleCreateIssueFromDialog}
+          onSubmitWorkflow={handleCreateFleetTaskFromDialog}
           onClose={() => setIsFleetTaskCreateDialogOpen(false)}
           containerClassName="console-fleet-task-create-dialog-container"
         />
@@ -1288,7 +1296,10 @@ export const ConsolePage = () => {
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
             onCreateIssueFromComment={
               fleetTaskCreateUrl !== null
-                ? handleCreateFleetTaskFromDialog
+                ? {
+                    onSubmitProject: handleCreateIssueFromDialog,
+                    onSubmitWorkflow: handleCreateFleetTaskFromDialog,
+                  }
                 : undefined
             }
           />

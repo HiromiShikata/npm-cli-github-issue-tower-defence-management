@@ -74,7 +74,10 @@ export type ConsoleCommentListProps = {
   issueTitle?: string;
   storyEntries?: ConsoleStoryEntry[];
   agentOptions?: ConsoleFieldOption[];
-  onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
+  onCreateIssueFromComment?: {
+    onSubmitProject: (params: IssueCreateParams) => Promise<void>;
+    onSubmitWorkflow: (params: IssueCreateParams) => Promise<void>;
+  };
 };
 
 export const ConsoleCommentList = ({
@@ -209,7 +212,9 @@ export const ConsoleCommentList = ({
         <IssueCreateModalDialog
           storyEntries={storyEntries ?? []}
           agentOptions={agentOptions ?? []}
-          onSubmit={onCreateIssueFromComment}
+          initialDestination="workflow"
+          onSubmitProject={onCreateIssueFromComment.onSubmitProject}
+          onSubmitWorkflow={onCreateIssueFromComment.onSubmitWorkflow}
           onClose={() => setPendingComment(null)}
           initialDraft={{
             title: '',
