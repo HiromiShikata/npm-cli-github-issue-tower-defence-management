@@ -148,10 +148,25 @@ export const ConsoleItemDetail = ({
     commitsAreLoading || commitsError !== null ? null : commits.length;
   const descriptionInitiallyCollapsed =
     !commentsAreLoading && commentsError === null && comments.length > 0;
-  const relatedPullRequestLabel = (url: string): string => {
+  const formatReferenceFallbackText = (
+    url: string,
+    labelPrefix: string,
+  ): string => {
     const reference = parseGitHubReferenceUrl(url);
-    return reference === null ? url : `PR #${reference.number}`;
+    return reference === null ? url : `${labelPrefix}#${reference.number}`;
   };
+  const relatedPullRequestLabel = (url: string): string =>
+    formatReferenceFallbackText(url, 'PR ');
+  const dependedIssueUrlEntries: { url: string; occurrenceKey: string }[] = [];
+  const dependedIssueUrlOccurrenceCountByUrl = new Map<string, number>();
+  for (const url of item.dependedIssueUrls) {
+    const occurrence = dependedIssueUrlOccurrenceCountByUrl.get(url) ?? 0;
+    dependedIssueUrlOccurrenceCountByUrl.set(url, occurrence + 1);
+    dependedIssueUrlEntries.push({
+      url,
+      occurrenceKey: `${url}#${occurrence}`,
+    });
+  }
   const fetchFailures: ConsoleFetchFailure[] = [
     { section: 'item state', message: stateError },
     {
@@ -284,6 +299,34 @@ export const ConsoleItemDetail = ({
             </span>
           )}
         </div>
+
+        {item.dependedIssueUrls.length > 0 && (
+          <div className="console-detail-depended-issue-url">
+            <span className="console-detail-depended-issue-url-label">
+              Depended Issue URL
+            </span>
+            {dependedIssueUrlEntries.map(({ url, occurrenceKey }) => {
+              const fallbackText = formatReferenceFallbackText(url, '');
+              return (
+                <span
+                  key={occurrenceKey}
+                  className="console-detail-depended-issue-url-link"
+                >
+                  {renderReferenceLink?.(url, fallbackText) ?? (
+                    <a
+                      className="console-markdown-reference console-markdown-reference-plain"
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {fallbackText}
+                    </a>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         <ConsoleFetchFailureAlert failures={fetchFailures} />
 
