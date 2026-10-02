@@ -902,6 +902,60 @@ describe('StoryGateCheckUseCase', () => {
         pullRequestUrl(9),
       ]);
     });
+
+    const storyLabeledOwnStoryUnresolvedCases: {
+      name: string;
+      closingPullRequests: ClosingPullRequest[];
+      action: string;
+      reason: string;
+    }[] = [
+      {
+        name: 'no pull request closes it',
+        closingPullRequests: [],
+        action: 'PROCEED',
+        reason: 'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED',
+      },
+      {
+        name: 'an open pull request closes it',
+        closingPullRequests: [{ url: pullRequestUrl(9), state: 'OPEN' }],
+        action: 'SELF_RESOLVE_STORY',
+        reason: 'OPEN_PULL_REQUEST_EXISTS',
+      },
+    ];
+
+    it.each(storyLabeledOwnStoryUnresolvedCases)(
+      'returns $action with $reason for a story-labeled issue with unresolved own Story when $name',
+      async ({ closingPullRequests, action, reason }) => {
+        const scenario = new StoryGateScenario({
+          story: null,
+          labels: ['story'],
+          closingPullRequests,
+        });
+
+        const { result } = await scenario.run();
+
+        expect(result.action).toBe(action);
+        expect(result.reason).toBe(reason);
+        if (reason === 'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED') {
+          expect(result.story.value).toBeNull();
+          expect(result.routingJson).toBeNull();
+        }
+      },
+    );
+
+    it('judges by the live label state, not a stale board-cache label, when they diverge', async () => {
+      const scenario = new StoryGateScenario({ story: null, labels: [] });
+      scenario.board.issues = scenario.board.issues.map((cached) =>
+        cached.url === issueUrl(ASSIGNED)
+          ? { ...cached, labels: ['story'] }
+          : cached,
+      );
+
+      const { result } = await scenario.run();
+
+      expect(result.action).toBe('ROUTE');
+      expect(result.reason).toBe('STORY_NOT_ADOPTABLE');
+    });
   });
 
   describe('triage agent self-routing guard', () => {
