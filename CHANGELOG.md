@@ -1,3 +1,10 @@
+# [2.158.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.13...v2.158.0) (2026-10-02)
+
+
+### Features
+
+* **usecases:** detect a dead worker behind a wait-conditioned task and make it visible ([#3116](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3116)) ([c52b5d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c52b5d53b01f18be8c971ef76b642aa4b027b5ca))
+
 ## [2.157.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.12...v2.157.13) (2026-10-02)
 
 
