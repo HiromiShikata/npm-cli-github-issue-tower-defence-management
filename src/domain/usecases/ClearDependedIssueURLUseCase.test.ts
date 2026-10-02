@@ -1051,9 +1051,7 @@ describe('ClearDependedIssueURLUseCase', () => {
           ),
           { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
         );
-        mockIssueRepository.createComment.mockRejectedValueOnce(
-          transientError,
-        );
+        mockIssueRepository.createComment.mockRejectedValueOnce(transientError);
 
         await retryingUseCase.run({
           project: basicProject,

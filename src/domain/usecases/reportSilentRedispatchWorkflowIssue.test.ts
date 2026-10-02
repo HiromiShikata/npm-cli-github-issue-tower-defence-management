@@ -172,8 +172,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       .mockImplementationOnce(async () => [
         {
           author: 'bot',
-          body:
-            mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
+          body: mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
           createdAt: new Date(),
         },
       ]);
