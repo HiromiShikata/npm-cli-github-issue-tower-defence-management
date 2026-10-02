@@ -1967,5 +1967,182 @@ describe('ConflictedIssueRevertUseCase', () => {
         AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
+
+    describe('retry with dedup at the dispatch-repetition escalation call sites', () => {
+      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateSilentRedispatch call site', async () => {
+        const mockSleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
+        const retryingUseCase = new ConflictedIssueRevertUseCase(
+          mockProjectRepository,
+          mockIssueRepository,
+          mockIssueCommentRepository,
+          mockSleep,
+        );
+        const issue = buildConflictedIssueWithLinkedPr(
+          projectWithEscalationStatuses,
+        );
+        issue.agent = 'developer';
+
+        const silentRedispatchComment = (count: number) => ({
+          author: 'owner',
+          content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+          createdAt: new Date(),
+        });
+        const humanComment = {
+          author: 'owner',
+          content: 'please continue',
+          createdAt: new Date(),
+        };
+
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          agentReport('developer'),
+          humanComment,
+          silentRedispatchComment(1),
+          silentRedispatchComment(2),
+        ]);
+
+        const transientError = Object.assign(
+          new Error(
+            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+          ),
+          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+        );
+        mockIssueCommentRepository.createComment
+          .mockRejectedValueOnce(transientError)
+          .mockResolvedValueOnce(undefined);
+
+        await expect(
+          retryingUseCase.run({
+            projectUrl,
+            allowedIssueAuthors: ['owner'],
+            thresholdForAutoReject: 3,
+            thresholdForDispatchLoop: 6,
+          }),
+        ).resolves.not.toThrow();
+
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          2,
+        );
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).toHaveBeenLastCalledWith(
+          issue,
+          expect.stringContaining('Failed to receive a report'),
+        );
+      });
+
+      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateReportingLoop call site', async () => {
+        const mockSleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
+        const retryingUseCase = new ConflictedIssueRevertUseCase(
+          mockProjectRepository,
+          mockIssueRepository,
+          mockIssueCommentRepository,
+          mockSleep,
+        );
+        const issue = buildConflictedIssueWithLinkedPr(
+          projectWithAllEscalationStatuses,
+        );
+        issue.agent = 'developer';
+
+        const humanComment = {
+          author: 'owner',
+          content: 'please continue',
+          createdAt: new Date(),
+        };
+
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          humanComment,
+          silentRedispatchComment(1),
+          agentReport('developer'),
+        ]);
+
+        const transientError = Object.assign(
+          new Error(
+            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+          ),
+          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+        );
+        mockIssueCommentRepository.createComment
+          .mockRejectedValueOnce(transientError)
+          .mockResolvedValueOnce(undefined);
+
+        await expect(
+          retryingUseCase.run({
+            projectUrl,
+            allowedIssueAuthors: ['owner'],
+            thresholdForAutoReject: 2,
+            thresholdForDispatchLoop: 6,
+          }),
+        ).resolves.not.toThrow();
+
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          2,
+        );
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).toHaveBeenLastCalledWith(
+          issue,
+          expect.stringContaining(
+            'This task has been marked as Failed Preparation',
+          ),
+        );
+      });
+
+      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateDispatchLoop call site', async () => {
+        const mockSleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
+        const retryingUseCase = new ConflictedIssueRevertUseCase(
+          mockProjectRepository,
+          mockIssueRepository,
+          mockIssueCommentRepository,
+          mockSleep,
+        );
+        const issue = buildConflictedIssueWithLinkedPr(
+          projectWithEscalationStatuses,
+        );
+
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          agentReport('developer'),
+          agentReport('developer'),
+          agentReport('developer'),
+        ]);
+
+        const transientError = Object.assign(
+          new Error(
+            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+          ),
+          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+        );
+        mockIssueCommentRepository.createComment
+          .mockRejectedValueOnce(transientError)
+          .mockResolvedValueOnce(undefined);
+
+        await expect(
+          retryingUseCase.run({
+            projectUrl,
+            allowedIssueAuthors: ['owner'],
+            thresholdForAutoReject: 5,
+            thresholdForDispatchLoop: 3,
+          }),
+        ).resolves.not.toThrow();
+
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          2,
+        );
+        expect(mockSleep).toHaveBeenCalledTimes(1);
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).toHaveBeenLastCalledWith(
+          issue,
+          expect.stringContaining('dispatched 3 times'),
+        );
+      });
+    });
   });
 });
