@@ -229,13 +229,10 @@ describe('ConsoleMarkdownContent', () => {
       expect(writeText).not.toHaveBeenCalledWith('bar');
     });
 
-    it('does not turn a fenced code block into an inline copy target', async () => {
+    it('renders only the fenced block copy control for a body with one fenced block and zero inline backtick spans', async () => {
       const { findAllByRole } = render(
         <ConsoleMarkdownContent body={multiLineCodeBody} />,
       );
-      // multiLineCodeBody has exactly one fenced block and zero inline
-      // backtick spans, so the only button rendered is the fenced block's
-      // own "Copy code" control; zero inline-copy buttons are added.
       const buttons = await findAllByRole('button');
       expect(buttons).toHaveLength(1);
       const fencedBlockButtons = await findAllByRole('button', {
