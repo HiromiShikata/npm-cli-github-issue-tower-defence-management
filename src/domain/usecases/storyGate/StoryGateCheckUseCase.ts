@@ -274,7 +274,12 @@ export class StoryGateCheckUseCase {
     if (isRegularStory(storyValue)) {
       return this.assignedIssueEvaluate(state, input, caches, 'REGULAR_STORY');
     }
-    const storyIssueUrls = this.storyIssueUrlsFind(caches, storyValue);
+    const searchCaches = await this.storyGateSearchCachesResolve(
+      caches,
+      cacheHit,
+      input.issue.owner,
+    );
+    const storyIssueUrls = this.storyIssueUrlsFind(searchCaches, storyValue);
     if (storyIssueUrls.length === 0) {
       return this.routeToTriage(
         state,
@@ -588,6 +593,40 @@ export class StoryGateCheckUseCase {
     state.result.facts.openClosingPullRequestUrls = openUrls;
     state.result.facts.mergedClosingPullRequestUrls = mergedUrls;
     return { openUrls, mergedUrls };
+  };
+
+  private boardCacheOwnerDetect = (cache: BoardCache): string | null => {
+    const issueUrl = cache.issues.find((issue) => issue.url !== '')?.url;
+    const storyIssueUrl = Object.values(cache.storyIssueUrlByOptionName).find(
+      (url) => url !== '',
+    );
+    const candidateUrl = issueUrl ?? storyIssueUrl;
+    if (candidateUrl === undefined) {
+      return null;
+    }
+    return githubIssueReferenceParse(candidateUrl)?.owner ?? null;
+  };
+
+  private storyGateSearchCachesResolve = async (
+    caches: BoardCache[],
+    cacheHit: BoardCacheHit | null,
+    issueOwner: string,
+  ): Promise<BoardCache[]> => {
+    if (cacheHit !== null) {
+      return [cacheHit.cache];
+    }
+    const configs = await this.projectConfigRepository.listProjectConfigs();
+    const config = configs.find(
+      (candidate) => candidate.org.toLowerCase() === issueOwner.toLowerCase(),
+    );
+    if (config === undefined) {
+      return [];
+    }
+    return caches.filter(
+      (cache) =>
+        this.boardCacheOwnerDetect(cache)?.toLowerCase() ===
+        config.org.toLowerCase(),
+    );
   };
 
   private storyIssueUrlsFind = (
