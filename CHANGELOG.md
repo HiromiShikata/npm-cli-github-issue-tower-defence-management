@@ -1,3 +1,10 @@
+# [2.157.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.156.0...v2.157.0) (2026-10-02)
+
+
+### Features
+
+* **console:** add Depended Issue URL row to the console task detail screen header ([#3075](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3075)) ([c07505d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c07505db9cdf472998e2ac385eeee2ad7bd662b7))
+
 # [2.156.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.155.8...v2.156.0) (2026-10-01)
 
 
