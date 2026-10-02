@@ -1,3 +1,10 @@
+## [2.157.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.0...v2.157.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **comment-retry:** apply transient-502 retry-with-dedup pattern to remaining comment-creation call sites ([#3077](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3077)) ([991d4f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/991d4f7743674af47e1fdbfae5bf766ad396845e))
+
 # [2.157.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.156.0...v2.157.0) (2026-10-02)
 
 
