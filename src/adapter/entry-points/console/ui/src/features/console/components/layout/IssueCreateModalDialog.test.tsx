@@ -1024,6 +1024,28 @@ describe('IssueCreateModalDialog', () => {
     expect(developerButton.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('retains Attachments when the destination selection is switched to Workflow', () => {
+    const { getByRole, getByText } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const mockFile = new File(['data'], 'persisted-attachment.png', {
+      type: 'image/png',
+    });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    expect(getByText('persisted-attachment.png')).not.toBeNull();
+
+    fireEvent.click(getByRole('button', { name: 'Workflow' }));
+
+    expect(getByText('persisted-attachment.png')).not.toBeNull();
+  });
+
   it('calls onSubmitProject and not onSubmitWorkflow when Create is clicked with Project selected', async () => {
     const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
