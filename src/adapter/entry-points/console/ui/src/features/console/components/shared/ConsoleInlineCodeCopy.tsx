@@ -10,9 +10,8 @@ type ConsoleInlineCodeCopyState = 'idle' | 'copied' | 'failed';
 const COPIED_FEEDBACK_MS = 1500;
 
 export const ConsoleInlineCodeCopy = ({ code }: ConsoleInlineCodeCopyProps) => {
-  const [copyState, setCopyState] = useState<ConsoleInlineCodeCopyState>(
-    'idle',
-  );
+  const [copyState, setCopyState] =
+    useState<ConsoleInlineCodeCopyState>('idle');
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(

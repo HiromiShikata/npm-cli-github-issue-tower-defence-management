@@ -221,9 +221,9 @@ describe('ConsoleMarkdownContent', () => {
         fireEvent.click(buttons[0]);
       });
 
-      const codeTextsAfter = Array.from(
-        container.querySelectorAll('code'),
-      ).map((element) => element.textContent);
+      const codeTextsAfter = Array.from(container.querySelectorAll('code')).map(
+        (element) => element.textContent,
+      );
       expect(codeTextsAfter).toEqual(['foo', 'bar']);
       expect(writeText).toHaveBeenCalledWith('foo');
       expect(writeText).not.toHaveBeenCalledWith('bar');
