@@ -4,6 +4,7 @@ import {
   realSleep,
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
+import { redactSecrets } from '../services/secretRedaction';
 import { isTransientApiError } from './isTransientApiError';
 
 type CliErrorReportRepository = Pick<
@@ -59,9 +60,12 @@ export class CliErrorReportUseCase {
 
     const errorName =
       error instanceof Error ? (error.name ?? 'Error') : 'Error';
-    const message = error instanceof Error ? error.message : String(error);
-    const stack =
-      error instanceof Error && error.stack ? error.stack : String(error);
+    const message = redactSecrets(
+      error instanceof Error ? error.message : String(error),
+    );
+    const stack = redactSecrets(
+      error instanceof Error && error.stack ? error.stack : String(error),
+    );
     const title = `CLI error: ${errorName}: ${message.slice(0, 80)}`;
     const occurredAt = new Date().toISOString();
 
