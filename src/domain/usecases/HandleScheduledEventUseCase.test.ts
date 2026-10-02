@@ -1852,7 +1852,7 @@ describe('HandleScheduledEventUseCase', () => {
         await useCase.run(baseInput);
 
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
-        expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
+        expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalled();
         expect(
           mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
         ).toHaveBeenCalled();

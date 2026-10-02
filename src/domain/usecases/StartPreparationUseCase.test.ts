@@ -337,6 +337,12 @@ describe('StartPreparationUseCase', () => {
         ],
       },
     };
+    const iceboxStatusId = projectWithIcebox.status.statuses.find(
+      (status) => status.name === 'Icebox',
+    )!.id;
+    const preparationStatusId = projectWithIcebox.status.statuses.find(
+      (status) => status.name === 'Preparation',
+    )!.id;
 
     it('starts no worker and sets Status to Icebox for an Awaiting Workspace issue whose Story option color is GRAY', async () => {
       const grayStoryIssue = createMockIssue({
@@ -378,7 +384,9 @@ describe('StartPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
         url: 'https://github.com/user/repo/issues/900',
       });
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+        iceboxStatusId,
+      );
     });
 
     it('dispatches an Awaiting Workspace issue exactly as before when its Story option color is not GRAY', async () => {
@@ -418,7 +426,9 @@ describe('StartPreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/901',
         status: 'Preparation',
       });
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+        preparationStatusId,
+      );
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     });
 
@@ -496,10 +506,10 @@ describe('StartPreparationUseCase', () => {
       );
       expect(
         updateStatusCallsByUrl.get('https://github.com/user/repo/issues/902'),
-      ).toBe('4');
+      ).toBe(iceboxStatusId);
       expect(
         updateStatusCallsByUrl.get('https://github.com/user/repo/issues/903'),
-      ).toBe('2');
+      ).toBe(preparationStatusId);
     });
   });
 
