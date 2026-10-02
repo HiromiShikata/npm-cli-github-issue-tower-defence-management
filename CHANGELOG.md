@@ -1,3 +1,10 @@
+## [2.157.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.12...v2.157.13) (2026-10-02)
+
+
+### Bug Fixes
+
+* **scheduled-event:** retry safe GraphQL JSON-parse failures and isolate orphaned-preparation errors ([#3115](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3115)) ([74f6f3b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/74f6f3b90bf80c26fb3f7c3553623a5bd3b11684))
+
 ## [2.157.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.11...v2.157.12) (2026-10-02)
 
 
