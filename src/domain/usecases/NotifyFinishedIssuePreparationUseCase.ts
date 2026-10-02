@@ -39,6 +39,7 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
 import { findLastAgentReportPostedSince } from './findLastAgentReport';
+import { isHumanAuthoredInvestigationTaskCloseOverride } from './isHumanAuthoredInvestigationTaskCloseOverride';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
 import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 
@@ -474,10 +475,19 @@ export class NotifyFinishedIssuePreparationUseCase {
     const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
       ? extractCloseIssueAs(lastAgentReport.content)
       : { kind: 'notRequested' };
+    const isHumanAuthoredInvestigationTaskCloseOverrideApplicable =
+      closeIssueAsRequest.kind === 'requested' &&
+      nextStepAgent === null &&
+      workflowError === null &&
+      isHumanAuthoredInvestigationTaskCloseOverride({
+        title: issue.title,
+        body: issue.body,
+      });
     const isCloseIssueAsOverriddenByReportRouting =
       nextStepAgent !== null ||
       workflowError !== null ||
-      needOwnerConfirmationOrApproval;
+      needOwnerConfirmationOrApproval ||
+      isHumanAuthoredInvestigationTaskCloseOverrideApplicable;
     if (
       closeIssueAsRequest.kind === 'requested' &&
       !isCloseIssueAsOverriddenByReportRouting
@@ -837,7 +847,19 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    if (needOwnerConfirmationOrApproval) {
+    if (
+      needOwnerConfirmationOrApproval ||
+      isHumanAuthoredInvestigationTaskCloseOverrideApplicable
+    ) {
+      if (
+        isHumanAuthoredInvestigationTaskCloseOverrideApplicable &&
+        !needOwnerConfirmationOrApproval
+      ) {
+        await this.createCommentWithDedup(
+          issue,
+          'Auto Status Check: ROUTED_TO_OWNER\nThe issue body does not look like an automated report and the title or body names an investigation or report task, so the requested close was skipped and the issue was routed for owner review instead.',
+        );
+      }
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
