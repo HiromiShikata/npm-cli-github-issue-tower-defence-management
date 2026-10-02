@@ -1547,26 +1547,23 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
       expectedType: 'escalateSilentRedispatch',
       expectedCommentContains: undefined,
     },
-  ])(
-    '$description',
-    ({ comments, expectedType, expectedCommentContains }) => {
-      const result = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: 'accounting',
-        nextStepAgent: 'accounting',
-        comments,
-        isTrustedAuthor: trustAll,
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        isNoStory: false,
-        currentDispatchHasNoReportRejection: false,
-      });
+  ])('$description', ({ comments, expectedType, expectedCommentContains }) => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'accounting',
+      nextStepAgent: 'accounting',
+      comments,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
 
-      expect(result.type).toBe(expectedType);
-      if (expectedCommentContains !== undefined && 'comment' in result) {
-        expect(result.comment).toContain(expectedCommentContains);
-      }
-    },
-  );
+    expect(result.type).toBe(expectedType);
+    if (expectedCommentContains !== undefined && 'comment' in result) {
+      expect(result.comment).toContain(expectedCommentContains);
+    }
+  });
 });
 
 describe('rate-limit record boundary with story-unset tracking (parameterized test cases 8-10)', () => {
