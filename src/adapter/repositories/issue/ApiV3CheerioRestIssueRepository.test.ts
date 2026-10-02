@@ -7106,6 +7106,76 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).toBe(true);
     });
+
+    it('includes a same-repo pull request whose body carries the plain shorthand closing keyword for an issue that is already closed', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(1),
+                  willCloseTarget: false,
+                  prBody: 'Closes #1',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(1)]);
+    });
+
+    it('excludes a same-repo pull request whose shorthand closing keyword number is only a numeric prefix of the issue number', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(10),
+                  willCloseTarget: false,
+                  prBody: 'Closes #10',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('excludes a pull request whose shorthand closing keyword number matches the issue number but which lives in a different repository', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl:
+                    'https://github.com/HiromiShikata/another-repository/pull/55',
+                  willCloseTarget: false,
+                  prBody: 'Closes #1',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
   });
 
   describe('getOpenPullRequest CI state computation', () => {

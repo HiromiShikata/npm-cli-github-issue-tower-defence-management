@@ -2110,6 +2110,41 @@ export class ApiV3CheerioRestIssueRepository
     return false;
   };
 
+  private prBodyContainsSameRepoClosingKeywordShorthand = (
+    prBody: string | null,
+    prUrl: string | null | undefined,
+    issueUrl: string,
+  ): boolean => {
+    if (!prBody || !prUrl) return false;
+    let prOwner: string;
+    let prRepo: string;
+    let issueOwner: string;
+    let issueRepo: string;
+    let issueNumber: number;
+    try {
+      const parsedPrUrl = this.parseIssueUrl(prUrl);
+      prOwner = parsedPrUrl.owner;
+      prRepo = parsedPrUrl.repo;
+      const parsedIssueUrl = this.parseIssueUrl(issueUrl);
+      issueOwner = parsedIssueUrl.owner;
+      issueRepo = parsedIssueUrl.repo;
+      issueNumber = parsedIssueUrl.issueNumber;
+    } catch {
+      return false;
+    }
+    if (
+      prOwner.toLowerCase() !== issueOwner.toLowerCase() ||
+      prRepo.toLowerCase() !== issueRepo.toLowerCase()
+    ) {
+      return false;
+    }
+    const closingKeywordShorthand = new RegExp(
+      `(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\\s+#${issueNumber}(?!\\d)`,
+      'i',
+    );
+    return closingKeywordShorthand.test(prBody);
+  };
+
   private readonly requiredCheckNamesCache = new Map<
     string,
     { fetchedAtMs: number; names: string[] }
@@ -3108,6 +3143,11 @@ export class ApiV3CheerioRestIssueRepository
       item.willCloseTarget === true ||
       this.prBodyContainsCrossRepoClosingKeyword(
         item.source.body ?? null,
+        issueUrl,
+      ) ||
+      this.prBodyContainsSameRepoClosingKeywordShorthand(
+        item.source.body ?? null,
+        item.source.url ?? null,
         issueUrl,
       )
     );
