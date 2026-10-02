@@ -46,7 +46,9 @@ const meta: Meta<typeof IssueCreateModalDialog> = {
   args: {
     storyEntries,
     agentOptions,
-    onSubmit: () => Promise.resolve(),
+    initialDestination: 'project',
+    onSubmitProject: () => Promise.resolve(),
+    onSubmitWorkflow: () => Promise.resolve(),
     onClose: () => {},
   },
 };
@@ -56,6 +58,18 @@ export default meta;
 type Story = StoryObj<typeof IssueCreateModalDialog>;
 
 export const Default: Story = {};
+
+export const WorkflowDestinationSelected: Story = {
+  args: {
+    initialDestination: 'workflow',
+  },
+};
+
+export const NoWorkflowConfigured: Story = {
+  args: {
+    onSubmitWorkflow: undefined,
+  },
+};
 
 export const SingleStory: Story = {
   args: {

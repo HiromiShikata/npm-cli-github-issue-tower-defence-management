@@ -2611,6 +2611,12 @@ body {
   color: #e6edf3;
 }
 
+.console-task-create-dialog-destination-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .console-task-create-dialog-close {
   background: transparent;
   border: none;

@@ -54,7 +54,10 @@ export const WithCreateWorkflowIssueAction: Story = {
     issueUrl:
       'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720',
     issueTitle: 'Example issue title from the source task',
-    onCreateIssueFromComment: async () => {},
+    onCreateIssueFromComment: {
+      onSubmitProject: async () => {},
+      onSubmitWorkflow: async () => {},
+    },
   },
 };
 

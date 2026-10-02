@@ -83,7 +83,10 @@ export type ConsoleItemDetailProps = {
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
   storyEntries?: ConsoleStoryEntry[];
   agentOptions?: ConsoleFieldOption[];
-  onCreateIssueFromComment?: (params: IssueCreateParams) => Promise<void>;
+  onCreateIssueFromComment?: {
+    onSubmitProject: (params: IssueCreateParams) => Promise<void>;
+    onSubmitWorkflow: (params: IssueCreateParams) => Promise<void>;
+  };
 };
 
 export const ConsoleItemDetail = ({
