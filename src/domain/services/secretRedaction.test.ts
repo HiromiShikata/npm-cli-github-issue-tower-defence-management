@@ -107,6 +107,12 @@ describe('redactSecrets', () => {
       },
       {
         description:
+          'a YAML-shaped credential-named key with a quoted value has the value redacted despite the unquoted key',
+        input: 'password: "mySuperSecretPassword123"',
+        expected: `password: ${REDACTED_SECRET_PLACEHOLDER}`,
+      },
+      {
+        description:
           'a JSON-shaped "secret"-named key has only its value redacted',
         input: '"clientSecret": "s3cr3tValueHere1234567890"',
         expected: `"clientSecret": "${REDACTED_SECRET_PLACEHOLDER}"`,
