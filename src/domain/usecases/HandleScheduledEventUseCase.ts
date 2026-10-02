@@ -593,6 +593,13 @@ ${JSON.stringify(e)}
           removalError,
         );
       }
+      await this.changeStatusByStoryColorUseCase.run({
+        project,
+        org: input.org,
+        repo: input.workingReport.repo,
+        storyObjectMap,
+        manager: input.manager,
+      });
     }
     await this.createNewStoryByLabelUseCase.run({
       project,
