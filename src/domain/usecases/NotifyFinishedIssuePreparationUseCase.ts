@@ -40,6 +40,7 @@ import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
 import { findLastAgentReportPostedSince } from './findLastAgentReport';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
+import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 
 import {
   extractAgentNameFromReportBody,
@@ -984,7 +985,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.patchConsoleTab(issue);
     await this.issueCommentRepository.createComment(
       issue,
-      'Session ended due to API rate limit; returning to Awaiting Workspace without incrementing the consecutive-no-report counter.',
+      RATE_LIMIT_SESSION_END_MESSAGE,
     );
   };
 

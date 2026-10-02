@@ -1,6 +1,7 @@
 import {
   AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  RATE_LIMIT_SESSION_END_MESSAGE,
 } from './autoStatusCheckComments';
 import {
   ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD,
@@ -188,6 +189,15 @@ describe('isHumanComment', () => {
           author: 'bot',
           content: `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats a rate-limit session-end record as machine generated (AC8 structural exclusion)', () => {
+    expect(
+      isHumanComment(
+        { author: 'bot', content: RATE_LIMIT_SESSION_END_MESSAGE },
         trustAll,
       ),
     ).toBe(false);

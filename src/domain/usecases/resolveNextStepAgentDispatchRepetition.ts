@@ -1,5 +1,8 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
-import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import {
+  AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  RATE_LIMIT_SESSION_END_MESSAGE,
+} from './autoStatusCheckComments';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import {
@@ -80,6 +83,78 @@ const findReopenedEventBoundaryIndex = <
         -1,
       );
 
+const findRateLimitBoundaryIndex = <
+  CommentLike extends { author: string; content: string; createdAt: Date },
+>(
+  comments: CommentLike[],
+  isTrustedAuthor: (author: string) => boolean,
+): number =>
+  comments.reduce(
+    (found, comment, index) =>
+      isTrustedAuthor(comment.author) &&
+      comment.content.startsWith(RATE_LIMIT_SESSION_END_MESSAGE)
+        ? index
+        : found,
+    -1,
+  );
+
+const resolveActiveRateLimitBoundaryIndex = <
+  CommentLike extends { author: string; content: string; createdAt: Date },
+>(params: {
+  comments: CommentLike[];
+  isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt: Date | null;
+}): number => {
+  const rateLimitBoundaryIndex = findRateLimitBoundaryIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
+  if (rateLimitBoundaryIndex === -1) {
+    return -1;
+  }
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
+  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
+    params.comments,
+    params.latestReopenedAt,
+  );
+  const mostRecentBoundaryIndex = Math.max(
+    lastHumanCommentIndex,
+    reopenedEventBoundaryIndex,
+    rateLimitBoundaryIndex,
+  );
+  return rateLimitBoundaryIndex === mostRecentBoundaryIndex
+    ? rateLimitBoundaryIndex
+    : -1;
+};
+
+const isRateLimitSilentFailureExclusionActive = <
+  CommentLike extends { author: string; content: string; createdAt: Date },
+>(params: {
+  comments: CommentLike[];
+  isTrustedAuthor: (author: string) => boolean;
+  latestReopenedAt: Date | null;
+}): boolean => {
+  const activeRateLimitBoundaryIndex = resolveActiveRateLimitBoundaryIndex({
+    comments: params.comments,
+    isTrustedAuthor: params.isTrustedAuthor,
+    latestReopenedAt: params.latestReopenedAt,
+  });
+  if (activeRateLimitBoundaryIndex === -1) {
+    return false;
+  }
+  const hasAgentResponseSinceRateLimitBoundary = params.comments
+    .slice(activeRateLimitBoundaryIndex + 1)
+    .some(
+      (comment) =>
+        params.isTrustedAuthor(comment.author) &&
+        isAgentReportBody(comment.content),
+    );
+  return !hasAgentResponseSinceRateLimitBoundary;
+};
+
 export const countConsecutiveNoReportDispatches = <
   CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
@@ -103,10 +178,15 @@ export const countConsecutiveNoReportDispatches = <
     params.comments,
     params.latestReopenedAt ?? null,
   );
+  const rateLimitBoundaryIndex = findRateLimitBoundaryIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
   const cycleStart = Math.max(
     lastHumanCommentIndex,
     lastAgentReportIndex,
     reopenedEventBoundaryIndex,
+    rateLimitBoundaryIndex,
   );
   return params.comments
     .slice(cycleStart + 1)
@@ -181,9 +261,14 @@ const countSilentRedispatches = <
     params.comments,
     params.latestReopenedAt,
   );
+  const rateLimitBoundaryIndex = findRateLimitBoundaryIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
   const cycleStart = Math.max(
     lastHumanCommentIndex,
     reopenedEventBoundaryIndex,
+    rateLimitBoundaryIndex,
   );
   const commentsInCurrentCycle = params.comments.slice(cycleStart + 1);
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
@@ -419,7 +504,14 @@ export const resolveNextStepAgentDispatchRepetition = <
         isTrustedAuthor: params.isTrustedAuthor,
         latestReopenedAt: params.latestReopenedAt ?? null,
       });
-      if (storyUnsetDispatchState.count >= params.thresholdForDispatchLoop) {
+      if (
+        storyUnsetDispatchState.count >= params.thresholdForDispatchLoop &&
+        !isRateLimitSilentFailureExclusionActive({
+          comments: params.comments,
+          isTrustedAuthor: params.isTrustedAuthor,
+          latestReopenedAt: params.latestReopenedAt ?? null,
+        })
+      ) {
         return {
           type: 'escalateStoryUnsetLoop',
           comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_ESCALATED_KEYWORD} ${params.nextStepAgent}
@@ -450,6 +542,20 @@ The agent has been reporting every cycle but cannot advance — it has been disp
       };
     }
     if (!silentRedispatches.hasReportsInCycle) {
+      if (
+        isRateLimitSilentFailureExclusionActive({
+          comments: params.comments,
+          isTrustedAuthor: params.isTrustedAuthor,
+          latestReopenedAt: params.latestReopenedAt ?? null,
+        })
+      ) {
+        return {
+          type: 'dispatchAgain',
+          comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+
+No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`,
+        };
+      }
       return {
         type: 'escalateSilentRedispatch',
         comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${effectiveNextStepAgent}
