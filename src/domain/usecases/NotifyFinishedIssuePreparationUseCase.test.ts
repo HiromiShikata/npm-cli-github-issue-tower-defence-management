@@ -1,4 +1,5 @@
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
+import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
@@ -5948,6 +5949,26 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('posts the rate-limit session-end comment using the shared RATE_LIMIT_SESSION_END_MESSAGE constant (AC5)', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        rateLimitRejected: true,
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        RATE_LIMIT_SESSION_END_MESSAGE,
+      );
     });
   });
 

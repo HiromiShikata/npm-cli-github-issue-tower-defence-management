@@ -1,4 +1,7 @@
-import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import {
+  AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  RATE_LIMIT_SESSION_END_MESSAGE,
+} from './autoStatusCheckComments';
 import * as ResolveNextStepAgentDispatchRepetitionModule from './resolveNextStepAgentDispatchRepetition';
 import {
   countConsecutiveNoReportDispatches,
@@ -97,6 +100,12 @@ This agent has been dispatched 3 times since the last human comment on this issu
   createdAt: TEST_COMMENT_CREATED_AT,
 });
 
+const rateLimitRecordComment = (author = 'bot'): TestComment => ({
+  author,
+  content: RATE_LIMIT_SESSION_END_MESSAGE,
+  createdAt: TEST_COMMENT_CREATED_AT,
+});
+
 const storyUnsetMarkerComment = (
   nextStepAgent: string,
   author = 'bot',
@@ -149,6 +158,54 @@ const buildStoryUnsetCommentsAfterPriorDispatches = (
       {
         author: 'bot',
         content: result.comment,
+        createdAt: TEST_COMMENT_CREATED_AT,
+      },
+    ];
+  }
+  return history;
+};
+
+type TestCommentWithId = TestComment & { id?: string };
+
+const buildStoryUnsetHistoryAfterRateLimitRecord = (params: {
+  nextStepAgent: string;
+  thresholdForDispatchLoop: number;
+  priorDispatchCount: number;
+  includeReportAfterRateLimitRecord: boolean;
+}): TestCommentWithId[] => {
+  let history: TestCommentWithId[] = [
+    report(params.nextStepAgent),
+    rateLimitRecordComment(),
+  ];
+  if (params.includeReportAfterRateLimitRecord) {
+    history = [...history, report(params.nextStepAgent)];
+  }
+  for (
+    let dispatchNumber = 1;
+    dispatchNumber <= params.priorDispatchCount;
+    dispatchNumber += 1
+  ) {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: params.nextStepAgent,
+      nextStepAgent: params.nextStepAgent,
+      comments: history,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: params.thresholdForDispatchLoop,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+    if (result.type !== 'storyUnset') {
+      throw new Error(
+        `Expected storyUnset while building the fixture at prior dispatch ${dispatchNumber}, got ${result.type}`,
+      );
+    }
+    history = [
+      ...history,
+      {
+        author: 'bot',
+        content: result.comment,
+        id: `story-unset-comment-${dispatchNumber}`,
         createdAt: TEST_COMMENT_CREATED_AT,
       },
     ];
@@ -1413,6 +1470,190 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   });
 });
 
+describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
+  it.each([
+    {
+      caseNumber: 1,
+      description:
+        'human comment then 3 silent-failure detections with no rate-limit record escalates (regression check)',
+      comments: [
+        humanComment(),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'escalateSilentRedispatch',
+      expectedCommentContains: undefined,
+    },
+    {
+      caseNumber: 2,
+      description:
+        'rate-limit record then 2 silent-failure detections redispatches normally (threshold not reached)',
+      comments: [rateLimitRecordComment(), repetitionComment('accounting')],
+      expectedType: 'dispatchAgain',
+      expectedCommentContains: '(2/3)',
+    },
+    {
+      caseNumber: 3,
+      description:
+        'rate-limit record then 3 silent-failure detections redispatches normally instead of escalating (bug reproduction)',
+      comments: [
+        rateLimitRecordComment(),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'dispatchAgain',
+      expectedCommentContains: '(3/3)',
+    },
+    {
+      caseNumber: 4,
+      description:
+        'rate-limit record then an agent response then 3 silent-failure detections escalates (response ends the exclusion)',
+      comments: [
+        rateLimitRecordComment(),
+        report('accounting'),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'escalateSilentRedispatch',
+      expectedCommentContains: 'Failed to receive a report',
+    },
+    {
+      caseNumber: 5,
+      description:
+        'rate-limit record then a human comment then 3 silent-failure detections escalates (human comment is the new boundary)',
+      comments: [
+        rateLimitRecordComment(),
+        humanComment(),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'escalateSilentRedispatch',
+      expectedCommentContains: undefined,
+    },
+    {
+      caseNumber: 6,
+      description:
+        'two rate-limit records then 3 silent-failure detections redispatches normally (most recent rate-limit record is the boundary)',
+      comments: [
+        rateLimitRecordComment(),
+        rateLimitRecordComment(),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'dispatchAgain',
+      expectedCommentContains: '(3/3)',
+    },
+    {
+      caseNumber: 7,
+      description:
+        '3 silent-failure detections with no human comment, reopened event, or rate-limit record ever posted still escalates (found-check guards against -1 === -1)',
+      comments: [
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      expectedType: 'escalateSilentRedispatch',
+      expectedCommentContains: undefined,
+    },
+  ])(
+    'case $caseNumber: $description',
+    ({ comments, expectedType, expectedCommentContains }) => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments,
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      expect(result.type).toBe(expectedType);
+      if (expectedCommentContains !== undefined && 'comment' in result) {
+        expect(result.comment).toContain(expectedCommentContains);
+      }
+    },
+  );
+});
+
+describe('rate-limit record boundary with story-unset tracking (parameterized test cases 8-10)', () => {
+  it('case 8: advances the embedded count from (3/6) to (4/6) and updates the existing comment when no further rate-limit record occurs', () => {
+    const history = buildStoryUnsetHistoryAfterRateLimitRecord({
+      nextStepAgent: 'developer',
+      thresholdForDispatchLoop: 6,
+      priorDispatchCount: 3,
+      includeReportAfterRateLimitRecord: false,
+    });
+
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: history,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 6,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('storyUnset');
+    if (result.type !== 'storyUnset') {
+      throw new Error('Expected storyUnset');
+    }
+    expect(result.comment).toContain('(4/6)');
+    expect(result.existingCommentId).toBe('story-unset-comment-3');
+  });
+
+  it('case 9: reaches the embedded count (6/6) but suppresses STORY_UNSET_ESCALATED because the rate-limit record is still the most recent boundary with no response since', () => {
+    const history = buildStoryUnsetHistoryAfterRateLimitRecord({
+      nextStepAgent: 'developer',
+      thresholdForDispatchLoop: 6,
+      priorDispatchCount: 5,
+      includeReportAfterRateLimitRecord: false,
+    });
+
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: history,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 6,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('storyUnset');
+    if (result.type !== 'storyUnset') {
+      throw new Error('Expected storyUnset');
+    }
+    expect(result.comment).toContain('(6/6)');
+    expect(result.existingCommentId).toBe('story-unset-comment-5');
+  });
+
+  it('case 10: fires STORY_UNSET_ESCALATED normally once an agent response recorded after the rate-limit record has ended the exclusion', () => {
+    const history = buildStoryUnsetHistoryAfterRateLimitRecord({
+      nextStepAgent: 'developer',
+      thresholdForDispatchLoop: 6,
+      priorDispatchCount: 5,
+      includeReportAfterRateLimitRecord: true,
+    });
+
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: history,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 6,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateStoryUnsetLoop');
+  });
+});
+
 describe('countConsecutiveNoReportDispatches', () => {
   const noReportAgainComment = (
     n: number,
@@ -1525,5 +1766,19 @@ describe('countConsecutiveNoReportDispatches', () => {
         isTrustedAuthor: trustNone,
       }),
     ).toBe(0);
+  });
+
+  it('does not merge NO_REPORT_AGAIN comments across a rate-limit record boundary into a single count (AC8 regression check)', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          rateLimitRecordComment(),
+          noReportAgainComment(1, 3),
+        ],
+        isTrustedAuthor: trustAll,
+      }),
+    ).toBe(1);
   });
 });
