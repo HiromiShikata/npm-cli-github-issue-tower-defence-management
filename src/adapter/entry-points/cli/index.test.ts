@@ -27,6 +27,7 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { RevertOrphanedWaitConditionUseCase } from '../../../domain/usecases/RevertOrphanedWaitConditionUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 import {
@@ -39,6 +40,7 @@ jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
 jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
+jest.mock('../../../domain/usecases/RevertOrphanedWaitConditionUseCase');
 jest.mock('../../../domain/usecases/PullRequestProjectItemRemoveUseCase');
 const mockLocalStorageRepositoryWrite = jest.fn<void, [string, string]>();
 jest.mock('../../repositories/LocalStorageRepository', () => ({
@@ -2163,6 +2165,15 @@ mysteryKey: 'value'
           this.run = mockRevertRun;
           return this;
         });
+      const mockRevertWaitConditionRun = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(RevertOrphanedWaitConditionUseCase)
+        .mockImplementation(function (
+          this: RevertOrphanedWaitConditionUseCase,
+        ) {
+          this.run = mockRevertWaitConditionRun;
+          return this;
+        });
       const processExitSpy = jest
         .spyOn(process, 'exit')
         .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
@@ -2191,6 +2202,7 @@ mysteryKey: 'value'
         expect(processExitSpy).not.toHaveBeenCalled();
         expect(consoleErrorSpy).not.toHaveBeenCalled();
         expect(mockRevertRun).toHaveBeenCalled();
+        expect(mockRevertWaitConditionRun).toHaveBeenCalled();
         expect(mockRun).toHaveBeenCalled();
       } finally {
         processExitSpy.mockRestore();
