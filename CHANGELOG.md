@@ -1,3 +1,10 @@
+## [2.157.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.5...v2.157.6) (2026-10-02)
+
+
+### Bug Fixes
+
+* **StaleProjectItemError:** recognize by type instead of an archived-message match ([#3093](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3093)) ([575d3ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/575d3ce062abbfb2b6521763a8379e7ab4a47b53))
+
 ## [2.157.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.4...v2.157.5) (2026-10-02)
 
 
