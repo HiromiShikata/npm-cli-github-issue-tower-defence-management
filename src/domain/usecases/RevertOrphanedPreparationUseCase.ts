@@ -156,6 +156,7 @@ export class RevertOrphanedPreparationUseCase {
       doneStatusOption?.id ??
       awaitingWorkspaceStatusOption.id;
 
+    const failures: Array<{ issueUrl: string; error: unknown }> = [];
     for (const issue of preparationIssues) {
       try {
         const isOrphaned = await this.isOrphanedIssue(issue, params);
@@ -444,8 +445,14 @@ export class RevertOrphanedPreparationUseCase {
           );
           continue;
         }
-        throw error;
+        failures.push({ issueUrl: issue.url, error });
       }
+    }
+    if (failures.length > 0) {
+      throw new AggregateError(
+        failures.map((f) => f.error),
+        `RevertOrphanedPreparationUseCase: failed to revert ${failures.length} issue(s): ${failures.map((f) => `${f.issueUrl} (${f.error instanceof Error ? f.error.message : String(f.error)})`).join(', ')}`,
+      );
     }
   };
 

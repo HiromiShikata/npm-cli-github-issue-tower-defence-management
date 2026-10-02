@@ -698,25 +698,32 @@ ${JSON.stringify(e)}
         });
       }
       if (input.startPreparation.preparationProcessCheckCommand) {
-        await this.revertOrphanedPreparationUseCase.run({
-          projectUrl: input.projectUrl,
-          preparationProcessCheckCommand:
-            input.startPreparation.preparationProcessCheckCommand,
-          thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
-          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-          awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
-          awLogStaleThresholdMinutes:
-            input.startPreparation.awLogStaleThresholdMinutes,
-          awaitingOwnerStatus:
-            input.startPreparation.awaitingOwnerStatus ?? undefined,
-          labelsAsLlmAgentName,
-          labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
-          allowedIssueAuthors,
-          agents: input.agents ?? null,
-          developerAgentNames: input.developerAgentNames ?? null,
-          workflowIssueReporterSettings:
-            input.workflowIssueReporterSettings ?? null,
-        });
+        try {
+          await this.revertOrphanedPreparationUseCase.run({
+            projectUrl: input.projectUrl,
+            preparationProcessCheckCommand:
+              input.startPreparation.preparationProcessCheckCommand,
+            thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
+            thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+            awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
+            awLogStaleThresholdMinutes:
+              input.startPreparation.awLogStaleThresholdMinutes,
+            awaitingOwnerStatus:
+              input.startPreparation.awaitingOwnerStatus ?? undefined,
+            labelsAsLlmAgentName,
+            labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+            allowedIssueAuthors,
+            agents: input.agents ?? null,
+            developerAgentNames: input.developerAgentNames ?? null,
+            workflowIssueReporterSettings:
+              input.workflowIssueReporterSettings ?? null,
+          });
+        } catch (error) {
+          console.error(
+            `[HandleScheduledEvent] Failed to revert orphaned preparation issues for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
+            error,
+          );
+        }
       }
       try {
         const { stoppedScopeUnitNames } =
