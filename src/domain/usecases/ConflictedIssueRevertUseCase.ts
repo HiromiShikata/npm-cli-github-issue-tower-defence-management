@@ -8,6 +8,7 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
@@ -152,16 +153,25 @@ export class ConflictedIssueRevertUseCase {
 
         const existingComments =
           await this.issueCommentRepository.getCommentsFromIssue(issue);
+        const isTrustedAuthorForAutoStatusCheck = (author: string): boolean =>
+          isAuthorAuthorizedForAutoStatusCheck(
+            author,
+            params.allowedIssueAuthors,
+          );
+        if (
+          issueHasUnansweredOwnerConfirmationRequest(
+            existingComments,
+            isTrustedAuthorForAutoStatusCheck,
+          )
+        ) {
+          continue;
+        }
         const latestReopenedAt =
           await this.issueRepository.getLatestReopenedEventAt(issue);
         if (params.thresholdForAutoReject !== undefined) {
           const nextStepAgent = extractNextStepAgentFromComments(
             existingComments,
-            (author) =>
-              isAuthorAuthorizedForAutoStatusCheck(
-                author,
-                params.allowedIssueAuthors,
-              ),
+            isTrustedAuthorForAutoStatusCheck,
           );
           if (nextStepAgent !== null) {
             const repetition = resolveNextStepAgentDispatchRepetition({
@@ -169,11 +179,7 @@ export class ConflictedIssueRevertUseCase {
               nextStepAgent,
               currentDispatchHasNoReportRejection: false,
               comments: existingComments,
-              isTrustedAuthor: (author) =>
-                isAuthorAuthorizedForAutoStatusCheck(
-                  author,
-                  params.allowedIssueAuthors,
-                ),
+              isTrustedAuthor: isTrustedAuthorForAutoStatusCheck,
               thresholdForAutoReject: params.thresholdForAutoReject,
               thresholdForDispatchLoop:
                 params.thresholdForDispatchLoop ??

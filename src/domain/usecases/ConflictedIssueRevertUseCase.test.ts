@@ -2378,4 +2378,230 @@ describe('ConflictedIssueRevertUseCase', () => {
       },
     );
   });
+
+  describe('owner confirmation request gating', () => {
+    const trustedAuthor = 'owner';
+
+    const ownerConfirmationReport = (at: Date) => ({
+      author: trustedAuthor,
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true }\n\`\`\``,
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    const ownerConfirmationReportWithNextStepAgent = (
+      at: Date,
+      nextStepAgent: string,
+    ) => ({
+      author: trustedAuthor,
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true, "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    const trustedHumanReply = (at: Date) => ({
+      author: trustedAuthor,
+      content: 'Please proceed with the merge.',
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    const buildCiFailingIssueWithLinkedPr = (): Issue => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: AWAITING_OWNER_STATUS_NAME,
+        author: trustedAuthor,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/30',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[ciFailingPr.url, ciFailingPr]]),
+      );
+      return issue;
+    };
+
+    const buildConflictedIssueWithLinkedPr = (): Issue => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/31',
+        status: AWAITING_OWNER_STATUS_NAME,
+        author: trustedAuthor,
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/31',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr.url, conflictedPr]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      return issue;
+    };
+
+    it('does not revert and does not comment when the last trusted-agent report is an unanswered owner confirmation request and the related PR has failing CI (row 1)', async () => {
+      buildCiFailingIssueWithLinkedPr();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('does not revert and does not comment when the last trusted-agent report is an unanswered owner confirmation request and the related PR is conflicted with updateBranch failing (row 2)', async () => {
+      buildConflictedIssueWithLinkedPr();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts and posts the CI-failure comment unchanged when a trusted human reply came after the owner confirmation report (row 3)', async () => {
+      const issue = buildCiFailingIssueWithLinkedPr();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+        trustedHumanReply(new Date('2026-01-02T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('does not revert when a trusted human reply exists only before the owner confirmation report, not after (row 4 regression guard)', async () => {
+      buildCiFailingIssueWithLinkedPr();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        trustedHumanReply(new Date('2026-01-01T00:00:00Z')),
+        ownerConfirmationReport(new Date('2026-01-02T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts and posts the CI-failure comment unchanged when there is no owner confirmation report (row 5)', async () => {
+      const issue = buildCiFailingIssueWithLinkedPr();
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
+      );
+    });
+
+    it('reverts and posts the conflict comment unchanged when there is no owner confirmation report (row 6)', async () => {
+      const issue = buildConflictedIssueWithLinkedPr();
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+    });
+
+    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when one report block carries both the owner confirmation flag and a nextStepAgent that also matches the dispatch-loop escalation pattern (row 7)', async () => {
+      buildCiFailingIssueWithLinkedPr();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-01T00:00:00Z'),
+          'developer',
+        ),
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-02T00:00:00Z'),
+          'developer',
+        ),
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-03T00:00:00Z'),
+          'developer',
+        ),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+  });
 });
