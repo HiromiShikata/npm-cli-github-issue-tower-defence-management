@@ -1,3 +1,10 @@
+## [2.157.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.6...v2.157.7) (2026-10-02)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** do not dispatch Awaiting Workspace issues whose Story option is GRAY ([#3095](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3095)) ([cab566c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cab566cea8ff4e8ee45d6142f05146138ab079e5)), closes [#3091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3091) [#3091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3091)
+
 ## [2.157.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.157.5...v2.157.6) (2026-10-02)
 
 
