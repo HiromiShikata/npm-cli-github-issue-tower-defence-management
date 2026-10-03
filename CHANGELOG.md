@@ -1,3 +1,15 @@
+## [2.161.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.1...v2.161.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console-ui:** Create-dialog failure toast replaces the dialog instead of reopening it with retained values (AC-12) ([#3145](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3145)) ([60ec1e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/60ec1e0baa4897d80b3aa65a4a2f881063932ade))
+
+
+### Reverts
+
+* remove human-authored investigation close override ([#3147](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3147)) ([8ef0631](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ef0631d2f72de8030b3c86d54c3623b9975feaa)), closes [#3121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3121) [pre-#3121](https://github.com/pre-/issues/3121)
+
 ## [2.161.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.0...v2.161.1) (2026-10-02)
 
 
