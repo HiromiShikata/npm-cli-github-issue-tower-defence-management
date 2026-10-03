@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent } from 'storybook/test';
 import type { ConsoleComment } from '../../logic/types';
 import { ConsoleCommentComposer } from './ConsoleCommentComposer';
 
@@ -64,5 +65,22 @@ export const ComposerWithAllActionButtons: Story = {
     initiallyOpen: true,
     onOkAndAwaitingWorkspace: () => {},
     onSubmitAndMoveToAwaitingWorkspace: acceptComment,
+  },
+};
+
+export const ComposerUploadInProgress: Story = {
+  args: {
+    initiallyOpen: true,
+    initialDraft: 'Investigating the failing deploy.',
+    onSubmitAndMoveToAwaitingWorkspace: acceptComment,
+    onUploadFile: () => new Promise<string>(() => {}),
+  },
+  play: async ({ canvasElement }) => {
+    const fileInput = canvasElement.querySelector(
+      "input[type='file']",
+    ) as HTMLInputElement;
+    await userEvent.upload(fileInput, [
+      new File(['binary'], 'shot.png', { type: 'image/png' }),
+    ]);
   },
 };

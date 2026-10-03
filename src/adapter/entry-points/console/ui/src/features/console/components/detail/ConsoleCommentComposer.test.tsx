@@ -681,6 +681,160 @@ describe('ConsoleCommentComposer', () => {
     fireEvent.change(textarea, { target: { value: '' } });
     expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
   });
+
+  it('disables the Comment button while a file upload is in flight and does not submit on click', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const onSubmit = jest.fn(async (body: string): Promise<ConsoleComment> => ({
+      author: 'HiromiShikata',
+      body,
+      createdAt: '2026-06-19T11:58:00.000Z',
+    }));
+    const { getByPlaceholderText, getByLabelText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={onSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(getByText('Comment')).toBeDisabled();
+    fireEvent.click(getByText('Comment'));
+    expect(onSubmit).not.toHaveBeenCalled();
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+  });
+
+  it('disables the Comment & Awaiting Workspace button while a file upload is in flight and does not submit on click', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const onSubmitAndMoveToAwaitingWorkspace = jest.fn(
+      async (body: string): Promise<ConsoleComment> => ({
+        author: 'HiromiShikata',
+        body,
+        createdAt: '2026-06-19T11:58:00.000Z',
+      }),
+    );
+    const { getByPlaceholderText, getByLabelText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+        onSubmitAndMoveToAwaitingWorkspace={onSubmitAndMoveToAwaitingWorkspace}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    expect(onSubmitAndMoveToAwaitingWorkspace).not.toHaveBeenCalled();
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+  });
+
+  it('re-enables both Comment and Comment & Awaiting Workspace once the in-flight upload resolves and the draft is still non-empty', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(getByText('Comment')).toBeDisabled();
+    expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+    expect(getByText('Comment')).not.toBeDisabled();
+    expect(getByText('Comment & Awaiting Workspace')).not.toBeDisabled();
+  });
+
+  it('does not disable the ok & Awaiting Workspace button while a file upload is in flight', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+        onOkAndAwaitingWorkspace={() => {}}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(getByText('ok & Awaiting Workspace')).not.toBeDisabled();
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+  });
 });
 
 describe('insertUploadPlaceholder', () => {

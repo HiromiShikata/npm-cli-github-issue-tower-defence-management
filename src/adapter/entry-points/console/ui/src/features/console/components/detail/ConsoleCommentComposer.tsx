@@ -120,7 +120,11 @@ export const ConsoleCommentComposer = ({
 
   const submit = async (action: 'comment' | 'move'): Promise<void> => {
     const body = draft.trim();
-    if (body.length === 0 || status.kind === 'posting') {
+    if (
+      body.length === 0 ||
+      status.kind === 'posting' ||
+      uploadStatus.kind === 'uploading'
+    ) {
       return;
     }
     setStatus({ kind: 'posting' });
@@ -269,7 +273,11 @@ export const ConsoleCommentComposer = ({
             <button
               type="button"
               className="console-composer-submit"
-              disabled={status.kind === 'posting' || isDraftEmpty}
+              disabled={
+                status.kind === 'posting' ||
+                isDraftEmpty ||
+                uploadStatus.kind === 'uploading'
+              }
               onClick={() => {
                 void submit('comment');
               }}
@@ -290,7 +298,11 @@ export const ConsoleCommentComposer = ({
               <button
                 type="button"
                 className="console-composer-submit"
-                disabled={status.kind === 'posting' || isDraftEmpty}
+                disabled={
+                  status.kind === 'posting' ||
+                  isDraftEmpty ||
+                  uploadStatus.kind === 'uploading'
+                }
                 onClick={() => {
                   void submit('move');
                 }}
