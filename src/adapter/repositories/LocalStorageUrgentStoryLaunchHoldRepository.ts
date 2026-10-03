@@ -123,14 +123,12 @@ export class LocalStorageUrgentStoryLaunchHoldRepository implements UrgentStoryL
       cacheBaseDirectoryPath: string;
       procDirectoryPath: string;
       processId: number;
-      claudeTokenUsageRepository:
-        | Pick<
-            ClaudeTokenUsageRepository,
-            | 'getAvailableTokenUsages'
-            | 'getTokenInFlightCounts'
-            | 'getPendingTokenLaunchReservationCounts'
-          >
-        | null;
+      claudeTokenUsageRepository: Pick<
+        ClaudeTokenUsageRepository,
+        | 'getAvailableTokenUsages'
+        | 'getTokenInFlightCounts'
+        | 'getPendingTokenLaunchReservationCounts'
+      > | null;
     },
   ) {}
 

@@ -6,7 +6,6 @@ export const tokenEffectiveInFlightCountsOf = (
   Object.fromEntries(
     tokens.map((token) => [
       token,
-      (realInFlightCounts[token] ?? 0) +
-        (pendingReservationCounts[token] ?? 0),
+      (realInFlightCounts[token] ?? 0) + (pendingReservationCounts[token] ?? 0),
     ]),
   );

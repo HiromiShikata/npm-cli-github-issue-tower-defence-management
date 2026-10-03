@@ -48,7 +48,8 @@ describe('tokenEffectiveInFlightCountsOf', () => {
       expected: { A: 2 },
     },
     {
-      label: 'treats a token missing from realInFlightCounts as zero real in-flight',
+      label:
+        'treats a token missing from realInFlightCounts as zero real in-flight',
       realInFlightCounts: {},
       pendingReservationCounts: { A: 3 },
       tokens: ['A'],

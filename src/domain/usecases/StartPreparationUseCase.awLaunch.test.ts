@@ -174,14 +174,10 @@ const harnessCreate = () => {
     {
       ensureObservable: jest.fn().mockResolvedValue(undefined),
       getAvailableTokenUsages: jest.fn().mockResolvedValue([spawnTokenUsage]),
-      getTokenInFlightCounts: jest
-        .fn()
-        .mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
       proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
       reserveTokenLaunchSlot,
-      getPendingTokenLaunchReservationCounts: jest
-        .fn()
-        .mockResolvedValue({}),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
   const takeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> = {
     listSpawns: jest.fn().mockReturnValue([]),

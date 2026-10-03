@@ -614,10 +614,9 @@ describe('LocalStorageUrgentStoryLaunchHoldRepository', () => {
 
   it('returns no pending token launch reservation counts when it was given no token usage repository', async () => {
     expect(
-      await repositoryCreate(
-        9999,
-        null,
-      ).getPendingTokenLaunchReservationCounts(['token-a']),
+      await repositoryCreate(9999, null).getPendingTokenLaunchReservationCounts(
+        ['token-a'],
+      ),
     ).toEqual({});
   });
 });

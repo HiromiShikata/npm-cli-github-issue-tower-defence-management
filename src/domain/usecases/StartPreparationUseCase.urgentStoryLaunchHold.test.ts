@@ -308,14 +308,10 @@ const harnessCreate = (
       getAvailableTokenUsages: jest
         .fn()
         .mockResolvedValue([tokenUsageCreate({ token: SPAWN_TOKEN })]),
-      getTokenInFlightCounts: jest
-        .fn()
-        .mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
       proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
       reserveTokenLaunchSlot,
-      getPendingTokenLaunchReservationCounts: jest
-        .fn()
-        .mockResolvedValue({}),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
   const takeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> = {
     listSpawns: jest.fn().mockReturnValue([]),
@@ -334,9 +330,7 @@ const harnessCreate = (
       createHoldingRecord: jest.fn().mockResolvedValue(undefined),
       deleteHoldingRecord: jest.fn().mockResolvedValue(undefined),
       recordTimedOutIssueUrls: jest.fn().mockResolvedValue(undefined),
-      getPendingTokenLaunchReservationCounts: jest
-        .fn()
-        .mockResolvedValue({}),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
   const sleeper: Mocked<Sleeper> = {
     sleep: jest.fn().mockImplementation(

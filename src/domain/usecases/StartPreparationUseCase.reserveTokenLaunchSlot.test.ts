@@ -175,9 +175,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         getTokenInFlightCounts: jest.fn().mockResolvedValue({ 'token-a': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest
-          .fn()
-          .mockResolvedValue({}),
+        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {
@@ -313,9 +311,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
           .mockResolvedValue({ 'first-token': 0, 'second-token': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest
-          .fn()
-          .mockResolvedValue({}),
+        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {
@@ -456,9 +452,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         getTokenInFlightCounts: jest.fn().mockResolvedValue({ 'token-a': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest
-          .fn()
-          .mockResolvedValue({}),
+        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {
