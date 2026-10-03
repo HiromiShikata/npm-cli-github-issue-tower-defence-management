@@ -25,11 +25,16 @@ export const useConsoleAutomaticProjectNavigation = (
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
   const lastHandledSucceededAttemptRef = useRef(0);
+  const lastEvaluatedPjcodesWithMinutesRef = useRef<{
+    pjcode: string;
+    pjcodesWithMinutes: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (!timerMode || pjcode === null) {
       skipCountRef.current = 0;
       evaluatedPjcodeRef.current = null;
+      lastEvaluatedPjcodesWithMinutesRef.current = null;
       return;
     }
     if (
@@ -47,6 +52,23 @@ export const useConsoleAutomaticProjectNavigation = (
       lastHandledSucceededAttemptRef.current = writeState.attempt;
     }
 
+    const currentPjcodesWithMinutes = pjcodes.filter(
+      (code) => (projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
+    );
+    const lastEvaluatedPjcodesWithMinutes =
+      lastEvaluatedPjcodesWithMinutesRef.current;
+    const aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated =
+      lastEvaluatedPjcodesWithMinutes !== null &&
+      lastEvaluatedPjcodesWithMinutes.pjcode === pjcode &&
+      currentPjcodesWithMinutes.some(
+        (code) =>
+          !lastEvaluatedPjcodesWithMinutes.pjcodesWithMinutes.includes(code),
+      );
+    lastEvaluatedPjcodesWithMinutesRef.current = {
+      pjcode,
+      pjcodesWithMinutes: currentPjcodesWithMinutes,
+    };
+
     const decision = consoleAutomaticProjectNavigationDecide({
       checkTimerElapsed,
       timerElapsed: isTimerExpired(
@@ -62,6 +84,7 @@ export const useConsoleAutomaticProjectNavigation = (
         explicitlySelectedPjcode !== null &&
         pjcode === explicitlySelectedPjcode,
       taskOpen: selectedItemKey !== null,
+      aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated,
       pjcode,
       pjcodes,
       projectMinutes,

@@ -30,6 +30,7 @@ export type ConsoleAutomaticProjectNavigationDecideInput = {
   snapshotsReady: boolean;
   explicitlySelectedPjcodeMatchesCurrent: boolean;
   taskOpen?: boolean;
+  aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated?: boolean;
   pjcode: string;
   pjcodes: string[];
   projectMinutes: Record<string, number>;
@@ -67,19 +68,11 @@ export const consoleAutomaticProjectNavigationDecide = (
   if (!input.snapshotsReady) {
     return unchanged;
   }
-
-  const pjcodesWithMinutes = input.pjcodes.filter(
-    (code) => (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
-  );
-  const highestSkipCountASwitchDecisionCanProduce = Math.max(
-    pjcodesWithMinutes.length - 1,
-    0,
-  );
-  const currentProjectWasJustSwitchedAwayFromOnThePriorCall =
+  if (
     input.evaluatedPjcode === input.pjcode &&
-    input.skipCount >= 1 &&
-    input.skipCount <= highestSkipCountASwitchDecisionCanProduce;
-  if (currentProjectWasJustSwitchedAwayFromOnThePriorCall) {
+    !input.aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated &&
+    !input.explicitlySelectedPjcodeMatchesCurrent
+  ) {
     return unchanged;
   }
 
@@ -93,15 +86,17 @@ export const consoleAutomaticProjectNavigationDecide = (
     return unchanged;
   }
 
+  const pjcodesWithMinutes = input.pjcodes.filter(
+    (code) => (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
+  );
   const skipCountForThisReEvaluation =
-    input.evaluatedPjcode === input.pjcode ||
+    (input.evaluatedPjcode === input.pjcode &&
+      input.aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated) ||
     input.explicitlySelectedPjcodeMatchesCurrent
       ? 0
       : input.skipCount;
 
-  if (
-    skipCountForThisReEvaluation >= highestSkipCountASwitchDecisionCanProduce
-  ) {
+  if (skipCountForThisReEvaluation >= pjcodesWithMinutes.length - 1) {
     return {
       targetPjcode: null,
       nextSkipCount: 0,

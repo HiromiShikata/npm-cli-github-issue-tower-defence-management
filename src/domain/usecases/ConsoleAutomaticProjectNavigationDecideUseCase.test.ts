@@ -296,7 +296,19 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     expect(consoleAutomaticProjectNavigationDecide(input)).toEqual(expected);
   });
 
-  it('switches away from the current project even though it was already marked evaluated (dedup lock no longer blocks a live-eligible switch)', () => {
+  it('switches away from the current project even though it was already marked evaluated, when a project gained remaining minutes since the last evaluation (dedup lock no longer blocks a live-eligible switch)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcode: 'acme',
+      evaluatedPjcode: 'acme',
+      remainingCountIsZero: true,
+      skipCount: 2,
+      aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated: true,
+    });
+    expect(result.targetPjcode).toBe('beta');
+  });
+
+  it('leaves the evaluated-project lock in place when no project gained remaining minutes since the last evaluation, even though a project objectively has remaining minutes (prevents an infinite switch loop)', () => {
     const result = consoleAutomaticProjectNavigationDecide({
       ...baseInput,
       pjcode: 'acme',
@@ -304,7 +316,33 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: 2,
     });
-    expect(result.targetPjcode).toBe('beta');
+    expect(result.targetPjcode).toBeNull();
+  });
+
+  it('never switches back and forth indefinitely between two projects that both keep nonzero remaining minutes forever, across many evaluations with no gained-minutes signal', () => {
+    let pjcode = 'acme';
+    let skipCount = 0;
+    let evaluatedPjcode: string | null = null;
+    const targetPjcodesOverTwentyEvaluations: (string | null)[] = [];
+    for (let evaluation = 0; evaluation < 20; evaluation++) {
+      const result = consoleAutomaticProjectNavigationDecide({
+        ...baseInput,
+        pjcode,
+        skipCount,
+        evaluatedPjcode,
+        remainingCountIsZero: true,
+      });
+      targetPjcodesOverTwentyEvaluations.push(result.targetPjcode);
+      skipCount = result.nextSkipCount;
+      evaluatedPjcode = result.nextEvaluatedPjcode;
+      if (result.targetPjcode !== null) {
+        pjcode = result.targetPjcode;
+      }
+    }
+    const switchCount = targetPjcodesOverTwentyEvaluations.filter(
+      (targetPjcode) => targetPjcode !== null,
+    ).length;
+    expect(switchCount).toBeLessThanOrEqual(1);
   });
 
   it('switches away from the current project even though it was explicitly selected (explicit-selection lock no longer blocks a live-eligible switch)', () => {
@@ -335,6 +373,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: firstResult.nextSkipCount,
       evaluatedPjcode: firstResult.nextEvaluatedPjcode,
+      aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated: true,
     });
     expect(secondResult.targetPjcode).toBe('beta');
   });
