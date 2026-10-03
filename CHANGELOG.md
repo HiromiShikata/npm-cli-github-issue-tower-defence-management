@@ -1,3 +1,10 @@
+## [2.162.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.1...v2.162.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console:** do not auto-switch projects while a task is open ([#3176](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3176)) ([51b019a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/51b019aa10c84c25aefcdc93009a0415f1273434))
+
 ## [2.162.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.0...v2.162.1) (2026-10-03)
 
 
