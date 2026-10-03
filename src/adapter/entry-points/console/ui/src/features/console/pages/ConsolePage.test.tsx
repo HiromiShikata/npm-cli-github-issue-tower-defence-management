@@ -2418,6 +2418,82 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('re-fetches the project list in the background after 60 seconds while timer mode is enabled', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
+    );
+    let projectsCallCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return { ok: true, status: 200, json: async () => listPayload(listMatch[1]) };
+      }
+      if (url === '/api/projects') {
+        projectsCallCount += 1;
+        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers();
+    try {
+      const { getByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(projectsCallCount).toBeGreaterThanOrEqual(2);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not re-fetch the project list in the background when timer mode is disabled', async () => {
+    let projectsCallCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return { ok: true, status: 200, json: async () => listPayload(listMatch[1]) };
+      }
+      if (url === '/api/projects') {
+        projectsCallCount += 1;
+        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers();
+    try {
+      const { getByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      expect(projectsCallCount).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('automatically navigates to the next project when the initial load shows no prs or todo items in timer mode', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
