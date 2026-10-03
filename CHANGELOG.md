@@ -1,3 +1,10 @@
+## [2.161.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.6...v2.161.7) (2026-10-03)
+
+
+### Bug Fixes
+
+* **issue-fetch:** preserve fetch-completeness timestamps when pagination inconsistency persists after retry ([#3161](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3161)) ([280fa63](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/280fa63da557b5d99e76e7dc2ae67339c919df18))
+
 ## [2.161.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.5...v2.161.6) (2026-10-03)
 
 
