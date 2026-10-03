@@ -435,12 +435,12 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
         isRevertExpected: false,
       },
       {
-        name: 'does not revert when the owner comment createdAt equals the updatedAt of the newest agent comment',
+        name: 'does not revert when the owner comment createdAt equals the createdAt of an edited newest agent comment',
         comments: [
           createComment({
             content: AGENT_REPORT_BODY,
-            createdAt: new Date('2026-10-02T08:40:52Z'),
-            updatedAt: new Date('2026-10-03T01:15:07Z'),
+            createdAt: new Date('2026-10-03T01:15:07Z'),
+            updatedAt: new Date('2026-10-03T06:25:32Z'),
           }),
           createComment({
             content: OWNER_REPLY_BODY,
