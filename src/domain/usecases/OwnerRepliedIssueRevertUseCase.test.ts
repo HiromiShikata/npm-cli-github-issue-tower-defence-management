@@ -24,6 +24,8 @@ const JSON_ONLY_AGENT_REPORT_BODY = '```json\n{"nextStepAgent": null}\n```';
 const OWNER_REPLY_BODY = 'Why was this routed to me?';
 const AUTO_STATUS_CHECK_BODY = `${AUTO_STATUS_CHECK_MESSAGE_HEAD} CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.`;
 const REACTIVATION_TRIGGER_BODY = `${REACTIVATION_TRIGGER_COMMENT_HEAD}\nNext Action Date: 2026-10-04`;
+const ESTIMATION_FIELD_CLEARED_BODY =
+  '`Remaining Estimation Minutes` field value `120` is removed to re-estimate.';
 
 const awaitingWorkspaceStatusOption: FieldOption = {
   id: AWAITING_WORKSPACE_OPTION_ID,
@@ -376,6 +378,20 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
           }),
           createComment({
             content: REACTIVATION_TRIGGER_BODY,
+            createdAt: new Date('2026-10-03T01:15:07Z'),
+          }),
+        ],
+        isRevertExpected: false,
+      },
+      {
+        name: 'does not revert when the only comment after the newest agent comment is an estimation field cleared comment',
+        comments: [
+          createComment({
+            content: AGENT_REPORT_BODY,
+            createdAt: new Date('2026-10-02T08:40:52Z'),
+          }),
+          createComment({
+            content: ESTIMATION_FIELD_CLEARED_BODY,
             createdAt: new Date('2026-10-03T01:15:07Z'),
           }),
         ],
