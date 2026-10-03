@@ -1,3 +1,10 @@
+## [2.161.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.2...v2.161.3) (2026-10-03)
+
+
+### Bug Fixes
+
+* **clipboard:** propagate a clipboard-write rejection instead of masking it with the execCommand fallback ([#3144](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3144)) ([7008af8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7008af8aa45edc75b5b8cf7a1688c347d6f131bc))
+
 ## [2.161.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.1...v2.161.2) (2026-10-03)
 
 
