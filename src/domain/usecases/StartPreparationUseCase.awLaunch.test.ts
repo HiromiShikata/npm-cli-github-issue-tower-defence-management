@@ -17,6 +17,13 @@ import {
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
+type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+  ClaudeTokenUsageRepository & {
+    getPendingTokenLaunchReservationCounts: (
+      tokens: string[],
+    ) => Promise<Record<string, number>>;
+  };
+
 class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
   findBranchNameByIssue = async (): Promise<string | null> => null;
 }
@@ -163,13 +170,15 @@ const harnessCreate = () => {
     spawnInteractive: jest.fn(),
   };
   const reserveTokenLaunchSlot = jest.fn().mockResolvedValue(true);
-  const claudeTokenUsageRepository: ClaudeTokenUsageRepository = {
-    ensureObservable: jest.fn().mockResolvedValue(undefined),
-    getAvailableTokenUsages: jest.fn().mockResolvedValue([spawnTokenUsage]),
-    getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
-    proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
-    reserveTokenLaunchSlot,
-  };
+  const claudeTokenUsageRepository: ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+    {
+      ensureObservable: jest.fn().mockResolvedValue(undefined),
+      getAvailableTokenUsages: jest.fn().mockResolvedValue([spawnTokenUsage]),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
+      proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
+      reserveTokenLaunchSlot,
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
+    };
   const takeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> = {
     listSpawns: jest.fn().mockReturnValue([]),
     listRunningIssueUrls: jest.fn().mockReturnValue([]),

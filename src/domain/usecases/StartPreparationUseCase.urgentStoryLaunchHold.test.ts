@@ -23,6 +23,19 @@ import type {
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
+type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+  ClaudeTokenUsageRepository & {
+    getPendingTokenLaunchReservationCounts: (
+      tokens: string[],
+    ) => Promise<Record<string, number>>;
+  };
+type UrgentStoryLaunchHoldRepositoryWithPendingReservationCounts =
+  UrgentStoryLaunchHoldRepository & {
+    getPendingTokenLaunchReservationCounts: (
+      tokens: string[],
+    ) => Promise<Record<string, number>>;
+  };
+
 class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
   findBranchNameByIssue = async (): Promise<string | null> => null;
 }
@@ -289,15 +302,17 @@ const harnessCreate = (
     spawnInteractive: jest.fn(),
   };
   const reserveTokenLaunchSlot = jest.fn().mockResolvedValue(true);
-  const claudeTokenUsageRepository: ClaudeTokenUsageRepository = {
-    ensureObservable: jest.fn().mockResolvedValue(undefined),
-    getAvailableTokenUsages: jest
-      .fn()
-      .mockResolvedValue([tokenUsageCreate({ token: SPAWN_TOKEN })]),
-    getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
-    proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
-    reserveTokenLaunchSlot,
-  };
+  const claudeTokenUsageRepository: ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+    {
+      ensureObservable: jest.fn().mockResolvedValue(undefined),
+      getAvailableTokenUsages: jest
+        .fn()
+        .mockResolvedValue([tokenUsageCreate({ token: SPAWN_TOKEN })]),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
+      proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
+      reserveTokenLaunchSlot,
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
+    };
   const takeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> = {
     listSpawns: jest.fn().mockReturnValue([]),
     listRunningIssueUrls: jest.fn().mockReturnValue([]),
@@ -307,14 +322,16 @@ const harnessCreate = (
       getRemainingRequestCount: jest.fn().mockResolvedValue(null),
     };
   const holdTokenUsage = tokenUsageCreate({ token: HOLD_TOKEN });
-  const holdRepository: Mocked<UrgentStoryLaunchHoldRepository> = {
-    readBoardState: jest.fn(),
-    getAvailableTokenUsages: jest.fn().mockResolvedValue([holdTokenUsage]),
-    getTokenInFlightCounts: jest.fn(),
-    createHoldingRecord: jest.fn().mockResolvedValue(undefined),
-    deleteHoldingRecord: jest.fn().mockResolvedValue(undefined),
-    recordTimedOutIssueUrls: jest.fn().mockResolvedValue(undefined),
-  };
+  const holdRepository: Mocked<UrgentStoryLaunchHoldRepositoryWithPendingReservationCounts> =
+    {
+      readBoardState: jest.fn(),
+      getAvailableTokenUsages: jest.fn().mockResolvedValue([holdTokenUsage]),
+      getTokenInFlightCounts: jest.fn(),
+      createHoldingRecord: jest.fn().mockResolvedValue(undefined),
+      deleteHoldingRecord: jest.fn().mockResolvedValue(undefined),
+      recordTimedOutIssueUrls: jest.fn().mockResolvedValue(undefined),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
+    };
   const sleeper: Mocked<Sleeper> = {
     sleep: jest.fn().mockImplementation(
       (milliseconds: number) =>
@@ -446,6 +463,10 @@ describe('StartPreparationUseCase.run urgent-story launch hold', () => {
       expect(harness.holdRepository.getTokenInFlightCounts.mock.calls).toEqual(
         [],
       );
+      expect(
+        harness.holdRepository.getPendingTokenLaunchReservationCounts.mock
+          .calls,
+      ).toEqual([]);
       expect(harness.holdRepository.createHoldingRecord.mock.calls).toEqual([]);
       expect(harness.holdRepository.deleteHoldingRecord.mock.calls).toEqual([]);
       expect(harness.holdRepository.recordTimedOutIssueUrls.mock.calls).toEqual(
@@ -972,4 +993,45 @@ describe('StartPreparationUseCase.run urgent-story launch hold', () => {
       ]);
     },
   );
+
+  describe('regression: a pending token launch reservation must not inflate the free-slot count', () => {
+    it('holds the candidate instead of releasing it immediately when a pending token launch reservation already consumes one of the two free slots of a token with zero live workers', async () => {
+      const harness = harnessCreate();
+      const holdTokenUsageWithLimitTwo = tokenUsageCreate({
+        token: HOLD_TOKEN,
+        selectionWeight: 0.4,
+      });
+      expect(harness.tokenConcurrentLimitOf(holdTokenUsageWithLimitTwo)).toBe(
+        2,
+      );
+      harness.holdRepository.getAvailableTokenUsages.mockResolvedValue([
+        holdTokenUsageWithLimitTwo,
+      ]);
+      harness.holdRepository.getTokenInFlightCounts.mockResolvedValue({
+        [HOLD_TOKEN]: 0,
+      });
+      harness.holdRepository.getPendingTokenLaunchReservationCounts.mockResolvedValue(
+        { [HOLD_TOKEN]: 1 },
+      );
+      harness.holdRepository.readBoardState.mockResolvedValue(
+        boardStateCreate({ waitingUrgentIssueCount: 1 }),
+      );
+
+      await runWithFakeClock(harness, runParamsCreate());
+
+      expect(harness.holdRepository.createHoldingRecord.mock.calls).toEqual([
+        [PROJECT_URL],
+      ]);
+      expect(holdLogLines()).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(
+            `${LOG_PREFIX}holding ${CANDIDATE_ISSUE_URL} (story ${CALLER_STORY_NAME}) because 1 urgent-story task(s) wait for 1 free slot(s): `,
+          ),
+        ]),
+      );
+      expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+        expectedAwCall,
+      ]);
+    });
+  });
 });

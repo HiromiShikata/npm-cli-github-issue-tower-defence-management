@@ -2,9 +2,9 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { TOKEN_LAUNCH_RESERVATION_TTL_MS } from '../../domain/usecases/tokenLaunchReservationIsStillPendingOf';
 import {
   ProxyClaudeTokenUsageRepository,
-  TOKEN_LAUNCH_RESERVATION_TTL_MS,
   hashTokenForReservationDirectory,
 } from './ProxyClaudeTokenUsageRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';

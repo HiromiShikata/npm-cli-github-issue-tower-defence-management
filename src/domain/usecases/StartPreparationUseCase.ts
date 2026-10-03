@@ -40,6 +40,7 @@ import {
   oauthTokenFillTargetSelect,
   windowFreeRatioOfUtilization,
 } from './OauthTokenSelectUseCase';
+import { tokenEffectiveInFlightCountsOf } from './tokenEffectiveInFlightCountsOf';
 import {
   URGENT_STORY_LAUNCH_HOLD_TIMED_OUT_ISSUE_IGNORED_SECONDS,
   type UrgentStoryLaunchHoldDecision,
@@ -707,10 +708,19 @@ export class StartPreparationUseCase {
       Number.MAX_SAFE_INTEGER,
       NORMAL_CONCURRENT_LIMIT,
     );
+    const tokens = tokensWithLimits.map(({ token }) => token);
     const tokenInFlightCounts = await holdRepository.getTokenInFlightCounts();
+    const pendingTokenLaunchReservationCounts =
+      await holdRepository.getPendingTokenLaunchReservationCounts(tokens);
+    const effectiveTokenInFlightCounts = tokenEffectiveInFlightCountsOf(
+      tokenInFlightCounts,
+      pendingTokenLaunchReservationCounts,
+      tokens,
+    );
     return tokensWithLimits.reduce(
       (freeSlotCount, { token, limit }) =>
-        freeSlotCount + Math.max(0, limit - (tokenInFlightCounts[token] ?? 0)),
+        freeSlotCount +
+        Math.max(0, limit - (effectiveTokenInFlightCounts[token] ?? 0)),
       0,
     );
   };
