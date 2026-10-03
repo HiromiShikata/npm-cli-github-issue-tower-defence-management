@@ -10,6 +10,8 @@ const baseProps = {
   error: null,
   onSave: jest.fn(),
   onClose: jest.fn(),
+  showExecutiveSummaryAndActionButtonOnAwaitingOwnerList: true,
+  onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList: jest.fn(),
 };
 
 describe('ConsoleProjectSettingsModalScreen', () => {
@@ -219,5 +221,83 @@ describe('ConsoleProjectSettingsModalScreen', () => {
       />,
     );
     expect(screen.getByLabelText('Save max settings')).toBeDisabled();
+  });
+
+  it('renders the awaiting owner list visibility switch with its accessible name when not loading', () => {
+    render(<ConsoleProjectSettingsModalScreen {...baseProps} />);
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the awaiting owner list visibility switch while isLoading is true', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen {...baseProps} isLoading={true} />,
+    );
+    expect(
+      screen.queryByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    ).toBeNull();
+  });
+
+  it('reflects showExecutiveSummaryAndActionButtonOnAwaitingOwnerList true as aria-checked true', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        showExecutiveSummaryAndActionButtonOnAwaitingOwnerList={true}
+      />,
+    );
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    ).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('reflects showExecutiveSummaryAndActionButtonOnAwaitingOwnerList false as aria-checked false', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        showExecutiveSummaryAndActionButtonOnAwaitingOwnerList={false}
+      />,
+    );
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    ).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('calls onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList with the flipped boolean when clicked', () => {
+    const onChange = jest.fn();
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        showExecutiveSummaryAndActionButtonOnAwaitingOwnerList={true}
+        onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList={
+          onChange
+        }
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    );
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  it('disables the awaiting owner list visibility switch when isSaving is true', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen {...baseProps} isSaving={true} />,
+    );
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show executive summary & action button on Awaiting Owner list (all projects)',
+      }),
+    ).toBeDisabled();
   });
 });

@@ -1348,6 +1348,198 @@ describe('ConsolePage auto-advance', () => {
   });
 });
 
+const AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME =
+  'Show executive summary & action button on Awaiting Owner list (all projects)';
+const AWAITING_OWNER_LIST_VISIBILITY_COMMENT_BODY =
+  'Needs owner decision on rollout plan.';
+
+describe('ConsolePage awaiting owner list visibility setting', () => {
+  const installFetchForVisibilitySetting = (): void => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.startsWith('/api/comments')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comments: [
+              {
+                author: 'bot',
+                body: AWAITING_OWNER_LIST_VISIBILITY_COMMENT_BODY,
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    installFetchForVisibilitySetting();
+  });
+
+  it('shows the new switch as on by default when Max settings is opened for the first time', async () => {
+    const { getByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    await waitFor(() => {
+      expect(
+        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+      ).toHaveAttribute('aria-checked', 'true');
+    });
+  });
+
+  it('shows the executive summary text and the ok & Awaiting Workspace button for every prs tab item while the setting is on (default, never changed)', async () => {
+    const { getAllByRole, getAllByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+      ).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(
+        getAllByText(AWAITING_OWNER_LIST_VISIBILITY_COMMENT_BODY),
+      ).toHaveLength(2);
+    });
+  });
+
+  it('turning the switch off and saving removes the executive summary and the ok & Awaiting Workspace button from the prs tab list, persists the setting, and keeps the title clickable', async () => {
+    const {
+      getByText,
+      getByRole,
+      getAllByRole,
+      queryAllByRole,
+      queryByRole,
+      queryAllByText,
+      getByLabelText,
+    } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+      ).toHaveLength(2);
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    const toggle = await waitFor(() =>
+      getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+    );
+    fireEvent.click(toggle);
+    fireEvent.click(getByLabelText('Save max settings'));
+
+    await waitFor(() => {
+      expect(queryByRole('dialog', { name: 'Max settings' })).toBeNull();
+    });
+
+    const stored = localStorage.getItem(
+      'tdpm-awaiting-owner-list-visibility-settings',
+    );
+    expect(stored).not.toBeNull();
+    expect(JSON.parse(stored as string)).toEqual({
+      showExecutiveSummaryAndActionButton: false,
+    });
+
+    await waitFor(() => {
+      expect(
+        queryAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+      ).toHaveLength(0);
+    });
+    expect(
+      queryAllByText(AWAITING_OWNER_LIST_VISIBILITY_COMMENT_BODY),
+    ).toHaveLength(0);
+    expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(window.location.hash).toBe('#item/PVTI_1');
+  });
+
+  it('keeps the todo-by-human tab list showing zero ok & Awaiting Workspace buttons when the setting is off (no regression on other tabs)', async () => {
+    localStorage.setItem(
+      'tdpm-awaiting-owner-list-visibility-settings',
+      JSON.stringify({ showExecutiveSummaryAndActionButton: false }),
+    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+    installFetch();
+    const { getByText, queryAllByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Notify finished issue preparation'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      queryAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+    ).toHaveLength(0);
+  });
+
+  it('shows the switch still off after reopening Max settings on a fresh render (simulated page reload) when the setting was saved off', async () => {
+    localStorage.setItem(
+      'tdpm-awaiting-owner-list-visibility-settings',
+      JSON.stringify({ showExecutiveSummaryAndActionButton: false }),
+    );
+    const { getByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    await waitFor(() => {
+      expect(
+        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+      ).toHaveAttribute('aria-checked', 'false');
+    });
+  });
+
+  it('discards an unsaved toggle when Max settings is closed with the close button, reverting to on when reopened', async () => {
+    const { getByText, getByRole, getByLabelText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    const toggle = await waitFor(() =>
+      getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+    );
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(getByLabelText('Close max settings'));
+
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    await waitFor(() => {
+      expect(
+        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+      ).toHaveAttribute('aria-checked', 'true');
+    });
+  });
+});
+
 describe('ConsolePage scroll reset', () => {
   beforeEach(() => {
     localStorage.clear();
