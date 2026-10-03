@@ -1212,8 +1212,7 @@ export const ConsolePage = () => {
                   title: fleetDialogSubmitFailure.params.title,
                   body: fleetDialogSubmitFailure.params.body,
                   storyName: fleetDialogSubmitFailure.params.storyName,
-                  agentOptionId:
-                    fleetDialogSubmitFailure.params.agentOptionId,
+                  agentOptionId: fleetDialogSubmitFailure.params.agentOptionId,
                   files: fleetDialogSubmitFailure.params.files,
                 }
               : fleetDialogDraft
