@@ -369,7 +369,9 @@ export const ConsoleItemDetailContainer = ({
   const toggleBodyCheckbox = useCallback(
     (checkboxIndex: number) => {
       const newBody = toggleMarkdownCheckboxAtIndex(detail.body, checkboxIndex);
-      void operations.issueBodyUpdate?.(item, newBody);
+      operations.issueBodyUpdate?.(item, newBody).catch((cause: unknown) => {
+        console.error('Failed to persist description checkbox toggle', cause);
+      });
     },
     [detail.body, item, operations],
   );
@@ -380,7 +382,11 @@ export const ConsoleItemDetailContainer = ({
         comment.body,
         checkboxIndex,
       );
-      void operations.issueCommentBodyUpdate?.(item, comment.id, newBody);
+      operations.issueCommentBodyUpdate
+        ?.(item, comment.id, newBody)
+        .catch((cause: unknown) => {
+          console.error('Failed to persist comment checkbox toggle', cause);
+        });
     },
     [item, operations],
   );

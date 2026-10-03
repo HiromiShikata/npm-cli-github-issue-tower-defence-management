@@ -2016,5 +2016,118 @@ describe('ConsoleItemDetailContainer', () => {
         );
       });
     });
+
+    it('calls console.error and does not throw when issueBodyUpdate rejects after a Description panel checkbox is clicked', async () => {
+      const bodyUpdateFailure = new Error('issue body update failed');
+      const operations = {
+        ...buildOperations(),
+        issueBodyUpdate: jest.fn(async () => {
+          throw bodyUpdateFailure;
+        }),
+        issueCommentBodyUpdate: jest.fn(async () => {}),
+      } as unknown as OperationsWithCheckboxUpdates;
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const onQueueAction = jest.fn();
+        const { container, getByText } = render(
+          <ConsoleItemDetailContainer
+            tab="todo-by-human"
+            item={issueItem}
+            caches={buildCaches({
+              body: '- [ ] Alpha\n- [x] Beta',
+              comments: [],
+            })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={[]}
+            agentOptions={[]}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={onQueueAction}
+          />,
+        );
+
+        await waitFor(() => {
+          expect(getByText('Alpha')).toBeInTheDocument();
+        });
+
+        const checkbox = container.querySelector<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index="0"]',
+        );
+        expect(checkbox).not.toBeNull();
+        expect(() => fireEvent.click(checkbox as HTMLInputElement)).not.toThrow();
+
+        await waitFor(() => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to persist description checkbox toggle',
+            bodyUpdateFailure,
+          );
+        });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('calls console.error and does not throw when issueCommentBodyUpdate rejects after a comment checkbox is clicked', async () => {
+      const commentUpdateFailure = new Error('issue comment body update failed');
+      const commentWithCheckbox: ConsoleComment & { id: number } = {
+        id: 4242,
+        author: 'HiromiShikata',
+        body: '- [ ] Review the diff',
+        createdAt: '2026-06-19T11:58:00.000Z',
+      };
+      const operations = {
+        ...buildOperations(),
+        issueBodyUpdate: jest.fn(async () => {}),
+        issueCommentBodyUpdate: jest.fn(async () => {
+          throw commentUpdateFailure;
+        }),
+      } as unknown as OperationsWithCheckboxUpdates;
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const onQueueAction = jest.fn();
+        const { container, getByText } = render(
+          <ConsoleItemDetailContainer
+            tab="todo-by-human"
+            item={issueItem}
+            caches={buildCaches({ comments: [commentWithCheckbox] })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={[]}
+            agentOptions={[]}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={onQueueAction}
+          />,
+        );
+
+        await waitFor(() => {
+          expect(getByText('Review the diff')).toBeInTheDocument();
+        });
+
+        const checkbox = container.querySelector<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index="0"]',
+        );
+        expect(checkbox).not.toBeNull();
+        expect(() => fireEvent.click(checkbox as HTMLInputElement)).not.toThrow();
+
+        await waitFor(() => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to persist comment checkbox toggle',
+            commentUpdateFailure,
+          );
+        });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
   });
 });
