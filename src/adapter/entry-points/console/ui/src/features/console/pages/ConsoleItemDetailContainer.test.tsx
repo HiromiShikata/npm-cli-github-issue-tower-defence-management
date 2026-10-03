@@ -2236,6 +2236,96 @@ describe('ConsoleItemDetailContainer', () => {
       );
     });
 
+    it('does not apply a stale revert when the same checkbox is toggled again before the first toggle persistence call settles', async () => {
+      const firstToggleFailure = new Error('first toggle failed');
+      let rejectFirstToggle!: (error: Error) => void;
+      const issueBodyUpdate = jest
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectFirstToggle = reject;
+            }),
+        )
+        .mockImplementationOnce(async () => {});
+      const operations = {
+        ...buildOperations(),
+        issueBodyUpdate,
+        issueCommentBodyUpdate: jest.fn(async () => {}),
+      } as unknown as OperationsWithCheckboxUpdates;
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const onQueueAction = jest.fn();
+        const { container, getByText } = render(
+          <ConsoleItemDetailContainer
+            tab="todo-by-human"
+            item={issueItem}
+            caches={buildCaches({
+              body: '- [ ] Alpha',
+              comments: [],
+            })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={[]}
+            agentOptions={[]}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={onQueueAction}
+          />,
+        );
+
+        await waitFor(() => {
+          expect(getByText('Alpha')).toBeInTheDocument();
+        });
+
+        const checkbox = () =>
+          container.querySelector<HTMLInputElement>(
+            'input[type="checkbox"][data-checkbox-index="0"]',
+          );
+        expect(checkbox()).not.toBeNull();
+
+        fireEvent.click(checkbox() as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueBodyUpdate).toHaveBeenNthCalledWith(
+            1,
+            issueItem,
+            '- [x] Alpha',
+          );
+        });
+
+        fireEvent.click(checkbox() as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueBodyUpdate).toHaveBeenNthCalledWith(
+            2,
+            issueItem,
+            '- [ ] Alpha',
+          );
+        });
+
+        rejectFirstToggle(firstToggleFailure);
+
+        await waitFor(() => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to persist description checkbox toggle',
+            firstToggleFailure,
+          );
+        });
+
+        await waitFor(() => {
+          expect(checkbox()?.checked).toBe(false);
+        });
+        expect(checkbox()?.checked).toBe(false);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
     it('calls operations.issueCommentBodyUpdate with the item, the comment id and the toggled comment body text when a checkbox inside a comment is clicked', async () => {
       const operations = buildOperationsWithCheckboxUpdates();
       const onQueueAction = jest.fn();
@@ -2403,6 +2493,101 @@ describe('ConsoleItemDetailContainer', () => {
           );
           expect(revertedCheckbox?.checked).toBe(false);
         });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('does not apply a stale revert when the same comment checkbox is toggled again before the first toggle persistence call settles', async () => {
+      const firstToggleFailure = new Error('first comment toggle failed');
+      let rejectFirstToggle!: (error: Error) => void;
+      const issueCommentBodyUpdate = jest
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectFirstToggle = reject;
+            }),
+        )
+        .mockImplementationOnce(async () => {});
+      const commentWithCheckbox: ConsoleComment & { id: number } = {
+        id: 4242,
+        author: 'HiromiShikata',
+        body: '- [ ] Review the diff',
+        createdAt: '2026-06-19T11:58:00.000Z',
+      };
+      const operations = {
+        ...buildOperations(),
+        issueBodyUpdate: jest.fn(async () => {}),
+        issueCommentBodyUpdate,
+      } as unknown as OperationsWithCheckboxUpdates;
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const onQueueAction = jest.fn();
+        const { container, getByText } = render(
+          <ConsoleItemDetailContainer
+            tab="todo-by-human"
+            item={issueItem}
+            caches={buildCaches({ comments: [commentWithCheckbox] })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={[]}
+            agentOptions={[]}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={onQueueAction}
+          />,
+        );
+
+        await waitFor(() => {
+          expect(getByText('Review the diff')).toBeInTheDocument();
+        });
+
+        const checkbox = () =>
+          container.querySelector<HTMLInputElement>(
+            'input[type="checkbox"][data-checkbox-index="0"]',
+          );
+        expect(checkbox()).not.toBeNull();
+
+        fireEvent.click(checkbox() as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueCommentBodyUpdate).toHaveBeenNthCalledWith(
+            1,
+            issueItem,
+            4242,
+            '- [x] Review the diff',
+          );
+        });
+
+        fireEvent.click(checkbox() as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueCommentBodyUpdate).toHaveBeenNthCalledWith(
+            2,
+            issueItem,
+            4242,
+            '- [ ] Review the diff',
+          );
+        });
+
+        rejectFirstToggle(firstToggleFailure);
+
+        await waitFor(() => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to persist comment checkbox toggle',
+            firstToggleFailure,
+          );
+        });
+
+        await waitFor(() => {
+          expect(checkbox()?.checked).toBe(false);
+        });
+        expect(checkbox()?.checked).toBe(false);
       } finally {
         consoleErrorSpy.mockRestore();
       }

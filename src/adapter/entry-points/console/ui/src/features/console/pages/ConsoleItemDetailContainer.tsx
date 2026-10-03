@@ -216,6 +216,8 @@ export const ConsoleItemDetailContainer = ({
   const [commentBodyOverrides, setCommentBodyOverrides] = useState<
     Record<number, string>
   >({});
+  const bodyCheckboxGenerationRef = useRef<Record<number, number>>({});
+  const commentCheckboxGenerationRef = useRef<Record<string, number>>({});
   const addComment = useCallback(
     async (body: string): Promise<ConsoleComment> => {
       const comment = await operations.addComment(item, body);
@@ -375,10 +377,15 @@ export const ConsoleItemDetailContainer = ({
       const currentBody = bodyOverride ?? detail.body;
       const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
       setBodyOverride(newBody);
+      const generation =
+        (bodyCheckboxGenerationRef.current[checkboxIndex] ?? 0) + 1;
+      bodyCheckboxGenerationRef.current[checkboxIndex] = generation;
       operations.issueBodyUpdate?.(item, newBody).catch((cause: unknown) => {
-        setBodyOverride((latest) =>
-          toggleMarkdownCheckboxAtIndex(latest ?? detail.body, checkboxIndex),
-        );
+        if (bodyCheckboxGenerationRef.current[checkboxIndex] === generation) {
+          setBodyOverride((latest) =>
+            toggleMarkdownCheckboxAtIndex(latest ?? detail.body, checkboxIndex),
+          );
+        }
         console.error('Failed to persist description checkbox toggle', cause);
       });
     },
@@ -393,16 +400,24 @@ export const ConsoleItemDetailContainer = ({
         ...previous,
         [comment.id]: newBody,
       }));
+      const generationKey = `${comment.id}:${checkboxIndex}`;
+      const generation =
+        (commentCheckboxGenerationRef.current[generationKey] ?? 0) + 1;
+      commentCheckboxGenerationRef.current[generationKey] = generation;
       operations
         .issueCommentBodyUpdate?.(item, comment.id, newBody)
         .catch((cause: unknown) => {
-          setCommentBodyOverrides((previous) => ({
-            ...previous,
-            [comment.id]: toggleMarkdownCheckboxAtIndex(
-              previous[comment.id] ?? comment.body,
-              checkboxIndex,
-            ),
-          }));
+          if (
+            commentCheckboxGenerationRef.current[generationKey] === generation
+          ) {
+            setCommentBodyOverrides((previous) => ({
+              ...previous,
+              [comment.id]: toggleMarkdownCheckboxAtIndex(
+                previous[comment.id] ?? comment.body,
+                checkboxIndex,
+              ),
+            }));
+          }
           console.error('Failed to persist comment checkbox toggle', cause);
         });
     },
