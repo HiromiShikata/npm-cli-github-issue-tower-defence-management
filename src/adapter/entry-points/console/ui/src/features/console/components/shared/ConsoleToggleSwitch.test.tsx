@@ -78,4 +78,41 @@ describe('ConsoleToggleSwitch', () => {
       'console-toggle-switch--on',
     );
   });
+
+  it('has no disabled attribute when the disabled prop is omitted', () => {
+    const { getByRole } = render(
+      <ConsoleToggleSwitch
+        checked={false}
+        ariaLabel="Timer Mode"
+        onChange={jest.fn()}
+      />,
+    );
+    expect(getByRole('switch', { name: 'Timer Mode' })).not.toBeDisabled();
+  });
+
+  it('is disabled when the disabled prop is true', () => {
+    const { getByRole } = render(
+      <ConsoleToggleSwitch
+        checked={false}
+        ariaLabel="Timer Mode"
+        onChange={jest.fn()}
+        disabled={true}
+      />,
+    );
+    expect(getByRole('switch', { name: 'Timer Mode' })).toBeDisabled();
+  });
+
+  it('does not call onChange when clicked while disabled', () => {
+    const onChange = jest.fn();
+    const { getByRole } = render(
+      <ConsoleToggleSwitch
+        checked={false}
+        ariaLabel="Timer Mode"
+        onChange={onChange}
+        disabled={true}
+      />,
+    );
+    fireEvent.click(getByRole('switch', { name: 'Timer Mode' }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

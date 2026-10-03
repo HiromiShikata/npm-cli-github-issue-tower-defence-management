@@ -1,3 +1,5 @@
+import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
+
 export type ConsoleProjectSettingsModalScreenProps = {
   pjcodes: string[];
   inputValues: Record<string, string>;
@@ -6,6 +8,10 @@ export type ConsoleProjectSettingsModalScreenProps = {
   isSaving: boolean;
   error: string | null;
   nameWithOwnerByPjcode?: Record<string, string> | null;
+  showExecutiveSummaryAndActionButtonOnAwaitingOwnerList: boolean;
+  onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList: (
+    enabled: boolean,
+  ) => void;
   onSave: () => void;
   onClose: () => void;
 };
@@ -18,6 +24,8 @@ export const ConsoleProjectSettingsModalScreen = ({
   isSaving,
   error,
   nameWithOwnerByPjcode = null,
+  showExecutiveSummaryAndActionButtonOnAwaitingOwnerList,
+  onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList,
   onSave,
   onClose,
 }: ConsoleProjectSettingsModalScreenProps) => {
@@ -89,6 +97,22 @@ export const ConsoleProjectSettingsModalScreen = ({
               );
             })}
           </ul>
+        )}
+        {!isLoading && (
+          <div className="console-settings-modal-row">
+            <span className="console-settings-modal-row-label">
+              Show executive summary & action button on Awaiting Owner list (all
+              projects)
+            </span>
+            <ConsoleToggleSwitch
+              checked={showExecutiveSummaryAndActionButtonOnAwaitingOwnerList}
+              ariaLabel="Show executive summary & action button on Awaiting Owner list (all projects)"
+              onChange={
+                onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList
+              }
+              disabled={isSaving}
+            />
+          </div>
         )}
         {error !== null && (
           <p className="console-settings-modal-error" role="alert">
