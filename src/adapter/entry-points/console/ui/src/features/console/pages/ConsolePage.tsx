@@ -176,7 +176,7 @@ export const ConsolePage = () => {
     nameWithOwnerByPjcode,
     disabledPjcodes,
     isLoading: isLoadingPjcodes,
-  } = useConsoleProjectList();
+  } = useConsoleProjectList(timerMode && airplaneSnapshot === null, isLoading);
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
