@@ -59,6 +59,7 @@ import {
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
+import { buildProjectItemRepositoryFromGraphqlProjectItemRepository } from './buildProjectItemRepositoryFromGraphqlProjectItemRepository';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import { unresumableSessionArchive } from './unresumableSessionArchive';
 import { resumableSessionSelect } from './resumableSessionSelect';
@@ -1808,7 +1809,9 @@ program
       token,
     );
     const useCase = new PullRequestProjectItemRemoveUseCase(
-      graphqlProjectItemRepository,
+      buildProjectItemRepositoryFromGraphqlProjectItemRepository(
+        graphqlProjectItemRepository,
+      ),
     );
     const matchedItems = await useCase.findPullRequestItems(options.projectId);
     localStorageRepository.write(
