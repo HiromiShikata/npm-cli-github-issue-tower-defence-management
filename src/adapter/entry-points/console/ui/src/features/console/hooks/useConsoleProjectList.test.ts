@@ -251,17 +251,15 @@ describe('useConsoleProjectList', () => {
     );
 
     it('leaves held state untouched when a background re-fetch returns identical values', async () => {
-      const fetchMock = jest
-        .fn()
-        .mockResolvedValue(
-          jsonResponseOf({
-            pjcodes: ['acme'],
-            projectUrls: { acme: 'https://github.com/users/owner/projects/1' },
-            fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
-            nameWithOwnerByPjcode: { acme: 'HiromiShikata/acme' },
-            disabledPjcodes: [],
-          }),
-        );
+      const fetchMock = jest.fn().mockResolvedValue(
+        jsonResponseOf({
+          pjcodes: ['acme'],
+          projectUrls: { acme: 'https://github.com/users/owner/projects/1' },
+          fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+          nameWithOwnerByPjcode: { acme: 'HiromiShikata/acme' },
+          disabledPjcodes: [],
+        }),
+      );
       global.fetch = fetchMock as unknown as typeof fetch;
 
       const { result } = renderHook(() => useConsoleProjectList(true, false));
@@ -386,9 +384,7 @@ describe('useConsoleProjectList', () => {
           .mockResolvedValue(jsonResponseOf(second));
         global.fetch = fetchMock as unknown as typeof fetch;
 
-        const { result } = renderHook(() =>
-          useConsoleProjectList(true, false),
-        );
+        const { result } = renderHook(() => useConsoleProjectList(true, false));
         await waitFor(() => {
           expect(result.current.isLoading).toBe(false);
         });

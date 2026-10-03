@@ -91,7 +91,10 @@ export const useConsoleProjectList = (
     const applyWhenChanged = (result: ProjectListResponse): void => {
       const held = heldValuesRef.current;
       if (!isSameJsonValue(held.pjcodes, result.pjcodes)) {
-        heldValuesRef.current = { ...heldValuesRef.current, pjcodes: result.pjcodes };
+        heldValuesRef.current = {
+          ...heldValuesRef.current,
+          pjcodes: result.pjcodes,
+        };
         setPjcodes(result.pjcodes);
       }
       if (!isSameJsonValue(held.projectUrls, result.projectUrls)) {
@@ -101,7 +104,9 @@ export const useConsoleProjectList = (
         };
         setProjectUrls(result.projectUrls);
       }
-      if (!isSameJsonValue(held.fleetTaskCreateUrl, result.fleetTaskCreateUrl)) {
+      if (
+        !isSameJsonValue(held.fleetTaskCreateUrl, result.fleetTaskCreateUrl)
+      ) {
         heldValuesRef.current = {
           ...heldValuesRef.current,
           fleetTaskCreateUrl: result.fleetTaskCreateUrl,
