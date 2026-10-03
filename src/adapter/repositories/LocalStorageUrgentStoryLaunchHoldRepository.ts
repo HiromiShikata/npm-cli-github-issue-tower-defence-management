@@ -123,10 +123,16 @@ export class LocalStorageUrgentStoryLaunchHoldRepository implements UrgentStoryL
       cacheBaseDirectoryPath: string;
       procDirectoryPath: string;
       processId: number;
-      claudeTokenUsageRepository: Pick<
-        ClaudeTokenUsageRepository,
-        'getAvailableTokenUsages' | 'getTokenInFlightCounts'
-      > | null;
+      claudeTokenUsageRepository:
+        | (Pick<
+            ClaudeTokenUsageRepository,
+            'getAvailableTokenUsages' | 'getTokenInFlightCounts'
+          > & {
+            getPendingTokenLaunchReservationCounts: (
+              tokens: string[],
+            ) => Promise<Record<string, number>>;
+          })
+        | null;
     },
   ) {}
 
@@ -148,6 +154,15 @@ export class LocalStorageUrgentStoryLaunchHoldRepository implements UrgentStoryL
     this.input.claudeTokenUsageRepository === null
       ? {}
       : await this.input.claudeTokenUsageRepository.getTokenInFlightCounts();
+
+  getPendingTokenLaunchReservationCounts = async (
+    tokens: string[],
+  ): Promise<Record<string, number>> =>
+    this.input.claudeTokenUsageRepository === null
+      ? {}
+      : await this.input.claudeTokenUsageRepository.getPendingTokenLaunchReservationCounts(
+          tokens,
+        );
 
   createHoldingRecord = async (projectUrl: string | null): Promise<void> => {
     fs.mkdirSync(this.holdingRecordDirectoryPath(), { recursive: true });
