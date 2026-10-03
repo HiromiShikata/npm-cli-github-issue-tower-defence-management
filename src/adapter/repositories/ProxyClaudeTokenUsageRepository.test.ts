@@ -17,11 +17,14 @@ jest.mock('../proxy/TokenListLoader', () => ({
 
 const mockFsReaddirSync = jest.fn();
 const mockFsReadFileSync = jest.fn();
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  readdirSync: mockFsReaddirSync,
-  readFileSync: mockFsReadFileSync,
-}));
+jest.mock('fs', () => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    readdirSync: mockFsReaddirSync,
+    readFileSync: mockFsReadFileSync,
+  };
+});
 
 import { randomUUID } from 'crypto';
 import type * as NodeFs from 'fs';
@@ -1334,7 +1337,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
   describe('getPendingTokenLaunchReservationCounts', () => {
     let tempCacheDir: string;
-    const actualFs = jest.requireActual('fs') as typeof NodeFs;
+    const actualFs: typeof NodeFs = jest.requireActual('fs');
 
     const buildRepository = (
       liveWorkerIssueUrls: string[] = [],
@@ -1383,7 +1386,8 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     const stillPendingReservationWrite = (
       token: string,
       issueUrl: string,
-    ): void => reservationFileWrite(token, { reservedAt: Date.now(), issueUrl });
+    ): void =>
+      reservationFileWrite(token, { reservedAt: Date.now(), issueUrl });
 
     const expiredReservationWrite = (token: string, issueUrl: string): void =>
       reservationFileWrite(token, {
@@ -1397,11 +1401,11 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       );
       mockFsReaddirSync.mockImplementation(
         (...args: Parameters<typeof NodeFs.readdirSync>) =>
-          (actualFs.readdirSync as (...a: unknown[]) => unknown)(...args),
+          actualFs.readdirSync(...args),
       );
       mockFsReadFileSync.mockImplementation(
         (...args: Parameters<typeof NodeFs.readFileSync>) =>
-          (actualFs.readFileSync as (...a: unknown[]) => unknown)(...args),
+          actualFs.readFileSync(...args),
       );
     });
 
@@ -1442,35 +1446,32 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         invalidReasons: ['expired', 'live'],
         expected: 1,
       },
-    ])(
-      '$label',
-      async ({ stillPendingCount, invalidReasons, expected }) => {
-        const token = 'token-under-test';
-        const liveWorkerIssueUrls: string[] = [];
-        for (let index = 0; index < stillPendingCount; index++) {
-          stillPendingReservationWrite(
-            token,
-            `https://github.com/user/repo/issues/pending-${index}`,
-          );
-        }
-        invalidReasons.forEach((reason, index) => {
-          const issueUrl = `https://github.com/user/repo/issues/invalid-${index}`;
-          if (reason === 'expired') {
-            expiredReservationWrite(token, issueUrl);
-          } else {
-            stillPendingReservationWrite(token, issueUrl);
-            liveWorkerIssueUrls.push(issueUrl);
-          }
-        });
-        const repository = buildRepository(liveWorkerIssueUrls);
-
-        const result = await repository.getPendingTokenLaunchReservationCounts(
-          [token],
+    ])('$label', async ({ stillPendingCount, invalidReasons, expected }) => {
+      const token = 'token-under-test';
+      const liveWorkerIssueUrls: string[] = [];
+      for (let index = 0; index < stillPendingCount; index++) {
+        stillPendingReservationWrite(
+          token,
+          `https://github.com/user/repo/issues/pending-${index}`,
         );
+      }
+      invalidReasons.forEach((reason, index) => {
+        const issueUrl = `https://github.com/user/repo/issues/invalid-${index}`;
+        if (reason === 'expired') {
+          expiredReservationWrite(token, issueUrl);
+        } else {
+          stillPendingReservationWrite(token, issueUrl);
+          liveWorkerIssueUrls.push(issueUrl);
+        }
+      });
+      const repository = buildRepository(liveWorkerIssueUrls);
 
-        expect(result).toEqual({ [token]: expected });
-      },
-    );
+      const result = await repository.getPendingTokenLaunchReservationCounts([
+        token,
+      ]);
+
+      expect(result).toEqual({ [token]: expected });
+    });
 
     it('counts each requested token independently in one call, excluding a token that was not requested', async () => {
       stillPendingReservationWrite(
