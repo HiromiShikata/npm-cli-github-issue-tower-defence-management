@@ -2427,11 +2427,19 @@ describe('ConsolePage auto-advance tab', () => {
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
-        return { ok: true, status: 200, json: async () => listPayload(listMatch[1]) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
       }
       if (url === '/api/projects') {
         projectsCallCount += 1;
-        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
       }
       if (url.startsWith('/api/projectreadmeconfig')) {
         return {
@@ -2464,11 +2472,19 @@ describe('ConsolePage auto-advance tab', () => {
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
-        return { ok: true, status: 200, json: async () => listPayload(listMatch[1]) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
       }
       if (url === '/api/projects') {
         projectsCallCount += 1;
-        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
       }
       if (url.startsWith('/api/projectreadmeconfig')) {
         return {
