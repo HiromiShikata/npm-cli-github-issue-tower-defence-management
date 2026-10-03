@@ -526,6 +526,27 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
       ),
     );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate when explicitlySelectedPjcode matches current pjcode and no other project has remaining minutes', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 0 },
+        true,
+        true,
+        false,
+        false,
+        'acme',
+        idleWriteState,
+      ),
+    );
     expect(navigatePush).not.toHaveBeenCalled();
   });
 

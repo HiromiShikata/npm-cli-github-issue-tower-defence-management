@@ -248,36 +248,6 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       },
     },
     {
-      name: 'leaves skip tracking unchanged when the current project was already evaluated (dedup)',
-      input: {
-        ...baseInput,
-        pjcode: 'acme',
-        evaluatedPjcode: 'acme',
-        remainingCountIsZero: true,
-        skipCount: 2,
-      },
-      expected: {
-        targetPjcode: null,
-        nextSkipCount: 2,
-        nextEvaluatedPjcode: 'acme',
-      },
-    },
-    {
-      name: 'leaves skip tracking unchanged when the explicitly selected project matches the current one',
-      input: {
-        ...baseInput,
-        explicitlySelectedPjcodeMatchesCurrent: true,
-        remainingCountIsZero: true,
-        skipCount: 2,
-        evaluatedPjcode: 'beta',
-      },
-      expected: {
-        targetPjcode: null,
-        nextSkipCount: 2,
-        nextEvaluatedPjcode: 'beta',
-      },
-    },
-    {
       name: 'leaves skip tracking unchanged when no project codes are known yet (race condition before pjcodes load)',
       input: {
         ...baseInput,
@@ -324,6 +294,71 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
 
   it.each(singleCallBranchCases)('$name', ({ input, expected }) => {
     expect(consoleAutomaticProjectNavigationDecide(input)).toEqual(expected);
+  });
+
+  it('switches away from the current project even though it was already marked evaluated (dedup lock no longer blocks a live-eligible switch)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcode: 'acme',
+      evaluatedPjcode: 'acme',
+      remainingCountIsZero: true,
+      skipCount: 2,
+    });
+    expect(result.targetPjcode).toBe('beta');
+  });
+
+  it('switches away from the current project even though it was explicitly selected (explicit-selection lock no longer blocks a live-eligible switch)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      remainingCountIsZero: true,
+      skipCount: 2,
+      evaluatedPjcode: 'beta',
+    });
+    expect(result.targetPjcode).toBe('beta');
+  });
+
+  it('switches to a project that gains remaining minutes after the skip-exhaustion lock was set on the current project', () => {
+    const firstResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta', 'gamma'],
+      projectMinutes: { acme: 30, beta: 0, gamma: 0 },
+      remainingCountIsZero: true,
+      skipCount: 0,
+      evaluatedPjcode: null,
+    });
+
+    const secondResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta', 'gamma'],
+      projectMinutes: { acme: 30, beta: 30, gamma: 0 },
+      remainingCountIsZero: true,
+      skipCount: firstResult.nextSkipCount,
+      evaluatedPjcode: firstResult.nextEvaluatedPjcode,
+    });
+    expect(secondResult.targetPjcode).toBe('beta');
+  });
+
+  it('switches to a project that gains remaining minutes after the explicit-selection lock was set on the current project', () => {
+    const firstResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta'],
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      projectMinutes: { acme: 30, beta: 0 },
+      remainingCountIsZero: true,
+    });
+    expect(firstResult.targetPjcode).toBeNull();
+
+    const secondResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta'],
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      projectMinutes: { acme: 30, beta: 30 },
+      remainingCountIsZero: true,
+      skipCount: firstResult.nextSkipCount,
+      evaluatedPjcode: firstResult.nextEvaluatedPjcode,
+    });
+    expect(secondResult.targetPjcode).toBe('beta');
   });
 
   it('does not re-navigate for the same pjcode on a second evaluation (dedup across calls)', () => {
