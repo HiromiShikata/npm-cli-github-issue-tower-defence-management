@@ -2028,6 +2028,7 @@ describe('consoleOperationApi', () => {
   describe('handleComment', () => {
     it('posts a comment and returns the created comment from the API response', async () => {
       issueRepository.createCommentByUrl.mockResolvedValue({
+        id: 1,
         author: 'HiromiShikata',
         body: 'Please rebase onto the latest main branch.',
         createdAt: new Date('2026-06-17T09:03:27.000Z'),
@@ -2048,6 +2049,7 @@ describe('consoleOperationApi', () => {
       expect(response.body).toEqual({
         ok: true,
         comment: {
+          id: 1,
           author: 'HiromiShikata',
           body: 'Please rebase onto the latest main branch.',
           createdAt: '2026-06-17T09:03:27.000Z',
@@ -2057,6 +2059,7 @@ describe('consoleOperationApi', () => {
 
     it('returns comment data directly without a second fetch', async () => {
       issueRepository.createCommentByUrl.mockResolvedValue({
+        id: 2,
         author: 'github-actions',
         body: 'A first comment on this issue.',
         createdAt: new Date('2026-06-17T08:00:00.000Z'),
@@ -2073,6 +2076,7 @@ describe('consoleOperationApi', () => {
       expect(response.body).toEqual({
         ok: true,
         comment: {
+          id: 2,
           author: 'github-actions',
           body: 'A first comment on this issue.',
           createdAt: '2026-06-17T08:00:00.000Z',
@@ -2147,6 +2151,7 @@ describe('consoleOperationApi', () => {
         .spyOn(console, 'warn')
         .mockImplementation(() => {});
       issueRepository.createCommentByUrl.mockResolvedValue({
+        id: 3,
         author: 'bot',
         body: 'ok',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),

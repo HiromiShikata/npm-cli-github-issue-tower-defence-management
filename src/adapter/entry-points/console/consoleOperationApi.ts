@@ -802,6 +802,7 @@ export const handleComment = async (
       body: {
         ok: true,
         comment: {
+          id: posted.id,
           author: posted.author,
           body: posted.body,
           createdAt: posted.createdAt.toISOString(),
@@ -1482,6 +1483,55 @@ export const handleIssueRename = async (
     return { statusCode: 404, body: { error: 'issue not found' } };
   }
   await issueRepository.updateIssue({ ...issue, title: newTitle });
+  return ok();
+};
+
+export const handleIssueBodyUpdate = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const issueUrl = body.issueUrl;
+  const newBody = body.body;
+  if (!isNonEmptyString(issueUrl)) {
+    return badRequest('issueUrl is required');
+  }
+  if (typeof newBody !== 'string') {
+    return badRequest('body is required');
+  }
+  const issueRepository = context.resolveIssueRepository(issueUrl);
+  const issue = await issueRepository.getIssueByUrl(issueUrl);
+  if (issue === null) {
+    return { statusCode: 404, body: { error: 'issue not found' } };
+  }
+  await issueRepository.updateIssueBody(issue, newBody);
+  return ok();
+};
+
+export const handleIssueCommentBodyUpdate = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const issueUrl = body.issueUrl;
+  const commentId = body.commentId;
+  const newBody = body.body;
+  if (!isNonEmptyString(issueUrl)) {
+    return badRequest('issueUrl is required');
+  }
+  if (!isPositiveInteger(commentId)) {
+    return badRequest('commentId is required');
+  }
+  if (typeof newBody !== 'string') {
+    return badRequest('body is required');
+  }
+  const issueRepository = context.resolveIssueRepository(issueUrl);
+  const issue = await issueRepository.getIssueByUrl(issueUrl);
+  if (issue === null) {
+    return { statusCode: 404, body: { error: 'issue not found' } };
+  }
+  await issueRepository.updateIssueCommentBody(
+    { org: issue.org, repo: issue.repo, commentId },
+    newBody,
+  );
   return ok();
 };
 

@@ -19,11 +19,17 @@ export type ConsoleReferenceLinkRenderer = (
   fallbackText: string,
 ) => ReactNode;
 
+export type ConsoleCheckboxToggleHandler = (
+  checkboxIndex: number,
+  checked: boolean,
+) => void;
+
 export type ConsoleMarkdownViewProps = {
   body: string;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
+  onCheckboxToggle?: ConsoleCheckboxToggleHandler;
 };
 
 type ConsoleMarkdownHtmlBlockProps = {
@@ -31,6 +37,7 @@ type ConsoleMarkdownHtmlBlockProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
+  onCheckboxToggle?: ConsoleCheckboxToggleHandler;
 };
 
 type ReferenceMount = {
@@ -105,11 +112,51 @@ const collectInlineCodeMounts = (container: HTMLElement): InlineCodeMount[] => {
   return mounts;
 };
 
+const attachCheckboxClickHandlers = (
+  container: HTMLElement,
+  onCheckboxToggle: ConsoleCheckboxToggleHandler | undefined,
+): (() => void) => {
+  const checkboxes = Array.from(
+    container.querySelectorAll<HTMLInputElement>(
+      'input[type="checkbox"][data-checkbox-index]',
+    ),
+  );
+  const detachers = checkboxes.flatMap((checkbox) => {
+    const indexAttribute = checkbox.getAttribute('data-checkbox-index');
+    if (indexAttribute === null) {
+      return [];
+    }
+    const checkboxIndex = Number(indexAttribute);
+    if (onCheckboxToggle === undefined) {
+      // Keeps the checkbox inert: a disabled checkbox must never change its
+      // checked state on click, matching how a real browser blocks clicks on
+      // disabled form controls.
+      const blockClick = (event: Event): void => {
+        event.preventDefault();
+      };
+      checkbox.addEventListener('click', blockClick);
+      return [() => checkbox.removeEventListener('click', blockClick)];
+    }
+    checkbox.disabled = false;
+    const handleClick = (): void => {
+      onCheckboxToggle(checkboxIndex, checkbox.checked);
+    };
+    checkbox.addEventListener('click', handleClick);
+    return [() => checkbox.removeEventListener('click', handleClick)];
+  });
+  return () => {
+    detachers.forEach((detach) => {
+      detach();
+    });
+  };
+};
+
 const ConsoleMarkdownHtmlBlock = ({
   source,
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
+  onCheckboxToggle,
 }: ConsoleMarkdownHtmlBlockProps) => {
   const html = useMemo(() => {
     const safeHtml = renderMarkdownToSafeHtml(source, repoContext);
@@ -138,7 +185,8 @@ const ConsoleMarkdownHtmlBlock = ({
         ? []
         : collectReferenceMounts(container),
     );
-  }, [html, renderReferenceLink]);
+    return attachCheckboxClickHandlers(container, onCheckboxToggle);
+  }, [html, renderReferenceLink, onCheckboxToggle]);
 
   return (
     <div ref={containerRef} className="console-markdown">
@@ -173,6 +221,7 @@ export const ConsoleMarkdownContent = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
+  onCheckboxToggle,
 }: ConsoleMarkdownViewProps) => {
   const segments = useMemo(() => splitMarkdownSegments(body), [body]);
 
@@ -192,6 +241,7 @@ export const ConsoleMarkdownContent = ({
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
+            onCheckboxToggle={onCheckboxToggle}
           />
         ),
       )}

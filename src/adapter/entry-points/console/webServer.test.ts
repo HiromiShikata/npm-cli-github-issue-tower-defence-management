@@ -807,6 +807,7 @@ describe('webServer new routes integration', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
     issueRepository.createCommentByUrl.mockResolvedValue({
+      id: 1,
       author: 'HiromiShikata',
       body: 'Thanks, this resolves the parity gap.',
       createdAt: new Date('2026-06-18T03:21:00.000Z'),
@@ -847,6 +848,7 @@ describe('webServer new routes integration', () => {
       expect(JSON.parse(response.body)).toEqual({
         ok: true,
         comment: {
+          id: 1,
           author: 'HiromiShikata',
           body: 'Thanks, this resolves the parity gap.',
           createdAt: '2026-06-18T03:21:00.000Z',

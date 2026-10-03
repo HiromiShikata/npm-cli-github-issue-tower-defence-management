@@ -4,6 +4,7 @@ import type { ConsoleComment } from '../../logic/types';
 import { ConsoleCommentComposer } from './ConsoleCommentComposer';
 
 const acceptComment = async (body: string): Promise<ConsoleComment> => ({
+  id: 1,
   author: 'HiromiShikata',
   body,
   createdAt: '2026-06-19T11:58:00.000Z',

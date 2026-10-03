@@ -5318,6 +5318,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository, restIssueRepository } =
         createApiV3CheerioRestIssueRepository();
       const commentData = {
+        id: 999,
         author: 'HiromiShikata',
         body: 'test comment',
         createdAt: new Date('2026-08-30T09:00:00Z'),
@@ -10751,6 +10752,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
       created.restIssueRepository.createComment.mockImplementation(
         async (_issueUrl: string, comment: string) => ({
+          id: 1,
           author: 'bot',
           body: comment,
           createdAt: new Date('2026-01-01T00:00:00.000Z'),

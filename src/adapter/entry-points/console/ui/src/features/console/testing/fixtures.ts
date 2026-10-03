@@ -309,16 +309,19 @@ export const consoleMermaidCodeFixture = `sequenceDiagram
 
 export const consoleCommentsFixture: ConsoleComment[] = [
   {
+    id: 1,
     author: 'HiromiShikata',
     body: 'Please split the token validation into its own tested function.',
     createdAt: '2026-06-17T06:12:40.000Z',
   },
   {
+    id: 2,
     author: 'github-actions',
     body: 'All required checks have passed on this pull request.',
     createdAt: '2026-06-17T07:48:11.000Z',
   },
   {
+    id: 3,
     author: 'HiromiShikata',
     body: 'Looks good now. Approving once the rebase is green.',
     createdAt: '2026-06-17T09:03:27.000Z',

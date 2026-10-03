@@ -2850,6 +2850,7 @@ describe('HandleScheduledEventUseCase', () => {
         mockIssueRepository.createCommentByUrl
           .mockRejectedValueOnce(transientCommentError)
           .mockResolvedValueOnce({
+            id: 1,
             author: '',
             body: 'something went wrong unexpectedly',
             createdAt: new Date(0),
@@ -2933,6 +2934,7 @@ describe('HandleScheduledEventUseCase', () => {
           .mockResolvedValueOnce([])
           .mockImplementationOnce(async () => [
             {
+              id: 2,
               author: 'bot',
               body:
                 mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',

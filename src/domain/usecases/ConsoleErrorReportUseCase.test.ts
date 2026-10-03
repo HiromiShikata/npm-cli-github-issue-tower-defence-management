@@ -54,6 +54,7 @@ describe('ConsoleErrorReportUseCase', () => {
         { url: existingIssueUrl, title, number: '10' },
       ]);
       mockIssueRepository.createCommentByUrl.mockResolvedValue({
+        id: 1,
         author: 'bot',
         body: 'Console error: TypeError: something went wrong',
         createdAt: new Date(0),
@@ -93,6 +94,7 @@ describe('ConsoleErrorReportUseCase', () => {
       mockIssueRepository.createCommentByUrl
         .mockRejectedValueOnce(transientError)
         .mockResolvedValueOnce({
+          id: 2,
           author: 'bot',
           body: 'Console error: TypeError: something went wrong',
           createdAt: new Date(0),
@@ -133,6 +135,7 @@ describe('ConsoleErrorReportUseCase', () => {
         .mockResolvedValueOnce([])
         .mockImplementationOnce(async () => [
           {
+            id: 3,
             author: 'bot',
             body:
               mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',

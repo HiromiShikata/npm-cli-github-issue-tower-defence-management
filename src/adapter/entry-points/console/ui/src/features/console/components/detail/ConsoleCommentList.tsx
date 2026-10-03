@@ -11,7 +11,10 @@ import type {
   ConsoleFieldOption,
   ConsoleStoryEntry,
 } from '../../logic/types';
-import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
+import type {
+  ConsoleCheckboxToggleHandler,
+  ConsoleReferenceLinkRenderer,
+} from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import type { IssueCreateParams } from '../layout/IssueCreateModalDialog';
 import { IssueCreateModalDialog } from '../layout/IssueCreateModalDialog';
@@ -33,6 +36,7 @@ type ConsoleCommentBodyExpandedProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
+  onCheckboxToggle?: ConsoleCheckboxToggleHandler;
 };
 
 const ConsoleCommentBodyExpanded = ({
@@ -40,6 +44,7 @@ const ConsoleCommentBodyExpanded = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
+  onCheckboxToggle,
 }: ConsoleCommentBodyExpandedProps) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -56,6 +61,7 @@ const ConsoleCommentBodyExpanded = ({
         buildImageProxyUrl={buildImageProxyUrl}
         renderReferenceLink={renderReferenceLink}
         repoContext={repoContext}
+        onCheckboxToggle={onCheckboxToggle}
       />
     </div>
   );
@@ -78,6 +84,10 @@ export type ConsoleCommentListProps = {
     onSubmitProject: (params: IssueCreateParams) => Promise<void>;
     onSubmitWorkflow: (params: IssueCreateParams) => Promise<void>;
   };
+  onCommentCheckboxToggle?: (
+    comment: ConsoleComment,
+    checkboxIndex: number,
+  ) => void;
 };
 
 export const ConsoleCommentList = ({
@@ -94,6 +104,7 @@ export const ConsoleCommentList = ({
   storyEntries,
   agentOptions,
   onCreateIssueFromComment,
+  onCommentCheckboxToggle,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [pendingComment, setPendingComment] = useState<ConsoleComment | null>(
@@ -203,6 +214,12 @@ export const ConsoleCommentList = ({
                 buildImageProxyUrl={buildImageProxyUrl}
                 renderReferenceLink={renderReferenceLink}
                 repoContext={repoContext}
+                onCheckboxToggle={
+                  onCommentCheckboxToggle !== undefined
+                    ? (checkboxIndex) =>
+                        onCommentCheckboxToggle(comment, checkboxIndex)
+                    : undefined
+                }
               />
             )}
           </article>

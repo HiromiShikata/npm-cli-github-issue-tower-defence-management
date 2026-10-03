@@ -117,6 +117,7 @@ describe('createConsoleApiClient', () => {
     mockFetchOnce({
       comments: [
         {
+          id: 7,
           author: 'a',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
@@ -129,6 +130,7 @@ describe('createConsoleApiClient', () => {
     );
     expect(comments).toEqual([
       {
+        id: 7,
         author: 'a',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
@@ -320,6 +322,7 @@ describe('createConsoleApiClient', () => {
     const cachedBody = {
       comments: [
         {
+          id: 9,
           author: 'alice',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
@@ -337,6 +340,7 @@ describe('createConsoleApiClient', () => {
     );
     expect(comments).toEqual([
       {
+        id: 9,
         author: 'alice',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
@@ -644,6 +648,7 @@ describe('postConsoleComment', () => {
     mockFetchOnce({
       ok: true,
       comment: {
+        id: 5,
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',
@@ -653,6 +658,7 @@ describe('postConsoleComment', () => {
     expect(result).toEqual({
       posted: true,
       comment: {
+        id: 5,
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',

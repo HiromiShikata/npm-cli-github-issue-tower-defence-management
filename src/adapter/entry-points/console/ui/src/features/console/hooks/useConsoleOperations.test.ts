@@ -225,6 +225,7 @@ describe('useConsoleOperations', () => {
       json: async () => ({
         ok: true,
         comment: {
+          id: 11,
           author: 'HiromiShikata',
           body: 'Thanks for the parity fix.',
           createdAt: '2026-06-18T03:21:00.000Z',
@@ -249,6 +250,7 @@ describe('useConsoleOperations', () => {
       body: 'Thanks for the parity fix.',
     });
     expect(created).toEqual({
+      id: 11,
       author: 'HiromiShikata',
       body: 'Thanks for the parity fix.',
       createdAt: '2026-06-18T03:21:00.000Z',
@@ -617,6 +619,7 @@ describe('useConsoleOperations', () => {
           status: 200,
           json: async () => ({
             comment: {
+              id: 12,
               author: 'HiromiShikata',
               body: 'moving to workspace',
               createdAt: '2026-06-19T11:58:00.000Z',
@@ -655,6 +658,7 @@ describe('useConsoleOperations', () => {
       statusName: option.name,
     });
     expect(resolved).toEqual({
+      id: 12,
       author: 'HiromiShikata',
       body: 'moving to workspace',
       createdAt: '2026-06-19T11:58:00.000Z',

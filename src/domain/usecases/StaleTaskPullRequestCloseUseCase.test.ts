@@ -285,6 +285,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     mockIssueRepository.createCommentByUrl.mockImplementation(async () => {
       callOrder.push('comment');
       return {
+        id: 1,
         author: '',
         body: '',
         createdAt: new Date(),
@@ -322,6 +323,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     mockIssueRepository.createCommentByUrl
       .mockRejectedValueOnce(transientError)
       .mockResolvedValueOnce({
+        id: 2,
         author: '',
         body: expectedStaleClosingCommentBody([closedTaskIssue.url]),
         createdAt: new Date(),
@@ -363,6 +365,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
+          id: 3,
           author: 'bot',
           body: expectedStaleClosingCommentBody([closedTaskIssue.url]),
           createdAt: new Date(),
@@ -728,7 +731,12 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
               if (url === failingPullRequestUrl) {
                 throw new Error(simulatedFailureMessage);
               }
-              return { author: '', body: commentBody, createdAt: new Date() };
+              return {
+                id: 4,
+                author: '',
+                body: commentBody,
+                createdAt: new Date(),
+              };
             },
           );
         },
@@ -841,6 +849,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
             ? []
             : [
                 {
+                  id: 5,
                   author: 'stale-closing-bot',
                   body: testCase.existingComment.body,
                   createdAt: new Date(

@@ -34,6 +34,7 @@ export type OpenPullRequestCiStatus = {
 };
 
 export type IssueComment = {
+  id: number;
   author: string;
   body: string;
   createdAt: Date;
@@ -118,6 +119,10 @@ export interface IssueRepository {
   updateIssue: (issue: Issue) => Promise<void>;
   updateIssueBody: (
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
+    body: string,
+  ) => Promise<void>;
+  updateIssueCommentBody: (
+    comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
     body: string,
   ) => Promise<void>;
   updateNextActionDate: (

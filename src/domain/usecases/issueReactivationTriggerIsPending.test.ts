@@ -397,6 +397,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           undefined,
         );
         spawnMockIssueRepository.createCommentByUrl.mockResolvedValue({
+          id: 1,
           author: '',
           body: '',
           createdAt: new Date(0),

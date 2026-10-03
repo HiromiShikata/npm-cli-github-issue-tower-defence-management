@@ -1244,6 +1244,7 @@ describe('DailySecurityScanUseCase', () => {
       mockIssueRepository.createCommentByUrl
         .mockRejectedValueOnce(transientError)
         .mockResolvedValueOnce({
+          id: 1,
           author: '',
           body: 'vulnerability found',
           createdAt: new Date(0),
@@ -1328,6 +1329,7 @@ describe('DailySecurityScanUseCase', () => {
         .mockResolvedValueOnce([])
         .mockImplementationOnce(async () => [
           {
+            id: 2,
             author: 'bot',
             body:
               mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',

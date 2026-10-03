@@ -644,6 +644,7 @@ const createStubIssueRepository = (
     renameIssueCalls.push({ issueUrl: issue.url, newTitle: issue.title });
   },
   updateIssueBody: () => notImplemented('updateIssueBody'),
+  updateIssueCommentBody: () => notImplemented('updateIssueCommentBody'),
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
   updateProjectTextField: () => notImplemented('updateProjectTextField'),
@@ -747,7 +748,7 @@ const createStubIssueRepository = (
     body: string,
   ): Promise<IssueComment> => {
     commentCalls.push({ url, body });
-    return { author: '', body, createdAt: new Date(0) };
+    return { id: commentCalls.length, author: '', body, createdAt: new Date(0) };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: async (project): Promise<StoryObjectMap> => {
@@ -801,6 +802,9 @@ const createStubIssueRepository = (
       '',
       `See also ${CONSOLE_E2E_REFERENCE_LINK_URL} for the reference.`,
       '',
+      '- [ ] Alpha',
+      '- [x] Beta',
+      '',
       ...Array.from(
         { length: 80 },
         (_, index) => `Description line ${index + 1} of the fixture body.`,
@@ -808,6 +812,7 @@ const createStubIssueRepository = (
     ].join('\n'),
   getIssueOrPullRequestComments: async (): Promise<IssueComment[]> => [
     {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Console E2E fixture comment.',
       createdAt: new Date('2026-06-17T06:12:40.000Z'),

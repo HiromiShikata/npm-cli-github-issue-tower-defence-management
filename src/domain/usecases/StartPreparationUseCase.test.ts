@@ -2406,6 +2406,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.createCommentByUrl
       .mockRejectedValueOnce(transientError)
       .mockResolvedValueOnce({
+        id: 2,
         author: '',
         body: 'duplicate PR comment',
         createdAt: new Date(0),
@@ -2545,6 +2546,7 @@ describe('StartPreparationUseCase', () => {
         }
         return [
           {
+            id: 1,
             author: 'bot',
             body: priorCallsToNewerPr[0][1],
             createdAt: new Date(),
@@ -2671,6 +2673,7 @@ describe('StartPreparationUseCase', () => {
         const body = url === newerPrUrl ? prDedupComment : issueDedupComment;
         return [
           {
+            id: 3,
             author: 'bot',
             body,
             createdAt: withinWindow,
@@ -8220,6 +8223,7 @@ describe('StartPreparationUseCase', () => {
     );
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
       {
+        id: 4,
         author: 'bot',
         body: "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
         createdAt: new Date('2015-01-01T00:00:00Z'),
@@ -8421,6 +8425,7 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.createCommentByUrl
       .mockRejectedValueOnce(transientError)
       .mockResolvedValueOnce({
+        id: 5,
         author: '',
         body: 'author not allowed',
         createdAt: new Date(0),
@@ -8485,6 +8490,7 @@ describe('StartPreparationUseCase', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
+          id: 6,
           author: 'bot',
           body: "This issue's author (not-allowed-user) is not on the approved author list for automatic processing. Owner review is required before this issue can proceed.",
           createdAt: new Date(),

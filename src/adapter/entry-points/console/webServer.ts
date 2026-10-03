@@ -39,6 +39,8 @@ import {
   handleDeleteStory,
   handleIntmux,
   handleProjectMaxPreparingUpdate,
+  handleIssueBodyUpdate,
+  handleIssueCommentBodyUpdate,
   handleIssueRename,
   handleReorderStory,
   handleReview,
@@ -659,6 +661,10 @@ const dispatchOperation = (
       return handleStoryColor(context, body);
     case '/api/renameissue':
       return handleIssueRename(context, body);
+    case '/api/issuebody':
+      return handleIssueBodyUpdate(context, body);
+    case '/api/issuecommentbody':
+      return handleIssueCommentBodyUpdate(context, body);
     case '/api/deleteallcomments':
       return handleDeleteAllComments(context, body);
     case '/api/setdependedissueurl':

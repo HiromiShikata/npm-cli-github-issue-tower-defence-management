@@ -81,6 +81,11 @@ export type ConsoleItemDetailProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
+  onBodyCheckboxToggle?: (checkboxIndex: number) => void;
+  onCommentCheckboxToggle?: (
+    comment: ConsoleComment,
+    checkboxIndex: number,
+  ) => void;
   storyEntries?: ConsoleStoryEntry[];
   agentOptions?: ConsoleFieldOption[];
   onCreateIssueFromComment?: {
@@ -120,6 +125,8 @@ export const ConsoleItemDetail = ({
   renderReferenceLink,
   onAddInlineComment,
   onTitleRename,
+  onBodyCheckboxToggle,
+  onCommentCheckboxToggle,
   storyEntries,
   agentOptions,
   onCreateIssueFromComment,
@@ -386,6 +393,7 @@ export const ConsoleItemDetail = ({
               buildImageProxyUrl={buildImageProxyUrl}
               renderReferenceLink={renderReferenceLink}
               repoContext={repoContext}
+              onCheckboxToggle={onBodyCheckboxToggle}
             />
           )}
         </ConsolePanel>
@@ -416,6 +424,7 @@ export const ConsoleItemDetail = ({
             storyEntries={storyEntries}
             agentOptions={agentOptions}
             onCreateIssueFromComment={onCreateIssueFromComment}
+            onCommentCheckboxToggle={onCommentCheckboxToggle}
           />
         </ConsolePanel>
 

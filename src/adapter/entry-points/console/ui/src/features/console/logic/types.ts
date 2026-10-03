@@ -76,6 +76,7 @@ export type ConsolePullRequestStatus = {
 };
 
 export type ConsoleComment = {
+  id: number;
   author: string;
   body: string;
   createdAt: string;

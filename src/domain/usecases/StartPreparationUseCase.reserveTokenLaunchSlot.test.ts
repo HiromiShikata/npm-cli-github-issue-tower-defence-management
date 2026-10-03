@@ -124,6 +124,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
     mockIssueRepository.closePullRequest.mockResolvedValue(undefined);
     mockIssueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
     mockIssueRepository.createCommentByUrl.mockResolvedValue({
+      id: 1,
       author: '',
       body: '',
       createdAt: new Date(0),
@@ -243,6 +244,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
     mockIssueRepository.closePullRequest.mockResolvedValue(undefined);
     mockIssueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
     mockIssueRepository.createCommentByUrl.mockResolvedValue({
+      id: 1,
       author: '',
       body: '',
       createdAt: new Date(0),
@@ -396,6 +398,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
     mockIssueRepository.closePullRequest.mockResolvedValue(undefined);
     mockIssueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
     mockIssueRepository.createCommentByUrl.mockResolvedValue({
+      id: 1,
       author: '',
       body: '',
       createdAt: new Date(0),

@@ -1612,11 +1612,13 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
   const multiCommentHarness = await startConsoleE2eHarness({
     getIssueOrPullRequestComments: async () => [
       {
+        id: 1,
         author: 'reviewer',
         body: 'First review comment.\n\nSecond paragraph detail.',
         createdAt: new Date('2026-06-17T06:12:40.000Z'),
       },
       {
+        id: 2,
         author: 'HiromiShikata',
         body: 'Acknowledged.',
         createdAt: new Date('2026-06-17T09:00:00.000Z'),
@@ -1704,6 +1706,7 @@ test.describe('expanded comment body renders github images through the image pro
     commentHarness = await startConsoleE2eHarness({
       getIssueOrPullRequestComments: async () => [
         {
+          id: 1,
           author: 'HiromiShikata',
           body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
           createdAt: new Date('2026-09-06T12:00:00.000Z'),

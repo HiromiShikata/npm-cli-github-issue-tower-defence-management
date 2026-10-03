@@ -55,6 +55,7 @@ describe('CliErrorReportUseCase', () => {
         { url: existingIssueUrl, title, number: '10' },
       ]);
       mockIssueRepository.createCommentByUrl.mockResolvedValue({
+        id: 1,
         author: 'bot',
         body: 'CLI error: TypeError: something went wrong',
         createdAt: new Date(0),
@@ -94,6 +95,7 @@ describe('CliErrorReportUseCase', () => {
       mockIssueRepository.createCommentByUrl
         .mockRejectedValueOnce(transientError)
         .mockResolvedValueOnce({
+          id: 2,
           author: 'bot',
           body: 'CLI error: TypeError: something went wrong',
           createdAt: new Date(0),
@@ -134,6 +136,7 @@ describe('CliErrorReportUseCase', () => {
         .mockResolvedValueOnce([])
         .mockImplementationOnce(async () => [
           {
+            id: 3,
             author: 'bot',
             body:
               mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
@@ -450,6 +453,7 @@ describe('CliErrorReportUseCase', () => {
         { url: existingIssueUrl, title, number: '21' },
       ]);
       mockIssueRepository.createCommentByUrl.mockResolvedValue({
+        id: 4,
         author: 'bot',
         body: 'CLI error recurrence',
         createdAt: new Date(0),

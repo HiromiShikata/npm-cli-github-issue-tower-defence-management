@@ -17,6 +17,7 @@ import {
   TRIAGE_OPERATION_PATH,
 } from '../hooks/useConsoleOperations';
 import { buildImageProxyUrl } from '../lib/imageProxy';
+import { toggleMarkdownCheckboxAtIndex } from '../lib/markdownCheckboxToggle';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
@@ -365,6 +366,25 @@ export const ConsoleItemDetailContainer = ({
     [item, operations],
   );
 
+  const toggleBodyCheckbox = useCallback(
+    (checkboxIndex: number) => {
+      const newBody = toggleMarkdownCheckboxAtIndex(detail.body, checkboxIndex);
+      void operations.issueBodyUpdate?.(item, newBody);
+    },
+    [detail.body, item, operations],
+  );
+
+  const toggleCommentCheckbox = useCallback(
+    (comment: ConsoleComment, checkboxIndex: number) => {
+      const newBody = toggleMarkdownCheckboxAtIndex(
+        comment.body,
+        checkboxIndex,
+      );
+      void operations.issueCommentBodyUpdate?.(item, comment.id, newBody);
+    },
+    [item, operations],
+  );
+
   const awaitingWorkspaceOption =
     statusOptions.find((o) => o.name === AWAITING_WORKSPACE_NAME) ?? null;
 
@@ -513,6 +533,8 @@ export const ConsoleItemDetailContainer = ({
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
       onTitleRename={issueRename}
+      onBodyCheckboxToggle={toggleBodyCheckbox}
+      onCommentCheckboxToggle={toggleCommentCheckbox}
       storyEntries={storyEntries}
       agentOptions={agentOptions}
       onCreateIssueFromComment={onCreateIssueFromComment}

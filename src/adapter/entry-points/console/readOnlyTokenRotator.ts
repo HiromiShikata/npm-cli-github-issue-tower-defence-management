@@ -96,6 +96,10 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       issue: Pick<Issue, 'org' | 'repo' | 'number'>,
       body: string,
     ) => writeRepository.updateIssueBody(issue, body),
+    updateIssueCommentBody: (
+      comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
+      body: string,
+    ) => writeRepository.updateIssueCommentBody(comment, body),
     updateNextActionDate: (
       issueUrl: string,
       project: Project,

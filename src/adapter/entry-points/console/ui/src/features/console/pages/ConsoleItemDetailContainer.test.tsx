@@ -85,11 +85,13 @@ const buildOperations = (): ConsoleOperationsApi => {
     closeIssue: jest.fn(async () => {}),
     okAndMoveToAwaitingWorkspace: jest.fn(async () => {}),
     addComment: jest.fn(async () => ({
+      id: 1,
       author: 'HiromiShikata',
       body: 'comment body',
       createdAt: '2026-06-19T11:58:00.000Z',
     })),
     addCommentAndMoveToAwaitingWorkspace: jest.fn(async () => ({
+      id: 1,
       author: 'HiromiShikata',
       body: 'comment body',
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -190,6 +192,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('puts a posted comment in the scrolling comment list and leaves the sticky dock holding only the input', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async (_item, body) => ({
+      id: 2,
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -233,6 +236,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('expands the comments panel of a pull request item by default and shows a posted comment', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async (_item, body) => ({
+      id: 2,
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -282,6 +286,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('keeps a reader-collapsed comments panel collapsed after a comment is posted on an issue item', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async (_item, body) => ({
+      id: 2,
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -1454,6 +1459,7 @@ describe('ConsoleItemDetailContainer', () => {
         new Promise((resolve) => {
           resolveAddComment = () =>
             resolve({
+              id: 5,
               author: 'HiromiShikata',
               body: 'ok',
               createdAt: '2026-06-19T11:58:00.000Z',
@@ -1535,6 +1541,7 @@ describe('ConsoleItemDetailContainer', () => {
 
   it('opens IssueCreateModalDialog with empty title and comment body as blockquote prefixed by item url and title when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -1591,6 +1598,7 @@ describe('ConsoleItemDetailContainer', () => {
 
   it('includes comment body as blockquote in the dialog body when a comment create-workflow-issue button is clicked', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -1640,6 +1648,7 @@ describe('ConsoleItemDetailContainer', () => {
 
   it('includes each line of multi-line comment body as its own blockquote line in the dialog body', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'First line\nSecond line\nThird line',
       createdAt: '2026-06-17T06:12:40.000Z',

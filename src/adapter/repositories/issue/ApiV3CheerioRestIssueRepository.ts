@@ -651,6 +651,7 @@ function isIssueOrPullRequestStateResponse(
 }
 
 type IssueCommentsResponseItem = {
+  id: number;
   user: { login: string } | null;
   body: string | null;
   created_at: string;
@@ -662,6 +663,7 @@ function isIssueCommentsResponseItem(
   if (!isRecord(value)) return false;
   const userValid = value.user === null || isLoginContainer(value.user);
   return (
+    typeof value.id === 'number' &&
     userValid &&
     isNullableString(value.body) &&
     typeof value.created_at === 'string'
@@ -800,6 +802,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'createNewIssue'
       | 'updateIssue'
       | 'updateIssueBody'
+      | 'updateIssueCommentBody'
       | 'createComment'
       | 'getIssue'
       | 'updateLabels'
@@ -1481,6 +1484,12 @@ export class ApiV3CheerioRestIssueRepository
     body: string,
   ): Promise<void> => {
     await this.restIssueRepository.updateIssueBody(issue, body);
+  };
+  updateIssueCommentBody = async (
+    comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
+    body: string,
+  ): Promise<void> => {
+    await this.restIssueRepository.updateIssueCommentBody(comment, body);
   };
   private findIssueInAllIssuesCache = async (
     url: string,
@@ -4500,6 +4509,7 @@ export class ApiV3CheerioRestIssueRepository
       }
       for (const comment of body) {
         collectedComments.push({
+          id: comment.id,
           author: comment.user?.login ?? '',
           body: comment.body ?? '',
           createdAt: new Date(comment.created_at),
