@@ -47,6 +47,33 @@ export const countMarkdownCheckboxes = (source: string): number => {
   return checkboxCount;
 };
 
+export const isMarkdownCheckboxCheckedAtIndex = (
+  source: string,
+  checkboxIndex: number,
+): boolean => {
+  if (!Number.isInteger(checkboxIndex) || checkboxIndex < 0) {
+    throw new Error(
+      `checkboxIndex must be a non-negative integer: ${checkboxIndex}`,
+    );
+  }
+  let checkboxesSeen = 0;
+  let checked: boolean | undefined;
+
+  forEachCheckboxLineOutsideFences(source.split('\n'), (_lineIndex, checkboxMatch) => {
+    if (checkboxesSeen === checkboxIndex) {
+      checked = checkboxMatch[2].toLowerCase() === 'x';
+    }
+    checkboxesSeen += 1;
+  });
+
+  if (checked === undefined) {
+    throw new Error(
+      `checkboxIndex ${checkboxIndex} is out of range: found ${checkboxesSeen} checkbox(es)`,
+    );
+  }
+  return checked;
+};
+
 export const toggleMarkdownCheckboxAtIndex = (
   source: string,
   checkboxIndex: number,

@@ -1,5 +1,8 @@
 import { renderMarkdownToSafeHtml } from './markdown';
-import { toggleMarkdownCheckboxAtIndex } from './markdownCheckboxToggle';
+import {
+  isMarkdownCheckboxCheckedAtIndex,
+  toggleMarkdownCheckboxAtIndex,
+} from './markdownCheckboxToggle';
 
 describe('toggleMarkdownCheckboxAtIndex', () => {
   it.each([
@@ -141,6 +144,54 @@ describe('toggleMarkdownCheckboxAtIndex', () => {
         index === checkboxIndex ? !checkedBefore : checked,
       );
       expect(afterStates).toEqual(expectedStates);
+    });
+  });
+});
+
+describe('isMarkdownCheckboxCheckedAtIndex', () => {
+  it('reports false for an unchecked checkbox', () => {
+    expect(isMarkdownCheckboxCheckedAtIndex('- [ ] Buy milk', 0)).toBe(false);
+  });
+
+  it('reports true for a checked checkbox', () => {
+    expect(isMarkdownCheckboxCheckedAtIndex('- [x] Buy milk', 0)).toBe(true);
+  });
+
+  it('reports true for an uppercase [X] checked checkbox', () => {
+    expect(isMarkdownCheckboxCheckedAtIndex('- [X] Buy milk', 0)).toBe(true);
+  });
+
+  it('reports the state of the checkbox at the given index among several mixed checkboxes', () => {
+    const source = '- [ ] Alpha\n- [x] Beta\n- [ ] Gamma';
+    expect(isMarkdownCheckboxCheckedAtIndex(source, 0)).toBe(false);
+    expect(isMarkdownCheckboxCheckedAtIndex(source, 1)).toBe(true);
+    expect(isMarkdownCheckboxCheckedAtIndex(source, 2)).toBe(false);
+  });
+
+  it('ignores a checkbox-shaped line inside a fenced code block when counting', () => {
+    const source = '```\n- [x] fake\n```\n- [ ] real';
+    expect(isMarkdownCheckboxCheckedAtIndex(source, 0)).toBe(false);
+  });
+
+  it('throws an Error when checkboxIndex is out of range', () => {
+    expect(() =>
+      isMarkdownCheckboxCheckedAtIndex('- [ ] only one', 1),
+    ).toThrow(Error);
+  });
+
+  it('throws an Error when checkboxIndex is negative', () => {
+    expect(() =>
+      isMarkdownCheckboxCheckedAtIndex('- [ ] only one', -1),
+    ).toThrow(Error);
+  });
+
+  it('agrees with toggleMarkdownCheckboxAtIndex: toggling flips exactly what isMarkdownCheckboxCheckedAtIndex reports', () => {
+    const source = '- [ ] Alpha\n- [x] Beta';
+    [0, 1].forEach((checkboxIndex) => {
+      const before = isMarkdownCheckboxCheckedAtIndex(source, checkboxIndex);
+      const toggled = toggleMarkdownCheckboxAtIndex(source, checkboxIndex);
+      const after = isMarkdownCheckboxCheckedAtIndex(toggled, checkboxIndex);
+      expect(after).toBe(!before);
     });
   });
 });

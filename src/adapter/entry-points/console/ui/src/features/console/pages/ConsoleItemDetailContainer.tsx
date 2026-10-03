@@ -17,7 +17,10 @@ import {
   TRIAGE_OPERATION_PATH,
 } from '../hooks/useConsoleOperations';
 import { buildImageProxyUrl } from '../lib/imageProxy';
-import { toggleMarkdownCheckboxAtIndex } from '../lib/markdownCheckboxToggle';
+import {
+  isMarkdownCheckboxCheckedAtIndex,
+  toggleMarkdownCheckboxAtIndex,
+} from '../lib/markdownCheckboxToggle';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
@@ -157,6 +160,15 @@ export type ConsoleItemDetailContainerProps = {
   };
 };
 
+const reconcileCheckboxToConfirmedState = (
+  source: string,
+  checkboxIndex: number,
+  confirmedChecked: boolean,
+): string =>
+  isMarkdownCheckboxCheckedAtIndex(source, checkboxIndex) === confirmedChecked
+    ? source
+    : toggleMarkdownCheckboxAtIndex(source, checkboxIndex);
+
 export const ConsoleItemDetailContainer = ({
   tab,
   item,
@@ -218,6 +230,8 @@ export const ConsoleItemDetailContainer = ({
   >({});
   const bodyCheckboxGenerationRef = useRef<Record<number, number>>({});
   const commentCheckboxGenerationRef = useRef<Record<string, number>>({});
+  const bodyCheckboxConfirmedRef = useRef<Record<number, boolean>>({});
+  const commentCheckboxConfirmedRef = useRef<Record<string, boolean>>({});
   const addComment = useCallback(
     async (body: string): Promise<ConsoleComment> => {
       const comment = await operations.addComment(item, body);
@@ -376,18 +390,34 @@ export const ConsoleItemDetailContainer = ({
     (checkboxIndex: number) => {
       const currentBody = bodyOverride ?? detail.body;
       const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
+      const newChecked = isMarkdownCheckboxCheckedAtIndex(
+        newBody,
+        checkboxIndex,
+      );
       setBodyOverride(newBody);
       const generation =
         (bodyCheckboxGenerationRef.current[checkboxIndex] ?? 0) + 1;
       bodyCheckboxGenerationRef.current[checkboxIndex] = generation;
-      operations.issueBodyUpdate?.(item, newBody).catch((cause: unknown) => {
-        if (bodyCheckboxGenerationRef.current[checkboxIndex] === generation) {
-          setBodyOverride((latest) =>
-            toggleMarkdownCheckboxAtIndex(latest ?? detail.body, checkboxIndex),
-          );
-        }
-        console.error('Failed to persist description checkbox toggle', cause);
-      });
+      operations.issueBodyUpdate?.(item, newBody).then(
+        () => {
+          bodyCheckboxConfirmedRef.current[checkboxIndex] = newChecked;
+        },
+        (cause: unknown) => {
+          if (bodyCheckboxGenerationRef.current[checkboxIndex] === generation) {
+            const confirmedChecked =
+              bodyCheckboxConfirmedRef.current[checkboxIndex] ??
+              isMarkdownCheckboxCheckedAtIndex(detail.body, checkboxIndex);
+            setBodyOverride((latest) =>
+              reconcileCheckboxToConfirmedState(
+                latest ?? detail.body,
+                checkboxIndex,
+                confirmedChecked,
+              ),
+            );
+          }
+          console.error('Failed to persist description checkbox toggle', cause);
+        },
+      );
     },
     [bodyOverride, detail.body, item, operations],
   );
@@ -396,6 +426,10 @@ export const ConsoleItemDetailContainer = ({
     (comment: ConsoleComment, checkboxIndex: number) => {
       const currentBody = commentBodyOverrides[comment.id] ?? comment.body;
       const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
+      const newChecked = isMarkdownCheckboxCheckedAtIndex(
+        newBody,
+        checkboxIndex,
+      );
       setCommentBodyOverrides((previous) => ({
         ...previous,
         [comment.id]: newBody,
@@ -404,22 +438,29 @@ export const ConsoleItemDetailContainer = ({
       const generation =
         (commentCheckboxGenerationRef.current[generationKey] ?? 0) + 1;
       commentCheckboxGenerationRef.current[generationKey] = generation;
-      operations
-        .issueCommentBodyUpdate?.(item, comment.id, newBody)
-        .catch((cause: unknown) => {
+      operations.issueCommentBodyUpdate?.(item, comment.id, newBody).then(
+        () => {
+          commentCheckboxConfirmedRef.current[generationKey] = newChecked;
+        },
+        (cause: unknown) => {
           if (
             commentCheckboxGenerationRef.current[generationKey] === generation
           ) {
+            const confirmedChecked =
+              commentCheckboxConfirmedRef.current[generationKey] ??
+              isMarkdownCheckboxCheckedAtIndex(comment.body, checkboxIndex);
             setCommentBodyOverrides((previous) => ({
               ...previous,
-              [comment.id]: toggleMarkdownCheckboxAtIndex(
+              [comment.id]: reconcileCheckboxToConfirmedState(
                 previous[comment.id] ?? comment.body,
                 checkboxIndex,
+                confirmedChecked,
               ),
             }));
           }
           console.error('Failed to persist comment checkbox toggle', cause);
-        });
+        },
+      );
     },
     [commentBodyOverrides, item, operations],
   );
