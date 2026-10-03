@@ -4144,6 +4144,38 @@ const requireGraphqlProjectItemRepositoryClassWithRealUnmockedKyHttpClient =
     }>('./GraphqlProjectItemRepository').GraphqlProjectItemRepository;
   };
 
+const projectItemsConnectionReadRetryAttemptsAfterRecentAddition = 10;
+const projectItemsConnectionReadRetryDelayMs = 1000;
+
+const findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition =
+  async (
+    projectItemRepository: GraphqlProjectItemRepository,
+    targetProjectId: string,
+    recentlyAddedItemId: string,
+  ): Promise<
+    | Awaited<
+        ReturnType<GraphqlProjectItemRepository['fetchProjectItems']>
+      >[number]
+    | undefined
+  > => {
+    for (
+      let attempt = 0;
+      attempt < projectItemsConnectionReadRetryAttemptsAfterRecentAddition;
+      attempt++
+    ) {
+      const items =
+        await projectItemRepository.fetchProjectItems(targetProjectId);
+      const found = items.find((item) => item.id === recentlyAddedItemId);
+      if (found !== undefined) {
+        return found;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, projectItemsConnectionReadRetryDelayMs),
+      );
+    }
+    return undefined;
+  };
+
 describeWhenLiveCredentials(
   'GraphqlProjectItemRepository (live GitHub GraphQL API)',
   () => {
@@ -4211,21 +4243,12 @@ describeWhenLiveCredentials(
 
     describe('fetchProjectItems', () => {
       it('returns the Story field with the real optionId the live GraphQL API assigned, proving the query actually selects optionId', async () => {
-        // The project items connection can briefly lag behind a just-completed
-        // addProjectV2ItemById mutation, so poll until the disposable item
-        // created in beforeAll shows up instead of racing a single read.
-        let targetItem:
-          | Awaited<ReturnType<typeof repository.fetchProjectItems>>[number]
-          | undefined;
-        const maxAttempts = 10;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const items = await repository.fetchProjectItems(projectId);
-          targetItem = items.find((item) => item.id === disposableItemId);
-          if (targetItem !== undefined) {
-            break;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
+        const targetItem =
+          await findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition(
+            repository,
+            projectId,
+            disposableItemId,
+          );
         expect(targetItem).toBeDefined();
         const storyField = targetItem?.customFields.find(
           (field) => field.name === 'Story',
