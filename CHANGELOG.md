@@ -1,3 +1,10 @@
+## [2.162.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.4...v2.162.5) (2026-10-03)
+
+
+### Bug Fixes
+
+* **StaleTaskPullRequestCloseUseCase:** getIssueByUrl returns null for a pull request with no project item, so a non-board stale PR is never closed ([#3188](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3188)) ([4995669](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49956699c66fdfd3286c149c61228ea4237e21cb))
+
 ## [2.162.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.3...v2.162.4) (2026-10-03)
 
 
