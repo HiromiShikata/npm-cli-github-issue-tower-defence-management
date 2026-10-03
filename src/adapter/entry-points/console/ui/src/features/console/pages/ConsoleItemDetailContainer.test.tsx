@@ -2059,7 +2059,9 @@ describe('ConsoleItemDetailContainer', () => {
           'input[type="checkbox"][data-checkbox-index="0"]',
         );
         expect(checkbox).not.toBeNull();
-        expect(() => fireEvent.click(checkbox as HTMLInputElement)).not.toThrow();
+        expect(() =>
+          fireEvent.click(checkbox as HTMLInputElement),
+        ).not.toThrow();
 
         await waitFor(() => {
           expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -2073,7 +2075,9 @@ describe('ConsoleItemDetailContainer', () => {
     });
 
     it('calls console.error and does not throw when issueCommentBodyUpdate rejects after a comment checkbox is clicked', async () => {
-      const commentUpdateFailure = new Error('issue comment body update failed');
+      const commentUpdateFailure = new Error(
+        'issue comment body update failed',
+      );
       const commentWithCheckbox: ConsoleComment & { id: number } = {
         id: 4242,
         author: 'HiromiShikata',
@@ -2117,7 +2121,9 @@ describe('ConsoleItemDetailContainer', () => {
           'input[type="checkbox"][data-checkbox-index="0"]',
         );
         expect(checkbox).not.toBeNull();
-        expect(() => fireEvent.click(checkbox as HTMLInputElement)).not.toThrow();
+        expect(() =>
+          fireEvent.click(checkbox as HTMLInputElement),
+        ).not.toThrow();
 
         await waitFor(() => {
           expect(consoleErrorSpy).toHaveBeenCalledWith(

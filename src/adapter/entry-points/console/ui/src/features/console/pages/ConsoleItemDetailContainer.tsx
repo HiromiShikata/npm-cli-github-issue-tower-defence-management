@@ -382,8 +382,8 @@ export const ConsoleItemDetailContainer = ({
         comment.body,
         checkboxIndex,
       );
-      operations.issueCommentBodyUpdate
-        ?.(item, comment.id, newBody)
+      operations
+        .issueCommentBodyUpdate?.(item, comment.id, newBody)
         .catch((cause: unknown) => {
           console.error('Failed to persist comment checkbox toggle', cause);
         });

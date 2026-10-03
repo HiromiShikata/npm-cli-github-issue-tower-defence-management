@@ -6,7 +6,9 @@ export const toggleMarkdownCheckboxAtIndex = (
   checkboxIndex: number,
 ): string => {
   if (!Number.isInteger(checkboxIndex) || checkboxIndex < 0) {
-    throw new Error(`checkboxIndex must be a non-negative integer: ${checkboxIndex}`);
+    throw new Error(
+      `checkboxIndex must be a non-negative integer: ${checkboxIndex}`,
+    );
   }
   const lines = source.split('\n');
   let insideFence = false;
