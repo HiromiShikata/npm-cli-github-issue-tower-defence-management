@@ -340,7 +340,11 @@ export class HandleScheduledEventUseCase {
         const matchedIssueState = await this.issueRepository.getIssueByUrl(
           matchedOpenStoryIssue.url,
         );
-        if (matchedIssueState && !matchedIssueState.storyOptionId) {
+        if (
+          matchedIssueState &&
+          matchedIssueState.itemId &&
+          !matchedIssueState.storyOptionId
+        ) {
           await this.refetchAndWriteStoryOption({
             projectId,
             storyName: storyObject.story.name,
