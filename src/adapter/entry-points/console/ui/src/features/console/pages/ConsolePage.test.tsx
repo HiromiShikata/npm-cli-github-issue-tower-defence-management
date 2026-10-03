@@ -3947,6 +3947,56 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
+  it('reopens the header "Create fleet task" dialog with retained values and the failure reason when its own create request fails after the undo window elapses', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+        false,
+      );
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Failing fleet task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const fleetDialogContainer = document.body.querySelector(
+        '.console-fleet-task-create-dialog-container',
+      );
+      expect(fleetDialogContainer).not.toBeNull();
+      const reopenedDialog = within(
+        fleetDialogContainer as HTMLElement,
+      ).getByRole('dialog');
+      expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
+        'Failing fleet task',
+      );
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: 'Workflow' })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
+        'Internal Server Error',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not auto-skip when user explicitly selects the current project via the project dropdown', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
