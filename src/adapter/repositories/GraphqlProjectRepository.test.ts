@@ -50,6 +50,16 @@ const expectWorkflowManagementStoryIsWellFormed = (workflowManagementStory: {
   expect(workflowManagementStory.name).toMatch(/workflow management/i);
 };
 
+const computeCleanupStoryListAfterSelfAddition = (
+  currentLiveOptions: FieldOption[],
+  uniqueSuffix: string,
+): FieldOption[] => {
+  const selfAddedOptionName = `test-story-graphql-${uniqueSuffix}`;
+  return currentLiveOptions.filter(
+    (option) => option.name !== selfAddedOptionName,
+  );
+};
+
 describeWhenCredentials('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectRepository;
@@ -146,7 +156,22 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
       expect(added?.description).toEqual(newOption.description);
       expect(added?.id).toBeDefined();
 
-      await repository.updateStoryList(testProject, existingStories);
+      const liveProject = await repository.getProject(projectId);
+      if (liveProject === null) {
+        throw new Error(
+          'repository.getProject unexpectedly returned null during cleanup',
+        );
+      }
+      if (liveProject.story === null) {
+        throw new Error(
+          'liveProject.story unexpectedly returned null during cleanup',
+        );
+      }
+      const cleanupResult = computeCleanupStoryListAfterSelfAddition(
+        liveProject.story.stories,
+        uniqueSuffix,
+      );
+      await repository.updateStoryList(testProject, cleanupResult);
     });
   });
 
@@ -205,4 +230,70 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
       expect(fromRest).toEqual(fromGraphql);
     }, 60000);
   });
+});
+
+describe('computeCleanupStoryListAfterSelfAddition (local pure-function contract for the updateStoryList cleanup write-back)', () => {
+  const baselineOptions: FieldOption[] = [
+    { id: 'af410dae', name: 'story1', color: 'GRAY', description: '' },
+    {
+      id: '696ccdef',
+      name: 'Workflow Management',
+      color: 'GRAY',
+      description: '',
+    },
+    { id: '4fa21881', name: 'test', color: 'GRAY', description: '' },
+  ];
+  const selfAddedOption = (uniqueSuffix: string): FieldOption => ({
+    id: `self-${uniqueSuffix}`,
+    name: `test-story-graphql-${uniqueSuffix}`,
+    color: 'BLUE',
+    description: 'created by graphql unit test',
+  });
+
+  const cases: {
+    name: string;
+    currentLiveOptions: FieldOption[];
+    uniqueSuffix: string;
+    expected: FieldOption[];
+  }[] = [
+    {
+      name: "removes only this run's own option, leaving the live baseline untouched",
+      currentLiveOptions: [...baselineOptions, selfAddedOption('runsuffix1')],
+      uniqueSuffix: 'runsuffix1',
+      expected: baselineOptions,
+    },
+    {
+      name: "preserves a concurrent run's own option while removing only this run's own",
+      currentLiveOptions: [
+        ...baselineOptions,
+        selfAddedOption('runsuffix2'),
+        selfAddedOption('concurrentrunsuffix'),
+      ],
+      uniqueSuffix: 'runsuffix2',
+      expected: [...baselineOptions, selfAddedOption('concurrentrunsuffix')],
+    },
+    {
+      name: 'returns the live list unchanged when no option carries the given uniqueSuffix',
+      currentLiveOptions: baselineOptions,
+      uniqueSuffix: 'suffix-never-added',
+      expected: baselineOptions,
+    },
+    {
+      name: 'returns an empty list when the live read itself is empty',
+      currentLiveOptions: [],
+      uniqueSuffix: 'any-suffix',
+      expected: [],
+    },
+  ];
+
+  test.each(cases)(
+    '$name',
+    ({ currentLiveOptions, uniqueSuffix, expected }) => {
+      const result = computeCleanupStoryListAfterSelfAddition(
+        currentLiveOptions,
+        uniqueSuffix,
+      );
+      expect(result).toEqual(expected);
+    },
+  );
 });
