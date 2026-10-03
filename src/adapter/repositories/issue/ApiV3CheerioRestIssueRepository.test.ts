@@ -11401,7 +11401,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           callOrder.push('fetch');
-          return [];
+          return { issues: [], inconsistencyMessage: null };
         },
       );
 
@@ -11477,13 +11477,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            {
-              ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
-              id: staleItemId,
-            },
-            buildProjectItem(newIssueUrl, 'new issue'),
-          ];
+          return {
+            issues: [
+              {
+                ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
+                id: staleItemId,
+              },
+              buildProjectItem(newIssueUrl, 'new issue'),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
 
@@ -11547,18 +11550,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItemsLight.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            buildLightItem(
-              staleItemId,
-              staleIssueUrl,
-              '2026-07-07T00:44:00.000Z',
-            ),
-            buildLightItem(
-              'item-new-incremental-fetch',
-              newIssueUrl,
-              '2026-07-07T00:44:30.000Z',
-            ),
-          ];
+          return {
+            lightItems: [
+              buildLightItem(
+                staleItemId,
+                staleIssueUrl,
+                '2026-07-07T00:44:00.000Z',
+              ),
+              buildLightItem(
+                'item-new-incremental-fetch',
+                newIssueUrl,
+                '2026-07-07T00:44:30.000Z',
+              ),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
@@ -11625,12 +11631,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            buildProjectItem(
-              preExistingIssueUrl,
-              'pre-existing issue refetched',
-            ),
-          ];
+          return {
+            issues: [
+              buildProjectItem(
+                preExistingIssueUrl,
+                'pre-existing issue refetched',
+              ),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
 
