@@ -212,6 +212,10 @@ export const ConsoleItemDetailContainer = ({
     [],
   );
   const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
+  const [bodyOverride, setBodyOverride] = useState<string | null>(null);
+  const [commentBodyOverrides, setCommentBodyOverrides] = useState<
+    Record<number, string>
+  >({});
   const addComment = useCallback(
     async (body: string): Promise<ConsoleComment> => {
       const comment = await operations.addComment(item, body);
@@ -368,27 +372,39 @@ export const ConsoleItemDetailContainer = ({
 
   const toggleBodyCheckbox = useCallback(
     (checkboxIndex: number) => {
-      const newBody = toggleMarkdownCheckboxAtIndex(detail.body, checkboxIndex);
+      const currentBody = bodyOverride ?? detail.body;
+      const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
+      setBodyOverride(newBody);
       operations.issueBodyUpdate?.(item, newBody).catch((cause: unknown) => {
+        setBodyOverride(currentBody);
         console.error('Failed to persist description checkbox toggle', cause);
       });
     },
-    [detail.body, item, operations],
+    [bodyOverride, detail.body, item, operations],
   );
 
   const toggleCommentCheckbox = useCallback(
     (comment: ConsoleComment, checkboxIndex: number) => {
+      const currentBody = commentBodyOverrides[comment.id] ?? comment.body;
       const newBody = toggleMarkdownCheckboxAtIndex(
-        comment.body,
+        currentBody,
         checkboxIndex,
       );
+      setCommentBodyOverrides((previous) => ({
+        ...previous,
+        [comment.id]: newBody,
+      }));
       operations
         .issueCommentBodyUpdate?.(item, comment.id, newBody)
         .catch((cause: unknown) => {
+          setCommentBodyOverrides((previous) => ({
+            ...previous,
+            [comment.id]: currentBody,
+          }));
           console.error('Failed to persist comment checkbox toggle', cause);
         });
     },
-    [item, operations],
+    [commentBodyOverrides, item, operations],
   );
 
   const awaitingWorkspaceOption =
@@ -509,6 +525,16 @@ export const ConsoleItemDetailContainer = ({
       : null;
   const resolvedStoryOptionId = storyOptionId ?? item.storyOptionId ?? null;
 
+  const displayedBody = bodyOverride ?? detail.body;
+  const displayedComments = mergePostedComments(
+    detail.comments,
+    postedComments,
+  ).map((comment) =>
+    commentBodyOverrides[comment.id] !== undefined
+      ? { ...comment, body: commentBodyOverrides[comment.id] }
+      : comment,
+  );
+
   return (
     <ConsoleItemDetail
       item={item}
@@ -518,10 +544,10 @@ export const ConsoleItemDetailContainer = ({
       statusOptions={statusOptions}
       state={detail.state}
       stateError={detail.stateError}
-      body={detail.body}
+      body={displayedBody}
       bodyIsLoading={detail.bodyIsLoading}
       bodyError={detail.bodyError}
-      comments={mergePostedComments(detail.comments, postedComments)}
+      comments={displayedComments}
       commentsAreLoading={detail.commentsAreLoading}
       commentsError={detail.commentsError}
       files={detail.files}
