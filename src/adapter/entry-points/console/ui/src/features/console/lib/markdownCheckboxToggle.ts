@@ -59,12 +59,15 @@ export const isMarkdownCheckboxCheckedAtIndex = (
   let checkboxesSeen = 0;
   let checked: boolean | undefined;
 
-  forEachCheckboxLineOutsideFences(source.split('\n'), (_lineIndex, checkboxMatch) => {
-    if (checkboxesSeen === checkboxIndex) {
-      checked = checkboxMatch[2].toLowerCase() === 'x';
-    }
-    checkboxesSeen += 1;
-  });
+  forEachCheckboxLineOutsideFences(
+    source.split('\n'),
+    (_lineIndex, checkboxMatch) => {
+      if (checkboxesSeen === checkboxIndex) {
+        checked = checkboxMatch[2].toLowerCase() === 'x';
+      }
+      checkboxesSeen += 1;
+    },
+  );
 
   if (checked === undefined) {
     throw new Error(

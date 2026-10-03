@@ -174,9 +174,9 @@ describe('isMarkdownCheckboxCheckedAtIndex', () => {
   });
 
   it('throws an Error when checkboxIndex is out of range', () => {
-    expect(() =>
-      isMarkdownCheckboxCheckedAtIndex('- [ ] only one', 1),
-    ).toThrow(Error);
+    expect(() => isMarkdownCheckboxCheckedAtIndex('- [ ] only one', 1)).toThrow(
+      Error,
+    );
   });
 
   it('throws an Error when checkboxIndex is negative', () => {
