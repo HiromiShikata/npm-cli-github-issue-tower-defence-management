@@ -94,6 +94,21 @@ describe('ConsoleClipboardCopyButton', () => {
     expect(getByRole('button')).toHaveTextContent('Copy failed');
   });
 
+  it('shows a failed state when the clipboard api rejects even though the document selection command would succeed', async () => {
+    writeText.mockRejectedValueOnce(new Error('denied'));
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: jest.fn().mockReturnValue(true),
+    });
+    const { getByRole } = renderButton();
+
+    await act(async () => {
+      fireEvent.click(getByRole('button'));
+    });
+
+    expect(getByRole('button')).toHaveTextContent('Copy failed');
+  });
+
   it('applies the given class name to the rendered button', () => {
     const { getByRole } = renderButton();
     expect(getByRole('button')).toHaveClass('console-copy-code-button');
