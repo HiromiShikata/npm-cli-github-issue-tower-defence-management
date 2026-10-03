@@ -1035,6 +1035,43 @@ describe('resumableSessionSelect', () => {
     ]);
   });
 
+  it('resumes the resuming worktree directory own copy of a session id when a stopped worker left an unarchived copy of that same session id in the worktree it was resuming from', () => {
+    const layout = sessionDirectoryLayoutCreate(
+      'stopped-worker-leftover-same-session-id',
+    );
+    transcriptFileWrite({
+      directory: layout.sessionDir,
+      sessionId: firstByNameSessionId,
+      lines: resumableTranscriptLines(firstByNameSessionId),
+      modificationTimeSeconds: newerModificationTimeSeconds,
+    });
+    transcriptFileWrite({
+      directory: layout.otherSessionDir,
+      sessionId: firstByNameSessionId,
+      lines: resumableTranscriptLines(firstByNameSessionId),
+      modificationTimeSeconds: newestModificationTimeSeconds,
+    });
+
+    const output = resumableSessionSelect({
+      sessionName,
+      sessionDir: layout.sessionDir,
+      otherSessionDirs: [layout.otherSessionDir],
+      archiveRoot: layout.archiveRoot,
+    });
+
+    expect(output).toEqual({
+      stdout: firstByNameSessionId,
+      stderrLines: [],
+      exitCode: 0,
+    });
+    expect(directoryEntryNames(layout.sessionDir)).toEqual([
+      `${firstByNameSessionId}.jsonl`,
+    ]);
+    expect(directoryEntryNames(layout.otherSessionDir)).toEqual([
+      `${firstByNameSessionId}.jsonl`,
+    ]);
+  });
+
   it('starts a new claude session without copying when the only match in another session directory is not resumable', () => {
     const cases: {
       description: string;
