@@ -206,3 +206,69 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
     }, 60000);
   });
 });
+
+describe('computeCleanupStoryListAfterSelfAddition (local pure-function contract for the updateStoryList cleanup write-back)', () => {
+  const baselineOptions: FieldOption[] = [
+    { id: 'af410dae', name: 'story1', color: 'GRAY', description: '' },
+    {
+      id: '696ccdef',
+      name: 'Workflow Management',
+      color: 'GRAY',
+      description: '',
+    },
+    { id: '4fa21881', name: 'test', color: 'GRAY', description: '' },
+  ];
+  const selfAddedOption = (uniqueSuffix: string): FieldOption => ({
+    id: `self-${uniqueSuffix}`,
+    name: `test-story-graphql-${uniqueSuffix}`,
+    color: 'BLUE',
+    description: 'created by graphql unit test',
+  });
+
+  const cases: {
+    name: string;
+    currentLiveOptions: FieldOption[];
+    uniqueSuffix: string;
+    expected: FieldOption[];
+  }[] = [
+    {
+      name: "removes only this run's own option, leaving the live baseline untouched",
+      currentLiveOptions: [...baselineOptions, selfAddedOption('runsuffix1')],
+      uniqueSuffix: 'runsuffix1',
+      expected: baselineOptions,
+    },
+    {
+      name: "preserves a concurrent run's own option while removing only this run's own",
+      currentLiveOptions: [
+        ...baselineOptions,
+        selfAddedOption('runsuffix2'),
+        selfAddedOption('concurrentrunsuffix'),
+      ],
+      uniqueSuffix: 'runsuffix2',
+      expected: [...baselineOptions, selfAddedOption('concurrentrunsuffix')],
+    },
+    {
+      name: 'returns the live list unchanged when no option carries the given uniqueSuffix',
+      currentLiveOptions: baselineOptions,
+      uniqueSuffix: 'suffix-never-added',
+      expected: baselineOptions,
+    },
+    {
+      name: 'returns an empty list when the live read itself is empty',
+      currentLiveOptions: [],
+      uniqueSuffix: 'any-suffix',
+      expected: [],
+    },
+  ];
+
+  test.each(cases)(
+    '$name',
+    ({ currentLiveOptions, uniqueSuffix, expected }) => {
+      const result = computeCleanupStoryListAfterSelfAddition(
+        currentLiveOptions,
+        uniqueSuffix,
+      );
+      expect(result).toEqual(expected);
+    },
+  );
+});
