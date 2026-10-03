@@ -1,3 +1,10 @@
+## [2.161.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.4...v2.161.5) (2026-10-03)
+
+
+### Bug Fixes
+
+* **OwnerRepliedIssueRevertUseCase:** return an Awaiting Owner issue to Awaiting Workspace when the owner replied, on every cycle ([#3154](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3154)) ([c63e0d6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c63e0d6dc29e3e8e949a871213433d7445fcf5e3))
+
 ## [2.161.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.3...v2.161.4) (2026-10-03)
 
 
