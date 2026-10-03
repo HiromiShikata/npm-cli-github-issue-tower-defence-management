@@ -67,26 +67,41 @@ export const consoleAutomaticProjectNavigationDecide = (
   if (!input.snapshotsReady) {
     return unchanged;
   }
-  if (input.evaluatedPjcode === input.pjcode) {
+
+  const pjcodesWithMinutes = input.pjcodes.filter(
+    (code) => (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
+  );
+  const highestSkipCountASwitchDecisionCanProduce = Math.max(
+    pjcodesWithMinutes.length - 1,
+    0,
+  );
+  const currentProjectWasJustSwitchedAwayFromOnThePriorCall =
+    input.evaluatedPjcode === input.pjcode &&
+    input.skipCount >= 1 &&
+    input.skipCount <= highestSkipCountASwitchDecisionCanProduce;
+  if (currentProjectWasJustSwitchedAwayFromOnThePriorCall) {
     return unchanged;
   }
+
   if (!input.remainingCountIsZero) {
     return { targetPjcode: null, nextSkipCount: 0, nextEvaluatedPjcode: null };
   }
   if (input.taskOpen) {
     return unchanged;
   }
-  if (input.explicitlySelectedPjcodeMatchesCurrent) {
-    return unchanged;
-  }
   if (input.pjcodes.length === 0) {
     return unchanged;
   }
 
-  const pjcodesWithMinutes = input.pjcodes.filter(
-    (code) => (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
-  );
-  if (input.skipCount >= pjcodesWithMinutes.length - 1) {
+  const skipCountForThisReEvaluation =
+    input.evaluatedPjcode === input.pjcode ||
+    input.explicitlySelectedPjcodeMatchesCurrent
+      ? 0
+      : input.skipCount;
+
+  if (
+    skipCountForThisReEvaluation >= highestSkipCountASwitchDecisionCanProduce
+  ) {
     return {
       targetPjcode: null,
       nextSkipCount: 0,
@@ -102,7 +117,7 @@ export const consoleAutomaticProjectNavigationDecide = (
   if (nextPjcode !== null) {
     return {
       targetPjcode: nextPjcode,
-      nextSkipCount: input.skipCount + 1,
+      nextSkipCount: skipCountForThisReEvaluation + 1,
       nextEvaluatedPjcode: input.pjcode,
     };
   }
