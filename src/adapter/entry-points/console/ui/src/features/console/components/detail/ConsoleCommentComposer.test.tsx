@@ -694,6 +694,7 @@ describe('ConsoleCommentComposer', () => {
         }),
     );
     const onSubmit = jest.fn(async (body: string): Promise<ConsoleComment> => ({
+      id: 2,
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -735,6 +736,7 @@ describe('ConsoleCommentComposer', () => {
     );
     const onSubmitAndMoveToAwaitingWorkspace = jest.fn(
       async (body: string): Promise<ConsoleComment> => ({
+        id: 3,
         author: 'HiromiShikata',
         body,
         createdAt: '2026-06-19T11:58:00.000Z',
