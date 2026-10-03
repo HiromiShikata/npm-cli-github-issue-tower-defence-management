@@ -16,7 +16,7 @@ export const issueHasUnansweredOwnerConfirmationRequest = (
   }
   const hasReplyAfterReport = comments.some(
     (comment) =>
-      comment.updatedAt.getTime() > lastAgentReport.updatedAt.getTime() &&
+      comment.updatedAt.getTime() > lastAgentReport.createdAt.getTime() &&
       isHumanComment(comment, isTrustedAuthor),
   );
   return !hasReplyAfterReport;
