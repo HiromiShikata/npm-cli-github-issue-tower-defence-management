@@ -860,6 +860,58 @@ describe('useConsoleOperations', () => {
         body: '- [x] rewritten body',
       });
     });
+
+    it('invalidates the operated item body and comments cache after a successful update', async () => {
+      captureFetch();
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await result.current.operations.issueBodyUpdate(
+          issueItem,
+          '- [x] rewritten body',
+        );
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
+
+    it('invalidates the operated item cache and rejects when the update fails', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 500,
+        text: async () => 'upstream refused',
+      })) as unknown as typeof fetch;
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await expect(
+          result.current.operations.issueBodyUpdate(
+            issueItem,
+            '- [x] rewritten body',
+          ),
+        ).rejects.toThrow();
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
   });
 
   describe('issueCommentBodyUpdate', () => {
@@ -879,6 +931,60 @@ describe('useConsoleOperations', () => {
         commentId: 4242,
         body: '- [x] rewritten comment body',
       });
+    });
+
+    it('invalidates the operated item body and comments cache after a successful update', async () => {
+      captureFetch();
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await result.current.operations.issueCommentBodyUpdate(
+          issueItem,
+          4242,
+          '- [x] rewritten comment body',
+        );
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
+
+    it('invalidates the operated item cache and rejects when the update fails', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 500,
+        text: async () => 'upstream refused',
+      })) as unknown as typeof fetch;
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await expect(
+          result.current.operations.issueCommentBodyUpdate(
+            issueItem,
+            4242,
+            '- [x] rewritten comment body',
+          ),
+        ).rejects.toThrow();
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
     });
   });
 });

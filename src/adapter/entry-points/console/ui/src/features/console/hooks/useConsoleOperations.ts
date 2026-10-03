@@ -472,20 +472,28 @@ export const useConsoleOperations = (
 
   const issueBodyUpdate = useCallback(
     async (item: ConsoleListItem, newBody: string) => {
-      await postConsoleIssueBodyUpdate({ issueUrl: item.url, body: newBody });
+      try {
+        await postConsoleIssueBodyUpdate({ issueUrl: item.url, body: newBody });
+      } finally {
+        invalidateItemContent(item);
+      }
     },
-    [],
+    [invalidateItemContent],
   );
 
   const issueCommentBodyUpdate = useCallback(
     async (item: ConsoleListItem, commentId: number, newBody: string) => {
-      await postConsoleIssueCommentBodyUpdate({
-        issueUrl: item.url,
-        commentId,
-        body: newBody,
-      });
+      try {
+        await postConsoleIssueCommentBodyUpdate({
+          issueUrl: item.url,
+          commentId,
+          body: newBody,
+        });
+      } finally {
+        invalidateItemContent(item);
+      }
     },
-    [],
+    [invalidateItemContent],
   );
 
   const deleteAllComments = useCallback(

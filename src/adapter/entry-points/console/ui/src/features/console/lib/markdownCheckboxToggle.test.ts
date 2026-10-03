@@ -1,3 +1,4 @@
+import { renderMarkdownToSafeHtml } from './markdown';
 import { toggleMarkdownCheckboxAtIndex } from './markdownCheckboxToggle';
 
 describe('toggleMarkdownCheckboxAtIndex', () => {
@@ -102,5 +103,44 @@ describe('toggleMarkdownCheckboxAtIndex', () => {
   it('throws an Error when checkboxIndex targets a checkbox-shaped line that only exists inside a fenced code block', () => {
     const source = '```\n- [ ] fake only\n```';
     expect(() => toggleMarkdownCheckboxAtIndex(source, 0)).toThrow(Error);
+  });
+
+  it('derives the same checkbox index order as renderMarkdownToSafeHtml, including a fenced-code-block decoy, for every index', () => {
+    const source = [
+      '- [ ] Alpha',
+      '- [x] Beta',
+      '  - [ ] Nested',
+      '```',
+      '- [ ] not a real checkbox',
+      '```',
+      '- [x] Gamma',
+    ].join('\n');
+
+    const renderedCheckedStates = (markdown: string): boolean[] => {
+      const container = document.createElement('div');
+      container.innerHTML = renderMarkdownToSafeHtml(markdown);
+      return Array.from(
+        container.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index]',
+        ),
+      )
+        .sort(
+          (a, b) =>
+            Number(a.dataset.checkboxIndex) - Number(b.dataset.checkboxIndex),
+        )
+        .map((el) => el.checked);
+    };
+
+    const beforeStates = renderedCheckedStates(source);
+    expect(beforeStates).toEqual([false, true, false, true]);
+
+    beforeStates.forEach((checkedBefore, checkboxIndex) => {
+      const toggled = toggleMarkdownCheckboxAtIndex(source, checkboxIndex);
+      const afterStates = renderedCheckedStates(toggled);
+      const expectedStates = beforeStates.map((checked, index) =>
+        index === checkboxIndex ? !checkedBefore : checked,
+      );
+      expect(afterStates).toEqual(expectedStates);
+    });
   });
 });
