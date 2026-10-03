@@ -1,3 +1,10 @@
+## [2.162.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.2...v2.162.3) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console:** make GFM task-list checkboxes interactive and persist toggles ([#3159](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3159)) ([dad7653](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dad76531f6e336689817010b84cf22d7f0ea9966)), closes [HiromiShikata/umino-corporait-operation#32946](https://github.com/HiromiShikata/umino-corporait-operation/issues/32946)
+
 ## [2.162.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.1...v2.162.2) (2026-10-03)
 
 
