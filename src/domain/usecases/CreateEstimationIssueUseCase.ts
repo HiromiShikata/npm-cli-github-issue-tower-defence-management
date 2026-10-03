@@ -13,6 +13,9 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
+export const ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX =
+  ' is removed to re-estimate.';
+
 export class CreateEstimationIssueUseCase {
   constructor(
     readonly issueRepository: Pick<
@@ -88,7 +91,7 @@ export class CreateEstimationIssueUseCase {
         ) {
           await this.createCommentWithDedup(
             issueInStory,
-            `\`${estimationMinutesField.name}\` field value \`${issueInStory.estimationMinutes}\` is removed to re-estimate.`,
+            `\`${estimationMinutesField.name}\` field value \`${issueInStory.estimationMinutes}\`${ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX}`,
           );
           try {
             await this.issueRepository.clearProjectField(
@@ -119,7 +122,7 @@ export class CreateEstimationIssueUseCase {
         ) {
           await this.createCommentWithDedup(
             issueInStory,
-            `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`,
+            `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\`${ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX}`,
           );
           try {
             await this.issueRepository.clearProjectField(
