@@ -80,6 +80,33 @@ describe('ConsoleInlineCodeCopy', () => {
     );
   });
 
+  it('shows a failed tooltip when the clipboard api rejects even though the document selection command would succeed, leaving the code text unchanged', async () => {
+    const code = 'npm run build';
+    const failingWriteText = jest.fn(async () => {
+      throw new Error('denied');
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: failingWriteText },
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: jest.fn().mockReturnValue(true),
+    });
+    const { getByRole } = render(<ConsoleInlineCodeCopy code={code} />);
+    const button = getByRole('button');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(button.textContent).toBe(code);
+    const status = getByRole('status');
+    expect(status.textContent).toBe('Copy failed');
+    expect(button).toHaveAttribute(
+      'aria-label',
+      'Copying to the clipboard failed',
+    );
+  });
+
   it('reverts to idle 1500ms after a copy, and a repeated click while the tooltip is showing restarts the timer instead of letting it expire on schedule', async () => {
     jest.useFakeTimers();
     try {

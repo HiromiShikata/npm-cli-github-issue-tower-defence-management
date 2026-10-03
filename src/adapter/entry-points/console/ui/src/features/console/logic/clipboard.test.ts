@@ -61,7 +61,7 @@ describe('copyTextToClipboard', () => {
     expect(document.body.childElementCount).toBe(childCountBefore);
   });
 
-  it('falls through to the document selection command when the clipboard api rejects', async () => {
+  it('rejects when the clipboard api rejects, even though the document selection command would succeed', async () => {
     setClipboard({
       writeText: jest.fn().mockRejectedValue(new Error('denied')),
     });
@@ -71,9 +71,9 @@ describe('copyTextToClipboard', () => {
       configurable: true,
     });
 
-    await copyTextToClipboard('value');
+    await expect(copyTextToClipboard('value')).rejects.toThrow('denied');
 
-    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(execCommand).not.toHaveBeenCalled();
   });
 
   it('rejects when neither the clipboard api nor the document selection command copies', async () => {

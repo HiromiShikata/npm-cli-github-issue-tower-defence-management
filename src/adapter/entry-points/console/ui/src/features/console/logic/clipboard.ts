@@ -20,15 +20,8 @@ const copyThroughDocumentSelection = (value: string): boolean => {
 export const copyTextToClipboard = async (value: string): Promise<void> => {
   const clipboard = navigator.clipboard;
   if (clipboard !== undefined && typeof clipboard.writeText === 'function') {
-    try {
-      await clipboard.writeText(value);
-      return;
-    } catch {
-      if (copyThroughDocumentSelection(value)) {
-        return;
-      }
-      throw new Error(CLIPBOARD_UNAVAILABLE_MESSAGE);
-    }
+    await clipboard.writeText(value);
+    return;
   }
   if (copyThroughDocumentSelection(value)) {
     return;
