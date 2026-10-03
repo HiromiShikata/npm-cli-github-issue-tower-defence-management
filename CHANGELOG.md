@@ -1,3 +1,10 @@
+## [2.161.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.3...v2.161.4) (2026-10-03)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** urgent-story launch hold free-slot count ignores pending token-launch reservations ([#3149](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3149)) ([1e97086](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1e970865a317d3e607a86675f14a6085e9a2ed0e)), closes [hi#priority](https://github.com/hi/issues/priority)
+
 ## [2.161.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.2...v2.161.3) (2026-10-03)
 
 
