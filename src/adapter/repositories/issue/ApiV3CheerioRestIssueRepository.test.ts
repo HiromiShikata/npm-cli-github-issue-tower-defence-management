@@ -563,34 +563,37 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
       localStorageCacheRepository.setSingle.mockResolvedValue();
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/1',
-            'Issue for option A',
-          ),
-          customFields: [
-            buildCustomFieldWithOptionId(
-              'Story',
-              'Duplicate Name',
-              'story-option-a',
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/1',
+              'Issue for option A',
             ),
-          ],
-        },
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/2',
-            'Issue for option B',
-          ),
-          customFields: [
-            buildCustomFieldWithOptionId(
-              'Story',
-              'Duplicate Name',
-              'story-option-b',
+            customFields: [
+              buildCustomFieldWithOptionId(
+                'Story',
+                'Duplicate Name',
+                'story-option-a',
+              ),
+            ],
+          },
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/2',
+              'Issue for option B',
             ),
-          ],
-        },
-      ]);
+            customFields: [
+              buildCustomFieldWithOptionId(
+                'Story',
+                'Duplicate Name',
+                'story-option-b',
+              ),
+            ],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
 
       const storyObjectMap = await repository.getStoryObjectMap(project);
 
@@ -616,7 +619,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('test-project-id');
@@ -643,7 +649,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('test-project-id'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -667,24 +676,27 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('test-project-id'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/10',
-            'umino / story alpha',
-          ),
-          labels: ['story'],
-          customFields: [{ name: 'story', value: 'umino / story alpha' }],
-        },
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/20',
-            'regular task',
-          ),
-          labels: [],
-          customFields: [{ name: 'story', value: 'umino / story alpha' }],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/10',
+              'umino / story alpha',
+            ),
+            labels: ['story'],
+            customFields: [{ name: 'story', value: 'umino / story alpha' }],
+          },
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/20',
+              'regular task',
+            ),
+            labels: [],
+            customFields: [{ name: 'story', value: 'umino / story alpha' }],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -725,16 +737,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       };
       projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/31124',
-            'find ma job',
-          ),
-          labels: ['story'],
-          customFields: [],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/31124',
+              'find ma job',
+            ),
+            labels: ['story'],
+            customFields: [],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -775,16 +790,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       };
       projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/31124',
-            'find ma job',
-          ),
-          labels: ['story'],
-          customFields: [{ name: 'story', value: 'regular / NO STORY' }],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/31124',
+              'find ma job',
+            ),
+            labels: ['story'],
+            customFields: [{ name: 'story', value: 'regular / NO STORY' }],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -825,16 +843,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       };
       projectRepository.getProject.mockResolvedValue(projectWithKnownStory);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(
-            'https://github.com/o/r/issues/99999',
-            'some unregistered story',
-          ),
-          labels: ['story'],
-          customFields: [],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(
+              'https://github.com/o/r/issues/99999',
+              'some unregistered story',
+            ),
+            labels: ['story'],
+            customFields: [],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -880,7 +901,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       };
       projectRepository.getProject.mockResolvedValue(projectWithStories);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -907,7 +931,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('test-project-id'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -943,9 +970,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -974,9 +1002,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        buildProjectItem(freshIssueUrl, 'Task Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [buildProjectItem(freshIssueUrl, 'Task Issue')],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
         ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
         labels: ['story'],
@@ -1009,9 +1038,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         null,
       );
@@ -1044,9 +1074,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
         ...buildProjectItem(archivedIssueUrl, 'Archived Issue'),
         isArchivedFromProject: true,
@@ -1077,9 +1108,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        buildProjectItem(freshIssueUrl, 'Fresh Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
         ...buildProjectItem(stillActiveIssueUrl, 'Live-Checked Title'),
         isArchivedFromProject: false,
@@ -1116,13 +1148,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(storyIssueUrl, 'Updated Story Title'),
-          labels: ['story'],
-          customFields: [{ name: 'story', value: 'regular / StoryA' }],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(storyIssueUrl, 'Updated Story Title'),
+            labels: ['story'],
+            customFields: [{ name: 'story', value: 'regular / StoryA' }],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -1148,20 +1183,105 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('proj-full'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
-          labels: ['story'],
-          customFields: [{ name: 'story', value: 'regular / StoryA' }],
-        },
-        buildProjectItem(freshIssueUrl, 'Task Issue'),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
+            labels: ['story'],
+            customFields: [{ name: 'story', value: 'regular / StoryA' }],
+          },
+          buildProjectItem(freshIssueUrl, 'Task Issue'),
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
       expect(result.issues.map((i) => i.url)).toContain(storyIssueUrl);
     });
+
+    type FullFetchLastFullFetchAtCase = {
+      name: string;
+      priorCachedLastFullFetchAt: string | null;
+      inconsistencyMessage: string | null;
+      expectedLastFullFetchAt: string;
+    };
+
+    const fullFetchLastFullFetchAtCases: FullFetchLastFullFetchAtCase[] = [
+      {
+        name: 'A1: no prior cache, consistent after retry writes the current time',
+        priorCachedLastFullFetchAt: null,
+        inconsistencyMessage: null,
+        expectedLastFullFetchAt: '2026-07-07T02:00:00.000Z',
+      },
+      {
+        name: 'A2: no prior cache, still inconsistent after retry writes the epoch fallback',
+        priorCachedLastFullFetchAt: null,
+        inconsistencyMessage:
+          'fetchProjectItems: still inconsistent after retry',
+        expectedLastFullFetchAt: '1970-01-01T00:00:00.000Z',
+      },
+      {
+        name: 'A3: prior cached timestamp, consistent after retry writes the current time',
+        priorCachedLastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        inconsistencyMessage: null,
+        expectedLastFullFetchAt: '2026-07-07T02:00:00.000Z',
+      },
+      {
+        name: 'A4: prior cached timestamp, still inconsistent after retry leaves it unchanged',
+        priorCachedLastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        inconsistencyMessage:
+          'fetchProjectItems: still inconsistent after retry',
+        expectedLastFullFetchAt: '2026-07-07T00:00:00.000Z',
+      },
+    ];
+
+    it.each(fullFetchLastFullFetchAtCases)(
+      'writes lastFullFetchAt according to the pagination inconsistency outcome: $name',
+      async ({
+        priorCachedLastFullFetchAt,
+        inconsistencyMessage,
+        expectedLastFullFetchAt,
+      }) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+          projectRepository,
+          dateRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+        localStorageCacheRepository.getSingle.mockResolvedValue(
+          priorCachedLastFullFetchAt === null
+            ? null
+            : {
+                lastFetchedAt: priorCachedLastFullFetchAt,
+                lastFullFetchAt: priorCachedLastFullFetchAt,
+                project: buildTestProject('proj-table-a'),
+                issues: [],
+                storyIssueUrlByOptionName: {},
+                storyOptions: [],
+              },
+        );
+        projectRepository.getProject.mockResolvedValue(
+          buildTestProject('proj-table-a'),
+        );
+        graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+          issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
+          inconsistencyMessage,
+        });
+        localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+        await repository.getAllIssues('proj-table-a');
+
+        const cacheWrite =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(cacheWrite).toMatchObject({
+          lastFullFetchAt: expectedLastFullFetchAt,
+        });
+      },
+    );
   });
 
   describe('get', () => {
@@ -1177,7 +1297,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         buildProjectItem('https://github.com/o/r/issues/1', 'live title'),
@@ -1296,18 +1419,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'item-fresh',
-          'https://github.com/o/r/issues/1',
-          '2026-07-07T00:40:00.000Z',
-        ),
-        buildLightItem(
-          'item-new',
-          'https://github.com/o/r/issues/2',
-          '2026-07-07T00:44:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'item-fresh',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:40:00.000Z',
+          ),
+          buildLightItem(
+            'item-new',
+            'https://github.com/o/r/issues/2',
+            '2026-07-07T00:44:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
         buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
         buildProjectItem('https://github.com/o/r/issues/2', 'new issue'),
@@ -1373,18 +1499,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'item-fresh',
-          'https://github.com/o/r/issues/1',
-          '2026-07-07T00:40:00.000Z',
-        ),
-        buildLightItem(
-          'item-deleted',
-          'https://github.com/o/r/issues/2',
-          '2026-07-07T00:44:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'item-fresh',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:40:00.000Z',
+          ),
+          buildLightItem(
+            'item-deleted',
+            'https://github.com/o/r/issues/2',
+            '2026-07-07T00:44:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
         buildProjectItem('https://github.com/o/r/issues/1', 'fresh title'),
       ]);
@@ -1426,28 +1555,31 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'wellBefore',
-          'https://github.com/o/r/issues/1',
-          '2026-07-07T00:20:00.000Z',
-        ),
-        buildLightItem(
-          'withinBuffer',
-          'https://github.com/o/r/issues/2',
-          '2026-07-07T00:27:00.000Z',
-        ),
-        buildLightItem(
-          'atLastFetched',
-          'https://github.com/o/r/issues/3',
-          '2026-07-07T00:30:00.000Z',
-        ),
-        buildLightItem(
-          'after',
-          'https://github.com/o/r/issues/4',
-          '2026-07-07T00:40:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'wellBefore',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:20:00.000Z',
+          ),
+          buildLightItem(
+            'withinBuffer',
+            'https://github.com/o/r/issues/2',
+            '2026-07-07T00:27:00.000Z',
+          ),
+          buildLightItem(
+            'atLastFetched',
+            'https://github.com/o/r/issues/3',
+            '2026-07-07T00:30:00.000Z',
+          ),
+          buildLightItem(
+            'after',
+            'https://github.com/o/r/issues/4',
+            '2026-07-07T00:40:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
@@ -1476,18 +1608,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'previousDay',
-          'https://github.com/o/r/issues/1',
-          '2026-07-06T23:58:00.000Z',
-        ),
-        buildLightItem(
-          'beforeBuffer',
-          'https://github.com/o/r/issues/2',
-          '2026-07-06T23:55:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'previousDay',
+            'https://github.com/o/r/issues/1',
+            '2026-07-06T23:58:00.000Z',
+          ),
+          buildLightItem(
+            'beforeBuffer',
+            'https://github.com/o/r/issues/2',
+            '2026-07-06T23:55:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
@@ -1524,13 +1659,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'stale',
-          'https://github.com/o/r/issues/1',
-          '2026-07-07T00:10:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'stale',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:10:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -1567,7 +1705,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
       const freshProject = buildTestProject('fresh-project');
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -1616,7 +1757,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -1671,7 +1815,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -1727,7 +1874,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(projectWithFindMaJob);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -1773,7 +1923,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       };
       projectRepository.getProject.mockResolvedValue(projectWithStories);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -1812,13 +1965,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([
-        buildLightItem(
-          'item-new',
-          'https://github.com/o/r/issues/2',
-          '2026-07-07T00:44:00.000Z',
-        ),
-      ]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'item-new',
+            'https://github.com/o/r/issues/2',
+            '2026-07-07T00:44:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
         buildProjectItem('https://github.com/o/r/issues/2', 'new issue'),
       ]);
@@ -1830,6 +1986,65 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItemByUrl,
       ).not.toHaveBeenCalled();
     });
+
+    type IncrementalFetchLastFetchedAtCase = {
+      name: string;
+      inconsistencyMessage: string | null;
+      expectedLastFetchedAt: string;
+    };
+
+    const incrementalFetchLastFetchedAtCases: IncrementalFetchLastFetchedAtCase[] =
+      [
+        {
+          name: 'B1: consistent after retry writes the current time',
+          inconsistencyMessage: null,
+          expectedLastFetchedAt: '2026-07-07T00:45:00.000Z',
+        },
+        {
+          name: 'B2: still inconsistent after retry leaves it unchanged',
+          inconsistencyMessage:
+            'fetchProjectItemsLight: still inconsistent after retry',
+          expectedLastFetchedAt: '2026-07-07T00:30:00.000Z',
+        },
+      ];
+
+    it.each(incrementalFetchLastFetchedAtCases)(
+      'writes lastFetchedAt according to the light-fetch pagination inconsistency outcome: $name',
+      async ({ inconsistencyMessage, expectedLastFetchedAt }) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+          projectRepository,
+          dateRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+        localStorageCacheRepository.getSingle.mockResolvedValue({
+          lastFetchedAt: '2026-07-07T00:30:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+          project: buildTestProject('cached-project'),
+          issues: [],
+          storyIssueUrlByOptionName: {},
+          storyOptions: [],
+        });
+        projectRepository.getProject.mockResolvedValue(
+          buildTestProject('cached-project'),
+        );
+        graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+          lightItems: [],
+          inconsistencyMessage,
+        });
+        localStorageCacheRepository.setSingle.mockResolvedValue();
+
+        await repository.getAllIssues('cached-project');
+
+        const cacheWrite =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(cacheWrite).toMatchObject({
+          lastFetchedAt: expectedLastFetchedAt,
+        });
+      },
+    );
   });
 
   describe('getAllIssues story option rename detection', () => {
@@ -1874,7 +2089,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
       });
       projectRepository.getProject.mockResolvedValue(cachedProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -1906,7 +2124,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -1949,8 +2170,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [staleSchemaIssue],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2013,7 +2240,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2050,7 +2280,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2083,7 +2316,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2117,7 +2353,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
       });
       projectRepository.getProject.mockResolvedValue(freshProject);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -2150,7 +2389,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockRejectedValue(
         new Error('network error'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2208,7 +2450,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           { name: 'NetworkError' },
         ),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       const result = await repository.getAllIssues('cached-project');
@@ -2262,7 +2507,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('test-project-id'),
       );
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('test-project-id');
@@ -2290,7 +2538,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
       );
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
 
       await repository.getAllIssues('cached-project');
@@ -2433,13 +2684,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem('https://github.com/o/r/issues/1', 'Issue 1'),
-          id: 'item-1',
-          customFields: [{ name: 'status', value: 'Awaiting Workspace' }],
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem('https://github.com/o/r/issues/1', 'Issue 1'),
+            id: 'item-1',
+            customFields: [{ name: 'status', value: 'Awaiting Workspace' }],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
 
@@ -10418,24 +10672,27 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             : null,
       );
       created.projectRepository.getProject.mockResolvedValue(project);
-      created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(dependentIssueUrl, 'Dependent'),
-          customFields: [
-            { name: 'Status', value: 'Awaiting Workspace' },
-            buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
-            { name: dependedFieldName, value: blockerIssueUrl },
-          ],
-        },
-        {
-          ...buildProjectItem(blockerIssueUrl, 'Blocker'),
-          state: blockerState,
-          customFields: [
-            { name: 'Status', value: 'Done' },
-            buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
-          ],
-        },
-      ]);
+      created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(dependentIssueUrl, 'Dependent'),
+            customFields: [
+              { name: 'Status', value: 'Awaiting Workspace' },
+              buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
+              { name: dependedFieldName, value: blockerIssueUrl },
+            ],
+          },
+          {
+            ...buildProjectItem(blockerIssueUrl, 'Blocker'),
+            state: blockerState,
+            customFields: [
+              { name: 'Status', value: 'Done' },
+              buildCustomFieldWithOptionId('Story', storyName, storyOptionId),
+            ],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
       created.graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
       created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
       created.restIssueRepository.createComment.mockImplementation(
@@ -10991,13 +11248,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       processA.projectRepository.getProject.mockResolvedValue(project);
       processA.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-        [
-          buildLightItem(
-            'item-processA',
-            'https://github.com/o/r/issues/200',
-            '2026-07-07T00:44:00.000Z',
-          ),
-        ],
+        {
+          lightItems: [
+            buildLightItem(
+              'item-processA',
+              'https://github.com/o/r/issues/200',
+              '2026-07-07T00:44:00.000Z',
+            ),
+          ],
+          inconsistencyMessage: null,
+        },
       );
       processA.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
         [
@@ -11014,13 +11274,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       processB.projectRepository.getProject.mockResolvedValue(project);
       processB.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-        [
-          buildLightItem(
-            'item-processB',
-            'https://github.com/o/r/issues/201',
-            '2026-07-07T00:44:30.000Z',
-          ),
-        ],
+        {
+          lightItems: [
+            buildLightItem(
+              'item-processB',
+              'https://github.com/o/r/issues/201',
+              '2026-07-07T00:44:30.000Z',
+            ),
+          ],
+          inconsistencyMessage: null,
+        },
       );
       processB.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
         [
@@ -11064,12 +11327,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       processA.projectRepository.getProject.mockResolvedValue(project);
       processA.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
-        [
-          buildProjectItem(
-            'https://github.com/o/r/issues/300',
-            'processA-issue',
-          ),
-        ],
+        {
+          issues: [
+            buildProjectItem(
+              'https://github.com/o/r/issues/300',
+              'processA-issue',
+            ),
+          ],
+          inconsistencyMessage: null,
+        },
       );
 
       const processB = buildProcessRepository(cache);
@@ -11078,12 +11344,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       processB.projectRepository.getProject.mockResolvedValue(project);
       processB.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
-        [
-          buildProjectItem(
-            'https://github.com/o/r/issues/301',
-            'processB-issue',
-          ),
-        ],
+        {
+          issues: [
+            buildProjectItem(
+              'https://github.com/o/r/issues/301',
+              'processB-issue',
+            ),
+          ],
+          inconsistencyMessage: null,
+        },
       );
 
       await Promise.all([
@@ -11132,7 +11401,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           callOrder.push('fetch');
-          return [];
+          return { issues: [], inconsistencyMessage: null };
         },
       );
 
@@ -11208,13 +11477,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            {
-              ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
-              id: staleItemId,
-            },
-            buildProjectItem(newIssueUrl, 'new issue'),
-          ];
+          return {
+            issues: [
+              {
+                ...buildProjectItem(staleIssueUrl, 'stale issue refetched'),
+                id: staleItemId,
+              },
+              buildProjectItem(newIssueUrl, 'new issue'),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
 
@@ -11278,18 +11550,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItemsLight.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            buildLightItem(
-              staleItemId,
-              staleIssueUrl,
-              '2026-07-07T00:44:00.000Z',
-            ),
-            buildLightItem(
-              'item-new-incremental-fetch',
-              newIssueUrl,
-              '2026-07-07T00:44:30.000Z',
-            ),
-          ];
+          return {
+            lightItems: [
+              buildLightItem(
+                staleItemId,
+                staleIssueUrl,
+                '2026-07-07T00:44:00.000Z',
+              ),
+              buildLightItem(
+                'item-new-incremental-fetch',
+                newIssueUrl,
+                '2026-07-07T00:44:30.000Z',
+              ),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
@@ -11356,12 +11631,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       graphqlProjectItemRepository.fetchProjectItems.mockImplementation(
         async () => {
           await wait(80);
-          return [
-            buildProjectItem(
-              preExistingIssueUrl,
-              'pre-existing issue refetched',
-            ),
-          ];
+          return {
+            issues: [
+              buildProjectItem(
+                preExistingIssueUrl,
+                'pre-existing issue refetched',
+              ),
+            ],
+            inconsistencyMessage: null,
+          };
         },
       );
 
@@ -11456,12 +11734,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         await wait(80);
         return project;
       });
-      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
-        {
-          ...buildProjectItem(existingIssueUrl, 'existing issue'),
-          id: existingItemId,
-        },
-      ]);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem(existingIssueUrl, 'existing issue'),
+            id: existingItemId,
+          },
+        ],
+        inconsistencyMessage: null,
+      });
 
       const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
         await wait(1);
@@ -11541,7 +11822,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         await wait(80);
         return project;
       });
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
 
       const updateFieldOptionsOnceFetchHasStarted = async (): Promise<void> => {
         await wait(1);
@@ -11591,15 +11875,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           cachedIssueItemId: string;
         }): void => {
           params.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
-            [
-              {
-                ...buildProjectItem(
-                  params.cachedIssueUrl,
-                  params.cachedIssueTitle,
-                ),
-                id: params.cachedIssueItemId,
-              },
-            ],
+            {
+              issues: [
+                {
+                  ...buildProjectItem(
+                    params.cachedIssueUrl,
+                    params.cachedIssueTitle,
+                  ),
+                  id: params.cachedIssueItemId,
+                },
+              ],
+              inconsistencyMessage: null,
+            },
           );
         },
       },
@@ -11622,7 +11909,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           >['graphqlProjectItemRepository'];
         }): void => {
           params.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-            [],
+            { lightItems: [], inconsistencyMessage: null },
           );
         },
       },
@@ -12208,7 +12495,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       processRepository.projectRepository.getProject.mockResolvedValue(project);
       processRepository.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
-        [],
+        { lightItems: [], inconsistencyMessage: null },
       );
       processRepository.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
         [],
@@ -12993,7 +13280,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
@@ -13082,7 +13372,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.clearProjectField.mockRejectedValue(
@@ -13157,7 +13450,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
       projectRepository.getProject.mockResolvedValue(project);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.updateProjectTextField.mockRejectedValue(
@@ -13261,7 +13557,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
       projectRepository.getProject.mockResolvedValue(storyProjectForStaleTest);
-      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
       graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue();
       graphqlProjectItemRepository.updateProjectField.mockRejectedValue(

@@ -33,6 +33,14 @@ export type ProjectItemLight = {
   url: string;
   number: number;
 };
+export type FetchProjectItemsResult = {
+  issues: ProjectItem[];
+  inconsistencyMessage: string | null;
+};
+export type FetchProjectItemsLightResult = {
+  lightItems: ProjectItemLight[];
+  inconsistencyMessage: string | null;
+};
 type ProjectV2ItemFieldValueNode = {
   text?: string;
   number?: number;
@@ -429,7 +437,7 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchProjectItems = async (
     projectId: string,
     query?: string,
-  ): Promise<ProjectItem[]> => {
+  ): Promise<FetchProjectItemsResult> => {
     const graphqlQueryString = `
 query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: String) {
   node(id: $projectId) {
@@ -697,19 +705,19 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     };
     const firstAttempt = await fetchAllPages();
     if (firstAttempt.inconsistencyMessage === null) {
-      return firstAttempt.issues;
+      return firstAttempt;
     }
     console.warn(
       `${firstAttempt.inconsistencyMessage}, retrying full fetch once`,
     );
     const retryAttempt = await fetchAllPages();
     if (retryAttempt.inconsistencyMessage === null) {
-      return retryAttempt.issues;
+      return retryAttempt;
     }
     console.warn(
       `${retryAttempt.inconsistencyMessage}, continuing with accumulated items after retry`,
     );
-    return retryAttempt.issues;
+    return retryAttempt;
   };
   private extractPlainCrossRepoIssueReferenceUrls = (
     body: string | null,
@@ -788,7 +796,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
   fetchProjectItemsLight = async (
     projectId: string,
     query?: string,
-  ): Promise<ProjectItemLight[]> => {
+  ): Promise<FetchProjectItemsLightResult> => {
     const graphqlQueryString = `
 query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query: String) {
   node(id: $projectId) {
@@ -938,19 +946,19 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
     };
     const firstAttempt = await fetchAllLightPages();
     if (firstAttempt.inconsistencyMessage === null) {
-      return firstAttempt.lightItems;
+      return firstAttempt;
     }
     console.warn(
       `${firstAttempt.inconsistencyMessage}, retrying full fetch once`,
     );
     const retryAttempt = await fetchAllLightPages();
     if (retryAttempt.inconsistencyMessage === null) {
-      return retryAttempt.lightItems;
+      return retryAttempt;
     }
     console.warn(
       `${retryAttempt.inconsistencyMessage}, continuing with accumulated items after retry`,
     );
-    return retryAttempt.lightItems;
+    return retryAttempt;
   };
   fetchProjectItemsByIds = async (ids: string[]): Promise<ProjectItem[]> => {
     if (ids.length === 0) {

@@ -1274,8 +1274,10 @@ export class ApiV3CheerioRestIssueRepository
       const itemIdsKnownBeforeFetch = new Set(
         cache?.issues.map((issue) => issue.itemId) ?? [],
       );
-      const items =
-        await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
+      const {
+        issues: items,
+        inconsistencyMessage: fullFetchInconsistencyMessage,
+      } = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
       const cachedIssuesKnownBeforeFetch = cache?.issues ?? [];
       const itemIdsPresentInFetchResult = new Set(items.map((item) => item.id));
       const issuesAbsentFromFetchResult = cachedIssuesKnownBeforeFetch.filter(
@@ -1321,7 +1323,10 @@ export class ApiV3CheerioRestIssueRepository
               );
             await this.projectIssuesCacheRepository.write(projectId, {
               lastFetchedAt: nowIso,
-              lastFullFetchAt: nowIso,
+              lastFullFetchAt:
+                fullFetchInconsistencyMessage === null
+                  ? nowIso
+                  : (cache?.lastFullFetchAt ?? '1970-01-01T00:00:00.000Z'),
               project: mergedProject,
               issues: reconciledIssues,
               storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(
@@ -1348,7 +1353,7 @@ export class ApiV3CheerioRestIssueRepository
     const cutoff = new Date(
       lastFetchedAt.getTime() - INCREMENTAL_FETCH_SKEW_BUFFER_MS,
     );
-    const lightItems =
+    const { lightItems, inconsistencyMessage: lightFetchInconsistencyMessage } =
       await this.graphqlProjectItemRepository.fetchProjectItemsLight(
         projectId,
         `updated:>=${this.toDateString(cutoff)}`,
@@ -1379,7 +1384,10 @@ export class ApiV3CheerioRestIssueRepository
             project,
           );
         await this.projectIssuesCacheRepository.write(projectId, {
-          lastFetchedAt: nowIso,
+          lastFetchedAt:
+            lightFetchInconsistencyMessage === null
+              ? nowIso
+              : cache.lastFetchedAt,
           lastFullFetchAt: freshCache?.lastFullFetchAt ?? cache.lastFullFetchAt,
           project: mergedProject,
           issues: mergedIssues,
