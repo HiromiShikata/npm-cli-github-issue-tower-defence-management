@@ -1544,6 +1544,81 @@ describe('ConsolePage awaiting owner list visibility setting', () => {
       ).toHaveAttribute('aria-checked', 'true');
     });
   });
+
+  it('keeps the toggle off and Max settings open with an error when turning the switch off and the max settings save fails', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.startsWith('/api/comments')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comments: [
+              {
+                author: 'bot',
+                body: AWAITING_OWNER_LIST_VISIBILITY_COMMENT_BODY,
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (url === '/api/projectsettings') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => 'Internal Server Error',
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getByText, getByRole, getByLabelText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    const toggle = await waitFor(() =>
+      getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+    );
+    fireEvent.click(toggle);
+    fireEvent.click(getByLabelText('Save max settings'));
+
+    await waitFor(() => {
+      expect(getByRole('alert').textContent).toBe('Internal Server Error');
+    });
+
+    expect(getByRole('dialog', { name: 'Max settings' })).toBeInTheDocument();
+    expect(
+      getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+    ).toHaveAttribute('aria-checked', 'false');
+  });
 });
 
 describe('ConsolePage scroll reset', () => {
