@@ -141,6 +141,7 @@ describe('SubscriptionDisabledIssueUseCase', () => {
       mockIssueRepository.createCommentByUrl
         .mockRejectedValueOnce(transientError)
         .mockResolvedValueOnce({
+          id: 1,
           author: '',
           body: 'restored',
           createdAt: new Date(0),
@@ -189,6 +190,7 @@ describe('SubscriptionDisabledIssueUseCase', () => {
         .mockResolvedValueOnce([])
         .mockImplementationOnce(async () => [
           {
+            id: 2,
             author: 'bot',
             body:
               mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',

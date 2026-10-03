@@ -1612,11 +1612,13 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
   const multiCommentHarness = await startConsoleE2eHarness({
     getIssueOrPullRequestComments: async () => [
       {
+        id: 1,
         author: 'reviewer',
         body: 'First review comment.\n\nSecond paragraph detail.',
         createdAt: new Date('2026-06-17T06:12:40.000Z'),
       },
       {
+        id: 2,
         author: 'HiromiShikata',
         body: 'Acknowledged.',
         createdAt: new Date('2026-06-17T09:00:00.000Z'),
@@ -1704,6 +1706,7 @@ test.describe('expanded comment body renders github images through the image pro
     commentHarness = await startConsoleE2eHarness({
       getIssueOrPullRequestComments: async () => [
         {
+          id: 1,
           author: 'HiromiShikata',
           body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
           createdAt: new Date('2026-09-06T12:00:00.000Z'),
@@ -1872,6 +1875,87 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
   await expect(input).not.toBeVisible();
   const titleText = page.locator('.console-detail-title-text');
   await expect(titleText).toContainText('Updated task title');
+});
+
+test('toggles a body checkbox and persists the change through updateIssueBody', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by human').click();
+  await itemRowByText(
+    page,
+    'Auto-advance to the next non-empty console tab when one empties',
+  ).click();
+
+  await expect(page.locator('.console-comment')).toBeVisible({
+    timeout: 10000,
+  });
+  await page
+    .locator('.console-panel-toggle', { hasText: 'Description' })
+    .click();
+
+  const checkbox = page.locator(
+    '.console-detail-body input[type="checkbox"][data-checkbox-index="0"]',
+  );
+  await expect(checkbox).toBeVisible();
+  await checkbox.click();
+  await expect(checkbox).toBeChecked();
+
+  await expect
+    .poll(
+      () =>
+        harness.updateIssueBodyCalls.some(
+          (c) =>
+            c.issueUrl.includes('/issues/869') &&
+            c.newBody.includes('- [x] Alpha'),
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+});
+
+test('toggles a comment checkbox and persists the change through updateIssueCommentBody', async ({
+  page,
+}) => {
+  const checkboxCommentHarness = await startConsoleE2eHarness({
+    getIssueOrPullRequestComments: async () => [
+      {
+        id: 501,
+        author: 'HiromiShikata',
+        body: '- [ ] Review done',
+        createdAt: new Date('2026-06-17T06:12:40.000Z'),
+      },
+    ],
+  });
+  try {
+    await page.goto(checkboxCommentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+
+    const checkbox = page.locator(
+      '.console-comment-body-expanded input[type="checkbox"][data-checkbox-index="0"]',
+    );
+    await expect(checkbox).toBeVisible();
+    await checkbox.click();
+    await expect(checkbox).toBeChecked();
+
+    await expect
+      .poll(
+        () =>
+          checkboxCommentHarness.updateIssueCommentBodyCalls.some(
+            (c) =>
+              c.commentId === 501 && c.newBody.includes('- [x] Review done'),
+          ),
+        { timeout: 10000 },
+      )
+      .toBe(true);
+  } finally {
+    await checkboxCommentHarness.stop();
+  }
 });
 
 test('creates a workflow improvement issue from a comment when the + button is clicked', async ({

@@ -33,7 +33,7 @@ const AGENT_BODY = `## エグゼクティブサマリ / Executive Summary
 From: :robot: agent (model)`;
 
 const makeComments = (body: string): ConsoleComment[] => [
-  { author: 'bot', body, createdAt: '2026-08-31T01:00:00.000Z' },
+  { id: 1, author: 'bot', body, createdAt: '2026-08-31T01:00:00.000Z' },
 ];
 
 describe('useConsolePrsTabSummaries', () => {

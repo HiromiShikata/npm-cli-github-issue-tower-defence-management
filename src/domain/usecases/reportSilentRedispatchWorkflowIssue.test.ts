@@ -129,6 +129,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     mockIssueRepository.createCommentByUrl
       .mockRejectedValueOnce(transientError)
       .mockResolvedValueOnce({
+        id: 1,
         author: '',
         body: 'accounting',
         createdAt: new Date(0),
@@ -171,6 +172,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       .mockResolvedValueOnce([])
       .mockImplementationOnce(async () => [
         {
+          id: 2,
           author: 'bot',
           body: mockIssueRepository.createCommentByUrl.mock.calls[0]?.[1] ?? '',
           createdAt: new Date(),

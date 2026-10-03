@@ -167,8 +167,9 @@ export type RelatedPullRequestWithSummary = {
 
 const serializeComments = (
   comments: IssueComment[],
-): { author: string; body: string; createdAt: string }[] =>
+): { id: number; author: string; body: string; createdAt: string }[] =>
   comments.map((comment) => ({
+    id: comment.id,
     author: comment.author,
     body: comment.body,
     createdAt: comment.createdAt.toISOString(),

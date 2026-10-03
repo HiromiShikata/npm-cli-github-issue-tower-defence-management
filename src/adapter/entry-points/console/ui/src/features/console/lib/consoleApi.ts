@@ -137,6 +137,7 @@ const parseComments = (payload: unknown): ConsoleComment[] => {
     return [];
   }
   return payload.comments.filter(isRecord).map((comment) => ({
+    id: getNumber(comment.id),
     author: getString(comment.author),
     body: getString(comment.body),
     createdAt: getString(comment.createdAt),
@@ -321,6 +322,7 @@ export type ConsoleCommentResult =
 const parseCommentRecord = (
   commentRecord: Record<string, unknown>,
 ): ConsoleComment => ({
+  id: getNumber(commentRecord.id),
   author: getString(commentRecord.author),
   body: getString(commentRecord.body),
   createdAt: getString(commentRecord.createdAt),
@@ -699,6 +701,47 @@ export const postConsoleIssueRename = async (
   request: ConsoleIssueRenameRequest,
 ): Promise<void> => {
   const response = await fetch(ISSUE_RENAME_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
+export const ISSUE_BODY_UPDATE_OPERATION_PATH = '/api/issuebody';
+
+export type ConsoleIssueBodyUpdateRequest = {
+  issueUrl: string;
+  body: string;
+};
+
+export const postConsoleIssueBodyUpdate = async (
+  request: ConsoleIssueBodyUpdateRequest,
+): Promise<void> => {
+  const response = await fetch(ISSUE_BODY_UPDATE_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
+export const ISSUE_COMMENT_BODY_UPDATE_OPERATION_PATH = '/api/issuecommentbody';
+
+export type ConsoleIssueCommentBodyUpdateRequest = {
+  issueUrl: string;
+  commentId: number;
+  body: string;
+};
+
+export const postConsoleIssueCommentBodyUpdate = async (
+  request: ConsoleIssueCommentBodyUpdateRequest,
+): Promise<void> => {
+  const response = await fetch(ISSUE_COMMENT_BODY_UPDATE_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

@@ -297,6 +297,7 @@ describe('CreateEstimationIssueUseCase', () => {
         .mockResolvedValueOnce([])
         .mockImplementationOnce(async () => [
           {
+            id: 1,
             author: 'bot',
             body: mockIssueRepository.createComment.mock.calls[0]?.[1] ?? '',
             createdAt: new Date(),

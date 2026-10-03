@@ -2,12 +2,14 @@ import { mergePostedComments } from './postedComments';
 import type { ConsoleComment } from './types';
 
 const loadedComment: ConsoleComment = {
+  id: 1,
   author: 'HiromiShikata',
   body: 'Loaded from GitHub.',
   createdAt: '2026-06-19T10:00:00.000Z',
 };
 
 const postedComment: ConsoleComment = {
+  id: 2,
   author: 'HiromiShikata',
   body: 'Posted from the console.',
   createdAt: '2026-06-19T11:58:00.000Z',

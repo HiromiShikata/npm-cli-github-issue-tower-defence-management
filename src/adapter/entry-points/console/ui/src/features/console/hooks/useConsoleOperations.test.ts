@@ -225,6 +225,7 @@ describe('useConsoleOperations', () => {
       json: async () => ({
         ok: true,
         comment: {
+          id: 11,
           author: 'HiromiShikata',
           body: 'Thanks for the parity fix.',
           createdAt: '2026-06-18T03:21:00.000Z',
@@ -249,6 +250,7 @@ describe('useConsoleOperations', () => {
       body: 'Thanks for the parity fix.',
     });
     expect(created).toEqual({
+      id: 11,
       author: 'HiromiShikata',
       body: 'Thanks for the parity fix.',
       createdAt: '2026-06-18T03:21:00.000Z',
@@ -617,6 +619,7 @@ describe('useConsoleOperations', () => {
           status: 200,
           json: async () => ({
             comment: {
+              id: 12,
               author: 'HiromiShikata',
               body: 'moving to workspace',
               createdAt: '2026-06-19T11:58:00.000Z',
@@ -655,6 +658,7 @@ describe('useConsoleOperations', () => {
       statusName: option.name,
     });
     expect(resolved).toEqual({
+      id: 12,
       author: 'HiromiShikata',
       body: 'moving to workspace',
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -838,5 +842,149 @@ describe('useConsoleOperations', () => {
     });
     expect(onAfterMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(callbackCalledAfterTriageCount).toBe(1);
+  });
+
+  describe('issueBodyUpdate', () => {
+    it('posts the item url and new body to the issue body update endpoint', async () => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+      await act(async () => {
+        await result.current.operations.issueBodyUpdate(
+          issueItem,
+          '- [x] rewritten body',
+        );
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/issuebody');
+      expect(lastBody(fetchMock)).toEqual({
+        issueUrl: issueItem.url,
+        body: '- [x] rewritten body',
+      });
+    });
+
+    it('invalidates the operated item body and comments cache after a successful update', async () => {
+      captureFetch();
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await result.current.operations.issueBodyUpdate(
+          issueItem,
+          '- [x] rewritten body',
+        );
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
+
+    it('invalidates the operated item cache and rejects when the update fails', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 500,
+        text: async () => 'upstream refused',
+      })) as unknown as typeof fetch;
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await expect(
+          result.current.operations.issueBodyUpdate(
+            issueItem,
+            '- [x] rewritten body',
+          ),
+        ).rejects.toThrow();
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
+  });
+
+  describe('issueCommentBodyUpdate', () => {
+    it('posts the item url, commentId and new body to the issue comment body update endpoint', async () => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+      await act(async () => {
+        await result.current.operations.issueCommentBodyUpdate(
+          issueItem,
+          4242,
+          '- [x] rewritten comment body',
+        );
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/issuecommentbody');
+      expect(lastBody(fetchMock)).toEqual({
+        issueUrl: issueItem.url,
+        commentId: 4242,
+        body: '- [x] rewritten comment body',
+      });
+    });
+
+    it('invalidates the operated item body and comments cache after a successful update', async () => {
+      captureFetch();
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await result.current.operations.issueCommentBodyUpdate(
+          issueItem,
+          4242,
+          '- [x] rewritten comment body',
+        );
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
+
+    it('invalidates the operated item cache and rejects when the update fails', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 500,
+        text: async () => 'upstream refused',
+      })) as unknown as typeof fetch;
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const caches = buildOperationCaches();
+      const bodyInvalidate = jest.spyOn(caches.body, 'invalidate');
+      const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
+      const { result } = renderHook(() => {
+        const overlay = useConsoleOverlay('acme');
+        const operations = useConsoleOperations('acme', caches);
+        return { overlay, operations };
+      });
+      await act(async () => {
+        await expect(
+          result.current.operations.issueCommentBodyUpdate(
+            issueItem,
+            4242,
+            '- [x] rewritten comment body',
+          ),
+        ).rejects.toThrow();
+      });
+      const key = `${issueItem.repo}#${issueItem.number}`;
+      expect(bodyInvalidate).toHaveBeenCalledWith(key);
+      expect(commentsInvalidate).toHaveBeenCalledWith(key);
+    });
   });
 });

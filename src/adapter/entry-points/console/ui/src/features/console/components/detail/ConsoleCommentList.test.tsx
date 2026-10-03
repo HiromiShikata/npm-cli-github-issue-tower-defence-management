@@ -6,6 +6,7 @@ const now = Date.parse('2026-06-19T12:00:00.000Z');
 describe('ConsoleCommentList', () => {
   it('auto-expands the latest comment on initial render', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Latest comment\nSecond line',
       createdAt: '2026-06-17T10:00:00.000Z',
@@ -26,6 +27,7 @@ describe('ConsoleCommentList', () => {
 
   it('adds is-expanded class to the latest comment article on initial render', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: 'Content',
       createdAt: '2026-09-01T10:00:00.000Z',
@@ -44,11 +46,13 @@ describe('ConsoleCommentList', () => {
 
   it('shows first line of non-latest comments and full body of latest in summary mode', () => {
     const firstComment = {
+      id: 1,
       author: 'reviewer',
       body: 'First line\nFirst detail',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const latestComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Latest line\nLatest detail',
       createdAt: '2026-06-17T10:00:00.000Z',
@@ -80,11 +84,13 @@ describe('ConsoleCommentList', () => {
 
   it('expands all comments when Show all is clicked', () => {
     const firstComment = {
+      id: 1,
       author: 'reviewer',
       body: 'First line summary\nFirst detail body',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const latestComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Latest comment body',
       createdAt: '2026-06-17T10:00:00.000Z',
@@ -110,6 +116,7 @@ describe('ConsoleCommentList', () => {
 
   it('renders each comment as a single inline line without a separate header block', () => {
     const comment = {
+      id: 1,
       author: 'reviewer',
       body: 'Hello from agent\nSecond line that should not appear',
       createdAt: '2026-06-17T08:00:00.000Z',
@@ -139,11 +146,13 @@ describe('ConsoleCommentList', () => {
 
   it('expands an individual comment when clicked in summary mode', () => {
     const multiLineComment = {
+      id: 1,
       author: 'reviewer',
       body: 'First line summary.\n\nSecond paragraph detail.',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const secondComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Acknowledged.',
       createdAt: '2026-06-17T09:00:00.000Z',
@@ -200,6 +209,7 @@ describe('ConsoleCommentList', () => {
     const imageUrl =
       'https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554';
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: `Screenshot attached:\n![Image](${imageUrl})`,
       createdAt: '2026-09-06T12:00:00.000Z',
@@ -228,6 +238,7 @@ describe('ConsoleCommentList', () => {
 
   it('shows full comment body when the comment toggle is clicked', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: 'First line of body\nSecond line of body\nThird line',
       createdAt: '2026-09-01T10:00:00.000Z',
@@ -265,11 +276,13 @@ describe('ConsoleCommentList', () => {
 
   it('collapses an expanded comment in summary mode when clicked again', () => {
     const multiLineComment = {
+      id: 1,
       author: 'reviewer',
       body: 'First line summary.\n\nSecond paragraph detail.',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const secondComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Acknowledged.',
       createdAt: '2026-06-17T09:00:00.000Z',
@@ -291,6 +304,7 @@ describe('ConsoleCommentList', () => {
 
   it('reflects expanded state with is-expanded class to drive wrap layout preventing body from being indented by author and time widths', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: 'First line\nSecond line\nThird line',
       createdAt: '2026-09-01T10:00:00.000Z',
@@ -317,6 +331,7 @@ describe('ConsoleCommentList', () => {
 
   it('resolves same-repo issue references as links when expanded with repoContext', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: 'See #42 for details.',
       createdAt: '2026-09-06T12:00:00.000Z',
@@ -342,6 +357,7 @@ describe('ConsoleCommentList', () => {
 
   it('uses renderReferenceLink to render custom React nodes for issue references when expanded', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
       createdAt: '2026-09-06T12:00:00.000Z',
@@ -372,11 +388,13 @@ describe('ConsoleCommentList', () => {
   it('restores expanded state from localStorage when persistenceKey is provided', () => {
     const persistenceKey = 'https://github.com/owner/repo/issues/1';
     const firstComment = {
+      id: 1,
       author: 'reviewer',
       body: 'First line\nSecond line',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const latestComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Latest comment',
       createdAt: '2026-06-17T10:00:00.000Z',
@@ -405,11 +423,13 @@ describe('ConsoleCommentList', () => {
   it('saves expanded state to localStorage when persistenceKey is provided', () => {
     const persistenceKey = 'https://github.com/owner/repo/issues/2';
     const comment = {
+      id: 1,
       author: 'reviewer',
       body: 'A comment body',
       createdAt: '2026-06-17T08:00:00.000Z',
     };
     const latestComment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Latest',
       createdAt: '2026-06-17T10:00:00.000Z',
@@ -437,6 +457,7 @@ describe('ConsoleCommentList', () => {
 
   it('does not touch localStorage when persistenceKey is not provided', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Content',
       createdAt: '2026-09-01T10:00:00.000Z',
@@ -455,11 +476,13 @@ describe('ConsoleCommentList', () => {
 
   it('renders a create workflow issue button for each comment when onCreateIssueFromComment is provided', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
     const onCreateIssueFromComment = {
+      id: 1,
       onSubmitProject: jest.fn().mockResolvedValue(undefined),
       onSubmitWorkflow: jest.fn().mockResolvedValue(undefined),
     };
@@ -480,6 +503,7 @@ describe('ConsoleCommentList', () => {
 
   it('does not render a create workflow issue button when onCreateIssueFromComment is not provided', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -499,6 +523,7 @@ describe('ConsoleCommentList', () => {
 
   it('calls onSubmitWorkflow with comment body as blockquote when the dialog Create button is clicked without switching destination', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -539,6 +564,7 @@ describe('ConsoleCommentList', () => {
 
   it('pre-populates dialog with empty title and comment body as blockquote prefixed by issue url and title', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'First line\nSecond line',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -572,6 +598,7 @@ describe('ConsoleCommentList', () => {
 
   it('pre-populates dialog body with title prefix when issueTitle is provided but issueUrl is absent', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -602,6 +629,7 @@ describe('ConsoleCommentList', () => {
 
   it('pre-populates dialog body with only comment blockquote when no issueUrl or issueTitle is provided', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -631,6 +659,7 @@ describe('ConsoleCommentList', () => {
 
   it('disables the dialog submit button while onSubmitWorkflow is in progress', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -669,6 +698,7 @@ describe('ConsoleCommentList', () => {
 
   it('shows error in the dialog when onSubmitWorkflow rejects', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'A comment body',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -702,6 +732,7 @@ describe('ConsoleCommentList', () => {
 
   it('opens a dialog when the create workflow issue button is clicked instead of calling the callback directly', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -729,6 +760,7 @@ describe('ConsoleCommentList', () => {
 
   it('opens the comment-triggered dialog with Workflow already selected as the destination', () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -759,6 +791,7 @@ describe('ConsoleCommentList', () => {
 
   it('calls onSubmitProject and not onSubmitWorkflow when Project is selected before Create is clicked in the comment-triggered dialog', async () => {
     const comment = {
+      id: 1,
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
@@ -796,6 +829,7 @@ describe('ConsoleCommentList', () => {
 
   it('does not propagate click events from the expanded body to ancestor elements', () => {
     const comment = {
+      id: 1,
       author: 'agent',
       body: 'First line\nSecond line visible only when expanded',
       createdAt: '2026-09-01T10:00:00.000Z',

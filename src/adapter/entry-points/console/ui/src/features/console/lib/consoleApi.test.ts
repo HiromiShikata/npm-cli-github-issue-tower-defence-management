@@ -8,6 +8,8 @@ import {
   postConsoleAddStory,
   postConsoleComment,
   postConsoleDeleteStory,
+  postConsoleIssueBodyUpdate,
+  postConsoleIssueCommentBodyUpdate,
   postConsoleIssueRename,
   postConsoleOperation,
   postConsoleReviewComment,
@@ -115,6 +117,7 @@ describe('createConsoleApiClient', () => {
     mockFetchOnce({
       comments: [
         {
+          id: 7,
           author: 'a',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
@@ -127,6 +130,7 @@ describe('createConsoleApiClient', () => {
     );
     expect(comments).toEqual([
       {
+        id: 7,
         author: 'a',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
@@ -318,6 +322,7 @@ describe('createConsoleApiClient', () => {
     const cachedBody = {
       comments: [
         {
+          id: 9,
           author: 'alice',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
@@ -335,6 +340,7 @@ describe('createConsoleApiClient', () => {
     );
     expect(comments).toEqual([
       {
+        id: 9,
         author: 'alice',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
@@ -642,6 +648,7 @@ describe('postConsoleComment', () => {
     mockFetchOnce({
       ok: true,
       comment: {
+        id: 5,
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',
@@ -651,6 +658,7 @@ describe('postConsoleComment', () => {
     expect(result).toEqual({
       posted: true,
       comment: {
+        id: 5,
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',
@@ -832,5 +840,65 @@ describe('postConsoleIssueRename', () => {
         newTitle: '',
       }),
     ).rejects.toThrow('newTitle is required');
+  });
+});
+
+describe('postConsoleIssueBodyUpdate', () => {
+  it('posts issueUrl and body to the issuebody endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleIssueBodyUpdate({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      body: '- [x] rewritten body',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/issuebody');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      body: '- [x] rewritten body',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(400, JSON.stringify({ error: 'body is required' }));
+    await expect(
+      postConsoleIssueBodyUpdate({
+        issueUrl: 'https://github.com/o/r/issues/42',
+        body: '',
+      }),
+    ).rejects.toThrow('body is required');
+  });
+});
+
+describe('postConsoleIssueCommentBodyUpdate', () => {
+  it('posts issueUrl, commentId and body to the issuecommentbody endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleIssueCommentBodyUpdate({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      commentId: 4242,
+      body: '- [x] rewritten comment body',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/issuecommentbody');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      commentId: 4242,
+      body: '- [x] rewritten comment body',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'commentId is required' }),
+    );
+    await expect(
+      postConsoleIssueCommentBodyUpdate({
+        issueUrl: 'https://github.com/o/r/issues/42',
+        commentId: 4242,
+        body: '',
+      }),
+    ).rejects.toThrow('commentId is required');
   });
 });

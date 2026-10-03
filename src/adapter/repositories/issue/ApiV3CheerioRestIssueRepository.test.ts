@@ -5270,11 +5270,55 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     );
   });
 
+  describe('updateIssueBody', () => {
+    it('delegates to the underlying REST issue repository with the same issue and body', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.updateIssueBody.mockResolvedValue(undefined);
+      const issueToUpdate = {
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        number: 40,
+      };
+
+      await repository.updateIssueBody(issueToUpdate, 'rewritten body');
+
+      expect(restIssueRepository.updateIssueBody).toHaveBeenCalledWith(
+        issueToUpdate,
+        'rewritten body',
+      );
+    });
+  });
+
+  describe('updateIssueCommentBody', () => {
+    it('delegates to the underlying REST issue repository with the same comment target and body, the same way updateIssueBody delegates', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue(undefined);
+      const commentTarget = {
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        commentId: 777,
+      };
+
+      await repository.updateIssueCommentBody(
+        commentTarget,
+        'rewritten comment body',
+      );
+
+      expect(restIssueRepository.updateIssueCommentBody).toHaveBeenCalledWith(
+        commentTarget,
+        'rewritten comment body',
+      );
+    });
+  });
+
   describe('createCommentByUrl', () => {
     it('returns the created comment data from the repository', async () => {
       const { repository, restIssueRepository } =
         createApiV3CheerioRestIssueRepository();
       const commentData = {
+        id: 999,
         author: 'HiromiShikata',
         body: 'test comment',
         createdAt: new Date('2026-08-30T09:00:00Z'),
@@ -5744,11 +5788,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       jest.restoreAllMocks();
     });
 
-    it('should fetch a single page of comments ordered oldest-first', async () => {
+    it('should fetch a single page of comments ordered oldest-first, carrying each comment id through from the mocked REST response', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(
           JSON.stringify([
             {
+              id: 71001,
               user: { login: 'alice' },
               body: 'first comment',
               created_at: '2024-01-01T00:00:00Z',
@@ -5756,6 +5801,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
                 'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-1',
             },
             {
+              id: 71002,
               user: { login: 'bob' },
               body: 'second comment',
               created_at: '2024-01-02T00:00:00Z',
@@ -5774,11 +5820,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(result).toEqual([
         {
+          id: 71001,
           author: 'alice',
           body: 'first comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
         {
+          id: 71002,
           author: 'bob',
           body: 'second comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
@@ -5793,6 +5841,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
     it('should paginate when a page returns exactly 100 entries', async () => {
       const firstPage: {
+        id: number;
         user: { login: string };
         body: string;
         created_at: string;
@@ -5800,6 +5849,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       }[] = [];
       for (let i = 0; i < 100; i += 1) {
         firstPage.push({
+          id: i + 1,
           user: { login: `user${i}` },
           body: `comment ${i}`,
           created_at: '2024-01-01T00:00:00Z',
@@ -5808,6 +5858,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       }
       const secondPage = [
         {
+          id: 101,
           user: { login: 'last' },
           body: 'last comment',
           created_at: '2024-02-01T00:00:00Z',
@@ -5837,6 +5888,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(result).toHaveLength(101);
       expect(result[100].author).toBe('last');
+      expect(result[100].id).toBe(101);
+      expect(result.map((comment) => comment.id)).toEqual(
+        Array.from({ length: 101 }, (_, i) => i + 1),
+      );
       expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(fetchSpy).toHaveBeenNthCalledWith(
         2,
@@ -10697,6 +10752,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
       created.restIssueRepository.createComment.mockImplementation(
         async (_issueUrl: string, comment: string) => ({
+          id: 1,
           author: 'bot',
           body: comment,
           createdAt: new Date('2026-01-01T00:00:00.000Z'),

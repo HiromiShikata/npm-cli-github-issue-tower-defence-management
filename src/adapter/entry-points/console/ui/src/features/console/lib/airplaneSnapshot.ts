@@ -235,6 +235,7 @@ const parseComment = (item: unknown): ConsoleComment | null => {
     return null;
   }
   return {
+    id: getNumber(item.id),
     author: getString(item.author),
     body: getString(item.body),
     createdAt: getString(item.createdAt),

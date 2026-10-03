@@ -353,6 +353,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([
           {
+            id: 1,
             author: 'bot',
             body: 'This issue status is changed because the story is disabled.',
             createdAt: new Date(),

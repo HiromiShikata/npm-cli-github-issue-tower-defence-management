@@ -142,6 +142,7 @@ const harnessCreate = () => {
   issueRepository.closePullRequest.mockResolvedValue(undefined);
   issueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
   issueRepository.createCommentByUrl.mockResolvedValue({
+    id: 1,
     author: '',
     body: '',
     createdAt: new Date(0),

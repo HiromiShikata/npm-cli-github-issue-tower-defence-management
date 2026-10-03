@@ -106,9 +106,30 @@ const withLinksOpeningInNewTab = (html: string): string => {
   return template.innerHTML;
 };
 
+const withCheckboxIndexes = (
+  html: string,
+  checkboxIndexOffset: number,
+): string => {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const checkboxes = Array.from(
+    template.content.querySelectorAll<HTMLInputElement>(
+      'input[type="checkbox"]',
+    ),
+  );
+  checkboxes.forEach((checkbox, index) => {
+    checkbox.setAttribute(
+      'data-checkbox-index',
+      String(checkboxIndexOffset + index),
+    );
+  });
+  return template.innerHTML;
+};
+
 export const renderMarkdownToSafeHtml = (
   source: string,
   repoContext?: ConsoleRepoContext,
+  checkboxIndexOffset = 0,
 ): string => {
   const trimmed = source.trim();
   if (trimmed === '') {
@@ -119,7 +140,10 @@ export const renderMarkdownToSafeHtml = (
   try {
     const parsed = marked.parse(source, { async: false });
     const rawHtml = typeof parsed === 'string' ? parsed : '';
-    return withLinksOpeningInNewTab(DOMPurify.sanitize(rawHtml));
+    return withCheckboxIndexes(
+      withLinksOpeningInNewTab(DOMPurify.sanitize(rawHtml)),
+      checkboxIndexOffset,
+    );
   } finally {
     activeRepoContext = null;
   }

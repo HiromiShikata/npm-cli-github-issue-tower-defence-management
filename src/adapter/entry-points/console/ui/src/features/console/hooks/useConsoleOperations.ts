@@ -8,6 +8,8 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleDeleteAllComments,
+  postConsoleIssueBodyUpdate,
+  postConsoleIssueCommentBodyUpdate,
   postConsoleIssueRename,
   postConsoleOperation,
   postConsoleReviewComment,
@@ -84,6 +86,12 @@ export type ConsoleOperationsApi = {
     body: string,
   ) => Promise<void>;
   issueRename: (item: ConsoleListItem, newTitle: string) => Promise<void>;
+  issueBodyUpdate?: (item: ConsoleListItem, newBody: string) => Promise<void>;
+  issueCommentBodyUpdate?: (
+    item: ConsoleListItem,
+    commentId: number,
+    newBody: string,
+  ) => Promise<void>;
   deleteAllComments: (item: ConsoleListItem) => Promise<void>;
   setDependedIssueUrl: (
     item: ConsoleListItem,
@@ -186,7 +194,14 @@ export const useConsoleOperations = (
   pjcode: string | null,
   caches?: ConsoleCaches,
   onAfterMoveToAwaitingWorkspace?: () => Promise<void>,
-): ConsoleOperationsApi => {
+): ConsoleOperationsApi & {
+  issueBodyUpdate: (item: ConsoleListItem, newBody: string) => Promise<void>;
+  issueCommentBodyUpdate: (
+    item: ConsoleListItem,
+    commentId: number,
+    newBody: string,
+  ) => Promise<void>;
+} => {
   const invalidateItemContent = useCallback(
     (item: ConsoleListItem) => {
       if (caches === undefined) {
@@ -455,6 +470,32 @@ export const useConsoleOperations = (
     [],
   );
 
+  const issueBodyUpdate = useCallback(
+    async (item: ConsoleListItem, newBody: string) => {
+      try {
+        await postConsoleIssueBodyUpdate({ issueUrl: item.url, body: newBody });
+      } finally {
+        invalidateItemContent(item);
+      }
+    },
+    [invalidateItemContent],
+  );
+
+  const issueCommentBodyUpdate = useCallback(
+    async (item: ConsoleListItem, commentId: number, newBody: string) => {
+      try {
+        await postConsoleIssueCommentBodyUpdate({
+          issueUrl: item.url,
+          commentId,
+          body: newBody,
+        });
+      } finally {
+        invalidateItemContent(item);
+      }
+    },
+    [invalidateItemContent],
+  );
+
   const deleteAllComments = useCallback(
     async (item: ConsoleListItem) => {
       await postConsoleDeleteAllComments({ issueUrl: item.url });
@@ -491,6 +532,8 @@ export const useConsoleOperations = (
     uploadAttachment,
     addInlineReviewComment,
     issueRename,
+    issueBodyUpdate,
+    issueCommentBodyUpdate,
     deleteAllComments,
     setDependedIssueUrl,
     onAfterMoveToAwaitingWorkspace,

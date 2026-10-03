@@ -854,6 +854,7 @@ describe('ClearDependedIssueURLUseCase', () => {
       const sameRepoDependedIssueUrl =
         'https://github.com/testowner/testrepo/issues/959';
       const iterationsExhaustedAgentReportComment = {
+        id: 1,
         author: 'hs-bot-gh-app[bot]',
         body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
         createdAt: new Date('2026-09-17T14:59:07Z'),
@@ -1036,6 +1037,7 @@ describe('ClearDependedIssueURLUseCase', () => {
           .mockResolvedValueOnce([])
           .mockImplementationOnce(async () => [
             {
+              id: 1,
               author: 'bot',
               body: mockIssueRepository.createComment.mock.calls[0]?.[1] ?? '',
               createdAt: new Date(),

@@ -95,6 +95,7 @@ export class RestIssueRepository
     issueUrl: string,
     comment: string,
   ): Promise<{
+    id: number;
     author: string;
     body: string;
     createdAt: Date;
@@ -105,6 +106,7 @@ export class RestIssueRepository
     this.checkBreakerOrThrow();
 
     let result: {
+      id: number;
       user: { login: string } | null;
       body: string;
       created_at: string;
@@ -120,6 +122,7 @@ export class RestIssueRepository
           },
         )
         .json<{
+          id: number;
           user: { login: string } | null;
           body: string;
           created_at: string;
@@ -152,6 +155,7 @@ export class RestIssueRepository
       throw e;
     }
     return {
+      id: result.id,
       author: result.user?.login ?? '',
       body: result.body,
       createdAt: new Date(result.created_at),
@@ -315,6 +319,25 @@ export class RestIssueRepository
     }
   };
 
+  updateIssueCommentBody = async (
+    comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
+    body: string,
+  ): Promise<void> => {
+    this.checkBreakerOrThrow();
+    try {
+      await ky.patch(
+        `https://api.github.com/repos/${comment.org}/${comment.repo}/issues/comments/${comment.commentId}`,
+        {
+          json: { body },
+          headers: { Authorization: `token ${this.ghToken}` },
+        },
+      );
+    } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
+      throw e;
+    }
+  };
+
   updateLabels = async (
     issue: Issue,
     labels: Issue['labels'],
@@ -459,6 +482,7 @@ export class RestIssueRepository
         })
         .json<
           Array<{
+            id: number;
             user: { login: string } | null;
             body: string | null;
             created_at: string;
@@ -466,6 +490,7 @@ export class RestIssueRepository
         >();
       for (const comment of body) {
         collected.push({
+          id: comment.id,
           author: comment.user?.login ?? '',
           body: comment.body ?? '',
           createdAt: new Date(comment.created_at),
