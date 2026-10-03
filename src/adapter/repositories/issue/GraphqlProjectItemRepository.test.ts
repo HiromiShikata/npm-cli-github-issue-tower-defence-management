@@ -3136,7 +3136,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result?.stateReason).toBe('REOPENED');
     });
 
-    it('should return null when issue exists but projectItems is empty and no projectId is given', async () => {
+    it('should return the full content data with an empty id and no custom fields when issue exists but projectItems is empty and no projectId is given', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -3175,7 +3175,74 @@ describe('GraphqlProjectItemRepository', () => {
         'https://github.com/example-org/example-repo/issues/585',
       );
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.title).toBe('Issue Without Visible Project');
+      expect(result?.url).toBe(
+        'https://github.com/example-org/example-repo/issues/585',
+      );
+      expect(result?.state).toBe('OPEN');
+      expect(result?.stateReason).toBeNull();
+      expect(result?.closingIssueReferenceUrls).toEqual([]);
+      expect(result?.id).toBe('');
+      expect(result?.customFields).toEqual([]);
+    });
+
+    it('should return a stale pull request candidate with empty id instead of null when the pull request has no project item and no projectId is given', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: null,
+              pullRequest: {
+                number: 3602,
+                title: 'Stale PR with no board item',
+                state: 'OPEN',
+                url: 'https://github.com/HiromiShikata/test-repository/pull/3602',
+                body: 'closes https://github.com/HiromiShikata/test-repository/issues/3601',
+                createdAt: '2026-09-30T12:00:00Z',
+                author: { login: 'octocat' },
+                labels: { nodes: [] },
+                assignees: { nodes: [] },
+                repository: {
+                  nameWithOwner: 'HiromiShikata/test-repository',
+                  isArchived: false,
+                },
+                closingIssuesReferences: {
+                  nodes: [
+                    {
+                      url: 'https://github.com/HiromiShikata/test-repository/issues/3601',
+                    },
+                  ],
+                },
+                projectItems: {
+                  nodes: [],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/HiromiShikata/test-repository/pull/3602',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.closingIssueReferenceUrls).toEqual([
+        'https://github.com/HiromiShikata/test-repository/issues/3601',
+      ]);
+      expect(result?.createdAt).toBe('2026-09-30T12:00:00Z');
+      expect(result?.url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/3602',
+      );
+      expect(result?.state).toBe('OPEN');
+      expect(result?.id).toBe('');
     });
 
     it('should return null when projectId is given and issue has no matching project item even with other items present', async () => {
