@@ -1,3 +1,10 @@
+## [2.161.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.7...v2.161.8) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console:** disable Comment buttons while a file upload is in progress ([#3169](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3169)) ([88510a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/88510a55d568934d99f417c49c9f7e6199177d78))
+
 ## [2.161.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.6...v2.161.7) (2026-10-03)
 
 
