@@ -2187,6 +2187,60 @@ describe('ConsoleItemDetailContainer', () => {
       }
     });
 
+    it('toggles the Description panel checkbox the user actually clicked, not the index-colliding checkbox before it, when a Mermaid diagram sits between two checkboxes', async () => {
+      const operations = buildOperationsWithCheckboxUpdates();
+      const onQueueAction = jest.fn();
+      const bodyWithCheckboxesAroundAMermaidDiagram =
+        '- [ ] First\n```mermaid\ngraph TD; A-->B;\n```\n- [ ] Second';
+      const { container, getByText } = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches({
+            body: bodyWithCheckboxesAroundAMermaidDiagram,
+            comments: [],
+          })}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(getByText('First')).toBeInTheDocument();
+        expect(getByText('Second')).toBeInTheDocument();
+      });
+
+      // Each markdown segment restarts its own data-checkbox-index numbering
+      // at 0, so the checkbox after the Mermaid diagram carries the same
+      // data-checkbox-index="0" as the one before it. The checkbox actually
+      // clicked by the user is identified by its position in document order
+      // instead.
+      const checkboxesInDocumentOrder = Array.from(
+        container.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index]',
+        ),
+      );
+      expect(checkboxesInDocumentOrder).toHaveLength(2);
+      const checkboxAfterTheMermaidDiagram = checkboxesInDocumentOrder[1];
+
+      fireEvent.click(checkboxAfterTheMermaidDiagram);
+
+      await waitFor(() => {
+        expect(operations.issueBodyUpdate).toHaveBeenCalled();
+      });
+      expect(operations.issueBodyUpdate).toHaveBeenCalledWith(
+        issueItem,
+        '- [ ] First\n```mermaid\ngraph TD; A-->B;\n```\n- [x] Second',
+      );
+    });
+
     it('calls operations.issueCommentBodyUpdate with the item, the comment id and the toggled comment body text when a checkbox inside a comment is clicked', async () => {
       const operations = buildOperationsWithCheckboxUpdates();
       const onQueueAction = jest.fn();
