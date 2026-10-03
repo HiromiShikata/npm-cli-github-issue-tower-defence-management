@@ -141,7 +141,11 @@ export const useConsoleProjectList = (
             applyWhenChanged(result);
           }
         })
-        .catch(() => {});
+        .catch((cause: unknown) => {
+          if (!cancelled) {
+            setError(cause instanceof Error ? cause : new Error(String(cause)));
+          }
+        });
     };
 
     const timer = setInterval(load, CONSOLE_TAB_REFRESH_INTERVAL_MS);
