@@ -1,3 +1,10 @@
+## [2.162.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.3...v2.162.4) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console:** replace sticky navigation lock with live cross-project timer-minute re-check ([#3178](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3178)) ([0121521](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/01215212a1d33cb811d9745573c8c73d27e472dd)), closes [#3176](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3176)
+
 ## [2.162.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.2...v2.162.3) (2026-10-03)
 
 
