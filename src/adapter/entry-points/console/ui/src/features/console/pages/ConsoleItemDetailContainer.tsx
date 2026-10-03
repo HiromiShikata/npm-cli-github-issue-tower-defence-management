@@ -386,10 +386,7 @@ export const ConsoleItemDetailContainer = ({
   const toggleCommentCheckbox = useCallback(
     (comment: ConsoleComment, checkboxIndex: number) => {
       const currentBody = commentBodyOverrides[comment.id] ?? comment.body;
-      const newBody = toggleMarkdownCheckboxAtIndex(
-        currentBody,
-        checkboxIndex,
-      );
+      const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
       setCommentBodyOverrides((previous) => ({
         ...previous,
         [comment.id]: newBody,

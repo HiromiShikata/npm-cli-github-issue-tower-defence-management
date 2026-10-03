@@ -2195,7 +2195,9 @@ describe('ConsoleItemDetailContainer', () => {
     });
 
     it('reverts a comment checkbox to its prior checked state when issueCommentBodyUpdate rejects', async () => {
-      const commentUpdateFailure = new Error('issue comment body update failed');
+      const commentUpdateFailure = new Error(
+        'issue comment body update failed',
+      );
       const commentWithCheckbox: ConsoleComment & { id: number } = {
         id: 4242,
         author: 'HiromiShikata',
