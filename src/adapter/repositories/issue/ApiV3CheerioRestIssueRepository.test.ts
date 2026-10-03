@@ -13432,21 +13432,24 @@ describeWhenCredentials(
         stateReason: null,
       };
 
-      await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
-      await repository.reopenIssueByUrl(disposableIssueUrl);
+      try {
+        await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
+        await repository.reopenIssueByUrl(disposableIssueUrl);
 
-      const result = await repository.getLatestReopenedEventAt(disposableIssue);
+        const result =
+          await repository.getLatestReopenedEventAt(disposableIssue);
 
-      if (result === null) {
-        throw new Error(
-          'expected getLatestReopenedEventAt to return a non-null Date after the close+reopen cycle',
-        );
+        if (result === null) {
+          throw new Error(
+            'expected getLatestReopenedEventAt to return a non-null Date after the close+reopen cycle',
+          );
+        }
+        const nowMs = Date.now();
+        const resultMs = result.getTime();
+        expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
+      } finally {
+        await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
       }
-      const nowMs = Date.now();
-      const resultMs = result.getTime();
-      expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
-
-      await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
     }, 30000);
   },
 );
