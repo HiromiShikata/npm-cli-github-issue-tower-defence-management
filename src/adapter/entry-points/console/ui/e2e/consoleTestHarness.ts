@@ -74,6 +74,17 @@ export type ConsoleE2eRenameIssueCall = {
   newTitle: string;
 };
 
+export type ConsoleE2eUpdateIssueBodyCall = {
+  issueUrl: string;
+  newBody: string;
+};
+
+export type ConsoleE2eUpdateIssueCommentBodyCall = {
+  issueUrl: string;
+  commentId: number;
+  newBody: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -522,9 +533,14 @@ const buildE2eProject = (): Project => ({
   },
 });
 
+const parseIssueOrPullNumberFromUrl = (url: string): number => {
+  const match = url.match(/\/(?:issues|pull)\/(\d+)/);
+  return match === null ? 0 : Number(match[1]);
+};
+
 const buildIssueForUrl = (url: string): Issue => ({
   nameWithOwner: REPO_NAME_WITH_OWNER,
-  number: 0,
+  number: parseIssueOrPullNumberFromUrl(url),
   title: 'Console E2E fixture issue',
   state: 'OPEN',
   status: null,
@@ -621,6 +637,8 @@ const createStubIssueRepository = (
   setStoryCalls: ConsoleE2eSetStoryCall[],
   setAgentCalls: ConsoleE2eSetAgentCall[],
   renameIssueCalls: ConsoleE2eRenameIssueCall[],
+  updateIssueBodyCalls: ConsoleE2eUpdateIssueBodyCall[],
+  updateIssueCommentBodyCalls: ConsoleE2eUpdateIssueCommentBodyCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   appendIssueToProjectCache: async (): Promise<void> => undefined,
@@ -643,8 +661,19 @@ const createStubIssueRepository = (
   updateIssue: async (issue): Promise<void> => {
     renameIssueCalls.push({ issueUrl: issue.url, newTitle: issue.title });
   },
-  updateIssueBody: () => notImplemented('updateIssueBody'),
-  updateIssueCommentBody: () => notImplemented('updateIssueCommentBody'),
+  updateIssueBody: async (issue, newBody): Promise<void> => {
+    updateIssueBodyCalls.push({
+      issueUrl: `https://github.com/${issue.org}/${issue.repo}/issues/${issue.number}`,
+      newBody,
+    });
+  },
+  updateIssueCommentBody: async (comment, newBody): Promise<void> => {
+    updateIssueCommentBodyCalls.push({
+      issueUrl: `https://github.com/${comment.org}/${comment.repo}`,
+      commentId: comment.commentId,
+      newBody,
+    });
+  },
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
   updateProjectTextField: () => notImplemented('updateProjectTextField'),
@@ -936,6 +965,8 @@ export type ConsoleE2eHarness = {
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
   renameIssueCalls: ConsoleE2eRenameIssueCall[];
+  updateIssueBodyCalls: ConsoleE2eUpdateIssueBodyCall[];
+  updateIssueCommentBodyCalls: ConsoleE2eUpdateIssueCommentBodyCall[];
   setProjectTimer: (durationSeconds: number) => void;
   expireProjectTimer: () => void;
   clearProjectTimer: () => void;
@@ -976,6 +1007,9 @@ export const startConsoleE2eHarness = async (options?: {
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
   const renameIssueCalls: ConsoleE2eRenameIssueCall[] = [];
+  const updateIssueBodyCalls: ConsoleE2eUpdateIssueBodyCall[] = [];
+  const updateIssueCommentBodyCalls: ConsoleE2eUpdateIssueCommentBodyCall[] =
+    [];
   const setStoryCalls: ConsoleE2eSetStoryCall[] = [];
   const setAgentCalls: ConsoleE2eSetAgentCall[] = [];
   const uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[] = [];
@@ -1002,6 +1036,8 @@ export const startConsoleE2eHarness = async (options?: {
         setStoryCalls,
         setAgentCalls,
         renameIssueCalls,
+        updateIssueBodyCalls,
+        updateIssueCommentBodyCalls,
       ),
       ...(options?.mergePullRequest !== undefined
         ? { mergePullRequest: options.mergePullRequest }
@@ -1108,6 +1144,8 @@ export const startConsoleE2eHarness = async (options?: {
     storyColorCalls,
     deleteAllCommentsCalls,
     renameIssueCalls,
+    updateIssueBodyCalls,
+    updateIssueCommentBodyCalls,
     setProjectTimer: (durationSeconds: number): void => {
       writeProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE, {
         startedAt: new Date().toISOString(),
