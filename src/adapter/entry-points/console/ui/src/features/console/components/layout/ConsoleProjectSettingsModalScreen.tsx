@@ -101,8 +101,8 @@ export const ConsoleProjectSettingsModalScreen = ({
         {!isLoading && (
           <div className="console-settings-modal-row">
             <span className="console-settings-modal-row-label">
-              Show executive summary & action button on Awaiting Owner list
-              (all projects)
+              Show executive summary & action button on Awaiting Owner list (all
+              projects)
             </span>
             <ConsoleToggleSwitch
               checked={showExecutiveSummaryAndActionButtonOnAwaitingOwnerList}

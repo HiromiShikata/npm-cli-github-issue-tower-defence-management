@@ -1415,7 +1415,9 @@ describe('ConsolePage awaiting owner list visibility setting', () => {
     fireEvent.click(getByRole('button', { name: 'Open max settings' }));
     await waitFor(() => {
       expect(
-        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+        getByRole('switch', {
+          name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME,
+        }),
       ).toHaveAttribute('aria-checked', 'true');
     });
   });
@@ -1513,7 +1515,9 @@ describe('ConsolePage awaiting owner list visibility setting', () => {
     fireEvent.click(getByRole('button', { name: 'Open max settings' }));
     await waitFor(() => {
       expect(
-        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+        getByRole('switch', {
+          name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME,
+        }),
       ).toHaveAttribute('aria-checked', 'false');
     });
   });
@@ -1534,7 +1538,9 @@ describe('ConsolePage awaiting owner list visibility setting', () => {
     fireEvent.click(getByRole('button', { name: 'Open max settings' }));
     await waitFor(() => {
       expect(
-        getByRole('switch', { name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME }),
+        getByRole('switch', {
+          name: AWAITING_OWNER_LIST_VISIBILITY_SWITCH_NAME,
+        }),
       ).toHaveAttribute('aria-checked', 'true');
     });
   });

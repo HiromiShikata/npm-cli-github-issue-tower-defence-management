@@ -12,9 +12,7 @@ describe('useConsoleAwaitingOwnerListVisibilitySettings', () => {
       useConsoleAwaitingOwnerListVisibilitySettings(false),
     );
     expect(result.current.showExecutiveSummaryAndActionButton).toBe(true);
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      true,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(true);
   });
 
   it('initialises saved and draft from a previously saved false value', () => {
@@ -26,9 +24,7 @@ describe('useConsoleAwaitingOwnerListVisibilitySettings', () => {
       useConsoleAwaitingOwnerListVisibilitySettings(false),
     );
     expect(result.current.showExecutiveSummaryAndActionButton).toBe(false);
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      false,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(false);
   });
 
   it('toggleDraft changes only the draft value, leaves saved unchanged, and does not write to localStorage', () => {
@@ -38,9 +34,7 @@ describe('useConsoleAwaitingOwnerListVisibilitySettings', () => {
     act(() => {
       result.current.toggleDraft(false);
     });
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      false,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(false);
     expect(result.current.showExecutiveSummaryAndActionButton).toBe(true);
     expect(
       localStorage.getItem(AWAITING_OWNER_LIST_VISIBILITY_SETTINGS_KEY),
@@ -75,13 +69,9 @@ describe('useConsoleAwaitingOwnerListVisibilitySettings', () => {
     act(() => {
       result.current.toggleDraft(false);
     });
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      false,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(false);
     rerender({ isOpen: true });
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      true,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(true);
     expect(result.current.showExecutiveSummaryAndActionButton).toBe(true);
   });
 
@@ -95,9 +85,7 @@ describe('useConsoleAwaitingOwnerListVisibilitySettings', () => {
     act(() => {
       result.current.save();
     });
-    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(
-      false,
-    );
+    expect(result.current.draftShowExecutiveSummaryAndActionButton).toBe(false);
     expect(result.current.showExecutiveSummaryAndActionButton).toBe(false);
   });
 });
