@@ -563,19 +563,18 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
 });
 
 describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a task is open (#32963)', () => {
-  const taskOpenGuardBaseInput: ConsoleAutomaticProjectNavigationDecideInput =
-    {
-      checkTimerElapsed: false,
-      timerElapsed: false,
-      remainingCountIsZero: false,
-      snapshotsReady: true,
-      explicitlySelectedPjcodeMatchesCurrent: false,
-      pjcode: 'acme',
-      pjcodes: ['acme', 'beta'],
-      projectMinutes: { acme: 30, beta: 30 },
-      skipCount: 0,
-      evaluatedPjcode: null,
-    };
+  const taskOpenGuardBaseInput: ConsoleAutomaticProjectNavigationDecideInput = {
+    checkTimerElapsed: false,
+    timerElapsed: false,
+    remainingCountIsZero: false,
+    snapshotsReady: true,
+    explicitlySelectedPjcodeMatchesCurrent: false,
+    pjcode: 'acme',
+    pjcodes: ['acme', 'beta'],
+    projectMinutes: { acme: 30, beta: 30 },
+    skipCount: 0,
+    evaluatedPjcode: null,
+  };
 
   type TaskOpenTableCase = {
     name: string;
