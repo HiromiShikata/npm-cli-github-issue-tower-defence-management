@@ -285,6 +285,91 @@ describe('ConsoleMarkdownContent', () => {
     });
   });
 
+  describe('task-list checkbox interactivity', () => {
+    it('keeps rendered checkboxes disabled and fires no callback on click when onCheckboxToggle is not provided', () => {
+      const { container } = render(
+        <ConsoleMarkdownContent body={'- [ ] a\n- [x] b'} />,
+      );
+      const checkboxes = Array.from(
+        container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+      );
+      expect(checkboxes).toHaveLength(2);
+      checkboxes.forEach((checkbox) => {
+        expect(checkbox.disabled).toBe(true);
+      });
+      const checkedBefore = checkboxes.map((checkbox) => checkbox.checked);
+      fireEvent.click(checkboxes[0]);
+      fireEvent.click(checkboxes[1]);
+      const checkedAfter = checkboxes.map((checkbox) => checkbox.checked);
+      expect(checkedAfter).toEqual(checkedBefore);
+    });
+
+    it('removes the disabled attribute from rendered checkboxes when onCheckboxToggle is provided', async () => {
+      const onCheckboxToggle = jest.fn();
+      const { container } = render(
+        <ConsoleMarkdownContent
+          body={'- [ ] a\n- [x] b'}
+          onCheckboxToggle={onCheckboxToggle}
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('input[type="checkbox"]').length,
+        ).toBe(2);
+      });
+      const checkboxes = Array.from(
+        container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+      );
+      checkboxes.forEach((checkbox) => {
+        expect(checkbox.disabled).toBe(false);
+      });
+    });
+
+    it('calls onCheckboxToggle exactly once with the clicked checkbox index and the checked state after the click', async () => {
+      const onCheckboxToggle = jest.fn();
+      const { container } = render(
+        <ConsoleMarkdownContent
+          body={'- [ ] a\n- [x] b'}
+          onCheckboxToggle={onCheckboxToggle}
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('input[type="checkbox"]').length,
+        ).toBe(2);
+      });
+      const secondCheckbox = container.querySelector<HTMLInputElement>(
+        'input[type="checkbox"][data-checkbox-index="1"]',
+      );
+      expect(secondCheckbox).not.toBeNull();
+      fireEvent.click(secondCheckbox as HTMLInputElement);
+      expect(onCheckboxToggle).toHaveBeenCalledTimes(1);
+      expect(onCheckboxToggle).toHaveBeenCalledWith(1, false);
+    });
+
+    it('calls onCheckboxToggle with checked=true when clicking an initially-unchecked checkbox', async () => {
+      const onCheckboxToggle = jest.fn();
+      const { container } = render(
+        <ConsoleMarkdownContent
+          body={'- [ ] a\n- [x] b'}
+          onCheckboxToggle={onCheckboxToggle}
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('input[type="checkbox"]').length,
+        ).toBe(2);
+      });
+      const firstCheckbox = container.querySelector<HTMLInputElement>(
+        'input[type="checkbox"][data-checkbox-index="0"]',
+      );
+      expect(firstCheckbox).not.toBeNull();
+      fireEvent.click(firstCheckbox as HTMLInputElement);
+      expect(onCheckboxToggle).toHaveBeenCalledTimes(1);
+      expect(onCheckboxToggle).toHaveBeenCalledWith(0, true);
+    });
+  });
+
   it('keeps reference links as plain anchors when no renderer is provided', () => {
     const { container } = render(
       <ConsoleMarkdownContent

@@ -664,6 +664,26 @@ describe('RestIssueRepository', () => {
     });
   });
 
+  describe('updateIssueCommentBody', () => {
+    it('sends only the body to the comment-specific endpoint derived from org, repo and commentId', async () => {
+      mockPatch.mockResolvedValue(undefined);
+
+      await restIssueRepository.updateIssueCommentBody(
+        { org: 'HiromiShikata', repo: 'test-repository', commentId: 999 },
+        'rewritten comment body',
+      );
+
+      expect(mockPatch).toHaveBeenCalledTimes(1);
+      expect(mockPatch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/999',
+        {
+          json: { body: 'rewritten comment body' },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+    });
+  });
+
   describe('searchIssues', () => {
     const buildSearchItem = (
       overrides: Partial<{
@@ -1042,11 +1062,12 @@ describe('RestIssueRepository', () => {
       expect(mockGet).toHaveBeenCalledTimes(1);
     });
 
-    it('returns comments from a single page when response has fewer than 100 items', async () => {
+    it('returns comments from a single page when response has fewer than 100 items, including the numeric id from the raw REST response', async () => {
       const created = '2026-09-01T00:00:00Z';
       mockGet.mockReturnValueOnce(
         mockJsonResponse([
           {
+            id: 555123,
             user: { login: 'alice' },
             body: 'hello',
             created_at: created,
@@ -1060,6 +1081,7 @@ describe('RestIssueRepository', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
+        id: 555123,
         author: 'alice',
         body: 'hello',
         createdAt: new Date(created),
@@ -1067,17 +1089,19 @@ describe('RestIssueRepository', () => {
       expect(mockGet).toHaveBeenCalledTimes(1);
     });
 
-    it('fetches subsequent pages until the page is smaller than 100 items', async () => {
+    it('fetches subsequent pages until the page is smaller than 100 items, carrying each comment id through from the mocked REST response', async () => {
       const makePage = (
         n: number,
         startId: number,
       ): Array<{
+        id: number;
         user: { login: string };
         body: string;
         created_at: string;
         html_url: string;
       }> =>
         Array.from({ length: n }, (_, i) => ({
+          id: startId + i,
           user: { login: 'bot' },
           body: `comment ${startId + i}`,
           created_at: '2026-09-01T00:00:00Z',
@@ -1092,6 +1116,9 @@ describe('RestIssueRepository', () => {
         await restIssueRepository.getIssueOrPullRequestComments(issueUrl);
 
       expect(result).toHaveLength(103);
+      expect(result.map((comment) => comment.id)).toEqual(
+        Array.from({ length: 103 }, (_, i) => i + 1),
+      );
       expect(mockGet).toHaveBeenCalledTimes(2);
       expect(mockGet).toHaveBeenNthCalledWith(
         1,

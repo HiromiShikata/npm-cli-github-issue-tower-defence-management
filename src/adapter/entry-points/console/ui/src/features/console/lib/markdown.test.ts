@@ -228,6 +228,38 @@ describe('hasMermaidFence', () => {
   });
 });
 
+describe('renderMarkdownToSafeHtml task-list checkbox interactivity support', () => {
+  const parseCheckboxes = (html: string): HTMLInputElement[] => {
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    return Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    );
+  };
+
+  it('adds a 0-based data-checkbox-index attribute to each rendered checkbox in document order while keeping checked/disabled attributes unchanged', () => {
+    const html = renderMarkdownToSafeHtml('- [ ] a\n- [x] b');
+    const checkboxes = parseCheckboxes(html);
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0].getAttribute('data-checkbox-index')).toBe('0');
+    expect(checkboxes[0].disabled).toBe(true);
+    expect(checkboxes[0].checked).toBe(false);
+    expect(checkboxes[1].getAttribute('data-checkbox-index')).toBe('1');
+    expect(checkboxes[1].disabled).toBe(true);
+    expect(checkboxes[1].checked).toBe(true);
+  });
+
+  it('numbers checkboxes across separate list blocks in top-to-bottom document order', () => {
+    const html = renderMarkdownToSafeHtml(
+      '- [ ] first list item\n\nSome paragraph in between.\n\n- [x] second list item',
+    );
+    const checkboxes = parseCheckboxes(html);
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0].getAttribute('data-checkbox-index')).toBe('0');
+    expect(checkboxes[1].getAttribute('data-checkbox-index')).toBe('1');
+  });
+});
+
 describe('renderMarkdownToSafeHtml link targets', () => {
   it('opens an autolinked url in a new tab', () => {
     const html = renderMarkdownToSafeHtml('https://example.com/doc');

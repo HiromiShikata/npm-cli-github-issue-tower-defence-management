@@ -6,6 +6,7 @@ import { colorFromEnum } from '../logic/colors';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
+  ConsoleComment,
   ConsoleRelatedPullRequest,
   ConsoleStoryColorSource,
 } from '../logic/types';
@@ -31,12 +32,14 @@ type CachesOverrides = {
   relatedPrs?: ConsoleRelatedPullRequest[];
   prFiles?: ConsoleChangedFile[];
   relatedPrsNeverResolve?: boolean;
+  body?: string;
+  comments?: (ConsoleComment & { id: number })[];
 };
 
 const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
   const client = {
-    fetchItemBody: async () => '# body',
-    fetchComments: async () => [],
+    fetchItemBody: async () => overrides.body ?? '# body',
+    fetchComments: async () => overrides.comments ?? [],
     fetchPrFiles: async () => overrides.prFiles ?? [],
     fetchPrCommits: async () => [],
     fetchRelatedPrs: async () =>
@@ -1903,5 +1906,106 @@ describe('ConsoleItemDetailContainer', () => {
     expect(getByText('✕ Close')).toBeInTheDocument();
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
     expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  describe('task-list checkbox interactivity', () => {
+    type OperationsWithCheckboxUpdates = ConsoleOperationsApi & {
+      issueBodyUpdate: jest.Mock;
+      issueCommentBodyUpdate: jest.Mock;
+    };
+
+    const buildOperationsWithCheckboxUpdates =
+      (): OperationsWithCheckboxUpdates =>
+        ({
+          ...buildOperations(),
+          issueBodyUpdate: jest.fn(async () => {}),
+          issueCommentBodyUpdate: jest.fn(async () => {}),
+        }) as unknown as OperationsWithCheckboxUpdates;
+
+    it('calls operations.issueBodyUpdate with the item and the toggled body text when a checkbox in the Description panel is clicked', async () => {
+      const operations = buildOperationsWithCheckboxUpdates();
+      const onQueueAction = jest.fn();
+      const { container, getByText } = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches({
+            body: '- [ ] Alpha\n- [x] Beta',
+            comments: [],
+          })}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(getByText('Alpha')).toBeInTheDocument();
+      });
+
+      const checkbox = container.querySelector<HTMLInputElement>(
+        'input[type="checkbox"][data-checkbox-index="0"]',
+      );
+      expect(checkbox).not.toBeNull();
+      fireEvent.click(checkbox as HTMLInputElement);
+
+      await waitFor(() => {
+        expect(operations.issueBodyUpdate).toHaveBeenCalledWith(
+          issueItem,
+          '- [x] Alpha\n- [x] Beta',
+        );
+      });
+    });
+
+    it('calls operations.issueCommentBodyUpdate with the item, the comment id and the toggled comment body text when a checkbox inside a comment is clicked', async () => {
+      const operations = buildOperationsWithCheckboxUpdates();
+      const onQueueAction = jest.fn();
+      const commentWithCheckbox: ConsoleComment & { id: number } = {
+        id: 4242,
+        author: 'HiromiShikata',
+        body: '- [ ] Review the diff',
+        createdAt: '2026-06-19T11:58:00.000Z',
+      };
+      const { container, getByText } = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches({ comments: [commentWithCheckbox] })}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(getByText('Review the diff')).toBeInTheDocument();
+      });
+
+      const checkbox = container.querySelector<HTMLInputElement>(
+        'input[type="checkbox"][data-checkbox-index="0"]',
+      );
+      expect(checkbox).not.toBeNull();
+      fireEvent.click(checkbox as HTMLInputElement);
+
+      await waitFor(() => {
+        expect(operations.issueCommentBodyUpdate).toHaveBeenCalledWith(
+          issueItem,
+          4242,
+          '- [x] Review the diff',
+        );
+      });
+    });
   });
 });

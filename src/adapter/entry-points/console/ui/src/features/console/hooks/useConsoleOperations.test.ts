@@ -839,4 +839,42 @@ describe('useConsoleOperations', () => {
     expect(onAfterMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(callbackCalledAfterTriageCount).toBe(1);
   });
+
+  describe('issueBodyUpdate', () => {
+    it('posts the item url and new body to the issue body update endpoint', async () => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+      await act(async () => {
+        await result.current.operations.issueBodyUpdate(
+          issueItem,
+          '- [x] rewritten body',
+        );
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/issuebody');
+      expect(lastBody(fetchMock)).toEqual({
+        issueUrl: issueItem.url,
+        body: '- [x] rewritten body',
+      });
+    });
+  });
+
+  describe('issueCommentBodyUpdate', () => {
+    it('posts the item url, commentId and new body to the issue comment body update endpoint', async () => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+      await act(async () => {
+        await result.current.operations.issueCommentBodyUpdate(
+          issueItem,
+          4242,
+          '- [x] rewritten comment body',
+        );
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/issuecommentbody');
+      expect(lastBody(fetchMock)).toEqual({
+        issueUrl: issueItem.url,
+        commentId: 4242,
+        body: '- [x] rewritten comment body',
+      });
+    });
+  });
 });

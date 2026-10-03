@@ -8,6 +8,8 @@ import {
   postConsoleAddStory,
   postConsoleComment,
   postConsoleDeleteStory,
+  postConsoleIssueBodyUpdate,
+  postConsoleIssueCommentBodyUpdate,
   postConsoleIssueRename,
   postConsoleOperation,
   postConsoleReviewComment,
@@ -832,5 +834,65 @@ describe('postConsoleIssueRename', () => {
         newTitle: '',
       }),
     ).rejects.toThrow('newTitle is required');
+  });
+});
+
+describe('postConsoleIssueBodyUpdate', () => {
+  it('posts issueUrl and body to the issuebody endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleIssueBodyUpdate({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      body: '- [x] rewritten body',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/issuebody');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      body: '- [x] rewritten body',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(400, JSON.stringify({ error: 'body is required' }));
+    await expect(
+      postConsoleIssueBodyUpdate({
+        issueUrl: 'https://github.com/o/r/issues/42',
+        body: '',
+      }),
+    ).rejects.toThrow('body is required');
+  });
+});
+
+describe('postConsoleIssueCommentBodyUpdate', () => {
+  it('posts issueUrl, commentId and body to the issuecommentbody endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleIssueCommentBodyUpdate({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      commentId: 4242,
+      body: '- [x] rewritten comment body',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/issuecommentbody');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      commentId: 4242,
+      body: '- [x] rewritten comment body',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'commentId is required' }),
+    );
+    await expect(
+      postConsoleIssueCommentBodyUpdate({
+        issueUrl: 'https://github.com/o/r/issues/42',
+        commentId: 4242,
+        body: '',
+      }),
+    ).rejects.toThrow('commentId is required');
   });
 });

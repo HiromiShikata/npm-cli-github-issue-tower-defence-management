@@ -26,6 +26,8 @@ import {
   handleDeleteAllComments,
   handleDeleteStory,
   handleIntmux,
+  handleIssueBodyUpdate,
+  handleIssueCommentBodyUpdate,
   handleProjectMaxPreparingUpdate,
   handleIssueRename,
   handleReorderStory,
@@ -7207,6 +7209,152 @@ describe('consoleOperationApi', () => {
         handleIssueRename(context, {
           issueUrl: 'https://github.com/o/r/issues/42',
           newTitle: 'New title',
+        }),
+      ).rejects.toThrow('API failure');
+    });
+  });
+
+  describe('handleIssueBodyUpdate', () => {
+    it('updates the issue body and returns 200', async () => {
+      const issueToUpdate: Issue = {
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        org: 'o',
+        repo: 'r',
+        number: 42,
+        body: 'Old body',
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue(issueToUpdate);
+      issueRepository.updateIssueBody.mockResolvedValue(undefined);
+      const response = await handleIssueBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        body: '- [x] New body',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/42',
+      );
+      expect(issueRepository.updateIssueBody).toHaveBeenCalledWith(
+        issueToUpdate,
+        '- [x] New body',
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 404 when the issue is not found', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleIssueBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        body: '- [x] New body',
+      });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleIssueBodyUpdate(context, {
+        body: '- [x] New body',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when body is missing', async () => {
+      const response = await handleIssueBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('propagates an error from updateIssueBody (resulting in 502 from webServer)', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+      });
+      issueRepository.updateIssueBody.mockRejectedValue(
+        new Error('API failure'),
+      );
+      await expect(
+        handleIssueBodyUpdate(context, {
+          issueUrl: 'https://github.com/o/r/issues/42',
+          body: '- [x] New body',
+        }),
+      ).rejects.toThrow('API failure');
+    });
+  });
+
+  describe('handleIssueCommentBodyUpdate', () => {
+    it('updates the issue comment body via org, repo and commentId derived from the issue, and returns 200', async () => {
+      const issueForComment: Issue = {
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        org: 'o',
+        repo: 'r',
+        number: 42,
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue(issueForComment);
+      issueRepository.updateIssueCommentBody.mockResolvedValue(undefined);
+      const response = await handleIssueCommentBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        commentId: 4242,
+        body: '- [x] New comment body',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/42',
+      );
+      expect(issueRepository.updateIssueCommentBody).toHaveBeenCalledWith(
+        { org: 'o', repo: 'r', commentId: 4242 },
+        '- [x] New comment body',
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 404 when the issue is not found', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleIssueCommentBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        commentId: 4242,
+        body: '- [x] New comment body',
+      });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleIssueCommentBodyUpdate(context, {
+        commentId: 4242,
+        body: '- [x] New comment body',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when commentId is missing', async () => {
+      const response = await handleIssueCommentBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        body: '- [x] New comment body',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when body is missing', async () => {
+      const response = await handleIssueCommentBodyUpdate(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        commentId: 4242,
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('propagates an error from updateIssueCommentBody (resulting in 502 from webServer)', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        org: 'o',
+        repo: 'r',
+      });
+      issueRepository.updateIssueCommentBody.mockRejectedValue(
+        new Error('API failure'),
+      );
+      await expect(
+        handleIssueCommentBodyUpdate(context, {
+          issueUrl: 'https://github.com/o/r/issues/42',
+          commentId: 4242,
+          body: '- [x] New comment body',
         }),
       ).rejects.toThrow('API failure');
     });

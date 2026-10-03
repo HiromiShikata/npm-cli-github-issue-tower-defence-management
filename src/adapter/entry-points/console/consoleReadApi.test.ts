@@ -76,6 +76,7 @@ describe('consoleReadApi', () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
         {
+          id: 42001,
           author: 'octocat',
           body: 'hello',
           createdAt: new Date('2026-01-02T03:04:05Z'),
@@ -89,6 +90,7 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({
         comments: [
           {
+            id: 42001,
             author: 'octocat',
             body: 'hello',
             createdAt: '2026-01-02T03:04:05.000Z',
