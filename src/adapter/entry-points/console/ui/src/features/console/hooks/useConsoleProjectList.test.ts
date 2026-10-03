@@ -420,5 +420,33 @@ describe('useConsoleProjectList', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+
+    it('surfaces an error on the hook state when a background re-fetch fails, without corrupting held pjcodes', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(jsonResponseOf({ pjcodes: ['acme'] }))
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({}),
+        });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useConsoleProjectList(true, false));
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+      expect(result.current.error).toBeNull();
+      expect(result.current.pjcodes).toEqual(['acme']);
+
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(result.current.error).toBeInstanceOf(Error);
+      expect(result.current.error?.message).toBe('HTTP 500');
+      expect(result.current.pjcodes).toEqual(['acme']);
+    });
   });
 });
