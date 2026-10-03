@@ -49,14 +49,10 @@ const hasOwnerReplyAfterNewestAgentComment = (
   if (newestAgentComment === null) {
     return false;
   }
-  const newestAgentCommentLastWrittenAtMilliseconds = Math.max(
-    newestAgentComment.createdAt.getTime(),
-    newestAgentComment.updatedAt.getTime(),
-  );
   return comments.some(
     (comment) =>
       isOwnerReply(comment, isTrustedAuthor) &&
-      comment.createdAt.getTime() > newestAgentCommentLastWrittenAtMilliseconds,
+      comment.createdAt.getTime() > newestAgentComment.createdAt.getTime(),
   );
 };
 
