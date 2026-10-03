@@ -2,6 +2,7 @@ import {
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
   RATE_LIMIT_SESSION_END_MESSAGE,
 } from './autoStatusCheckComments';
+import { ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX } from './CreateEstimationIssueUseCase';
 import {
   ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD,
   ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD,
@@ -39,6 +40,9 @@ export const isHumanComment = (
     return true;
   }
   if (isAgentReportBody(comment.content)) {
+    return false;
+  }
+  if (comment.content.endsWith(ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX)) {
     return false;
   }
   return !MACHINE_GENERATED_COMMENT_HEADS.some((head) =>

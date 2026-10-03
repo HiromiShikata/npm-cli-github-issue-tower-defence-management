@@ -25,6 +25,7 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
+import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -128,6 +129,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<NonPreparationWorkerScopeStopUseCase>();
     const mockConflictedIssueRevertUseCase =
       mock<ConflictedIssueRevertUseCase>();
+    const mockOwnerRepliedIssueRevertUseCase =
+      mock<OwnerRepliedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockAgentDesignationLabelAdoptUseCase =
@@ -164,6 +167,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockRevertOrphanedPreparationUseCase,
       mockNonPreparationWorkerScopeStopUseCase,
       mockConflictedIssueRevertUseCase,
+      mockOwnerRepliedIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockAgentDesignationLabelAdoptUseCase,
       mockUpdateRateLimitCacheUseCase,
@@ -876,6 +880,119 @@ describe('HandleScheduledEventUseCase', () => {
       expect(
         mockRevertNotReadyReviewQueueIssueUseCase.run,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    describe('ownerRepliedIssueRevertUseCase runs on every scheduled run', () => {
+      const ownerRepliedRevertBaseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      const ownerRepliedRevertInputCases: {
+        name: string;
+        input: Parameters<HandleScheduledEventUseCase['run']>[0];
+        expectedAllowedIssueAuthors: string[] | null;
+      }[] = [
+        {
+          name: 'should invoke ownerRepliedIssueRevertUseCase once with the cycle project, issues and the top-level allowedIssueAuthors when startPreparation is absent',
+          input: {
+            ...ownerRepliedRevertBaseInput,
+            allowedIssueAuthors: ['HiromiShikata'],
+          },
+          expectedAllowedIssueAuthors: ['HiromiShikata'],
+        },
+        {
+          name: 'should invoke ownerRepliedIssueRevertUseCase once with the startPreparation allowedIssueAuthors when no top-level value is set',
+          input: {
+            ...ownerRepliedRevertBaseInput,
+            startPreparation: {
+              defaultAgentName: 'agent1',
+              configFilePath: '/path/to/config.yml',
+              maximumPreparingIssuesCount: null,
+              allowedIssueAuthors: ['HiromiShikata'],
+            },
+          },
+          expectedAllowedIssueAuthors: ['HiromiShikata'],
+        },
+        {
+          name: 'should invoke ownerRepliedIssueRevertUseCase once with null allowedIssueAuthors when neither a top-level value nor startPreparation is set',
+          input: ownerRepliedRevertBaseInput,
+          expectedAllowedIssueAuthors: null,
+        },
+      ];
+
+      it.each(ownerRepliedRevertInputCases)('$name', async (testCase) => {
+        const mockProject = mock<Project>();
+        const awaitingOwnerIssue = mock<Issue>();
+        awaitingOwnerIssue.isPr = false;
+        awaitingOwnerIssue.url =
+          'https://github.com/test-org/test-repo/issues/20';
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [awaitingOwnerIssue],
+          project: mockProject,
+          cacheUsed: false,
+        });
+        mockProjectRepository.getProject.mockResolvedValue(mockProject);
+
+        await useCase.run(testCase.input);
+
+        expect(mockOwnerRepliedIssueRevertUseCase.run).toHaveBeenCalledTimes(1);
+        expect(mockOwnerRepliedIssueRevertUseCase.run).toHaveBeenCalledWith({
+          project: mockProject,
+          issues: [awaitingOwnerIssue],
+          allowedIssueAuthors: testCase.expectedAllowedIssueAuthors,
+        });
+        expect(
+          mockOwnerRepliedIssueRevertUseCase.run.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          mockConflictedIssueRevertUseCase.run.mock.invocationCallOrder[0],
+        );
+      });
+
+      it('should still invoke conflictedIssueRevertUseCase and revertNotReadyReviewQueueIssueUseCase and log the error when ownerRepliedIssueRevertUseCase rejects', async () => {
+        const ownerRepliedRevertError = new Error(
+          'simulated ownerRepliedIssueRevertUseCase failure',
+        );
+        mockOwnerRepliedIssueRevertUseCase.run.mockRejectedValueOnce(
+          ownerRepliedRevertError,
+        );
+        mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        try {
+          await useCase.run({
+            ...ownerRepliedRevertBaseInput,
+            allowedIssueAuthors: ['HiromiShikata'],
+          });
+
+          expect(mockOwnerRepliedIssueRevertUseCase.run).toHaveBeenCalledTimes(
+            1,
+          );
+          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(1);
+          expect(
+            mockRevertNotReadyReviewQueueIssueUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'simulated ownerRepliedIssueRevertUseCase failure',
+            ),
+            ownerRepliedRevertError,
+          );
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
     });
 
     it('should pass a top-level allowedIssueAuthors to revertNotReadyReviewQueueIssueUseCase', async () => {
@@ -2760,6 +2877,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockRevertOrphanedPreparationUseCase,
           mockNonPreparationWorkerScopeStopUseCase,
           mockConflictedIssueRevertUseCase,
+          mockOwnerRepliedIssueRevertUseCase,
           mockRevertNotReadyReviewQueueIssueUseCase,
           mockAgentDesignationLabelAdoptUseCase,
           mockUpdateRateLimitCacheUseCase,
@@ -2844,6 +2962,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockRevertOrphanedPreparationUseCase,
           mockNonPreparationWorkerScopeStopUseCase,
           mockConflictedIssueRevertUseCase,
+          mockOwnerRepliedIssueRevertUseCase,
           mockRevertNotReadyReviewQueueIssueUseCase,
           mockAgentDesignationLabelAdoptUseCase,
           mockUpdateRateLimitCacheUseCase,
@@ -4030,6 +4149,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<RevertOrphanedPreparationUseCase>(),
       mock<NonPreparationWorkerScopeStopUseCase>(),
       mock<ConflictedIssueRevertUseCase>(),
+      mock<OwnerRepliedIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),
       null,

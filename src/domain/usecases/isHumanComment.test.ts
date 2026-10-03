@@ -203,6 +203,19 @@ describe('isHumanComment', () => {
     ).toBe(false);
   });
 
+  it('treats an estimation field cleared comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content:
+            '`Remaining Estimation Minutes` field value `120` is removed to re-estimate.',
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
   it('treats any comment from an untrusted author as human input', () => {
     expect(
       isHumanComment(
