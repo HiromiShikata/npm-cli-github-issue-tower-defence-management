@@ -44,6 +44,7 @@ import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
+import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import {
   commentCreateWithDedupRetry,
@@ -136,6 +137,7 @@ export class HandleScheduledEventUseCase {
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly nonPreparationWorkerScopeStopUseCase: NonPreparationWorkerScopeStopUseCase,
     readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
+    readonly ownerRepliedIssueRevertUseCase: OwnerRepliedIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
@@ -663,6 +665,18 @@ ${JSON.stringify(e)}
       console.error(
         `[HandleScheduledEvent] Failed to update issue status by label for project ${project.url}: ${updateStatusByLabelError instanceof Error ? updateStatusByLabelError.message : String(updateStatusByLabelError)}`,
         updateStatusByLabelError,
+      );
+    }
+    try {
+      await this.ownerRepliedIssueRevertUseCase.run({
+        project,
+        issues,
+        allowedIssueAuthors,
+      });
+    } catch (ownerRepliedIssueRevertError) {
+      console.error(
+        `[HandleScheduledEvent] Failed to revert owner-replied Awaiting Owner issues for project ${project.url}: ${ownerRepliedIssueRevertError instanceof Error ? ownerRepliedIssueRevertError.message : String(ownerRepliedIssueRevertError)}`,
+        ownerRepliedIssueRevertError,
       );
     }
     await this.conflictedIssueRevertUseCase.run({
