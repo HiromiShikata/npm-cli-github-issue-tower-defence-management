@@ -1,3 +1,10 @@
+## [2.162.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.0...v2.162.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **console:** periodically re-fetch project list in background during timer mode ([#3170](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3170)) ([cfbcd3c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cfbcd3cd4048006f6443639644b59304d86d2f8e))
+
 # [2.162.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.8...v2.162.0) (2026-10-03)
 
 
