@@ -124,14 +124,12 @@ export class LocalStorageUrgentStoryLaunchHoldRepository implements UrgentStoryL
       procDirectoryPath: string;
       processId: number;
       claudeTokenUsageRepository:
-        | (Pick<
+        | Pick<
             ClaudeTokenUsageRepository,
-            'getAvailableTokenUsages' | 'getTokenInFlightCounts'
-          > & {
-            getPendingTokenLaunchReservationCounts: (
-              tokens: string[],
-            ) => Promise<Record<string, number>>;
-          })
+            | 'getAvailableTokenUsages'
+            | 'getTokenInFlightCounts'
+            | 'getPendingTokenLaunchReservationCounts'
+          >
         | null;
     },
   ) {}
