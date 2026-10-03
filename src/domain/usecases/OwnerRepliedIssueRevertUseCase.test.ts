@@ -139,16 +139,14 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     project = createMockProject();
     mockIssueRepository = {
       updateStatus: jest.fn().mockResolvedValue(undefined),
-      get: jest
-        .fn()
-        .mockImplementation((issueUrl: string) =>
-          Promise.resolve(
-            createMockIssue({
-              url: issueUrl,
-              status: AWAITING_OWNER_STATUS_NAME,
-            }),
-          ),
+      get: jest.fn().mockImplementation((issueUrl: string) =>
+        Promise.resolve(
+          createMockIssue({
+            url: issueUrl,
+            status: AWAITING_OWNER_STATUS_NAME,
+          }),
         ),
+      ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
     mockIssueCommentRepository = {
