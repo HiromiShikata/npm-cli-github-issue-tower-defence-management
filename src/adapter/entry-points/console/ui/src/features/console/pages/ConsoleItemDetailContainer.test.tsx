@@ -2217,11 +2217,6 @@ describe('ConsoleItemDetailContainer', () => {
         expect(getByText('Second')).toBeInTheDocument();
       });
 
-      // Each markdown segment restarts its own data-checkbox-index numbering
-      // at 0, so the checkbox after the Mermaid diagram carries the same
-      // data-checkbox-index="0" as the one before it. The checkbox actually
-      // clicked by the user is identified by its position in document order
-      // instead.
       const checkboxesInDocumentOrder = Array.from(
         container.querySelectorAll<HTMLInputElement>(
           'input[type="checkbox"][data-checkbox-index]',
