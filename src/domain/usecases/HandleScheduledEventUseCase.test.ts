@@ -1881,6 +1881,37 @@ describe('HandleScheduledEventUseCase', () => {
             );
           expect(storyIssueCalls).toHaveLength(0);
         });
+
+        it('does not attempt the write when the matched existing issue has no project item (empty itemId, regression for issue 3128)', async () => {
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [],
+            project: storyProject,
+            cacheUsed: false,
+          });
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/77';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '77',
+            },
+          ]);
+          const existingIssueWithNoProjectItem = mock<Issue>();
+          existingIssueWithNoProjectItem.itemId = '';
+          existingIssueWithNoProjectItem.storyOptionId = null;
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            existingIssueWithNoProjectItem,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).not.toHaveBeenCalled();
+        });
       });
 
       describe('storyOptionWriteFailures collection on unexpected write error (issue #2781)', () => {
