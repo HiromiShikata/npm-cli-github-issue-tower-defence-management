@@ -1,3 +1,10 @@
+## [2.161.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.5...v2.161.6) (2026-10-03)
+
+
+### Bug Fixes
+
+* **findLastAgentReport:** count only comments created since dispatch start as the dispatch report ([#3153](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3153)) ([e98141f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e98141f039b667451ea661d178944d189b7c38a4))
+
 ## [2.161.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.4...v2.161.5) (2026-10-03)
 
 
