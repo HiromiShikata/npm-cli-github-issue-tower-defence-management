@@ -561,3 +561,136 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     });
   });
 });
+
+describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a task is open (#32963)', () => {
+  const taskOpenGuardBaseInput: ConsoleAutomaticProjectNavigationDecideInput =
+    {
+      checkTimerElapsed: false,
+      timerElapsed: false,
+      remainingCountIsZero: false,
+      snapshotsReady: true,
+      explicitlySelectedPjcodeMatchesCurrent: false,
+      pjcode: 'acme',
+      pjcodes: ['acme', 'beta'],
+      projectMinutes: { acme: 30, beta: 30 },
+      skipCount: 0,
+      evaluatedPjcode: null,
+    };
+
+  type TaskOpenTableCase = {
+    name: string;
+    input: ConsoleAutomaticProjectNavigationDecideInput;
+    expectedTargetPjcode: string | null;
+  };
+
+  const taskOpenTableCases: TaskOpenTableCase[] = [
+    {
+      name: 'taskOpen=false, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: false,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=false, elapsedTimeTriggerHolds=false -> switches to beta',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: false,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: 'beta',
+    },
+    {
+      name: 'taskOpen=true, remainingCountIsZero=true, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch while a task is open',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: true,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'taskOpen=true, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: true,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch (explicit-selection guard)',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: false,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: true,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'taskOpen=true, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: true,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: true,
+        checkTimerElapsed: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'taskOpen=true, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=true -> switches via the prior-action elapsed-time branch regardless of taskOpen',
+      input: {
+        ...taskOpenGuardBaseInput,
+        taskOpen: true,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        checkTimerElapsed: true,
+        timerElapsed: true,
+      },
+      expectedTargetPjcode: 'beta',
+    },
+  ];
+
+  it.each(taskOpenTableCases)('$name', ({ input, expectedTargetPjcode }) => {
+    expect(consoleAutomaticProjectNavigationDecide(input).targetPjcode).toBe(
+      expectedTargetPjcode,
+    );
+  });
+
+  it('preserves skipCount and evaluatedPjcode exactly as they were before the task was opened, instead of resetting them', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...taskOpenGuardBaseInput,
+      taskOpen: true,
+      remainingCountIsZero: true,
+      explicitlySelectedPjcodeMatchesCurrent: false,
+      checkTimerElapsed: false,
+      timerElapsed: false,
+      skipCount: 2,
+      evaluatedPjcode: 'beta',
+    });
+    expect(decision).toEqual({
+      targetPjcode: null,
+      nextSkipCount: 2,
+      nextEvaluatedPjcode: 'beta',
+    });
+  });
+});
