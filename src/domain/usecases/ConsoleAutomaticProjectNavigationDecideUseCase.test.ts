@@ -667,7 +667,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
       expectedTargetPjcode: null,
     },
     {
-      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch (explicit-selection guard)',
+      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> switches to beta (explicit-selection no longer blocks a live-eligible switch)',
       input: {
         ...taskOpenGuardBaseInput,
         taskOpen: false,
@@ -676,7 +676,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         checkTimerElapsed: false,
         timerElapsed: false,
       },
-      expectedTargetPjcode: null,
+      expectedTargetPjcode: 'beta',
     },
     {
       name: 'taskOpen=true, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch',

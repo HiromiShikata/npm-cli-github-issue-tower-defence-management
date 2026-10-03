@@ -545,6 +545,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         'acme',
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
