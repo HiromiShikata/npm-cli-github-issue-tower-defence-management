@@ -582,6 +582,7 @@ describe('LocalStorageUrgentStoryLaunchHoldRepository', () => {
     const repository = repositoryCreate(9999, {
       getAvailableTokenUsages: async () => tokenUsages,
       getTokenInFlightCounts: async () => ({ 'token-a': 2 }),
+      getPendingTokenLaunchReservationCounts: async () => ({}),
     });
 
     expect(await repository.getAvailableTokenUsages()).toEqual(tokenUsages);
@@ -590,9 +591,33 @@ describe('LocalStorageUrgentStoryLaunchHoldRepository', () => {
     });
   });
 
+  it('delegates pending token launch reservation counts to the token usage repository it was given', async () => {
+    const repository = repositoryCreate(9999, {
+      getAvailableTokenUsages: async () => [],
+      getTokenInFlightCounts: async () => ({}),
+      getPendingTokenLaunchReservationCounts: async (tokens: string[]) => {
+        expect(tokens).toEqual(['token-a']);
+        return { 'token-a': 1 };
+      },
+    });
+
+    expect(
+      await repository.getPendingTokenLaunchReservationCounts(['token-a']),
+    ).toEqual({ 'token-a': 1 });
+  });
+
   it('returns no token usages when it was given no token usage repository', async () => {
     expect(
       await repositoryCreate(9999, null).getAvailableTokenUsages(),
     ).toEqual([]);
+  });
+
+  it('returns no pending token launch reservation counts when it was given no token usage repository', async () => {
+    expect(
+      await repositoryCreate(
+        9999,
+        null,
+      ).getPendingTokenLaunchReservationCounts(['token-a']),
+    ).toEqual({});
   });
 });

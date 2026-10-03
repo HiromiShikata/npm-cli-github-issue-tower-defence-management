@@ -17,6 +17,13 @@ import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnership
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 
+type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+  ClaudeTokenUsageRepository & {
+    getPendingTokenLaunchReservationCounts: (
+      tokens: string[],
+    ) => Promise<Record<string, number>>;
+  };
+
 const createMinimalIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
@@ -315,7 +322,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
         Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
       >;
       let spawnMockLocalCommandRunner: jest.Mocked<LocalCommandRunner>;
-      let spawnMockClaudeTokenUsageRepository: jest.Mocked<ClaudeTokenUsageRepository>;
+      let spawnMockClaudeTokenUsageRepository: jest.Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts>;
       let spawnMockTakeOwnershipSpawnRepository: jest.Mocked<TakeOwnershipSpawnRepository>;
       let spawnUseCase: StartPreparationUseCase;
 
@@ -425,6 +432,9 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
           reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
           proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+          getPendingTokenLaunchReservationCounts: jest
+            .fn()
+            .mockResolvedValue({}),
         };
         spawnMockTakeOwnershipSpawnRepository = {
           listSpawns: jest.fn().mockReturnValue([]),

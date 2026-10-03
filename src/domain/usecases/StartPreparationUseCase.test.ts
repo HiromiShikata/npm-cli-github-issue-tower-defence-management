@@ -23,6 +23,13 @@ import {
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
+type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+  ClaudeTokenUsageRepository & {
+    getPendingTokenLaunchReservationCounts: (
+      tokens: string[],
+    ) => Promise<Record<string, number>>;
+  };
+
 // StartPreparationUseCase.run() captures `new Date().toISOString()` immediately before spawning
 // `aw`, so the exact value is not deterministic across test runs; every assertion on the full
 // `awArgs` array matches this UTC ISO-8601 shape instead of a fixed string.
@@ -145,7 +152,7 @@ describe('StartPreparationUseCase', () => {
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
-  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
+  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts>;
   let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
   let mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository>;
   let mockProject: Project;
@@ -194,6 +201,7 @@ describe('StartPreparationUseCase', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     mockTakeOwnershipSpawnRepository = {
       listSpawns: jest.fn().mockReturnValue([]),
