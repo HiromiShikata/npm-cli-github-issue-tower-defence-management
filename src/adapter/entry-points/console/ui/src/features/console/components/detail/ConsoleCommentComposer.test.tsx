@@ -13,6 +13,7 @@ jest.mock('../../lib/mermaidLoader', () => ({
 }));
 
 const stubSubmit = async (body: string): Promise<ConsoleComment> => ({
+  id: 1,
   author: 'HiromiShikata',
   body,
   createdAt: '2026-06-19T11:58:00.000Z',
@@ -93,6 +94,7 @@ describe('ConsoleCommentComposer', () => {
 
   it('submits the comment, empties the draft and renders no comment of its own', async () => {
     const onSubmit = jest.fn(async (body: string): Promise<ConsoleComment> => ({
+      id: 1,
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
@@ -378,6 +380,7 @@ describe('ConsoleCommentComposer', () => {
       new Promise((resolve) => {
         resolvePost = () =>
           resolve({
+            id: 1,
             author: 'HiromiShikata',
             body: _body,
             createdAt: '2026-06-19T11:58:00.000Z',

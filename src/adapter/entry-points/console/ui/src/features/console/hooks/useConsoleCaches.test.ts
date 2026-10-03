@@ -32,6 +32,7 @@ describe('useConsoleCaches', () => {
           body: 'PR body text',
           comments: [
             {
+              id: 1,
               author: 'alice',
               body: 'LGTM',
               createdAt: '2026-08-01T09:00:00Z',

@@ -5,6 +5,7 @@ import {
 import type { ConsoleComment } from './types';
 
 const makeComment = (body: string): ConsoleComment => ({
+  id: 1,
   author: 'bot',
   body,
   createdAt: '2026-08-31T00:00:00.000Z',
