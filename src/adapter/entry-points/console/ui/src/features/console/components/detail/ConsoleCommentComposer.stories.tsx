@@ -66,3 +66,12 @@ export const ComposerWithAllActionButtons: Story = {
     onSubmitAndMoveToAwaitingWorkspace: acceptComment,
   },
 };
+
+export const ComposerUploadInProgress: Story = {
+  args: {
+    initiallyOpen: true,
+    initialDraft: 'Investigating the failing deploy.',
+    onSubmitAndMoveToAwaitingWorkspace: acceptComment,
+    onUploadFile: () => new Promise<string>(() => {}),
+  },
+};
