@@ -50,6 +50,16 @@ const expectWorkflowManagementStoryIsWellFormed = (workflowManagementStory: {
   expect(workflowManagementStory.name).toMatch(/workflow management/i);
 };
 
+const computeCleanupStoryListAfterSelfAddition = (
+  currentLiveOptions: FieldOption[],
+  uniqueSuffix: string,
+): FieldOption[] => {
+  const selfAddedOptionName = `test-story-graphql-${uniqueSuffix}`;
+  return currentLiveOptions.filter(
+    (option) => option.name !== selfAddedOptionName,
+  );
+};
+
 describeWhenCredentials('GraphqlProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   let repository: GraphqlProjectRepository;
@@ -146,7 +156,22 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
       expect(added?.description).toEqual(newOption.description);
       expect(added?.id).toBeDefined();
 
-      await repository.updateStoryList(testProject, existingStories);
+      const liveProject = await repository.getProject(projectId);
+      if (liveProject === null) {
+        throw new Error(
+          'repository.getProject unexpectedly returned null during cleanup',
+        );
+      }
+      if (liveProject.story === null) {
+        throw new Error(
+          'liveProject.story unexpectedly returned null during cleanup',
+        );
+      }
+      const cleanupResult = computeCleanupStoryListAfterSelfAddition(
+        liveProject.story.stories,
+        uniqueSuffix,
+      );
+      await repository.updateStoryList(testProject, cleanupResult);
     });
   });
 

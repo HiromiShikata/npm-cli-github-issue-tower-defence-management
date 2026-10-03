@@ -19,6 +19,7 @@ jest.mock('ky', () => {
 });
 
 import { HTTPError } from 'ky';
+import { mock } from 'jest-mock-extended';
 import {
   GraphqlProjectItemRepository,
   PAGINATION_DELAY_MS,
@@ -30,6 +31,12 @@ import {
 } from './GraphqlProjectItemRepository';
 import { GRAPHQL_RETRY_LIMIT } from '../githubGraphqlClient';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { RestIssueRepository } from './RestIssueRepository';
+import { ApiV3CheerioRestIssueRepository } from './ApiV3CheerioRestIssueRepository';
+import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
+import type { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
+import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import type { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
@@ -4144,9 +4151,10 @@ describeWhenLiveCredentials(
     let repository: GraphqlProjectItemRepository;
     const projectId = 'PVT_kwHOAGJHa84AFhgF';
     const storyFieldId = 'PVTSSF_lAHOAGJHa84AFhgFzg1oBms';
-    const projectItemIdCarryingRealIssueContent =
-      'PVTI_lAHOAGJHa84AFhgFzgTKpJ8';
     const knownStoryOption = { id: 'af410dae', name: 'story1' };
+    const uniqueSuffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    let disposableIssueUrl: string;
+    let disposableItemId: string;
 
     beforeAll(async () => {
       const LiveGraphqlProjectItemRepository =
@@ -4155,29 +4163,69 @@ describeWhenLiveCredentials(
         localStorageRepository,
         liveToken,
       );
+      const restIssueRepository = new RestIssueRepository(
+        localStorageRepository,
+        liveToken,
+      );
+      const issueNumber = await restIssueRepository.createNewIssue(
+        'HiromiShikata',
+        'test-repository',
+        `disposable fixture for GraphqlProjectItemRepository live test ${uniqueSuffix}`,
+        'Created by the GraphqlProjectItemRepository live integration test. Safe to close.',
+        [],
+        [],
+      );
+      disposableIssueUrl = `https://github.com/HiromiShikata/test-repository/issues/${issueNumber}`;
+      disposableItemId = await repository.addIssueToProject(
+        projectId,
+        disposableIssueUrl,
+      );
       await repository.updateProjectField(
         projectId,
         storyFieldId,
-        projectItemIdCarryingRealIssueContent,
+        disposableItemId,
         { singleSelectOptionId: knownStoryOption.id },
       );
     });
 
     afterAll(async () => {
-      await repository.clearProjectField(
+      await repository.removeItemFromProjectByIssueUrl(
+        disposableIssueUrl,
         projectId,
-        storyFieldId,
-        projectItemIdCarryingRealIssueContent,
+      );
+      const apiV3CheerioRestIssueRepository = new ApiV3CheerioRestIssueRepository(
+        mock<ApiV3IssueRepository>(),
+        mock<RestIssueRepository>(),
+        mock<GraphqlProjectItemRepository>(),
+        mock<LocalStorageCacheRepository>(),
+        mock<ProjectRepository>(),
+        mock<DateRepository>(),
+        localStorageRepository,
+        liveToken,
+      );
+      await apiV3CheerioRestIssueRepository.closeIssueByUrl(
+        disposableIssueUrl,
+        'not_planned',
       );
     });
 
     describe('fetchProjectItems', () => {
       it('returns the Story field with the real optionId the live GraphQL API assigned, proving the query actually selects optionId', async () => {
-        const items = await repository.fetchProjectItems(projectId);
-
-        const targetItem = items.find(
-          (item) => item.id === projectItemIdCarryingRealIssueContent,
-        );
+        // The project items connection can briefly lag behind a just-completed
+        // addProjectV2ItemById mutation, so poll until the disposable item
+        // created in beforeAll shows up instead of racing a single read.
+        let targetItem:
+          | Awaited<ReturnType<typeof repository.fetchProjectItems>>[number]
+          | undefined;
+        const maxAttempts = 10;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const items = await repository.fetchProjectItems(projectId);
+          targetItem = items.find((item) => item.id === disposableItemId);
+          if (targetItem !== undefined) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
         expect(targetItem).toBeDefined();
         const storyField = targetItem?.customFields.find(
           (field) => field.name === 'Story',

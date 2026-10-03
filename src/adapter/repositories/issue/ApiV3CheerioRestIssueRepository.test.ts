@@ -24,7 +24,7 @@ import type {
   ProjectItem,
   ProjectItemLight,
 } from './GraphqlProjectItemRepository';
-import type { RestIssueRepository } from './RestIssueRepository';
+import { RestIssueRepository } from './RestIssueRepository';
 
 dotenv.config();
 
@@ -13368,7 +13368,10 @@ describeWhenCredentials(
   'ApiV3CheerioRestIssueRepository - getLatestReopenedEventAt live integration',
   () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
-    const restIssueRepository = mock<RestIssueRepository>();
+    const restIssueRepository = new RestIssueRepository(
+      mock<LocalStorageRepository>(),
+      githubToken,
+    );
     const graphqlProjectItemRepository = mock<GraphqlProjectItemRepository>();
     const localStorageCacheRepository = mock<LocalStorageCacheRepository>();
     localStorageCacheRepository.withLock.mockImplementation((_key, fn) => fn());
@@ -13387,44 +13390,52 @@ describeWhenCredentials(
       githubToken,
     );
 
-    const sandboxIssueUrl =
-      'https://github.com/HiromiShikata/test-repository/issues/3585';
-    const sandboxIssue: Issue = {
-      nameWithOwner: 'HiromiShikata/test-repository',
-      url: sandboxIssueUrl,
-      title: 'issue',
-      number: 3585,
-      state: 'OPEN',
-      labels: [],
-      assignees: [],
-      nextActionDate: null,
-      nextActionHour: null,
-      estimationMinutes: null,
-      dependedIssueUrls: [],
-      completionDate50PercentConfidence: null,
-      status: null,
-      story: null,
-      org: 'HiromiShikata',
-      repo: 'test-repository',
-      body: '',
-      itemId: 'item-3585',
-      isPr: false,
-      isInProgress: false,
-      isClosed: false,
-      createdAt: new Date('2026-01-01'),
-      author: '',
-      closingIssueReferenceUrls: [],
-      plainCrossRepoIssueReferenceUrls: [],
-      agent: null,
-      isRepoArchived: false,
-      stateReason: null,
-    };
+    test('reflects a real close+reopen cycle on a disposable sandbox issue as a recent reopened event', async () => {
+      const uniqueSuffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      const issueNumber = await repository.createNewIssue(
+        'HiromiShikata',
+        'test-repository',
+        `disposable fixture for getLatestReopenedEventAt live test ${uniqueSuffix}`,
+        'Created by the ApiV3CheerioRestIssueRepository live integration test. Safe to close.',
+        [],
+        [],
+      );
+      const disposableIssueUrl = `https://github.com/HiromiShikata/test-repository/issues/${issueNumber}`;
+      const disposableIssue: Issue = {
+        nameWithOwner: 'HiromiShikata/test-repository',
+        url: disposableIssueUrl,
+        title: 'issue',
+        number: issueNumber,
+        state: 'OPEN',
+        labels: [],
+        assignees: [],
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        status: null,
+        story: null,
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        body: '',
+        itemId: `item-${issueNumber}`,
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2026-01-01'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        agent: null,
+        isRepoArchived: false,
+        stateReason: null,
+      };
 
-    test('reflects a real close+reopen cycle on the sandbox issue as a recent reopened event', async () => {
-      await repository.closeIssueByUrl(sandboxIssueUrl, 'not_planned');
-      await repository.reopenIssueByUrl(sandboxIssueUrl);
+      await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
+      await repository.reopenIssueByUrl(disposableIssueUrl);
 
-      const result = await repository.getLatestReopenedEventAt(sandboxIssue);
+      const result = await repository.getLatestReopenedEventAt(disposableIssue);
 
       if (result === null) {
         throw new Error(
@@ -13434,6 +13445,8 @@ describeWhenCredentials(
       const nowMs = Date.now();
       const resultMs = result.getTime();
       expect(Math.abs(nowMs - resultMs)).toBeLessThan(5 * 60 * 1000);
+
+      await repository.closeIssueByUrl(disposableIssueUrl, 'not_planned');
     }, 30000);
   },
 );
