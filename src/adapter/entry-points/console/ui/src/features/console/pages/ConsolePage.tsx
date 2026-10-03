@@ -4,6 +4,7 @@ import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimer
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import {
+  type IssueCreateDestination,
   type IssueCreateDraft,
   IssueCreateModalDialog,
   type IssueCreateParams,
@@ -306,6 +307,11 @@ export const ConsolePage = () => {
     storyName: null,
     agentOptionId: null,
   });
+  const [dialogSubmitFailure, setDialogSubmitFailure] = useState<{
+    destination: IssueCreateDestination;
+    params: IssueCreateParams;
+    reason: string;
+  } | null>(null);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -759,7 +765,15 @@ export const ConsolePage = () => {
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
-          ),
+          ).catch((cause: unknown) => {
+            setDialogSubmitFailure({
+              destination: 'project',
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+            setIsDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setDialogDraft({
@@ -799,7 +813,15 @@ export const ConsolePage = () => {
             capturedPjcode,
             nameWithOwner,
             capturedParams,
-          ),
+          ).catch((cause: unknown) => {
+            setDialogSubmitFailure({
+              destination: 'workflow',
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+            setIsDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setFleetDialogDraft({
@@ -1131,15 +1153,32 @@ export const ConsolePage = () => {
                   <IssueCreateModalDialog
                     storyEntries={storyEntries}
                     agentOptions={agentOptions}
-                    initialDestination="project"
+                    initialDestination={
+                      dialogSubmitFailure?.destination ?? 'project'
+                    }
                     onSubmitProject={handleCreateIssueFromDialog}
                     onSubmitWorkflow={
                       fleetTaskCreateUrl !== null
                         ? handleCreateFleetTaskFromDialog
                         : undefined
                     }
-                    onClose={() => setIsDialogOpen(false)}
-                    initialDraft={dialogDraft}
+                    onClose={() => {
+                      setIsDialogOpen(false);
+                      setDialogSubmitFailure(null);
+                    }}
+                    initialDraft={
+                      dialogSubmitFailure !== null
+                        ? {
+                            title: dialogSubmitFailure.params.title,
+                            body: dialogSubmitFailure.params.body,
+                            storyName: dialogSubmitFailure.params.storyName,
+                            agentOptionId:
+                              dialogSubmitFailure.params.agentOptionId,
+                            files: dialogSubmitFailure.params.files,
+                          }
+                        : dialogDraft
+                    }
+                    initialSubmitError={dialogSubmitFailure?.reason ?? null}
                     onDraftChange={setDialogDraft}
                     fleetTaskCreateUrl={fleetTaskCreateUrl}
                     newIssueUrl={newIssueUrl}
