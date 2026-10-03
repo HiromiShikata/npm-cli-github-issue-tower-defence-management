@@ -128,9 +128,6 @@ const attachCheckboxClickHandlers = (
     }
     const checkboxIndex = Number(indexAttribute);
     if (onCheckboxToggle === undefined) {
-      // Keeps the checkbox inert: a disabled checkbox must never change its
-      // checked state on click, matching how a real browser blocks clicks on
-      // disabled form controls.
       const blockClick = (event: Event): void => {
         event.preventDefault();
       };
