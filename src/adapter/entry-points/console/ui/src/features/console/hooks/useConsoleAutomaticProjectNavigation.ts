@@ -20,6 +20,7 @@ export const useConsoleAutomaticProjectNavigation = (
   todoByHumanSnapshotFromCache: boolean,
   explicitlySelectedPjcode: string | null,
   writeState: ConsoleActionWriteState,
+  selectedItemKey: string | null,
 ): void => {
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
@@ -60,6 +61,7 @@ export const useConsoleAutomaticProjectNavigation = (
       explicitlySelectedPjcodeMatchesCurrent:
         explicitlySelectedPjcode !== null &&
         pjcode === explicitlySelectedPjcode,
+      taskOpen: selectedItemKey !== null,
       pjcode,
       pjcodes,
       projectMinutes,
@@ -86,5 +88,6 @@ export const useConsoleAutomaticProjectNavigation = (
     todoByHumanSnapshotFromCache,
     explicitlySelectedPjcode,
     writeState,
+    selectedItemKey,
   ]);
 };

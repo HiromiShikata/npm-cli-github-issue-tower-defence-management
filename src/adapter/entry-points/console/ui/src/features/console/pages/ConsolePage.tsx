@@ -574,6 +574,7 @@ export const ConsolePage = () => {
     snapshots['todo-by-human']?.fromCache ?? false,
     explicitlySelectedPjcode,
     writeStateForAutomaticNavigation,
+    selectedItemKey,
   );
 
   useConsoleTimerFirstItemAutoOpen(

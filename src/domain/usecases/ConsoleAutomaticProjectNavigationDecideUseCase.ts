@@ -29,6 +29,7 @@ export type ConsoleAutomaticProjectNavigationDecideInput = {
   remainingCountIsZero: boolean;
   snapshotsReady: boolean;
   explicitlySelectedPjcodeMatchesCurrent: boolean;
+  taskOpen?: boolean;
   pjcode: string;
   pjcodes: string[];
   projectMinutes: Record<string, number>;
@@ -71,6 +72,9 @@ export const consoleAutomaticProjectNavigationDecide = (
   }
   if (!input.remainingCountIsZero) {
     return { targetPjcode: null, nextSkipCount: 0, nextEvaluatedPjcode: null };
+  }
+  if (input.taskOpen) {
+    return unchanged;
   }
   if (input.explicitlySelectedPjcodeMatchesCurrent) {
     return unchanged;

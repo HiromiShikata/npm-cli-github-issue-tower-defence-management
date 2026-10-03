@@ -49,6 +49,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.todoByHumanSnapshotFromCache,
         defaultArgs.explicitlySelectedPjcode,
         defaultArgs.writeState,
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -70,6 +71,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -91,6 +93,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -112,6 +115,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -133,6 +137,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -154,6 +159,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -175,6 +181,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -196,6 +203,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         true,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -217,6 +225,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -238,6 +247,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -259,6 +269,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     rerender();
@@ -282,6 +293,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -309,6 +321,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -339,6 +352,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith(
@@ -363,6 +377,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -396,6 +411,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { pjcodes: [] as string[] } },
     );
@@ -422,6 +438,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { prsCount: 1 } },
     );
@@ -448,6 +465,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { todoByHumanCount: 3 } },
     );
@@ -474,6 +492,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           idleWriteState,
+          null,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -504,6 +523,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         'acme',
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -525,6 +545,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -546,6 +567,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         'beta',
         idleWriteState,
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -567,6 +589,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'unconfirmed', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -588,6 +611,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'unconfirmed', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -609,6 +633,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'failed', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -630,6 +655,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'offline', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -651,6 +677,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'failed', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -672,6 +699,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'succeeded', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -694,6 +722,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           writeState,
+          null,
         ),
       { initialProps: { writeState: { status: 'succeeded', attempt: 1 } } },
     );
@@ -721,6 +750,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           false,
           null,
           writeState,
+          null,
         ),
       { initialProps: { writeState: { status: 'succeeded', attempt: 1 } } },
     );
@@ -749,8 +779,31 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         false,
         null,
         { status: 'succeeded', attempt: 1 },
+        null,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate while the user has a task open, even when prs and todo-by-human are both zero (#32963)', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        defaultArgs.timerMode,
+        defaultArgs.isTimerExpired,
+        defaultArgs.prsCount,
+        defaultArgs.todoByHumanCount,
+        defaultArgs.pjcode,
+        defaultArgs.pjcodes,
+        defaultArgs.projectMinutes,
+        defaultArgs.prsSnapshotLoaded,
+        defaultArgs.todoByHumanSnapshotLoaded,
+        defaultArgs.prsSnapshotFromCache,
+        defaultArgs.todoByHumanSnapshotFromCache,
+        defaultArgs.explicitlySelectedPjcode,
+        defaultArgs.writeState,
+        'some-task-item-key',
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
   });
 });
