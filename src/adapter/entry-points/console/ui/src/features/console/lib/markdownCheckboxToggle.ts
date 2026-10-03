@@ -1,19 +1,15 @@
 const FENCE_OPEN_PATTERN = /^(`{3,}|~{3,})/;
 const CHECKBOX_LINE_PATTERN = /^(\s*(?:[-*+]|\d+[.)])\s+)\[([ xX])\](.*)$/;
 
-export const toggleMarkdownCheckboxAtIndex = (
-  source: string,
-  checkboxIndex: number,
-): string => {
-  if (!Number.isInteger(checkboxIndex) || checkboxIndex < 0) {
-    throw new Error(
-      `checkboxIndex must be a non-negative integer: ${checkboxIndex}`,
-    );
-  }
-  const lines = source.split('\n');
+const forEachCheckboxLineOutsideFences = (
+  lines: string[],
+  visitCheckboxLine: (
+    lineIndex: number,
+    checkboxMatch: RegExpExecArray,
+  ) => void,
+): void => {
   let insideFence = false;
   let fenceMarker = '';
-  let checkboxesSeen = 0;
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex];
@@ -39,16 +35,48 @@ export const toggleMarkdownCheckboxAtIndex = (
       continue;
     }
 
+    visitCheckboxLine(lineIndex, checkboxMatch);
+  }
+};
+
+export const countMarkdownCheckboxes = (source: string): number => {
+  let checkboxCount = 0;
+  forEachCheckboxLineOutsideFences(source.split('\n'), () => {
+    checkboxCount += 1;
+  });
+  return checkboxCount;
+};
+
+export const toggleMarkdownCheckboxAtIndex = (
+  source: string,
+  checkboxIndex: number,
+): string => {
+  if (!Number.isInteger(checkboxIndex) || checkboxIndex < 0) {
+    throw new Error(
+      `checkboxIndex must be a non-negative integer: ${checkboxIndex}`,
+    );
+  }
+  const lines = source.split('\n');
+  let checkboxesSeen = 0;
+  let toggledLineIndex: number | undefined;
+  let toggledLineText: string | undefined;
+
+  forEachCheckboxLineOutsideFences(lines, (lineIndex, checkboxMatch) => {
     if (checkboxesSeen === checkboxIndex) {
       const [, marker, checkedMarker, rest] = checkboxMatch;
       const toggledMarker = checkedMarker.toLowerCase() === 'x' ? ' ' : 'x';
-      lines[lineIndex] = `${marker}[${toggledMarker}]${rest}`;
-      return lines.join('\n');
+      toggledLineIndex = lineIndex;
+      toggledLineText = `${marker}[${toggledMarker}]${rest}`;
     }
     checkboxesSeen += 1;
+  });
+
+  if (toggledLineIndex === undefined || toggledLineText === undefined) {
+    throw new Error(
+      `checkboxIndex ${checkboxIndex} is out of range: found ${checkboxesSeen} checkbox(es)`,
+    );
   }
 
-  throw new Error(
-    `checkboxIndex ${checkboxIndex} is out of range: found ${checkboxesSeen} checkbox(es)`,
-  );
+  lines[toggledLineIndex] = toggledLineText;
+  return lines.join('\n');
 };

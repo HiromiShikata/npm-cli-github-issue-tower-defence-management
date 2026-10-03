@@ -5,10 +5,12 @@ import {
   rewriteGitHubImageSources,
 } from '../../lib/imageProxy';
 import {
+  type ConsoleMarkdownSegment,
   type ConsoleRepoContext,
   renderMarkdownToSafeHtml,
   splitMarkdownSegments,
 } from '../../lib/markdown';
+import { countMarkdownCheckboxes } from '../../lib/markdownCheckboxToggle';
 import { parseGitHubReferenceUrl } from '../../logic/references';
 import { ConsoleInlineCodeCopy } from '../shared/ConsoleInlineCodeCopy';
 import { ConsoleCopyCodeButton } from './ConsoleCopyCodeButton';
@@ -34,10 +36,26 @@ export type ConsoleMarkdownViewProps = {
 
 type ConsoleMarkdownHtmlBlockProps = {
   source: string;
+  checkboxIndexOffset: number;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
   onCheckboxToggle?: ConsoleCheckboxToggleHandler;
+};
+
+const checkboxCountInSegment = (segment: ConsoleMarkdownSegment): number =>
+  segment.kind === 'markdown' ? countMarkdownCheckboxes(segment.source) : 0;
+
+const checkboxIndexOffsetsBySegment = (
+  segments: ConsoleMarkdownSegment[],
+): number[] => {
+  const offsets: number[] = [];
+  let checkboxesRenderedSoFar = 0;
+  segments.forEach((segment) => {
+    offsets.push(checkboxesRenderedSoFar);
+    checkboxesRenderedSoFar += checkboxCountInSegment(segment);
+  });
+  return offsets;
 };
 
 type ReferenceMount = {
@@ -150,18 +168,23 @@ const attachCheckboxClickHandlers = (
 
 const ConsoleMarkdownHtmlBlock = ({
   source,
+  checkboxIndexOffset,
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
   onCheckboxToggle,
 }: ConsoleMarkdownHtmlBlockProps) => {
   const html = useMemo(() => {
-    const safeHtml = renderMarkdownToSafeHtml(source, repoContext);
+    const safeHtml = renderMarkdownToSafeHtml(
+      source,
+      repoContext,
+      checkboxIndexOffset,
+    );
     if (buildImageProxyUrl === undefined) {
       return safeHtml;
     }
     return rewriteGitHubImageSources(safeHtml, buildImageProxyUrl);
-  }, [source, buildImageProxyUrl, repoContext]);
+  }, [source, buildImageProxyUrl, repoContext, checkboxIndexOffset]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [referenceMounts, setReferenceMounts] = useState<ReferenceMount[]>([]);
   const [codeBlockMounts, setCodeBlockMounts] = useState<CodeBlockMount[]>([]);
@@ -221,6 +244,10 @@ export const ConsoleMarkdownContent = ({
   onCheckboxToggle,
 }: ConsoleMarkdownViewProps) => {
   const segments = useMemo(() => splitMarkdownSegments(body), [body]);
+  const checkboxIndexOffsets = useMemo(
+    () => checkboxIndexOffsetsBySegment(segments),
+    [segments],
+  );
 
   if (body.trim() === '') {
     return <p className="console-markdown-empty">No description provided.</p>;
@@ -228,13 +255,14 @@ export const ConsoleMarkdownContent = ({
 
   return (
     <div className="console-markdown-view">
-      {segments.map((segment) =>
+      {segments.map((segment, segmentIndex) =>
         segment.kind === 'mermaid' ? (
           <ConsoleMermaidDiagram key={segment.key} code={segment.code} />
         ) : (
           <ConsoleMarkdownHtmlBlock
             key={segment.key}
             source={segment.source}
+            checkboxIndexOffset={checkboxIndexOffsets[segmentIndex]}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
