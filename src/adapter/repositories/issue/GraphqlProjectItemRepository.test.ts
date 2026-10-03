@@ -4225,16 +4225,17 @@ describeWhenLiveCredentials(
         disposableIssueUrl,
         projectId,
       );
-      const apiV3CheerioRestIssueRepository = new ApiV3CheerioRestIssueRepository(
-        mock<ApiV3IssueRepository>(),
-        mock<RestIssueRepository>(),
-        mock<GraphqlProjectItemRepository>(),
-        mock<LocalStorageCacheRepository>(),
-        mock<ProjectRepository>(),
-        mock<DateRepository>(),
-        localStorageRepository,
-        liveToken,
-      );
+      const apiV3CheerioRestIssueRepository =
+        new ApiV3CheerioRestIssueRepository(
+          mock<ApiV3IssueRepository>(),
+          mock<RestIssueRepository>(),
+          mock<GraphqlProjectItemRepository>(),
+          mock<LocalStorageCacheRepository>(),
+          mock<ProjectRepository>(),
+          mock<DateRepository>(),
+          localStorageRepository,
+          liveToken,
+        );
       await apiV3CheerioRestIssueRepository.closeIssueByUrl(
         disposableIssueUrl,
         'not_planned',
