@@ -2467,6 +2467,132 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('does not navigate away from an open item detail screen when the background project-list re-fetch resolves with a changed project list', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
+    );
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/acme/failed-preparation?k=token',
+    );
+    const failedPreparationItem = {
+      number: 900,
+      title: 'Fix flaky CI step',
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_9',
+      itemId: 'PVTI_9',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Failed Preparation',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-18T00:00:00.000Z',
+    };
+    const listCallCountByTab: Record<string, number> = {};
+    let projectsCallCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        listCallCountByTab[tab] = (listCallCountByTab[tab] ?? 0) + 1;
+        if (tab === 'failed-preparation') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...listPayload(tab),
+              items: [failedPreparationItem],
+            }),
+          };
+        }
+        if (
+          (tab === 'prs' || tab === 'todo-by-human') &&
+          listCallCountByTab[tab] >= 2
+        ) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ ...listPayload(tab), items: [] }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        projectsCallCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            projectsCallCount === 1
+              ? { pjcodes: ['acme'] }
+              : { pjcodes: ['acme', 'beta'] },
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+
+    jest.useFakeTimers();
+    try {
+      const { getByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Fix flaky CI step')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Fix flaky CI step'));
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-detail-title-text'),
+        ).not.toBeNull();
+      });
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(
+        container.querySelector('.console-detail-title-text')?.textContent,
+      ).toContain('Fix flaky CI step');
+      expect(
+        container.querySelector('.console-detail-number')?.textContent,
+      ).toBe('#900');
+
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(projectsCallCount).toBeGreaterThanOrEqual(2);
+        expect(listCallCountByTab.prs).toBeGreaterThanOrEqual(2);
+        expect(listCallCountByTab['todo-by-human']).toBeGreaterThanOrEqual(2);
+      });
+
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(
+        container.querySelector('.console-detail-title-text')?.textContent,
+      ).toContain('Fix flaky CI step');
+      expect(
+        container.querySelector('.console-detail-number')?.textContent,
+      ).toBe('#900');
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not re-fetch the project list in the background when timer mode is disabled', async () => {
     let projectsCallCount = 0;
     global.fetch = jest.fn(async (url: string) => {
