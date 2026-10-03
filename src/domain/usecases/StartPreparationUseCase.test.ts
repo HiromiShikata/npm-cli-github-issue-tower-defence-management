@@ -10736,13 +10736,14 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     runCommand: jest.fn(),
     spawnInteractive: jest.fn(),
   };
-  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
+  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts> =
     {
       ensureObservable: jest.fn(),
       getAvailableTokenUsages: jest.fn(),
       getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
+      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
 
   const useCase = new StartPreparationUseCase(
