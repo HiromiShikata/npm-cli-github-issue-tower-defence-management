@@ -1,3 +1,10 @@
+# [2.162.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.8...v2.162.0) (2026-10-03)
+
+
+### Features
+
+* **console:** add global Max settings toggle for Awaiting Owner list summary and action button ([#3168](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3168)) ([7c2b02c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c2b02c9de250abea6428a30888743d1d72d1cdd))
+
 ## [2.161.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.161.7...v2.161.8) (2026-10-03)
 
 
