@@ -248,36 +248,6 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       },
     },
     {
-      name: 'leaves skip tracking unchanged when the current project was already evaluated (dedup)',
-      input: {
-        ...baseInput,
-        pjcode: 'acme',
-        evaluatedPjcode: 'acme',
-        remainingCountIsZero: true,
-        skipCount: 2,
-      },
-      expected: {
-        targetPjcode: null,
-        nextSkipCount: 2,
-        nextEvaluatedPjcode: 'acme',
-      },
-    },
-    {
-      name: 'leaves skip tracking unchanged when the explicitly selected project matches the current one',
-      input: {
-        ...baseInput,
-        explicitlySelectedPjcodeMatchesCurrent: true,
-        remainingCountIsZero: true,
-        skipCount: 2,
-        evaluatedPjcode: 'beta',
-      },
-      expected: {
-        targetPjcode: null,
-        nextSkipCount: 2,
-        nextEvaluatedPjcode: 'beta',
-      },
-    },
-    {
       name: 'leaves skip tracking unchanged when no project codes are known yet (race condition before pjcodes load)',
       input: {
         ...baseInput,
@@ -324,6 +294,110 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
 
   it.each(singleCallBranchCases)('$name', ({ input, expected }) => {
     expect(consoleAutomaticProjectNavigationDecide(input)).toEqual(expected);
+  });
+
+  it('switches away from the current project even though it was already marked evaluated, when a project gained remaining minutes since the last evaluation (dedup lock no longer blocks a live-eligible switch)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcode: 'acme',
+      evaluatedPjcode: 'acme',
+      remainingCountIsZero: true,
+      skipCount: 2,
+      aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated: true,
+    });
+    expect(result.targetPjcode).toBe('beta');
+  });
+
+  it('leaves the evaluated-project lock in place when no project gained remaining minutes since the last evaluation, even though a project objectively has remaining minutes (prevents an infinite switch loop)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcode: 'acme',
+      evaluatedPjcode: 'acme',
+      remainingCountIsZero: true,
+      skipCount: 2,
+    });
+    expect(result.targetPjcode).toBeNull();
+  });
+
+  it('never switches back and forth indefinitely between two projects that both keep nonzero remaining minutes forever, across many evaluations with no gained-minutes signal', () => {
+    let pjcode = 'acme';
+    let skipCount = 0;
+    let evaluatedPjcode: string | null = null;
+    const targetPjcodesOverTwentyEvaluations: (string | null)[] = [];
+    for (let evaluation = 0; evaluation < 20; evaluation++) {
+      const result = consoleAutomaticProjectNavigationDecide({
+        ...baseInput,
+        pjcode,
+        skipCount,
+        evaluatedPjcode,
+        remainingCountIsZero: true,
+      });
+      targetPjcodesOverTwentyEvaluations.push(result.targetPjcode);
+      skipCount = result.nextSkipCount;
+      evaluatedPjcode = result.nextEvaluatedPjcode;
+      if (result.targetPjcode !== null) {
+        pjcode = result.targetPjcode;
+      }
+    }
+    const switchCount = targetPjcodesOverTwentyEvaluations.filter(
+      (targetPjcode) => targetPjcode !== null,
+    ).length;
+    expect(switchCount).toBeLessThanOrEqual(1);
+  });
+
+  it('switches away from the current project even though it was explicitly selected (explicit-selection lock no longer blocks a live-eligible switch)', () => {
+    const result = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      remainingCountIsZero: true,
+      skipCount: 2,
+      evaluatedPjcode: 'beta',
+    });
+    expect(result.targetPjcode).toBe('beta');
+  });
+
+  it('switches to a project that gains remaining minutes after the skip-exhaustion lock was set on the current project', () => {
+    const firstResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta', 'gamma'],
+      projectMinutes: { acme: 30, beta: 0, gamma: 0 },
+      remainingCountIsZero: true,
+      skipCount: 0,
+      evaluatedPjcode: null,
+    });
+
+    const secondResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta', 'gamma'],
+      projectMinutes: { acme: 30, beta: 30, gamma: 0 },
+      remainingCountIsZero: true,
+      skipCount: firstResult.nextSkipCount,
+      evaluatedPjcode: firstResult.nextEvaluatedPjcode,
+      aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated: true,
+    });
+    expect(secondResult.targetPjcode).toBe('beta');
+  });
+
+  it('switches to a project that gains remaining minutes after the explicit-selection lock was set on the current project', () => {
+    const firstResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta'],
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      projectMinutes: { acme: 30, beta: 0 },
+      remainingCountIsZero: true,
+    });
+    expect(firstResult.targetPjcode).toBeNull();
+
+    const secondResult = consoleAutomaticProjectNavigationDecide({
+      ...baseInput,
+      pjcodes: ['acme', 'beta'],
+      explicitlySelectedPjcodeMatchesCurrent: true,
+      projectMinutes: { acme: 30, beta: 30 },
+      remainingCountIsZero: true,
+      skipCount: firstResult.nextSkipCount,
+      evaluatedPjcode: firstResult.nextEvaluatedPjcode,
+    });
+    expect(secondResult.targetPjcode).toBe('beta');
   });
 
   it('does not re-navigate for the same pjcode on a second evaluation (dedup across calls)', () => {
@@ -632,7 +706,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
       expectedTargetPjcode: null,
     },
     {
-      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch (explicit-selection guard)',
+      name: 'taskOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> switches to beta (explicit-selection no longer blocks a live-eligible switch)',
       input: {
         ...taskOpenGuardBaseInput,
         taskOpen: false,
@@ -641,7 +715,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         checkTimerElapsed: false,
         timerElapsed: false,
       },
-      expectedTargetPjcode: null,
+      expectedTargetPjcode: 'beta',
     },
     {
       name: 'taskOpen=true, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch',

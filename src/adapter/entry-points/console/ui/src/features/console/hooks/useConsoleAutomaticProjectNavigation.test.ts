@@ -304,6 +304,48 @@ describe('useConsoleAutomaticProjectNavigation', () => {
     expect(navigatePush).not.toHaveBeenCalled();
   });
 
+  it('never oscillates back and forth between two projects that both keep nonzero remaining minutes forever, across many periodic re-evaluations with nothing else changing', () => {
+    const navigatePushMock = navigatePush as jest.Mock;
+    const extractPjcodeFromNavigatedUrl = (url: string): string =>
+      url.split('/')[2];
+    const { rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          isTimerNeverExpired,
+          0,
+          0,
+          pjcode,
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+          null,
+          idleWriteState,
+          null,
+        ),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    let currentPjcode = 'acme';
+    for (
+      let periodicReEvaluation = 0;
+      periodicReEvaluation < 20;
+      periodicReEvaluation++
+    ) {
+      if (navigatePushMock.mock.calls.length > 0) {
+        const lastCall =
+          navigatePushMock.mock.calls[navigatePushMock.mock.calls.length - 1];
+        currentPjcode = extractPjcodeFromNavigatedUrl(lastCall[0] as string);
+      }
+      rerender({ pjcode: currentPjcode });
+    }
+
+    expect(navigatePushMock.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
   it('resets skip counter and navigates again when arriving at a project with items', () => {
     const { rerender } = renderHook(
       ({ pjcode, prsCount }: { pjcode: string; prsCount: number }) =>
@@ -517,6 +559,28 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         'acme',
         ['acme', 'beta'],
         { acme: 30, beta: 30 },
+        true,
+        true,
+        false,
+        false,
+        'acme',
+        idleWriteState,
+        null,
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('does not navigate when explicitlySelectedPjcode matches current pjcode and no other project has remaining minutes', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        true,
+        isTimerNeverExpired,
+        0,
+        0,
+        'acme',
+        ['acme', 'beta'],
+        { acme: 30, beta: 0 },
         true,
         true,
         false,
