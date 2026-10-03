@@ -330,7 +330,11 @@ describe('useConsoleAutomaticProjectNavigation', () => {
     );
 
     let currentPjcode = 'acme';
-    for (let periodicReEvaluation = 0; periodicReEvaluation < 20; periodicReEvaluation++) {
+    for (
+      let periodicReEvaluation = 0;
+      periodicReEvaluation < 20;
+      periodicReEvaluation++
+    ) {
       if (navigatePushMock.mock.calls.length > 0) {
         const lastCall =
           navigatePushMock.mock.calls[navigatePushMock.mock.calls.length - 1];
