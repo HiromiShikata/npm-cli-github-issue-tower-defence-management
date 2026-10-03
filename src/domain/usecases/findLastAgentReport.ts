@@ -30,7 +30,7 @@ export const findLastAgentReportPostedSince = <
   }
   return (
     comments
-      .filter((comment) => comment.updatedAt >= postedSince)
+      .filter((comment) => comment.createdAt >= postedSince)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .find(
         (comment) =>

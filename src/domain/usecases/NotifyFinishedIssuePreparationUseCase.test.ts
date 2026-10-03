@@ -9910,6 +9910,78 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('treats a report created before the dispatch start and edited after it as no report and posts the first no-report counter', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          ...reportWithoutRoutingSignal(minutesAgo(180)),
+          updatedAt: minutesAgo(30),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_AGAIN 1/3'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('treats an owner-confirmation report created before the owner question and edited after the dispatch start as no report and posts the first no-report counter', async () => {
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'test-user',
+          content:
+            'From: :robot: chore (model)\n\nNeeds the owner.\n\n```json\n{"needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: minutesAgo(180),
+          updatedAt: minutesAgo(30),
+        }),
+        createMockComment({
+          author: 'test-user',
+          content: 'Why did this come to me?',
+          createdAt: minutesAgo(90),
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        dispatchStartedAt: minutesAgo(60),
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_AGAIN 1/3'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
     it('increments the no-report counter on the second dispatch that posts nothing after an earlier report', async () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         reportWithoutRoutingSignal(minutesAgo(600)),
