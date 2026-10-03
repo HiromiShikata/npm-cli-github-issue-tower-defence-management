@@ -26,6 +26,7 @@ import {
   useConsoleActionQueue,
 } from '../hooks/useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
+import { useConsoleAwaitingOwnerListVisibilitySettings } from '../hooks/useConsoleAwaitingOwnerListVisibilitySettings';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
@@ -180,6 +181,8 @@ export const ConsolePage = () => {
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
   const projectSettings = useConsoleProjectSettings(pjcodes);
+  const awaitingOwnerListVisibilitySettings =
+    useConsoleAwaitingOwnerListVisibilitySettings(projectSettings.isOpen);
 
   const effectiveOverlay = useMemo(
     () => computeEffectiveOverlay(overlayState.overlay, snapshots),
@@ -1040,6 +1043,11 @@ export const ConsolePage = () => {
     [handleQueueAction, operations],
   );
 
+  const handleSaveMaxSettings = useCallback(() => {
+    awaitingOwnerListVisibilitySettings.save();
+    void projectSettings.save();
+  }, [awaitingOwnerListVisibilitySettings, projectSettings]);
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -1083,7 +1091,13 @@ export const ConsolePage = () => {
           isSaving={projectSettings.isSaving}
           error={projectSettings.error}
           nameWithOwnerByPjcode={nameWithOwnerByPjcode}
-          onSave={projectSettings.save}
+          showExecutiveSummaryAndActionButtonOnAwaitingOwnerList={
+            awaitingOwnerListVisibilitySettings.draftShowExecutiveSummaryAndActionButton
+          }
+          onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList={
+            awaitingOwnerListVisibilitySettings.toggleDraft
+          }
+          onSave={handleSaveMaxSettings}
           onClose={projectSettings.close}
         />
       )}
@@ -1287,8 +1301,16 @@ export const ConsolePage = () => {
               isLoading={isLoading}
               error={error}
               onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-              executiveSummaries={prsTabSummaries}
-              onOkAndAwaitingWorkspace={handleOkAndAwaitingWorkspaceFromList}
+              executiveSummaries={
+                awaitingOwnerListVisibilitySettings.showExecutiveSummaryAndActionButton
+                  ? prsTabSummaries
+                  : undefined
+              }
+              onOkAndAwaitingWorkspace={
+                awaitingOwnerListVisibilitySettings.showExecutiveSummaryAndActionButton
+                  ? handleOkAndAwaitingWorkspaceFromList
+                  : undefined
+              }
             />
           </div>
         ) : (

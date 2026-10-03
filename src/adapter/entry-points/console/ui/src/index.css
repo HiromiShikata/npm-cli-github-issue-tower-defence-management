@@ -667,6 +667,17 @@ body {
   font-size: 0.875rem;
 }
 
+.console-settings-modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.console-settings-modal-row-label {
+  color: #c9d1d9;
+  font-size: 0.875rem;
+}
+
 .console-settings-modal-actions {
   display: flex;
   gap: 8px;

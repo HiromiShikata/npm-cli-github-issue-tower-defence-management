@@ -25,3 +25,10 @@ export const On: Story = {
     checked: true,
   },
 };
+
+export const Disabled: Story = {
+  args: {
+    checked: false,
+    disabled: true,
+  },
+};

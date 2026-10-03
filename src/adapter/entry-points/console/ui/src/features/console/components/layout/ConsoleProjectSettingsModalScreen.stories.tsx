@@ -12,6 +12,8 @@ const meta: Meta<typeof ConsoleProjectSettingsModalScreen> = {
     isLoading: false,
     isSaving: false,
     error: null,
+    showExecutiveSummaryAndActionButtonOnAwaitingOwnerList: true,
+    onChangeShowExecutiveSummaryAndActionButtonOnAwaitingOwnerList: () => {},
     onSave: () => {},
     onClose: () => {},
   },
@@ -22,6 +24,12 @@ export default meta;
 type Story = StoryObj<typeof ConsoleProjectSettingsModalScreen>;
 
 export const WithCurrentValues: Story = {};
+
+export const AwaitingOwnerListVisibilityOff: Story = {
+  args: {
+    showExecutiveSummaryAndActionButtonOnAwaitingOwnerList: false,
+  },
+};
 
 export const NoCurrentValues: Story = {
   args: {
