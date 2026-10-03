@@ -376,7 +376,9 @@ export const ConsoleItemDetailContainer = ({
       const newBody = toggleMarkdownCheckboxAtIndex(currentBody, checkboxIndex);
       setBodyOverride(newBody);
       operations.issueBodyUpdate?.(item, newBody).catch((cause: unknown) => {
-        setBodyOverride(currentBody);
+        setBodyOverride((latest) =>
+          toggleMarkdownCheckboxAtIndex(latest ?? detail.body, checkboxIndex),
+        );
         console.error('Failed to persist description checkbox toggle', cause);
       });
     },
@@ -396,7 +398,10 @@ export const ConsoleItemDetailContainer = ({
         .catch((cause: unknown) => {
           setCommentBodyOverrides((previous) => ({
             ...previous,
-            [comment.id]: currentBody,
+            [comment.id]: toggleMarkdownCheckboxAtIndex(
+              previous[comment.id] ?? comment.body,
+              checkboxIndex,
+            ),
           }));
           console.error('Failed to persist comment checkbox toggle', cause);
         });

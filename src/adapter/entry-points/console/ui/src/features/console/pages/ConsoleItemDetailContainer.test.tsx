@@ -2089,6 +2089,104 @@ describe('ConsoleItemDetailContainer', () => {
       }
     });
 
+    it('reverting an earlier failed toggle does not discard a later toggle that already succeeded while the earlier one was still pending', async () => {
+      const firstToggleFailure = new Error('first toggle failed');
+      let rejectFirstToggle!: (error: Error) => void;
+      const issueBodyUpdate = jest
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectFirstToggle = reject;
+            }),
+        )
+        .mockImplementationOnce(async () => {});
+      const operations = {
+        ...buildOperations(),
+        issueBodyUpdate,
+        issueCommentBodyUpdate: jest.fn(async () => {}),
+      } as unknown as OperationsWithCheckboxUpdates;
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const onQueueAction = jest.fn();
+        const { container, getByText } = render(
+          <ConsoleItemDetailContainer
+            tab="todo-by-human"
+            item={issueItem}
+            caches={buildCaches({
+              body: '- [ ] Alpha\n- [ ] Beta',
+              comments: [],
+            })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={[]}
+            agentOptions={[]}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={onQueueAction}
+          />,
+        );
+
+        await waitFor(() => {
+          expect(getByText('Alpha')).toBeInTheDocument();
+        });
+
+        const firstCheckbox = container.querySelector<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index="0"]',
+        );
+        expect(firstCheckbox).not.toBeNull();
+        fireEvent.click(firstCheckbox as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueBodyUpdate).toHaveBeenNthCalledWith(
+            1,
+            issueItem,
+            '- [x] Alpha\n- [ ] Beta',
+          );
+        });
+
+        const secondCheckbox = container.querySelector<HTMLInputElement>(
+          'input[type="checkbox"][data-checkbox-index="1"]',
+        );
+        expect(secondCheckbox).not.toBeNull();
+        fireEvent.click(secondCheckbox as HTMLInputElement);
+
+        await waitFor(() => {
+          expect(issueBodyUpdate).toHaveBeenNthCalledWith(
+            2,
+            issueItem,
+            '- [x] Alpha\n- [x] Beta',
+          );
+        });
+
+        rejectFirstToggle(firstToggleFailure);
+
+        await waitFor(() => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to persist description checkbox toggle',
+            firstToggleFailure,
+          );
+        });
+
+        await waitFor(() => {
+          const alpha = container.querySelector<HTMLInputElement>(
+            'input[type="checkbox"][data-checkbox-index="0"]',
+          );
+          const beta = container.querySelector<HTMLInputElement>(
+            'input[type="checkbox"][data-checkbox-index="1"]',
+          );
+          expect(alpha?.checked).toBe(false);
+          expect(beta?.checked).toBe(true);
+        });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
     it('calls operations.issueCommentBodyUpdate with the item, the comment id and the toggled comment body text when a checkbox inside a comment is clicked', async () => {
       const operations = buildOperationsWithCheckboxUpdates();
       const onQueueAction = jest.fn();
