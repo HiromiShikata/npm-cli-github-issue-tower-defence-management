@@ -519,6 +519,18 @@ describe('IssueCreateModalDialog', () => {
     ).toBe('false');
   });
 
+  it('shows initialSubmitError as the alert on mount without clicking Create', () => {
+    render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialSubmitError="Some failure reason"
+      />,
+    );
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+      'Some failure reason',
+    );
+  });
+
   it('calls onDraftChange whenever the title textarea changes', () => {
     const onDraftChange = jest.fn();
     const { getByRole } = render(
@@ -587,6 +599,23 @@ describe('IssueCreateModalDialog', () => {
     const mockFile = new File(['hello'], 'hello.txt', { type: 'text/plain' });
     fireEvent.change(fileInput, { target: { files: [mockFile] } });
     expect(getByText('hello.txt')).not.toBeNull();
+  });
+
+  it('initializes selectedFiles from initialDraft.files prop', () => {
+    const mockFile = new File(['hello'], 'restored.txt', {
+      type: 'text/plain',
+    });
+    const draft: IssueCreateDraft = {
+      title: '',
+      body: null,
+      storyName: null,
+      agentOptionId: null,
+      files: [mockFile],
+    };
+    const { getByText } = render(
+      <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+    );
+    expect(getByText('restored.txt')).not.toBeNull();
   });
 
   it('shows a thumbnail img for image files using a data URL', async () => {

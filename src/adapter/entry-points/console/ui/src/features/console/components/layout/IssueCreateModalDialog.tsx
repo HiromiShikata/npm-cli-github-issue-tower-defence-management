@@ -16,6 +16,7 @@ export type IssueCreateDraft = {
   body: string | null;
   storyName: string | null;
   agentOptionId: string | null;
+  files?: File[];
 };
 
 export type IssueCreateDestination = 'project' | 'workflow';
@@ -28,6 +29,7 @@ export type IssueCreateModalDialogProps = {
   onSubmitWorkflow?: (params: IssueCreateParams) => Promise<void>;
   onClose: () => void;
   initialDraft?: IssueCreateDraft;
+  initialSubmitError?: string | null;
   onDraftChange?: (draft: IssueCreateDraft) => void;
   fleetTaskCreateUrl?: string | null;
   newIssueUrl?: string | null;
@@ -42,6 +44,7 @@ export const IssueCreateModalDialog = ({
   onSubmitWorkflow,
   onClose,
   initialDraft,
+  initialSubmitError,
   onDraftChange,
   fleetTaskCreateUrl,
   newIssueUrl,
@@ -65,9 +68,13 @@ export const IssueCreateModalDialog = ({
   >(initialDraft?.agentOptionId ?? null);
   const [titleValue, setTitleValue] = useState(initialDraft?.title ?? '');
   const [bodyValue, setBodyValue] = useState(initialDraft?.body ?? '');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>(
+    initialDraft?.files ?? [],
+  );
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(
+    initialSubmitError ?? null,
+  );
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

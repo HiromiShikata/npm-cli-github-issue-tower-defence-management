@@ -306,6 +306,14 @@ export const ConsolePage = () => {
     storyName: null,
     agentOptionId: null,
   });
+  const [dialogSubmitFailure, setDialogSubmitFailure] = useState<{
+    params: IssueCreateParams;
+    reason: string;
+  } | null>(null);
+  const [fleetDialogSubmitFailure, setFleetDialogSubmitFailure] = useState<{
+    params: IssueCreateParams;
+    reason: string;
+  } | null>(null);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -759,7 +767,14 @@ export const ConsolePage = () => {
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
-          ),
+          ).catch((cause: unknown) => {
+            setDialogSubmitFailure({
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+            setIsDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setDialogDraft({
@@ -799,7 +814,14 @@ export const ConsolePage = () => {
             capturedPjcode,
             nameWithOwner,
             capturedParams,
-          ),
+          ).catch((cause: unknown) => {
+            setFleetDialogSubmitFailure({
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+            setIsFleetTaskCreateDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setFleetDialogDraft({
@@ -1138,8 +1160,23 @@ export const ConsolePage = () => {
                         ? handleCreateFleetTaskFromDialog
                         : undefined
                     }
-                    onClose={() => setIsDialogOpen(false)}
-                    initialDraft={dialogDraft}
+                    onClose={() => {
+                      setIsDialogOpen(false);
+                      setDialogSubmitFailure(null);
+                    }}
+                    initialDraft={
+                      dialogSubmitFailure !== null
+                        ? {
+                            title: dialogSubmitFailure.params.title,
+                            body: dialogSubmitFailure.params.body,
+                            storyName: dialogSubmitFailure.params.storyName,
+                            agentOptionId:
+                              dialogSubmitFailure.params.agentOptionId,
+                            files: dialogSubmitFailure.params.files,
+                          }
+                        : dialogDraft
+                    }
+                    initialSubmitError={dialogSubmitFailure?.reason ?? null}
                     onDraftChange={setDialogDraft}
                     fleetTaskCreateUrl={fleetTaskCreateUrl}
                     newIssueUrl={newIssueUrl}
@@ -1169,12 +1206,26 @@ export const ConsolePage = () => {
         <IssueCreateModalDialog
           storyEntries={storyEntries}
           agentOptions={agentOptions}
-          initialDraft={fleetDialogDraft}
+          initialDraft={
+            fleetDialogSubmitFailure !== null
+              ? {
+                  title: fleetDialogSubmitFailure.params.title,
+                  body: fleetDialogSubmitFailure.params.body,
+                  storyName: fleetDialogSubmitFailure.params.storyName,
+                  agentOptionId: fleetDialogSubmitFailure.params.agentOptionId,
+                  files: fleetDialogSubmitFailure.params.files,
+                }
+              : fleetDialogDraft
+          }
+          initialSubmitError={fleetDialogSubmitFailure?.reason ?? null}
           onDraftChange={setFleetDialogDraft}
           initialDestination="workflow"
           onSubmitProject={handleCreateIssueFromDialog}
           onSubmitWorkflow={handleCreateFleetTaskFromDialog}
-          onClose={() => setIsFleetTaskCreateDialogOpen(false)}
+          onClose={() => {
+            setIsFleetTaskCreateDialogOpen(false);
+            setFleetDialogSubmitFailure(null);
+          }}
           containerClassName="console-fleet-task-create-dialog-container"
         />
       )}
