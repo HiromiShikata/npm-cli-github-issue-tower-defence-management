@@ -2940,6 +2940,38 @@ describe('ConsolePage task creation action queue', () => {
     return fetchMock;
   };
 
+  const installFetchWithFailingCreate = (): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/createissue') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => 'Internal Server Error',
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
@@ -3310,6 +3342,85 @@ describe('ConsolePage task creation action queue', () => {
         pressed: true,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('reopens the header create-task dialog with retained values and the failure reason when the project-destination create request fails after the undo window elapses', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFailingCreate();
+      const { getByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Failing project task' },
+      });
+      fireEvent.change(within(openDialog).getByLabelText('Body'), {
+        target: { value: 'Failing project body' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', {
+          name: /TDPM Console port/,
+        }),
+      );
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /^developer$/i }),
+      );
+
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
+      expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
+        'Failing project task',
+      );
+      expect(within(reopenedDialog).getByLabelText('Body')).toHaveValue(
+        'Failing project body',
+      );
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /TDPM Console port/ })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /^developer$/i })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: 'Project' })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        within(reopenedDialog).getByRole('alert').textContent,
+      ).toBe('Internal Server Error');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 
@@ -3701,6 +3812,17 @@ describe('ConsolePage workflow issue creation', () => {
           getByText('Operation failed: Internal Server Error'),
         ).toBeInTheDocument();
       });
+      const reopenedDialog = getByRole('dialog');
+      expect(reopenedDialog).toBeInTheDocument();
+      expect(getByLabelText('Title')).toHaveValue('Failing task');
+      expect(
+        getByRole('button', { name: 'Workflow' }).getAttribute(
+          'aria-pressed',
+        ),
+      ).toBe('true');
+      expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
+        'Internal Server Error',
+      );
     } finally {
       jest.useRealTimers();
     }
