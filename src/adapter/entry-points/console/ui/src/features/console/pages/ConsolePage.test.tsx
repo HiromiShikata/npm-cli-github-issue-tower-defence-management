@@ -3415,9 +3415,9 @@ describe('ConsolePage task creation action queue', () => {
           .getByRole('button', { name: 'Project' })
           .getAttribute('aria-pressed'),
       ).toBe('true');
-      expect(
-        within(reopenedDialog).getByRole('alert').textContent,
-      ).toBe('Internal Server Error');
+      expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
+        'Internal Server Error',
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -3816,9 +3816,7 @@ describe('ConsolePage workflow issue creation', () => {
       expect(reopenedDialog).toBeInTheDocument();
       expect(getByLabelText('Title')).toHaveValue('Failing task');
       expect(
-        getByRole('button', { name: 'Workflow' }).getAttribute(
-          'aria-pressed',
-        ),
+        getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
         'Internal Server Error',
