@@ -1,5 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
-import { useConsoleActionQueue } from './useConsoleActionQueue';
+import {
+  type ConsoleActionQueue,
+  useConsoleActionQueue,
+} from './useConsoleActionQueue';
 
 const COMMENT_EXPANDED_PREFIX = 'console-comment-expanded:';
 
@@ -25,6 +28,48 @@ const offlinePayload = {
     prUrl: 'https://github.com/o/r/pull/851',
     projectItemId: 'PVTI_1',
   },
+};
+
+const heldItemFields = {
+  itemUrl: 'https://github.com/o/r/issues/866',
+  projectItemId: 'PVTI_2',
+  itemNumber: 866,
+  repo: 'o/r',
+  isPr: false,
+};
+
+const commentOfflinePayload = {
+  ...heldItemFields,
+  apiPath: '/api/comment',
+  requestBody: {
+    pjcode: 'acme',
+    url: 'https://github.com/o/r/issues/866',
+    body: 'Checked during the flight.',
+  },
+};
+
+const closeOfflinePayload = {
+  ...heldItemFields,
+  apiPath: '/api/triage',
+  requestBody: {
+    pjcode: 'acme',
+    action: 'close',
+    issueUrl: 'https://github.com/o/r/issues/866',
+    projectItemId: 'PVTI_2',
+  },
+};
+
+const readStoredOfflineQueue = (): Record<string, unknown>[] =>
+  JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]');
+
+const installOperationFetch = (): jest.Mock => {
+  const fetchMock = jest.fn(async (_url: string, _init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  }));
+  global.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
 };
 
 const makeAction = (
@@ -246,7 +291,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -267,7 +312,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -289,7 +334,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -316,7 +361,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -341,7 +386,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -372,7 +417,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -404,7 +449,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -436,7 +481,7 @@ describe('useConsoleActionQueue', () => {
         commit: jest
           .fn<Promise<void>, []>()
           .mockRejectedValue(new TypeError('Failed to fetch')),
-        offline: offlinePayload,
+        offline: [offlinePayload],
       });
       act(() => {
         result.current.enqueue(action);
@@ -599,7 +644,7 @@ describe('useConsoleActionQueue', () => {
       commit: jest
         .fn<Promise<void>, []>()
         .mockRejectedValue(new TypeError('Failed to fetch')),
-      offline: offlinePayload,
+      offline: [offlinePayload],
     });
     act(() => {
       result.current.enqueue(action);
@@ -798,6 +843,381 @@ describe('useConsoleActionQueue', () => {
     expect(result.current.pending).toBeNull();
   });
 
+  it('surfaces a network error as an error and holds nothing when the action carries no offline payload', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).toMatchObject({
+      message: 'Approved — PR #851',
+      reason: 'Failed to fetch',
+    });
+    expect(result.current.offlineActions).toHaveLength(0);
+    expect(readStoredOfflineQueue()).toHaveLength(0);
+  });
+
+  it('keeps the optimistic overlay and the advance when a network error moves the action to the offline queue', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const optimistic = jest.fn();
+    const revertOptimistic = jest.fn();
+    const revertAdvance = jest.fn();
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: [offlinePayload],
+      optimistic,
+      revertOptimistic,
+      revertAdvance,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(action.advance).toHaveBeenCalledTimes(1);
+    expect(optimistic).toHaveBeenCalledTimes(1);
+    expect(revertOptimistic).not.toHaveBeenCalled();
+    expect(revertAdvance).not.toHaveBeenCalled();
+  });
+
+  it('stores a held action in localStorage with its payload, message and color', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: [offlinePayload],
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const stored = readStoredOfflineQueue();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      ...offlinePayload,
+      message: 'Approved — PR #851',
+      color: 'green',
+    });
+    expect(typeof stored[0].id).toBe('string');
+    expect(typeof stored[0].enqueuedAt).toBe('number');
+  });
+
+  it('lists a held comment without sending it and sends exactly one /api/comment request with its request body when it is confirmed', async () => {
+    const fetchMock = installOperationFetch();
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'held-close',
+          message: 'Closed — #866',
+          color: 'red',
+          enqueuedAt: 1,
+          ...closeOfflinePayload,
+        },
+        {
+          id: 'held-comment',
+          message: 'Comment — #866',
+          color: 'blue',
+          enqueuedAt: 2,
+          ...commentOfflinePayload,
+        },
+      ]),
+    );
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      jest.advanceTimersByTime(10000);
+    });
+    expect(result.current.offlineActions.map((held) => held.apiPath)).toEqual([
+      '/api/triage',
+      '/api/comment',
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.confirmOfflineAction('held-comment');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url.endsWith('/api/comment')).toBe(true);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual(
+      commentOfflinePayload.requestBody,
+    );
+    expect(result.current.offlineActions.map((held) => held.id)).toEqual([
+      'held-close',
+    ]);
+  });
+
+  it.each([
+    {
+      commitTrigger: 'the undo window elapses',
+      triggerCommit: (_queue: ConsoleActionQueue): void => {
+        jest.advanceTimersByTime(5000);
+      },
+    },
+    {
+      commitTrigger: 'the undo toast is dismissed',
+      triggerCommit: (queue: ConsoleActionQueue): void => {
+        queue.dismiss();
+      },
+    },
+  ])(
+    'holds the action in the offline queue without committing, sending or reverting it when airplane mode is on and $commitTrigger',
+    async ({ triggerCommit }) => {
+      const fetchMock = installOperationFetch();
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({ isAirplaneModeOn: true }),
+      );
+      const optimistic = jest.fn();
+      const revertOptimistic = jest.fn();
+      const revertAdvance = jest.fn();
+      const action = makeAction({
+        offline: [offlinePayload],
+        optimistic,
+        revertOptimistic,
+        revertAdvance,
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        triggerCommit(result.current);
+        await flushMicrotasks();
+      });
+      expect(action.commit).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(action.advance).toHaveBeenCalledTimes(1);
+      expect(optimistic).toHaveBeenCalledTimes(1);
+      expect(revertOptimistic).not.toHaveBeenCalled();
+      expect(revertAdvance).not.toHaveBeenCalled();
+      expect(result.current.error).toBeNull();
+      const expectedHeld = [
+        expect.objectContaining({
+          ...offlinePayload,
+          message: 'Approved — PR #851',
+          color: 'green',
+        }),
+      ];
+      expect(result.current.offlineActions).toEqual(expectedHeld);
+      expect(readStoredOfflineQueue()).toEqual(expectedHeld);
+    },
+  );
+
+  it.each([
+    {
+      switchDirection: 'switched on',
+      isAirplaneModeOnAtEnqueue: false,
+      isAirplaneModeOnAtCommit: true,
+      expectedCommitCalls: 0,
+      expectedHeldCount: 1,
+    },
+    {
+      switchDirection: 'switched off',
+      isAirplaneModeOnAtEnqueue: true,
+      isAirplaneModeOnAtCommit: false,
+      expectedCommitCalls: 1,
+      expectedHeldCount: 0,
+    },
+  ])(
+    'decides by the airplane mode value at commit time when airplane mode is $switchDirection during the undo window',
+    async ({
+      isAirplaneModeOnAtEnqueue,
+      isAirplaneModeOnAtCommit,
+      expectedCommitCalls,
+      expectedHeldCount,
+    }) => {
+      const { result, rerender } = renderHook(
+        ({ isAirplaneModeOn }: { isAirplaneModeOn: boolean }) =>
+          useConsoleActionQueue({ isAirplaneModeOn }),
+        { initialProps: { isAirplaneModeOn: isAirplaneModeOnAtEnqueue } },
+      );
+      const action = makeAction({ offline: [offlinePayload] });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+      rerender({ isAirplaneModeOn: isAirplaneModeOnAtCommit });
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+        await flushMicrotasks();
+      });
+      expect(action.commit).toHaveBeenCalledTimes(expectedCommitCalls);
+      expect(result.current.offlineActions).toHaveLength(expectedHeldCount);
+      expect(readStoredOfflineQueue()).toHaveLength(expectedHeldCount);
+      expect(result.current.error).toBeNull();
+    },
+  );
+
+  it('holds a pending action that a newer action flushes while airplane mode is on and keeps the newer one pending', async () => {
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({ isAirplaneModeOn: true }),
+    );
+    const first = makeAction({ offline: [offlinePayload] });
+    const second = makeAction({
+      message: 'Closed — #866',
+      color: 'red',
+      offline: [closeOfflinePayload],
+    });
+    act(() => {
+      result.current.enqueue(first);
+    });
+    await act(async () => {
+      result.current.enqueue(second);
+      await flushMicrotasks();
+    });
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(result.current.offlineActions.map((held) => held.apiPath)).toEqual([
+      '/api/review',
+    ]);
+    expect(result.current.pending?.message).toBe('Closed — #866');
+    expect(result.current.error).toBeNull();
+  });
+
+  it.each([
+    {
+      holdReason: 'airplane mode is on',
+      isAirplaneModeOn: true,
+      buildCommit: () =>
+        jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
+    },
+    {
+      holdReason: 'the commit fails because the network is unavailable',
+      isAirplaneModeOn: false,
+      buildCommit: () =>
+        jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(new TypeError('Failed to fetch')),
+    },
+  ])(
+    'holds each offline payload of one action as its own entry in order when $holdReason',
+    async ({ isAirplaneModeOn, buildCommit }) => {
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({ isAirplaneModeOn }),
+      );
+      const action = makeAction({
+        message: 'OK & Close — #866',
+        color: 'red',
+        commit: buildCommit(),
+        offline: [commentOfflinePayload, closeOfflinePayload],
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      const expectedHeld = [
+        expect.objectContaining(commentOfflinePayload),
+        expect.objectContaining(closeOfflinePayload),
+      ];
+      expect(result.current.offlineActions).toEqual(expectedHeld);
+      expect(readStoredOfflineQueue()).toEqual(expectedHeld);
+      expect(
+        new Set(result.current.offlineActions.map((held) => held.id)).size,
+      ).toBe(2);
+      expect(result.current.error).toBeNull();
+    },
+  );
+
+  it('adds the entries passed to offlineActionsCreate immediately and in order, persists them, and sends nothing', async () => {
+    const fetchMock = installOperationFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.offlineActionsCreate({
+        payloads: [commentOfflinePayload, closeOfflinePayload],
+        message: 'Comment — #866',
+        color: 'blue',
+      });
+    });
+    const expectedHeld = [
+      expect.objectContaining({
+        ...commentOfflinePayload,
+        message: 'Comment — #866',
+        color: 'blue',
+      }),
+      expect.objectContaining({
+        ...closeOfflinePayload,
+        message: 'Comment — #866',
+        color: 'blue',
+      }),
+    ];
+    expect(result.current.offlineActions).toEqual(expectedHeld);
+    expect(readStoredOfflineQueue()).toEqual(expectedHeld);
+    expect(result.current.pending).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+      await flushMicrotasks();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.offlineActions).toEqual(expectedHeld);
+  });
+
+  it('keeps an entry added by offlineActionsCreate across a remount', () => {
+    const firstMount = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      firstMount.result.current.offlineActionsCreate({
+        payloads: [commentOfflinePayload],
+        message: 'Comment — #866',
+        color: 'blue',
+      });
+    });
+    firstMount.unmount();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    expect(result.current.offlineActions).toEqual([
+      expect.objectContaining({
+        ...commentOfflinePayload,
+        message: 'Comment — #866',
+        color: 'blue',
+      }),
+    ]);
+  });
+
+  it('sends exactly one /api/comment request with the stored request body when an entry added by offlineActionsCreate is confirmed', async () => {
+    const fetchMock = installOperationFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.offlineActionsCreate({
+        payloads: [commentOfflinePayload],
+        message: 'Comment — #866',
+        color: 'blue',
+      });
+    });
+    const [held] = result.current.offlineActions;
+    await act(async () => {
+      await result.current.confirmOfflineAction(held.id);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url.endsWith('/api/comment')).toBe(true);
+    expect(JSON.parse(String(init?.body))).toEqual(
+      commentOfflinePayload.requestBody,
+    );
+    expect(result.current.offlineActions).toEqual([]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+  });
+
   describe('writeState', () => {
     it('starts idle with attempt zero before any action is enqueued', () => {
       const { result } = renderHook(() => useConsoleActionQueue());
@@ -870,7 +1290,7 @@ describe('useConsoleActionQueue', () => {
         commit: jest
           .fn<Promise<void>, []>()
           .mockRejectedValue(new TypeError('Failed to fetch')),
-        offline: offlinePayload,
+        offline: [offlinePayload],
       });
       act(() => {
         result.current.enqueue(action);
