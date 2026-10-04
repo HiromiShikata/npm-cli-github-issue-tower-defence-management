@@ -26,3 +26,16 @@ export const isVerticallyDominant = (
   const absDeltaY = Math.abs(deltaY);
   return absDeltaY > absDeltaX * SWIPE_HORIZONTAL_DOMINANCE && absDeltaY > 20;
 };
+
+export const hasReachedHorizontalScrollBoundary = (
+  direction: 'next' | 'previous',
+  scrollLeft: number,
+  scrollWidth: number,
+  clientWidth: number,
+): boolean => {
+  if (direction === 'previous') {
+    return scrollLeft <= 0;
+  }
+  const maxScrollLeft = scrollWidth - clientWidth;
+  return scrollLeft >= maxScrollLeft;
+};
