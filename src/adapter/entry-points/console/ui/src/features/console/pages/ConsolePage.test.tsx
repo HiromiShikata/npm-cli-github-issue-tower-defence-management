@@ -4158,6 +4158,185 @@ describe('ConsolePage task creation action queue', () => {
       jest.useRealTimers();
     }
   });
+
+  it('does not create a duplicate GitHub issue when the dialog Create button is clicked again after a partial attachment upload failure', async () => {
+    jest.useFakeTimers();
+    try {
+      let uploadAttemptCount = 0;
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issueUrl: 'https://github.com/o/r/issues/777',
+            }),
+          };
+        }
+        if (url === '/api/upload') {
+          uploadAttemptCount += 1;
+          if (uploadAttemptCount === 1) {
+            return {
+              ok: false,
+              status: 500,
+              text: async () => 'upload failed',
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              markdown: '![attachment.png](https://example.com/attachment.png)',
+            }),
+          };
+        }
+        if (url === '/api/comment') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              comment: {
+                id: 1,
+                author: 'bot',
+                body: '![attachment.png](https://example.com/attachment.png)',
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Task with a failing attachment' },
+      });
+      fireEvent.change(within(openDialog).getByLabelText('Body'), {
+        target: { value: 'Body text for the retried task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /TDPM Console port/ }),
+      );
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /^developer$/i }),
+      );
+
+      const testFile = new File(['x'], 'attachment.png', {
+        type: 'image/png',
+      });
+      (
+        testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [testFile],
+        configurable: true,
+      });
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      // First attempt's delayed commit() runs: the issue is created
+      // successfully but the attachment upload fails, so the dialog
+      // reopens showing the inline error.
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
+      expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
+        'Task with a failing attachment',
+      );
+      expect(within(reopenedDialog).getByLabelText('Body')).toHaveValue(
+        'Body text for the retried task',
+      );
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /TDPM Console port/ })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /^developer$/i })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(within(reopenedDialog).getByRole('alert').textContent).toContain(
+        'attachment.png',
+      );
+
+      // The user clicks the dialog's own Create button again, without
+      // editing the title, body, story or agent.
+      fireEvent.click(
+        within(reopenedDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      // Second attempt's delayed commit() runs.
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {
