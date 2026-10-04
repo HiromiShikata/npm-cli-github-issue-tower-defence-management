@@ -91,3 +91,29 @@ test('the Web App Manifest is linked from index.html and fetchable without crede
     await harness.stop();
   }
 });
+
+test('the console remains operable within the 2-second baseline when the Web App Manifest fetch is blocked', async ({
+  page,
+}) => {
+  const harness: ConsoleE2eHarness = await startConsoleE2eHarness();
+  try {
+    await page.goto(harness.appUrl);
+    await expect(page.locator('.console-tab')).not.toHaveCount(0);
+
+    await page.route('**/manifest.webmanifest', (route) => route.abort());
+
+    const reloadStartedAt = Date.now();
+    await page.reload();
+
+    await expect(page.locator('.console-tab')).not.toHaveCount(0);
+    await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
+    await expect(page.locator('.console-airplane-mode')).toBeVisible();
+
+    const elapsedMilliseconds = Date.now() - reloadStartedAt;
+    expect(elapsedMilliseconds).toBeLessThan(2000);
+
+    await page.unroute('**/manifest.webmanifest');
+  } finally {
+    await harness.stop();
+  }
+});
