@@ -6,8 +6,15 @@ import {
   within,
 } from '@testing-library/react';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
+import * as consoleApi from '../lib/consoleApi';
 import { colorFromEnum } from '../logic/colors';
-import { ConsolePage } from './ConsolePage';
+import {
+  type AttachmentSubmissionProgress,
+  buildAttachmentSubmissionFailureMessage,
+  ConsolePage,
+  createEmptyAttachmentSubmissionProgress,
+  createIssueWithAttachments,
+} from './ConsolePage';
 
 const tabBar = (): HTMLElement => {
   const nav = document.querySelector('nav.console-tabbar');
@@ -5052,5 +5059,574 @@ describe('ConsolePage selected item story color threading', () => {
     const dot = container.querySelector('.console-story-dot') as HTMLElement;
     expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
     expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
+  });
+});
+
+describe('createIssueWithAttachments attachment submission progress', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const pjcode = 'acme';
+  const nameWithOwner = 'o/r';
+  const ISSUE_URL = 'https://github.com/o/r/issues/321';
+
+  const markdownFor = (fileName: string): string =>
+    `![${fileName}](https://example.com/${fileName})`;
+
+  const makeFile = (name: string): File => {
+    const file = new File(['x'], name);
+    (
+      file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+    ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+    return file;
+  };
+
+  const buildProgress = (
+    priorIssueUrl: string | null,
+    priorUploaded: Array<[string, string]>,
+    priorCommented: string[],
+  ): AttachmentSubmissionProgress => ({
+    issueUrl: priorIssueUrl,
+    uploadedMarkdownByFileName: new Map(priorUploaded),
+    commentedFileNames: new Set(priorCommented),
+  });
+
+  type FileAttempt = { name: string; outcome: 'success' | 'failure' };
+
+  type ExpectedOutcome =
+    | { kind: 'resolves' }
+    | { kind: 'rejectsPropagated'; message: string }
+    | {
+        kind: 'rejectsWrapped';
+        failedFileNames: string[];
+        commentPostError: string | null;
+      };
+
+  type Row = {
+    name: string;
+    priorIssueUrl: string | null;
+    priorUploaded: Array<[string, string]>;
+    priorCommented: string[];
+    files: FileAttempt[];
+    createIssueBehavior: 'success' | 'failure';
+    commentBehavior: 'success' | 'apiFailure' | 'notCalled';
+    expectCreateIssueCalls: number;
+    expectAttachmentCalls: number;
+    expectCommentCalls: number;
+    expectOutcome: ExpectedOutcome;
+    expectFinalUploaded: string[];
+    expectFinalCommented: string[];
+    expectCommentBodyIncludes?: string[];
+  };
+
+  const rows: Row[] = [
+    {
+      name: 'row 1: fresh, no files -> issue created, no comment',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [],
+      createIssueBehavior: 'success',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 0,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 2: fresh, [A] succeeds -> issue created, comment with A posted',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'A.png', outcome: 'success' }],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['A.png'],
+      expectFinalCommented: ['A.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png')],
+    },
+    {
+      name: 'row 3: fresh, [A,B], A succeeds/B fails -> comment with A only, rejects naming B',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'success' },
+        { name: 'B.png', outcome: 'failure' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: ['A.png'],
+      expectFinalCommented: ['A.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png')],
+    },
+    {
+      name: 'row 4: fresh, [A,B], A fails but B still succeeds independently -> comment with B only, rejects naming A',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'failure' },
+        { name: 'B.png', outcome: 'success' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['A.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: ['B.png'],
+      expectFinalCommented: ['B.png'],
+      expectCommentBodyIncludes: [markdownFor('B.png')],
+    },
+    {
+      name: 'row 5: fresh, [A,B] both fail -> no comment, rejects naming both',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'failure' },
+        { name: 'B.png', outcome: 'failure' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['A.png', 'B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 6: fresh, [A,B] both succeed but the comment-post call itself fails -> rejects distinctly, keeps both uploads',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'success' },
+        { name: 'B.png', outcome: 'success' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'apiFailure',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: [],
+        commentPostError: 'comment post failed',
+      },
+      expectFinalUploaded: ['A.png', 'B.png'],
+      expectFinalCommented: [],
+      expectCommentBodyIncludes: [markdownFor('A.png'), markdownFor('B.png')],
+    },
+    {
+      name: 'row 7: existing issue, B still pending -> no new issue, B uploads and comment succeeds',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'B.png', outcome: 'success' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['B.png'],
+      expectFinalCommented: ['B.png'],
+      expectCommentBodyIncludes: [markdownFor('B.png')],
+    },
+    {
+      name: 'row 8: existing issue, B still pending, B fails again -> no duplicate issue, rejects naming B with the same issue url',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'B.png', outcome: 'failure' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 9: existing issue, A and B already uploaded, only the comment is pending -> retried comment succeeds without any re-upload',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [
+        ['A.png', markdownFor('A.png')],
+        ['B.png', markdownFor('B.png')],
+      ],
+      priorCommented: [],
+      files: [],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['A.png', 'B.png'],
+      expectFinalCommented: ['A.png', 'B.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png'), markdownFor('B.png')],
+    },
+    {
+      name: 'row 10: fresh, issue creation itself fails -> no issue created at all, nothing else runs',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'A.png', outcome: 'success' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsPropagated',
+        message: 'create issue failed',
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+  ];
+
+  it.each(rows)('$name', async (row) => {
+    const createIssueSpy = jest.spyOn(consoleApi, 'postConsoleCreateIssue');
+    if (row.createIssueBehavior === 'success') {
+      createIssueSpy.mockResolvedValue(ISSUE_URL);
+    } else {
+      createIssueSpy.mockRejectedValue(new Error('create issue failed'));
+    }
+
+    const attachmentSpy = jest.spyOn(consoleApi, 'postConsoleAttachment');
+    attachmentSpy.mockImplementation(async (request) => {
+      const attempt = row.files.find((f) => f.name === request.fileName);
+      if (attempt?.outcome === 'failure') {
+        throw new Error(`${request.fileName} upload failed`);
+      }
+      return markdownFor(request.fileName);
+    });
+
+    const commentSpy = jest.spyOn(consoleApi, 'postConsoleComment');
+    if (row.commentBehavior === 'success') {
+      commentSpy.mockImplementation(async (request) => ({
+        posted: true,
+        comment: {
+          id: 1,
+          author: 'bot',
+          body: request.body,
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      }));
+    } else if (row.commentBehavior === 'apiFailure') {
+      commentSpy.mockResolvedValue({
+        posted: false,
+        error: 'comment post failed',
+        rateLimitResetAt: null,
+      });
+    } else {
+      commentSpy.mockImplementation(async () => {
+        throw new Error('postConsoleComment must not be called for this row');
+      });
+    }
+
+    const progress =
+      row.priorIssueUrl === null &&
+      row.priorUploaded.length === 0 &&
+      row.priorCommented.length === 0
+        ? createEmptyAttachmentSubmissionProgress()
+        : buildProgress(
+            row.priorIssueUrl,
+            row.priorUploaded,
+            row.priorCommented,
+          );
+
+    const params = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: row.files.map((f) => makeFile(f.name)),
+    };
+
+    let thrown: unknown = null;
+    let resolved = false;
+    try {
+      await createIssueWithAttachments(pjcode, nameWithOwner, params, progress);
+      resolved = true;
+    } catch (error) {
+      thrown = error;
+    }
+
+    if (row.expectOutcome.kind === 'resolves') {
+      expect(resolved).toBe(true);
+    } else if (row.expectOutcome.kind === 'rejectsPropagated') {
+      expect(resolved).toBe(false);
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(row.expectOutcome.message);
+    } else {
+      expect(resolved).toBe(false);
+      expect(thrown).toBeInstanceOf(Error);
+      expect(progress.issueUrl).not.toBeNull();
+      expect((thrown as Error).message).toBe(
+        buildAttachmentSubmissionFailureMessage(
+          progress.issueUrl as string,
+          row.expectOutcome.failedFileNames,
+          row.expectOutcome.commentPostError,
+        ),
+      );
+    }
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(row.expectCreateIssueCalls);
+    expect(attachmentSpy).toHaveBeenCalledTimes(row.expectAttachmentCalls);
+    expect(commentSpy).toHaveBeenCalledTimes(row.expectCommentCalls);
+
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual([...row.expectFinalUploaded].sort());
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual(
+      [...row.expectFinalCommented].sort(),
+    );
+
+    if (row.expectCommentBodyIncludes !== undefined) {
+      const call = commentSpy.mock.calls[0][0];
+      for (const snippet of row.expectCommentBodyIncludes) {
+        expect(call.body).toContain(snippet);
+      }
+    }
+
+    if (row.priorIssueUrl !== null) {
+      expect(progress.issueUrl).toBe(row.priorIssueUrl);
+    } else if (row.createIssueBehavior === 'success') {
+      expect(progress.issueUrl).toBe(ISSUE_URL);
+    } else {
+      expect(progress.issueUrl).toBeNull();
+    }
+  });
+
+  it('resumes across two calls with the same progress object: a partial file failure, then a retry of only the failed file succeeds (rows 3 -> 7)', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    let bUploadAttempts = 0;
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => {
+        if (request.fileName === 'B.png') {
+          bUploadAttempts += 1;
+          if (bUploadAttempts === 1) {
+            throw new Error('B upload failed');
+          }
+        }
+        return markdownFor(request.fileName);
+      });
+
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockImplementation(async (request) => ({
+        posted: true,
+        comment: {
+          id: 1,
+          author: 'bot',
+          body: request.body,
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      }));
+
+    const firstParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let firstError: unknown = null;
+    try {
+      await createIssueWithAttachments(
+        pjcode,
+        nameWithOwner,
+        firstParams,
+        progress,
+      );
+    } catch (error) {
+      firstError = error;
+    }
+    expect(firstError).toBeInstanceOf(Error);
+    expect((firstError as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(ISSUE_URL, ['B.png'], null),
+    );
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(progress.issueUrl).toBe(ISSUE_URL);
+    expect(Array.from(progress.uploadedMarkdownByFileName.keys())).toEqual([
+      'A.png',
+    ]);
+    expect(Array.from(progress.commentedFileNames)).toEqual(['A.png']);
+
+    const secondParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('B.png')],
+    };
+
+    let secondResolved = false;
+    await createIssueWithAttachments(
+      pjcode,
+      nameWithOwner,
+      secondParams,
+      progress,
+    ).then(() => {
+      secondResolved = true;
+    });
+    expect(secondResolved).toBe(true);
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    const aAttachmentCalls = attachmentSpy.mock.calls.filter(
+      ([request]) => request.fileName === 'A.png',
+    );
+    expect(aAttachmentCalls).toHaveLength(1);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual([
+      'A.png',
+      'B.png',
+    ]);
+    expect(commentSpy).toHaveBeenCalledTimes(2);
+    const secondCommentCall = commentSpy.mock.calls[1][0];
+    expect(secondCommentCall.body).toContain(markdownFor('B.png'));
+    expect(secondCommentCall.body).not.toContain(markdownFor('A.png'));
+  });
+
+  it('resumes across two calls with the same progress object: successful uploads with a failed comment post, then a retry resends only the comment using the retained links (rows 6 -> 9)', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => markdownFor(request.fileName));
+
+    let commentAttempts = 0;
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockImplementation(async (request) => {
+        commentAttempts += 1;
+        if (commentAttempts === 1) {
+          return {
+            posted: false,
+            error: 'comment post failed',
+            rateLimitResetAt: null,
+          };
+        }
+        return {
+          posted: true,
+          comment: {
+            id: 2,
+            author: 'bot',
+            body: request.body,
+            createdAt: '2026-06-19T00:00:00.000Z',
+          },
+        };
+      });
+
+    const firstParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let firstError: unknown = null;
+    try {
+      await createIssueWithAttachments(
+        pjcode,
+        nameWithOwner,
+        firstParams,
+        progress,
+      );
+    } catch (error) {
+      firstError = error;
+    }
+    expect(firstError).toBeInstanceOf(Error);
+    expect((firstError as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(
+        ISSUE_URL,
+        [],
+        'comment post failed',
+      ),
+    );
+    expect((firstError as Error).message).not.toMatch(
+      /file\(s\) failed to upload/,
+    );
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames)).toEqual([]);
+
+    const secondParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [],
+    };
+
+    let secondResolved = false;
+    await createIssueWithAttachments(
+      pjcode,
+      nameWithOwner,
+      secondParams,
+      progress,
+    ).then(() => {
+      secondResolved = true;
+    });
+    expect(secondResolved).toBe(true);
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(commentSpy).toHaveBeenCalledTimes(2);
+    const secondCommentCall = commentSpy.mock.calls[1][0];
+    expect(secondCommentCall.body).toContain(markdownFor('A.png'));
+    expect(secondCommentCall.body).toContain(markdownFor('B.png'));
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual([
+      'A.png',
+      'B.png',
+    ]);
   });
 });
