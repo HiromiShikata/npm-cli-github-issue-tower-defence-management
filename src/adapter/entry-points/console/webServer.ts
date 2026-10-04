@@ -110,6 +110,7 @@ const MIME_TYPES: Record<string, string> = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.yaml': 'text/yaml; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
 export const hasDotSegment = (requestPath: string): boolean =>

@@ -1323,7 +1323,9 @@ export const ConsolePage = () => {
             )}
           </>
         }
-        airplaneModeEnabled={featuresConfig.airplaneMode}
+        airplaneModeEnabled={
+          featuresConfig.airplaneMode || airplaneMode.status !== 'off'
+        }
         airplaneModeStatus={airplaneMode.status}
         airplaneModeProgress={airplaneMode.progress}
         airplaneModeCapturedAt={airplaneSnapshot?.capturedAt ?? null}

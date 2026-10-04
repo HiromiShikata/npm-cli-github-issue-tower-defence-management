@@ -84,6 +84,11 @@ describe('webServer pure helpers', () => {
       expect(requiresToken('/index.html')).toBe(false);
       expect(requiresToken('/assets/app.js')).toBe(false);
     });
+
+    it('does not require a token for the web app manifest or its icon files', () => {
+      expect(requiresToken('/manifest.webmanifest')).toBe(false);
+      expect(requiresToken('/icon-192.png')).toBe(false);
+    });
   });
 
   describe('isConsoleAppRoute', () => {
@@ -500,6 +505,64 @@ describe('webServer integration', () => {
       const response = await requestServer(server, '/favicon.svg');
       expect(response.statusCode).toBe(200);
       expect(response.contentType).toBe('image/svg+xml');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves manifest.webmanifest without a token and returns application/manifest+json; charset=utf-8', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(uiDistDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'manifest.webmanifest'),
+      '{"name":"x"}',
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await requestServer(server, '/manifest.webmanifest');
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toBe(
+        'application/manifest+json; charset=utf-8',
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves an icon-192.png file without a token and returns image/png', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(uiDistDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'icon-192.png'),
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await requestServer(server, '/icon-192.png');
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toBe('image/png');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

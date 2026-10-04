@@ -53,3 +53,41 @@ test('navigating offline to a previously visited /projects/acme/prs URL renders 
     await harness.stop();
   }
 });
+
+test('the Web App Manifest is linked from index.html and fetchable without credentials with the correct content type', async ({
+  page,
+}) => {
+  const harness: ConsoleE2eHarness = await startConsoleE2eHarness();
+  try {
+    await page.goto(harness.appUrl);
+
+    const manifestHref = await page.getAttribute(
+      'link[rel="manifest"]',
+      'href',
+    );
+    expect(manifestHref).toBe('/manifest.webmanifest');
+
+    const manifestResponse = await page.evaluate(async (href: string) => {
+      const response = await fetch(href, { credentials: 'omit' });
+      return {
+        status: response.status,
+        contentType: response.headers.get('content-type'),
+        body: await response.json(),
+      };
+    }, manifestHref ?? '');
+
+    expect(manifestResponse.status).toBe(200);
+    expect(manifestResponse.contentType).toBe(
+      'application/manifest+json; charset=utf-8',
+    );
+    expect(manifestResponse.body).toMatchObject({
+      name: 'TDPM Console',
+      short_name: 'TDPM',
+      start_url: '/',
+      display: 'standalone',
+    });
+    expect(manifestResponse.body.icons).toHaveLength(2);
+  } finally {
+    await harness.stop();
+  }
+});
