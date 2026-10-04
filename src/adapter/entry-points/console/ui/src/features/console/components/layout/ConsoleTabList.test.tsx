@@ -481,9 +481,7 @@ describe('ConsoleTabList', () => {
         airplaneModeRetryTargetUrls={['https://github.com/o/r/issues/1']}
       />,
     );
-    expect(
-      getByRole('button', { name: /retry failed/i }),
-    ).not.toBeNull();
+    expect(getByRole('button', { name: /retry failed/i })).not.toBeNull();
   });
 });
 
