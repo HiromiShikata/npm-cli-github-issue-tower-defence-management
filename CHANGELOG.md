@@ -1,3 +1,10 @@
+## [2.163.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.7...v2.163.8) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** make swipe navigation direction-aware of horizontal scroll boundary ([#3231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3231)) ([3010c66](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3010c663d649784f6029f44f881b5d1cb3a9eebc))
+
 ## [2.163.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.6...v2.163.7) (2026-10-04)
 
 
