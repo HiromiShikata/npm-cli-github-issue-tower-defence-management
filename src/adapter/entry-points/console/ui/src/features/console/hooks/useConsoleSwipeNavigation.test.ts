@@ -101,7 +101,7 @@ describe('useConsoleSwipeNavigation', () => {
     document.body.removeChild(element);
   });
 
-  it('navigates when the gesture starts in a horizontally scrollable element at scroll position zero', () => {
+  it('does not navigate when a leftward gesture starts in a horizontally scrollable element at scroll position zero', () => {
     const element = document.createElement('div');
     const scroller = document.createElement('div');
     Object.defineProperty(scroller, 'scrollWidth', {
@@ -128,7 +128,69 @@ describe('useConsoleSwipeNavigation', () => {
     scroller.dispatchEvent(
       touchEvent('touchend', { clientX: 60, clientY: 100 }, 'changedTouches'),
     );
+    expect(onSwipe).not.toHaveBeenCalled();
+    document.body.removeChild(element);
+  });
+
+  it('navigates to next when a leftward gesture starts at the rightmost horizontal scroll boundary', () => {
+    const element = document.createElement('div');
+    const scroller = document.createElement('div');
+    Object.defineProperty(scroller, 'scrollWidth', {
+      value: 500,
+      configurable: true,
+    });
+    Object.defineProperty(scroller, 'clientWidth', {
+      value: 100,
+      configurable: true,
+    });
+    Object.defineProperty(scroller, 'scrollLeft', {
+      value: 400,
+      configurable: true,
+    });
+    scroller.style.overflowX = 'auto';
+    element.appendChild(scroller);
+    document.body.appendChild(element);
+    const onSwipe = jest.fn();
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
+    scroller.dispatchEvent(
+      touchEvent('touchstart', { clientX: 200, clientY: 100 }, 'touches'),
+    );
+    scroller.dispatchEvent(
+      touchEvent('touchend', { clientX: 60, clientY: 100 }, 'changedTouches'),
+    );
     expect(onSwipe).toHaveBeenCalledWith('next');
+    document.body.removeChild(element);
+  });
+
+  it('navigates to previous when a rightward gesture starts at scroll position zero', () => {
+    const element = document.createElement('div');
+    const scroller = document.createElement('div');
+    Object.defineProperty(scroller, 'scrollWidth', {
+      value: 500,
+      configurable: true,
+    });
+    Object.defineProperty(scroller, 'clientWidth', {
+      value: 100,
+      configurable: true,
+    });
+    Object.defineProperty(scroller, 'scrollLeft', {
+      value: 0,
+      configurable: true,
+    });
+    scroller.style.overflowX = 'auto';
+    element.appendChild(scroller);
+    document.body.appendChild(element);
+    const onSwipe = jest.fn();
+    const { result } = renderHook(() => useConsoleSwipeNavigation(onSwipe));
+    result.current(element);
+    scroller.dispatchEvent(
+      touchEvent('touchstart', { clientX: 60, clientY: 100 }, 'touches'),
+    );
+    scroller.dispatchEvent(
+      touchEvent('touchend', { clientX: 200, clientY: 100 }, 'changedTouches'),
+    );
+    expect(onSwipe).toHaveBeenCalledWith('previous');
     document.body.removeChild(element);
   });
 

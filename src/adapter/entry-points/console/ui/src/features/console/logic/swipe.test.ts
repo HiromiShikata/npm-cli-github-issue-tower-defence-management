@@ -1,4 +1,5 @@
 import {
+  hasReachedHorizontalScrollBoundary,
   isVerticallyDominant,
   resolveSwipeDirection,
   SWIPE_MIN_DISTANCE,
@@ -31,4 +32,62 @@ describe('isVerticallyDominant', () => {
     expect(isVerticallyDominant(80, 10)).toBe(false);
     expect(isVerticallyDominant(5, 15)).toBe(false);
   });
+});
+
+describe('hasReachedHorizontalScrollBoundary', () => {
+  const cases: Array<{
+    name: string;
+    direction: 'next' | 'previous';
+    scrollLeft: number;
+    scrollWidth: number;
+    clientWidth: number;
+    expected: boolean;
+  }> = [
+    {
+      name: 'next direction, boundary not yet reached',
+      direction: 'next',
+      scrollLeft: 0,
+      scrollWidth: 500,
+      clientWidth: 100,
+      expected: false,
+    },
+    {
+      name: 'next direction, boundary reached',
+      direction: 'next',
+      scrollLeft: 400,
+      scrollWidth: 500,
+      clientWidth: 100,
+      expected: true,
+    },
+    {
+      name: 'previous direction, boundary not yet reached',
+      direction: 'previous',
+      scrollLeft: 50,
+      scrollWidth: 500,
+      clientWidth: 100,
+      expected: false,
+    },
+    {
+      name: 'previous direction, boundary reached',
+      direction: 'previous',
+      scrollLeft: 0,
+      scrollWidth: 500,
+      clientWidth: 100,
+      expected: true,
+    },
+  ];
+
+  it.each(cases)(
+    '$name',
+    ({ direction, scrollLeft, scrollWidth, clientWidth, expected }) => {
+      expect(
+        hasReachedHorizontalScrollBoundary(
+          direction,
+          scrollLeft,
+          scrollWidth,
+          clientWidth,
+        ),
+      ).toBe(expected);
+    },
+  );
 });
