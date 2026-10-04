@@ -1,3 +1,16 @@
+# [2.164.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.8...v2.164.0) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** resolve timer-mode navigation gates that ignore the current project's own remaining minutes ([#3244](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3244)) ([9134dfa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9134dfae5f4d5455cab69f5171ec9c655ea1de7c))
+* **console:** stabilize ConsoleMarkdownContent re-render to stop code block and reference-link flicker ([#3243](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3243)) ([bff5e9b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bff5e9b6793dadb766cdaf42cd2e9341633c8f83))
+
+
+### Features
+
+* **console:** add web app manifest and fix offline-mode regressions for installable PWA support ([#3242](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3242)) ([b009630](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b009630caef9d9c99967f1dbf7b3a8decbbd5c93))
+
 ## [2.163.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.7...v2.163.8) (2026-10-04)
 
 
