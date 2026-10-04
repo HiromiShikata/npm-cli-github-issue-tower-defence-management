@@ -1,3 +1,10 @@
+## [2.163.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.3...v2.163.4) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console-e2e:** Capture a full trace and video on every console UI e2e test failure, not only on a retried one ([#3216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3216)) ([3054297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/30542975c9f9e88d188c44aca153a2a78b0e5958))
+
 ## [2.163.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.2...v2.163.3) (2026-10-04)
 
 
