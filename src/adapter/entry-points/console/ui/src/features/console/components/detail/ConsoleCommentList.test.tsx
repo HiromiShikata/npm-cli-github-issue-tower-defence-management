@@ -1144,9 +1144,9 @@ describe('ConsoleCommentList checkbox-toggle callback invocation and disabled-wi
       />,
     );
     await waitFor(() => {
-      expect(
-        container.querySelectorAll('input[type="checkbox"]').length,
-      ).toBe(2);
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(
+        2,
+      );
     });
     const secondCheckbox = container.querySelector<HTMLInputElement>(
       'input[type="checkbox"][data-checkbox-index="1"]',
@@ -1173,9 +1173,9 @@ describe('ConsoleCommentList checkbox-toggle callback invocation and disabled-wi
       />,
     );
     await waitFor(() => {
-      expect(
-        container.querySelectorAll('input[type="checkbox"]').length,
-      ).toBe(2);
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(
+        2,
+      );
     });
     const checkboxes = Array.from(
       container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
