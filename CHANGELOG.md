@@ -1,3 +1,10 @@
+## [2.163.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.1...v2.163.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** hold queue actions and comments in the offline queue during airplane mode and network failure ([#3198](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3198)) ([b12ccd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b12ccd6790178e2ef94f1e44efad13e202e99158))
+
 ## [2.163.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.0...v2.163.1) (2026-10-04)
 
 
