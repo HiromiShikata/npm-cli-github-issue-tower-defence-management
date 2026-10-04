@@ -3397,6 +3397,189 @@ describe('ConsolePage airplane mode write guard', () => {
   });
 });
 
+describe('ConsolePage airplane mode control visibility on offline cold start', () => {
+  const prItem = {
+    number: 851,
+    title: 'Add serveConsole subcommand',
+    url: 'https://github.com/o/r/pull/851',
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: 'PVTI_1',
+    itemId: 'PVTI_1',
+    isPr: true,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Awaiting Owner',
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-17T00:00:00.000Z',
+    agent: null,
+  };
+
+  const airplaneSnapshot = {
+    capturedAt: '2026-06-19T00:00:00.000Z',
+    tabs: {
+      acme: {
+        prs: {
+          items: [prItem],
+          generatedAt: '2026-06-19T00:00:00.000Z',
+          statusOptions: [
+            { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+          ],
+          storyOptions: [
+            { id: 'st1', name: 'TDPM Console port', color: 'BLUE' },
+          ],
+          storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+          stories: [],
+          defaultNameWithOwner: 'o/r',
+          fromCache: false,
+          storyOrder: [],
+        },
+        'workflow-blocker': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'failed-preparation': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'todo-by-human': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        stories: {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+      },
+    },
+    items: {},
+    failures: [],
+  };
+
+  const mockFeaturesUnreachableFetch = (): void => {
+    global.fetch = jest.fn(async (url: string) => {
+      if (url === '/api/features') {
+        return { ok: false, status: 503, json: async () => ({}) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  afterEach(() => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  it('shows the Airplane Mode control in its "on" state when /api/features fails but a snapshot already exists for the opened project', async () => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    localStorage.setItem('tdpm_airplane_mode_on', '1');
+
+    const snapshotJson = JSON.stringify(airplaneSnapshot);
+    const mockCache = {
+      put: jest.fn(),
+      match: jest.fn().mockResolvedValue(
+        new Response(snapshotJson, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+      delete: jest.fn(),
+    };
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: {
+        open: jest.fn().mockResolvedValue(mockCache),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+    mockFeaturesUnreachableFetch();
+
+    const view = render(<ConsolePage />);
+
+    expect(await view.findByText('Turn off')).toBeInTheDocument();
+  });
+
+  it('keeps the Airplane Mode control hidden when no snapshot flag is set and /api/features fails (regression)', async () => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+
+    const mockCache = {
+      put: jest.fn(),
+      match: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn(),
+    };
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: {
+        open: jest.fn().mockResolvedValue(mockCache),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+    mockFeaturesUnreachableFetch();
+
+    const view = render(<ConsolePage />);
+
+    await waitFor(() => {
+      expect(
+        (global.fetch as jest.Mock).mock.calls.some(
+          ([url]) => url === '/api/features',
+        ),
+      ).toBe(true);
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view.queryByText('✈ Airplane mode')).toBeNull();
+    expect(view.queryByText('Turn off')).toBeNull();
+  });
+});
+
 describe('ConsolePage story-labeled item Delete Story button', () => {
   beforeEach(() => {
     localStorage.clear();

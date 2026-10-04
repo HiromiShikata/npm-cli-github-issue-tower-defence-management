@@ -169,6 +169,10 @@ function createSwHarness(): SwHarness {
   };
 }
 
+function createActivateEvent(): { waitUntil: jest.Mock } {
+  return { waitUntil: jest.fn() };
+}
+
 function createFetchEvent(request: FakeFetchRequest): FetchListenerEvent {
   return {
     request,
@@ -370,4 +374,51 @@ it('clones the network response synchronously, before caches.open(SHELL_CACHE) h
 
   expect(resolvedResponse).toBe(mockResponse);
   expect(mockResponse.clone).toHaveBeenCalled();
+});
+
+describe('sw.js activate listener cache preservation', () => {
+  const CONSOLE_LIST_CACHE_NAME = 'console-list-v1';
+  const AIRPLANE_CACHE_NAME = 'tdpm-airplane-v1';
+  const STALE_CACHE_NAME = 'console-shell-v0';
+
+  function dispatchActivateEvent(harness: SwHarness): {
+    waitUntil: jest.Mock;
+  } {
+    const event = createActivateEvent();
+    const handler = harness.listeners.activate;
+    if (handler === undefined) {
+      throw new Error('sw.js did not register an activate listener');
+    }
+    handler(event);
+    return event;
+  }
+
+  it('preserves the shell, board-data, and airplane snapshot caches while deleting a genuinely stale cache name', async () => {
+    const harness = createSwHarness();
+    harness.seedCacheEntry(SHELL_CACHE_NAME, 'k1', 'v1');
+    harness.seedCacheEntry(CONSOLE_LIST_CACHE_NAME, 'k2', 'v2');
+    harness.seedCacheEntry(AIRPLANE_CACHE_NAME, 'k3', 'v3');
+    harness.seedCacheEntry(STALE_CACHE_NAME, 'k4', 'v4');
+
+    const event = dispatchActivateEvent(harness);
+    expect(event.waitUntil).toHaveBeenCalledTimes(1);
+    await event.waitUntil.mock.calls[0][0];
+
+    expect(harness.mockCacheStorage.delete.mock.calls.flat()).toEqual([
+      STALE_CACHE_NAME,
+    ]);
+  });
+
+  it('never calls caches.delete when only the shell, board-data, and airplane snapshot caches exist', async () => {
+    const harness = createSwHarness();
+    harness.seedCacheEntry(SHELL_CACHE_NAME, 'k1', 'v1');
+    harness.seedCacheEntry(CONSOLE_LIST_CACHE_NAME, 'k2', 'v2');
+    harness.seedCacheEntry(AIRPLANE_CACHE_NAME, 'k3', 'v3');
+
+    const event = dispatchActivateEvent(harness);
+    expect(event.waitUntil).toHaveBeenCalledTimes(1);
+    await event.waitUntil.mock.calls[0][0];
+
+    expect(harness.mockCacheStorage.delete).not.toHaveBeenCalled();
+  });
 });
