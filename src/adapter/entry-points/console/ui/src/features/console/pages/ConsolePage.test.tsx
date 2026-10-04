@@ -4279,9 +4279,6 @@ describe('ConsolePage task creation action queue', () => {
         within(openDialog).getByRole('button', { name: 'Create' }),
       );
 
-      // First attempt's delayed commit() runs: the issue is created
-      // successfully but the attachment upload fails, so the dialog
-      // reopens showing the inline error.
       await act(async () => {
         jest.advanceTimersByTime(5100);
         for (let i = 0; i < 10; i++) {
@@ -4315,13 +4312,10 @@ describe('ConsolePage task creation action queue', () => {
         'attachment.png',
       );
 
-      // The user clicks the dialog's own Create button again, without
-      // editing the title, body, story or agent.
       fireEvent.click(
         within(reopenedDialog).getByRole('button', { name: 'Create' }),
       );
 
-      // Second attempt's delayed commit() runs.
       await act(async () => {
         jest.advanceTimersByTime(5100);
         for (let i = 0; i < 10; i++) {
