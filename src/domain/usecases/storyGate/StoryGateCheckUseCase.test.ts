@@ -1392,6 +1392,25 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe(reason);
       },
     );
+
+    it('excludes a cache from being the board cache hit, and does not leak its Story options, when its only matching issue entry is a cross owner stray URL with story unset', async () => {
+      const foreignIssue: GithubIssueReference = {
+        owner: OTHER_ORG,
+        repo: REPO,
+        number: 999,
+        url: otherOrgIssueUrl(999),
+      };
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        cacheIssues: [cacheIssue(999, null, { url: foreignIssue.url })],
+      });
+      scenario.repository.issueAddAtUrl(foreignIssue.url, { items: [] });
+
+      const { result } = await scenario.run({ issue: foreignIssue });
+
+      expect(result.activeStoryOptions).toEqual([]);
+      expect(result.facts.boardCacheFilePath).toBeNull();
+    });
   });
 
   describe('assigned issue checks', () => {
