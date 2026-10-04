@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   type ConsoleCommentRequest,
   type ConsoleDeleteAllCommentsRequest,
@@ -546,24 +546,46 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
-  return {
-    reviewPullRequest,
-    setNextActionDate,
-    setStory,
-    setAgent,
-    setStatus,
-    setInTmuxByHuman,
-    closeIssue,
-    okAndMoveToAwaitingWorkspace,
-    addComment,
-    addCommentAndMoveToAwaitingWorkspace,
-    uploadAttachment,
-    addInlineReviewComment,
-    issueRename,
-    issueBodyUpdate,
-    issueCommentBodyUpdate,
-    deleteAllComments,
-    setDependedIssueUrl,
-    onAfterMoveToAwaitingWorkspace,
-  };
+  return useMemo(
+    () => ({
+      reviewPullRequest,
+      setNextActionDate,
+      setStory,
+      setAgent,
+      setStatus,
+      setInTmuxByHuman,
+      closeIssue,
+      okAndMoveToAwaitingWorkspace,
+      addComment,
+      addCommentAndMoveToAwaitingWorkspace,
+      uploadAttachment,
+      addInlineReviewComment,
+      issueRename,
+      issueBodyUpdate,
+      issueCommentBodyUpdate,
+      deleteAllComments,
+      setDependedIssueUrl,
+      onAfterMoveToAwaitingWorkspace,
+    }),
+    [
+      reviewPullRequest,
+      setNextActionDate,
+      setStory,
+      setAgent,
+      setStatus,
+      setInTmuxByHuman,
+      closeIssue,
+      okAndMoveToAwaitingWorkspace,
+      addComment,
+      addCommentAndMoveToAwaitingWorkspace,
+      uploadAttachment,
+      addInlineReviewComment,
+      issueRename,
+      issueBodyUpdate,
+      issueCommentBodyUpdate,
+      deleteAllComments,
+      setDependedIssueUrl,
+      onAfterMoveToAwaitingWorkspace,
+    ],
+  );
 };
