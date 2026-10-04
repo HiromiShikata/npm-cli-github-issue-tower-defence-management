@@ -24,6 +24,8 @@ export type IssueCreateDestination = 'project' | 'workflow';
 export type IssueCreateModalDialogProps = {
   storyEntries: ConsoleStoryEntry[];
   agentOptions: ConsoleFieldOption[];
+  workflowStoryEntries?: ConsoleStoryEntry[];
+  workflowAgentOptions?: ConsoleFieldOption[];
   initialDestination: IssueCreateDestination;
   onSubmitProject: (params: IssueCreateParams) => Promise<void>;
   onSubmitWorkflow?: (params: IssueCreateParams) => Promise<void>;
@@ -39,6 +41,8 @@ export type IssueCreateModalDialogProps = {
 export const IssueCreateModalDialog = ({
   storyEntries,
   agentOptions,
+  workflowStoryEntries,
+  workflowAgentOptions,
   initialDestination,
   onSubmitProject,
   onSubmitWorkflow,
@@ -52,16 +56,24 @@ export const IssueCreateModalDialog = ({
 }: IssueCreateModalDialogProps) => {
   const [destination, setDestination] =
     useState<IssueCreateDestination>(initialDestination);
+  const activeStoryEntries =
+    destination === 'workflow'
+      ? workflowStoryEntries ?? storyEntries
+      : storyEntries;
+  const activeAgentOptions =
+    destination === 'workflow'
+      ? workflowAgentOptions ?? agentOptions
+      : agentOptions;
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
   >(() => {
     if (initialDraft?.storyName) {
-      const match = storyEntries.find(
+      const match = activeStoryEntries.find(
         (e) => e.storyName === initialDraft.storyName,
       );
       if (match) return match.storyOptionId;
     }
-    return storyEntries[0]?.storyOptionId ?? null;
+    return activeStoryEntries[0]?.storyOptionId ?? null;
   });
   const [selectedAgentOptionId, setSelectedAgentOptionId] = useState<
     string | null
@@ -81,14 +93,49 @@ export const IssueCreateModalDialog = ({
     titleRef.current?.focus();
   }, []);
 
+  const previousStoryEntriesForResetRef = useRef(storyEntries);
   useEffect(() => {
+    const storyEntriesChanged =
+      previousStoryEntriesForResetRef.current !== storyEntries;
+    previousStoryEntriesForResetRef.current = storyEntries;
+    if (!storyEntriesChanged || destination !== 'project') {
+      return;
+    }
     if (
       selectedStoryOptionId === null ||
       !storyEntries.some((e) => e.storyOptionId === selectedStoryOptionId)
     ) {
       setSelectedStoryOptionId(storyEntries[0]?.storyOptionId ?? null);
     }
-  }, [storyEntries, selectedStoryOptionId]);
+  }, [storyEntries, selectedStoryOptionId, destination]);
+
+  const previousDestinationForClearRef = useRef(destination);
+  useEffect(() => {
+    const destinationChanged =
+      previousDestinationForClearRef.current !== destination;
+    previousDestinationForClearRef.current = destination;
+    if (!destinationChanged) {
+      return;
+    }
+    if (
+      selectedStoryOptionId !== null &&
+      !activeStoryEntries.some((e) => e.storyOptionId === selectedStoryOptionId)
+    ) {
+      setSelectedStoryOptionId(null);
+    }
+    if (
+      selectedAgentOptionId !== null &&
+      !activeAgentOptions.some((o) => o.id === selectedAgentOptionId)
+    ) {
+      setSelectedAgentOptionId(null);
+    }
+  }, [
+    destination,
+    activeStoryEntries,
+    activeAgentOptions,
+    selectedStoryOptionId,
+    selectedAgentOptionId,
+  ]);
 
   const [thumbnailUrls, setThumbnailUrls] = useState<Map<File, string>>(
     new Map(),
@@ -124,7 +171,7 @@ export const IssueCreateModalDialog = ({
   }, [selectedFiles]);
 
   const resolvedStoryName = (): string | null =>
-    storyEntries.find((e) => e.storyOptionId === selectedStoryOptionId)
+    activeStoryEntries.find((e) => e.storyOptionId === selectedStoryOptionId)
       ?.storyName ?? null;
 
   const handleSubmit = async (): Promise<void> => {
@@ -134,7 +181,7 @@ export const IssueCreateModalDialog = ({
       return;
     }
     const storyName = resolvedStoryName();
-    if (storyName === null && storyEntries.length > 0) {
+    if (storyName === null && activeStoryEntries.length > 0) {
       setSubmitError('Please select a story.');
       return;
     }
@@ -342,13 +389,13 @@ export const IssueCreateModalDialog = ({
             </ul>
           )}
 
-          {storyEntries.length > 0 && (
+          {activeStoryEntries.length > 0 && (
             <>
               <span className="console-task-create-dialog-section-label">
                 Story
               </span>
               <div className="console-task-create-dialog-option-list">
-                {storyEntries.map((entry) => (
+                {activeStoryEntries.map((entry) => (
                   <button
                     key={entry.storyOptionId}
                     type="button"
@@ -378,13 +425,13 @@ export const IssueCreateModalDialog = ({
             </>
           )}
 
-          {agentOptions.length > 0 && (
+          {activeAgentOptions.length > 0 && (
             <>
               <span className="console-task-create-dialog-section-label">
                 Agent
               </span>
               <div className="console-task-create-dialog-option-list">
-                {agentOptions.map((option) => (
+                {activeAgentOptions.map((option) => (
                   <button
                     key={option.id}
                     type="button"

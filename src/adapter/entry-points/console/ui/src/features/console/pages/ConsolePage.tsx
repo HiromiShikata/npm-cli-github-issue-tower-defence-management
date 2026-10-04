@@ -271,6 +271,8 @@ export const ConsolePage = () => {
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
     disabledPjcodes,
+    workflowStoryEntries,
+    workflowAgentOptions,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList(timerMode && airplaneSnapshot === null, isLoading);
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
@@ -1286,6 +1288,8 @@ export const ConsolePage = () => {
                   <IssueCreateModalDialog
                     storyEntries={storyEntries}
                     agentOptions={agentOptions}
+                    workflowStoryEntries={workflowStoryEntries ?? undefined}
+                    workflowAgentOptions={workflowAgentOptions ?? undefined}
                     initialDestination="project"
                     onSubmitProject={handleCreateIssueFromDialog}
                     onSubmitWorkflow={
@@ -1340,6 +1344,8 @@ export const ConsolePage = () => {
         <IssueCreateModalDialog
           storyEntries={storyEntries}
           agentOptions={agentOptions}
+          workflowStoryEntries={workflowStoryEntries ?? undefined}
+          workflowAgentOptions={workflowAgentOptions ?? undefined}
           initialDraft={
             fleetDialogSubmitFailure !== null
               ? {

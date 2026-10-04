@@ -3117,6 +3117,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3150,6 +3152,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3189,6 +3193,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3237,6 +3243,8 @@ describe('webServer GET /api/projects', () => {
           alpha: 'HiromiShikata/umino-corporait-operation',
         },
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);

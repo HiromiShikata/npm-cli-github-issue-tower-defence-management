@@ -76,6 +76,9 @@ export type ConsoleOperationContext = {
         canonicalStatusName: string,
       ) => void)
     | null;
+  resolveWorkflowProjectBinding:
+    (() => Promise<ConsoleProjectBinding | null>) | null;
+  workflowRepositoryNameWithOwner: string | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -230,6 +233,19 @@ const resolveBinding = async (
   const pjcode = body.pjcode;
   if (!isNonEmptyString(pjcode)) {
     return badRequest('pjcode is required');
+  }
+  const nameWithOwner = body.nameWithOwner;
+  const matchesConfiguredWorkflowRepository =
+    context.workflowRepositoryNameWithOwner !== null &&
+    nameWithOwner === context.workflowRepositoryNameWithOwner;
+  if (
+    matchesConfiguredWorkflowRepository &&
+    context.resolveWorkflowProjectBinding !== null
+  ) {
+    const workflowBinding = await context.resolveWorkflowProjectBinding();
+    if (workflowBinding !== null) {
+      return workflowBinding;
+    }
   }
   const binding = await context.resolveProject(pjcode);
   if (binding === null) {

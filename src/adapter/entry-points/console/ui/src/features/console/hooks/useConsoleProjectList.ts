@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchProjectList, type ProjectListResponse } from '../lib/consoleApi';
+import type { ConsoleFieldOption, ConsoleStoryEntry } from '../logic/types';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from './useConsoleTabData';
 
 export type ConsoleProjectListState = {
@@ -8,6 +9,8 @@ export type ConsoleProjectListState = {
   fleetTaskCreateUrl: string | null;
   nameWithOwnerByPjcode: Record<string, string> | null;
   disabledPjcodes: string[];
+  workflowStoryEntries: ConsoleStoryEntry[] | null;
+  workflowAgentOptions: ConsoleFieldOption[] | null;
   isLoading: boolean;
   error: Error | null;
 };
@@ -36,6 +39,12 @@ export const useConsoleProjectList = (
     string
   > | null>(null);
   const [disabledPjcodes, setDisabledPjcodes] = useState<string[]>([]);
+  const [workflowStoryEntries, setWorkflowStoryEntries] = useState<
+    ConsoleStoryEntry[] | null
+  >(null);
+  const [workflowAgentOptions, setWorkflowAgentOptions] = useState<
+    ConsoleFieldOption[] | null
+  >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -45,6 +54,8 @@ export const useConsoleProjectList = (
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
     disabledPjcodes,
+    workflowStoryEntries,
+    workflowAgentOptions,
   });
 
   useEffect(() => {
@@ -61,12 +72,16 @@ export const useConsoleProjectList = (
             fleetTaskCreateUrl: result.fleetTaskCreateUrl,
             nameWithOwnerByPjcode: result.nameWithOwnerByPjcode,
             disabledPjcodes: result.disabledPjcodes,
+            workflowStoryEntries: result.workflowStoryEntries,
+            workflowAgentOptions: result.workflowAgentOptions,
           };
           setPjcodes(result.pjcodes);
           setProjectUrls(result.projectUrls);
           setFleetTaskCreateUrl(result.fleetTaskCreateUrl);
           setNameWithOwnerByPjcode(result.nameWithOwnerByPjcode);
           setDisabledPjcodes(result.disabledPjcodes);
+          setWorkflowStoryEntries(result.workflowStoryEntries);
+          setWorkflowAgentOptions(result.workflowAgentOptions);
           setIsLoading(false);
         }
       })
@@ -132,6 +147,27 @@ export const useConsoleProjectList = (
         };
         setDisabledPjcodes(result.disabledPjcodes);
       }
+      if (
+        !isSameJsonValue(held.workflowStoryEntries, result.workflowStoryEntries)
+      ) {
+        heldValuesRef.current = {
+          ...heldValuesRef.current,
+          workflowStoryEntries: result.workflowStoryEntries,
+        };
+        setWorkflowStoryEntries(result.workflowStoryEntries);
+      }
+      if (
+        !isSameJsonValue(
+          held.workflowAgentOptions,
+          result.workflowAgentOptions,
+        )
+      ) {
+        heldValuesRef.current = {
+          ...heldValuesRef.current,
+          workflowAgentOptions: result.workflowAgentOptions,
+        };
+        setWorkflowAgentOptions(result.workflowAgentOptions);
+      }
     };
 
     const load = (): void => {
@@ -162,6 +198,8 @@ export const useConsoleProjectList = (
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
     disabledPjcodes,
+    workflowStoryEntries,
+    workflowAgentOptions,
     isLoading,
     error,
   };
