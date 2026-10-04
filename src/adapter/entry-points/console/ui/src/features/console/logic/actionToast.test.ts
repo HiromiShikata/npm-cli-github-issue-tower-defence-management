@@ -6,6 +6,7 @@ import {
   actionToastMessage,
   type ConsoleActionKind,
   formatActionToast,
+  itemRepositoryLabel,
   itemToastLabel,
 } from './actionToast';
 
@@ -18,13 +19,82 @@ describe('ACTION_TOAST_DELAY_MS', () => {
   });
 });
 
+describe('itemRepositoryLabel', () => {
+  type LabelTableCase = {
+    kind: 'Issue' | 'PR';
+    nameWithOwner: string;
+    itemNumber: number;
+    isPr: boolean;
+    expectedLabel: string;
+  };
+
+  const labelTableCases: LabelTableCase[] = [
+    {
+      kind: 'Issue',
+      nameWithOwner: 'HiromiShikata/umino-corporait-operation',
+      itemNumber: 32994,
+      isPr: false,
+      expectedLabel: 'HiromiShikata/umino-corporait-operation#32994',
+    },
+    {
+      kind: 'PR',
+      nameWithOwner:
+        'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+      itemNumber: 3176,
+      isPr: true,
+      expectedLabel:
+        'PR HiromiShikata/npm-cli-github-issue-tower-defence-management#3176',
+    },
+  ];
+
+  it.each(labelTableCases)(
+    'formats a $kind label as $expectedLabel',
+    ({ nameWithOwner, itemNumber, isPr, expectedLabel }) => {
+      expect(itemRepositoryLabel(nameWithOwner, itemNumber, isPr)).toBe(
+        expectedLabel,
+      );
+    },
+  );
+
+  it('produces distinct labels for the same item number across two different repositories', () => {
+    const labelInRepoA = itemRepositoryLabel(
+      'HiromiShikata/umino-corporait-operation',
+      851,
+      false,
+    );
+    const labelInRepoB = itemRepositoryLabel(
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+      851,
+      false,
+    );
+    expect(labelInRepoA).not.toBe(labelInRepoB);
+  });
+});
+
 describe('itemToastLabel', () => {
-  it('prefixes pull requests with PR #', () => {
-    expect(itemToastLabel(prItem)).toBe(`PR #${prItem.number}`);
+  it('prefixes pull requests with PR and the repository name with no space before the item number', () => {
+    expect(itemToastLabel(prItem)).toBe(
+      `PR ${prItem.nameWithOwner}#${prItem.number}`,
+    );
   });
 
-  it('prefixes issues with #', () => {
-    expect(itemToastLabel(issueItem)).toBe(`#${issueItem.number}`);
+  it('prefixes issues with the repository name and no Issue/PR word', () => {
+    expect(itemToastLabel(issueItem)).toBe(
+      `${issueItem.nameWithOwner}#${issueItem.number}`,
+    );
+  });
+
+  it('delegates to itemRepositoryLabel using the item nameWithOwner, number and isPr', () => {
+    expect(itemToastLabel(prItem)).toBe(
+      itemRepositoryLabel(prItem.nameWithOwner, prItem.number, prItem.isPr),
+    );
+    expect(itemToastLabel(issueItem)).toBe(
+      itemRepositoryLabel(
+        issueItem.nameWithOwner,
+        issueItem.number,
+        issueItem.isPr,
+      ),
+    );
   });
 });
 
@@ -253,13 +323,13 @@ describe('actionAdvances', () => {
 });
 
 describe('formatActionToast', () => {
-  it('combines the message and the item label', () => {
+  it('combines the message and the repository-qualified item label', () => {
     expect(
       formatActionToast(
         { type: 'review', action: 'approve_and_merge' },
         prItem,
         'prs',
       ),
-    ).toBe(`Approved & Merged — PR #${prItem.number}`);
+    ).toBe(`Approved & Merged — PR ${prItem.nameWithOwner}#${prItem.number}`);
   });
 });

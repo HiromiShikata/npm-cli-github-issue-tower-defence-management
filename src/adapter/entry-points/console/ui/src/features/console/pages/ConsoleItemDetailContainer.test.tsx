@@ -3321,6 +3321,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     projectItemId: item.projectItemId,
     itemNumber: item.number,
     repo: item.repo,
+    nameWithOwner: item.nameWithOwner,
     isPr: item.isPr,
   });
 

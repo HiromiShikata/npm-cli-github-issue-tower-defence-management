@@ -22,6 +22,7 @@ const offlinePayload = {
   projectItemId: 'PVTI_1',
   itemNumber: 851,
   repo: 'o/r',
+  nameWithOwner: 'o/r',
   isPr: true,
   apiPath: '/api/review',
   requestBody: {
@@ -37,6 +38,7 @@ const heldItemFields = {
   projectItemId: 'PVTI_2',
   itemNumber: 866,
   repo: 'o/r',
+  nameWithOwner: 'o/r',
   isPr: false,
 };
 
@@ -1508,6 +1510,127 @@ describe('useConsoleActionQueue', () => {
         status: 'failed',
         attempt: 2,
       });
+    });
+  });
+
+  describe('enqueueSequence', () => {
+    it('starts at zero before any action is enqueued', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      expect(result.current.enqueueSequence).toBe(0);
+    });
+
+    it('increments to one immediately when enqueue is called, before writeState moves away from idle and before the commit is attempted', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction();
+      act(() => {
+        result.current.enqueue(action);
+      });
+      expect(result.current.enqueueSequence).toBe(1);
+      expect(result.current.writeState).toEqual({
+        status: 'idle',
+        attempt: 0,
+      });
+      expect(action.commit).not.toHaveBeenCalled();
+    });
+
+    it('increments by exactly one on every subsequent call to enqueue', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      act(() => {
+        result.current.enqueue(makeAction({ message: 'first' }));
+      });
+      expect(result.current.enqueueSequence).toBe(1);
+
+      act(() => {
+        result.current.enqueue(makeAction({ message: 'second' }));
+      });
+      expect(result.current.enqueueSequence).toBe(2);
+
+      act(() => {
+        result.current.enqueue(makeAction({ message: 'third' }));
+      });
+      expect(result.current.enqueueSequence).toBe(3);
+    });
+
+    it.each([
+      {
+        writeOutcome: 'succeeds',
+        buildCommit: (): jest.Mock<Promise<void>, []> =>
+          jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
+      },
+      {
+        writeOutcome: 'fails with a non-network error',
+        buildCommit: (): jest.Mock<Promise<void>, []> =>
+          jest
+            .fn<Promise<void>, []>()
+            .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
+      },
+      {
+        writeOutcome:
+          'is held offline because the network is unavailable',
+        buildCommit: (): jest.Mock<Promise<void>, []> =>
+          jest
+            .fn<Promise<void>, []>()
+            .mockRejectedValue(new TypeError('Failed to fetch')),
+      },
+    ])(
+      'already carries the incremented value right after enqueue returns, before the undo-grace countdown starts and before the write is attempted, whatever the write later $writeOutcome',
+      async ({ buildCommit }) => {
+        const { result } = renderHook(() => useConsoleActionQueue());
+        const action = makeAction({
+          commit: buildCommit(),
+          offline: [offlinePayload],
+        });
+
+        act(() => {
+          result.current.enqueue(action);
+        });
+
+        expect(result.current.enqueueSequence).toBe(1);
+        expect(action.commit).not.toHaveBeenCalled();
+        expect(result.current.pending?.remainingSeconds).toBe(5);
+
+        await act(async () => {
+          jest.advanceTimersByTime(5000);
+          await flushMicrotasks();
+        });
+
+        expect(action.commit).toHaveBeenCalledTimes(1);
+        expect(result.current.enqueueSequence).toBe(1);
+      },
+    );
+
+    it('does not change when the countdown elapses and the write is sent, only when enqueue itself is called again', async () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      act(() => {
+        result.current.enqueue(makeAction());
+      });
+      expect(result.current.enqueueSequence).toBe(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.writeState.status).toBe('succeeded');
+      expect(result.current.enqueueSequence).toBe(1);
+
+      act(() => {
+        result.current.enqueue(makeAction({ message: 'next action' }));
+      });
+      expect(result.current.enqueueSequence).toBe(2);
+    });
+
+    it('increments again when a new action is enqueued while the previous action is still pending in its undo-grace window', () => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      act(() => {
+        result.current.enqueue(makeAction({ message: 'first' }));
+      });
+      expect(result.current.enqueueSequence).toBe(1);
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+        result.current.enqueue(makeAction({ message: 'second' }));
+      });
+      expect(result.current.enqueueSequence).toBe(2);
     });
   });
 });

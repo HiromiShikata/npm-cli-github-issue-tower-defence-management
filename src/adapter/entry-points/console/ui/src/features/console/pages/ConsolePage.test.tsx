@@ -483,7 +483,9 @@ describe('ConsolePage', () => {
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(getByText('Approved & Merged — PR #851')).toBeInTheDocument();
+      expect(
+        getByText('Approved & Merged — PR o/r#851'),
+      ).toBeInTheDocument();
       expect(getByText('Undo')).toBeInTheDocument();
     } finally {
       jest.useRealTimers();
@@ -2683,29 +2685,37 @@ describe('ConsolePage auto-advance tab', () => {
     });
   });
 
-  it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
+  it('navigates to the next project immediately when a completing action is queued after the project timer elapses, before the undo grace period ends or the write is sent', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
     );
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
+    const fetchMock = jest.fn(
+      async (url: string, init?: { method?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          };
+        }
+        void init;
         return {
           ok: true,
           status: 200,
-          json: async () => listPayload(listMatch[1]),
+          json: async () => ({ body: '# body' }),
         };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
     jest.useFakeTimers({ now: 0 });
     try {
       const { getByText, findByText } = render(<ConsolePage />);
@@ -2719,26 +2729,30 @@ describe('ConsolePage auto-advance tab', () => {
       navigatePush.mockClear();
       fireEvent.click(getByText('Add serveConsole subcommand'));
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).not.toHaveBeenCalledWith(
+      expect(navigatePush).toHaveBeenCalledWith(
         '/projects/beta/todo-by-human',
       );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+      const postCallsBeforeGraceElapses = fetchMock.mock.calls.filter(
+        (call) => call[1]?.method === 'POST',
+      );
+      expect(postCallsBeforeGraceElapses.length).toBe(0);
 
-      act(() => {
+      await act(async () => {
         jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
       });
-      await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith(
-          '/projects/beta/todo-by-human',
-        );
-      });
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('navigates to the next project when a completing action fires after DEFAULT_TIMER_MINUTES elapses for an unconfigured project', async () => {
+  it('navigates to the next project immediately when a completing action is queued after DEFAULT_TIMER_MINUTES elapses for an unconfigured project, before the undo grace period ends', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { beta: 5 } }),
@@ -2768,26 +2782,29 @@ describe('ConsolePage auto-advance tab', () => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       jest.setSystemTime(16 * 60 * 1000);
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
       const { navigatePush } = jest.requireMock<{
         navigatePush: jest.Mock;
       }>('../lib/navigation');
-      await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith(
-          '/projects/beta/todo-by-human',
-        );
+      navigatePush.mockClear();
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+      fireEvent.click(getByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+
+      act(() => {
+        jest.advanceTimersByTime(5100);
       });
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('stays on the current project and shows the error toast when the write is confirmed failed, even though the timer has already elapsed', async () => {
+  it('navigates immediately when the timer has elapsed and shows the error toast on the already-switched-to screen without navigating back when the write later fails', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
@@ -2832,9 +2849,10 @@ describe('ConsolePage auto-advance tab', () => {
       fireEvent.click(getByText('Add serveConsole subcommand'));
       fireEvent.click(await findByText('Approve & Merge'));
 
-      expect(navigatePush).not.toHaveBeenCalledWith(
+      expect(navigatePush).toHaveBeenCalledWith(
         '/projects/beta/todo-by-human',
       );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
 
       await act(async () => {
         jest.advanceTimersByTime(5100);
@@ -2843,15 +2861,13 @@ describe('ConsolePage auto-advance tab', () => {
       });
 
       expect(getByText(/^Operation failed:/)).toBeInTheDocument();
-      expect(navigatePush).not.toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('does not navigate automatically when the action is undone within the grace period, even though the timer has already elapsed', async () => {
+  it('does not send the write, but does not undo the already-occurred project switch, when the action is undone within the grace period even though the timer had already elapsed', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
@@ -2897,6 +2913,11 @@ describe('ConsolePage auto-advance tab', () => {
       fireEvent.click(getByText('Add serveConsole subcommand'));
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+
       fireEvent.click(getByText('Undo'));
 
       act(() => {
@@ -2907,15 +2928,13 @@ describe('ConsolePage auto-advance tab', () => {
         (call) => call[1]?.method === 'POST',
       );
       expect(postCalls.length).toBe(0);
-      expect(navigatePush).not.toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('does not navigate automatically when the action is undone within the grace period, even though completing it would have brought the remaining count to zero', async () => {
+  it('does not send the write, but does not undo the already-occurred project switch, when the action is undone within the grace period even though completing it would have brought the remaining count to zero', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({
@@ -2967,6 +2986,11 @@ describe('ConsolePage auto-advance tab', () => {
       fireEvent.click(getByText('Add serveConsole subcommand'));
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+
       fireEvent.click(getByText('Undo'));
 
       act(() => {
@@ -2977,15 +3001,13 @@ describe('ConsolePage auto-advance tab', () => {
         (call) => call[1]?.method === 'POST',
       );
       expect(postCalls.length).toBe(0);
-      expect(navigatePush).not.toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('navigates exactly once when the timer-elapsed condition and the remaining-count-zero condition both hold at the same confirmed write', async () => {
+  it('navigates exactly once, immediately, when the timer-elapsed condition and the remaining-count-zero condition both hold for the same newly enqueued action', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
@@ -3027,7 +3049,70 @@ describe('ConsolePage auto-advance tab', () => {
 
       fireEvent.click(getByText('Add serveConsole subcommand'));
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
       fireEvent.click(getByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the offline pending panel with a repository-qualified item label after the project switch when the write fails because the network is unavailable', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
+    );
+    global.fetch = jest.fn(async (url: string, init?: { method?: string }) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      if (init?.method === 'POST') {
+        throw new TypeError('Failed to fetch');
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      jest.setSystemTime(61 * 1000);
+      const { navigatePush } = jest.requireMock<{
+        navigatePush: jest.Mock;
+      }>('../lib/navigation');
+      navigatePush.mockClear();
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        '/projects/beta/todo-by-human',
+      );
 
       await act(async () => {
         jest.advanceTimersByTime(5100);
@@ -3036,10 +3121,15 @@ describe('ConsolePage auto-advance tab', () => {
       });
 
       await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith(
-          '/projects/beta/todo-by-human',
-        );
+        expect(
+          container.querySelector('.console-offline-panel-header')
+            ?.textContent,
+        ).toMatch(/^1 action held/);
       });
+      expect(
+        container.querySelector('.console-offline-panel-item-target')
+          ?.textContent,
+      ).toContain('o/r#851');
       expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
@@ -6094,6 +6184,7 @@ describe('ConsolePage offline action queue', () => {
       projectItemId: 'PVTI_2',
       itemNumber: 866,
       repo: 'o/r',
+      nameWithOwner: 'o/r',
       isPr: false,
     };
     localStorage.setItem(
@@ -6158,7 +6249,7 @@ describe('ConsolePage offline action queue', () => {
     await waitFor(() => {
       expect(
         view.getAllByText(
-          'Issue #866 — Notify finished issue preparation (open)',
+          'o/r#866 — Notify finished issue preparation (open)',
         ),
       ).toHaveLength(2);
     });
