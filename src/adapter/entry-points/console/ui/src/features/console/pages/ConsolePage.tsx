@@ -64,6 +64,7 @@ import {
   actionToastColor,
   formatActionToast,
 } from '../logic/actionToast';
+import { loadCommentDrafts, saveCommentDrafts } from '../logic/commentDraftStorage';
 import {
   buildConsoleListRows,
   resolveItemStory,
@@ -362,7 +363,7 @@ export const ConsolePage = () => {
     timerMode && airplaneSnapshot === null,
   );
 
-  const commentDrafts = useRef(new Map<string, string>());
+  const commentDrafts = useRef(loadCommentDrafts());
   const handleCommentDraftChange = useCallback(
     (draft: string) => {
       if (selectedItemKey === null) return;
@@ -371,6 +372,7 @@ export const ConsolePage = () => {
       } else {
         commentDrafts.current.delete(selectedItemKey);
       }
+      saveCommentDrafts(commentDrafts.current);
     },
     [selectedItemKey],
   );
