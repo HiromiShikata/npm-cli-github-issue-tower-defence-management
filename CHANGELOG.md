@@ -1,3 +1,10 @@
+# [2.163.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.6...v2.163.0) (2026-10-04)
+
+
+### Features
+
+* **console:** Couple button area visibility to the comment composer's open/closed state; remove its own Actions toggle ([#3202](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3202)) ([0b3323d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b3323d70c0360275ccc541603400fa20d9de459))
+
 ## [2.162.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.5...v2.162.6) (2026-10-04)
 
 
