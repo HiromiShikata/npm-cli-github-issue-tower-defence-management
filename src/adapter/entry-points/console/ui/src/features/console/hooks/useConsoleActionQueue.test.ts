@@ -536,6 +536,7 @@ describe('useConsoleActionQueue', () => {
         projectItemId: 'PVTI_1',
         itemNumber: 1,
         repo: 'o/r',
+        nameWithOwner: 'o/r',
         isPr: true,
         apiPath: '/api/review',
         requestBody: { action: 'approve' },
