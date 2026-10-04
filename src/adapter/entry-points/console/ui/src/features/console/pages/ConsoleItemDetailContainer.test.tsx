@@ -1927,7 +1927,7 @@ describe('ConsoleItemDetailContainer', () => {
 
   it('never shows a caret-plus-Actions toggle control, whether the comment composer is open or closed (FR-003, SC-003)', async () => {
     const onQueueAction = jest.fn();
-    const { getByText, queryByText } = render(
+    const { container, getByText, queryByText } = render(
       <ConsoleItemDetailContainer
         tab="prs"
         item={prItem}
@@ -1948,14 +1948,14 @@ describe('ConsoleItemDetailContainer', () => {
       expect(getByText('Approve & Merge')).toBeInTheDocument();
     });
     expect(queryByText('Actions')).toBeNull();
-    expect(queryByText('▾')).toBeNull();
-    expect(queryByText('▸')).toBeNull();
+    expect(container.querySelector('.console-actionbar-toggle')).toBeNull();
+    expect(container.querySelector('.console-actionbar-caret')).toBeNull();
 
     fireEvent.click(getByText('✕ Close'));
 
     expect(queryByText('Actions')).toBeNull();
-    expect(queryByText('▾')).toBeNull();
-    expect(queryByText('▸')).toBeNull();
+    expect(container.querySelector('.console-actionbar-toggle')).toBeNull();
+    expect(container.querySelector('.console-actionbar-caret')).toBeNull();
   });
 
   it("leaves the displayed Status, Agent, and Story values unchanged immediately after the comment composer's own close control is activated (FR-007, SC-004)", () => {
