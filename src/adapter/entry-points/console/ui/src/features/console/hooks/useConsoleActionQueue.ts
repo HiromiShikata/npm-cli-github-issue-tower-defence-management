@@ -87,6 +87,7 @@ const isConsoleOfflineQueuedAction = (
     typeof a.projectItemId === 'string' &&
     typeof a.itemNumber === 'number' &&
     typeof a.repo === 'string' &&
+    typeof a.nameWithOwner === 'string' &&
     typeof a.isPr === 'boolean' &&
     typeof a.apiPath === 'string' &&
     typeof a.requestBody === 'object' &&
