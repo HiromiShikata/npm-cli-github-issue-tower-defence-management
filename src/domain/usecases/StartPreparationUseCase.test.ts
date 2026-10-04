@@ -1,3 +1,4 @@
+import { mock, MockProxy } from 'jest-mock-extended';
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
 import type { FieldOption, Project } from '../entities/Project';
@@ -6,10 +7,8 @@ import type { StoryObjectMap } from '../entities/StoryObjectMap';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
-import type {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import type { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
 import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
@@ -131,26 +130,7 @@ describe('StartPreparationUseCase', () => {
   let mockProjectRepository: Mocked<
     Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
   >;
-  let mockIssueRepository: Mocked<
-    Pick<
-      IssueRepository,
-      | 'getStoryObjectMap'
-      | 'getAllOpened'
-      | 'updateStatus'
-      | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
-      | 'closePullRequest'
-      | 'deletePullRequestBranch'
-      | 'createCommentByUrl'
-      | 'getIssueOrPullRequestComments'
-      | 'setIssueAgentField'
-      | 'removeLabel'
-      | 'getIssueByUrl'
-      | 'get'
-      | 'removeIssueFromProjectCache'
-      | 'appendIssueToProjectCache'
-    >
-  >;
+  let mockIssueRepository: MockProxy<IssueRepository>;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts>;
   let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
@@ -164,33 +144,26 @@ describe('StartPreparationUseCase', () => {
       createField: jest.fn().mockResolvedValue(undefined),
       updateAgentList: jest.fn().mockResolvedValue([]),
     };
-    mockIssueRepository = {
-      getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
-      getAllOpened: jest.fn().mockResolvedValue([]),
-      updateStatus: jest.fn(),
-      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-      getOpenPullRequest: jest.fn().mockResolvedValue(null),
-      closePullRequest: jest.fn().mockResolvedValue(undefined),
-      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
-      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-      removeLabel: jest.fn().mockResolvedValue(undefined),
-      getIssueByUrl: jest.fn().mockResolvedValue(
-        createMockIssue({
-          status: 'Awaiting Workspace',
-          dependedIssueUrls: [],
-        }),
-      ),
-      get: jest.fn().mockResolvedValue(
-        createMockIssue({
-          status: 'Awaiting Workspace',
-          dependedIssueUrls: [],
-        }),
-      ),
-      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
-      appendIssueToProjectCache: jest.fn().mockResolvedValue(undefined),
-    };
+    mockIssueRepository = mock<IssueRepository>();
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(new Map());
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+    mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
+    mockIssueRepository.closePullRequest.mockResolvedValue(undefined);
+    mockIssueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    mockIssueRepository.setIssueAgentField.mockResolvedValue(undefined);
+    mockIssueRepository.removeLabel.mockResolvedValue(undefined);
+    mockIssueRepository.getIssueByUrl.mockResolvedValue(
+      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    );
+    mockIssueRepository.get.mockResolvedValue(
+      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    );
+    mockIssueRepository.removeIssueFromProjectCache.mockResolvedValue(
+      undefined,
+    );
+    mockIssueRepository.appendIssueToProjectCache.mockResolvedValue(undefined);
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
       spawnInteractive: jest.fn(),
@@ -10704,40 +10677,12 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     createField: jest.fn(),
     updateAgentList: jest.fn(),
   };
-  const mockIssueRepositoryForRotation: Mocked<
-    Pick<
-      IssueRepository,
-      | 'getStoryObjectMap'
-      | 'getAllOpened'
-      | 'updateStatus'
-      | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
-      | 'closePullRequest'
-      | 'deletePullRequestBranch'
-      | 'createCommentByUrl'
-      | 'getIssueOrPullRequestComments'
-      | 'setIssueAgentField'
-      | 'removeLabel'
-      | 'get'
-      | 'removeIssueFromProjectCache'
-      | 'appendIssueToProjectCache'
-    >
-  > = {
-    getStoryObjectMap: jest.fn(),
-    getAllOpened: jest.fn(),
-    updateStatus: jest.fn(),
-    findRelatedOpenPRs: jest.fn(),
-    getOpenPullRequest: jest.fn(),
-    closePullRequest: jest.fn(),
-    deletePullRequestBranch: jest.fn(),
-    createCommentByUrl: jest.fn(),
-    getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
-    setIssueAgentField: jest.fn(),
-    removeLabel: jest.fn(),
-    get: jest.fn().mockResolvedValue(null),
-    removeIssueFromProjectCache: jest.fn(),
-    appendIssueToProjectCache: jest.fn(),
-  };
+  const mockIssueRepositoryForRotation: MockProxy<IssueRepository> =
+    mock<IssueRepository>();
+  mockIssueRepositoryForRotation.getIssueOrPullRequestComments.mockResolvedValue(
+    [],
+  );
+  mockIssueRepositoryForRotation.get.mockResolvedValue(null);
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
     spawnInteractive: jest.fn(),
