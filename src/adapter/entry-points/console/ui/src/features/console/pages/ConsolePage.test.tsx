@@ -5,11 +5,13 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey } from '../logic/overlay';
 import {
+  attachmentSubmissionParamsChanged,
   type AttachmentSubmissionProgress,
   buildAttachmentSubmissionFailureMessage,
   ConsolePage,
@@ -3722,7 +3724,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create' }));
 
       await waitFor(() => {
-        expect(queryByText(/Task created — "My new task"/)).toBeInTheDocument();
+        expect(
+          queryByText(/Creating task — "My new task"/),
+        ).toBeInTheDocument();
       });
     } finally {
       jest.useRealTimers();
@@ -4106,6 +4110,54 @@ describe('ConsolePage task creation action queue', () => {
       jest.useRealTimers();
     }
   });
+
+  it('does not claim a task was created in the error banner when postConsoleCreateIssue itself fails', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFailingCreate();
+      const { getByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Pure creation failure task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      const toastTitle = container.querySelector('.console-error-toast-title');
+      const toastMessage = container.querySelector(
+        '.console-error-toast-message',
+      );
+      expect(toastTitle?.textContent ?? '').not.toContain('Task created');
+      expect(toastMessage?.textContent ?? '').not.toContain('Task created');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {
@@ -4399,7 +4451,7 @@ describe('ConsolePage workflow issue creation', () => {
         expect(queryByRole('dialog')).toBeNull();
       });
       expect(
-        getByText(/Task created — "New workflow task"/),
+        getByText(/Creating task — "New workflow task"/),
       ).toBeInTheDocument();
     } finally {
       jest.useRealTimers();
@@ -4583,7 +4635,7 @@ describe('ConsolePage workflow issue creation', () => {
       });
       fireEvent.click(getByRole('button', { name: /^create$/i }));
       await waitFor(() => {
-        expect(queryByText(/Task created/)).toBeInTheDocument();
+        expect(queryByText(/Creating task/)).toBeInTheDocument();
       });
     } finally {
       jest.useRealTimers();
@@ -6485,7 +6537,7 @@ describe('createIssueWithAttachments attachment submission progress', () => {
       expectCommentCalls: 0,
       expectOutcome: {
         kind: 'rejectsPropagated',
-        message: 'create issue failed',
+        message: 'Failed to create the task. Please try again.',
       },
       expectFinalUploaded: [],
       expectFinalCommented: [],
@@ -6803,5 +6855,116 @@ describe('createIssueWithAttachments attachment submission progress', () => {
       'A.png',
       'B.png',
     ]);
+  });
+
+  it('wraps a thrown postConsoleComment rejection into a clean message while keeping already-uploaded file links', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => markdownFor(request.fileName));
+
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockRejectedValue(new Error('network exploded'));
+
+    const params = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let thrown: unknown = null;
+    try {
+      await createIssueWithAttachments(pjcode, nameWithOwner, params, progress);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(
+        ISSUE_URL,
+        [],
+        'posting the summary comment failed unexpectedly',
+      ),
+    );
+    expect((thrown as Error).message).not.toContain('network exploded');
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(commentSpy).toHaveBeenCalledTimes(1);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames)).toEqual([]);
+  });
+});
+
+describe('attachmentSubmissionParamsChanged', () => {
+  const baseParams: IssueCreateParams = {
+    storyName: 'TDPM Console port',
+    agentOptionId: 'ag1',
+    title: 'Original title',
+    body: 'Original body',
+    files: [],
+  };
+
+  const makeFile = (name: string): File => new File(['x'], name);
+
+  type Row = {
+    name: string;
+    previous: IssueCreateParams;
+    current: IssueCreateParams;
+    expected: boolean;
+  };
+
+  const rows: Row[] = [
+    {
+      name: 'returns false when every compared field is identical and files are also identical',
+      previous: baseParams,
+      current: { ...baseParams },
+      expected: false,
+    },
+    {
+      name: 'returns false when only files differ (files are excluded from the comparison)',
+      previous: { ...baseParams, files: [] },
+      current: { ...baseParams, files: [makeFile('A.png')] },
+      expected: false,
+    },
+    {
+      name: 'returns true when title differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, title: 'Edited title' },
+      expected: true,
+    },
+    {
+      name: 'returns true when body differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, body: 'Edited body' },
+      expected: true,
+    },
+    {
+      name: 'returns true when storyName differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, storyName: 'Other story' },
+      expected: true,
+    },
+    {
+      name: 'returns true when agentOptionId differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, agentOptionId: 'ag2' },
+      expected: true,
+    },
+  ];
+
+  it.each(rows)('$name', ({ previous, current, expected }) => {
+    expect(attachmentSubmissionParamsChanged(previous, current)).toBe(
+      expected,
+    );
   });
 });
