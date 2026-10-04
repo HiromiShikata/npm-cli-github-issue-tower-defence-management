@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import {
+  type ConsoleCommentRequest,
+  type ConsoleDeleteAllCommentsRequest,
   type ConsoleIntmuxRequest,
   type ConsoleReviewCommentSide,
   type ConsoleReviewRequest,
@@ -185,10 +187,26 @@ export const buildIntmuxRequest = (
   projectItemId: item.projectItemId,
 });
 
+export const commentRequestBuild = (
+  pjcode: string,
+  item: ConsoleListItem,
+  body: string,
+): ConsoleCommentRequest => ({
+  pjcode,
+  url: item.url,
+  body,
+});
+
+export const deleteAllCommentsRequestBuild = (
+  item: ConsoleListItem,
+): ConsoleDeleteAllCommentsRequest => ({
+  issueUrl: item.url,
+});
+
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
 
-const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
+export const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
 
 export const useConsoleOperations = (
   pjcode: string | null,
@@ -343,11 +361,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const commentResult = await postConsoleComment({
-        pjcode,
-        url: item.url,
-        body: AWAITING_WORKSPACE_COMMENT_BODY,
-      });
+      const commentResult = await postConsoleComment(
+        commentRequestBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
+      );
       const request: ConsoleTriageRequest = {
         pjcode,
         action: 'set_status',
@@ -376,7 +392,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const result = await postConsoleComment({ pjcode, url: item.url, body });
+      const result = await postConsoleComment(
+        commentRequestBuild(pjcode, item, body),
+      );
       if (!result.posted) {
         const resetInfo =
           result.rateLimitResetAt !== null
@@ -395,11 +413,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const commentResult = await postConsoleComment({
-        pjcode,
-        url: item.url,
-        body,
-      });
+      const commentResult = await postConsoleComment(
+        commentRequestBuild(pjcode, item, body),
+      );
       if (!commentResult.posted) {
         const resetInfo =
           commentResult.rateLimitResetAt !== null
@@ -498,7 +514,7 @@ export const useConsoleOperations = (
 
   const deleteAllComments = useCallback(
     async (item: ConsoleListItem) => {
-      await postConsoleDeleteAllComments({ issueUrl: item.url });
+      await postConsoleDeleteAllComments(deleteAllCommentsRequestBuild(item));
       invalidateItemContent(item);
     },
     [invalidateItemContent],

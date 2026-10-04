@@ -31,7 +31,17 @@ export type ConsoleQueuedAction = {
   revertAdvance?: () => void;
   optimistic?: () => void;
   revertOptimistic?: () => void;
-  offline?: ConsoleOfflinePayload;
+  offline?: ConsoleOfflinePayload[];
+};
+
+export type ConsoleOfflineActionsCreateRequest = {
+  payloads: ConsoleOfflinePayload[];
+  message: string;
+  color: ConsoleToastColor;
+};
+
+export type ConsoleActionQueueOptions = {
+  isAirplaneModeOn: boolean;
 };
 
 export type ConsolePendingActionView = {
@@ -104,7 +114,12 @@ const generateId = (): string => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 };
 
-const isNetworkError = (error: unknown): boolean => error instanceof TypeError;
+export const isNetworkError = (error: unknown): boolean =>
+  error instanceof TypeError;
+
+const AIRPLANE_MODE_ERROR_MESSAGE = 'Airplane mode';
+const AIRPLANE_MODE_ERROR_REASON =
+  'This action requires a network connection. Turn off airplane mode and try again.';
 
 const errorReason = (error: unknown): string => {
   if (error instanceof Error && error.message.length > 0) {
@@ -127,6 +142,7 @@ export type ConsoleActionQueue = {
   offlineActions: ConsoleOfflineQueuedAction[];
   writeState: ConsoleActionWriteState;
   enqueue: (action: ConsoleQueuedAction) => void;
+  offlineActionsCreate: (request: ConsoleOfflineActionsCreateRequest) => void;
   showError: (message: string, reason: string) => void;
   undo: () => void;
   dismiss: () => void;
@@ -135,7 +151,11 @@ export type ConsoleActionQueue = {
   discardOfflineAction: (id: string) => void;
 };
 
-export const useConsoleActionQueue = (): ConsoleActionQueue => {
+export const useConsoleActionQueue = (
+  options: ConsoleActionQueueOptions = { isAirplaneModeOn: false },
+): ConsoleActionQueue => {
+  const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
+  isAirplaneModeOnRef.current = options.isAirplaneModeOn;
   const [pending, setPending] = useState<ConsolePendingActionView | null>(null);
   const [error, setError] = useState<ConsoleActionError | null>(null);
   const [offlineActions, setOfflineActions] =
@@ -162,26 +182,56 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     }
   }, []);
 
-  const addToOfflineQueue = useCallback((action: ConsoleQueuedAction): void => {
-    if (action.offline === undefined) return;
-    const offlineAction: ConsoleOfflineQueuedAction = {
-      id: generateId(),
-      message: action.message,
-      color: action.color,
-      enqueuedAt: Date.now(),
-      ...action.offline,
-    };
-    setOfflineActions((prev) => {
-      const next = [...prev, offlineAction];
-      saveOfflineQueue(next);
-      return next;
-    });
-  }, []);
+  const offlineActionsCreate = useCallback(
+    ({
+      payloads,
+      message,
+      color,
+    }: ConsoleOfflineActionsCreateRequest): void => {
+      const enqueuedAt = Date.now();
+      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => ({
+        id: generateId(),
+        message,
+        color,
+        enqueuedAt,
+        ...payload,
+      }));
+      setOfflineActions((prev) => {
+        const next = [...prev, ...created];
+        saveOfflineQueue(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const runCommit = useCallback(
     (action: ConsoleQueuedAction): void => {
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
+      const offlinePayloads = action.offline ?? [];
+      const actionHoldOffline = (): void => {
+        offlineActionsCreate({
+          payloads: offlinePayloads,
+          message: action.message,
+          color: action.color,
+        });
+        setWriteState({ status: 'offline', attempt });
+      };
+      if (isAirplaneModeOnRef.current) {
+        if (offlinePayloads.length > 0) {
+          actionHoldOffline();
+        } else {
+          action.revertAdvance?.();
+          action.revertOptimistic?.();
+          setError({
+            message: AIRPLANE_MODE_ERROR_MESSAGE,
+            reason: AIRPLANE_MODE_ERROR_REASON,
+          });
+          setWriteState({ status: 'failed', attempt });
+        }
+        return;
+      }
       setWriteState({ status: 'unconfirmed', attempt });
       action
         .commit()
@@ -189,9 +239,8 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
-          if (isNetworkError(cause) && action.offline !== undefined) {
-            addToOfflineQueue(action);
-            setWriteState({ status: 'offline', attempt });
+          if (isNetworkError(cause) && offlinePayloads.length > 0) {
+            actionHoldOffline();
           } else {
             setError({
               message: action.message,
@@ -202,7 +251,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
           }
         });
     },
-    [addToOfflineQueue],
+    [offlineActionsCreate],
   );
   runCommitRef.current = runCommit;
 
@@ -315,6 +364,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     offlineActions,
     writeState,
     enqueue,
+    offlineActionsCreate,
     showError,
     undo,
     dismiss,
