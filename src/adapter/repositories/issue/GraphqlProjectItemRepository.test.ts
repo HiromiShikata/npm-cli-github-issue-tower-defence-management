@@ -545,17 +545,17 @@ describe('GraphqlProjectItemRepository', () => {
         );
 
       try {
-        const result = (await repository.fetchProjectItems('test-project-id'))
-          .issues;
+        const result = await repository.fetchProjectItems('test-project-id');
 
-        expect(result).toHaveLength(1);
-        expect(result[0].id).toBe('item-1');
+        expect(result.issues).toHaveLength(1);
+        expect(result.issues[0].id).toBe('item-1');
         expect(mockPost).toHaveBeenCalledTimes(2);
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringContaining(
             'fetchProjectItems: page 1 has 1 nodes with hasNextPage=false but only 1/5 items accumulated',
           ),
         );
+        expect(result.inconsistencyMessage).toBeNull();
       } finally {
         warnSpy.mockRestore();
       }
@@ -591,16 +591,16 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(inconsistentPage());
 
       try {
-        const result = (await repository.fetchProjectItems('test-project-id'))
-          .issues;
+        const result = await repository.fetchProjectItems('test-project-id');
 
-        expect(result).toHaveLength(0);
+        expect(result.issues).toHaveLength(0);
         expect(mockPost).toHaveBeenCalledTimes(2);
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringContaining(
             'fetchProjectItems: expected 2 items but accumulated 0',
           ),
         );
+        expect(result.inconsistencyMessage).not.toBeNull();
       } finally {
         warnSpy.mockRestore();
       }
