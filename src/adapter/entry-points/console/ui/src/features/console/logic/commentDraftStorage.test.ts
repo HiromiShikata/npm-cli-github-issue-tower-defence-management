@@ -65,7 +65,9 @@ describe('loadCommentDrafts', () => {
     'returns an empty map without throwing when the stored value is $name',
     ({ stored }) => {
       localStorage.setItem(STORAGE_KEY, stored);
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       try {
         let loaded: Map<string, string> | undefined;
         expect(() => {
@@ -79,9 +81,7 @@ describe('loadCommentDrafts', () => {
   );
 
   it('returns a previously stored draft unchanged, performing no age or timestamp check, after many days have passed', () => {
-    const drafts = new Map([
-      ['PVTI_1', 'still unsent after several days'],
-    ]);
+    const drafts = new Map([['PVTI_1', 'still unsent after several days']]);
     saveCommentDrafts(drafts);
 
     jest.useFakeTimers();

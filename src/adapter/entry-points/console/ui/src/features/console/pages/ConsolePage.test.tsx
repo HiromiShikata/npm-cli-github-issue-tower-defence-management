@@ -1940,7 +1940,7 @@ describe('ConsolePage comment draft reload persistence', () => {
     );
   });
 
-  it('keeps each task\'s own unsent draft separate, for two tasks each holding a different draft, after a simulated reload', async () => {
+  it("keeps each task's own unsent draft separate, for two tasks each holding a different draft, after a simulated reload", async () => {
     const { container, getByText, findByText, getByPlaceholderText, unmount } =
       render(<ConsolePage />);
     await waitFor(() => {
@@ -2064,7 +2064,11 @@ describe('ConsolePage comment draft reload persistence', () => {
             json: async () => ({ pjcodes: ['acme'] }),
           };
         }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       });
       global.fetch = fetchMock as unknown as typeof fetch;
     };
