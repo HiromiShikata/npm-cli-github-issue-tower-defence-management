@@ -232,4 +232,49 @@ describe('ConsolePullRequestDetail', () => {
     expect(openLink).toHaveAttribute('target', '_blank');
     expect(openLink.className).toContain('console-panel-open-link');
   });
+
+  it('records zero childList mutations on the description container when only now changes across a rerender (SC-011)', () => {
+    const { container, rerender } = render(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now}
+      />,
+    );
+    const descriptionContainer = container.querySelector('.console-markdown');
+    expect(descriptionContainer).not.toBeNull();
+    if (descriptionContainer === null) {
+      throw new Error('description container not found');
+    }
+    const observer = new MutationObserver(() => {});
+    observer.observe(descriptionContainer, { childList: true });
+
+    rerender(
+      <ConsolePullRequestDetail
+        pullRequest={pullRequest}
+        body={pullRequest.summary?.body ?? ''}
+        bodyIsLoading={false}
+        files={consoleChangedFilesFixture}
+        filesAreLoading={false}
+        filesError={null}
+        commits={consoleCommitsFixture}
+        commitsAreLoading={false}
+        commitsError={null}
+        now={now + 1000}
+      />,
+    );
+
+    const records = observer.takeRecords();
+    observer.disconnect();
+    expect(records.filter((record) => record.type === 'childList')).toHaveLength(
+      0,
+    );
+  });
 });

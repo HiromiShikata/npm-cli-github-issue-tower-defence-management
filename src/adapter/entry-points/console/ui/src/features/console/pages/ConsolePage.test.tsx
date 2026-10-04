@@ -7725,3 +7725,74 @@ describe('attachmentSubmissionParamsChanged', () => {
     expect(attachmentSubmissionParamsChanged(previous, current)).toBe(expected);
   });
 });
+
+describe('ConsolePage comment elapsed-time label live update', () => {
+  it('switches a comment elapsed-time label from "just now" to "1 minute ago" once its age crosses the 45-second wording boundary during the live interval tick (SC-006)', async () => {
+    jest.useFakeTimers();
+    try {
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      const commentCreatedAt = new Date(Date.now() - 10 * 1000).toISOString();
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url.startsWith('/api/comments')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              comments: [
+                {
+                  id: 1,
+                  author: 'reviewer',
+                  body: 'Looks good.',
+                  createdAt: commentCreatedAt,
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-comment-time')?.textContent,
+        ).toBe('just now');
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(36 * 1000);
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-comment-time')?.textContent,
+        ).toBe('1 minute ago');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});

@@ -1125,6 +1125,62 @@ describe('ConsoleCommentList copy-feedback persistence regression (the copy cont
   });
 });
 
+describe('ConsoleCommentList independent per-comment elapsed-time label updates', () => {
+  it('updates each comment elapsed-time label on its own schedule as now advances, independent of the other comment underlying age (SC-010)', () => {
+    const oldComment = {
+      id: 1,
+      author: 'reviewer',
+      body: 'Old comment body',
+      createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+    };
+    const freshComment = {
+      id: 2,
+      author: 'agent',
+      body: 'Fresh comment body',
+      createdAt: new Date(now - 10 * 1000).toISOString(),
+    };
+    const { container, rerender } = render(
+      <ConsoleCommentList
+        comments={[oldComment, freshComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const readLabels = (): string[] =>
+      Array.from(container.querySelectorAll('.console-comment-time')).map(
+        (element) => element.textContent ?? '',
+      );
+    const labelsAtStart = readLabels();
+    expect(labelsAtStart).toEqual(['3 hours ago', 'just now']);
+
+    rerender(
+      <ConsoleCommentList
+        comments={[oldComment, freshComment]}
+        isLoading={false}
+        error={null}
+        now={now + 20 * 1000}
+      />,
+    );
+    const labelsAfter20Seconds = readLabels();
+    expect(labelsAfter20Seconds).toEqual(['3 hours ago', 'just now']);
+
+    rerender(
+      <ConsoleCommentList
+        comments={[oldComment, freshComment]}
+        isLoading={false}
+        error={null}
+        now={now + 60 * 1000}
+      />,
+    );
+    const labelsAfter60Seconds = readLabels();
+    expect(labelsAfter60Seconds).toEqual(['3 hours ago', '1 minute ago']);
+
+    expect(labelsAfter60Seconds[0]).toBe(labelsAtStart[0]);
+    expect(labelsAfter60Seconds[1]).not.toBe(labelsAtStart[1]);
+  });
+});
+
 describe('ConsoleCommentList checkbox-toggle callback invocation and disabled-without-handler pin tests', () => {
   it('invokes onCommentCheckboxToggle with the clicked comment and checkbox index when a checkbox is clicked', async () => {
     const comment = {

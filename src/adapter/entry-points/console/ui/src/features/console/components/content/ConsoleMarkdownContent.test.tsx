@@ -229,6 +229,29 @@ describe('ConsoleMarkdownContent', () => {
       expect(writeText).not.toHaveBeenCalledWith('bar');
     });
 
+    it('leaves the copy-feedback state of every other inline code element unaffected when one of several is clicked (SC-008)', async () => {
+      const { getByText, findByRole, findAllByRole } = render(
+        <ConsoleMarkdownContent body="Compare `foo` and `bar`." />,
+      );
+      const buttons = await findAllByRole('button');
+      expect(buttons).toHaveLength(2);
+      const fooButton = await findByRole('button', { name: 'foo' });
+      const barButtonBefore = await findByRole('button', { name: 'bar' });
+      expect(barButtonBefore).toHaveTextContent('bar');
+
+      await act(async () => {
+        fireEvent.click(fooButton);
+      });
+
+      expect(
+        await findByRole('button', { name: 'Code copied to clipboard' }),
+      ).toHaveTextContent('foo');
+      expect(getByText('Copied')).toBeInTheDocument();
+      const barButtonAfter = await findByRole('button', { name: 'bar' });
+      expect(barButtonAfter).toHaveTextContent('bar');
+      expect(writeText).not.toHaveBeenCalledWith('bar');
+    });
+
     it('renders only the fenced block copy control for a body with one fenced block and zero inline backtick spans', async () => {
       const { findAllByRole } = render(
         <ConsoleMarkdownContent body={multiLineCodeBody} />,
