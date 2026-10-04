@@ -363,9 +363,7 @@ it('clones the network response synchronously, before caches.open(SHELL_CACHE) h
   };
   const mockResponse = { ok: true, clone: jest.fn() };
   harness.mockFetch.mockImplementation(() => Promise.resolve(mockResponse));
-  harness.mockCacheStorage.open.mockImplementation(
-    () => new Promise(() => {}),
-  );
+  harness.mockCacheStorage.open.mockImplementation(() => new Promise(() => {}));
 
   const event = dispatchFetchEvent(harness, request);
   const resolvedResponse = await event.respondWith.mock.calls[0][0];
