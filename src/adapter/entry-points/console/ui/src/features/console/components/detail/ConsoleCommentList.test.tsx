@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleCommentList } from './ConsoleCommentList';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
@@ -855,5 +855,339 @@ describe('ConsoleCommentList', () => {
     } finally {
       document.removeEventListener('click', handler);
     }
+  });
+});
+
+describe('ConsoleCommentList checkbox-toggle callback DOM stability regression (the per-comment callback ConsoleCommentList builds for ConsoleMarkdownContent is a new function literal on every render, so a now-only refresh tick still tears down already-rendered markdown content)', () => {
+  const buildComment = (body: string) => ({
+    id: 1,
+    author: 'agent',
+    body,
+    createdAt: '2026-06-17T10:00:00.000Z',
+  });
+
+  it('keeps the inline code DOM node stable across a rerender where only now changes and comments/onCommentCheckboxToggle stay the same reference (SC-001)', async () => {
+    const comment = buildComment('See `npm test` for details.');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { container, rerender, findByRole } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    await findByRole('button', { name: 'npm test' });
+    const codeElementAfterFirstRender = container.querySelector('code');
+    expect(codeElementAfterFirstRender).not.toBeNull();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const codeElementAfterSecondRender = container.querySelector('code');
+    expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
+  });
+
+  it('keeps the fenced code block container DOM node stable across a rerender where only now changes and comments/onCommentCheckboxToggle stay the same reference (SC-002)', async () => {
+    const comment = buildComment('```ts\nconst first = 1;\n```');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { container, rerender, findByRole } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    await findByRole('button', { name: 'Copy code' });
+    const codeBlockAfterFirstRender = container.querySelector(
+      '.console-markdown-code-block',
+    );
+    expect(codeBlockAfterFirstRender).not.toBeNull();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const codeBlockAfterSecondRender = container.querySelector(
+      '.console-markdown-code-block',
+    );
+    expect(codeBlockAfterSecondRender).toBe(codeBlockAfterFirstRender);
+  });
+
+  it('keeps the decorated reference-link host DOM node stable across a rerender where only now changes and comments/onCommentCheckboxToggle stay the same reference (SC-003)', () => {
+    const comment = buildComment(
+      '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
+    );
+    const comments = [comment];
+    const mockRenderer = (href: string) => (
+      <span data-testid="custom-reference" data-href={href} />
+    );
+    const onCommentCheckboxToggle = jest.fn();
+    const { container, rerender } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        renderReferenceLink={mockRenderer}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const referenceAfterFirstRender = container.querySelector(
+      '[data-testid="custom-reference"]',
+    );
+    expect(referenceAfterFirstRender).not.toBeNull();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        renderReferenceLink={mockRenderer}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const referenceAfterSecondRender = container.querySelector(
+      '[data-testid="custom-reference"]',
+    );
+    expect(referenceAfterSecondRender).toBe(referenceAfterFirstRender);
+  });
+});
+
+describe('ConsoleCommentList copy-feedback persistence regression (the copy control remounts via its own now-only rerender of ConsoleCommentList, resetting its feedback before the 1500ms timer elapses)', () => {
+  const buildComment = (body: string) => ({
+    id: 1,
+    author: 'agent',
+    body,
+    createdAt: '2026-06-17T10:00:00.000Z',
+  });
+
+  it('keeps the inline code "Copied" feedback visible across a rerender where only now changes (SC-004)', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const comment = buildComment('See `npm test` for details.');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { findByRole, getByText, rerender } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const trigger = await findByRole('button', { name: 'npm test' });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    expect(getByText('Copied')).toBeInTheDocument();
+  });
+
+  it('keeps the inline code "Copy failed" feedback visible across a rerender where only now changes (SC-004)', async () => {
+    const writeText = jest.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: jest.fn().mockReturnValue(false),
+    });
+    const comment = buildComment('See `npm test` for details.');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { findByRole, getByText, rerender } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const trigger = await findByRole('button', { name: 'npm test' });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copy failed')).toBeInTheDocument();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    expect(getByText('Copy failed')).toBeInTheDocument();
+  });
+
+  it('keeps the fenced code block "Copied" feedback visible across a rerender where only now changes (SC-009)', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const comment = buildComment('```ts\nconst first = 1;\n```');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { findByRole, getByText, rerender } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const trigger = await findByRole('button', { name: 'Copy code' });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    expect(getByText('Copied')).toBeInTheDocument();
+  });
+
+  it('keeps the fenced code block "Copy failed" feedback visible across a rerender where only now changes (SC-009)', async () => {
+    const writeText = jest.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: jest.fn().mockReturnValue(false),
+    });
+    const comment = buildComment('```ts\nconst first = 1;\n```');
+    const comments = [comment];
+    const onCommentCheckboxToggle = jest.fn();
+    const { findByRole, getByText, rerender } = render(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    const trigger = await findByRole('button', { name: 'Copy code' });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copy failed')).toBeInTheDocument();
+    rerender(
+      <ConsoleCommentList
+        comments={comments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    expect(getByText('Copy failed')).toBeInTheDocument();
+  });
+});
+
+describe('ConsoleCommentList checkbox-toggle callback invocation and disabled-without-handler pin tests', () => {
+  it('invokes onCommentCheckboxToggle with the clicked comment and checkbox index when a checkbox is clicked', async () => {
+    const comment = {
+      id: 1,
+      author: 'agent',
+      body: '- [ ] first task\n- [x] second task',
+      createdAt: '2026-06-17T10:00:00.000Z',
+    };
+    const onCommentCheckboxToggle = jest.fn();
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggle}
+      />,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(
+        2,
+      );
+    });
+    const secondCheckbox = container.querySelector<HTMLInputElement>(
+      'input[type="checkbox"][data-checkbox-index="1"]',
+    );
+    expect(secondCheckbox).not.toBeNull();
+    fireEvent.click(secondCheckbox as HTMLInputElement);
+    expect(onCommentCheckboxToggle).toHaveBeenCalledTimes(1);
+    expect(onCommentCheckboxToggle).toHaveBeenCalledWith(comment, 1);
+  });
+
+  it('renders checkboxes disabled and fires no callback on click when onCommentCheckboxToggle is not provided', async () => {
+    const comment = {
+      id: 1,
+      author: 'agent',
+      body: '- [ ] first task\n- [x] second task',
+      createdAt: '2026-06-17T10:00:00.000Z',
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(
+        2,
+      );
+    });
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    );
+    checkboxes.forEach((checkbox) => {
+      expect(checkbox.disabled).toBe(true);
+    });
+    const checkedBefore = checkboxes.map((checkbox) => checkbox.checked);
+    checkboxes.forEach((checkbox) => {
+      fireEvent.click(checkbox);
+    });
+    const checkedAfter = checkboxes.map((checkbox) => checkbox.checked);
+    expect(checkedAfter).toEqual(checkedBefore);
   });
 });
