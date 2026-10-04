@@ -1,14 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ConsoleComment } from '../../logic/types';
 
+export type ConsoleCommentSubmitResult = ConsoleComment | 'held_offline';
+
 export type ConsoleCommentComposerProps = {
   initiallyOpen: boolean;
   initialDraft?: string;
-  onSubmit: (body: string) => Promise<ConsoleComment>;
+  onSubmit: (body: string) => Promise<ConsoleCommentSubmitResult>;
   onDraftChange?: (draft: string) => void;
   onSubmitAndMoveToAwaitingWorkspace?: (
     body: string,
-  ) => Promise<ConsoleComment>;
+  ) => Promise<ConsoleCommentSubmitResult>;
   onOkAndAwaitingWorkspace?: () => void;
   onUploadFile?: (file: File) => Promise<string>;
   onOpenChange?: (open: boolean) => void;

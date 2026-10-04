@@ -1,27 +1,41 @@
 import { useCallback, useRef, useState } from 'react';
-import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
+import {
+  ConsoleCommentComposer,
+  type ConsoleCommentSubmitResult,
+} from '../components/detail/ConsoleCommentComposer';
 import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
-import type { ConsoleOfflinePayload } from '../hooks/useConsoleActionQueue';
+import {
+  type ConsoleActionQueue,
+  type ConsoleOfflinePayload,
+  isNetworkError,
+} from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
 import {
+  AWAITING_WORKSPACE_COMMENT_BODY,
   buildIntmuxRequest,
   buildTriageRequest,
   type ConsoleOperationsApi,
+  commentRequestBuild,
+  deleteAllCommentsRequestBuild,
   INTMUX_OPERATION_PATH,
   REVIEW_OPERATION_PATH,
   reviewRequest,
   TRIAGE_OPERATION_PATH,
 } from '../hooks/useConsoleOperations';
+import {
+  COMMENT_OPERATION_PATH,
+  DELETE_ALL_COMMENTS_OPERATION_PATH,
+} from '../lib/consoleApi';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import {
   isMarkdownCheckboxCheckedAtIndex,
   toggleMarkdownCheckboxAtIndex,
 } from '../lib/markdownCheckboxToggle';
-import type { ConsoleActionKind } from '../logic/actionToast';
+import { type ConsoleActionKind, itemToastLabel } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -54,7 +68,7 @@ export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
   commit: () => Promise<void>;
-  offline?: ConsoleOfflinePayload;
+  offline?: ConsoleOfflinePayload[];
   skipAdvance?: boolean;
   onAdvance?: () => void;
   revertAdvance?: () => void;
@@ -121,6 +135,42 @@ const buildIntmuxOfflinePayload = (
   requestBody: buildIntmuxRequest(pjcode, item),
 });
 
+const commentOfflinePayloadBuild = (
+  pjcode: string,
+  item: ConsoleListItem,
+  body: string,
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: COMMENT_OPERATION_PATH,
+  requestBody: commentRequestBuild(pjcode, item, body),
+});
+
+const deleteAllCommentsOfflinePayloadBuild = (
+  item: ConsoleListItem,
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: DELETE_ALL_COMMENTS_OPERATION_PATH,
+  requestBody: deleteAllCommentsRequestBuild(item),
+});
+
+export const okAndAwaitingWorkspaceOfflinePayloadsBuild = (
+  pjcode: string,
+  item: ConsoleListItem,
+  option: ConsoleFieldOption,
+): ConsoleOfflinePayload[] => [
+  commentOfflinePayloadBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
+  buildTriageOfflinePayload(pjcode, item, 'set_status', {
+    statusName: option.name,
+  }),
+];
+
+const COMMENT_HELD_OFFLINE_TOAST_COLOR = 'blue';
+
+const commentHeldOfflineToastMessage = (item: ConsoleListItem): string =>
+  `Commented — ${itemToastLabel(item)}`;
+
+const OK_AND_CLOSE_COMMENT_BODY = 'ok';
+
 const notifyCommentError = (
   onCommentError: ConsoleCommentErrorHandler | undefined,
   message: string,
@@ -139,6 +189,8 @@ export type ConsoleItemDetailContainerProps = {
   caches: ConsoleCaches;
   operations: ConsoleOperationsApi;
   pjcode?: string | null;
+  isAirplaneModeOn: boolean;
+  onOfflineActionsCreate: ConsoleActionQueue['offlineActionsCreate'];
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   agentOptions: ConsoleFieldOption[];
@@ -175,6 +227,8 @@ export const ConsoleItemDetailContainer = ({
   caches,
   operations,
   pjcode,
+  isAirplaneModeOn,
+  onOfflineActionsCreate,
   statusOptions,
   storyOptions,
   agentOptions,
@@ -231,12 +285,32 @@ export const ConsoleItemDetailContainer = ({
   const bodyCheckboxConfirmedRef = useRef<Record<number, boolean>>({});
   const commentCheckboxConfirmedRef = useRef<Record<string, boolean>>({});
   const addComment = useCallback(
-    async (body: string): Promise<ConsoleComment> => {
-      const comment = await operations.addComment(item, body);
-      setPostedComments((previous) => [...previous, comment]);
-      return comment;
+    async (body: string): Promise<ConsoleCommentSubmitResult> => {
+      const commentHoldOffline = (
+        projectCode: string,
+      ): ConsoleCommentSubmitResult => {
+        onOfflineActionsCreate({
+          payloads: [commentOfflinePayloadBuild(projectCode, item, body)],
+          message: commentHeldOfflineToastMessage(item),
+          color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
+        });
+        return 'held_offline';
+      };
+      if (isAirplaneModeOn && pjcode != null) {
+        return commentHoldOffline(pjcode);
+      }
+      try {
+        const comment = await operations.addComment(item, body);
+        setPostedComments((previous) => [...previous, comment]);
+        return comment;
+      } catch (cause) {
+        if (isNetworkError(cause) && pjcode != null) {
+          return commentHoldOffline(pjcode);
+        }
+        throw cause;
+      }
     },
-    [item, operations],
+    [isAirplaneModeOn, item, onOfflineActionsCreate, operations, pjcode],
   );
   const handlers: ConsoleOperationHandlers = {
     onReview: (action) => {
@@ -254,13 +328,15 @@ export const ConsoleItemDetailContainer = ({
           operations.reviewPullRequest(item, prUrl, action, reviewComments),
         offline:
           pjcode != null
-            ? buildReviewOfflinePayload(
-                pjcode,
-                item,
-                prUrl,
-                action,
-                reviewComments,
-              )
+            ? [
+                buildReviewOfflinePayload(
+                  pjcode,
+                  item,
+                  prUrl,
+                  action,
+                  reviewComments,
+                ),
+              ]
             : undefined,
         overlayPatch: { done: true },
       });
@@ -272,7 +348,7 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.setNextActionDate(item, action),
         offline:
           pjcode != null
-            ? buildTriageOfflinePayload(pjcode, item, action)
+            ? [buildTriageOfflinePayload(pjcode, item, action)]
             : undefined,
         overlayPatch: { done: true },
       });
@@ -284,9 +360,11 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.setStory(item, option),
         offline:
           pjcode != null
-            ? buildTriageOfflinePayload(pjcode, item, 'set_story', {
-                storyOptionId: option.id,
-              })
+            ? [
+                buildTriageOfflinePayload(pjcode, item, 'set_story', {
+                  storyOptionId: option.id,
+                }),
+              ]
             : undefined,
         overlayPatch: {
           done: true,
@@ -301,9 +379,11 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.setAgent(item, option),
         offline:
           pjcode != null
-            ? buildTriageOfflinePayload(pjcode, item, 'set_agent', {
-                agentOptionId: option.id,
-              })
+            ? [
+                buildTriageOfflinePayload(pjcode, item, 'set_agent', {
+                  agentOptionId: option.id,
+                }),
+              ]
             : undefined,
         overlayPatch: { done: true },
       });
@@ -315,9 +395,11 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.setStatus(item, option),
         offline:
           pjcode != null
-            ? buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                statusName: option.name,
-              })
+            ? [
+                buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                  statusName: option.name,
+                }),
+              ]
             : undefined,
         overlayPatch: {
           done: true,
@@ -331,7 +413,9 @@ export const ConsoleItemDetailContainer = ({
         item,
         commit: () => operations.setInTmuxByHuman(item, option),
         offline:
-          pjcode != null ? buildIntmuxOfflinePayload(pjcode, item) : undefined,
+          pjcode != null
+            ? [buildIntmuxOfflinePayload(pjcode, item)]
+            : undefined,
         overlayPatch: {
           done: true,
           status: { name: option.name, color: option.color },
@@ -345,7 +429,7 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.closeIssue(item, action),
         offline:
           pjcode != null
-            ? buildTriageOfflinePayload(pjcode, item, action)
+            ? [buildTriageOfflinePayload(pjcode, item, action)]
             : undefined,
         overlayPatch: { done: true },
       });
@@ -355,6 +439,10 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        offline:
+          pjcode != null
+            ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
+            : undefined,
         overlayPatch: {
           done: true,
           status: { name: option.name, color: option.color },
@@ -366,6 +454,7 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'delete_all_comments' },
         item,
         commit: () => operations.deleteAllComments(item),
+        offline: [deleteAllCommentsOfflinePayloadBuild(item)],
       });
     },
     onDeleteStory: onDeleteStory ?? null,
@@ -464,67 +553,85 @@ export const ConsoleItemDetailContainer = ({
 
   const addCommentAndMoveToAwaitingWorkspace =
     awaitingWorkspaceOption !== null
-      ? async (body: string): Promise<ConsoleComment> => {
+      ? async (body: string): Promise<ConsoleCommentSubmitResult> => {
           onCommentDraftChange?.('');
-          return await new Promise<ConsoleComment>((resolve, reject) => {
-            let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
-            const rejectWithMessage = (message: string, cause: unknown) => {
-              notifyCommentError(onCommentError, message, cause);
-              reject(cause);
-              throw cause;
-            };
-            onQueueAction({
-              kind: {
-                type: 'set_status',
-                optionName: awaitingWorkspaceOption.name,
-              },
-              item,
-              commit: async () => {
-                if (
-                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
-                ) {
+          return await new Promise<ConsoleCommentSubmitResult>(
+            (resolve, reject) => {
+              let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
+              const rejectWithMessage = (message: string, cause: unknown) => {
+                notifyCommentError(onCommentError, message, cause);
+                reject(cause);
+                throw cause;
+              };
+              onQueueAction({
+                kind: {
+                  type: 'set_status',
+                  optionName: awaitingWorkspaceOption.name,
+                },
+                item,
+                commit: async () => {
+                  if (
+                    commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
+                  ) {
+                    try {
+                      await operations.setStatus(item, awaitingWorkspaceOption);
+                    } catch (cause) {
+                      rejectWithMessage(
+                        `Comment already posted, but retrying the move to Awaiting Workspace status failed: ${String(cause)}`,
+                        cause,
+                      );
+                    }
+                    try {
+                      await operations.onAfterMoveToAwaitingWorkspace?.();
+                    } catch (cause) {
+                      const message = `Comment posted and status set to Awaiting Workspace, but a post-success refresh action failed: ${String(cause)}`;
+                      notifyCommentError(onCommentError, message, cause);
+                    }
+                    return;
+                  }
                   try {
-                    await operations.setStatus(item, awaitingWorkspaceOption);
+                    const comment =
+                      await operations.addCommentAndMoveToAwaitingWorkspace(
+                        item,
+                        body,
+                        awaitingWorkspaceOption,
+                      );
+                    setPostedComments((previous) => [...previous, comment]);
+                    resolve(comment);
                   } catch (cause) {
+                    if (isNetworkError(cause) && pjcode != null) {
+                      resolve('held_offline');
+                      throw cause;
+                    }
+                    commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = true;
                     rejectWithMessage(
-                      `Comment already posted, but retrying the move to Awaiting Workspace status failed: ${String(cause)}`,
+                      `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
                       cause,
                     );
                   }
-                  try {
-                    await operations.onAfterMoveToAwaitingWorkspace?.();
-                  } catch (cause) {
-                    const message = `Comment posted and status set to Awaiting Workspace, but a post-success refresh action failed: ${String(cause)}`;
-                    notifyCommentError(onCommentError, message, cause);
-                  }
-                  return;
-                }
-                try {
-                  const comment =
-                    await operations.addCommentAndMoveToAwaitingWorkspace(
-                      item,
-                      body,
-                      awaitingWorkspaceOption,
-                    );
-                  setPostedComments((previous) => [...previous, comment]);
-                  resolve(comment);
-                } catch (cause) {
-                  commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = true;
-                  rejectWithMessage(
-                    `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
-                    cause,
-                  );
-                }
-              },
-              overlayPatch: {
-                done: true,
-                status: {
-                  name: awaitingWorkspaceOption.name,
-                  color: awaitingWorkspaceOption.color,
                 },
-              },
-            });
-          });
+                offline:
+                  pjcode != null
+                    ? [
+                        commentOfflinePayloadBuild(pjcode, item, body),
+                        buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                          statusName: awaitingWorkspaceOption.name,
+                        }),
+                      ]
+                    : undefined,
+                overlayPatch: {
+                  done: true,
+                  status: {
+                    name: awaitingWorkspaceOption.name,
+                    color: awaitingWorkspaceOption.color,
+                  },
+                },
+              });
+              if (isAirplaneModeOn && pjcode != null) {
+                resolve('held_offline');
+              }
+            },
+          );
         }
       : undefined;
 
@@ -545,8 +652,25 @@ export const ConsoleItemDetailContainer = ({
   );
 
   const commentAndClose = async (body: string): Promise<void> => {
-    await addComment(body);
-    handlers.onClose('close');
+    if (pjcode == null) {
+      await addComment(body);
+      handlers.onClose('close');
+      return;
+    }
+    onQueueAction({
+      kind: { type: 'close', action: 'close' },
+      item,
+      commit: async () => {
+        const comment = await operations.addComment(item, body);
+        setPostedComments((previous) => [...previous, comment]);
+        await operations.closeIssue(item, 'close');
+      },
+      offline: [
+        commentOfflinePayloadBuild(pjcode, item, body),
+        buildTriageOfflinePayload(pjcode, item, 'close'),
+      ],
+      overlayPatch: { done: true },
+    });
   };
 
   const commentAndCloseWithDraft = async (): Promise<void> => {
@@ -560,12 +684,19 @@ export const ConsoleItemDetailContainer = ({
       kind: { type: 'ok_and_close' },
       item,
       commit: async () => {
-        await operations.addComment(item, 'ok');
+        await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
         await operations.closeIssue(item, 'close');
       },
       offline:
         pjcode != null
-          ? buildTriageOfflinePayload(pjcode, item, 'close')
+          ? [
+              commentOfflinePayloadBuild(
+                pjcode,
+                item,
+                OK_AND_CLOSE_COMMENT_BODY,
+              ),
+              buildTriageOfflinePayload(pjcode, item, 'close'),
+            ]
           : undefined,
       overlayPatch: { done: true },
     });
