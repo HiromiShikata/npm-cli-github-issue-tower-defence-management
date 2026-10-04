@@ -388,6 +388,8 @@ export const ConsolePage = () => {
   const fleetSubmissionProgressRef = useRef<AttachmentSubmissionProgress>(
     createEmptyAttachmentSubmissionProgress(),
   );
+  const projectJustSubmittedRef = useRef(false);
+  const fleetJustSubmittedRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -857,6 +859,7 @@ export const ConsolePage = () => {
       if (pjcode === null || defaultNameWithOwner === null) {
         return Promise.resolve();
       }
+      projectJustSubmittedRef.current = true;
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
       const capturedParams = { title, storyName, agentOptionId, body, files };
@@ -922,6 +925,7 @@ export const ConsolePage = () => {
         return Promise.resolve();
       }
       const nameWithOwner = match[1];
+      fleetJustSubmittedRef.current = true;
       const capturedPjcode = pjcode;
       const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
@@ -1314,8 +1318,11 @@ export const ConsolePage = () => {
                     onClose={() => {
                       setIsDialogOpen(false);
                       setDialogSubmitFailure(null);
-                      projectSubmissionProgressRef.current =
-                        createEmptyAttachmentSubmissionProgress();
+                      if (!projectJustSubmittedRef.current) {
+                        projectSubmissionProgressRef.current =
+                          createEmptyAttachmentSubmissionProgress();
+                      }
+                      projectJustSubmittedRef.current = false;
                     }}
                     initialDraft={
                       dialogSubmitFailure !== null
@@ -1379,8 +1386,11 @@ export const ConsolePage = () => {
           onClose={() => {
             setIsFleetTaskCreateDialogOpen(false);
             setFleetDialogSubmitFailure(null);
-            fleetSubmissionProgressRef.current =
-              createEmptyAttachmentSubmissionProgress();
+            if (!fleetJustSubmittedRef.current) {
+              fleetSubmissionProgressRef.current =
+                createEmptyAttachmentSubmissionProgress();
+            }
+            fleetJustSubmittedRef.current = false;
           }}
           containerClassName="console-fleet-task-create-dialog-container"
         />
