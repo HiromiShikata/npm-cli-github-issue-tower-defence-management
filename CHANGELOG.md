@@ -1,3 +1,10 @@
+## [2.162.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.5...v2.162.6) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console-airplane-mode:** retry a fully-failed sync for only the failed items ([#3203](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3203)) ([f6a2a7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f6a2a7d841896ac93505b6d42c7b970ab4587376))
+
 ## [2.162.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.4...v2.162.5) (2026-10-03)
 
 
