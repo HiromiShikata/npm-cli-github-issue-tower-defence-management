@@ -1,5 +1,7 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { navigatePush } from '../lib/navigation';
+import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
+import { useConsoleActionQueue } from './useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from './useConsoleAutomaticProjectNavigation';
 
 jest.mock('../lib/navigation', () => ({
@@ -807,6 +809,207 @@ describe('useConsoleAutomaticProjectNavigation', () => {
       );
       expect(navigatePush).toHaveBeenCalledTimes(1);
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+    });
+  });
+
+  describe('the automatic project switch made for a newly enqueued action stays in place whatever the outcome of that action write', () => {
+    const pjcodesWithTimers = ['acme', 'beta'];
+    const projectMinutesByPjcode = { acme: 30, beta: 30 };
+    const switchedToBetaUrl = '/projects/beta/todo-by-human';
+    const approvedActionMessage = 'Approved — PR #851';
+
+    const approveReviewOfflinePayload = {
+      itemUrl: 'https://github.com/o/r/pull/851',
+      projectItemId: 'PVTI_1',
+      itemNumber: 851,
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      isPr: true,
+      apiPath: '/api/review',
+      requestBody: {
+        pjcode: 'acme',
+        action: 'approve',
+        prUrl: 'https://github.com/o/r/pull/851',
+        projectItemId: 'PVTI_1',
+      },
+    };
+
+    const flushMicrotasks = (): Promise<void> =>
+      Promise.resolve().then(() => undefined);
+
+    const renderActionQueueWithAutomaticProjectNavigation = () =>
+      renderHook(
+        ({ pjcode }: { pjcode: string }) => {
+          const actionQueue = useConsoleActionQueue();
+          useConsoleAutomaticProjectNavigation(
+            true,
+            isTimerAlwaysExpired,
+            1,
+            1,
+            pjcode,
+            pjcodesWithTimers,
+            projectMinutesByPjcode,
+            true,
+            true,
+            false,
+            false,
+            null,
+            actionQueue.enqueueSequence,
+            null,
+          );
+          return actionQueue;
+        },
+        { initialProps: { pjcode: 'acme' } },
+      );
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      localStorage.clear();
+    });
+
+    it('does not revert the switch and keeps the same error content and a working retry when the write is confirmed failed', async () => {
+      const { result, rerender } =
+        renderActionQueueWithAutomaticProjectNavigation();
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      const commit = jest
+        .fn<Promise<void>, [number]>()
+        .mockRejectedValueOnce(new Error('HTTP 422 review cannot be requested'))
+        .mockRejectedValueOnce(new Error('HTTP 500 internal server error'));
+      const revertAdvance = jest.fn();
+      const revertOptimistic = jest.fn();
+      act(() => {
+        result.current.enqueue({
+          message: approvedActionMessage,
+          color: 'green',
+          commit,
+          advance: jest.fn(),
+          revertAdvance,
+          optimistic: jest.fn(),
+          revertOptimistic,
+        });
+      });
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
+
+      rerender({ pjcode: 'beta' });
+      await act(async () => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+        await flushMicrotasks();
+      });
+
+      expect(commit.mock.calls).toEqual([[0]]);
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 1,
+      });
+      expect(result.current.error).toEqual({
+        message: approvedActionMessage,
+        reason: 'HTTP 422 review cannot be requested',
+        retry: expect.any(Function),
+      });
+      expect(result.current.offlineActions).toEqual([]);
+      expect(revertAdvance).not.toHaveBeenCalled();
+      expect(revertOptimistic).not.toHaveBeenCalled();
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
+
+      const retry = result.current.error?.retry;
+      await act(async () => {
+        retry?.();
+        await flushMicrotasks();
+      });
+
+      expect(commit.mock.calls).toEqual([[0], [0]]);
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 2,
+      });
+      expect(result.current.error).toEqual({
+        message: approvedActionMessage,
+        reason: 'HTTP 500 internal server error',
+        retry: expect.any(Function),
+      });
+      expect(result.current.offlineActions).toEqual([]);
+      expect(revertAdvance).not.toHaveBeenCalled();
+      expect(revertOptimistic).not.toHaveBeenCalled();
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
+    });
+
+    it('does not revert the switch and keeps the same offline-pending entry when the write is queued offline after a network error', async () => {
+      const { result, rerender } =
+        renderActionQueueWithAutomaticProjectNavigation();
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      const commit = jest
+        .fn<Promise<void>, [number]>()
+        .mockRejectedValue(new TypeError('Failed to fetch'));
+      const revertAdvance = jest.fn();
+      const revertOptimistic = jest.fn();
+      act(() => {
+        result.current.enqueue({
+          message: approvedActionMessage,
+          color: 'green',
+          commit,
+          advance: jest.fn(),
+          revertAdvance,
+          optimistic: jest.fn(),
+          revertOptimistic,
+          offline: [approveReviewOfflinePayload],
+        });
+      });
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
+
+      rerender({ pjcode: 'beta' });
+      await act(async () => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+        await flushMicrotasks();
+      });
+
+      expect(commit.mock.calls).toEqual([[0]]);
+      expect(result.current.writeState).toEqual({
+        status: 'offline',
+        attempt: 1,
+      });
+      expect(result.current.error).toBeNull();
+      expect(result.current.offlineActions).toEqual([
+        {
+          ...approveReviewOfflinePayload,
+          id: expect.any(String),
+          message: approvedActionMessage,
+          color: 'green',
+          enqueuedAt: expect.any(Number),
+        },
+      ]);
+      expect(revertAdvance).not.toHaveBeenCalled();
+      expect(revertOptimistic).not.toHaveBeenCalled();
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
+
+      const heldActionId = result.current.offlineActions[0].id;
+      act(() => {
+        result.current.discardOfflineAction(heldActionId);
+      });
+
+      expect(result.current.offlineActions).toEqual([]);
+      expect(result.current.error).toBeNull();
+      expect(revertAdvance).not.toHaveBeenCalled();
+      expect(revertOptimistic).not.toHaveBeenCalled();
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        [switchedToBetaUrl],
+      ]);
     });
   });
 });
