@@ -1,3 +1,10 @@
+## [2.163.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.6...v2.163.7) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** bind workflow-destination task creation to the project owning the fleet repository ([#3226](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3226)) ([d617a81](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d617a81186581cb068f24a8c71af1dd0b60eb6bb))
+
 ## [2.163.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.5...v2.163.6) (2026-10-04)
 
 
