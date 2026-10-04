@@ -3312,9 +3312,6 @@ describe('ConsoleItemDetailContainer copy-feedback persistence across a backgrou
     });
     expect(getByText('Copied')).toBeInTheDocument();
 
-    // Simulates a background data refresh (useConsoleTabData) replacing the
-    // whole snapshot and producing a brand-new `item` object reference whose
-    // field values are byte-identical to the one already on screen.
     rerender(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
@@ -3390,9 +3387,6 @@ describe('ConsoleItemDetailContainer copy-feedback persistence across a backgrou
     });
     expect(getByText('Copied')).toBeInTheDocument();
 
-    // Simulates a background data refresh (useConsoleTabData) replacing the
-    // whole snapshot and producing a brand-new `item` object reference whose
-    // field values are byte-identical to the one already on screen.
     rerender(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
