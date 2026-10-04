@@ -141,6 +141,15 @@ export const buildAttachmentSubmissionFailureMessage = (
   return `Task ${issueUrl} was created, but ${parts.join('; and ')}.`;
 };
 
+export const attachmentSubmissionParamsChanged = (
+  previous: IssueCreateParams,
+  current: IssueCreateParams,
+): boolean =>
+  previous.title !== current.title ||
+  previous.body !== current.body ||
+  previous.storyName !== current.storyName ||
+  previous.agentOptionId !== current.agentOptionId;
+
 export const createIssueWithAttachments = async (
   pjcode: string,
   nameWithOwner: string,
@@ -149,14 +158,19 @@ export const createIssueWithAttachments = async (
 ): Promise<void> => {
   let issueUrl = progress.issueUrl;
   if (issueUrl === null) {
-    issueUrl = await postConsoleCreateIssue({
-      pjcode,
-      title,
-      storyName: storyName ?? '',
-      nameWithOwner,
-      agentOptionId: agentOptionId ?? null,
-      body: body ?? null,
-    });
+    try {
+      issueUrl = await postConsoleCreateIssue({
+        pjcode,
+        title,
+        storyName: storyName ?? '',
+        nameWithOwner,
+        agentOptionId: agentOptionId ?? null,
+        body: body ?? null,
+      });
+    } catch (cause: unknown) {
+      console.error('createIssueWithAttachments: failed to create issue', cause);
+      throw new Error('Failed to create the task. Please try again.');
+    }
     progress.issueUrl = issueUrl;
   }
 
@@ -194,19 +208,24 @@ export const createIssueWithAttachments = async (
 
   let commentPostError: string | null = null;
   if (notYetCommentedFileNames.length > 0) {
-    const commentResult = await postConsoleComment({
-      pjcode,
-      url: issueUrl,
-      body: notYetCommentedFileNames
-        .map((fileName) => progress.uploadedMarkdownByFileName.get(fileName))
-        .join('\n\n'),
-    });
-    if (commentResult.posted) {
-      for (const fileName of notYetCommentedFileNames) {
-        progress.commentedFileNames.add(fileName);
+    try {
+      const commentResult = await postConsoleComment({
+        pjcode,
+        url: issueUrl,
+        body: notYetCommentedFileNames
+          .map((fileName) => progress.uploadedMarkdownByFileName.get(fileName))
+          .join('\n\n'),
+      });
+      if (commentResult.posted) {
+        for (const fileName of notYetCommentedFileNames) {
+          progress.commentedFileNames.add(fileName);
+        }
+      } else {
+        commentPostError = commentResult.error;
       }
-    } else {
-      commentPostError = commentResult.error;
+    } catch (cause: unknown) {
+      console.error('createIssueWithAttachments: comment post threw', cause);
+      commentPostError = 'posting the summary comment failed unexpectedly';
     }
   }
 
@@ -839,10 +858,20 @@ export const ConsolePage = () => {
       const capturedNameWithOwner = defaultNameWithOwner;
       const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
-        message: `Task created — "${title}"`,
+        message: `Creating task — "${title}"`,
         color: 'blue',
-        commit: () =>
-          createIssueWithAttachments(
+        commit: () => {
+          if (
+            dialogSubmitFailure !== null &&
+            attachmentSubmissionParamsChanged(
+              dialogSubmitFailure.params,
+              capturedParams,
+            )
+          ) {
+            projectSubmissionProgressRef.current =
+              createEmptyAttachmentSubmissionProgress();
+          }
+          return createIssueWithAttachments(
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
@@ -859,7 +888,8 @@ export const ConsolePage = () => {
               });
               setIsDialogOpen(true);
               throw cause;
-            }),
+            });
+        },
         advance: () => {},
       });
       setDialogDraft({
@@ -870,7 +900,7 @@ export const ConsolePage = () => {
       });
       return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner, actionQueue],
+    [pjcode, defaultNameWithOwner, actionQueue, dialogSubmitFailure],
   );
 
   const handleCreateFleetTaskFromDialog = useCallback(
@@ -892,10 +922,20 @@ export const ConsolePage = () => {
       const capturedPjcode = pjcode;
       const capturedParams = { title, storyName, agentOptionId, body, files };
       actionQueue.enqueue({
-        message: `Task created — "${title}"`,
+        message: `Creating task — "${title}"`,
         color: 'blue',
-        commit: () =>
-          createIssueWithAttachments(
+        commit: () => {
+          if (
+            fleetDialogSubmitFailure !== null &&
+            attachmentSubmissionParamsChanged(
+              fleetDialogSubmitFailure.params,
+              capturedParams,
+            )
+          ) {
+            fleetSubmissionProgressRef.current =
+              createEmptyAttachmentSubmissionProgress();
+          }
+          return createIssueWithAttachments(
             capturedPjcode,
             nameWithOwner,
             capturedParams,
@@ -912,7 +952,8 @@ export const ConsolePage = () => {
               });
               setIsFleetTaskCreateDialogOpen(true);
               throw cause;
-            }),
+            });
+        },
         advance: () => {},
       });
       setFleetDialogDraft({
@@ -923,7 +964,7 @@ export const ConsolePage = () => {
       });
       return Promise.resolve();
     },
-    [fleetTaskCreateUrl, pjcode, actionQueue],
+    [fleetTaskCreateUrl, pjcode, actionQueue, fleetDialogSubmitFailure],
   );
 
   const handleReorderStory = useCallback(
