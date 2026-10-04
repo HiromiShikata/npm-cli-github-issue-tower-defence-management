@@ -1,3 +1,10 @@
+## [2.163.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.5...v2.163.6) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** resume attachment upload after partial failure instead of restarting ([#3210](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3210)) ([0664816](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0664816f4bd8f45f99460e1b7440b5ee5d76ed98))
+
 ## [2.163.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.4...v2.163.5) (2026-10-04)
 
 
