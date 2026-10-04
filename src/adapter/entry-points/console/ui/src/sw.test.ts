@@ -353,3 +353,23 @@ describe('direct navigation to a /projects/ app route (bug fix acceptance criter
     },
   );
 });
+
+it('clones the network response synchronously, before caches.open(SHELL_CACHE) has any chance to resolve', async () => {
+  const harness = createSwHarness();
+  const request: FakeFetchRequest = {
+    method: 'GET',
+    url: `${ORIGIN}/`,
+    mode: 'navigate',
+  };
+  const mockResponse = { ok: true, clone: jest.fn() };
+  harness.mockFetch.mockImplementation(() => Promise.resolve(mockResponse));
+  harness.mockCacheStorage.open.mockImplementation(
+    () => new Promise(() => {}),
+  );
+
+  const event = dispatchFetchEvent(harness, request);
+  const resolvedResponse = await event.respondWith.mock.calls[0][0];
+
+  expect(resolvedResponse).toBe(mockResponse);
+  expect(mockResponse.clone).toHaveBeenCalled();
+});
