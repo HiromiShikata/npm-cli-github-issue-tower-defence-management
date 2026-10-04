@@ -1007,9 +1007,7 @@ describe('ConsoleCommentList checkbox-toggle callback DOM stability regression (
       inlineCodeRender.container.querySelector('code');
     expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
 
-    const fencedCodeBlockComment = buildComment(
-      '```ts\nconst first = 1;\n```',
-    );
+    const fencedCodeBlockComment = buildComment('```ts\nconst first = 1;\n```');
     const fencedCodeBlockComments = [fencedCodeBlockComment];
     const onCommentCheckboxToggleForFencedCodeBlock = jest.fn();
     const fencedCodeBlockRender = render(
