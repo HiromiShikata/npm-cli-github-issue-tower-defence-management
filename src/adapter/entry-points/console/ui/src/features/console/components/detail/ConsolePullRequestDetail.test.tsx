@@ -273,8 +273,8 @@ describe('ConsolePullRequestDetail', () => {
 
     const records = observer.takeRecords();
     observer.disconnect();
-    expect(records.filter((record) => record.type === 'childList')).toHaveLength(
-      0,
-    );
+    expect(
+      records.filter((record) => record.type === 'childList'),
+    ).toHaveLength(0);
   });
 });

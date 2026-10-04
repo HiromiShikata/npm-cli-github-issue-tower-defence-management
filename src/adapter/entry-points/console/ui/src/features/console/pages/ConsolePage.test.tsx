@@ -7765,7 +7765,11 @@ describe('ConsolePage comment elapsed-time label live update', () => {
             }),
           };
         }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       });
       global.fetch = fetchMock as unknown as typeof fetch;
 
