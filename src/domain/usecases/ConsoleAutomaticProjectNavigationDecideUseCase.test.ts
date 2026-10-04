@@ -177,6 +177,106 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
         nextEvaluatedPjcode: null,
       },
     },
+    {
+      name: "switches to another project with positive minutes when the current project's own effective minutes are zero, even though remainingCountIsZero is false and the dedup lock has not been set",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 0, beta: 30 },
+        remainingCountIsZero: false,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: 'beta',
+        nextSkipCount: 1,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
+    {
+      name: "switches to another project with positive minutes when the current project's own effective minutes are zero, even though remainingCountIsZero is true and the dedup lock has not been set",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 0, beta: 30 },
+        remainingCountIsZero: true,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: 'beta',
+        nextSkipCount: 1,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
+    {
+      name: "stays when the current project's own effective minutes are zero and every other project also has zero effective minutes",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 0, beta: 0 },
+        remainingCountIsZero: false,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: null,
+        nextSkipCount: 0,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
+    {
+      name: "switches to another project with positive minutes when the current project's own effective minutes are zero, even though the dedup lock is already set to the current project with no other-project gain",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 0, beta: 30 },
+        remainingCountIsZero: false,
+        evaluatedPjcode: 'acme',
+        aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated: false,
+      },
+      expected: {
+        targetPjcode: 'beta',
+        nextSkipCount: 1,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
+    {
+      name: "stays when the current project's own effective minutes are positive and another project also has positive minutes, confirming the zero-minutes fix leaves this unaffected",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 30, beta: 30 },
+        remainingCountIsZero: false,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: null,
+        nextSkipCount: 0,
+        nextEvaluatedPjcode: null,
+      },
+    },
+    {
+      name: "stays when the current project's own effective minutes are positive and the only other project has zero minutes, confirming the zero-minutes fix leaves this unaffected",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 30, beta: 0 },
+        remainingCountIsZero: true,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: null,
+        nextSkipCount: 0,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
+    {
+      name: "switches to another project with positive minutes when the current project's own effective minutes are zero, even though the current project was explicitly selected",
+      input: {
+        ...baseInput,
+        projectMinutes: { acme: 0, beta: 30 },
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: true,
+        evaluatedPjcode: null,
+      },
+      expected: {
+        targetPjcode: 'beta',
+        nextSkipCount: 1,
+        nextEvaluatedPjcode: 'acme',
+      },
+    },
   ];
 
   it.each(parameterizedIssueTableCases)('$name', ({ input, expected }) => {
