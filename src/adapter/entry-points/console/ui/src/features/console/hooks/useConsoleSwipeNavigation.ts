@@ -1,25 +1,37 @@
 import { useCallback, useEffect, useRef } from 'react';
 import {
   type ConsoleSwipeDirection,
+  hasReachedHorizontalScrollBoundary,
   isVerticallyDominant,
   resolveSwipeDirection,
 } from '../logic/swipe';
 
-const isHorizontallyScrollable = (start: EventTarget | null): boolean => {
+type HorizontalScrollMetrics = {
+  scrollLeft: number;
+  scrollWidth: number;
+  clientWidth: number;
+};
+
+const findHorizontalScrollMetrics = (
+  start: EventTarget | null,
+): HorizontalScrollMetrics | null => {
   let node = start instanceof Element ? start : null;
   while (node !== null && node !== document.body) {
     const style = window.getComputedStyle(node);
     const overflowX = style.overflowX;
     if (
       (overflowX === 'auto' || overflowX === 'scroll') &&
-      node.scrollWidth > node.clientWidth &&
-      node.scrollLeft > 0
+      node.scrollWidth > node.clientWidth
     ) {
-      return true;
+      return {
+        scrollLeft: node.scrollLeft,
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+      };
     }
     node = node.parentElement;
   }
-  return false;
+  return null;
 };
 
 export const useConsoleSwipeNavigation = (
@@ -34,16 +46,14 @@ export const useConsoleSwipeNavigation = (
     let startX = 0;
     let startY = 0;
     let tracking = false;
+    let scrollMetricsAtStart: HorizontalScrollMetrics | null = null;
 
     const onTouchStart = (event: TouchEvent): void => {
       if (event.touches.length !== 1) {
         tracking = false;
         return;
       }
-      if (isHorizontallyScrollable(event.target)) {
-        tracking = false;
-        return;
-      }
+      scrollMetricsAtStart = findHorizontalScrollMetrics(event.target);
       const touch = event.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;
@@ -75,9 +85,21 @@ export const useConsoleSwipeNavigation = (
         touch.clientX - startX,
         touch.clientY - startY,
       );
-      if (direction !== null) {
-        onSwipeRef.current(direction);
+      if (direction === null) {
+        return;
       }
+      if (
+        scrollMetricsAtStart !== null &&
+        !hasReachedHorizontalScrollBoundary(
+          direction,
+          scrollMetricsAtStart.scrollLeft,
+          scrollMetricsAtStart.scrollWidth,
+          scrollMetricsAtStart.clientWidth,
+        )
+      ) {
+        return;
+      }
+      onSwipeRef.current(direction);
     };
 
     element.addEventListener('touchstart', onTouchStart, { passive: true });
