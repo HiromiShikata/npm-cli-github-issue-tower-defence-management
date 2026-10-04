@@ -1,3 +1,10 @@
+## [2.163.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.0...v2.163.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console-offline:** console shows nothing offline when navigating directly to a /projects/ route ([#3213](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3213)) ([2e39b75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e39b75513456258a5e5e9efa64e3ebb232fe70a))
+
 # [2.163.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.162.6...v2.163.0) (2026-10-04)
 
 
