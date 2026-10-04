@@ -3607,6 +3607,90 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     },
   );
 
+  const queuedCommitResumingFromSentStepCountFor = async (
+    buttonLabel: string,
+    operations: ConsoleOperationsApi,
+  ): Promise<(sentStepCount: number) => Promise<void>> =>
+    queuedCommitFor(buttonLabel, operations);
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel told that no step was sent by posting the comment once and then closing the item once',
+    async ({ buttonLabel, expectedCommentBody }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      await expect(commit(0)).resolves.toBeUndefined();
+
+      const addCommentMock = operations.addComment as jest.Mock;
+      const closeIssueMock = operations.closeIssue as jest.Mock;
+      expect(addCommentMock.mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect(closeIssueMock.mock.calls).toEqual([[issueItem, 'close']]);
+      expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
+        closeIssueMock.mock.invocationCallOrder[0],
+      );
+    },
+  );
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel told that the comment step was sent by closing the item once without posting the comment again',
+    async ({ buttonLabel }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      await expect(commit(1)).resolves.toBeUndefined();
+
+      expect(operations.addComment).not.toHaveBeenCalled();
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it.each(
+    commentThenCloseActions.flatMap((commentThenCloseAction) =>
+      closeFailures.map((closeFailure) => ({
+        ...commentThenCloseAction,
+        ...closeFailure,
+      })),
+    ),
+  )(
+    'rejects the $buttonLabel commit told that the comment step was sent with a partially sent error counting the comment, without posting the comment again, when the close $closeFailureKind',
+    async ({ buttonLabel, buildCloseFailure }) => {
+      const closeFailure = buildCloseFailure();
+      const operations = buildOperations();
+      operations.closeIssue = jest.fn(async () => {
+        throw closeFailure;
+      });
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      const rejection = await commit(1).then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      expect(rejection).toMatchObject({ sentStepCount: 1 });
+      expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
+        closeFailure,
+      );
+      expect(operations.addComment).not.toHaveBeenCalled();
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
   it('rejects the Comment & Awaiting Workspace commit with the partially sent error without reporting a comment error when the comment was posted and the move to Awaiting Workspace fails because the network is unavailable', async () => {
     const partiallySentError = new ConsoleActionPartiallySentError(
       1,
