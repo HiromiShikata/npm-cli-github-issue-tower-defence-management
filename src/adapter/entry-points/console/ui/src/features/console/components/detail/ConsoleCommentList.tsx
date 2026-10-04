@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../lib/markdown';
 import {
@@ -36,7 +36,10 @@ type ConsoleCommentBodyExpandedProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
-  onCheckboxToggle?: ConsoleCheckboxToggleHandler;
+  onCommentCheckboxToggle?: (
+    comment: ConsoleComment,
+    checkboxIndex: number,
+  ) => void;
 };
 
 const ConsoleCommentBodyExpanded = ({
@@ -44,7 +47,7 @@ const ConsoleCommentBodyExpanded = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
-  onCheckboxToggle,
+  onCommentCheckboxToggle,
 }: ConsoleCommentBodyExpandedProps) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -54,6 +57,14 @@ const ConsoleCommentBodyExpanded = ({
     el.addEventListener('click', stop);
     return () => el.removeEventListener('click', stop);
   }, []);
+  const onCheckboxToggle = useMemo<ConsoleCheckboxToggleHandler | undefined>(
+    () =>
+      onCommentCheckboxToggle !== undefined
+        ? (checkboxIndex: number) =>
+            onCommentCheckboxToggle(comment, checkboxIndex)
+        : undefined,
+    [comment, onCommentCheckboxToggle],
+  );
   return (
     <div ref={ref} className="console-comment-body-expanded">
       <ConsoleMarkdownContent
@@ -214,12 +225,7 @@ export const ConsoleCommentList = ({
                 buildImageProxyUrl={buildImageProxyUrl}
                 renderReferenceLink={renderReferenceLink}
                 repoContext={repoContext}
-                onCheckboxToggle={
-                  onCommentCheckboxToggle !== undefined
-                    ? (checkboxIndex) =>
-                        onCommentCheckboxToggle(comment, checkboxIndex)
-                    : undefined
-                }
+                onCommentCheckboxToggle={onCommentCheckboxToggle}
               />
             )}
           </article>
