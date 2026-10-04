@@ -1,3 +1,10 @@
+## [2.163.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.2...v2.163.3) (2026-10-04)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase.test.ts:** mockIssueRepository still uses a hand-duplicated Pick<IssueRepository> type literal ([#3217](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3217)) ([7525152](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/75251522c54f6968c755fba660f64db466621885))
+
 ## [2.163.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.1...v2.163.2) (2026-10-04)
 
 
