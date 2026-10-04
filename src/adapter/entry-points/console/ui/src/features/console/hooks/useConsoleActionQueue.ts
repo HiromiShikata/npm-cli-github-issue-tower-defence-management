@@ -16,6 +16,7 @@ export type ConsoleOfflinePayload = {
   projectItemId: string;
   itemNumber: number;
   repo: string;
+  nameWithOwner: string;
   isPr: boolean;
   apiPath: string;
   requestBody: Record<string, unknown>;
@@ -86,6 +87,7 @@ const isConsoleOfflineQueuedAction = (
     typeof a.projectItemId === 'string' &&
     typeof a.itemNumber === 'number' &&
     typeof a.repo === 'string' &&
+    typeof a.nameWithOwner === 'string' &&
     typeof a.isPr === 'boolean' &&
     typeof a.apiPath === 'string' &&
     typeof a.requestBody === 'object' &&
@@ -185,6 +187,7 @@ export type ConsoleActionQueue = {
   error: ConsoleActionError | null;
   offlineActions: ConsoleOfflineQueuedAction[];
   writeState: ConsoleActionWriteState;
+  enqueueSequence: number;
   enqueue: (action: ConsoleQueuedAction) => void;
   offlineActionsCreate: (request: ConsoleOfflineActionsCreateRequest) => void;
   showError: (message: string, reason: string) => void;
@@ -220,6 +223,7 @@ export const useConsoleActionQueue = (
     status: 'idle',
     attempt: 0,
   });
+  const [enqueueSequence, setEnqueueSequence] = useState(0);
 
   const clearTimer = useCallback((): void => {
     if (timerRef.current !== null) {
@@ -402,6 +406,7 @@ export const useConsoleActionQueue = (
 
   const enqueue = useCallback(
     (action: ConsoleQueuedAction): void => {
+      setEnqueueSequence((previous) => previous + 1);
       if (actionRef.current !== null && !committedRef.current) {
         const previous = actionRef.current;
         clearTimer();
@@ -444,6 +449,7 @@ export const useConsoleActionQueue = (
     error,
     offlineActions,
     writeState,
+    enqueueSequence,
     enqueue,
     offlineActionsCreate,
     showError,

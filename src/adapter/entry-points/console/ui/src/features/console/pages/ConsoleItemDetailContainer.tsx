@@ -82,6 +82,7 @@ const itemOfflineBase = (item: ConsoleListItem) => ({
   projectItemId: item.projectItemId,
   itemNumber: item.number,
   repo: item.repo,
+  nameWithOwner: item.nameWithOwner,
   isPr: item.isPr,
 });
 

@@ -1,4 +1,7 @@
-import type { ConsoleToastColor } from '../../logic/actionToast';
+import {
+  type ConsoleToastColor,
+  itemRepositoryLabel,
+} from '../../logic/actionToast';
 import type { ConsolePullRequestStatus } from '../../logic/types';
 
 export type ConsoleOfflinePendingActionItem = {
@@ -6,6 +9,7 @@ export type ConsoleOfflinePendingActionItem = {
   message: string;
   color: ConsoleToastColor;
   itemNumber: number;
+  nameWithOwner: string;
   isPr: boolean;
   currentTitle: string | null;
   currentState: 'open' | 'closed' | null;
@@ -22,7 +26,7 @@ export type ConsoleOfflinePendingActionsPanelProps = {
 };
 
 const itemLabel = (item: ConsoleOfflinePendingActionItem): string =>
-  `${item.isPr ? 'PR' : 'Issue'} #${item.itemNumber}`;
+  itemRepositoryLabel(item.nameWithOwner, item.itemNumber, item.isPr);
 
 const stateLabel = (state: 'open' | 'closed' | null): string => {
   if (state === null) return 'loading…';

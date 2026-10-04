@@ -24,7 +24,7 @@ export const findNextPjcodeWithMinutes = (
 };
 
 export type ConsoleAutomaticProjectNavigationDecideInput = {
-  checkTimerElapsed: boolean;
+  actionNewlyEnqueued: boolean;
   timerElapsed: boolean;
   remainingCountIsZero: boolean;
   snapshotsReady: boolean;
@@ -47,7 +47,7 @@ export type ConsoleAutomaticProjectNavigationDecideResult = {
 export const consoleAutomaticProjectNavigationDecide = (
   input: ConsoleAutomaticProjectNavigationDecideInput,
 ): ConsoleAutomaticProjectNavigationDecideResult => {
-  if (input.checkTimerElapsed && input.timerElapsed) {
+  if (input.actionNewlyEnqueued && input.timerElapsed) {
     return {
       targetPjcode: findNextPjcodeWithMinutes(
         input.pjcodes,

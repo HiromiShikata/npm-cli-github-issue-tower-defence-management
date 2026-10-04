@@ -21,10 +21,7 @@ import {
   ConsoleUndoToast,
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
-import {
-  type ConsoleActionWriteState,
-  useConsoleActionQueue,
-} from '../hooks/useConsoleActionQueue';
+import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
 import { useConsoleAwaitingOwnerListVisibilitySettings } from '../hooks/useConsoleAwaitingOwnerListVisibilitySettings';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
@@ -512,6 +509,7 @@ export const ConsolePage = () => {
           message: a.message,
           color: a.color,
           itemNumber: a.itemNumber,
+          nameWithOwner: a.nameWithOwner,
           isPr: a.isPr,
           currentTitle: fetchError ? null : (state?.title ?? null),
           currentState: fetchError
@@ -653,15 +651,6 @@ export const ConsolePage = () => {
     }
   }, [pjcode, timerMode, pjcodes, projectMinutes]);
 
-  const isQueuedActionAwaitingCommit = actionQueue.pending !== null;
-  const writeStateForAutomaticNavigation = useMemo<ConsoleActionWriteState>(
-    () =>
-      isQueuedActionAwaitingCommit
-        ? { status: 'unconfirmed', attempt: actionQueue.writeState.attempt }
-        : actionQueue.writeState,
-    [isQueuedActionAwaitingCommit, actionQueue.writeState],
-  );
-
   useConsoleAutomaticProjectNavigation(
     timerMode,
     isTimerExpired,
@@ -675,7 +664,7 @@ export const ConsolePage = () => {
     snapshots.prs?.fromCache ?? false,
     snapshots['todo-by-human']?.fromCache ?? false,
     explicitlySelectedPjcode,
-    writeStateForAutomaticNavigation,
+    actionQueue.enqueueSequence,
     selectedItemKey,
   );
 

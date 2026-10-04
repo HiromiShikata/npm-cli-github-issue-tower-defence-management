@@ -44,7 +44,7 @@ describe('DEFAULT_TIMER_MINUTES and findNextPjcodeWithMinutes exported from the 
 
 describe('consoleAutomaticProjectNavigationDecide', () => {
   const baseInput: ConsoleAutomaticProjectNavigationDecideInput = {
-    checkTimerElapsed: false,
+    actionNewlyEnqueued: false,
     timerElapsed: false,
     remainingCountIsZero: false,
     snapshotsReady: true,
@@ -65,7 +65,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
   const parameterizedIssueTableCases: TableCase[] = [
     {
       name: 'row 1: switches once a write confirmed succeeded while the timer condition still holds',
-      input: { ...baseInput, checkTimerElapsed: true, timerElapsed: true },
+      input: { ...baseInput, actionNewlyEnqueued: true, timerElapsed: true },
       expected: {
         targetPjcode: 'beta',
         nextSkipCount: 0,
@@ -74,7 +74,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 2: stays with no switch while the timer-triggering write is not confirmed succeeded (confirmed failed)',
-      input: { ...baseInput, checkTimerElapsed: false, timerElapsed: true },
+      input: { ...baseInput, actionNewlyEnqueued: false, timerElapsed: true },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -83,7 +83,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 3: a retry that succeeds switches once still elapsed at confirmation (the preceding failed attempt stays like row 2)',
-      input: { ...baseInput, checkTimerElapsed: true, timerElapsed: true },
+      input: { ...baseInput, actionNewlyEnqueued: true, timerElapsed: true },
       expected: {
         targetPjcode: 'beta',
         nextSkipCount: 0,
@@ -94,7 +94,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       name: 'row 4: switches once a write confirmed succeeded while the remaining count is still zero',
       input: {
         ...baseInput,
-        checkTimerElapsed: true,
+        actionNewlyEnqueued: true,
         timerElapsed: false,
         remainingCountIsZero: true,
       },
@@ -106,7 +106,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 5: identical to baseInput — this function has no write-confirmation gate for the remaining-count-zero trigger (a confirmed-failed write), that gate is enforced only by the caller never invoking this function while writeState is failed; see the sibling assertion after this table and "does not navigate while the write is confirmed failed, even when the remaining count is zero" in useConsoleAutomaticProjectNavigation.test.ts for the real proof',
-      input: { ...baseInput, checkTimerElapsed: false },
+      input: { ...baseInput, actionNewlyEnqueued: false },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -117,7 +117,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       name: 'row 6: exactly one switch (via the timer branch) when both the timer and remaining-count conditions hold at confirmation',
       input: {
         ...baseInput,
-        checkTimerElapsed: true,
+        actionNewlyEnqueued: true,
         timerElapsed: true,
         remainingCountIsZero: true,
       },
@@ -129,7 +129,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 7: stays with no switch when the timer-triggering action was undone before any write was ever sent',
-      input: { ...baseInput, checkTimerElapsed: false, timerElapsed: true },
+      input: { ...baseInput, actionNewlyEnqueued: false, timerElapsed: true },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -138,7 +138,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 8: identical to baseInput — this function has no write-confirmation gate for the remaining-count-zero trigger (an action undone before any write was sent), that gate is enforced only by the caller never invoking this function while a write is unconfirmed; see the sibling assertion after this table and the undo-while-remaining-count-zero test in ConsolePage.test.tsx for the real proof',
-      input: { ...baseInput, checkTimerElapsed: false },
+      input: { ...baseInput, actionNewlyEnqueued: false },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -149,7 +149,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       name: 'row 9: stays with no switch when neither trigger condition holds, leaving the unaffected same-project advance to run',
       input: {
         ...baseInput,
-        checkTimerElapsed: true,
+        actionNewlyEnqueued: true,
         timerElapsed: false,
         remainingCountIsZero: false,
       },
@@ -161,7 +161,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 10: no switch when the timer condition held at action time but no longer holds at confirmation',
-      input: { ...baseInput, checkTimerElapsed: true, timerElapsed: false },
+      input: { ...baseInput, actionNewlyEnqueued: true, timerElapsed: false },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -170,7 +170,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     },
     {
       name: 'row 11: stays indefinitely with no switch while the timer-triggering write is queued offline after a network failure',
-      input: { ...baseInput, checkTimerElapsed: false, timerElapsed: true },
+      input: { ...baseInput, actionNewlyEnqueued: false, timerElapsed: true },
       expected: {
         targetPjcode: null,
         nextSkipCount: 0,
@@ -283,10 +283,10 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     expect(consoleAutomaticProjectNavigationDecide(input)).toEqual(expected);
   });
 
-  it('rows 5 and 8 (detail): calling this function directly with remainingCountIsZero true and checkTimerElapsed false switches regardless of why the write was never confirmed succeeded, proving the write-confirmation gate for the remaining-count-zero trigger lives entirely in the caller and not in this function', () => {
+  it('rows 5 and 8 (detail): calling this function directly with remainingCountIsZero true and actionNewlyEnqueued false switches regardless of why the write was never confirmed succeeded, proving the write-confirmation gate for the remaining-count-zero trigger lives entirely in the caller and not in this function', () => {
     const decision = consoleAutomaticProjectNavigationDecide({
       ...baseInput,
-      checkTimerElapsed: false,
+      actionNewlyEnqueued: false,
       timerElapsed: false,
       remainingCountIsZero: true,
     });
@@ -296,7 +296,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
   it('row 6 (detail): the remaining-count branch bookkeeping is never advanced when the timer branch already decided', () => {
     const decision = consoleAutomaticProjectNavigationDecide({
       ...baseInput,
-      checkTimerElapsed: true,
+      actionNewlyEnqueued: true,
       timerElapsed: true,
       remainingCountIsZero: true,
       skipCount: 0,
@@ -307,7 +307,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     expect(decision.nextEvaluatedPjcode).toBeNull();
     const remainingCountBranchAlone = consoleAutomaticProjectNavigationDecide({
       ...baseInput,
-      checkTimerElapsed: false,
+      actionNewlyEnqueued: false,
       timerElapsed: false,
       remainingCountIsZero: true,
       skipCount: 0,
@@ -738,7 +738,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
 
 describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a task is open (#32963)', () => {
   const taskOpenGuardBaseInput: ConsoleAutomaticProjectNavigationDecideInput = {
-    checkTimerElapsed: false,
+    actionNewlyEnqueued: false,
     timerElapsed: false,
     remainingCountIsZero: false,
     snapshotsReady: true,
@@ -764,7 +764,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: false,
         remainingCountIsZero: false,
         explicitlySelectedPjcodeMatchesCurrent: false,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: null,
@@ -776,7 +776,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: false,
         remainingCountIsZero: true,
         explicitlySelectedPjcodeMatchesCurrent: false,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: 'beta',
@@ -788,7 +788,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: true,
         remainingCountIsZero: true,
         explicitlySelectedPjcodeMatchesCurrent: false,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: null,
@@ -800,7 +800,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: true,
         remainingCountIsZero: false,
         explicitlySelectedPjcodeMatchesCurrent: false,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: null,
@@ -812,7 +812,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: false,
         remainingCountIsZero: true,
         explicitlySelectedPjcodeMatchesCurrent: true,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: 'beta',
@@ -824,7 +824,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: true,
         remainingCountIsZero: true,
         explicitlySelectedPjcodeMatchesCurrent: true,
-        checkTimerElapsed: false,
+        actionNewlyEnqueued: false,
         timerElapsed: false,
       },
       expectedTargetPjcode: null,
@@ -836,7 +836,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
         taskOpen: true,
         remainingCountIsZero: false,
         explicitlySelectedPjcodeMatchesCurrent: false,
-        checkTimerElapsed: true,
+        actionNewlyEnqueued: true,
         timerElapsed: true,
       },
       expectedTargetPjcode: 'beta',
@@ -855,7 +855,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
       taskOpen: true,
       remainingCountIsZero: true,
       explicitlySelectedPjcodeMatchesCurrent: false,
-      checkTimerElapsed: false,
+      actionNewlyEnqueued: false,
       timerElapsed: false,
       skipCount: 2,
       evaluatedPjcode: 'beta',
@@ -865,5 +865,131 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
       nextSkipCount: 2,
       nextEvaluatedPjcode: 'beta',
     });
+  });
+});
+
+describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerElapsed/remainingCountIsZero/taskOpen combinations (#33007)', () => {
+  const fixedInputBase: Omit<
+    ConsoleAutomaticProjectNavigationDecideInput,
+    'actionNewlyEnqueued' | 'timerElapsed' | 'remainingCountIsZero' | 'taskOpen'
+  > = {
+    snapshotsReady: true,
+    explicitlySelectedPjcodeMatchesCurrent: false,
+    pjcode: 'acme',
+    pjcodes: ['acme', 'beta'],
+    projectMinutes: { acme: 30, beta: 30 },
+    skipCount: 0,
+    evaluatedPjcode: null,
+  };
+
+  type CombinationTableCase = {
+    actionNewlyEnqueued: boolean;
+    timerElapsed: boolean;
+    remainingCountIsZero: boolean;
+    taskOpen: boolean;
+    expectedTargetPjcode: string | null;
+    description: string;
+  };
+
+  const combinationTableCases: CombinationTableCase[] = [
+    {
+      actionNewlyEnqueued: false,
+      timerElapsed: false,
+      remainingCountIsZero: false,
+      taskOpen: false,
+      expectedTargetPjcode: null,
+      description: 'no change',
+    },
+    {
+      actionNewlyEnqueued: false,
+      timerElapsed: false,
+      remainingCountIsZero: true,
+      taskOpen: false,
+      expectedTargetPjcode: 'beta',
+      description: 'switch to beta (remainingCountIsZero path)',
+    },
+    {
+      actionNewlyEnqueued: false,
+      timerElapsed: false,
+      remainingCountIsZero: true,
+      taskOpen: true,
+      expectedTargetPjcode: null,
+      description: 'no change (taskOpen suppresses remainingCountIsZero path)',
+    },
+    {
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+      remainingCountIsZero: false,
+      taskOpen: false,
+      expectedTargetPjcode: 'beta',
+      description:
+        'switch to beta (timerElapsed path, the main point of this fix)',
+    },
+    {
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+      remainingCountIsZero: false,
+      taskOpen: true,
+      expectedTargetPjcode: 'beta',
+      description:
+        'switch to beta (timerElapsed path NOT suppressed by taskOpen)',
+    },
+    {
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+      remainingCountIsZero: true,
+      taskOpen: false,
+      expectedTargetPjcode: 'beta',
+      description: 'switch to beta (both paths true, switches only once)',
+    },
+    {
+      actionNewlyEnqueued: true,
+      timerElapsed: false,
+      remainingCountIsZero: true,
+      taskOpen: false,
+      expectedTargetPjcode: 'beta',
+      description: 'switch to beta (remainingCountIsZero path)',
+    },
+    {
+      actionNewlyEnqueued: true,
+      timerElapsed: false,
+      remainingCountIsZero: false,
+      taskOpen: false,
+      expectedTargetPjcode: null,
+      description: 'no change',
+    },
+  ];
+
+  it.each(combinationTableCases)(
+    'actionNewlyEnqueued=$actionNewlyEnqueued timerElapsed=$timerElapsed remainingCountIsZero=$remainingCountIsZero taskOpen=$taskOpen -> $description',
+    ({
+      actionNewlyEnqueued,
+      timerElapsed,
+      remainingCountIsZero,
+      taskOpen,
+      expectedTargetPjcode,
+    }) => {
+      const decision = consoleAutomaticProjectNavigationDecide({
+        ...fixedInputBase,
+        actionNewlyEnqueued,
+        timerElapsed,
+        remainingCountIsZero,
+        taskOpen,
+      });
+      expect(decision.targetPjcode).toBe(expectedTargetPjcode);
+    },
+  );
+
+  it('switches to the next project exactly once (not twice) when both the timerElapsed path and the remainingCountIsZero path hold for the same newly enqueued action', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...fixedInputBase,
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+      remainingCountIsZero: true,
+      taskOpen: false,
+    });
+    expect(decision.targetPjcode).toBe('beta');
+    expect(decision.nextSkipCount).toBe(0);
+    expect(decision.nextEvaluatedPjcode).toBeNull();
   });
 });

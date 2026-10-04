@@ -4,7 +4,6 @@ import {
   DEFAULT_TIMER_MINUTES,
 } from '../../../../../../../../domain/usecases/ConsoleAutomaticProjectNavigationDecideUseCase';
 import { navigatePush } from '../lib/navigation';
-import type { ConsoleActionWriteState } from './useConsoleActionQueue';
 
 export const useConsoleAutomaticProjectNavigation = (
   timerMode: boolean,
@@ -19,12 +18,12 @@ export const useConsoleAutomaticProjectNavigation = (
   prsSnapshotFromCache: boolean,
   todoByHumanSnapshotFromCache: boolean,
   explicitlySelectedPjcode: string | null,
-  writeState: ConsoleActionWriteState,
+  enqueueSequence: number,
   selectedItemKey: string | null,
 ): void => {
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
-  const lastHandledSucceededAttemptRef = useRef(0);
+  const lastHandledEnqueueSequenceRef = useRef(0);
   const lastEvaluatedPjcodesWithMinutesRef = useRef<{
     pjcode: string;
     pjcodesWithMinutes: string[];
@@ -37,19 +36,11 @@ export const useConsoleAutomaticProjectNavigation = (
       lastEvaluatedPjcodesWithMinutesRef.current = null;
       return;
     }
-    if (
-      writeState.status === 'unconfirmed' ||
-      writeState.status === 'failed' ||
-      writeState.status === 'offline'
-    ) {
-      return;
-    }
 
-    const checkTimerElapsed =
-      writeState.status === 'succeeded' &&
-      writeState.attempt !== lastHandledSucceededAttemptRef.current;
-    if (writeState.status === 'succeeded') {
-      lastHandledSucceededAttemptRef.current = writeState.attempt;
+    const actionNewlyEnqueued =
+      enqueueSequence !== lastHandledEnqueueSequenceRef.current;
+    if (actionNewlyEnqueued) {
+      lastHandledEnqueueSequenceRef.current = enqueueSequence;
     }
 
     const currentPjcodesWithMinutes = pjcodes.filter(
@@ -70,7 +61,7 @@ export const useConsoleAutomaticProjectNavigation = (
     };
 
     const decision = consoleAutomaticProjectNavigationDecide({
-      checkTimerElapsed,
+      actionNewlyEnqueued,
       timerElapsed: isTimerExpired(
         projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES,
       ),
@@ -110,7 +101,7 @@ export const useConsoleAutomaticProjectNavigation = (
     prsSnapshotFromCache,
     todoByHumanSnapshotFromCache,
     explicitlySelectedPjcode,
-    writeState,
+    enqueueSequence,
     selectedItemKey,
   ]);
 };

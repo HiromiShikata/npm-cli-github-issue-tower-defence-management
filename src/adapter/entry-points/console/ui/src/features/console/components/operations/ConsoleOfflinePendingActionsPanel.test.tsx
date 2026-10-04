@@ -4,11 +4,15 @@ import {
   ConsoleOfflinePendingActionsPanel,
 } from './ConsoleOfflinePendingActionsPanel';
 
+const APPROVE_ACTION_NAME_WITH_OWNER =
+  'HiromiShikata/npm-cli-github-issue-tower-defence-management';
+
 const approveAction: ConsoleOfflinePendingActionItem = {
   id: 'offline-1',
   message: 'Approved — PR #851',
   color: 'green',
   itemNumber: 851,
+  nameWithOwner: APPROVE_ACTION_NAME_WITH_OWNER,
   isPr: true,
   currentTitle: 'Add serveConsole subcommand under entry-points',
   currentState: 'open',
@@ -51,7 +55,13 @@ describe('ConsoleOfflinePendingActionsPanel', () => {
     const { getByText, queryByText } = render(
       <ConsoleOfflinePendingActionsPanel {...baseProps} isOnline={false} />,
     );
-    expect(getByText(/PR #851 — Add serveConsole/)).toBeInTheDocument();
+    expect(
+      getByText(
+        new RegExp(
+          `PR ${APPROVE_ACTION_NAME_WITH_OWNER}#851 — Add serveConsole`,
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(getByText('Approved — PR #851')).toBeInTheDocument();
     expect(queryByText('Send')).not.toBeInTheDocument();
   });
@@ -63,7 +73,7 @@ describe('ConsoleOfflinePendingActionsPanel', () => {
     expect(getByText('Discard')).toBeInTheDocument();
   });
 
-  it('shows the action message and item label when online', () => {
+  it('shows the action message and the repository-qualified item label when online', () => {
     const { getByText, container } = render(
       <ConsoleOfflinePendingActionsPanel {...baseProps} />,
     );
@@ -71,7 +81,31 @@ describe('ConsoleOfflinePendingActionsPanel', () => {
     expect(
       container.querySelector('.console-offline-panel-item-target')
         ?.textContent,
-    ).toContain('PR #851');
+    ).toContain(`PR ${APPROVE_ACTION_NAME_WITH_OWNER}#851`);
+  });
+
+  it('uniquely distinguishes two held actions that share the same item number but belong to different repositories', () => {
+    const otherRepoNameWithOwner = 'HiromiShikata/umino-corporait-operation';
+    const { getByText } = render(
+      <ConsoleOfflinePendingActionsPanel
+        {...baseProps}
+        actions={[
+          approveAction,
+          {
+            ...approveAction,
+            id: 'offline-2',
+            message: 'Approved — PR #851 (other repo)',
+            nameWithOwner: otherRepoNameWithOwner,
+          },
+        ]}
+      />,
+    );
+    expect(
+      getByText(new RegExp(`^PR ${APPROVE_ACTION_NAME_WITH_OWNER}#851`)),
+    ).toBeInTheDocument();
+    expect(
+      getByText(new RegExp(`^PR ${otherRepoNameWithOwner}#851`)),
+    ).toBeInTheDocument();
   });
 
   it('shows the current item title and state when loaded', () => {
