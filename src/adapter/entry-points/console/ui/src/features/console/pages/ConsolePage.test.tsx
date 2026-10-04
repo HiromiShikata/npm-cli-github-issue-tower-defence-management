@@ -5464,7 +5464,18 @@ describe('ConsolePage offline action queue', () => {
       url.endsWith('/api/comment')
         ? new Promise((resolve) => {
             resolveCommentPost = () =>
-              resolve({ ok: true, status: 200, json: async () => ({}) });
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                  comment: {
+                    id: 7,
+                    author: 'you',
+                    body: 'Written while offline.',
+                    createdAt: '2026-06-19T02:00:00.000Z',
+                  },
+                }),
+              });
           })
         : Promise.resolve({ ok: true, status: 200, json: async () => ({}) }),
     );
