@@ -966,6 +966,125 @@ describe('ConsoleCommentList checkbox-toggle callback DOM stability regression (
     );
     expect(referenceAfterSecondRender).toBe(referenceAfterFirstRender);
   });
+
+  const simulateWindowScroll = (scrollY: number) => {
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: scrollY,
+    });
+    fireEvent.scroll(window);
+  };
+
+  it('keeps the inline code, fenced code block, and reference-link DOM nodes stable across a rerender where only now changes while the page is scrolled up and down during the idle window (SC-007)', async () => {
+    const inlineCodeComment = buildComment('See `npm test` for details.');
+    const inlineCodeComments = [inlineCodeComment];
+    const onCommentCheckboxToggleForInlineCode = jest.fn();
+    const inlineCodeRender = render(
+      <ConsoleCommentList
+        comments={inlineCodeComments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForInlineCode}
+      />,
+    );
+    await inlineCodeRender.findByRole('button', { name: 'npm test' });
+    const codeElementAfterFirstRender =
+      inlineCodeRender.container.querySelector('code');
+    expect(codeElementAfterFirstRender).not.toBeNull();
+    simulateWindowScroll(400);
+    inlineCodeRender.rerender(
+      <ConsoleCommentList
+        comments={inlineCodeComments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForInlineCode}
+      />,
+    );
+    simulateWindowScroll(0);
+    const codeElementAfterSecondRender =
+      inlineCodeRender.container.querySelector('code');
+    expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
+
+    const fencedCodeBlockComment = buildComment(
+      '```ts\nconst first = 1;\n```',
+    );
+    const fencedCodeBlockComments = [fencedCodeBlockComment];
+    const onCommentCheckboxToggleForFencedCodeBlock = jest.fn();
+    const fencedCodeBlockRender = render(
+      <ConsoleCommentList
+        comments={fencedCodeBlockComments}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForFencedCodeBlock}
+      />,
+    );
+    await fencedCodeBlockRender.findByRole('button', { name: 'Copy code' });
+    const codeBlockAfterFirstRender =
+      fencedCodeBlockRender.container.querySelector(
+        '.console-markdown-code-block',
+      );
+    expect(codeBlockAfterFirstRender).not.toBeNull();
+    simulateWindowScroll(800);
+    fencedCodeBlockRender.rerender(
+      <ConsoleCommentList
+        comments={fencedCodeBlockComments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForFencedCodeBlock}
+      />,
+    );
+    simulateWindowScroll(0);
+    const codeBlockAfterSecondRender =
+      fencedCodeBlockRender.container.querySelector(
+        '.console-markdown-code-block',
+      );
+    expect(codeBlockAfterSecondRender).toBe(codeBlockAfterFirstRender);
+
+    const referenceLinkComment = buildComment(
+      '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
+    );
+    const referenceLinkComments = [referenceLinkComment];
+    const mockRenderer = (href: string) => (
+      <span data-testid="custom-reference" data-href={href} />
+    );
+    const onCommentCheckboxToggleForReferenceLink = jest.fn();
+    const referenceLinkRender = render(
+      <ConsoleCommentList
+        comments={referenceLinkComments}
+        isLoading={false}
+        error={null}
+        now={now}
+        renderReferenceLink={mockRenderer}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForReferenceLink}
+      />,
+    );
+    const referenceAfterFirstRender =
+      referenceLinkRender.container.querySelector(
+        '[data-testid="custom-reference"]',
+      );
+    expect(referenceAfterFirstRender).not.toBeNull();
+    simulateWindowScroll(1200);
+    referenceLinkRender.rerender(
+      <ConsoleCommentList
+        comments={referenceLinkComments}
+        isLoading={false}
+        error={null}
+        now={now + 1000}
+        renderReferenceLink={mockRenderer}
+        onCommentCheckboxToggle={onCommentCheckboxToggleForReferenceLink}
+      />,
+    );
+    simulateWindowScroll(0);
+    const referenceAfterSecondRender =
+      referenceLinkRender.container.querySelector(
+        '[data-testid="custom-reference"]',
+      );
+    expect(referenceAfterSecondRender).toBe(referenceAfterFirstRender);
+  });
 });
 
 describe('ConsoleCommentList copy-feedback persistence regression (the copy control remounts via its own now-only rerender of ConsoleCommentList, resetting its feedback before the 1500ms timer elapses)', () => {
