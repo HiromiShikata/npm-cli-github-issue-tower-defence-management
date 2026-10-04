@@ -5547,9 +5547,7 @@ describe('ConsolePage workflow issue creation', () => {
       expect(
         getByRole('button', { name: 'fleet-operator' }),
       ).toBeInTheDocument();
-      expect(
-        queryByRole('button', { name: /tdpm console port/i }),
-      ).toBeNull();
+      expect(queryByRole('button', { name: /tdpm console port/i })).toBeNull();
 
       fireEvent.click(getByRole('button', { name: 'Fleet task' }));
       fireEvent.click(getByRole('button', { name: 'fleet-operator' }));

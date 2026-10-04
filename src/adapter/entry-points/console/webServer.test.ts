@@ -3317,12 +3317,14 @@ describe('webServer GET /api/projects', () => {
         dashboardDir: null,
         dashboardDataDir: null,
         dashboardProjectNames: ['fleet', 'other'],
-        fleetTaskCreateUrl: 'https://github.com/fleet-org/fleet-repo/issues/new',
+        fleetTaskCreateUrl:
+          'https://github.com/fleet-org/fleet-repo/issues/new',
         resolveProject: async (pjcode) =>
           pjcode === 'fleet'
             ? { pjcode, project: workflowOwningProject }
             : null,
-        isPjcodeConfigured: (pjcode) => pjcode === 'fleet' || pjcode === 'other',
+        isPjcodeConfigured: (pjcode) =>
+          pjcode === 'fleet' || pjcode === 'other',
         port: 0,
       });
       try {
@@ -3335,7 +3337,8 @@ describe('webServer GET /api/projects', () => {
         expect(JSON.parse(response.body)).toEqual({
           pjcodes: ['fleet', 'other'],
           projectUrls: null,
-          fleetTaskCreateUrl: 'https://github.com/fleet-org/fleet-repo/issues/new',
+          fleetTaskCreateUrl:
+            'https://github.com/fleet-org/fleet-repo/issues/new',
           nameWithOwnerByPjcode: { fleet: 'fleet-org/fleet-repo' },
           disabledPjcodes: [],
           workflowStoryEntries: [
@@ -3371,7 +3374,8 @@ describe('webServer GET /api/projects', () => {
         dashboardDir: null,
         dashboardDataDir: null,
         dashboardProjectNames: ['alpha'],
-        fleetTaskCreateUrl: 'https://github.com/fleet-org/fleet-repo/issues/new',
+        fleetTaskCreateUrl:
+          'https://github.com/fleet-org/fleet-repo/issues/new',
         resolveProject: async () => null,
         isPjcodeConfigured: () => false,
         port: 0,

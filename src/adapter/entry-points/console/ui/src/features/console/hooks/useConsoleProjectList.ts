@@ -157,10 +157,7 @@ export const useConsoleProjectList = (
         setWorkflowStoryEntries(result.workflowStoryEntries);
       }
       if (
-        !isSameJsonValue(
-          held.workflowAgentOptions,
-          result.workflowAgentOptions,
-        )
+        !isSameJsonValue(held.workflowAgentOptions, result.workflowAgentOptions)
       ) {
         heldValuesRef.current = {
           ...heldValuesRef.current,

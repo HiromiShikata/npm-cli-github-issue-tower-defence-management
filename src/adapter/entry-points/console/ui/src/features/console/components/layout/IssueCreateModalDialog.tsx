@@ -58,11 +58,11 @@ export const IssueCreateModalDialog = ({
     useState<IssueCreateDestination>(initialDestination);
   const activeStoryEntries =
     destination === 'workflow'
-      ? workflowStoryEntries ?? storyEntries
+      ? (workflowStoryEntries ?? storyEntries)
       : storyEntries;
   const activeAgentOptions =
     destination === 'workflow'
-      ? workflowAgentOptions ?? agentOptions
+      ? (workflowAgentOptions ?? agentOptions)
       : agentOptions;
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
