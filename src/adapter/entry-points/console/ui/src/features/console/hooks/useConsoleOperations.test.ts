@@ -1,4 +1,6 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
+import { createElement, useCallback } from 'react';
+import { ConsoleMarkdownContent } from '../components/content/ConsoleMarkdownContent';
 import { ResourceCache } from '../lib/resourceCache';
 import { overlayStorageKey } from '../logic/overlay';
 import type {
@@ -1118,5 +1120,66 @@ describe('useConsoleOperations', () => {
       expect(bodyInvalidate).toHaveBeenCalledWith(key);
       expect(commentsInvalidate).toHaveBeenCalledWith(key);
     });
+  });
+});
+
+describe('useConsoleOperations returned object referential stability', () => {
+  it('returns the same operations object across a rerender when pjcode and caches are unchanged', () => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const caches = buildOperationCaches();
+    const { result, rerender } = renderHook(
+      (props: { pjcode: string; caches: ConsoleCaches }) =>
+        useConsoleOperations(props.pjcode, props.caches),
+      { initialProps: { pjcode: 'acme', caches } },
+    );
+    const operationsAfterFirstRender = result.current;
+    rerender({ pjcode: 'acme', caches });
+    const operationsAfterSecondRender = result.current;
+    expect(operationsAfterSecondRender).toBe(operationsAfterFirstRender);
+  });
+
+  it('keeps the markdown-rendered inline code DOM node stable when the checkbox-toggle callback is rebuilt from an unstable operations object on a once-per-second refresh', () => {
+    const CheckboxToggleMarkdownHarness = ({
+      pjcode,
+      caches,
+    }: {
+      pjcode: string;
+      caches: ConsoleCaches;
+    }) => {
+      const operations = useConsoleOperations(pjcode, caches);
+      const onCheckboxToggle = useCallback(
+        (checkboxIndex: number) => {
+          void checkboxIndex;
+          void operations.issueBodyUpdate;
+        },
+        [operations],
+      );
+      return createElement(ConsoleMarkdownContent, {
+        body: 'See `foo` for details.',
+        onCheckboxToggle,
+      });
+    };
+
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const caches = buildOperationCaches();
+    const { container, rerender } = render(
+      createElement(CheckboxToggleMarkdownHarness, {
+        pjcode: 'acme',
+        caches,
+      }),
+    );
+    const codeElementAfterFirstRender = container.querySelector('code');
+    expect(codeElementAfterFirstRender).not.toBeNull();
+
+    rerender(
+      createElement(CheckboxToggleMarkdownHarness, {
+        pjcode: 'acme',
+        caches,
+      }),
+    );
+    const codeElementAfterSecondRender = container.querySelector('code');
+    expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
   });
 });
