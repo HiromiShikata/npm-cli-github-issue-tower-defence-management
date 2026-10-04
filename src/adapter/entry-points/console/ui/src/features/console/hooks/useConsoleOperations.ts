@@ -32,6 +32,7 @@ import type {
   ConsoleFieldOption,
   ConsoleListItem,
 } from '../logic/types';
+import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import type { ConsoleCaches } from './useConsoleCaches';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
@@ -371,7 +372,14 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      try {
+        await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      } catch (cause: unknown) {
+        if (commentResult.posted) {
+          throw new ConsoleActionPartiallySentError(1, cause);
+        }
+        throw cause;
+      }
       invalidateItemContent(item);
       await onAfterMoveToAwaitingWorkspace?.();
       if (!commentResult.posted) {
@@ -430,7 +438,11 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      try {
+        await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      } catch (cause: unknown) {
+        throw new ConsoleActionPartiallySentError(1, cause);
+      }
       invalidateItemContent(item);
       await onAfterMoveToAwaitingWorkspace?.();
       return commentResult.comment;
