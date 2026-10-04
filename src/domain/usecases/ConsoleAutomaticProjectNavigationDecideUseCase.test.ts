@@ -871,10 +871,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
 describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerElapsed/remainingCountIsZero/taskOpen combinations (#33007)', () => {
   const fixedInputBase: Omit<
     ConsoleAutomaticProjectNavigationDecideInput,
-    | 'actionNewlyEnqueued'
-    | 'timerElapsed'
-    | 'remainingCountIsZero'
-    | 'taskOpen'
+    'actionNewlyEnqueued' | 'timerElapsed' | 'remainingCountIsZero' | 'taskOpen'
   > = {
     snapshotsReady: true,
     explicitlySelectedPjcodeMatchesCurrent: false,
@@ -917,8 +914,7 @@ describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerE
       remainingCountIsZero: true,
       taskOpen: true,
       expectedTargetPjcode: null,
-      description:
-        'no change (taskOpen suppresses remainingCountIsZero path)',
+      description: 'no change (taskOpen suppresses remainingCountIsZero path)',
     },
     {
       actionNewlyEnqueued: true,

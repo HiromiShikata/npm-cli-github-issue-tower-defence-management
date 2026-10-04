@@ -1562,11 +1562,12 @@ describe('useConsoleActionQueue', () => {
         buildCommit: (): jest.Mock<Promise<void>, []> =>
           jest
             .fn<Promise<void>, []>()
-            .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
+            .mockRejectedValue(
+              new Error('HTTP 422 review cannot be requested'),
+            ),
       },
       {
-        writeOutcome:
-          'is held offline because the network is unavailable',
+        writeOutcome: 'is held offline because the network is unavailable',
         buildCommit: (): jest.Mock<Promise<void>, []> =>
           jest
             .fn<Promise<void>, []>()

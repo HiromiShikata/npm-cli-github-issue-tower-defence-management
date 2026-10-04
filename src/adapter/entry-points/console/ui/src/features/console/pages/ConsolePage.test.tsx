@@ -483,9 +483,7 @@ describe('ConsolePage', () => {
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(
-        getByText('Approved & Merged — PR o/r#851'),
-      ).toBeInTheDocument();
+      expect(getByText('Approved & Merged — PR o/r#851')).toBeInTheDocument();
       expect(getByText('Undo')).toBeInTheDocument();
     } finally {
       jest.useRealTimers();
@@ -2732,9 +2730,7 @@ describe('ConsolePage auto-advance tab', () => {
 
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
       expect(navigatePush).toHaveBeenCalledTimes(1);
       const postCallsBeforeGraceElapses = fetchMock.mock.calls.filter(
         (call) => call[1]?.method === 'POST',
@@ -2791,9 +2787,7 @@ describe('ConsolePage auto-advance tab', () => {
 
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
 
       act(() => {
         jest.advanceTimersByTime(5100);
@@ -2849,9 +2843,7 @@ describe('ConsolePage auto-advance tab', () => {
       fireEvent.click(getByText('Add serveConsole subcommand'));
       fireEvent.click(await findByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
       expect(navigatePush).toHaveBeenCalledTimes(1);
 
       await act(async () => {
@@ -2914,9 +2906,7 @@ describe('ConsolePage auto-advance tab', () => {
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
 
       fireEvent.click(getByText('Undo'));
 
@@ -2988,9 +2978,7 @@ describe('ConsolePage auto-advance tab', () => {
       expect(await findByText('Approve & Merge')).toBeInTheDocument();
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
 
       fireEvent.click(getByText('Undo'));
 
@@ -3053,9 +3041,7 @@ describe('ConsolePage auto-advance tab', () => {
 
       fireEvent.click(getByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
       expect(navigatePush).toHaveBeenCalledTimes(1);
 
       await act(async () => {
@@ -3111,9 +3097,7 @@ describe('ConsolePage auto-advance tab', () => {
       fireEvent.click(getByText('Add serveConsole subcommand'));
       fireEvent.click(await findByText('Approve & Merge'));
 
-      expect(navigatePush).toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
 
       await act(async () => {
         jest.advanceTimersByTime(5100);
@@ -3123,8 +3107,7 @@ describe('ConsolePage auto-advance tab', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.console-offline-panel-header')
-            ?.textContent,
+          container.querySelector('.console-offline-panel-header')?.textContent,
         ).toMatch(/^1 action held/);
       });
       expect(
@@ -6249,9 +6232,7 @@ describe('ConsolePage offline action queue', () => {
     expect(view.getByText('Commented — Issue #866')).toBeInTheDocument();
     await waitFor(() => {
       expect(
-        view.getAllByText(
-          'o/r#866 — Notify finished issue preparation (open)',
-        ),
+        view.getAllByText('o/r#866 — Notify finished issue preparation (open)'),
       ).toHaveLength(2);
     });
     expect(postCount(fetchMock)).toBe(0);
