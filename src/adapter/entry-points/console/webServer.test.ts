@@ -3117,6 +3117,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3150,6 +3152,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3189,6 +3193,8 @@ describe('webServer GET /api/projects', () => {
         fleetTaskCreateUrl: null,
         nameWithOwnerByPjcode: null,
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
@@ -3237,11 +3243,196 @@ describe('webServer GET /api/projects', () => {
           alpha: 'HiromiShikata/umino-corporait-operation',
         },
         disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
       });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  describe('workflow-owning project story and agent options', () => {
+    const buildWorkflowOwningProject = (): Project => ({
+      ...mock<Project>(),
+      id: 'PVT_workflow_owner',
+      story: {
+        name: 'Story',
+        fieldId: 'workflowStoryField',
+        databaseId: 2,
+        stories: [
+          {
+            id: 'opt_fleet_task',
+            name: 'Fleet task',
+            color: 'GREEN',
+            description: 'Fleet task story description',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+      agent: {
+        name: 'Agent',
+        fieldId: 'workflowAgentField',
+        options: [
+          {
+            id: 'agent_opt_developer',
+            name: 'developer',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      },
+    });
+
+    const writeDefaultNameWithOwner = (
+      dataDir: string,
+      pjcode: string,
+      defaultNameWithOwner: string,
+    ): void => {
+      const storiesDir = path.join(dataDir, pjcode, 'stories');
+      fs.mkdirSync(storiesDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(storiesDir, 'list.json'),
+        JSON.stringify({
+          pjcode,
+          generatedAt: '2026-01-01T00:00:00Z',
+          stories: [],
+          storyOrder: [],
+          storyColors: {},
+          defaultNameWithOwner,
+        }),
+      );
+    };
+
+    it('returns workflowStoryEntries and workflowAgentOptions resolved from the project owning the configured fleet repository', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+      const dataDir = path.join(tmpDir, 'data');
+      writeDefaultNameWithOwner(dataDir, 'fleet', 'fleet-org/fleet-repo');
+      const workflowOwningProject = buildWorkflowOwningProject();
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: dataDir,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: ['fleet', 'other'],
+        fleetTaskCreateUrl:
+          'https://github.com/fleet-org/fleet-repo/issues/new',
+        resolveProject: async (pjcode) =>
+          pjcode === 'fleet'
+            ? { pjcode, project: workflowOwningProject }
+            : null,
+        isPjcodeConfigured: (pjcode) =>
+          pjcode === 'fleet' || pjcode === 'other',
+        port: 0,
+      });
+      try {
+        const response = await request(
+          server,
+          'GET',
+          `/api/projects?k=${testToken}`,
+        );
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toEqual({
+          pjcodes: ['fleet', 'other'],
+          projectUrls: null,
+          fleetTaskCreateUrl:
+            'https://github.com/fleet-org/fleet-repo/issues/new',
+          nameWithOwnerByPjcode: { fleet: 'fleet-org/fleet-repo' },
+          disabledPjcodes: [],
+          workflowStoryEntries: [
+            {
+              storyName: 'Fleet task',
+              storyOptionId: 'opt_fleet_task',
+              color: 'GREEN',
+              description: 'Fleet task story description',
+              openItemCount: 0,
+              storyViewUrl: null,
+              items: [],
+            },
+          ],
+          workflowAgentOptions: [
+            { id: 'agent_opt_developer', name: 'developer', color: 'BLUE' },
+          ],
+        });
+      } finally {
+        await closeServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('returns workflowStoryEntries and workflowAgentOptions as null when no configured pjcode owns the fleet repository', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+      const dataDir = path.join(tmpDir, 'data');
+      writeDefaultNameWithOwner(dataDir, 'alpha', 'alpha-org/alpha-repo');
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: dataDir,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: ['alpha'],
+        fleetTaskCreateUrl:
+          'https://github.com/fleet-org/fleet-repo/issues/new',
+        resolveProject: async () => null,
+        isPjcodeConfigured: () => false,
+        port: 0,
+      });
+      try {
+        const response = await request(
+          server,
+          'GET',
+          `/api/projects?k=${testToken}`,
+        );
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toMatchObject({
+          workflowStoryEntries: null,
+          workflowAgentOptions: null,
+        });
+      } finally {
+        await closeServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('returns workflowStoryEntries and workflowAgentOptions as null when no fleet repository is configured', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+      const dataDir = path.join(tmpDir, 'data');
+      writeDefaultNameWithOwner(dataDir, 'fleet', 'fleet-org/fleet-repo');
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: dataDir,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: ['fleet'],
+        fleetTaskCreateUrl: null,
+        resolveProject: async (pjcode) =>
+          pjcode === 'fleet'
+            ? { pjcode, project: buildWorkflowOwningProject() }
+            : null,
+        isPjcodeConfigured: (pjcode) => pjcode === 'fleet',
+        port: 0,
+      });
+      try {
+        const response = await request(
+          server,
+          'GET',
+          `/api/projects?k=${testToken}`,
+        );
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toMatchObject({
+          workflowStoryEntries: null,
+          workflowAgentOptions: null,
+        });
+      } finally {
+        await closeServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
   });
 
   const disabledPjcodesTestCases: {

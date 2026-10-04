@@ -3,10 +3,12 @@ import type {
   ConsoleColor,
   ConsoleComment,
   ConsoleCommit,
+  ConsoleFieldOption,
   ConsoleIssueState,
   ConsoleMergeableStatus,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
+  ConsoleStoryEntry,
 } from '../logic/types';
 
 export type ConsoleApiClient = {
@@ -614,6 +616,8 @@ export type ProjectListResponse = {
   fleetTaskCreateUrl: string | null;
   nameWithOwnerByPjcode: Record<string, string> | null;
   disabledPjcodes: string[];
+  workflowStoryEntries: ConsoleStoryEntry[] | null;
+  workflowAgentOptions: ConsoleFieldOption[] | null;
 };
 
 const parseStringRecord = (value: unknown): Record<string, string> | null => {
@@ -626,6 +630,20 @@ const parseStringRecord = (value: unknown): Record<string, string> | null => {
     ),
   );
 };
+
+const parseWorkflowStoryEntries = (
+  value: unknown,
+): ConsoleStoryEntry[] | null =>
+  Array.isArray(value)
+    ? (value.filter(isRecord) as unknown as ConsoleStoryEntry[])
+    : null;
+
+const parseWorkflowAgentOptions = (
+  value: unknown,
+): ConsoleFieldOption[] | null =>
+  Array.isArray(value)
+    ? (value.filter(isRecord) as unknown as ConsoleFieldOption[])
+    : null;
 
 export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   const response = await fetch('/api/projects');
@@ -644,6 +662,8 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       fleetTaskCreateUrl: null,
       nameWithOwnerByPjcode: null,
       disabledPjcodes: [],
+      workflowStoryEntries: null,
+      workflowAgentOptions: null,
     };
   }
   const record = payload as Record<string, unknown>;
@@ -663,12 +683,20 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
         (entry): entry is string => typeof entry === 'string',
       )
     : [];
+  const workflowStoryEntries = parseWorkflowStoryEntries(
+    record.workflowStoryEntries,
+  );
+  const workflowAgentOptions = parseWorkflowAgentOptions(
+    record.workflowAgentOptions,
+  );
   return {
     pjcodes,
     projectUrls,
     fleetTaskCreateUrl,
     nameWithOwnerByPjcode,
     disabledPjcodes,
+    workflowStoryEntries,
+    workflowAgentOptions,
   };
 };
 

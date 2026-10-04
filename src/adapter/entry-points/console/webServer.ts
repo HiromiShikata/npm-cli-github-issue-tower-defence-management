@@ -6,6 +6,10 @@ import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
+import type {
+  ConsoleFieldOption,
+  ConsoleStoryEntry,
+} from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import {
   CONSOLE_LIST_TAB_NAMES,
   buildConsoleDataResponse,
@@ -522,36 +526,113 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
   return parsed;
 };
 
+const buildNameWithOwnerByPjcode = (
+  options: WebServerOptions,
+): Record<string, string> => {
+  const nameWithOwnerByPjcode: Record<string, string> = {};
+  if (options.consoleDataOutputDir === null) {
+    return nameWithOwnerByPjcode;
+  }
+  for (const pjcode of options.dashboardProjectNames) {
+    const storiesPath = path.join(
+      options.consoleDataOutputDir,
+      pjcode,
+      'stories',
+      'list.json',
+    );
+    try {
+      const raw = fs.readFileSync(storiesPath, 'utf-8');
+      const data: unknown = JSON.parse(raw);
+      if (isRecord(data)) {
+        const { defaultNameWithOwner } = data;
+        if (
+          typeof defaultNameWithOwner === 'string' &&
+          defaultNameWithOwner.length > 0
+        ) {
+          nameWithOwnerByPjcode[pjcode] = defaultNameWithOwner;
+        }
+      }
+    } catch {}
+  }
+  return nameWithOwnerByPjcode;
+};
+
+const resolveWorkflowOwningPjcode = (
+  options: WebServerOptions,
+  nameWithOwnerByPjcode: Record<string, string>,
+): string | null => {
+  const fleetTaskCreateUrl = options.fleetTaskCreateUrl ?? null;
+  if (fleetTaskCreateUrl === null) {
+    return null;
+  }
+  const match = fleetTaskCreateUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+  if (match === null) {
+    return null;
+  }
+  const fleetRepositoryNameWithOwner = match[1];
+  const matchingEntry = Object.entries(nameWithOwnerByPjcode).find(
+    ([, nameWithOwner]) => nameWithOwner === fleetRepositoryNameWithOwner,
+  );
+  return matchingEntry !== undefined ? matchingEntry[0] : null;
+};
+
+const resolveWorkflowStoryAndAgentOptions = async (
+  options: WebServerOptions,
+  workflowOwningPjcode: string | null,
+): Promise<{
+  workflowStoryEntries: ConsoleStoryEntry[] | null;
+  workflowAgentOptions: ConsoleFieldOption[] | null;
+}> => {
+  const none = { workflowStoryEntries: null, workflowAgentOptions: null };
+  if (workflowOwningPjcode === null || options.resolveProject == null) {
+    return none;
+  }
+  let binding;
+  try {
+    binding = await options.resolveProject(workflowOwningPjcode);
+  } catch (error) {
+    console.error(
+      `[/api/projects] failed to resolve the workflow-owning project "${workflowOwningPjcode}"; workflowStoryEntries and workflowAgentOptions will be null:`,
+      error,
+    );
+    return none;
+  }
+  if (binding === null) {
+    return none;
+  }
+  const storyOptions = binding.project.story?.stories ?? null;
+  const agentFieldOptions = binding.project.agent?.options ?? null;
+  return {
+    workflowStoryEntries:
+      storyOptions === null
+        ? null
+        : storyOptions.map((option) => ({
+            storyName: option.name,
+            storyOptionId: option.id,
+            color: option.color,
+            description: option.description,
+            openItemCount: 0,
+            storyViewUrl: null,
+            items: [],
+          })),
+    workflowAgentOptions:
+      agentFieldOptions === null
+        ? null
+        : agentFieldOptions.map((option) => ({
+            id: option.id,
+            name: option.name,
+            color: option.color,
+          })),
+  };
+};
+
 const handleReadApi = async (
   options: WebServerOptions,
   requestPath: string,
   searchParams: URLSearchParams,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   if (requestPath === '/api/projects') {
-    const nameWithOwnerByPjcode: Record<string, string> = {};
-    if (options.consoleDataOutputDir !== null) {
-      for (const pjcode of options.dashboardProjectNames) {
-        const storiesPath = path.join(
-          options.consoleDataOutputDir,
-          pjcode,
-          'stories',
-          'list.json',
-        );
-        try {
-          const raw = fs.readFileSync(storiesPath, 'utf-8');
-          const data: unknown = JSON.parse(raw);
-          if (isRecord(data)) {
-            const { defaultNameWithOwner } = data;
-            if (
-              typeof defaultNameWithOwner === 'string' &&
-              defaultNameWithOwner.length > 0
-            ) {
-              nameWithOwnerByPjcode[pjcode] = defaultNameWithOwner;
-            }
-          }
-        } catch {}
-      }
-    }
+    const nameWithOwnerByPjcode = buildNameWithOwnerByPjcode(options);
     const disabledPjcodes: string[] = [];
     const dashboardProjectConfigDirectory =
       options.dashboardProjectConfigDirectory ?? null;
@@ -570,6 +651,12 @@ const handleReadApi = async (
         } catch {}
       }
     }
+    const workflowOwningPjcode = resolveWorkflowOwningPjcode(
+      options,
+      nameWithOwnerByPjcode,
+    );
+    const { workflowStoryEntries, workflowAgentOptions } =
+      await resolveWorkflowStoryAndAgentOptions(options, workflowOwningPjcode);
     return {
       statusCode: 200,
       body: {
@@ -581,6 +668,8 @@ const handleReadApi = async (
             ? nameWithOwnerByPjcode
             : null,
         disabledPjcodes,
+        workflowStoryEntries,
+        workflowAgentOptions,
       },
     };
   }
@@ -724,6 +813,11 @@ const handleOperationApi = async (
   const resolveIssueRepository =
     options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
   const consoleDataOutputDir = options.consoleDataOutputDir;
+  const nameWithOwnerByPjcode = buildNameWithOwnerByPjcode(options);
+  const workflowOwningPjcode = resolveWorkflowOwningPjcode(
+    options,
+    nameWithOwnerByPjcode,
+  );
   const context: ConsoleOperationContext = {
     resolveIssueRepository,
     resolveProject,
@@ -741,6 +835,14 @@ const handleOperationApi = async (
               pjcode,
             ).moveItemToQueuedTab(projectItemId, canonicalStatusName);
           }
+        : null,
+    workflowRepositoryNameWithOwner:
+      workflowOwningPjcode !== null
+        ? nameWithOwnerByPjcode[workflowOwningPjcode]
+        : null,
+    resolveWorkflowProjectBinding:
+      workflowOwningPjcode !== null
+        ? () => resolveProject(workflowOwningPjcode)
         : null,
   };
   const dispatched = dispatchOperation(

@@ -139,6 +139,8 @@ describe('consoleOperationApi', () => {
       invalidateProject: null,
       updateProjectCacheEntry: null,
       patchItemIntoQueuedTab: null,
+      resolveWorkflowProjectBinding: null,
+      workflowRepositoryNameWithOwner: null,
     };
   });
 
@@ -155,6 +157,8 @@ describe('consoleOperationApi', () => {
     invalidateProject: null,
     updateProjectCacheEntry: null,
     patchItemIntoQueuedTab: null,
+    resolveWorkflowProjectBinding: null,
+    workflowRepositoryNameWithOwner: null,
   });
 
   afterEach(() => {
@@ -1733,6 +1737,8 @@ describe('consoleOperationApi', () => {
         invalidateProject: null,
         updateProjectCacheEntry: null,
         patchItemIntoQueuedTab: null,
+        resolveWorkflowProjectBinding: null,
+        workflowRepositoryNameWithOwner: null,
       };
     });
 
@@ -1982,6 +1988,8 @@ describe('consoleOperationApi', () => {
         invalidateProject: null,
         updateProjectCacheEntry: null,
         patchItemIntoQueuedTab: null,
+        resolveWorkflowProjectBinding: null,
+        workflowRepositoryNameWithOwner: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -3273,6 +3281,161 @@ describe('consoleOperationApi', () => {
         ),
       ).rejects.toThrow('project field update failed');
     });
+
+    describe('workflow-destination project binding', () => {
+      const viewedProject: Project = {
+        ...projectWithStory(),
+        id: 'PVT_viewed',
+        url: 'https://github.com/orgs/acme/projects/1',
+        story: {
+          name: 'Story',
+          fieldId: 'viewedStoryField',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'opt_viewed_story',
+              name: 'Viewed project story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+        agent: {
+          name: 'Agent',
+          fieldId: 'viewedAgentField',
+          options: [
+            {
+              id: 'agent_opt_viewed',
+              name: 'developer',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+
+      const workflowOwningProject: Project = {
+        ...projectWithStory(),
+        id: 'PVT_workflow_owner',
+        url: 'https://github.com/orgs/fleet-org/projects/9',
+        story: {
+          name: 'Story',
+          fieldId: 'workflowStoryField',
+          databaseId: 2,
+          stories: [
+            {
+              id: 'opt_workflow_story',
+              name: 'Fleet task',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+        agent: {
+          name: 'Agent',
+          fieldId: 'workflowAgentField',
+          options: [
+            {
+              id: 'agent_opt_workflow',
+              name: 'developer',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+
+      it('binds the created issue to the workflow-owning project, not the viewed pjcode project, when nameWithOwner matches the configured workflow repository', async () => {
+        const createdIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/fleet-org/fleet-repo/issues/42',
+          itemId: 'PVTI_fleet',
+        };
+        issueRepository.get.mockResolvedValue(createdIssue);
+
+        const workflowContext: ConsoleOperationContext = {
+          ...contextForProject(viewedProject),
+          workflowRepositoryNameWithOwner: 'fleet-org/fleet-repo',
+          resolveWorkflowProjectBinding: async () => ({
+            pjcode: 'fleet-pjcode',
+            project: workflowOwningProject,
+          }),
+        };
+
+        const response = await handleCreateIssue(workflowContext, {
+          pjcode: 'acme',
+          title: 'Fleet task title',
+          storyName: 'Fleet task',
+          nameWithOwner: 'fleet-org/fleet-repo',
+          agentOptionId: 'agent_opt_workflow',
+        });
+
+        expect(response.statusCode).toBe(200);
+        await response.backgroundTask;
+        expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
+          workflowOwningProject,
+          'https://github.com/fleet-org/fleet-repo/issues/42',
+        );
+        expect(issueRepository.updateStory).toHaveBeenCalledWith(
+          expect.objectContaining({ story: workflowOwningProject.story }),
+          createdIssue,
+          'opt_workflow_story',
+        );
+        expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
+          'https://github.com/fleet-org/fleet-repo/issues/42',
+          expect.objectContaining({ agent: workflowOwningProject.agent }),
+          'agent_opt_workflow',
+        );
+        expect(issueRepository.addIssueToProject).not.toHaveBeenCalledWith(
+          viewedProject,
+          expect.anything(),
+        );
+      });
+
+      it('falls back to the pjcode-resolved project exactly as today when no workflow project binding resolver is configured, even when nameWithOwner matches the configured workflow repository', async () => {
+        const storyProject = projectWithStory();
+        const createdIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/acme-labs/portal/issues/42',
+          itemId: 'PVTI_new',
+        };
+        issueRepository.get.mockResolvedValue(createdIssue);
+
+        const contextWithUnconfiguredWorkflowResolver: ConsoleOperationContext =
+          {
+            ...contextWithCreateIssueProjectRepository(() => ({
+              getProject: jest.fn().mockResolvedValue(storyProject),
+              updateStoryList: jest.fn(),
+            })),
+            workflowRepositoryNameWithOwner: 'acme-labs/portal',
+            resolveWorkflowProjectBinding: null,
+          };
+
+        const response = await handleCreateIssue(
+          contextWithUnconfiguredWorkflowResolver,
+          {
+            pjcode: 'acme',
+            title: 'New task title',
+            storyName: 'Portal redesign',
+            nameWithOwner: 'acme-labs/portal',
+          },
+        );
+
+        expect(response.statusCode).toBe(200);
+        await response.backgroundTask;
+        expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
+          storyProject,
+          'https://github.com/acme-labs/portal/issues/42',
+        );
+        expect(issueRepository.updateStory).toHaveBeenCalledWith(
+          expect.objectContaining({ story: storyProject.story }),
+          createdIssue,
+          'opt_blue',
+        );
+      });
+    });
   });
 
   describe('handleReorderStory', () => {
@@ -4346,6 +4509,8 @@ describe('consoleOperationApi', () => {
         invalidateProject,
         updateProjectCacheEntry: null,
         patchItemIntoQueuedTab: null,
+        resolveWorkflowProjectBinding: null,
+        workflowRepositoryNameWithOwner: null,
       };
 
       await handleStoryAdd(consecutiveContext, {
@@ -7038,6 +7203,8 @@ describe('consoleOperationApi', () => {
         invalidateProject: null,
         updateProjectCacheEntry: null,
         patchItemIntoQueuedTab: null,
+        resolveWorkflowProjectBinding: null,
+        workflowRepositoryNameWithOwner: null,
       };
       const tokenResolver = jest.fn((owner: string) =>
         owner === 'meta-site' ? 'meta-site-token' : 'other-token',
