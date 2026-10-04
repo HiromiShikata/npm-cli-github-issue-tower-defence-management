@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { postConsoleOperation } from '../lib/consoleApi';
+import {
+  COMMENT_OPERATION_PATH,
+  type ConsoleCommentRequest,
+  postConsoleComment,
+  postConsoleOperation,
+} from '../lib/consoleApi';
 import {
   ACTION_TOAST_DELAY_MS,
   type ConsoleToastColor,
@@ -87,6 +92,13 @@ const isConsoleOfflineQueuedAction = (
     a.requestBody !== null
   );
 };
+
+const isConsoleCommentRequest = (
+  requestBody: Record<string, unknown>,
+): requestBody is ConsoleCommentRequest =>
+  typeof requestBody.pjcode === 'string' &&
+  typeof requestBody.url === 'string' &&
+  typeof requestBody.body === 'string';
 
 const loadOfflineQueue = (): ConsoleOfflineQueuedAction[] => {
   try {
@@ -352,6 +364,25 @@ export const useConsoleActionQueue = (
       const action = offlineActionsRef.current.find((a) => a.id === id);
       if (action === undefined) return;
       try {
+        if (
+          action.apiPath === COMMENT_OPERATION_PATH &&
+          isConsoleCommentRequest(action.requestBody)
+        ) {
+          const result = await postConsoleComment(action.requestBody);
+          if (result.posted) {
+            discardOfflineAction(id);
+            return;
+          }
+          const resetInfo =
+            result.rateLimitResetAt !== null
+              ? ` Rate limit resets at ${result.rateLimitResetAt}.`
+              : '';
+          setError({
+            message: action.message,
+            reason: `${result.error}.${resetInfo}`,
+          });
+          return;
+        }
         await postConsoleOperation(action.apiPath, action.requestBody);
         discardOfflineAction(id);
       } catch (cause: unknown) {
