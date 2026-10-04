@@ -1,6 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import {
+  ConsoleActionPartiallySentError,
   type ConsoleActionQueue,
+  consoleActionStepsRun,
   useConsoleActionQueue,
 } from './useConsoleActionQueue';
 
@@ -1141,6 +1143,36 @@ describe('useConsoleActionQueue', () => {
     },
   );
 
+  it('surfaces a host rejection of an action carrying two offline payloads and holds neither payload', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new Error('HTTP 500 close refused')),
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(action.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toMatchObject({
+      message: 'OK & Close — #866',
+      reason: 'HTTP 500 close refused',
+    });
+    expect(result.current.offlineActions).toEqual([]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(result.current.writeState).toEqual({
+      status: 'failed',
+      attempt: 1,
+    });
+  });
+
   it('adds the entries passed to offlineActionsCreate immediately and in order, persists them, and sends nothing', async () => {
     const fetchMock = installOperationFetch();
     const { result } = renderHook(() => useConsoleActionQueue());
@@ -1367,4 +1399,346 @@ describe('useConsoleActionQueue', () => {
       });
     });
   });
+});
+
+describe('ConsoleActionPartiallySentError', () => {
+  it.each([
+    {
+      causeKind: 'a network TypeError',
+      sentStepCount: 1,
+      cause: new TypeError('Failed to fetch'),
+      expectedMessage: 'Failed to fetch',
+    },
+    {
+      causeKind: 'a host rejection Error',
+      sentStepCount: 2,
+      cause: new Error('HTTP 500 close refused'),
+      expectedMessage: 'HTTP 500 close refused',
+    },
+    {
+      causeKind: 'a string',
+      sentStepCount: 1,
+      cause: 'status refused',
+      expectedMessage: 'status refused',
+    },
+    {
+      causeKind: 'a number',
+      sentStepCount: 3,
+      cause: 503,
+      expectedMessage: '503',
+    },
+  ])(
+    'is an Error carrying the sent step count, the cause and the message of $causeKind',
+    ({ sentStepCount, cause, expectedMessage }) => {
+      const partiallySentError = new ConsoleActionPartiallySentError(
+        sentStepCount,
+        cause,
+      );
+
+      expect(partiallySentError).toBeInstanceOf(Error);
+      expect(partiallySentError).toBeInstanceOf(
+        ConsoleActionPartiallySentError,
+      );
+      expect(partiallySentError).not.toBeInstanceOf(TypeError);
+      expect(partiallySentError.sentStepCount).toBe(sentStepCount);
+      expect(partiallySentError.cause).toBe(cause);
+      expect(partiallySentError.message).toBe(expectedMessage);
+    },
+  );
+});
+
+describe('consoleActionStepsRun', () => {
+  const settledRejection = (stepsRun: Promise<void>): Promise<unknown> =>
+    stepsRun.then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  const buildSteps = (
+    stepCount: number,
+    rejectingStepIndex: number | null,
+    stepFailure: unknown,
+  ): jest.Mock<Promise<void>, []>[] =>
+    Array.from({ length: stepCount }, (_unusedStep, stepIndex) =>
+      stepIndex === rejectingStepIndex
+        ? jest.fn<Promise<void>, []>().mockRejectedValue(stepFailure)
+        : jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
+    );
+
+  it('starts the second step only after the first step resolves and resolves once every step resolves', async () => {
+    let resolveFirstStep: () => void = () => undefined;
+    const firstStep = jest.fn<Promise<void>, []>(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirstStep = resolve;
+        }),
+    );
+    const secondStep = jest
+      .fn<Promise<void>, []>()
+      .mockResolvedValue(undefined);
+
+    const stepsRun = consoleActionStepsRun([firstStep, secondStep]);
+    await flushMicrotasks();
+
+    expect(firstStep).toHaveBeenCalledTimes(1);
+    expect(secondStep).not.toHaveBeenCalled();
+
+    resolveFirstStep();
+    await expect(stepsRun).resolves.toBeUndefined();
+    expect(secondStep).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      stepCount: 2,
+      stepFailure: new TypeError('Failed to fetch'),
+      expectedStepCallCounts: [1, 0],
+    },
+    {
+      stepCount: 3,
+      stepFailure: new Error('HTTP 500 comment refused'),
+      expectedStepCallCounts: [1, 0, 0],
+    },
+  ])(
+    'rejects with the first step error unchanged and runs no later step when the first of $stepCount steps rejects',
+    async ({ stepCount, stepFailure, expectedStepCallCounts }) => {
+      const steps = buildSteps(stepCount, 0, stepFailure);
+
+      const rejection = await settledRejection(consoleActionStepsRun(steps));
+
+      expect(rejection).toBe(stepFailure);
+      expect(steps.map((step) => step.mock.calls.length)).toEqual(
+        expectedStepCallCounts,
+      );
+    },
+  );
+
+  it.each([
+    {
+      stepCount: 2,
+      rejectingStepIndex: 1,
+      stepFailure: new TypeError('Failed to fetch'),
+      expectedSentStepCount: 1,
+      expectedStepCallCounts: [1, 1],
+    },
+    {
+      stepCount: 3,
+      rejectingStepIndex: 1,
+      stepFailure: new Error('HTTP 500 close refused'),
+      expectedSentStepCount: 1,
+      expectedStepCallCounts: [1, 1, 0],
+    },
+    {
+      stepCount: 3,
+      rejectingStepIndex: 2,
+      stepFailure: new TypeError('Failed to fetch'),
+      expectedSentStepCount: 2,
+      expectedStepCallCounts: [1, 1, 1],
+    },
+  ])(
+    'rejects with a partially sent error counting $expectedSentStepCount sent steps and runs no later step when step index $rejectingStepIndex of $stepCount steps rejects',
+    async ({
+      stepCount,
+      rejectingStepIndex,
+      stepFailure,
+      expectedSentStepCount,
+      expectedStepCallCounts,
+    }) => {
+      const steps = buildSteps(stepCount, rejectingStepIndex, stepFailure);
+
+      const rejection = await settledRejection(consoleActionStepsRun(steps));
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      const partiallySentError = rejection as ConsoleActionPartiallySentError;
+      expect(partiallySentError.sentStepCount).toBe(expectedSentStepCount);
+      expect(partiallySentError.cause).toBe(stepFailure);
+      expect(steps.map((step) => step.mock.calls.length)).toEqual(
+        expectedStepCallCounts,
+      );
+    },
+  );
+});
+
+describe('useConsoleActionQueue with a partially sent two-step action', () => {
+  const setStatusOfflinePayload = {
+    ...heldItemFields,
+    apiPath: '/api/triage',
+    requestBody: {
+      pjcode: 'acme',
+      action: 'set_status',
+      issueUrl: 'https://github.com/o/r/issues/866',
+      projectItemId: 'PVTI_2',
+      statusName: 'Awaiting Workspace',
+    },
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    localStorage.clear();
+  });
+
+  const commitAfterUndoWindow = async (
+    queue: { current: ConsoleActionQueue },
+    action: ReturnType<typeof makeAction>,
+  ): Promise<void> => {
+    act(() => {
+      queue.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+  };
+
+  it.each([
+    {
+      sentStepCount: 1,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+      expectedHeldPayloads: [closeOfflinePayload],
+    },
+    {
+      sentStepCount: 1,
+      offline: [
+        commentOfflinePayload,
+        closeOfflinePayload,
+        setStatusOfflinePayload,
+      ],
+      expectedHeldPayloads: [closeOfflinePayload, setStatusOfflinePayload],
+    },
+    {
+      sentStepCount: 2,
+      offline: [
+        commentOfflinePayload,
+        closeOfflinePayload,
+        setStatusOfflinePayload,
+      ],
+      expectedHeldPayloads: [setStatusOfflinePayload],
+    },
+  ])(
+    'holds only the offline payloads after the $sentStepCount sent steps, each as its own entry in order, without an error when the unsent step fails because the network is unavailable',
+    async ({ sentStepCount, offline, expectedHeldPayloads }) => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        message: 'OK & Close — #866',
+        color: 'red',
+        commit: jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(
+            new ConsoleActionPartiallySentError(
+              sentStepCount,
+              new TypeError('Failed to fetch'),
+            ),
+          ),
+        offline,
+      });
+
+      await commitAfterUndoWindow(result, action);
+
+      const expectedHeld = expectedHeldPayloads.map((heldPayload) =>
+        expect.objectContaining({
+          ...heldPayload,
+          message: 'OK & Close — #866',
+          color: 'red',
+        }),
+      );
+      expect(action.commit).toHaveBeenCalledTimes(1);
+      expect(result.current.offlineActions).toEqual(expectedHeld);
+      expect(readStoredOfflineQueue()).toEqual(expectedHeld);
+      expect(
+        new Set(result.current.offlineActions.map((held) => held.id)).size,
+      ).toBe(expectedHeldPayloads.length);
+      expect(result.current.error).toBeNull();
+      expect(result.current.writeState).toEqual({
+        status: 'offline',
+        attempt: 1,
+      });
+    },
+  );
+
+  it('sends only the held close and never the comment when the held entries of an action whose comment was already sent are confirmed', async () => {
+    const fetchMock = installOperationFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(
+          new ConsoleActionPartiallySentError(
+            1,
+            new TypeError('Failed to fetch'),
+          ),
+        ),
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+
+    for (const held of result.current.offlineActions) {
+      await act(async () => {
+        await result.current.confirmOfflineAction(held.id);
+      });
+    }
+
+    expect(
+      fetchMock.mock.calls.map(([url, init]) => ({
+        url,
+        requestBody: JSON.parse(String(init?.body)),
+      })),
+    ).toEqual([
+      {
+        url: expect.stringMatching(/\/api\/triage$/),
+        requestBody: closeOfflinePayload.requestBody,
+      },
+    ]);
+    expect(result.current.offlineActions).toEqual([]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+  });
+
+  it.each([
+    {
+      failureKind: 'the unsent step is rejected by the host',
+      cause: new Error('HTTP 500 close refused'),
+      offline: [commentOfflinePayload, closeOfflinePayload],
+      expectedReason: 'HTTP 500 close refused',
+    },
+    {
+      failureKind:
+        'the unsent step fails because the network is unavailable but the action carries no offline payload',
+      cause: new TypeError('Failed to fetch'),
+      offline: undefined,
+      expectedReason: 'Failed to fetch',
+    },
+  ])(
+    'surfaces the failure and holds nothing when $failureKind',
+    async ({ cause, offline, expectedReason }) => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        message: 'OK & Close — #866',
+        color: 'red',
+        commit: jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(new ConsoleActionPartiallySentError(1, cause)),
+        offline,
+      });
+
+      await commitAfterUndoWindow(result, action);
+
+      expect(action.commit).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toMatchObject({
+        message: 'OK & Close — #866',
+        reason: expectedReason,
+      });
+      expect(result.current.offlineActions).toEqual([]);
+      expect(readStoredOfflineQueue()).toEqual([]);
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 1,
+      });
+    },
+  );
 });

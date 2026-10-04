@@ -10,6 +10,7 @@ import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
+import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOperationsApi } from './useConsoleOperations';
 import { useConsoleOperations } from './useConsoleOperations';
@@ -842,6 +843,137 @@ describe('useConsoleOperations', () => {
     });
     expect(onAfterMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(callbackCalledAfterTriageCount).toBe(1);
+  });
+
+  describe('comment then Awaiting Workspace status operations', () => {
+    const awaitingWorkspaceOption = (): ConsoleFieldOption => {
+      const [option] = consoleStatusOptionsFixture.filter(
+        (o) => o.name.toLowerCase() === 'awaiting workspace',
+      );
+      return option;
+    };
+
+    const commentThenStatusOperations = [
+      {
+        operationName: 'okAndMoveToAwaitingWorkspace',
+        runOperation: (
+          operations: ConsoleOperationsApi,
+          option: ConsoleFieldOption,
+        ): Promise<unknown> =>
+          operations.okAndMoveToAwaitingWorkspace(issueItem, option),
+      },
+      {
+        operationName: 'addCommentAndMoveToAwaitingWorkspace',
+        runOperation: (
+          operations: ConsoleOperationsApi,
+          option: ConsoleFieldOption,
+        ): Promise<unknown> =>
+          asAtomicAwaitingWorkspaceOperations(
+            operations,
+          ).addCommentAndMoveToAwaitingWorkspace(
+            issueItem,
+            'moving to workspace',
+            option,
+          ),
+      },
+    ];
+
+    const settledRejection = (operationResult: Promise<unknown>) =>
+      operationResult.then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    it.each(commentThenStatusOperations)(
+      'rejects $operationName with the network TypeError when every request fails because the network is unavailable',
+      async ({ runOperation }) => {
+        global.fetch = jest.fn(async () => {
+          throw new TypeError('Failed to fetch');
+        }) as unknown as typeof fetch;
+        const { result } = setup();
+        const rejection = await settledRejection(
+          runOperation(result.current.operations, awaitingWorkspaceOption()),
+        );
+        expect(rejection).toBeInstanceOf(TypeError);
+        expect((rejection as TypeError).message).toBe('Failed to fetch');
+      },
+    );
+
+    const respondWithPostedComment = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        comment: {
+          author: 'HiromiShikata',
+          body: 'ok',
+          createdAt: '2026-06-19T11:58:00.000Z',
+        },
+      }),
+    });
+
+    const statusFailures = [
+      {
+        statusFailureKind: 'fails because the network is unavailable',
+        respondToStatus: async (): Promise<never> => {
+          throw new TypeError('Failed to fetch');
+        },
+        isNetworkFailureExpectedAsCause: true,
+      },
+      {
+        statusFailureKind: 'answers HTTP 500',
+        respondToStatus: async () => ({
+          ok: false,
+          status: 500,
+          text: async () => 'triage service down',
+        }),
+        isNetworkFailureExpectedAsCause: false,
+      },
+    ];
+
+    it.each(
+      commentThenStatusOperations.flatMap((operation) =>
+        statusFailures.map((statusFailure) => ({
+          ...operation,
+          ...statusFailure,
+        })),
+      ),
+    )(
+      'rejects $operationName with a partially sent error counting the posted comment when the comment is posted and the status request $statusFailureKind',
+      async ({
+        runOperation,
+        respondToStatus,
+        isNetworkFailureExpectedAsCause,
+      }) => {
+        const calledUrls: string[] = [];
+        global.fetch = jest.fn(async (url: unknown) => {
+          calledUrls.push(url as string);
+          return (url as string) === '/api/comment'
+            ? respondWithPostedComment()
+            : respondToStatus();
+        }) as unknown as typeof fetch;
+        const { result } = setup();
+
+        const rejection = await settledRejection(
+          runOperation(result.current.operations, awaitingWorkspaceOption()),
+        );
+
+        expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+        const partiallySentError = rejection as ConsoleActionPartiallySentError;
+        expect(partiallySentError.sentStepCount).toBe(1);
+        expect(partiallySentError.cause).toBeInstanceOf(Error);
+        expect(partiallySentError.cause instanceof TypeError).toBe(
+          isNetworkFailureExpectedAsCause,
+        );
+        expect(partiallySentError.message).toBe(
+          (partiallySentError.cause as Error).message,
+        );
+        expect(
+          calledUrls.filter(
+            (url) => url === '/api/comment' || url === '/api/triage',
+          ),
+        ).toEqual(['/api/comment', '/api/triage']);
+      },
+    );
   });
 
   describe('issueBodyUpdate', () => {

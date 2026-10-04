@@ -1,5 +1,8 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
-import type { ConsoleOfflinePayload } from '../hooks/useConsoleActionQueue';
+import {
+  ConsoleActionPartiallySentError,
+  type ConsoleOfflinePayload,
+} from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import {
   buildTriageRequest,
@@ -3296,4 +3299,138 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       });
     },
   );
+
+  const commentThenCloseActions = [
+    { buttonLabel: 'OK & Close', expectedCommentBody: 'ok' },
+    {
+      buttonLabel: 'Comment & Close',
+      expectedCommentBody: draftWrittenBeforeClosing,
+    },
+  ];
+
+  const queuedCommitFor = async (
+    buttonLabel: string,
+    operations: ConsoleOperationsApi,
+    overrides: Partial<ConsoleItemDetailContainerProps> = {},
+  ): Promise<() => Promise<void>> => {
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } =
+      renderIssueDetailForCommentDelivery({
+        operations,
+        onQueueAction,
+        ...overrides,
+      });
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: draftWrittenBeforeClosing },
+    });
+    fireEvent.click(getByText(buttonLabel));
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    return onQueueAction.mock.calls[0][0].commit;
+  };
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel by posting the comment once and then closing the item once when both requests succeed',
+    async ({ buttonLabel, expectedCommentBody }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      await expect(commit()).resolves.toBeUndefined();
+
+      expect((operations.addComment as jest.Mock).mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it.each(commentThenCloseActions)(
+    'rejects the $buttonLabel commit with the unchanged network error and never closes the item when the comment request fails because the network is unavailable',
+    async ({ buttonLabel }) => {
+      const networkFailure = new TypeError('Failed to fetch');
+      const operations = buildOperations();
+      operations.addComment = jest.fn(async () => {
+        throw networkFailure;
+      });
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      await expect(commit()).rejects.toBe(networkFailure);
+
+      expect(operations.addComment).toHaveBeenCalledTimes(1);
+      expect(operations.closeIssue).not.toHaveBeenCalled();
+    },
+  );
+
+  const closeFailures = [
+    {
+      closeFailureKind: 'fails because the network is unavailable',
+      buildCloseFailure: (): Error => new TypeError('Failed to fetch'),
+    },
+    {
+      closeFailureKind: 'is rejected by the host',
+      buildCloseFailure: (): Error => new Error('HTTP 500 close refused'),
+    },
+  ];
+
+  it.each(
+    commentThenCloseActions.flatMap((commentThenCloseAction) =>
+      closeFailures.map((closeFailure) => ({
+        ...commentThenCloseAction,
+        ...closeFailure,
+      })),
+    ),
+  )(
+    'rejects the $buttonLabel commit with a partially sent error counting the posted comment when the comment is posted and the close $closeFailureKind',
+    async ({ buttonLabel, expectedCommentBody, buildCloseFailure }) => {
+      const closeFailure = buildCloseFailure();
+      const operations = buildOperations();
+      operations.closeIssue = jest.fn(async () => {
+        throw closeFailure;
+      });
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      const rejection = await commit().then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      expect(rejection).toMatchObject({ sentStepCount: 1 });
+      expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
+        closeFailure,
+      );
+      expect((operations.addComment as jest.Mock).mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it('rejects the Comment & Awaiting Workspace commit with the partially sent error without reporting a comment error when the comment was posted and the move to Awaiting Workspace fails because the network is unavailable', async () => {
+    const partiallySentError = new ConsoleActionPartiallySentError(
+      1,
+      new TypeError('Failed to fetch'),
+    );
+    const addCommentAndMoveToAwaitingWorkspace = jest.fn(async () => {
+      throw partiallySentError;
+    });
+    const onCommentError = jest.fn();
+    const commit = await queuedCommitFor(
+      'Comment & Awaiting Workspace',
+      buildOperationsWithAtomicAwaitingWorkspace(
+        addCommentAndMoveToAwaitingWorkspace,
+      ),
+      { onCommentError },
+    );
+
+    await expect(commit()).rejects.toBe(partiallySentError);
+
+    expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+    expect(onCommentError).not.toHaveBeenCalled();
+  });
 });
