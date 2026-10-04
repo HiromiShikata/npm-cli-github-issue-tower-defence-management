@@ -1392,6 +1392,48 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe(reason);
       },
     );
+
+    it('excludes a cache from being the board cache hit, and does not leak its Story options, when its only matching issue entry is a cross owner stray URL with story unset', async () => {
+      const foreignIssue: GithubIssueReference = {
+        owner: OTHER_ORG,
+        repo: REPO,
+        number: 999,
+        url: otherOrgIssueUrl(999),
+      };
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        cacheIssues: [cacheIssue(999, null, { url: foreignIssue.url })],
+      });
+      scenario.repository.issueAddAtUrl(foreignIssue.url, { items: [] });
+
+      const { result } = await scenario.run({ issue: foreignIssue });
+
+      expect(result.activeStoryOptions).toEqual([]);
+      expect(result.facts.boardCacheFilePath).toBeNull();
+    });
+
+    it('still excludes a cache from being the board cache hit when the cross owner stray entry sorts before the genuine same-owner entry', async () => {
+      const foreignIssue: GithubIssueReference = {
+        owner: OTHER_ORG,
+        repo: REPO,
+        number: 999,
+        url: otherOrgIssueUrl(999),
+      };
+      const scenario = new StoryGateScenario({
+        story: 'feature A',
+        inCache: false,
+        cacheIssues: [
+          cacheIssue(999, null, { url: foreignIssue.url }),
+          cacheIssue(ASSIGNED, 'feature A'),
+        ],
+      });
+      scenario.repository.issueAddAtUrl(foreignIssue.url, { items: [] });
+
+      const { result } = await scenario.run({ issue: foreignIssue });
+
+      expect(result.activeStoryOptions).toEqual([]);
+      expect(result.facts.boardCacheFilePath).toBeNull();
+    });
   });
 
   describe('assigned issue checks', () => {
@@ -1769,6 +1811,34 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.specification?.detectedUrl).toBe(expected);
       },
     );
+
+    it('does not use a cross owner stray cache entry as the cached body for a linked candidate', async () => {
+      const foreignIssue: GithubIssueReference = {
+        owner: OTHER_ORG,
+        repo: REPO,
+        number: 999,
+        url: otherOrgIssueUrl(999),
+      };
+      const scenario = new StoryGateScenario({
+        story: 'regular / chores',
+        body: `Related: ${foreignIssue.url}`,
+        cacheIssues: [
+          cacheIssue(999, 'feature B', {
+            url: foreignIssue.url,
+            body: 'STRAY CACHED BODY FROM OTHER ORG',
+          }),
+        ],
+      });
+
+      const { result } = await scenario.run();
+
+      expect(result.specification?.unreadableUrls).toEqual([foreignIssue.url]);
+      expect(
+        result.specification?.candidates.map((candidate) => candidate.url),
+      ).toEqual([issueUrl(ASSIGNED)]);
+      expect(result.action).toBe('PROCEED');
+      expect(result.reason).toBe('REGULAR_STORY');
+    });
   });
 
   describe('merged work without an approved specification', () => {
