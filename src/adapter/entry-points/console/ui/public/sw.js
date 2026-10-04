@@ -41,9 +41,10 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then((response) => {
         if (response.ok) {
+          const responseToCache = response.clone();
           caches
             .open(SHELL_CACHE)
-            .then((cache) => cache.put(event.request, response.clone()))
+            .then((cache) => cache.put(event.request, responseToCache))
             .catch((e) => console.warn('Shell cache put failed:', e));
         }
         return response;
