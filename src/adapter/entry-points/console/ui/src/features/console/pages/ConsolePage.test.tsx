@@ -7786,15 +7786,33 @@ describe('ConsolePage comment elapsed-time label live update', () => {
         ).toBe('just now');
       });
 
-      act(() => {
-        jest.advanceTimersByTime(36 * 1000);
-      });
+      const commentTimeLabel = (): string | null | undefined =>
+        container.querySelector('.console-comment-time')?.textContent;
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-comment-time')?.textContent,
-        ).toBe('1 minute ago');
-      });
+      const liveRefreshIntervalTickDurationMs = 1000;
+      const tickCountReachingOneSecondBeforeFortyFiveSecondBoundary = 34;
+      for (
+        let tick = 0;
+        tick < tickCountReachingOneSecondBeforeFortyFiveSecondBoundary;
+        tick += 1
+      ) {
+        act(() => {
+          jest.advanceTimersByTime(liveRefreshIntervalTickDurationMs);
+        });
+      }
+      expect(commentTimeLabel()).toBe('just now');
+
+      const tickCountWithinTwoSecondLatencyBoundAfterBoundaryIsCrossed = 2;
+      for (
+        let tick = 0;
+        tick < tickCountWithinTwoSecondLatencyBoundAfterBoundaryIsCrossed;
+        tick += 1
+      ) {
+        act(() => {
+          jest.advanceTimersByTime(liveRefreshIntervalTickDurationMs);
+        });
+      }
+      expect(commentTimeLabel()).toBe('1 minute ago');
     } finally {
       jest.useRealTimers();
     }
