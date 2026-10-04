@@ -306,28 +306,6 @@ export const ConsolePage = () => {
     return result;
   }, [snapshots, effectiveOverlay]);
 
-  const optimisticCounts = useMemo(() => {
-    const result = emptyCounts();
-    for (const tab of CONSOLE_TABS) {
-      const snapshot = snapshots[tab.name];
-      if (snapshot === null) {
-        continue;
-      }
-      if (tab.name === 'stories') {
-        result[tab.name] = snapshot.stories.filter(
-          (s) => s.color !== 'GRAY',
-        ).length;
-      } else {
-        result[tab.name] = countPendingItems(
-          snapshot.items,
-          overlayState.overlay,
-          tab.name,
-        );
-      }
-    }
-    return result;
-  }, [snapshots, overlayState.overlay]);
-
   const loadedTabs = useMemo(() => {
     const result = new Set<ConsoleTabName>();
     for (const tab of CONSOLE_TABS) {
@@ -676,8 +654,8 @@ export const ConsolePage = () => {
   useConsoleAutomaticProjectNavigation(
     timerMode,
     isTimerExpired,
-    optimisticCounts.prs,
-    optimisticCounts['todo-by-human'],
+    counts.prs,
+    counts['todo-by-human'],
     pjcode,
     pjcodes,
     projectMinutes,
