@@ -1921,6 +1921,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1965,6 +1967,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -2024,6 +2028,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -2059,6 +2065,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -2177,6 +2185,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
