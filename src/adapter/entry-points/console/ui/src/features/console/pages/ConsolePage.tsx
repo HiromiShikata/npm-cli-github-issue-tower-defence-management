@@ -382,14 +382,6 @@ export const ConsolePage = () => {
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
   });
-  const projectSubmissionProgressRef = useRef<AttachmentSubmissionProgress>(
-    createEmptyAttachmentSubmissionProgress(),
-  );
-  const fleetSubmissionProgressRef = useRef<AttachmentSubmissionProgress>(
-    createEmptyAttachmentSubmissionProgress(),
-  );
-  const projectJustSubmittedRef = useRef(false);
-  const fleetJustSubmittedRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -418,10 +410,12 @@ export const ConsolePage = () => {
   const [dialogSubmitFailure, setDialogSubmitFailure] = useState<{
     params: IssueCreateParams;
     reason: string;
+    progress: AttachmentSubmissionProgress;
   } | null>(null);
   const [fleetDialogSubmitFailure, setFleetDialogSubmitFailure] = useState<{
     params: IssueCreateParams;
     reason: string;
+    progress: AttachmentSubmissionProgress;
   } | null>(null);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -859,43 +853,35 @@ export const ConsolePage = () => {
       if (pjcode === null || defaultNameWithOwner === null) {
         return Promise.resolve();
       }
-      projectJustSubmittedRef.current = true;
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
       const capturedParams = { title, storyName, agentOptionId, body, files };
+      const progress =
+        dialogSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          dialogSubmitFailure.params,
+          capturedParams,
+        )
+          ? dialogSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
       actionQueue.enqueue({
         message: `Creating task — "${title}"`,
         color: 'blue',
-        commit: () => {
-          if (
-            dialogSubmitFailure !== null &&
-            attachmentSubmissionParamsChanged(
-              dialogSubmitFailure.params,
-              capturedParams,
-            )
-          ) {
-            projectSubmissionProgressRef.current =
-              createEmptyAttachmentSubmissionProgress();
-          }
-          return createIssueWithAttachments(
+        commit: () =>
+          createIssueWithAttachments(
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
-            projectSubmissionProgressRef.current,
-          )
-            .then(() => {
-              projectSubmissionProgressRef.current =
-                createEmptyAttachmentSubmissionProgress();
-            })
-            .catch((cause: unknown) => {
-              setDialogSubmitFailure({
-                params: capturedParams,
-                reason: cause instanceof Error ? cause.message : String(cause),
-              });
-              setIsDialogOpen(true);
-              throw cause;
+            progress,
+          ).catch((cause: unknown) => {
+            setDialogSubmitFailure({
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+              progress,
             });
-        },
+            setIsDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setDialogDraft({
@@ -925,42 +911,34 @@ export const ConsolePage = () => {
         return Promise.resolve();
       }
       const nameWithOwner = match[1];
-      fleetJustSubmittedRef.current = true;
       const capturedPjcode = pjcode;
       const capturedParams = { title, storyName, agentOptionId, body, files };
+      const progress =
+        fleetDialogSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          fleetDialogSubmitFailure.params,
+          capturedParams,
+        )
+          ? fleetDialogSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
       actionQueue.enqueue({
         message: `Creating task — "${title}"`,
         color: 'blue',
-        commit: () => {
-          if (
-            fleetDialogSubmitFailure !== null &&
-            attachmentSubmissionParamsChanged(
-              fleetDialogSubmitFailure.params,
-              capturedParams,
-            )
-          ) {
-            fleetSubmissionProgressRef.current =
-              createEmptyAttachmentSubmissionProgress();
-          }
-          return createIssueWithAttachments(
+        commit: () =>
+          createIssueWithAttachments(
             capturedPjcode,
             nameWithOwner,
             capturedParams,
-            fleetSubmissionProgressRef.current,
-          )
-            .then(() => {
-              fleetSubmissionProgressRef.current =
-                createEmptyAttachmentSubmissionProgress();
-            })
-            .catch((cause: unknown) => {
-              setFleetDialogSubmitFailure({
-                params: capturedParams,
-                reason: cause instanceof Error ? cause.message : String(cause),
-              });
-              setIsFleetTaskCreateDialogOpen(true);
-              throw cause;
+            progress,
+          ).catch((cause: unknown) => {
+            setFleetDialogSubmitFailure({
+              params: capturedParams,
+              reason: cause instanceof Error ? cause.message : String(cause),
+              progress,
             });
-        },
+            setIsFleetTaskCreateDialogOpen(true);
+            throw cause;
+          }),
         advance: () => {},
       });
       setFleetDialogDraft({
@@ -1318,11 +1296,6 @@ export const ConsolePage = () => {
                     onClose={() => {
                       setIsDialogOpen(false);
                       setDialogSubmitFailure(null);
-                      if (!projectJustSubmittedRef.current) {
-                        projectSubmissionProgressRef.current =
-                          createEmptyAttachmentSubmissionProgress();
-                      }
-                      projectJustSubmittedRef.current = false;
                     }}
                     initialDraft={
                       dialogSubmitFailure !== null
@@ -1386,11 +1359,6 @@ export const ConsolePage = () => {
           onClose={() => {
             setIsFleetTaskCreateDialogOpen(false);
             setFleetDialogSubmitFailure(null);
-            if (!fleetJustSubmittedRef.current) {
-              fleetSubmissionProgressRef.current =
-                createEmptyAttachmentSubmissionProgress();
-            }
-            fleetJustSubmittedRef.current = false;
           }}
           containerClassName="console-fleet-task-create-dialog-container"
         />
