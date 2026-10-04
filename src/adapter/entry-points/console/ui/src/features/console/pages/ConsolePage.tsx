@@ -110,40 +110,113 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
-const createIssueWithAttachments = async (
+export type AttachmentSubmissionProgress = {
+  issueUrl: string | null;
+  uploadedMarkdownByFileName: Map<string, string>;
+  commentedFileNames: Set<string>;
+};
+
+export const createEmptyAttachmentSubmissionProgress =
+  (): AttachmentSubmissionProgress => ({
+    issueUrl: null,
+    uploadedMarkdownByFileName: new Map(),
+    commentedFileNames: new Set(),
+  });
+
+export const buildAttachmentSubmissionFailureMessage = (
+  issueUrl: string,
+  failedFileNames: string[],
+  commentPostError: string | null,
+): string => {
+  const parts: string[] = [];
+  if (failedFileNames.length > 0) {
+    parts.push(
+      `${failedFileNames.length} file(s) failed to upload: ${failedFileNames.join(', ')}`,
+    );
+  }
+  if (commentPostError !== null) {
+    parts.push(`the summary comment failed to post: ${commentPostError}`);
+  }
+  return `Task ${issueUrl} was created, but ${parts.join('; and ')}.`;
+};
+
+export const createIssueWithAttachments = async (
   pjcode: string,
   nameWithOwner: string,
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
+  progress: AttachmentSubmissionProgress,
 ): Promise<void> => {
-  const issueUrl = await postConsoleCreateIssue({
-    pjcode,
-    title,
-    storyName: storyName ?? '',
-    nameWithOwner,
-    agentOptionId: agentOptionId ?? null,
-    body: body ?? null,
+  let issueUrl = progress.issueUrl;
+  if (issueUrl === null) {
+    issueUrl = await postConsoleCreateIssue({
+      pjcode,
+      title,
+      storyName: storyName ?? '',
+      nameWithOwner,
+      agentOptionId: agentOptionId ?? null,
+      body: body ?? null,
+    });
+    progress.issueUrl = issueUrl;
+  }
+
+  const filesStillPending = files.filter(
+    (file) => !progress.uploadedMarkdownByFileName.has(file.name),
+  );
+  const uploadResults = await Promise.allSettled(
+    filesStillPending.map(async (file) => {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const contentBase64 = encodeAttachmentContent(bytes);
+      const markdown = await postConsoleAttachment({
+        pjcode,
+        url: issueUrl as string,
+        fileName: file.name,
+        contentBase64,
+      });
+      return { fileName: file.name, markdown };
+    }),
+  );
+  const failedFileNames: string[] = [];
+  uploadResults.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      progress.uploadedMarkdownByFileName.set(
+        result.value.fileName,
+        result.value.markdown,
+      );
+    } else {
+      failedFileNames.push(filesStillPending[index].name);
+    }
   });
-  if (files.length > 0) {
-    const markdownParts = await Promise.all(
-      files.map(async (file) => {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const contentBase64 = encodeAttachmentContent(bytes);
-        return postConsoleAttachment({
-          pjcode,
-          url: issueUrl,
-          fileName: file.name,
-          contentBase64,
-        });
-      }),
-    );
+
+  const notYetCommentedFileNames = Array.from(
+    progress.uploadedMarkdownByFileName.keys(),
+  ).filter((fileName) => !progress.commentedFileNames.has(fileName));
+
+  let commentPostError: string | null = null;
+  if (notYetCommentedFileNames.length > 0) {
     const commentResult = await postConsoleComment({
       pjcode,
       url: issueUrl,
-      body: markdownParts.join('\n\n'),
+      body: notYetCommentedFileNames
+        .map((fileName) => progress.uploadedMarkdownByFileName.get(fileName))
+        .join('\n\n'),
     });
-    if (!commentResult.posted) {
-      throw new Error(commentResult.error);
+    if (commentResult.posted) {
+      for (const fileName of notYetCommentedFileNames) {
+        progress.commentedFileNames.add(fileName);
+      }
+    } else {
+      commentPostError = commentResult.error;
     }
+  }
+
+  if (failedFileNames.length > 0 || commentPostError !== null) {
+    throw new Error(
+      buildAttachmentSubmissionFailureMessage(
+        issueUrl,
+        failedFileNames,
+        commentPostError,
+      ),
+    );
   }
 };
 
@@ -284,6 +357,12 @@ export const ConsolePage = () => {
   );
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue();
+  const projectSubmissionProgressRef = useRef<AttachmentSubmissionProgress>(
+    createEmptyAttachmentSubmissionProgress(),
+  );
+  const fleetSubmissionProgressRef = useRef<AttachmentSubmissionProgress>(
+    createEmptyAttachmentSubmissionProgress(),
+  );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -771,14 +850,20 @@ export const ConsolePage = () => {
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
-          ).catch((cause: unknown) => {
-            setDialogSubmitFailure({
-              params: capturedParams,
-              reason: cause instanceof Error ? cause.message : String(cause),
-            });
-            setIsDialogOpen(true);
-            throw cause;
-          }),
+            projectSubmissionProgressRef.current,
+          )
+            .then(() => {
+              projectSubmissionProgressRef.current =
+                createEmptyAttachmentSubmissionProgress();
+            })
+            .catch((cause: unknown) => {
+              setDialogSubmitFailure({
+                params: capturedParams,
+                reason: cause instanceof Error ? cause.message : String(cause),
+              });
+              setIsDialogOpen(true);
+              throw cause;
+            }),
         advance: () => {},
       });
       setDialogDraft({
@@ -818,14 +903,20 @@ export const ConsolePage = () => {
             capturedPjcode,
             nameWithOwner,
             capturedParams,
-          ).catch((cause: unknown) => {
-            setFleetDialogSubmitFailure({
-              params: capturedParams,
-              reason: cause instanceof Error ? cause.message : String(cause),
-            });
-            setIsFleetTaskCreateDialogOpen(true);
-            throw cause;
-          }),
+            fleetSubmissionProgressRef.current,
+          )
+            .then(() => {
+              fleetSubmissionProgressRef.current =
+                createEmptyAttachmentSubmissionProgress();
+            })
+            .catch((cause: unknown) => {
+              setFleetDialogSubmitFailure({
+                params: capturedParams,
+                reason: cause instanceof Error ? cause.message : String(cause),
+              });
+              setIsFleetTaskCreateDialogOpen(true);
+              throw cause;
+            }),
         advance: () => {},
       });
       setFleetDialogDraft({
@@ -1178,6 +1269,8 @@ export const ConsolePage = () => {
                     onClose={() => {
                       setIsDialogOpen(false);
                       setDialogSubmitFailure(null);
+                      projectSubmissionProgressRef.current =
+                        createEmptyAttachmentSubmissionProgress();
                     }}
                     initialDraft={
                       dialogSubmitFailure !== null
@@ -1241,6 +1334,8 @@ export const ConsolePage = () => {
           onClose={() => {
             setIsFleetTaskCreateDialogOpen(false);
             setFleetDialogSubmitFailure(null);
+            fleetSubmissionProgressRef.current =
+              createEmptyAttachmentSubmissionProgress();
           }}
           containerClassName="console-fleet-task-create-dialog-container"
         />
