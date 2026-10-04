@@ -2972,7 +2972,8 @@ describe('ConsolePage auto-advance tab', () => {
       },
     );
     global.fetch = fetchMock as unknown as typeof fetch;
-    jest.useFakeTimers({ now: 0 });
+    const mountTime = Date.parse('2026-06-19T00:01:00.000Z');
+    jest.useFakeTimers({ now: mountTime });
     try {
       const { getByText, findByText } = render(<ConsolePage />);
       await waitFor(() => {
