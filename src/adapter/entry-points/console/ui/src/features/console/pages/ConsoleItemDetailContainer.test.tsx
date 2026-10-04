@@ -1898,9 +1898,7 @@ describe('ConsoleItemDetailContainer', () => {
       getByText('Close'),
     ];
     for (let i = 0; i < orderBeforeClose.length - 1; i++) {
-      expect(precedes(orderBeforeClose[i], orderBeforeClose[i + 1])).toBe(
-        true,
-      );
+      expect(precedes(orderBeforeClose[i], orderBeforeClose[i + 1])).toBe(true);
     }
 
     fireEvent.click(getByText('✕ Close'));
@@ -1919,9 +1917,7 @@ describe('ConsoleItemDetailContainer', () => {
       getByText('Close'),
     ];
     for (let i = 0; i < orderAfterReopen.length - 1; i++) {
-      expect(precedes(orderAfterReopen[i], orderAfterReopen[i + 1])).toBe(
-        true,
-      );
+      expect(precedes(orderAfterReopen[i], orderAfterReopen[i + 1])).toBe(true);
     }
   });
 
@@ -2011,7 +2007,7 @@ describe('ConsoleItemDetailContainer', () => {
     expect(onQueueAction).not.toHaveBeenCalled();
   });
 
-  it("opens the comment composer and shows the button area for a newly opened task regardless of how the previously viewed task was left (FR-006, SC-005)", async () => {
+  it('opens the comment composer and shows the button area for a newly opened task regardless of how the previously viewed task was left (FR-006, SC-005)', async () => {
     const onQueueAction = jest.fn();
     const { getByText, queryByText, rerender } = render(
       <ConsoleItemDetailContainer
@@ -2060,7 +2056,7 @@ describe('ConsoleItemDetailContainer', () => {
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
   });
 
-  it("closes the comment composer and hides the button area even while a comment post is in progress, the same way the close control already closes the composer unconditionally today (FR-008, SC-006)", async () => {
+  it('closes the comment composer and hides the button area even while a comment post is in progress, the same way the close control already closes the composer unconditionally today (FR-008, SC-006)', async () => {
     const operations = buildOperations();
     let resolveAddComment: (() => void) | undefined;
     operations.addComment = jest.fn(
