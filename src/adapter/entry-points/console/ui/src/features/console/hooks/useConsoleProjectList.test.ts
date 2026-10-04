@@ -114,6 +114,65 @@ describe('useConsoleProjectList', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('populates workflowStoryEntries and workflowAgentOptions when the server returns them', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        workflowStoryEntries: [
+          {
+            storyName: 'Fleet task',
+            storyOptionId: 'opt_fleet_task',
+            color: 'GREEN',
+            description: 'Fleet task story description',
+            openItemCount: 0,
+            storyViewUrl: null,
+            items: [],
+          },
+        ],
+        workflowAgentOptions: [
+          { id: 'agent_opt_developer', name: 'developer', color: 'BLUE' },
+        ],
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList(false, false));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.workflowStoryEntries).toEqual([
+      {
+        storyName: 'Fleet task',
+        storyOptionId: 'opt_fleet_task',
+        color: 'GREEN',
+        description: 'Fleet task story description',
+        openItemCount: 0,
+        storyViewUrl: null,
+        items: [],
+      },
+    ]);
+    expect(result.current.workflowAgentOptions).toEqual([
+      { id: 'agent_opt_developer', name: 'developer', color: 'BLUE' },
+    ]);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('defaults workflowStoryEntries and workflowAgentOptions to null when the server omits them', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ pjcodes: ['acme'] }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList(false, false));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.workflowStoryEntries).toBeNull();
+    expect(result.current.workflowAgentOptions).toBeNull();
+  });
+
   it('starts with an empty disabledPjcodes array', () => {
     global.fetch = jest.fn(
       () => new Promise(() => undefined),

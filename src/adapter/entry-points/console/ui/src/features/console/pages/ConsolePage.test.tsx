@@ -4610,6 +4610,10 @@ describe('ConsolePage workflow issue creation', () => {
   const installFetchWithFleetUrl = (
     fleetTaskCreateUrl: string | null,
     createIssueOk = true,
+    workflowLists: {
+      workflowStoryEntries: unknown[];
+      workflowAgentOptions: unknown[];
+    } | null = null,
   ) => {
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
@@ -4630,7 +4634,11 @@ describe('ConsolePage workflow issue creation', () => {
           status: 200,
           json: async () =>
             fleetTaskCreateUrl !== null
-              ? { pjcodes: ['acme'], fleetTaskCreateUrl }
+              ? {
+                  pjcodes: ['acme'],
+                  fleetTaskCreateUrl,
+                  ...(workflowLists ?? {}),
+                }
               : { pjcodes: ['acme'] },
         };
       }
@@ -5494,6 +5502,78 @@ describe('ConsolePage workflow issue creation', () => {
     expect(
       queryByRoleNoFleet('button', { name: 'Create fleet task' }),
     ).toBeNull();
+  });
+
+  it('posts a storyName/agentOptionId taken from workflowStoryEntries/workflowAgentOptions, not the viewed project\'s own lists, when submitting the "Create fleet task" dialog', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+        true,
+        {
+          workflowStoryEntries: [
+            {
+              storyName: 'Fleet task',
+              storyOptionId: 'opt-fleet-task',
+              color: 'GREEN',
+              description: '',
+              openItemCount: 0,
+              storyViewUrl: null,
+              items: [],
+            },
+          ],
+          workflowAgentOptions: [
+            {
+              id: 'agent-fleet-operator',
+              name: 'fleet-operator',
+              color: 'PURPLE',
+            },
+          ],
+        },
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole, queryByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+
+      expect(getByRole('button', { name: 'Fleet task' })).toBeInTheDocument();
+      expect(
+        getByRole('button', { name: 'fleet-operator' }),
+      ).toBeInTheDocument();
+      expect(
+        queryByRole('button', { name: /tdpm console port/i }),
+      ).toBeNull();
+
+      fireEvent.click(getByRole('button', { name: 'Fleet task' }));
+      fireEvent.click(getByRole('button', { name: 'fleet-operator' }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Task sourced from workflow lists' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.storyName).toBe('Fleet task');
+      expect(requestBody.agentOptionId).toBe('agent-fleet-operator');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

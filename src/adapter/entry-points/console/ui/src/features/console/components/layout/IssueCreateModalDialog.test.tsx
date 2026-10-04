@@ -1075,6 +1075,96 @@ describe('IssueCreateModalDialog', () => {
     expect(getByText('persisted-attachment.png')).not.toBeNull();
   });
 
+  describe('workflow destination story and agent option source', () => {
+    const workflowStoryEntries: ConsoleStoryEntry[] = [
+      {
+        storyName: 'Fleet task',
+        storyOptionId: 'opt-fleet-task',
+        color: 'GREEN',
+        description: '',
+        openItemCount: 0,
+        storyViewUrl: null,
+        items: [],
+      },
+    ];
+
+    const workflowAgentOptions: ConsoleFieldOption[] = [
+      { id: 'agent-fleet-operator', name: 'fleet-operator', color: 'PURPLE' },
+    ];
+
+    it('renders Story and Agent options from workflowStoryEntries/workflowAgentOptions, not from storyEntries/agentOptions, when destination is Workflow, and submits values from that list', async () => {
+      const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
+      const { getByRole, queryByRole, getByText } = render(
+        <IssueCreateModalDialog
+          {...baseProps}
+          initialDestination="workflow"
+          onSubmitWorkflow={onSubmitWorkflow}
+          workflowStoryEntries={workflowStoryEntries}
+          workflowAgentOptions={workflowAgentOptions}
+        />,
+      );
+
+      expect(getByText('Fleet task')).not.toBeNull();
+      expect(getByText('fleet-operator')).not.toBeNull();
+      expect(
+        queryByRole('button', {
+          name: /regular \/ workflow improvement/i,
+        }),
+      ).toBeNull();
+      expect(queryByRole('button', { name: /^developer$/i })).toBeNull();
+
+      fireEvent.click(getByRole('button', { name: 'Fleet task' }));
+      fireEvent.click(getByRole('button', { name: 'fleet-operator' }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Workflow-sourced task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+      await waitFor(() => expect(onSubmitWorkflow).toHaveBeenCalledTimes(1));
+      expect(onSubmitWorkflow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          storyName: 'Fleet task',
+          agentOptionId: 'agent-fleet-operator',
+        }),
+      );
+    });
+
+    it('clears a previously selected Story and Agent option that is absent from the workflow list when destination switches to Workflow', () => {
+      const { getByRole, queryByRole } = render(
+        <IssueCreateModalDialog
+          {...baseProps}
+          initialDestination="project"
+          onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+          workflowStoryEntries={workflowStoryEntries}
+          workflowAgentOptions={workflowAgentOptions}
+        />,
+      );
+
+      const viewedStoryButton = getByRole('button', {
+        name: /regular \/ tdpm dashboard & console improvement/i,
+      });
+      fireEvent.click(viewedStoryButton);
+      const viewedAgentButton = getByRole('button', { name: /^developer$/i });
+      fireEvent.click(viewedAgentButton);
+      expect(viewedStoryButton.getAttribute('aria-pressed')).toBe('true');
+      expect(viewedAgentButton.getAttribute('aria-pressed')).toBe('true');
+
+      fireEvent.click(getByRole('button', { name: 'Workflow' }));
+
+      expect(
+        queryByRole('button', {
+          name: /regular \/ tdpm dashboard & console improvement/i,
+        }),
+      ).toBeNull();
+      const workflowStoryButton = getByRole('button', { name: 'Fleet task' });
+      const workflowAgentButton = getByRole('button', {
+        name: 'fleet-operator',
+      });
+      expect(workflowStoryButton.getAttribute('aria-pressed')).toBe('false');
+      expect(workflowAgentButton.getAttribute('aria-pressed')).toBe('false');
+    });
+  });
+
   it('calls onSubmitProject and not onSubmitWorkflow when Create is clicked with Project selected', async () => {
     const onSubmitProject = jest.fn().mockResolvedValue(undefined);
     const onSubmitWorkflow = jest.fn().mockResolvedValue(undefined);
