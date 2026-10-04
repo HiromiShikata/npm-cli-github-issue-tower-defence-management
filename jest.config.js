@@ -82,7 +82,10 @@ module.exports = {
         '\\.(css|less|scss)$': '<rootDir>/jest.styleMock.js',
         '^@/(.*)$': '<rootDir>/src/$1',
       },
-      testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
+      testMatch: [
+        '<rootDir>/src/**/*.test.{ts,tsx}',
+        '<rootDir>/e2e/**/*.test.ts',
+      ],
     },
   ],
 };
