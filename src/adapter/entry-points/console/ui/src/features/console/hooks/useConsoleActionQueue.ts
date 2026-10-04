@@ -26,7 +26,7 @@ export type ConsoleOfflineQueuedAction = {
 export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
-  commit: () => Promise<void>;
+  commit: (sentStepCount: number) => Promise<void>;
   advance: () => void;
   revertAdvance?: () => void;
   optimistic?: () => void;
@@ -131,10 +131,15 @@ export class ConsoleActionPartiallySentError extends Error {
 
 export const consoleActionStepsRun = async (
   steps: ReadonlyArray<() => Promise<void>>,
+  sentStepCount = 0,
 ): Promise<void> => {
-  for (const [stepIndex, step] of steps.entries()) {
+  for (
+    let stepIndex = sentStepCount;
+    stepIndex < steps.length;
+    stepIndex += 1
+  ) {
     try {
-      await step();
+      await steps[stepIndex]();
     } catch (cause: unknown) {
       if (stepIndex === 0) {
         throw cause;
@@ -195,7 +200,9 @@ export const useConsoleActionQueue = (
   const startRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const committedRef = useRef<boolean>(false);
-  const runCommitRef = useRef<(action: ConsoleQueuedAction) => void>(() => {});
+  const runCommitRef = useRef<
+    (action: ConsoleQueuedAction, sentStepCount: number) => void
+  >(() => {});
   const attemptRef = useRef(0);
   const [writeState, setWriteState] = useState<ConsoleActionWriteState>({
     status: 'idle',
@@ -233,7 +240,7 @@ export const useConsoleActionQueue = (
   );
 
   const runCommit = useCallback(
-    (action: ConsoleQueuedAction): void => {
+    (action: ConsoleQueuedAction, sentStepCount: number): void => {
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
       const offlinePayloads = action.offline ?? [];
@@ -248,8 +255,9 @@ export const useConsoleActionQueue = (
         setWriteState({ status: 'offline', attempt });
       };
       if (isAirplaneModeOnRef.current) {
-        if (offlinePayloads.length > 0) {
-          actionHoldOffline(offlinePayloads);
+        const unsentOfflinePayloads = offlinePayloads.slice(sentStepCount);
+        if (unsentOfflinePayloads.length > 0) {
+          actionHoldOffline(unsentOfflinePayloads);
         } else {
           action.revertAdvance?.();
           action.revertOptimistic?.();
@@ -263,16 +271,19 @@ export const useConsoleActionQueue = (
       }
       setWriteState({ status: 'unconfirmed', attempt });
       action
-        .commit()
+        .commit(sentStepCount)
         .then(() => {
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
           const isPartiallySent =
             cause instanceof ConsoleActionPartiallySentError;
-          const unsentOfflinePayloads = isPartiallySent
-            ? offlinePayloads.slice(cause.sentStepCount)
-            : offlinePayloads;
+          const sentStepCountAfterAttempt = isPartiallySent
+            ? cause.sentStepCount
+            : sentStepCount;
+          const unsentOfflinePayloads = offlinePayloads.slice(
+            sentStepCountAfterAttempt,
+          );
           const unsentRequestFailure = isPartiallySent ? cause.cause : cause;
           if (
             isNetworkError(unsentRequestFailure) &&
@@ -283,7 +294,8 @@ export const useConsoleActionQueue = (
             setError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
-              retry: () => runCommitRef.current(action),
+              retry: () =>
+                runCommitRef.current(action, sentStepCountAfterAttempt),
             });
             setWriteState({ status: 'failed', attempt });
           }
@@ -301,7 +313,7 @@ export const useConsoleActionQueue = (
     if (action !== null && !committedRef.current) {
       committedRef.current = true;
       clearAllCommentExpandedStates();
-      runCommit(action);
+      runCommit(action, 0);
     }
   }, [clearTimer, runCommit]);
 
@@ -364,7 +376,7 @@ export const useConsoleActionQueue = (
         clearTimer();
         committedRef.current = true;
         clearAllCommentExpandedStates();
-        runCommit(previous);
+        runCommit(previous, 0);
       }
       committedRef.current = false;
       actionRef.current = action;

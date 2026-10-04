@@ -73,6 +73,7 @@ export type ConsoleOperationsApi = {
   okAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    sentStepCount?: number,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
   addCommentAndMoveToAwaitingWorkspace: (
@@ -357,42 +358,54 @@ export const useConsoleOperations = (
     [pjcode, invalidateItemContent],
   );
 
-  const okAndMoveToAwaitingWorkspace = useCallback(
+  const awaitingWorkspaceStatusMoveAfterCommentPosted = useCallback(
     async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+      try {
+        await setStatus(item, option);
+      } catch (cause: unknown) {
+        throw new ConsoleActionPartiallySentError(1, cause);
+      }
+      await onAfterMoveToAwaitingWorkspace?.();
+    },
+    [setStatus, onAfterMoveToAwaitingWorkspace],
+  );
+
+  const okAndMoveToAwaitingWorkspace = useCallback(
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+      sentStepCount = 0,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
+      }
+      if (sentStepCount > 0) {
+        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
+        return;
       }
       const commentResult = await postConsoleComment(
         commentRequestBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
       );
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        statusName: option.name,
-      };
-      try {
-        await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      } catch (cause: unknown) {
-        if (commentResult.posted) {
-          throw new ConsoleActionPartiallySentError(1, cause);
-        }
-        throw cause;
+      if (commentResult.posted) {
+        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
+        return;
       }
-      invalidateItemContent(item);
+      await setStatus(item, option);
       await onAfterMoveToAwaitingWorkspace?.();
-      if (!commentResult.posted) {
-        const resetInfo =
-          commentResult.rateLimitResetAt !== null
-            ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
-            : '';
-        throw new Error(
-          `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
-        );
-      }
+      const resetInfo =
+        commentResult.rateLimitResetAt !== null
+          ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
+          : '';
+      throw new Error(
+        `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
+      );
     },
-    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
+    [
+      pjcode,
+      setStatus,
+      onAfterMoveToAwaitingWorkspace,
+      awaitingWorkspaceStatusMoveAfterCommentPosted,
+    ],
   );
 
   const addComment = useCallback(
@@ -431,23 +444,10 @@ export const useConsoleOperations = (
             : '';
         throw new Error(`${commentResult.error}.${resetInfo}`);
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        statusName: option.name,
-      };
-      try {
-        await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      } catch (cause: unknown) {
-        throw new ConsoleActionPartiallySentError(1, cause);
-      }
-      invalidateItemContent(item);
-      await onAfterMoveToAwaitingWorkspace?.();
+      await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
       return commentResult.comment;
     },
-    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
+    [pjcode, awaitingWorkspaceStatusMoveAfterCommentPosted],
   );
 
   const uploadAttachment = useCallback(
