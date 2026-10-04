@@ -3311,6 +3311,81 @@ describe('ConsolePage airplane mode write guard', () => {
     expect(view.queryByText('Airplane mode')).toBeNull();
     expect(postRequestCount()).toBe(0);
   });
+
+  it('holds both the comment and the close of Comment & Close in order and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await openPullRequestDetailInAirplaneMode(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Closing above the clouds.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/comment',
+        requestBody: {
+          pjcode: 'acme',
+          url: prItem.url,
+          body: 'Closing above the clouds.',
+        },
+      }),
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+        },
+      }),
+    ]);
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(postRequestCount()).toBe(0);
+  });
+
+  it('holds both the ok comment and the move to Awaiting Workspace of ok & Awaiting Workspace from the list in order and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(view.getByText('Turn off')).toBeInTheDocument();
+    });
+    const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
+      name: 'ok & Awaiting Workspace',
+    });
+
+    fireEvent.click(okAndAwaitingWorkspaceButton);
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: prItem.url, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+          statusName: 'Awaiting Workspace',
+        },
+      }),
+    ]);
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(postRequestCount()).toBe(0);
+  });
 });
 
 describe('ConsolePage story-labeled item Delete Story button', () => {
@@ -5529,5 +5604,243 @@ describe('ConsolePage offline action queue', () => {
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  const respondWithOperationSucceeded: PostResponder = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  });
+
+  const respondWithHostRejection: PostResponder = async () => ({
+    ok: false,
+    status: 500,
+    text: async () => '',
+  });
+
+  const respondToCommentAsPostedAndOtherRequestsWith =
+    (respondToOtherRequests: PostResponder): PostResponder =>
+    (url, init) =>
+      url.endsWith('/api/comment')
+        ? respondWithPostedComment(url, init)
+        : respondToOtherRequests(url, init);
+
+  const closeRequestBodyForPullRequest = {
+    pjcode: 'acme',
+    action: 'close',
+    issueUrl: pullRequestUrl,
+    projectItemId: 'PVTI_1',
+  };
+
+  it('sends the ok comment and the close of OK & Close once each and holds nothing when both requests succeed online', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondToCommentAsPostedAndOtherRequestsWith(
+        respondWithOperationSucceeded,
+      ),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(1);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+    ]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  it('shows the host rejection and holds nothing when the ok comment of OK & Close was posted and the close answers HTTP 500 online', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondToCommentAsPostedAndOtherRequestsWith(respondWithHostRejection),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(
+        view.container.querySelector('.console-error-toast'),
+      ).not.toBeNull();
+    });
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-offline-panel')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+    ]);
+  });
+
+  it('holds both the comment and the close of Comment & Close in order without an error toast when its request fails because the network is unavailable', async () => {
+    installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Closing in a tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/comment',
+        requestBody: {
+          pjcode: 'acme',
+          url: pullRequestUrl,
+          body: 'Closing in a tunnel.',
+        },
+      }),
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  const installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork = (): {
+    fetchMock: jest.Mock;
+    restoreNetworkForOtherRequests: () => void;
+  } => {
+    let isNetworkAvailableForOtherRequests = false;
+    const respondToOtherRequestsAsSucceeded =
+      respondToCommentAsPostedAndOtherRequestsWith(
+        respondWithOperationSucceeded,
+      );
+    const fetchMock = installOfflineQueueFetch((url, init) =>
+      url.endsWith('/api/comment') || isNetworkAvailableForOtherRequests
+        ? respondToOtherRequestsAsSucceeded(url, init)
+        : respondWithNetworkFailure(url, init),
+    );
+    return {
+      fetchMock,
+      restoreNetworkForOtherRequests: () => {
+        isNetworkAvailableForOtherRequests = true;
+      },
+    };
+  };
+
+  it('holds only the close of OK & Close without an error toast and never posts the ok comment again when the comment was posted, the close fails because the network is unavailable and the held close is confirmed later', async () => {
+    const { fetchMock, restoreNetworkForOtherRequests } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+
+    restoreNetworkForOtherRequests();
+    const heldSendButton = await waitFor(() => {
+      const heldItems = view.container.querySelectorAll(
+        '.console-offline-panel-item',
+      );
+      expect(heldItems).toHaveLength(1);
+      const sendButton = within(heldItems[0] as HTMLElement).getByText('Send');
+      expect(sendButton).toBeEnabled();
+      return sendButton;
+    });
+    fireEvent.click(heldSendButton);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toEqual([]);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+      closeRequestBodyForPullRequest,
+    ]);
+  });
+
+  it('holds only the close of Comment & Close without an error toast when the comment was posted and the close fails because the network is unavailable', async () => {
+    const { fetchMock } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Posted before the tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'Posted before the tunnel.' },
+    ]);
+  });
+
+  it('holds only the move to Awaiting Workspace of ok & Awaiting Workspace from the list without an error toast when the ok comment was posted and the move fails because the network is unavailable', async () => {
+    const { fetchMock } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
+      name: 'ok & Awaiting Workspace',
+    });
+
+    fireEvent.click(okAndAwaitingWorkspaceButton);
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: pullRequestUrl,
+          projectItemId: 'PVTI_1',
+          statusName: 'Awaiting Workspace',
+        },
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
   });
 });
