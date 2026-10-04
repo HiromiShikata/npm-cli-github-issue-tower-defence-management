@@ -1557,6 +1557,117 @@ describe('consoleActionStepsRun', () => {
       );
     },
   );
+
+  it.each([
+    { stepCount: 2, sentStepCount: 0, expectedStepCallCounts: [1, 1] },
+    { stepCount: 2, sentStepCount: 1, expectedStepCallCounts: [0, 1] },
+    { stepCount: 3, sentStepCount: 1, expectedStepCallCounts: [0, 1, 1] },
+    { stepCount: 3, sentStepCount: 2, expectedStepCallCounts: [0, 0, 1] },
+    { stepCount: 2, sentStepCount: 2, expectedStepCallCounts: [0, 0] },
+  ])(
+    'runs only the steps from index $sentStepCount of $stepCount steps, never an earlier one, and resolves once they resolve',
+    async ({ stepCount, sentStepCount, expectedStepCallCounts }) => {
+      const steps = buildSteps(stepCount, null, null);
+
+      await expect(
+        consoleActionStepsRun(steps, sentStepCount),
+      ).resolves.toBeUndefined();
+
+      expect(steps.map((step) => step.mock.calls.length)).toEqual(
+        expectedStepCallCounts,
+      );
+    },
+  );
+
+  it('runs the steps in order starting at the index of the sent step count', async () => {
+    const stepRunOrder: string[] = [];
+    const steps = ['comment', 'close', 'set status'].map(
+      (stepName) => async (): Promise<void> => {
+        stepRunOrder.push(stepName);
+      },
+    );
+
+    await consoleActionStepsRun(steps, 1);
+
+    expect(stepRunOrder).toEqual(['close', 'set status']);
+  });
+
+  it.each([
+    {
+      stepCount: 2,
+      sentStepCount: 1,
+      rejectingStepIndex: 1,
+      stepFailure: new Error('HTTP 500 close refused'),
+      expectedSentStepCount: 1,
+      expectedStepCallCounts: [0, 1],
+    },
+    {
+      stepCount: 2,
+      sentStepCount: 1,
+      rejectingStepIndex: 1,
+      stepFailure: new TypeError('Failed to fetch'),
+      expectedSentStepCount: 1,
+      expectedStepCallCounts: [0, 1],
+    },
+    {
+      stepCount: 3,
+      sentStepCount: 1,
+      rejectingStepIndex: 1,
+      stepFailure: new Error('HTTP 500 close refused'),
+      expectedSentStepCount: 1,
+      expectedStepCallCounts: [0, 1, 0],
+    },
+    {
+      stepCount: 3,
+      sentStepCount: 1,
+      rejectingStepIndex: 2,
+      stepFailure: new Error('HTTP 500 status refused'),
+      expectedSentStepCount: 2,
+      expectedStepCallCounts: [0, 1, 1],
+    },
+    {
+      stepCount: 3,
+      sentStepCount: 2,
+      rejectingStepIndex: 2,
+      stepFailure: new TypeError('Failed to fetch'),
+      expectedSentStepCount: 2,
+      expectedStepCallCounts: [0, 0, 1],
+    },
+  ])(
+    'rejects with a partially sent error counting $expectedSentStepCount sent steps and runs no earlier or later step when started at index $sentStepCount of $stepCount steps and step index $rejectingStepIndex rejects',
+    async ({
+      stepCount,
+      sentStepCount,
+      rejectingStepIndex,
+      stepFailure,
+      expectedSentStepCount,
+      expectedStepCallCounts,
+    }) => {
+      const steps = buildSteps(stepCount, rejectingStepIndex, stepFailure);
+
+      const rejection = await settledRejection(
+        consoleActionStepsRun(steps, sentStepCount),
+      );
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      const partiallySentError = rejection as ConsoleActionPartiallySentError;
+      expect(partiallySentError.sentStepCount).toBe(expectedSentStepCount);
+      expect(partiallySentError.cause).toBe(stepFailure);
+      expect(steps.map((step) => step.mock.calls.length)).toEqual(
+        expectedStepCallCounts,
+      );
+    },
+  );
+
+  it('rejects with the first step error unchanged when started explicitly at index 0 and the first step rejects', async () => {
+    const stepFailure = new Error('HTTP 500 comment refused');
+    const steps = buildSteps(2, 0, stepFailure);
+
+    const rejection = await settledRejection(consoleActionStepsRun(steps, 0));
+
+    expect(rejection).toBe(stepFailure);
+    expect(steps.map((step) => step.mock.calls.length)).toEqual([1, 0]);
+  });
 });
 
 describe('useConsoleActionQueue with a partially sent two-step action', () => {
@@ -1741,4 +1852,368 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       });
     },
   );
+
+  const retryFromErrorToast = async (queue: {
+    current: ConsoleActionQueue;
+  }): Promise<void> => {
+    const retry = queue.current.error?.retry;
+    act(() => {
+      queue.current.dismissError();
+    });
+    await act(async () => {
+      retry?.();
+      await flushMicrotasks();
+    });
+  };
+
+  const renderQueueWithAirplaneModeSwitch = () =>
+    renderHook(
+      ({ isAirplaneModeOn }: { isAirplaneModeOn: boolean }) =>
+        useConsoleActionQueue({ isAirplaneModeOn }),
+      { initialProps: { isAirplaneModeOn: false } },
+    );
+
+  const heldCloseOnly = [
+    expect.objectContaining({
+      ...closeOfflinePayload,
+      message: 'OK & Close — #866',
+      color: 'red',
+    }),
+  ];
+
+  const heldCommentAndClose = [
+    expect.objectContaining({
+      ...commentOfflinePayload,
+      message: 'OK & Close — #866',
+      color: 'red',
+    }),
+    expect.objectContaining({
+      ...closeOfflinePayload,
+      message: 'OK & Close — #866',
+      color: 'red',
+    }),
+  ];
+
+  it('retries an action whose comment was sent by sending only the close, never the comment again, when the host rejected the close while online', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const commentStep = jest
+      .fn<Promise<void>, []>()
+      .mockResolvedValue(undefined);
+    const closeStep = jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('HTTP 500 close refused'))
+      .mockResolvedValue(undefined);
+    const commit = jest.fn((sentStepCount: number) =>
+      consoleActionStepsRun([commentStep, closeStep], sentStepCount),
+    );
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+    expect(result.current.error).toMatchObject({
+      message: 'OK & Close — #866',
+      reason: 'HTTP 500 close refused',
+    });
+
+    await retryFromErrorToast(result);
+
+    expect(commit.mock.calls).toEqual([[0], [1]]);
+    expect(commentStep).toHaveBeenCalledTimes(1);
+    expect(closeStep).toHaveBeenCalledTimes(2);
+    expect(result.current.error).toBeNull();
+    expect(result.current.offlineActions).toEqual([]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(result.current.writeState).toEqual({
+      status: 'succeeded',
+      attempt: 2,
+    });
+  });
+
+  it.each([
+    {
+      retryFailureKind: 'a host rejection that is not a partially sent error',
+      retryFailure: new Error('HTTP 502 status refused'),
+      expectedReason: 'HTTP 502 status refused',
+      expectedCommitCalls: [[0], [1], [1]],
+    },
+    {
+      retryFailureKind: 'a partially sent error counting 2 sent steps',
+      retryFailure: new ConsoleActionPartiallySentError(
+        2,
+        new Error('HTTP 502 status refused'),
+      ),
+      expectedReason: 'HTTP 502 status refused',
+      expectedCommitCalls: [[0], [1], [2]],
+    },
+  ])(
+    'commits each retry from the sent step count the latest failure leaves when the first retry fails with $retryFailureKind',
+    async ({ retryFailure, expectedReason, expectedCommitCalls }) => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const commit = jest
+        .fn<Promise<void>, [number]>()
+        .mockRejectedValueOnce(
+          new ConsoleActionPartiallySentError(
+            1,
+            new Error('HTTP 500 close refused'),
+          ),
+        )
+        .mockRejectedValueOnce(retryFailure)
+        .mockResolvedValue(undefined);
+      const action = makeAction({
+        message: 'OK & Close — #866',
+        color: 'red',
+        commit,
+        offline: [
+          commentOfflinePayload,
+          closeOfflinePayload,
+          setStatusOfflinePayload,
+        ],
+      });
+      await commitAfterUndoWindow(result, action);
+
+      await retryFromErrorToast(result);
+
+      expect(result.current.error).toMatchObject({
+        message: 'OK & Close — #866',
+        reason: expectedReason,
+      });
+      expect(result.current.writeState).toEqual({
+        status: 'failed',
+        attempt: 2,
+      });
+
+      await retryFromErrorToast(result);
+
+      expect(commit.mock.calls).toEqual(expectedCommitCalls);
+      expect(result.current.error).toBeNull();
+      expect(result.current.offlineActions).toEqual([]);
+      expect(result.current.writeState).toEqual({
+        status: 'succeeded',
+        attempt: 3,
+      });
+    },
+  );
+
+  it.each([
+    {
+      retryFailureKind:
+        'a partially sent error caused by an unavailable network',
+      retryFailure: new ConsoleActionPartiallySentError(
+        1,
+        new TypeError('Failed to fetch'),
+      ),
+    },
+    {
+      retryFailureKind: 'an unavailable network',
+      retryFailure: new TypeError('Failed to fetch'),
+    },
+  ])(
+    'holds only the unsent close as one entry without an error when the retry of an action whose comment was sent fails with $retryFailureKind',
+    async ({ retryFailure }) => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const commit = jest
+        .fn<Promise<void>, [number]>()
+        .mockRejectedValueOnce(
+          new ConsoleActionPartiallySentError(
+            1,
+            new Error('HTTP 500 close refused'),
+          ),
+        )
+        .mockRejectedValueOnce(retryFailure);
+      const action = makeAction({
+        message: 'OK & Close — #866',
+        color: 'red',
+        commit,
+        offline: [commentOfflinePayload, closeOfflinePayload],
+      });
+      await commitAfterUndoWindow(result, action);
+
+      await retryFromErrorToast(result);
+
+      expect(commit.mock.calls).toEqual([[0], [1]]);
+      expect(result.current.offlineActions).toEqual(heldCloseOnly);
+      expect(readStoredOfflineQueue()).toEqual(heldCloseOnly);
+      expect(result.current.error).toBeNull();
+      expect(result.current.writeState).toEqual({
+        status: 'offline',
+        attempt: 2,
+      });
+    },
+  );
+
+  it('holds only the unsent close without committing, sending or an airplane mode error when airplane mode is turned on before retrying an action whose comment was sent', async () => {
+    const fetchMock = installOperationFetch();
+    const { result, rerender } = renderQueueWithAirplaneModeSwitch();
+    const commit = jest
+      .fn<Promise<void>, [number]>()
+      .mockRejectedValueOnce(
+        new ConsoleActionPartiallySentError(
+          1,
+          new Error('HTTP 500 close refused'),
+        ),
+      )
+      .mockResolvedValue(undefined);
+    const revertAdvance = jest.fn();
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      revertAdvance,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+    rerender({ isAirplaneModeOn: true });
+
+    await retryFromErrorToast(result);
+
+    expect(commit.mock.calls).toEqual([[0]]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(revertAdvance).not.toHaveBeenCalled();
+    expect(result.current.offlineActions).toEqual(heldCloseOnly);
+    expect(readStoredOfflineQueue()).toEqual(heldCloseOnly);
+    expect(result.current.error).toBeNull();
+    expect(result.current.writeState).toEqual({
+      status: 'offline',
+      attempt: 2,
+    });
+  });
+
+  it('shows the airplane mode error, reverts the advance and commits nothing when airplane mode is turned on before retrying a partially sent action that carries no offline payload', async () => {
+    const { result, rerender } = renderQueueWithAirplaneModeSwitch();
+    const commit = jest
+      .fn<Promise<void>, [number]>()
+      .mockRejectedValueOnce(
+        new ConsoleActionPartiallySentError(
+          1,
+          new Error('HTTP 500 close refused'),
+        ),
+      )
+      .mockResolvedValue(undefined);
+    const revertAdvance = jest.fn();
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      revertAdvance,
+    });
+    await commitAfterUndoWindow(result, action);
+    rerender({ isAirplaneModeOn: true });
+
+    await retryFromErrorToast(result);
+
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(revertAdvance).toHaveBeenCalledTimes(1);
+    expect(result.current.offlineActions).toEqual([]);
+    expect(result.current.error).toEqual({
+      message: 'Airplane mode',
+      reason:
+        'This action requires a network connection. Turn off airplane mode and try again.',
+    });
+    expect(result.current.writeState).toEqual({
+      status: 'failed',
+      attempt: 2,
+    });
+  });
+
+  it('retries an action whose first request was rejected by sending every request again starting with the comment', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const commentStep = jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('HTTP 500 comment refused'))
+      .mockResolvedValue(undefined);
+    const closeStep = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+    const commit = jest.fn((sentStepCount: number) =>
+      consoleActionStepsRun([commentStep, closeStep], sentStepCount),
+    );
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+    expect(result.current.error).toMatchObject({
+      message: 'OK & Close — #866',
+      reason: 'HTTP 500 comment refused',
+    });
+
+    await retryFromErrorToast(result);
+
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commentStep).toHaveBeenCalledTimes(2);
+    expect(closeStep).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeNull();
+    expect(result.current.offlineActions).toEqual([]);
+    expect(result.current.writeState).toEqual({
+      status: 'succeeded',
+      attempt: 2,
+    });
+  });
+
+  it('holds every payload of an action whose first request was rejected when its retry fails because the network is unavailable', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const commentStep = jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('HTTP 500 comment refused'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const closeStep = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+    const commit = jest.fn((sentStepCount: number) =>
+      consoleActionStepsRun([commentStep, closeStep], sentStepCount),
+    );
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+
+    await retryFromErrorToast(result);
+
+    expect(commentStep).toHaveBeenCalledTimes(2);
+    expect(closeStep).not.toHaveBeenCalled();
+    expect(result.current.offlineActions).toEqual(heldCommentAndClose);
+    expect(readStoredOfflineQueue()).toEqual(heldCommentAndClose);
+    expect(result.current.error).toBeNull();
+    expect(result.current.writeState).toEqual({
+      status: 'offline',
+      attempt: 2,
+    });
+  });
+
+  it('holds every payload without sending anything when airplane mode is turned on before retrying an action whose first request was rejected', async () => {
+    const { result, rerender } = renderQueueWithAirplaneModeSwitch();
+    const commentStep = jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('HTTP 500 comment refused'))
+      .mockResolvedValue(undefined);
+    const closeStep = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+    const commit = jest.fn((sentStepCount: number) =>
+      consoleActionStepsRun([commentStep, closeStep], sentStepCount),
+    );
+    const action = makeAction({
+      message: 'OK & Close — #866',
+      color: 'red',
+      commit,
+      offline: [commentOfflinePayload, closeOfflinePayload],
+    });
+    await commitAfterUndoWindow(result, action);
+    rerender({ isAirplaneModeOn: true });
+
+    await retryFromErrorToast(result);
+
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(commentStep).toHaveBeenCalledTimes(1);
+    expect(closeStep).not.toHaveBeenCalled();
+    expect(result.current.offlineActions).toEqual(heldCommentAndClose);
+    expect(readStoredOfflineQueue()).toEqual(heldCommentAndClose);
+    expect(result.current.error).toBeNull();
+    expect(result.current.writeState).toEqual({
+      status: 'offline',
+      attempt: 2,
+    });
+  });
 });
