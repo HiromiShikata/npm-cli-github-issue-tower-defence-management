@@ -548,6 +548,28 @@ describe('useConsoleActionQueue', () => {
     expect(result.current.offlineActions[0].id).toBe('b');
   });
 
+  it('rejects a pre-deploy offline-queued action payload that satisfies every previously-checked field but lacks the now-required nameWithOwner field', () => {
+    const preDeployShapedPayloadMissingNameWithOwner = {
+      id: 'pre-deploy-1',
+      message: 'Approved — PR #851',
+      color: 'green',
+      enqueuedAt: 1,
+      itemUrl: 'https://github.com/o/r/pull/851',
+      projectItemId: 'PVTI_1',
+      itemNumber: 851,
+      repo: 'o/r',
+      isPr: true,
+      apiPath: '/api/review',
+      requestBody: { action: 'approve' },
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([preDeployShapedPayloadMissingNameWithOwner]),
+    );
+    const { result } = renderHook(() => useConsoleActionQueue());
+    expect(result.current.offlineActions).toHaveLength(0);
+  });
+
   it('calls revertAdvance when undo is called within the window', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const revertAdvance = jest.fn();

@@ -2859,6 +2859,82 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('does not navigate again when a retried write succeeds after the timer-elapsed project switch already navigated once', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
+    );
+    let postCallCount = 0;
+    global.fetch = jest.fn(async (url: string, init?: { method?: string }) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      if (init?.method === 'POST') {
+        postCallCount += 1;
+        if (postCallCount === 1) {
+          return {
+            ok: false,
+            status: 500,
+            text: async () => JSON.stringify({ error: 'merge failed' }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      jest.setSystemTime(61 * 1000);
+      const { navigatePush } = jest.requireMock<{
+        navigatePush: jest.Mock;
+      }>('../lib/navigation');
+      navigatePush.mockClear();
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve & Merge'));
+
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(getByText(/^Operation failed:/)).toBeInTheDocument();
+      expect(postCallCount).toBe(1);
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        fireEvent.click(getByText('Retry'));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(postCallCount).toBe(2);
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not send the write, but does not undo the already-occurred project switch, when the action is undone within the grace period even though the timer had already elapsed', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
