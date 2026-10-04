@@ -74,6 +74,26 @@ const installOperationFetch = (): jest.Mock => {
   return fetchMock;
 };
 
+const COMMENT_SUCCESS_RESPONSE_BODY = {
+  ok: true,
+  comment: {
+    id: 9001,
+    author: 'octocat',
+    body: 'Checked during the flight.',
+    createdAt: '2026-10-04T12:00:00Z',
+  },
+};
+
+const installCommentSuccessFetch = (): jest.Mock => {
+  const fetchMock = jest.fn(async (_url: string, _init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    json: async () => COMMENT_SUCCESS_RESPONSE_BODY,
+  }));
+  global.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+};
+
 const makeAction = (
   overrides: Partial<
     Parameters<ReturnType<typeof useConsoleActionQueue>['enqueue']>[0]
@@ -922,7 +942,7 @@ describe('useConsoleActionQueue', () => {
   });
 
   it('lists a held comment without sending it and sends exactly one /api/comment request with its request body when it is confirmed', async () => {
-    const fetchMock = installOperationFetch();
+    const fetchMock = installCommentSuccessFetch();
     localStorage.setItem(
       OFFLINE_QUEUE_STORAGE_KEY,
       JSON.stringify([
@@ -1227,7 +1247,7 @@ describe('useConsoleActionQueue', () => {
   });
 
   it('sends exactly one /api/comment request with the stored request body when an entry added by offlineActionsCreate is confirmed', async () => {
-    const fetchMock = installOperationFetch();
+    const fetchMock = installCommentSuccessFetch();
     const { result } = renderHook(() => useConsoleActionQueue());
     act(() => {
       result.current.offlineActionsCreate({
@@ -1248,6 +1268,95 @@ describe('useConsoleActionQueue', () => {
     );
     expect(result.current.offlineActions).toEqual([]);
     expect(readStoredOfflineQueue()).toEqual([]);
+  });
+
+  describe('confirmOfflineAction replaying a queued /api/comment action', () => {
+    const enqueueHeldComment = (queue: { current: ConsoleActionQueue }): string => {
+      act(() => {
+        queue.current.offlineActionsCreate({
+          payloads: [commentOfflinePayload],
+          message: 'Comment — #866',
+          color: 'blue',
+        });
+      });
+      return queue.current.offlineActions[0].id;
+    };
+
+    it.each([
+      {
+        bodyShapeKind: 'without a rate limit reset time',
+        responseBody: { ok: false, error: 'GitHub rate limit exceeded' },
+        expectedReasonParts: ['GitHub rate limit exceeded'],
+      },
+      {
+        bodyShapeKind: 'with a rate limit reset time',
+        responseBody: {
+          ok: false,
+          error: 'GitHub rate limit exceeded',
+          rateLimitResetAt: '2026-10-05T00:00:00Z',
+        },
+        expectedReasonParts: [
+          'GitHub rate limit exceeded',
+          'Rate limit resets at 2026-10-05T00:00:00Z.',
+        ],
+      },
+    ])(
+      'keeps the comment held and surfaces the upstream reason $bodyShapeKind when the response is HTTP 200 reporting ok: false',
+      async ({ responseBody, expectedReasonParts }) => {
+        const fetchMock = jest.fn(async () => ({
+          ok: true,
+          status: 200,
+          json: async () => responseBody,
+        }));
+        global.fetch = fetchMock as unknown as typeof fetch;
+        const { result } = renderHook(() => useConsoleActionQueue());
+        const id = enqueueHeldComment(result);
+
+        await act(async () => {
+          await result.current.confirmOfflineAction(id);
+        });
+
+        expect(result.current.offlineActions).toHaveLength(1);
+        expect(readStoredOfflineQueue()).toHaveLength(1);
+        for (const expectedReasonPart of expectedReasonParts) {
+          expect(result.current.error?.reason).toContain(expectedReasonPart);
+        }
+      },
+    );
+
+    it('removes the comment from the queue when the response is HTTP 200 with a realistic success body', async () => {
+      const fetchMock = installCommentSuccessFetch();
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const id = enqueueHeldComment(result);
+
+      await act(async () => {
+        await result.current.confirmOfflineAction(id);
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result.current.offlineActions).toEqual([]);
+      expect(readStoredOfflineQueue()).toEqual([]);
+    });
+
+    it('keeps the comment held with the still-offline reason when the fetch call itself fails because the network is unavailable', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockRejectedValue(new TypeError('Failed to fetch'));
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const id = enqueueHeldComment(result);
+
+      await act(async () => {
+        await result.current.confirmOfflineAction(id);
+      });
+
+      expect(result.current.error).toEqual({
+        message: 'Comment — #866',
+        reason: 'Still offline — action is still held in the queue',
+      });
+      expect(result.current.offlineActions).toHaveLength(1);
+      expect(readStoredOfflineQueue()).toHaveLength(1);
+    });
   });
 
   describe('writeState', () => {
