@@ -628,15 +628,41 @@ export class StoryGateCheckUseCase {
   };
 
   private boardCacheOwnerDetect = (cache: BoardCache): string | null => {
-    const issueUrl = cache.issues.find((issue) => issue.url !== '')?.url;
+    const issueOwners = cache.issues
+      .map((issue) => issue.url)
+      .filter((url) => url !== '')
+      .map((url) => githubIssueReferenceParse(url)?.owner ?? null)
+      .filter((owner): owner is string => owner !== null);
+    if (issueOwners.length > 0) {
+      return this.ownerMajorityFind(issueOwners);
+    }
     const storyIssueUrl = Object.values(cache.storyIssueUrlByOptionName).find(
       (url) => url !== '',
     );
-    const candidateUrl = issueUrl ?? storyIssueUrl;
-    if (candidateUrl === undefined) {
+    if (storyIssueUrl === undefined) {
       return null;
     }
-    return githubIssueReferenceParse(candidateUrl)?.owner ?? null;
+    return githubIssueReferenceParse(storyIssueUrl)?.owner ?? null;
+  };
+
+  private ownerMajorityFind = (owners: string[]): string | null => {
+    const counts = new Map<string, number>();
+    for (const owner of owners) {
+      counts.set(owner, (counts.get(owner) ?? 0) + 1);
+    }
+    let majorityOwner: string | null = null;
+    let majorityCount = 0;
+    let majorityIsTied = false;
+    for (const [owner, count] of counts) {
+      if (count > majorityCount) {
+        majorityOwner = owner;
+        majorityCount = count;
+        majorityIsTied = false;
+      } else if (count === majorityCount) {
+        majorityIsTied = true;
+      }
+    }
+    return majorityIsTied ? null : majorityOwner;
   };
 
   private storyGateSearchCachesResolve = async (
