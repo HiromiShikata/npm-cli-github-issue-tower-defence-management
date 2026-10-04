@@ -4335,6 +4335,176 @@ describe('ConsolePage task creation action queue', () => {
       jest.useRealTimers();
     }
   });
+
+  it('does not cross-contaminate attachments between two tasks when the second is created while the first commit is still in-flight', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(
+        async (url: string, options?: { body?: string }) => {
+          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+          if (listMatch !== null) {
+            const tab = listMatch[1];
+            return {
+              ok: true,
+              status: 200,
+              json: async () =>
+                tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+            };
+          }
+          if (url === '/api/projects') {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ pjcodes: ['acme'] }),
+            };
+          }
+          if (url === '/api/createissue') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              title: string;
+            };
+            const issueUrl =
+              requestBody.title === 'Task A'
+                ? 'https://github.com/o/r/issues/801'
+                : 'https://github.com/o/r/issues/802';
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ issueUrl }),
+            };
+          }
+          if (url === '/api/upload') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              fileName: string;
+            };
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                markdown: `![${requestBody.fileName}](https://example.com/${requestBody.fileName})`,
+              }),
+            };
+          }
+          if (url === '/api/comment') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              url: string;
+              body: string;
+            };
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                comment: {
+                  id: 1,
+                  author: 'bot',
+                  body: requestBody.body,
+                  createdAt: '2026-06-19T00:00:00.000Z',
+                },
+              }),
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        },
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const attachFile = async (fileName: string): Promise<void> => {
+        const testFile = new File(['x'], fileName, { type: 'image/png' });
+        (
+          testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+        ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+        const fileInput = document.querySelector(
+          'input[type="file"]',
+        ) as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', {
+          value: [testFile],
+          configurable: true,
+        });
+        await act(async () => {
+          fireEvent.change(fileInput);
+        });
+        await waitFor(() => {
+          expect(
+            document.querySelector('.console-task-create-dialog-file-name'),
+          ).toBeInTheDocument();
+        });
+      };
+
+      const { getByRole, queryByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const dialogA = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(dialogA).getByLabelText('Title'), {
+        target: { value: 'Task A' },
+      });
+      await attachFile('a.png');
+
+      fireEvent.click(within(dialogA).getByRole('button', { name: 'Create' }));
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const dialogB = getByRole('dialog', { name: 'Create new task' });
+      expect(within(dialogB).getByLabelText('Title')).toHaveValue('');
+      fireEvent.change(within(dialogB).getByLabelText('Title'), {
+        target: { value: 'Task B' },
+      });
+      await attachFile('b.png');
+
+      fireEvent.click(within(dialogB).getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 20; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        (call) => call[0] === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBe(2);
+
+      const commentRequestBodies = fetchMock.mock.calls
+        .filter((call) => call[0] === '/api/comment')
+        .map(
+          (call) =>
+            JSON.parse(call[1]?.body ?? '{}') as { url: string; body: string },
+        );
+      const commentForTaskA = commentRequestBodies.find(
+        (c) => c.url === 'https://github.com/o/r/issues/801',
+      );
+      const commentForTaskB = commentRequestBodies.find(
+        (c) => c.url === 'https://github.com/o/r/issues/802',
+      );
+
+      expect(commentForTaskA?.body ?? '').toContain('a.png');
+      expect(commentForTaskA?.body ?? '').not.toContain('b.png');
+      expect(commentForTaskB?.body ?? '').toContain('b.png');
+      expect(commentForTaskB?.body ?? '').not.toContain('a.png');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {
