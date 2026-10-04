@@ -111,40 +111,135 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
-const createIssueWithAttachments = async (
+export type AttachmentSubmissionProgress = {
+  issueUrl: string | null;
+  uploadedMarkdownByFileName: Map<string, string>;
+  commentedFileNames: Set<string>;
+};
+
+export const createEmptyAttachmentSubmissionProgress =
+  (): AttachmentSubmissionProgress => ({
+    issueUrl: null,
+    uploadedMarkdownByFileName: new Map(),
+    commentedFileNames: new Set(),
+  });
+
+export const buildAttachmentSubmissionFailureMessage = (
+  issueUrl: string,
+  failedFileNames: string[],
+  commentPostError: string | null,
+): string => {
+  const parts: string[] = [];
+  if (failedFileNames.length > 0) {
+    parts.push(
+      `${failedFileNames.length} file(s) failed to upload: ${failedFileNames.join(', ')}`,
+    );
+  }
+  if (commentPostError !== null) {
+    parts.push(`the summary comment failed to post: ${commentPostError}`);
+  }
+  return `Task ${issueUrl} was created, but ${parts.join('; and ')}.`;
+};
+
+export const attachmentSubmissionParamsChanged = (
+  previous: IssueCreateParams,
+  current: IssueCreateParams,
+): boolean =>
+  previous.title !== current.title ||
+  previous.body !== current.body ||
+  previous.storyName !== current.storyName ||
+  previous.agentOptionId !== current.agentOptionId;
+
+export const createIssueWithAttachments = async (
   pjcode: string,
   nameWithOwner: string,
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
+  progress: AttachmentSubmissionProgress,
 ): Promise<void> => {
-  const issueUrl = await postConsoleCreateIssue({
-    pjcode,
-    title,
-    storyName: storyName ?? '',
-    nameWithOwner,
-    agentOptionId: agentOptionId ?? null,
-    body: body ?? null,
-  });
-  if (files.length > 0) {
-    const markdownParts = await Promise.all(
-      files.map(async (file) => {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const contentBase64 = encodeAttachmentContent(bytes);
-        return postConsoleAttachment({
-          pjcode,
-          url: issueUrl,
-          fileName: file.name,
-          contentBase64,
-        });
-      }),
-    );
-    const commentResult = await postConsoleComment({
-      pjcode,
-      url: issueUrl,
-      body: markdownParts.join('\n\n'),
-    });
-    if (!commentResult.posted) {
-      throw new Error(commentResult.error);
+  let issueUrl = progress.issueUrl;
+  if (issueUrl === null) {
+    try {
+      issueUrl = await postConsoleCreateIssue({
+        pjcode,
+        title,
+        storyName: storyName ?? '',
+        nameWithOwner,
+        agentOptionId: agentOptionId ?? null,
+        body: body ?? null,
+      });
+    } catch (cause: unknown) {
+      console.error(
+        'createIssueWithAttachments: failed to create issue',
+        cause,
+      );
+      throw new Error('Failed to create the task. Please try again.');
     }
+    progress.issueUrl = issueUrl;
+  }
+
+  const filesStillPending = files.filter(
+    (file) => !progress.uploadedMarkdownByFileName.has(file.name),
+  );
+  const uploadResults = await Promise.allSettled(
+    filesStillPending.map(async (file) => {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const contentBase64 = encodeAttachmentContent(bytes);
+      const markdown = await postConsoleAttachment({
+        pjcode,
+        url: issueUrl as string,
+        fileName: file.name,
+        contentBase64,
+      });
+      return { fileName: file.name, markdown };
+    }),
+  );
+  const failedFileNames: string[] = [];
+  uploadResults.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      progress.uploadedMarkdownByFileName.set(
+        result.value.fileName,
+        result.value.markdown,
+      );
+    } else {
+      failedFileNames.push(filesStillPending[index].name);
+    }
+  });
+
+  const notYetCommentedFileNames = Array.from(
+    progress.uploadedMarkdownByFileName.keys(),
+  ).filter((fileName) => !progress.commentedFileNames.has(fileName));
+
+  let commentPostError: string | null = null;
+  if (notYetCommentedFileNames.length > 0) {
+    try {
+      const commentResult = await postConsoleComment({
+        pjcode,
+        url: issueUrl,
+        body: notYetCommentedFileNames
+          .map((fileName) => progress.uploadedMarkdownByFileName.get(fileName))
+          .join('\n\n'),
+      });
+      if (commentResult.posted) {
+        for (const fileName of notYetCommentedFileNames) {
+          progress.commentedFileNames.add(fileName);
+        }
+      } else {
+        commentPostError = commentResult.error;
+      }
+    } catch (cause: unknown) {
+      console.error('createIssueWithAttachments: comment post threw', cause);
+      commentPostError = 'posting the summary comment failed unexpectedly';
+    }
+  }
+
+  if (failedFileNames.length > 0 || commentPostError !== null) {
+    throw new Error(
+      buildAttachmentSubmissionFailureMessage(
+        issueUrl,
+        failedFileNames,
+        commentPostError,
+      ),
+    );
   }
 };
 
@@ -315,10 +410,12 @@ export const ConsolePage = () => {
   const [dialogSubmitFailure, setDialogSubmitFailure] = useState<{
     params: IssueCreateParams;
     reason: string;
+    progress: AttachmentSubmissionProgress;
   } | null>(null);
   const [fleetDialogSubmitFailure, setFleetDialogSubmitFailure] = useState<{
     params: IssueCreateParams;
     reason: string;
+    progress: AttachmentSubmissionProgress;
   } | null>(null);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -759,18 +856,28 @@ export const ConsolePage = () => {
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
       const capturedParams = { title, storyName, agentOptionId, body, files };
+      const progress =
+        dialogSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          dialogSubmitFailure.params,
+          capturedParams,
+        )
+          ? dialogSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
       actionQueue.enqueue({
-        message: `Task created — "${title}"`,
+        message: `Creating task — "${title}"`,
         color: 'blue',
         commit: () =>
           createIssueWithAttachments(
             capturedPjcode,
             capturedNameWithOwner,
             capturedParams,
+            progress,
           ).catch((cause: unknown) => {
             setDialogSubmitFailure({
               params: capturedParams,
               reason: cause instanceof Error ? cause.message : String(cause),
+              progress,
             });
             setIsDialogOpen(true);
             throw cause;
@@ -785,7 +892,7 @@ export const ConsolePage = () => {
       });
       return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner, actionQueue],
+    [pjcode, defaultNameWithOwner, actionQueue, dialogSubmitFailure],
   );
 
   const handleCreateFleetTaskFromDialog = useCallback(
@@ -806,18 +913,28 @@ export const ConsolePage = () => {
       const nameWithOwner = match[1];
       const capturedPjcode = pjcode;
       const capturedParams = { title, storyName, agentOptionId, body, files };
+      const progress =
+        fleetDialogSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          fleetDialogSubmitFailure.params,
+          capturedParams,
+        )
+          ? fleetDialogSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
       actionQueue.enqueue({
-        message: `Task created — "${title}"`,
+        message: `Creating task — "${title}"`,
         color: 'blue',
         commit: () =>
           createIssueWithAttachments(
             capturedPjcode,
             nameWithOwner,
             capturedParams,
+            progress,
           ).catch((cause: unknown) => {
             setFleetDialogSubmitFailure({
               params: capturedParams,
               reason: cause instanceof Error ? cause.message : String(cause),
+              progress,
             });
             setIsFleetTaskCreateDialogOpen(true);
             throw cause;
@@ -832,7 +949,7 @@ export const ConsolePage = () => {
       });
       return Promise.resolve();
     },
-    [fleetTaskCreateUrl, pjcode, actionQueue],
+    [fleetTaskCreateUrl, pjcode, actionQueue, fleetDialogSubmitFailure],
   );
 
   const handleReorderStory = useCallback(

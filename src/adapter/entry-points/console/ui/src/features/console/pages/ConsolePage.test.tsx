@@ -5,10 +5,19 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
+import * as consoleApi from '../lib/consoleApi';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey } from '../logic/overlay';
-import { ConsolePage } from './ConsolePage';
+import {
+  type AttachmentSubmissionProgress,
+  attachmentSubmissionParamsChanged,
+  buildAttachmentSubmissionFailureMessage,
+  ConsolePage,
+  createEmptyAttachmentSubmissionProgress,
+  createIssueWithAttachments,
+} from './ConsolePage';
 
 const tabBar = (): HTMLElement => {
   const nav = document.querySelector('nav.console-tabbar');
@@ -3715,7 +3724,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create' }));
 
       await waitFor(() => {
-        expect(queryByText(/Task created — "My new task"/)).toBeInTheDocument();
+        expect(
+          queryByText(/Creating task — "My new task"/),
+        ).toBeInTheDocument();
       });
     } finally {
       jest.useRealTimers();
@@ -4093,8 +4104,403 @@ describe('ConsolePage task creation action queue', () => {
           .getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not claim a task was created in the error banner when postConsoleCreateIssue itself fails', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFailingCreate();
+      const { getByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Pure creation failure task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      const toastTitle = container.querySelector('.console-error-toast-title');
+      const toastMessage = container.querySelector(
+        '.console-error-toast-message',
+      );
+      expect(toastTitle?.textContent ?? '').not.toContain('Task created');
+      expect(toastMessage?.textContent ?? '').not.toContain('Task created');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not create a duplicate GitHub issue when the dialog Create button is clicked again after a partial attachment upload failure', async () => {
+    jest.useFakeTimers();
+    try {
+      let uploadAttemptCount = 0;
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issueUrl: 'https://github.com/o/r/issues/777',
+            }),
+          };
+        }
+        if (url === '/api/upload') {
+          uploadAttemptCount += 1;
+          if (uploadAttemptCount === 1) {
+            return {
+              ok: false,
+              status: 500,
+              text: async () => 'upload failed',
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              markdown: '![attachment.png](https://example.com/attachment.png)',
+            }),
+          };
+        }
+        if (url === '/api/comment') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              comment: {
+                id: 1,
+                author: 'bot',
+                body: '![attachment.png](https://example.com/attachment.png)',
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Task with a failing attachment' },
+      });
+      fireEvent.change(within(openDialog).getByLabelText('Body'), {
+        target: { value: 'Body text for the retried task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /TDPM Console port/ }),
+      );
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /^developer$/i }),
+      );
+
+      const testFile = new File(['x'], 'attachment.png', {
+        type: 'image/png',
+      });
+      (
+        testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [testFile],
+        configurable: true,
+      });
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
+      expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
+        'Task with a failing attachment',
+      );
+      expect(within(reopenedDialog).getByLabelText('Body')).toHaveValue(
+        'Body text for the retried task',
+      );
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /TDPM Console port/ })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        within(reopenedDialog)
+          .getByRole('button', { name: /^developer$/i })
+          .getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(within(reopenedDialog).getByRole('alert').textContent).toContain(
+        'attachment.png',
+      );
+
+      fireEvent.click(
+        within(reopenedDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not cross-contaminate attachments between two tasks when the second is created while the first commit is still in-flight', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(
+        async (url: string, options?: { body?: string }) => {
+          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+          if (listMatch !== null) {
+            const tab = listMatch[1];
+            return {
+              ok: true,
+              status: 200,
+              json: async () =>
+                tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+            };
+          }
+          if (url === '/api/projects') {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ pjcodes: ['acme'] }),
+            };
+          }
+          if (url === '/api/createissue') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              title: string;
+            };
+            const issueUrl =
+              requestBody.title === 'Task A'
+                ? 'https://github.com/o/r/issues/801'
+                : 'https://github.com/o/r/issues/802';
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ issueUrl }),
+            };
+          }
+          if (url === '/api/upload') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              fileName: string;
+            };
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                markdown: `![${requestBody.fileName}](https://example.com/${requestBody.fileName})`,
+              }),
+            };
+          }
+          if (url === '/api/comment') {
+            const requestBody = JSON.parse(options?.body ?? '{}') as {
+              url: string;
+              body: string;
+            };
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                comment: {
+                  id: 1,
+                  author: 'bot',
+                  body: requestBody.body,
+                  createdAt: '2026-06-19T00:00:00.000Z',
+                },
+              }),
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        },
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const attachFile = async (fileName: string): Promise<void> => {
+        const testFile = new File(['x'], fileName, { type: 'image/png' });
+        (
+          testFile as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+        ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+        const fileInput = document.querySelector(
+          'input[type="file"]',
+        ) as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', {
+          value: [testFile],
+          configurable: true,
+        });
+        await act(async () => {
+          fireEvent.change(fileInput);
+        });
+        await waitFor(() => {
+          expect(
+            document.querySelector('.console-task-create-dialog-file-name'),
+          ).toBeInTheDocument();
+        });
+      };
+
+      const { getByRole, queryByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const dialogA = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(dialogA).getByLabelText('Title'), {
+        target: { value: 'Task A' },
+      });
+      await attachFile('a.png');
+
+      fireEvent.click(within(dialogA).getByRole('button', { name: 'Create' }));
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const dialogB = getByRole('dialog', { name: 'Create new task' });
+      expect(within(dialogB).getByLabelText('Title')).toHaveValue('');
+      fireEvent.change(within(dialogB).getByLabelText('Title'), {
+        target: { value: 'Task B' },
+      });
+      await attachFile('b.png');
+
+      fireEvent.click(within(dialogB).getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        for (let i = 0; i < 20; i++) {
+          await Promise.resolve();
+        }
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        (call) => call[0] === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBe(2);
+
+      const commentRequestBodies = fetchMock.mock.calls
+        .filter((call) => call[0] === '/api/comment')
+        .map(
+          (call) =>
+            JSON.parse(call[1]?.body ?? '{}') as { url: string; body: string },
+        );
+      const commentForTaskA = commentRequestBodies.find(
+        (c) => c.url === 'https://github.com/o/r/issues/801',
+      );
+      const commentForTaskB = commentRequestBodies.find(
+        (c) => c.url === 'https://github.com/o/r/issues/802',
+      );
+
+      expect(commentForTaskA?.body ?? '').toContain('a.png');
+      expect(commentForTaskA?.body ?? '').not.toContain('b.png');
+      expect(commentForTaskB?.body ?? '').toContain('b.png');
+      expect(commentForTaskB?.body ?? '').not.toContain('a.png');
     } finally {
       jest.useRealTimers();
     }
@@ -4392,7 +4798,7 @@ describe('ConsolePage workflow issue creation', () => {
         expect(queryByRole('dialog')).toBeNull();
       });
       expect(
-        getByText(/Task created — "New workflow task"/),
+        getByText(/Creating task — "New workflow task"/),
       ).toBeInTheDocument();
     } finally {
       jest.useRealTimers();
@@ -4486,7 +4892,9 @@ describe('ConsolePage workflow issue creation', () => {
       });
       await waitFor(() => {
         expect(
-          getByText('Operation failed: Internal Server Error'),
+          getByText(
+            'Operation failed: Failed to create the task. Please try again.',
+          ),
         ).toBeInTheDocument();
       });
       const reopenedDialog = getByRole('dialog');
@@ -4496,7 +4904,7 @@ describe('ConsolePage workflow issue creation', () => {
         getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
     } finally {
       jest.useRealTimers();
@@ -4576,7 +4984,7 @@ describe('ConsolePage workflow issue creation', () => {
       });
       fireEvent.click(getByRole('button', { name: /^create$/i }));
       await waitFor(() => {
-        expect(queryByText(/Task created/)).toBeInTheDocument();
+        expect(queryByText(/Creating task/)).toBeInTheDocument();
       });
     } finally {
       jest.useRealTimers();
@@ -4667,7 +5075,7 @@ describe('ConsolePage workflow issue creation', () => {
           .getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
     } finally {
       jest.useRealTimers();
@@ -6227,5 +6635,683 @@ describe('ConsolePage offline action queue', () => {
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
     expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(2);
     expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([]);
+  });
+});
+
+describe('createIssueWithAttachments attachment submission progress', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const pjcode = 'acme';
+  const nameWithOwner = 'o/r';
+  const ISSUE_URL = 'https://github.com/o/r/issues/321';
+
+  const markdownFor = (fileName: string): string =>
+    `![${fileName}](https://example.com/${fileName})`;
+
+  const makeFile = (name: string): File => {
+    const file = new File(['x'], name);
+    (
+      file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+    ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+    return file;
+  };
+
+  const buildProgress = (
+    priorIssueUrl: string | null,
+    priorUploaded: Array<[string, string]>,
+    priorCommented: string[],
+  ): AttachmentSubmissionProgress => ({
+    issueUrl: priorIssueUrl,
+    uploadedMarkdownByFileName: new Map(priorUploaded),
+    commentedFileNames: new Set(priorCommented),
+  });
+
+  type FileAttempt = { name: string; outcome: 'success' | 'failure' };
+
+  type ExpectedOutcome =
+    | { kind: 'resolves' }
+    | { kind: 'rejectsPropagated'; message: string }
+    | {
+        kind: 'rejectsWrapped';
+        failedFileNames: string[];
+        commentPostError: string | null;
+      };
+
+  type Row = {
+    name: string;
+    priorIssueUrl: string | null;
+    priorUploaded: Array<[string, string]>;
+    priorCommented: string[];
+    files: FileAttempt[];
+    createIssueBehavior: 'success' | 'failure';
+    commentBehavior: 'success' | 'apiFailure' | 'notCalled';
+    expectCreateIssueCalls: number;
+    expectAttachmentCalls: number;
+    expectCommentCalls: number;
+    expectOutcome: ExpectedOutcome;
+    expectFinalUploaded: string[];
+    expectFinalCommented: string[];
+    expectCommentBodyIncludes?: string[];
+  };
+
+  const rows: Row[] = [
+    {
+      name: 'row 1: fresh, no files -> issue created, no comment',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [],
+      createIssueBehavior: 'success',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 0,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 2: fresh, [A] succeeds -> issue created, comment with A posted',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'A.png', outcome: 'success' }],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['A.png'],
+      expectFinalCommented: ['A.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png')],
+    },
+    {
+      name: 'row 3: fresh, [A,B], A succeeds/B fails -> comment with A only, rejects naming B',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'success' },
+        { name: 'B.png', outcome: 'failure' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: ['A.png'],
+      expectFinalCommented: ['A.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png')],
+    },
+    {
+      name: 'row 4: fresh, [A,B], A fails but B still succeeds independently -> comment with B only, rejects naming A',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'failure' },
+        { name: 'B.png', outcome: 'success' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['A.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: ['B.png'],
+      expectFinalCommented: ['B.png'],
+      expectCommentBodyIncludes: [markdownFor('B.png')],
+    },
+    {
+      name: 'row 5: fresh, [A,B] both fail -> no comment, rejects naming both',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'failure' },
+        { name: 'B.png', outcome: 'failure' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['A.png', 'B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 6: fresh, [A,B] both succeed but the comment-post call itself fails -> rejects distinctly, keeps both uploads',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [
+        { name: 'A.png', outcome: 'success' },
+        { name: 'B.png', outcome: 'success' },
+      ],
+      createIssueBehavior: 'success',
+      commentBehavior: 'apiFailure',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 2,
+      expectCommentCalls: 1,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: [],
+        commentPostError: 'comment post failed',
+      },
+      expectFinalUploaded: ['A.png', 'B.png'],
+      expectFinalCommented: [],
+      expectCommentBodyIncludes: [markdownFor('A.png'), markdownFor('B.png')],
+    },
+    {
+      name: 'row 7: existing issue, B still pending -> no new issue, B uploads and comment succeeds',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'B.png', outcome: 'success' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['B.png'],
+      expectFinalCommented: ['B.png'],
+      expectCommentBodyIncludes: [markdownFor('B.png')],
+    },
+    {
+      name: 'row 8: existing issue, B still pending, B fails again -> no duplicate issue, rejects naming B with the same issue url',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'B.png', outcome: 'failure' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 1,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsWrapped',
+        failedFileNames: ['B.png'],
+        commentPostError: null,
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+    {
+      name: 'row 9: existing issue, A and B already uploaded, only the comment is pending -> retried comment succeeds without any re-upload',
+      priorIssueUrl: ISSUE_URL,
+      priorUploaded: [
+        ['A.png', markdownFor('A.png')],
+        ['B.png', markdownFor('B.png')],
+      ],
+      priorCommented: [],
+      files: [],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'success',
+      expectCreateIssueCalls: 0,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 1,
+      expectOutcome: { kind: 'resolves' },
+      expectFinalUploaded: ['A.png', 'B.png'],
+      expectFinalCommented: ['A.png', 'B.png'],
+      expectCommentBodyIncludes: [markdownFor('A.png'), markdownFor('B.png')],
+    },
+    {
+      name: 'row 10: fresh, issue creation itself fails -> no issue created at all, nothing else runs',
+      priorIssueUrl: null,
+      priorUploaded: [],
+      priorCommented: [],
+      files: [{ name: 'A.png', outcome: 'success' }],
+      createIssueBehavior: 'failure',
+      commentBehavior: 'notCalled',
+      expectCreateIssueCalls: 1,
+      expectAttachmentCalls: 0,
+      expectCommentCalls: 0,
+      expectOutcome: {
+        kind: 'rejectsPropagated',
+        message: 'Failed to create the task. Please try again.',
+      },
+      expectFinalUploaded: [],
+      expectFinalCommented: [],
+    },
+  ];
+
+  it.each(rows)('$name', async (row) => {
+    const createIssueSpy = jest.spyOn(consoleApi, 'postConsoleCreateIssue');
+    if (row.createIssueBehavior === 'success') {
+      createIssueSpy.mockResolvedValue(ISSUE_URL);
+    } else {
+      createIssueSpy.mockRejectedValue(new Error('create issue failed'));
+    }
+
+    const attachmentSpy = jest.spyOn(consoleApi, 'postConsoleAttachment');
+    attachmentSpy.mockImplementation(async (request) => {
+      const attempt = row.files.find((f) => f.name === request.fileName);
+      if (attempt?.outcome === 'failure') {
+        throw new Error(`${request.fileName} upload failed`);
+      }
+      return markdownFor(request.fileName);
+    });
+
+    const commentSpy = jest.spyOn(consoleApi, 'postConsoleComment');
+    if (row.commentBehavior === 'success') {
+      commentSpy.mockImplementation(async (request) => ({
+        posted: true,
+        comment: {
+          id: 1,
+          author: 'bot',
+          body: request.body,
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      }));
+    } else if (row.commentBehavior === 'apiFailure') {
+      commentSpy.mockResolvedValue({
+        posted: false,
+        error: 'comment post failed',
+        rateLimitResetAt: null,
+      });
+    } else {
+      commentSpy.mockImplementation(async () => {
+        throw new Error('postConsoleComment must not be called for this row');
+      });
+    }
+
+    const progress =
+      row.priorIssueUrl === null &&
+      row.priorUploaded.length === 0 &&
+      row.priorCommented.length === 0
+        ? createEmptyAttachmentSubmissionProgress()
+        : buildProgress(
+            row.priorIssueUrl,
+            row.priorUploaded,
+            row.priorCommented,
+          );
+
+    const params = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: row.files.map((f) => makeFile(f.name)),
+    };
+
+    let thrown: unknown = null;
+    let resolved = false;
+    try {
+      await createIssueWithAttachments(pjcode, nameWithOwner, params, progress);
+      resolved = true;
+    } catch (error) {
+      thrown = error;
+    }
+
+    if (row.expectOutcome.kind === 'resolves') {
+      expect(resolved).toBe(true);
+    } else if (row.expectOutcome.kind === 'rejectsPropagated') {
+      expect(resolved).toBe(false);
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(row.expectOutcome.message);
+    } else {
+      expect(resolved).toBe(false);
+      expect(thrown).toBeInstanceOf(Error);
+      expect(progress.issueUrl).not.toBeNull();
+      expect((thrown as Error).message).toBe(
+        buildAttachmentSubmissionFailureMessage(
+          progress.issueUrl as string,
+          row.expectOutcome.failedFileNames,
+          row.expectOutcome.commentPostError,
+        ),
+      );
+    }
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(row.expectCreateIssueCalls);
+    expect(attachmentSpy).toHaveBeenCalledTimes(row.expectAttachmentCalls);
+    expect(commentSpy).toHaveBeenCalledTimes(row.expectCommentCalls);
+
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual([...row.expectFinalUploaded].sort());
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual(
+      [...row.expectFinalCommented].sort(),
+    );
+
+    if (row.expectCommentBodyIncludes !== undefined) {
+      const call = commentSpy.mock.calls[0][0];
+      for (const snippet of row.expectCommentBodyIncludes) {
+        expect(call.body).toContain(snippet);
+      }
+    }
+
+    if (row.priorIssueUrl !== null) {
+      expect(progress.issueUrl).toBe(row.priorIssueUrl);
+    } else if (row.createIssueBehavior === 'success') {
+      expect(progress.issueUrl).toBe(ISSUE_URL);
+    } else {
+      expect(progress.issueUrl).toBeNull();
+    }
+  });
+
+  it('resumes across two calls with the same progress object: a partial file failure, then a retry of only the failed file succeeds (rows 3 -> 7)', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    let bUploadAttempts = 0;
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => {
+        if (request.fileName === 'B.png') {
+          bUploadAttempts += 1;
+          if (bUploadAttempts === 1) {
+            throw new Error('B upload failed');
+          }
+        }
+        return markdownFor(request.fileName);
+      });
+
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockImplementation(async (request) => ({
+        posted: true,
+        comment: {
+          id: 1,
+          author: 'bot',
+          body: request.body,
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      }));
+
+    const firstParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let firstError: unknown = null;
+    try {
+      await createIssueWithAttachments(
+        pjcode,
+        nameWithOwner,
+        firstParams,
+        progress,
+      );
+    } catch (error) {
+      firstError = error;
+    }
+    expect(firstError).toBeInstanceOf(Error);
+    expect((firstError as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(ISSUE_URL, ['B.png'], null),
+    );
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(progress.issueUrl).toBe(ISSUE_URL);
+    expect(Array.from(progress.uploadedMarkdownByFileName.keys())).toEqual([
+      'A.png',
+    ]);
+    expect(Array.from(progress.commentedFileNames)).toEqual(['A.png']);
+
+    const secondParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('B.png')],
+    };
+
+    let secondResolved = false;
+    await createIssueWithAttachments(
+      pjcode,
+      nameWithOwner,
+      secondParams,
+      progress,
+    ).then(() => {
+      secondResolved = true;
+    });
+    expect(secondResolved).toBe(true);
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    const aAttachmentCalls = attachmentSpy.mock.calls.filter(
+      ([request]) => request.fileName === 'A.png',
+    );
+    expect(aAttachmentCalls).toHaveLength(1);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual([
+      'A.png',
+      'B.png',
+    ]);
+    expect(commentSpy).toHaveBeenCalledTimes(2);
+    const secondCommentCall = commentSpy.mock.calls[1][0];
+    expect(secondCommentCall.body).toContain(markdownFor('B.png'));
+    expect(secondCommentCall.body).not.toContain(markdownFor('A.png'));
+  });
+
+  it('resumes across two calls with the same progress object: successful uploads with a failed comment post, then a retry resends only the comment using the retained links (rows 6 -> 9)', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => markdownFor(request.fileName));
+
+    let commentAttempts = 0;
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockImplementation(async (request) => {
+        commentAttempts += 1;
+        if (commentAttempts === 1) {
+          return {
+            posted: false,
+            error: 'comment post failed',
+            rateLimitResetAt: null,
+          };
+        }
+        return {
+          posted: true,
+          comment: {
+            id: 2,
+            author: 'bot',
+            body: request.body,
+            createdAt: '2026-06-19T00:00:00.000Z',
+          },
+        };
+      });
+
+    const firstParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let firstError: unknown = null;
+    try {
+      await createIssueWithAttachments(
+        pjcode,
+        nameWithOwner,
+        firstParams,
+        progress,
+      );
+    } catch (error) {
+      firstError = error;
+    }
+    expect(firstError).toBeInstanceOf(Error);
+    expect((firstError as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(
+        ISSUE_URL,
+        [],
+        'comment post failed',
+      ),
+    );
+    expect((firstError as Error).message).not.toMatch(
+      /file\(s\) failed to upload/,
+    );
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames)).toEqual([]);
+
+    const secondParams = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [],
+    };
+
+    let secondResolved = false;
+    await createIssueWithAttachments(
+      pjcode,
+      nameWithOwner,
+      secondParams,
+      progress,
+    ).then(() => {
+      secondResolved = true;
+    });
+    expect(secondResolved).toBe(true);
+
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(commentSpy).toHaveBeenCalledTimes(2);
+    const secondCommentCall = commentSpy.mock.calls[1][0];
+    expect(secondCommentCall.body).toContain(markdownFor('A.png'));
+    expect(secondCommentCall.body).toContain(markdownFor('B.png'));
+    expect(Array.from(progress.commentedFileNames).sort()).toEqual([
+      'A.png',
+      'B.png',
+    ]);
+  });
+
+  it('wraps a thrown postConsoleComment rejection into a clean message while keeping already-uploaded file links', async () => {
+    const progress = createEmptyAttachmentSubmissionProgress();
+    const createIssueSpy = jest
+      .spyOn(consoleApi, 'postConsoleCreateIssue')
+      .mockResolvedValue(ISSUE_URL);
+
+    const attachmentSpy = jest
+      .spyOn(consoleApi, 'postConsoleAttachment')
+      .mockImplementation(async (request) => markdownFor(request.fileName));
+
+    const commentSpy = jest
+      .spyOn(consoleApi, 'postConsoleComment')
+      .mockRejectedValue(new Error('network exploded'));
+
+    const params = {
+      storyName: null,
+      agentOptionId: null,
+      title: 'Task with attachments',
+      body: null,
+      files: [makeFile('A.png'), makeFile('B.png')],
+    };
+
+    let thrown: unknown = null;
+    try {
+      await createIssueWithAttachments(pjcode, nameWithOwner, params, progress);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      buildAttachmentSubmissionFailureMessage(
+        ISSUE_URL,
+        [],
+        'posting the summary comment failed unexpectedly',
+      ),
+    );
+    expect((thrown as Error).message).not.toContain('network exploded');
+    expect(createIssueSpy).toHaveBeenCalledTimes(1);
+    expect(attachmentSpy).toHaveBeenCalledTimes(2);
+    expect(commentSpy).toHaveBeenCalledTimes(1);
+    expect(
+      Array.from(progress.uploadedMarkdownByFileName.keys()).sort(),
+    ).toEqual(['A.png', 'B.png']);
+    expect(Array.from(progress.commentedFileNames)).toEqual([]);
+  });
+});
+
+describe('attachmentSubmissionParamsChanged', () => {
+  const baseParams: IssueCreateParams = {
+    storyName: 'TDPM Console port',
+    agentOptionId: 'ag1',
+    title: 'Original title',
+    body: 'Original body',
+    files: [],
+  };
+
+  const makeFile = (name: string): File => new File(['x'], name);
+
+  type Row = {
+    name: string;
+    previous: IssueCreateParams;
+    current: IssueCreateParams;
+    expected: boolean;
+  };
+
+  const rows: Row[] = [
+    {
+      name: 'returns false when every compared field is identical and files are also identical',
+      previous: baseParams,
+      current: { ...baseParams },
+      expected: false,
+    },
+    {
+      name: 'returns false when only files differ (files are excluded from the comparison)',
+      previous: { ...baseParams, files: [] },
+      current: { ...baseParams, files: [makeFile('A.png')] },
+      expected: false,
+    },
+    {
+      name: 'returns true when title differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, title: 'Edited title' },
+      expected: true,
+    },
+    {
+      name: 'returns true when body differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, body: 'Edited body' },
+      expected: true,
+    },
+    {
+      name: 'returns true when storyName differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, storyName: 'Other story' },
+      expected: true,
+    },
+    {
+      name: 'returns true when agentOptionId differs (all else same)',
+      previous: baseParams,
+      current: { ...baseParams, agentOptionId: 'ag2' },
+      expected: true,
+    },
+  ];
+
+  it.each(rows)('$name', ({ previous, current, expected }) => {
+    expect(attachmentSubmissionParamsChanged(previous, current)).toBe(expected);
   });
 });
