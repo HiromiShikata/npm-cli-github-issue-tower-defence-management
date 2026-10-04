@@ -1874,6 +1874,251 @@ describe('ConsolePage draft preservation', () => {
   });
 });
 
+describe('ConsolePage comment draft reload persistence', () => {
+  const installDraftReloadFetch = (): void => {
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url.includes('/api/comment')) {
+        const requestBody =
+          typeof init?.body === 'string'
+            ? (JSON.parse(init.body) as { body: string })
+            : { body: '' };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'you',
+              body: requestBody.body,
+              createdAt: '2026-06-19T02:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    installDraftReloadFetch();
+  });
+
+  it('shows the same unsent draft text for the task that held it after the page is unmounted and remounted (simulated reload)', async () => {
+    const { getByText, findByText, getByPlaceholderText, unmount } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'typed just before the page reloaded' },
+    });
+
+    unmount();
+    installDraftReloadFetch();
+
+    const reloaded = render(<ConsolePage />);
+    expect(await reloaded.findByText('Approve & Merge')).toBeInTheDocument();
+    expect(reloaded.getByPlaceholderText('Leave a comment…')).toHaveValue(
+      'typed just before the page reloaded',
+    );
+  });
+
+  it("keeps each task's own unsent draft separate, for two tasks each holding a different draft, after a simulated reload", async () => {
+    const { container, getByText, findByText, getByPlaceholderText, unmount } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'draft for task one' },
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'draft for task two' },
+    });
+
+    unmount();
+    installDraftReloadFetch();
+
+    const reloaded = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(reloaded.getByPlaceholderText('Leave a comment…')).toHaveValue(
+        'draft for task two',
+      );
+    });
+
+    const reloadedDetailScreen = reloaded.container.querySelector(
+      '.console-detail-screen',
+    );
+    expect(reloadedDetailScreen).not.toBeNull();
+    swipeDetailScreen(
+      reloadedDetailScreen as HTMLElement,
+      { clientX: 40, clientY: 100 },
+      { clientX: 240, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_1');
+    });
+    expect(reloaded.getByPlaceholderText('Leave a comment…')).toHaveValue(
+      'draft for task one',
+    );
+  });
+
+  it('shows an empty comment field for a task that never held an unsent draft', async () => {
+    const { getByText, findByText, getByPlaceholderText } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(
+        getByText('Add server-side console API handlers'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add server-side console API handlers'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+  });
+
+  it('does not restore a draft after a simulated reload once its comment was submitted successfully', async () => {
+    const { getByText, findByText, getByPlaceholderText, unmount } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'about to be submitted' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(getByText('about to be submitted')).toBeInTheDocument();
+    });
+
+    unmount();
+    installDraftReloadFetch();
+
+    const reloaded = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(reloaded.getByText('Approve & Merge')).toBeInTheDocument();
+    });
+    expect(reloaded.getByPlaceholderText('Leave a comment…')).toHaveValue('');
+  });
+
+  it('does not retain typed text in the task-creation dialog after a simulated reload', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const storiesTabPayload = () => ({
+      ...listPayload('stories'),
+      defaultNameWithOwner: 'o/r',
+    });
+    const installStoriesFetch = (): void => {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+    };
+    installStoriesFetch();
+
+    const { getByRole, getByPlaceholderText, queryByRole, unmount } = render(
+      <ConsolePage />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: '+ Add task' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByRole('button', { name: '+ Add task' }));
+    await waitFor(() => {
+      expect(
+        getByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.change(getByPlaceholderText('Issue title'), {
+      target: { value: 'typed into the task creation dialog' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => {
+      expect(
+        queryByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeNull();
+    });
+
+    unmount();
+    installStoriesFetch();
+
+    const reloaded = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        reloaded.getByRole('button', { name: '+ Add task' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(reloaded.getByRole('button', { name: '+ Add task' }));
+    await waitFor(() => {
+      expect(
+        reloaded.getByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeInTheDocument();
+    });
+    expect(reloaded.getByPlaceholderText('Issue title')).toHaveValue('');
+  });
+});
+
 describe('ConsolePage auto-advance tab', () => {
   beforeEach(() => {
     localStorage.clear();
