@@ -4104,7 +4104,7 @@ describe('ConsolePage task creation action queue', () => {
           .getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
     } finally {
       jest.useRealTimers();
@@ -4545,7 +4545,9 @@ describe('ConsolePage workflow issue creation', () => {
       });
       await waitFor(() => {
         expect(
-          getByText('Operation failed: Internal Server Error'),
+          getByText(
+            'Operation failed: Failed to create the task. Please try again.',
+          ),
         ).toBeInTheDocument();
       });
       const reopenedDialog = getByRole('dialog');
@@ -4555,7 +4557,7 @@ describe('ConsolePage workflow issue creation', () => {
         getByRole('button', { name: 'Workflow' }).getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
     } finally {
       jest.useRealTimers();
@@ -4726,7 +4728,7 @@ describe('ConsolePage workflow issue creation', () => {
           .getAttribute('aria-pressed'),
       ).toBe('true');
       expect(within(reopenedDialog).getByRole('alert').textContent).toBe(
-        'Internal Server Error',
+        'Failed to create the task. Please try again.',
       );
     } finally {
       jest.useRealTimers();
