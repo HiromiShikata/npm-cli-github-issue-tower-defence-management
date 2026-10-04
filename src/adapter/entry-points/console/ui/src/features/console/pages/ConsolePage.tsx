@@ -61,7 +61,10 @@ import {
   actionToastColor,
   formatActionToast,
 } from '../logic/actionToast';
-import { loadCommentDrafts, saveCommentDrafts } from '../logic/commentDraftStorage';
+import {
+  loadCommentDrafts,
+  saveCommentDrafts,
+} from '../logic/commentDraftStorage';
 import {
   buildConsoleListRows,
   resolveItemStory,
