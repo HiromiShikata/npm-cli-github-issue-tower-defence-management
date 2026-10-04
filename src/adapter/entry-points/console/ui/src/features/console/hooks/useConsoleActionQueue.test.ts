@@ -1271,7 +1271,9 @@ describe('useConsoleActionQueue', () => {
   });
 
   describe('confirmOfflineAction replaying a queued /api/comment action', () => {
-    const enqueueHeldComment = (queue: { current: ConsoleActionQueue }): string => {
+    const enqueueHeldComment = (queue: {
+      current: ConsoleActionQueue;
+    }): string => {
       act(() => {
         queue.current.offlineActionsCreate({
           payloads: [commentOfflinePayload],
