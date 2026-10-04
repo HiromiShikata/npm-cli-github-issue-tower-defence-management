@@ -1,12 +1,22 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import {
+  ConsoleActionPartiallySentError,
+  type ConsoleOfflinePayload,
+} from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
-import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import {
+  buildTriageRequest,
+  type ConsoleOperationsApi,
+  TRIAGE_OPERATION_PATH,
+} from '../hooks/useConsoleOperations';
+import { COMMENT_OPERATION_PATH } from '../lib/consoleApi';
 import { ResourceCache } from '../lib/resourceCache';
 import { colorFromEnum } from '../logic/colors';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
   ConsoleComment,
+  ConsoleListItem,
   ConsoleRelatedPullRequest,
   ConsoleStoryColorSource,
 } from '../logic/types';
@@ -19,7 +29,10 @@ import {
   consoleStoryColorsFixture,
   consoleStoryOptionsFixture,
 } from '../testing/fixtures';
-import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
+import {
+  ConsoleItemDetailContainer,
+  type ConsoleItemDetailContainerProps,
+} from './ConsoleItemDetailContainer';
 
 jest.mock('../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
@@ -148,6 +161,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     await waitFor(() => {
@@ -183,6 +198,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -211,6 +228,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -255,6 +274,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -305,6 +326,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -357,6 +380,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -395,6 +420,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -462,6 +489,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     expect(getByText('Comment & Awaiting Workspace')).toBeInTheDocument();
@@ -486,6 +515,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
@@ -518,6 +549,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -589,6 +622,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -643,6 +678,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
           onCommentError={onCommentError}
         />,
       );
@@ -697,6 +734,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
           onCommentError={onCommentError}
         />,
       );
@@ -760,6 +799,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCommentError={onCommentError}
       />,
     );
@@ -809,6 +850,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCommentError={onCommentError}
       />,
     );
@@ -864,6 +907,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCommentError={onCommentError}
       />,
     );
@@ -918,6 +963,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -973,6 +1020,8 @@ describe('ConsoleItemDetailContainer', () => {
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         initialCommentDraft="test comment body"
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCommentDraftChange={onCommentDraftChange}
       />,
     );
@@ -1021,6 +1070,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1096,6 +1147,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1135,6 +1188,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1166,6 +1221,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByTitle('Change agent or story'));
@@ -1204,6 +1261,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByTitle('Change agent or story'));
@@ -1243,6 +1302,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     const dot = container.querySelector('.console-story-dot') as HTMLElement;
@@ -1272,6 +1333,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByTitle('Change agent or story'));
@@ -1298,6 +1361,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByTitle('Change agent or story'));
@@ -1342,6 +1407,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByTitle('Change agent or story'));
@@ -1368,6 +1435,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1397,6 +1466,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     const textarea = container.querySelector(
@@ -1438,6 +1509,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     const textarea = container.querySelector(
@@ -1481,6 +1554,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
     fireEvent.click(getByText('OK & Close'));
@@ -1522,6 +1597,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1566,6 +1643,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
@@ -1623,6 +1702,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
@@ -1673,6 +1754,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
         onCreateIssueFromComment={onCreateIssueFromComment}
       />,
     );
@@ -1732,6 +1815,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
         fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -1792,6 +1877,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
       fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -1834,6 +1921,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1887,6 +1976,8 @@ describe('ConsoleItemDetailContainer', () => {
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
         onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
       />,
     );
 
@@ -1951,6 +2042,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
 
@@ -1992,6 +2085,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
 
@@ -2058,6 +2153,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2128,6 +2225,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2209,6 +2308,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
 
@@ -2275,6 +2376,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2372,6 +2475,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2477,6 +2582,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2556,6 +2663,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
 
@@ -2601,6 +2710,8 @@ describe('ConsoleItemDetailContainer', () => {
           overlayStatus={null}
           now={Date.parse('2026-06-19T12:00:00.000Z')}
           onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
         />,
       );
 
@@ -2674,6 +2785,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2747,6 +2860,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2831,6 +2946,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2893,6 +3010,8 @@ describe('ConsoleItemDetailContainer', () => {
             overlayStatus={null}
             now={Date.parse('2026-06-19T12:00:00.000Z')}
             onQueueAction={onQueueAction}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={jest.fn()}
           />,
         );
 
@@ -2918,5 +3037,484 @@ describe('ConsoleItemDetailContainer', () => {
         consoleErrorSpy.mockRestore();
       }
     });
+  });
+});
+
+describe('ConsoleItemDetailContainer composer comment delivery', () => {
+  const renderIssueDetailForCommentDelivery = (
+    overrides: Partial<ConsoleItemDetailContainerProps> = {},
+  ) =>
+    render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+        {...overrides}
+      />,
+    );
+
+  it('posts a composer comment once through operations.addComment with the item and the draft, without queuing an action', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } =
+      renderIssueDetailForCommentDelivery({ operations, onQueueAction });
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Reviewed on the train.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    await waitFor(() => {
+      expect(operations.addComment).toHaveBeenCalledTimes(1);
+    });
+    expect(operations.addComment).toHaveBeenCalledWith(
+      issueItem,
+      'Reviewed on the train.',
+    );
+    expect(onQueueAction).not.toHaveBeenCalled();
+  });
+
+  it('shows a host rejection from operations.addComment as a composer failure and keeps the draft', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async () => {
+      throw new Error('HTTP 500.');
+    });
+    const { container, getByPlaceholderText, getByText, findByRole } =
+      renderIssueDetailForCommentDelivery({ operations });
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Rejected by the host.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('Failed: HTTP 500.');
+    expect(
+      (
+        container.querySelector(
+          '.console-composer-input',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe('Rejected by the host.');
+  });
+
+  const offlinePayloadBaseFor = (item: ConsoleListItem) => ({
+    itemUrl: item.url,
+    projectItemId: item.projectItemId,
+    itemNumber: item.number,
+    repo: item.repo,
+    isPr: item.isPr,
+  });
+
+  const commentOfflinePayloadFor = (
+    item: ConsoleListItem,
+    body: string,
+  ): ConsoleOfflinePayload => ({
+    ...offlinePayloadBaseFor(item),
+    apiPath: COMMENT_OPERATION_PATH,
+    requestBody: { pjcode: 'acme', url: item.url, body },
+  });
+
+  const triageOfflinePayloadFor = (
+    item: ConsoleListItem,
+    action: 'close' | 'set_status',
+    extra?: { statusName: string },
+  ): ConsoleOfflinePayload => ({
+    ...offlinePayloadBaseFor(item),
+    apiPath: TRIAGE_OPERATION_PATH,
+    requestBody: {
+      ...buildTriageRequest('acme', item, action, extra),
+    },
+  });
+
+  const commentBodyWrittenOffline = 'Checked during the flight.';
+
+  it.each([
+    {
+      condition: 'airplane mode is on',
+      isAirplaneModeOn: true,
+      addCommentResult: 'posted' as const,
+      expectedAddCommentCalls: [],
+      expectedHeldPayloadsPerCall: [
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+      ],
+    },
+    {
+      condition: 'the comment request fails because the network is unavailable',
+      isAirplaneModeOn: false,
+      addCommentResult: 'network failure' as const,
+      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedHeldPayloadsPerCall: [
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+      ],
+    },
+    {
+      condition: 'airplane mode is off and the network is available',
+      isAirplaneModeOn: false,
+      addCommentResult: 'posted' as const,
+      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedHeldPayloadsPerCall: [],
+    },
+  ])(
+    'delivers the composer comment through the expected comment requests and offline holds when $condition',
+    async ({
+      isAirplaneModeOn,
+      addCommentResult,
+      expectedAddCommentCalls,
+      expectedHeldPayloadsPerCall,
+    }) => {
+      const originalFetch = global.fetch;
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock;
+      try {
+        const operations = buildOperations();
+        if (addCommentResult === 'network failure') {
+          operations.addComment = jest.fn(async () => {
+            throw new TypeError('Failed to fetch');
+          });
+        }
+        const onOfflineActionsCreate = jest.fn();
+        const onQueueAction = jest.fn();
+        const { getByPlaceholderText, getByText } =
+          renderIssueDetailForCommentDelivery({
+            operations,
+            onQueueAction,
+            isAirplaneModeOn,
+            onOfflineActionsCreate,
+          });
+
+        fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+          target: { value: commentBodyWrittenOffline },
+        });
+        fireEvent.click(getByText('Comment'));
+
+        await waitFor(() => {
+          expect(
+            (operations.addComment as jest.Mock).mock.calls.length +
+              onOfflineActionsCreate.mock.calls.length,
+          ).toBeGreaterThan(0);
+        });
+        await waitFor(() => {
+          expect(
+            onOfflineActionsCreate.mock.calls.map(([input]) => input.payloads),
+          ).toEqual(expectedHeldPayloadsPerCall);
+        });
+        expect((operations.addComment as jest.Mock).mock.calls).toEqual(
+          expectedAddCommentCalls,
+        );
+        expect(onQueueAction).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+      } finally {
+        global.fetch = originalFetch;
+      }
+    },
+  );
+
+  it('shows a host rejection of the composer comment and holds nothing in the offline queue', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async () => {
+      throw new Error('HTTP 500.');
+    });
+    const onOfflineActionsCreate = jest.fn();
+    const { getByPlaceholderText, getByText, findByRole } =
+      renderIssueDetailForCommentDelivery({
+        operations,
+        onOfflineActionsCreate,
+      });
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Rejected by the host.' },
+    });
+    fireEvent.click(getByText('Comment'));
+
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('Failed: HTTP 500.');
+    expect(operations.addComment).toHaveBeenCalledTimes(1);
+    expect(onOfflineActionsCreate).not.toHaveBeenCalled();
+  });
+
+  const draftWrittenBeforeClosing = 'Handled after landing.';
+
+  it.each([
+    {
+      buttonLabel: 'OK & Close',
+      expectedOffline: [
+        commentOfflinePayloadFor(issueItem, 'ok'),
+        triageOfflinePayloadFor(issueItem, 'close'),
+      ],
+    },
+    {
+      buttonLabel: 'ok & Awaiting Workspace',
+      expectedOffline: [
+        commentOfflinePayloadFor(issueItem, 'ok'),
+        triageOfflinePayloadFor(issueItem, 'set_status', {
+          statusName: AWAITING_WORKSPACE_NAME,
+        }),
+      ],
+    },
+    {
+      buttonLabel: 'Comment & Close',
+      expectedOffline: [
+        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
+        triageOfflinePayloadFor(issueItem, 'close'),
+      ],
+    },
+    {
+      buttonLabel: 'Comment & Awaiting Workspace',
+      expectedOffline: [
+        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
+        triageOfflinePayloadFor(issueItem, 'set_status', {
+          statusName: AWAITING_WORKSPACE_NAME,
+        }),
+      ],
+    },
+  ])(
+    'queues $buttonLabel with an offline payload holding the comment before the status change',
+    async ({ buttonLabel, expectedOffline }) => {
+      const onQueueAction = jest.fn();
+      const { getByPlaceholderText, getByText } =
+        renderIssueDetailForCommentDelivery({ onQueueAction });
+
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: draftWrittenBeforeClosing },
+      });
+      fireEvent.click(getByText(buttonLabel));
+
+      await waitFor(() => {
+        expect(onQueueAction).toHaveBeenCalledWith(
+          expect.objectContaining({ offline: expectedOffline }),
+        );
+      });
+    },
+  );
+
+  const commentThenCloseActions = [
+    { buttonLabel: 'OK & Close', expectedCommentBody: 'ok' },
+    {
+      buttonLabel: 'Comment & Close',
+      expectedCommentBody: draftWrittenBeforeClosing,
+    },
+  ];
+
+  const queuedCommitFor = async (
+    buttonLabel: string,
+    operations: ConsoleOperationsApi,
+    overrides: Partial<ConsoleItemDetailContainerProps> = {},
+  ): Promise<() => Promise<void>> => {
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } =
+      renderIssueDetailForCommentDelivery({
+        operations,
+        onQueueAction,
+        ...overrides,
+      });
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: draftWrittenBeforeClosing },
+    });
+    fireEvent.click(getByText(buttonLabel));
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    return onQueueAction.mock.calls[0][0].commit;
+  };
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel by posting the comment once and then closing the item once when both requests succeed',
+    async ({ buttonLabel, expectedCommentBody }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      await expect(commit()).resolves.toBeUndefined();
+
+      expect((operations.addComment as jest.Mock).mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it.each(commentThenCloseActions)(
+    'rejects the $buttonLabel commit with the unchanged network error and never closes the item when the comment request fails because the network is unavailable',
+    async ({ buttonLabel }) => {
+      const networkFailure = new TypeError('Failed to fetch');
+      const operations = buildOperations();
+      operations.addComment = jest.fn(async () => {
+        throw networkFailure;
+      });
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      await expect(commit()).rejects.toBe(networkFailure);
+
+      expect(operations.addComment).toHaveBeenCalledTimes(1);
+      expect(operations.closeIssue).not.toHaveBeenCalled();
+    },
+  );
+
+  const closeFailures = [
+    {
+      closeFailureKind: 'fails because the network is unavailable',
+      buildCloseFailure: (): Error => new TypeError('Failed to fetch'),
+    },
+    {
+      closeFailureKind: 'is rejected by the host',
+      buildCloseFailure: (): Error => new Error('HTTP 500 close refused'),
+    },
+  ];
+
+  it.each(
+    commentThenCloseActions.flatMap((commentThenCloseAction) =>
+      closeFailures.map((closeFailure) => ({
+        ...commentThenCloseAction,
+        ...closeFailure,
+      })),
+    ),
+  )(
+    'rejects the $buttonLabel commit with a partially sent error counting the posted comment when the comment is posted and the close $closeFailureKind',
+    async ({ buttonLabel, expectedCommentBody, buildCloseFailure }) => {
+      const closeFailure = buildCloseFailure();
+      const operations = buildOperations();
+      operations.closeIssue = jest.fn(async () => {
+        throw closeFailure;
+      });
+      const commit = await queuedCommitFor(buttonLabel, operations);
+
+      const rejection = await commit().then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      expect(rejection).toMatchObject({ sentStepCount: 1 });
+      expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
+        closeFailure,
+      );
+      expect((operations.addComment as jest.Mock).mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  const queuedCommitResumingFromSentStepCountFor = async (
+    buttonLabel: string,
+    operations: ConsoleOperationsApi,
+  ): Promise<(sentStepCount: number) => Promise<void>> =>
+    queuedCommitFor(buttonLabel, operations);
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel told that no step was sent by posting the comment once and then closing the item once',
+    async ({ buttonLabel, expectedCommentBody }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      await expect(commit(0)).resolves.toBeUndefined();
+
+      const addCommentMock = operations.addComment as jest.Mock;
+      const closeIssueMock = operations.closeIssue as jest.Mock;
+      expect(addCommentMock.mock.calls).toEqual([
+        [issueItem, expectedCommentBody],
+      ]);
+      expect(closeIssueMock.mock.calls).toEqual([[issueItem, 'close']]);
+      expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
+        closeIssueMock.mock.invocationCallOrder[0],
+      );
+    },
+  );
+
+  it.each(commentThenCloseActions)(
+    'commits $buttonLabel told that the comment step was sent by closing the item once without posting the comment again',
+    async ({ buttonLabel }) => {
+      const operations = buildOperations();
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      await expect(commit(1)).resolves.toBeUndefined();
+
+      expect(operations.addComment).not.toHaveBeenCalled();
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it.each(
+    commentThenCloseActions.flatMap((commentThenCloseAction) =>
+      closeFailures.map((closeFailure) => ({
+        ...commentThenCloseAction,
+        ...closeFailure,
+      })),
+    ),
+  )(
+    'rejects the $buttonLabel commit told that the comment step was sent with a partially sent error counting the comment, without posting the comment again, when the close $closeFailureKind',
+    async ({ buttonLabel, buildCloseFailure }) => {
+      const closeFailure = buildCloseFailure();
+      const operations = buildOperations();
+      operations.closeIssue = jest.fn(async () => {
+        throw closeFailure;
+      });
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+
+      const rejection = await commit(1).then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+      expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+      expect(rejection).toMatchObject({ sentStepCount: 1 });
+      expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
+        closeFailure,
+      );
+      expect(operations.addComment).not.toHaveBeenCalled();
+      expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
+        [issueItem, 'close'],
+      ]);
+    },
+  );
+
+  it('rejects the Comment & Awaiting Workspace commit with the partially sent error without reporting a comment error when the comment was posted and the move to Awaiting Workspace fails because the network is unavailable', async () => {
+    const partiallySentError = new ConsoleActionPartiallySentError(
+      1,
+      new TypeError('Failed to fetch'),
+    );
+    const addCommentAndMoveToAwaitingWorkspace = jest.fn(async () => {
+      throw partiallySentError;
+    });
+    const onCommentError = jest.fn();
+    const commit = await queuedCommitFor(
+      'Comment & Awaiting Workspace',
+      buildOperationsWithAtomicAwaitingWorkspace(
+        addCommentAndMoveToAwaitingWorkspace,
+      ),
+      { onCommentError },
+    );
+
+    await expect(commit()).rejects.toBe(partiallySentError);
+
+    expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+    expect(onCommentError).not.toHaveBeenCalled();
   });
 });

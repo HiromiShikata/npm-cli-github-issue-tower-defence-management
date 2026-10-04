@@ -26,12 +26,22 @@ export type ConsoleOfflineQueuedAction = {
 export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
-  commit: () => Promise<void>;
+  commit: (sentStepCount: number) => Promise<void>;
   advance: () => void;
   revertAdvance?: () => void;
   optimistic?: () => void;
   revertOptimistic?: () => void;
-  offline?: ConsoleOfflinePayload;
+  offline?: ConsoleOfflinePayload[];
+};
+
+export type ConsoleOfflineActionsCreateRequest = {
+  payloads: ConsoleOfflinePayload[];
+  message: string;
+  color: ConsoleToastColor;
+};
+
+export type ConsoleActionQueueOptions = {
+  isAirplaneModeOn: boolean;
 };
 
 export type ConsolePendingActionView = {
@@ -104,7 +114,44 @@ const generateId = (): string => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 };
 
-const isNetworkError = (error: unknown): boolean => error instanceof TypeError;
+export const isNetworkError = (error: unknown): boolean =>
+  error instanceof TypeError;
+
+export class ConsoleActionPartiallySentError extends Error {
+  readonly sentStepCount: number;
+  declare readonly cause: unknown;
+
+  constructor(sentStepCount: number, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'ConsoleActionPartiallySentError';
+    this.sentStepCount = sentStepCount;
+    this.cause = cause;
+  }
+}
+
+export const consoleActionStepsRun = async (
+  steps: ReadonlyArray<() => Promise<void>>,
+  sentStepCount = 0,
+): Promise<void> => {
+  for (
+    let stepIndex = sentStepCount;
+    stepIndex < steps.length;
+    stepIndex += 1
+  ) {
+    try {
+      await steps[stepIndex]();
+    } catch (cause: unknown) {
+      if (stepIndex === 0) {
+        throw cause;
+      }
+      throw new ConsoleActionPartiallySentError(stepIndex, cause);
+    }
+  }
+};
+
+const AIRPLANE_MODE_ERROR_MESSAGE = 'Airplane mode';
+const AIRPLANE_MODE_ERROR_REASON =
+  'This action requires a network connection. Turn off airplane mode and try again.';
 
 const errorReason = (error: unknown): string => {
   if (error instanceof Error && error.message.length > 0) {
@@ -127,6 +174,7 @@ export type ConsoleActionQueue = {
   offlineActions: ConsoleOfflineQueuedAction[];
   writeState: ConsoleActionWriteState;
   enqueue: (action: ConsoleQueuedAction) => void;
+  offlineActionsCreate: (request: ConsoleOfflineActionsCreateRequest) => void;
   showError: (message: string, reason: string) => void;
   undo: () => void;
   dismiss: () => void;
@@ -135,7 +183,11 @@ export type ConsoleActionQueue = {
   discardOfflineAction: (id: string) => void;
 };
 
-export const useConsoleActionQueue = (): ConsoleActionQueue => {
+export const useConsoleActionQueue = (
+  options: ConsoleActionQueueOptions = { isAirplaneModeOn: false },
+): ConsoleActionQueue => {
+  const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
+  isAirplaneModeOnRef.current = options.isAirplaneModeOn;
   const [pending, setPending] = useState<ConsolePendingActionView | null>(null);
   const [error, setError] = useState<ConsoleActionError | null>(null);
   const [offlineActions, setOfflineActions] =
@@ -148,7 +200,9 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
   const startRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const committedRef = useRef<boolean>(false);
-  const runCommitRef = useRef<(action: ConsoleQueuedAction) => void>(() => {});
+  const runCommitRef = useRef<
+    (action: ConsoleQueuedAction, sentStepCount: number) => void
+  >(() => {});
   const attemptRef = useRef(0);
   const [writeState, setWriteState] = useState<ConsoleActionWriteState>({
     status: 'idle',
@@ -162,47 +216,92 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     }
   }, []);
 
-  const addToOfflineQueue = useCallback((action: ConsoleQueuedAction): void => {
-    if (action.offline === undefined) return;
-    const offlineAction: ConsoleOfflineQueuedAction = {
-      id: generateId(),
-      message: action.message,
-      color: action.color,
-      enqueuedAt: Date.now(),
-      ...action.offline,
-    };
-    setOfflineActions((prev) => {
-      const next = [...prev, offlineAction];
-      saveOfflineQueue(next);
-      return next;
-    });
-  }, []);
+  const offlineActionsCreate = useCallback(
+    ({
+      payloads,
+      message,
+      color,
+    }: ConsoleOfflineActionsCreateRequest): void => {
+      const enqueuedAt = Date.now();
+      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => ({
+        id: generateId(),
+        message,
+        color,
+        enqueuedAt,
+        ...payload,
+      }));
+      setOfflineActions((prev) => {
+        const next = [...prev, ...created];
+        saveOfflineQueue(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const runCommit = useCallback(
-    (action: ConsoleQueuedAction): void => {
+    (action: ConsoleQueuedAction, sentStepCount: number): void => {
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
+      const offlinePayloads = action.offline ?? [];
+      const actionHoldOffline = (
+        unsentOfflinePayloads: ConsoleOfflinePayload[],
+      ): void => {
+        offlineActionsCreate({
+          payloads: unsentOfflinePayloads,
+          message: action.message,
+          color: action.color,
+        });
+        setWriteState({ status: 'offline', attempt });
+      };
+      if (isAirplaneModeOnRef.current) {
+        const unsentOfflinePayloads = offlinePayloads.slice(sentStepCount);
+        if (unsentOfflinePayloads.length > 0) {
+          actionHoldOffline(unsentOfflinePayloads);
+        } else {
+          action.revertAdvance?.();
+          action.revertOptimistic?.();
+          setError({
+            message: AIRPLANE_MODE_ERROR_MESSAGE,
+            reason: AIRPLANE_MODE_ERROR_REASON,
+          });
+          setWriteState({ status: 'failed', attempt });
+        }
+        return;
+      }
       setWriteState({ status: 'unconfirmed', attempt });
       action
-        .commit()
+        .commit(sentStepCount)
         .then(() => {
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
-          if (isNetworkError(cause) && action.offline !== undefined) {
-            addToOfflineQueue(action);
-            setWriteState({ status: 'offline', attempt });
+          const isPartiallySent =
+            cause instanceof ConsoleActionPartiallySentError;
+          const sentStepCountAfterAttempt = isPartiallySent
+            ? cause.sentStepCount
+            : sentStepCount;
+          const unsentOfflinePayloads = offlinePayloads.slice(
+            sentStepCountAfterAttempt,
+          );
+          const unsentRequestFailure = isPartiallySent ? cause.cause : cause;
+          if (
+            isNetworkError(unsentRequestFailure) &&
+            unsentOfflinePayloads.length > 0
+          ) {
+            actionHoldOffline(unsentOfflinePayloads);
           } else {
             setError({
               message: action.message,
-              reason: errorReason(cause),
-              retry: () => runCommitRef.current(action),
+              reason: errorReason(unsentRequestFailure),
+              retry: () =>
+                runCommitRef.current(action, sentStepCountAfterAttempt),
             });
             setWriteState({ status: 'failed', attempt });
           }
         });
     },
-    [addToOfflineQueue],
+    [offlineActionsCreate],
   );
   runCommitRef.current = runCommit;
 
@@ -214,7 +313,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     if (action !== null && !committedRef.current) {
       committedRef.current = true;
       clearAllCommentExpandedStates();
-      runCommit(action);
+      runCommit(action, 0);
     }
   }, [clearTimer, runCommit]);
 
@@ -277,7 +376,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
         clearTimer();
         committedRef.current = true;
         clearAllCommentExpandedStates();
-        runCommit(previous);
+        runCommit(previous, 0);
       }
       committedRef.current = false;
       actionRef.current = action;
@@ -315,6 +414,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     offlineActions,
     writeState,
     enqueue,
+    offlineActionsCreate,
     showError,
     undo,
     dismiss,

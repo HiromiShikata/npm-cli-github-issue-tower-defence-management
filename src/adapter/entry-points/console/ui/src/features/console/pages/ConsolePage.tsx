@@ -98,6 +98,7 @@ import { CONSOLE_TABS } from '../logic/types';
 import {
   ConsoleItemDetailContainer,
   type ConsoleQueueActionInput,
+  okAndAwaitingWorkspaceOfflinePayloadsBuild,
 } from './ConsoleItemDetailContainer';
 
 const emptyCounts = (): Record<ConsoleTabName, number> => {
@@ -283,7 +284,9 @@ export const ConsolePage = () => {
     [refreshSingleTab],
   );
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
-  const actionQueue = useConsoleActionQueue();
+  const actionQueue = useConsoleActionQueue({
+    isAirplaneModeOn: airplaneMode.status === 'on',
+  });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -648,13 +651,6 @@ export const ConsolePage = () => {
 
   const handleQueueAction = useCallback(
     (input: ConsoleQueueActionInput): void => {
-      if (airplaneMode.status === 'on') {
-        actionQueue.showError(
-          'Airplane mode',
-          'This action requires a network connection. Turn off airplane mode and try again.',
-        );
-        return;
-      }
       const actedKey = overlayKeyForItem(input.item);
       const overlayPatch = input.overlayPatch;
       actionQueue.enqueue({
@@ -679,7 +675,7 @@ export const ConsolePage = () => {
         },
       });
     },
-    [actionQueue, activeTab, advanceToNext, airplaneMode.status, overlayState],
+    [actionQueue, activeTab, advanceToNext, overlayState],
   );
 
   const handleSwipe = useCallback(
@@ -1033,7 +1029,12 @@ export const ConsolePage = () => {
       handleQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commit: (sentStepCount) =>
+          operations.okAndMoveToAwaitingWorkspace(item, option, sentStepCount),
+        offline:
+          pjcode !== null
+            ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
+            : undefined,
         skipAdvance: true,
         overlayPatch: {
           done: true,
@@ -1041,7 +1042,7 @@ export const ConsolePage = () => {
         },
       });
     },
-    [handleQueueAction, operations],
+    [handleQueueAction, operations, pjcode],
   );
 
   const handleSaveMaxSettings = useCallback(() => {
@@ -1337,6 +1338,8 @@ export const ConsolePage = () => {
             caches={caches}
             operations={operations}
             pjcode={pjcode}
+            isAirplaneModeOn={airplaneMode.status === 'on'}
+            onOfflineActionsCreate={actionQueue.offlineActionsCreate}
             statusOptions={statusOptions}
             storyOptions={storyOptions}
             agentOptions={agentOptions}
