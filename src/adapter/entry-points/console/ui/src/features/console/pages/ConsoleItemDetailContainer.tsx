@@ -8,8 +8,10 @@ import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import {
+  ConsoleActionPartiallySentError,
   type ConsoleActionQueue,
   type ConsoleOfflinePayload,
+  consoleActionStepsRun,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -599,11 +601,23 @@ export const ConsoleItemDetailContainer = ({
                     setPostedComments((previous) => [...previous, comment]);
                     resolve(comment);
                   } catch (cause) {
-                    if (isNetworkError(cause) && pjcode != null) {
+                    const isCommentPosted =
+                      cause instanceof ConsoleActionPartiallySentError;
+                    const unsentRequestFailure = isCommentPosted
+                      ? cause.cause
+                      : cause;
+                    if (
+                      isNetworkError(unsentRequestFailure) &&
+                      pjcode != null
+                    ) {
                       resolve('held_offline');
                       throw cause;
                     }
                     commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = true;
+                    if (isCommentPosted) {
+                      reject(cause);
+                      throw cause;
+                    }
                     rejectWithMessage(
                       `Comment may already be posted; moving to Awaiting Workspace status failed: ${String(cause)}`,
                       cause,
@@ -658,11 +672,14 @@ export const ConsoleItemDetailContainer = ({
     onQueueAction({
       kind: { type: 'close', action: 'close' },
       item,
-      commit: async () => {
-        const comment = await operations.addComment(item, body);
-        setPostedComments((previous) => [...previous, comment]);
-        await operations.closeIssue(item, 'close');
-      },
+      commit: () =>
+        consoleActionStepsRun([
+          async () => {
+            const comment = await operations.addComment(item, body);
+            setPostedComments((previous) => [...previous, comment]);
+          },
+          () => operations.closeIssue(item, 'close'),
+        ]),
       offline: [
         commentOfflinePayloadBuild(pjcode, item, body),
         buildTriageOfflinePayload(pjcode, item, 'close'),
@@ -681,10 +698,13 @@ export const ConsoleItemDetailContainer = ({
     onQueueAction({
       kind: { type: 'ok_and_close' },
       item,
-      commit: async () => {
-        await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
-        await operations.closeIssue(item, 'close');
-      },
+      commit: () =>
+        consoleActionStepsRun([
+          async () => {
+            await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
+          },
+          () => operations.closeIssue(item, 'close'),
+        ]),
       offline:
         pjcode != null
           ? [

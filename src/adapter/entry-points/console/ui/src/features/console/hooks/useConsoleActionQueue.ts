@@ -117,6 +117,33 @@ const generateId = (): string => {
 export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
 
+export class ConsoleActionPartiallySentError extends Error {
+  readonly sentStepCount: number;
+  declare readonly cause: unknown;
+
+  constructor(sentStepCount: number, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'ConsoleActionPartiallySentError';
+    this.sentStepCount = sentStepCount;
+    this.cause = cause;
+  }
+}
+
+export const consoleActionStepsRun = async (
+  steps: ReadonlyArray<() => Promise<void>>,
+): Promise<void> => {
+  for (const [stepIndex, step] of steps.entries()) {
+    try {
+      await step();
+    } catch (cause: unknown) {
+      if (stepIndex === 0) {
+        throw cause;
+      }
+      throw new ConsoleActionPartiallySentError(stepIndex, cause);
+    }
+  }
+};
+
 const AIRPLANE_MODE_ERROR_MESSAGE = 'Airplane mode';
 const AIRPLANE_MODE_ERROR_REASON =
   'This action requires a network connection. Turn off airplane mode and try again.';
@@ -210,9 +237,11 @@ export const useConsoleActionQueue = (
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
       const offlinePayloads = action.offline ?? [];
-      const actionHoldOffline = (): void => {
+      const actionHoldOffline = (
+        unsentOfflinePayloads: ConsoleOfflinePayload[],
+      ): void => {
         offlineActionsCreate({
-          payloads: offlinePayloads,
+          payloads: unsentOfflinePayloads,
           message: action.message,
           color: action.color,
         });
@@ -220,7 +249,7 @@ export const useConsoleActionQueue = (
       };
       if (isAirplaneModeOnRef.current) {
         if (offlinePayloads.length > 0) {
-          actionHoldOffline();
+          actionHoldOffline(offlinePayloads);
         } else {
           action.revertAdvance?.();
           action.revertOptimistic?.();
@@ -239,12 +268,21 @@ export const useConsoleActionQueue = (
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
-          if (isNetworkError(cause) && offlinePayloads.length > 0) {
-            actionHoldOffline();
+          const isPartiallySent =
+            cause instanceof ConsoleActionPartiallySentError;
+          const unsentOfflinePayloads = isPartiallySent
+            ? offlinePayloads.slice(cause.sentStepCount)
+            : offlinePayloads;
+          const unsentRequestFailure = isPartiallySent ? cause.cause : cause;
+          if (
+            isNetworkError(unsentRequestFailure) &&
+            unsentOfflinePayloads.length > 0
+          ) {
+            actionHoldOffline(unsentOfflinePayloads);
           } else {
             setError({
               message: action.message,
-              reason: errorReason(cause),
+              reason: errorReason(unsentRequestFailure),
               retry: () => runCommitRef.current(action),
             });
             setWriteState({ status: 'failed', attempt });
