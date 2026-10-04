@@ -4221,7 +4221,11 @@ describe('ConsolePage task creation action queue', () => {
             }),
           };
         }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       });
       global.fetch = fetchMock as unknown as typeof fetch;
 
