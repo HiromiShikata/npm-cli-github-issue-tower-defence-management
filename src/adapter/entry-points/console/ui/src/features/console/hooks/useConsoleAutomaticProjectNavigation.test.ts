@@ -656,15 +656,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
     expect(navigatePush).not.toHaveBeenCalled();
   });
 
-  // The following tests replace the old writeState-gated tests that pinned
-  // "wait for write confirmation" (`does not navigate while the write is
-  // unconfirmed/failed/offline`, `navigates once the write becomes succeeded
-  // with a new attempt`, etc). The 13th parameter is no longer a write
-  // confirmation state at all — it is enqueueSequence, a plain counter that
-  // increments once per `enqueue()` call regardless of what the write does
-  // afterward. Per issue #33007, navigation evaluation must no longer wait
-  // for any write-confirmation signal.
-  describe('enqueueSequence drives navigation evaluation with no write-confirmation wait (#33007)', () => {
+  describe('enqueueSequence drives navigation evaluation with no write-confirmation wait', () => {
     it('navigates via the timer-elapsed path as soon as enqueueSequence reflects a newly enqueued action, on the very first render, with no later render standing in for write confirmation', () => {
       renderHook(() =>
         useConsoleAutomaticProjectNavigation(
