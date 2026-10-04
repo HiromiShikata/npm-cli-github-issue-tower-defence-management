@@ -22,6 +22,7 @@ const meta: Meta<typeof ConsoleTabList> = {
     airplaneModeProgress: null,
     airplaneModeCapturedAt: null,
     airplaneModeFailures: [],
+    airplaneModeRetryTargetUrls: [],
     onAirplaneModeStartSync: () => {},
     onAirplaneModeTurnOff: () => {},
     onAirplaneModeRetryFailed: () => {},

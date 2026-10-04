@@ -25,6 +25,7 @@ export type ConsoleTabBarProps = {
   airplaneModeProgress: AirplaneSyncProgress | null;
   airplaneModeCapturedAt: string | null;
   airplaneModeFailures: string[];
+  airplaneModeRetryTargetUrls: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
   onAirplaneModeRetryFailed: () => void;
@@ -50,6 +51,7 @@ export const ConsoleTabList = ({
   airplaneModeProgress,
   airplaneModeCapturedAt,
   airplaneModeFailures,
+  airplaneModeRetryTargetUrls,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
   onAirplaneModeRetryFailed,
@@ -202,6 +204,7 @@ export const ConsoleTabList = ({
             progress={airplaneModeProgress}
             capturedAt={airplaneModeCapturedAt}
             failures={airplaneModeFailures}
+            retryTargetUrls={airplaneModeRetryTargetUrls}
             onStartSync={onAirplaneModeStartSync}
             onTurnOff={onAirplaneModeTurnOff}
             onRetryFailed={onAirplaneModeRetryFailed}

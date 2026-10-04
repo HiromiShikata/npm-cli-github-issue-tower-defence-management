@@ -1206,6 +1206,7 @@ export const ConsolePage = () => {
         airplaneModeProgress={airplaneMode.progress}
         airplaneModeCapturedAt={airplaneSnapshot?.capturedAt ?? null}
         airplaneModeFailures={airplaneMode.failures}
+        airplaneModeRetryTargetUrls={airplaneMode.retryTargetUrls}
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         onAirplaneModeRetryFailed={airplaneMode.retryFailed}
