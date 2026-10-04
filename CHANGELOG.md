@@ -1,3 +1,10 @@
+## [2.164.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.0...v2.164.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** switch projects immediately on submit instead of waiting for write confirmation ([#3248](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3248)) ([7095b7a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7095b7a700983651439d00e77fe02ac211e06917))
+
 # [2.164.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.8...v2.164.0) (2026-10-04)
 
 
