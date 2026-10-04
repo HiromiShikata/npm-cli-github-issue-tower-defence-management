@@ -1,3 +1,10 @@
+## [2.163.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.4...v2.163.5) (2026-10-04)
+
+
+### Bug Fixes
+
+* **StoryGateCheckUseCase:** checkStoryGate returns Story options from a different, unrelated GitHub Project when its board cache cross-contains a foreign issue URL ([#3224](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3224)) ([e0ca596](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e0ca5962225e8ba5476a54af453e4b3d311aebf2))
+
 ## [2.163.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.163.3...v2.163.4) (2026-10-04)
 
 
