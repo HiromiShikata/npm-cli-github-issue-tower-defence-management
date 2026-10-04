@@ -3246,6 +3246,185 @@ describe('ConsoleItemDetailContainer', () => {
   });
 });
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+describe('ConsoleItemDetailContainer copy-feedback persistence across a background-refresh-style item reference change (issue #3264)', () => {
+  const buildCommentWithInlineCode = (): ConsoleComment & { id: number } => ({
+    id: 9101,
+    author: 'agent',
+    body: 'See `npm test` for details.',
+    createdAt: '2026-06-19T11:58:00.000Z',
+  });
+
+  const buildCommentWithFencedCodeBlock = (): ConsoleComment & {
+    id: number;
+  } => ({
+    id: 9102,
+    author: 'agent',
+    body: '```ts\nconst first = 1;\n```',
+    createdAt: '2026-06-19T11:58:00.000Z',
+  });
+
+  it('keeps the inline code "Copied" feedback visible through a mid-window item-reference change that leaves the item content unchanged, clearing it only after the full 1500ms elapses (SC-004)', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const comment = buildCommentWithInlineCode();
+    const caches = buildCaches({ comments: [comment] });
+    const operations = buildOperations();
+    const renderTimestamp = Date.parse('2026-06-19T12:00:00.000Z');
+    const { findByRole, getByText, queryByText, rerender } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={caches}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={renderTimestamp}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+
+    const trigger = await findByRole(
+      'button',
+      { name: 'npm test' },
+      { timeout: 5000 },
+    );
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(700);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    // Simulates a background data refresh (useConsoleTabData) replacing the
+    // whole snapshot and producing a brand-new `item` object reference whose
+    // field values are byte-identical to the one already on screen.
+    rerender(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem }}
+        caches={caches}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={renderTimestamp}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(650);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(300);
+    });
+    expect(queryByText('Copied')).toBeNull();
+  });
+
+  it('keeps the fenced code block "Copied" feedback visible through a mid-window item-reference change that leaves the item content unchanged, clearing it only after the full 1500ms elapses (SC-009)', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const comment = buildCommentWithFencedCodeBlock();
+    const caches = buildCaches({ comments: [comment] });
+    const operations = buildOperations();
+    const renderTimestamp = Date.parse('2026-06-19T12:00:00.000Z');
+    const { findByRole, getByText, queryByText, rerender } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={caches}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={renderTimestamp}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+
+    const trigger = await findByRole(
+      'button',
+      { name: 'Copy code' },
+      { timeout: 5000 },
+    );
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(700);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    // Simulates a background data refresh (useConsoleTabData) replacing the
+    // whole snapshot and producing a brand-new `item` object reference whose
+    // field values are byte-identical to the one already on screen.
+    rerender(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem }}
+        caches={caches}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={renderTimestamp}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(650);
+    });
+    expect(getByText('Copied')).toBeInTheDocument();
+
+    await act(async () => {
+      await sleep(300);
+    });
+    expect(queryByText('Copied')).toBeNull();
+  });
+});
+
 describe('ConsoleItemDetailContainer composer comment delivery', () => {
   const renderIssueDetailForCommentDelivery = (
     overrides: Partial<ConsoleItemDetailContainerProps> = {},
