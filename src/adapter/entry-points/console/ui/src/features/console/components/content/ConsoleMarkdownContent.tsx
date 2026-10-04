@@ -192,6 +192,12 @@ const ConsoleMarkdownHtmlBlock = ({
     [],
   );
 
+  const latestOnCheckboxToggleRef = useRef(onCheckboxToggle);
+  useEffect(() => {
+    latestOnCheckboxToggleRef.current = onCheckboxToggle;
+  }, [onCheckboxToggle]);
+  const isCheckboxToggleHandlerPresent = onCheckboxToggle !== undefined;
+
   useEffect(() => {
     const container = containerRef.current;
     if (container === null) {
@@ -205,8 +211,14 @@ const ConsoleMarkdownHtmlBlock = ({
         ? []
         : collectReferenceMounts(container),
     );
-    return attachCheckboxClickHandlers(container, onCheckboxToggle);
-  }, [html, renderReferenceLink, onCheckboxToggle]);
+    return attachCheckboxClickHandlers(
+      container,
+      isCheckboxToggleHandlerPresent
+        ? (checkboxIndex, checked) =>
+            latestOnCheckboxToggleRef.current?.(checkboxIndex, checked)
+        : undefined,
+    );
+  }, [html, renderReferenceLink, isCheckboxToggleHandlerPresent]);
 
   return (
     <div ref={containerRef} className="console-markdown">
