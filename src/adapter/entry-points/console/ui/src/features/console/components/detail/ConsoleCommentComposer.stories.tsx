@@ -69,6 +69,15 @@ export const ComposerWithAllActionButtons: Story = {
   },
 };
 
+export const ComposerWithOpenChangeNotification: Story = {
+  args: {
+    initiallyOpen: false,
+    onOpenChange: (open: boolean) => {
+      console.log('composer open state changed to', open);
+    },
+  },
+};
+
 export const ComposerUploadInProgress: Story = {
   args: {
     initiallyOpen: true,

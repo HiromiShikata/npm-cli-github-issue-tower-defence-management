@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { ResourceCache } from '../lib/resourceCache';
@@ -1818,12 +1818,202 @@ describe('ConsoleItemDetailContainer', () => {
     }
   });
 
-  it('leaves the Status, Agent, and Story chip text unchanged after the button area collapse control is clicked (AC-5)', () => {
-    const itemWithAgent = { ...issueItem, agent: 'developer' };
+  it("hides every one of the button area's button groups at the same time the comment composer's own close control is activated (FR-001, FR-002, FR-004, SC-001)", async () => {
+    const onQueueAction = jest.fn();
+    const { getByText, getByTitle, queryByText, queryByTitle } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
+    });
+    expect(getByText('+1d')).toBeInTheDocument();
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    expect(getByTitle('Change agent or story')).toBeInTheDocument();
+    expect(getByTitle('Rare actions')).toBeInTheDocument();
+    expect(getByText('⚠')).toBeInTheDocument();
+    expect(getByText('Close as not planned')).toBeInTheDocument();
+    expect(getByText('Close')).toBeInTheDocument();
+    expect(getByText('✕ Close')).toBeInTheDocument();
+
+    fireEvent.click(getByText('✕ Close'));
+
+    expect(getByText('💬 Add a comment')).toBeInTheDocument();
+    expect(queryByText('Approve & Merge')).toBeNull();
+    expect(queryByText('+1d')).toBeNull();
+    expect(queryByText('Awaiting Workspace')).toBeNull();
+    expect(queryByTitle('Change agent or story')).toBeNull();
+    expect(queryByTitle('Rare actions')).toBeNull();
+    expect(queryByText('⚠')).toBeNull();
+    expect(queryByText('Close as not planned')).toBeNull();
+    expect(queryByText('Close')).toBeNull();
+  });
+
+  it("shows every button group again, in the same relative order as before, once the comment composer's own open control is activated after closing (FR-005, SC-002)", async () => {
+    const onQueueAction = jest.fn();
+    const { getByText, getByTitle, container } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
+    });
+
+    const precedes = (a: Element, b: Element): boolean =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+    const orderBeforeClose = [
+      getByText('Approve & Merge'),
+      getByText('+1d'),
+      getByText('Awaiting Workspace'),
+      getByTitle('Change agent or story'),
+      getByTitle('Rare actions'),
+      getByText('⚠'),
+      getByText('Close'),
+    ];
+    for (let i = 0; i < orderBeforeClose.length - 1; i++) {
+      expect(precedes(orderBeforeClose[i], orderBeforeClose[i + 1])).toBe(true);
+    }
+
+    fireEvent.click(getByText('✕ Close'));
+    expect(container.querySelector('.console-op-group')).toBeNull();
+
+    fireEvent.click(getByText('💬 Add a comment'));
+
+    expect(getByText('✕ Close')).toBeInTheDocument();
+    const orderAfterReopen = [
+      getByText('Approve & Merge'),
+      getByText('+1d'),
+      getByText('Awaiting Workspace'),
+      getByTitle('Change agent or story'),
+      getByTitle('Rare actions'),
+      getByText('⚠'),
+      getByText('Close'),
+    ];
+    for (let i = 0; i < orderAfterReopen.length - 1; i++) {
+      expect(precedes(orderAfterReopen[i], orderAfterReopen[i + 1])).toBe(true);
+    }
+  });
+
+  it('never shows a caret-plus-Actions toggle control, whether the comment composer is open or closed (FR-003, SC-003)', async () => {
+    const onQueueAction = jest.fn();
     const { container, getByText, queryByText } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
+    });
+    expect(queryByText('Actions')).toBeNull();
+    expect(container.querySelector('.console-actionbar-toggle')).toBeNull();
+    expect(container.querySelector('.console-actionbar-caret')).toBeNull();
+
+    fireEvent.click(getByText('✕ Close'));
+
+    expect(queryByText('Actions')).toBeNull();
+    expect(container.querySelector('.console-actionbar-toggle')).toBeNull();
+    expect(container.querySelector('.console-actionbar-caret')).toBeNull();
+  });
+
+  it("leaves the displayed Status, Agent, and Story values unchanged immediately after the comment composer's own close control is activated (FR-007, SC-004)", () => {
+    const itemWithAgent = { ...issueItem, agent: 'developer' };
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { container, getByText } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={itemWithAgent}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    const statusChipTextBeforeClose = container.querySelector(
+      '.console-detail-status-chip',
+    )?.textContent;
+    const agentChipTextBeforeClose = container.querySelector(
+      '.console-detail-agent-chip',
+    )?.textContent;
+    const storyTagTextBeforeClose =
+      container.querySelector('.console-storytag')?.textContent;
+    expect(statusChipTextBeforeClose).toBe('Todo by human');
+    expect(agentChipTextBeforeClose).toBe('developer');
+    expect(storyTagTextBeforeClose).toBe('TDPM Console port');
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+
+    fireEvent.click(getByText('✕ Close'));
+
+    expect(getByText('💬 Add a comment')).toBeInTheDocument();
+    expect(
+      container.querySelector('.console-detail-status-chip')?.textContent,
+    ).toBe(statusChipTextBeforeClose);
+    expect(
+      container.querySelector('.console-detail-agent-chip')?.textContent,
+    ).toBe(agentChipTextBeforeClose);
+    expect(container.querySelector('.console-storytag')?.textContent).toBe(
+      storyTagTextBeforeClose,
+    );
+    expect(operations.setStatus).not.toHaveBeenCalled();
+    expect(operations.setStory).not.toHaveBeenCalled();
+    expect(operations.setAgent).not.toHaveBeenCalled();
+    expect(operations.setNextActionDate).not.toHaveBeenCalled();
+    expect(onQueueAction).not.toHaveBeenCalled();
+  });
+
+  it('opens the comment composer and shows the button area for a newly opened task regardless of how the previously viewed task was left (FR-006, SC-005)', async () => {
+    const onQueueAction = jest.fn();
+    const { getByText, queryByText, rerender } = render(
+      <ConsoleItemDetailContainer
+        key={prItem.projectItemId}
+        tab="prs"
+        item={prItem}
         caches={buildCaches()}
         operations={buildOperations()}
         statusOptions={consoleStatusOptionsFixture}
@@ -1833,48 +2023,20 @@ describe('ConsoleItemDetailContainer', () => {
         storyName="TDPM Console port"
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
-        onQueueAction={jest.fn()}
+        onQueueAction={onQueueAction}
       />,
     );
 
-    const statusChipTextBeforeCollapse = container.querySelector(
-      '.console-detail-status-chip',
-    )?.textContent;
-    const agentChipTextBeforeCollapse = container.querySelector(
-      '.console-detail-agent-chip',
-    )?.textContent;
-    const storyTagTextBeforeCollapse =
-      container.querySelector('.console-storytag')?.textContent;
-    expect(statusChipTextBeforeCollapse).toBe('Todo by human');
-    expect(agentChipTextBeforeCollapse).toBe('developer');
-    expect(storyTagTextBeforeCollapse).toBe('TDPM Console port');
+    await waitFor(() => {
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('✕ Close'));
+    expect(getByText('💬 Add a comment')).toBeInTheDocument();
+    expect(queryByText('Approve & Merge')).toBeNull();
 
-    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
-    const toggleButton = getByText('Actions').closest(
-      'button',
-    ) as HTMLButtonElement;
-    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
-
-    fireEvent.click(toggleButton);
-
-    expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
-    expect(getByText('▸')).toBeInTheDocument();
-    expect(queryByText('Awaiting Workspace')).toBeNull();
-
-    expect(
-      container.querySelector('.console-detail-status-chip')?.textContent,
-    ).toBe(statusChipTextBeforeCollapse);
-    expect(
-      container.querySelector('.console-detail-agent-chip')?.textContent,
-    ).toBe(agentChipTextBeforeCollapse);
-    expect(container.querySelector('.console-storytag')?.textContent).toBe(
-      storyTagTextBeforeCollapse,
-    );
-  });
-
-  it('toggles the comment composer open and closed through its own control while the button area stays collapsed (AC-6)', () => {
-    const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+    rerender(
       <ConsoleItemDetailContainer
+        key={issueItem.projectItemId}
         tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
@@ -1886,35 +2048,69 @@ describe('ConsoleItemDetailContainer', () => {
         storyName="TDPM Console port"
         overlayStatus={null}
         now={Date.parse('2026-06-19T12:00:00.000Z')}
-        onQueueAction={jest.fn()}
+        onQueueAction={onQueueAction}
       />,
     );
 
-    const actionsToggle = getByText('Actions').closest(
-      'button',
-    ) as HTMLButtonElement;
-    fireEvent.click(actionsToggle);
-    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
-
-    const composerToggle = getByText('✕ Close').closest(
-      'button',
-    ) as HTMLButtonElement;
-    expect(composerToggle.getAttribute('aria-expanded')).toBe('true');
-    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
-
-    fireEvent.click(composerToggle);
-
-    expect(composerToggle.getAttribute('aria-expanded')).toBe('false');
-    expect(getByText('💬 Add a comment')).toBeInTheDocument();
-    expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
-    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
-
-    fireEvent.click(composerToggle);
-
-    expect(composerToggle.getAttribute('aria-expanded')).toBe('true');
     expect(getByText('✕ Close')).toBeInTheDocument();
-    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
-    expect(actionsToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+  });
+
+  it('closes the comment composer and hides the button area even while a comment post is in progress, the same way the close control already closes the composer unconditionally today (FR-008, SC-006)', async () => {
+    const operations = buildOperations();
+    let resolveAddComment: (() => void) | undefined;
+    operations.addComment = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveAddComment = () =>
+            resolve({
+              id: 9,
+              author: 'HiromiShikata',
+              body: 'in-flight comment',
+              createdAt: '2026-06-19T11:58:00.000Z',
+            });
+        }),
+    );
+    const onQueueAction = jest.fn();
+    const { getByText, getByPlaceholderText, queryByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'in-flight comment' },
+    });
+    fireEvent.click(getByText('Comment'));
+    await waitFor(() => {
+      expect(getByText('Posting…')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('✕ Close'));
+
+    expect(getByText('💬 Add a comment')).toBeInTheDocument();
+    expect(queryByText('⚠')).toBeNull();
+    expect(queryByText('Close')).toBeNull();
+    expect(queryByText('Awaiting Workspace')).toBeNull();
+
+    await act(async () => {
+      resolveAddComment?.();
+    });
   });
 
   describe('task-list checkbox interactivity', () => {

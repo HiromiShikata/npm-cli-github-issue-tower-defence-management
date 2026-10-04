@@ -284,6 +284,7 @@ export const IssueWithRichMarkdownBody: Story = {
         agentOptions={[]}
         currentAgentName={null}
         handlers={noopOperationHandlers}
+        isVisible={true}
       />
     ),
   },

@@ -92,6 +92,61 @@ describe('ConsoleCommentComposer', () => {
     expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
   });
 
+  it('calls onOpenChange with false when the toggle closes an initially open composer', () => {
+    const onOpenChange = jest.fn();
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    fireEvent.click(getByText('✕ Close'));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onOpenChange with true when the toggle opens an initially closed composer', () => {
+    const onOpenChange = jest.fn();
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen={false}
+        onSubmit={stubSubmit}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    fireEvent.click(getByText('💬 Add a comment'));
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onOpenChange on mount', () => {
+    const onOpenChange = jest.fn();
+    render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('does not call onOpenChange for a draft edit that does not toggle the open state', () => {
+    const onOpenChange = jest.fn();
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'typing does not open or close the composer' },
+    });
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it('submits the comment, empties the draft and renders no comment of its own', async () => {
     const onSubmit = jest.fn(async (body: string): Promise<ConsoleComment> => ({
       id: 1,

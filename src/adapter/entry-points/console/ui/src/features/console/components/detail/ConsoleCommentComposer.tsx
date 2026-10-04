@@ -11,6 +11,7 @@ export type ConsoleCommentComposerProps = {
   ) => Promise<ConsoleComment>;
   onOkAndAwaitingWorkspace?: () => void;
   onUploadFile?: (file: File) => Promise<string>;
+  onOpenChange?: (open: boolean) => void;
 };
 
 type ComposerStatus =
@@ -83,6 +84,7 @@ export const ConsoleCommentComposer = ({
   onSubmitAndMoveToAwaitingWorkspace,
   onOkAndAwaitingWorkspace,
   onUploadFile,
+  onOpenChange,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
   const [draft, setDraft] = useState<string>(initialDraft ?? '');
@@ -183,7 +185,13 @@ export const ConsoleCommentComposer = ({
         type="button"
         className="console-composer-toggle"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => {
+            const next = !value;
+            onOpenChange?.(next);
+            return next;
+          });
+        }}
       >
         {open ? '✕ Close' : '💬 Add a comment'}
       </button>

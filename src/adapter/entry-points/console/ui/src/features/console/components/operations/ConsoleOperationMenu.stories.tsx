@@ -35,6 +35,7 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
     agentOptions: consoleAgentOptionsFixture,
     currentAgentName: null,
     handlers,
+    isVisible: true,
   },
 };
 
@@ -80,15 +81,11 @@ export const FieldSelectorsVisible: Story = {
   },
 };
 
-export const ActionsCollapsed: Story = {
+export const Hidden: Story = {
   args: {
     tab: 'todo-by-human',
     item: consoleListItemsFixture[2],
     hasPullRequest: false,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const toggleButton = canvas.getByText('Actions');
-    await userEvent.click(toggleButton);
+    isVisible: false,
   },
 };
