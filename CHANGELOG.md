@@ -1,3 +1,10 @@
+## [2.164.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.2...v2.164.3) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** inline code and code-block copy feedback clears before its full 1500ms duration ([#3266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3266)) ([b32c9e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b32c9e0c0eeb60b956d45145f28b5f9e7e459b44))
+
 ## [2.164.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.1...v2.164.2) (2026-10-04)
 
 
