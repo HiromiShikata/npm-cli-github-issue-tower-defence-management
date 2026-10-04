@@ -1832,9 +1832,7 @@ describe('StoryGateCheckUseCase', () => {
 
       const { result } = await scenario.run();
 
-      expect(result.specification?.unreadableUrls).toEqual([
-        foreignIssue.url,
-      ]);
+      expect(result.specification?.unreadableUrls).toEqual([foreignIssue.url]);
       expect(
         result.specification?.candidates.map((candidate) => candidate.url),
       ).toEqual([issueUrl(ASSIGNED)]);
