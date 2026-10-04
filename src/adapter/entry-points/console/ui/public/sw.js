@@ -28,9 +28,12 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) {
     return;
   }
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
   if (
-    url.pathname.startsWith('/projects/') ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/projects/') &&
+    event.request.mode !== 'navigate'
   ) {
     return;
   }
