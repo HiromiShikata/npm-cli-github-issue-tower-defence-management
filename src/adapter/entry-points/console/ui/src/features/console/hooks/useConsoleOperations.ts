@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import {
+  type ConsoleCommentRequest,
+  type ConsoleDeleteAllCommentsRequest,
   type ConsoleIntmuxRequest,
   type ConsoleReviewCommentSide,
   type ConsoleReviewRequest,
@@ -30,6 +32,7 @@ import type {
   ConsoleFieldOption,
   ConsoleListItem,
 } from '../logic/types';
+import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import type { ConsoleCaches } from './useConsoleCaches';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
@@ -70,6 +73,7 @@ export type ConsoleOperationsApi = {
   okAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    sentStepCount?: number,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
   addCommentAndMoveToAwaitingWorkspace: (
@@ -185,10 +189,26 @@ export const buildIntmuxRequest = (
   projectItemId: item.projectItemId,
 });
 
+export const commentRequestBuild = (
+  pjcode: string,
+  item: ConsoleListItem,
+  body: string,
+): ConsoleCommentRequest => ({
+  pjcode,
+  url: item.url,
+  body,
+});
+
+export const deleteAllCommentsRequestBuild = (
+  item: ConsoleListItem,
+): ConsoleDeleteAllCommentsRequest => ({
+  issueUrl: item.url,
+});
+
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
 
-const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
+export const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
 
 export const useConsoleOperations = (
   pjcode: string | null,
@@ -338,37 +358,54 @@ export const useConsoleOperations = (
     [pjcode, invalidateItemContent],
   );
 
-  const okAndMoveToAwaitingWorkspace = useCallback(
+  const awaitingWorkspaceStatusMoveAfterCommentPosted = useCallback(
     async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+      try {
+        await setStatus(item, option);
+      } catch (cause: unknown) {
+        throw new ConsoleActionPartiallySentError(1, cause);
+      }
+      await onAfterMoveToAwaitingWorkspace?.();
+    },
+    [setStatus, onAfterMoveToAwaitingWorkspace],
+  );
+
+  const okAndMoveToAwaitingWorkspace = useCallback(
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+      sentStepCount = 0,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const commentResult = await postConsoleComment({
-        pjcode,
-        url: item.url,
-        body: AWAITING_WORKSPACE_COMMENT_BODY,
-      });
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        statusName: option.name,
-      };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      invalidateItemContent(item);
-      await onAfterMoveToAwaitingWorkspace?.();
-      if (!commentResult.posted) {
-        const resetInfo =
-          commentResult.rateLimitResetAt !== null
-            ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
-            : '';
-        throw new Error(
-          `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
-        );
+      if (sentStepCount > 0) {
+        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
+        return;
       }
+      const commentResult = await postConsoleComment(
+        commentRequestBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
+      );
+      if (commentResult.posted) {
+        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
+        return;
+      }
+      await setStatus(item, option);
+      await onAfterMoveToAwaitingWorkspace?.();
+      const resetInfo =
+        commentResult.rateLimitResetAt !== null
+          ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
+          : '';
+      throw new Error(
+        `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
+      );
     },
-    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
+    [
+      pjcode,
+      setStatus,
+      onAfterMoveToAwaitingWorkspace,
+      awaitingWorkspaceStatusMoveAfterCommentPosted,
+    ],
   );
 
   const addComment = useCallback(
@@ -376,7 +413,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const result = await postConsoleComment({ pjcode, url: item.url, body });
+      const result = await postConsoleComment(
+        commentRequestBuild(pjcode, item, body),
+      );
       if (!result.posted) {
         const resetInfo =
           result.rateLimitResetAt !== null
@@ -395,11 +434,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const commentResult = await postConsoleComment({
-        pjcode,
-        url: item.url,
-        body,
-      });
+      const commentResult = await postConsoleComment(
+        commentRequestBuild(pjcode, item, body),
+      );
       if (!commentResult.posted) {
         const resetInfo =
           commentResult.rateLimitResetAt !== null
@@ -407,19 +444,10 @@ export const useConsoleOperations = (
             : '';
         throw new Error(`${commentResult.error}.${resetInfo}`);
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        statusName: option.name,
-      };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      invalidateItemContent(item);
-      await onAfterMoveToAwaitingWorkspace?.();
+      await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
       return commentResult.comment;
     },
-    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
+    [pjcode, awaitingWorkspaceStatusMoveAfterCommentPosted],
   );
 
   const uploadAttachment = useCallback(
@@ -498,7 +526,7 @@ export const useConsoleOperations = (
 
   const deleteAllComments = useCallback(
     async (item: ConsoleListItem) => {
-      await postConsoleDeleteAllComments({ issueUrl: item.url });
+      await postConsoleDeleteAllComments(deleteAllCommentsRequestBuild(item));
       invalidateItemContent(item);
     },
     [invalidateItemContent],

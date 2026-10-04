@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import { colorFromEnum } from '../logic/colors';
+import { overlayStorageKey } from '../logic/overlay';
 import { ConsolePage } from './ConsolePage';
 
 const tabBar = (): HTMLElement => {
@@ -3179,26 +3180,211 @@ describe('ConsolePage airplane mode write guard', () => {
     });
   });
 
-  it('shows an airplane mode error toast instead of enqueuing when airplane mode is on', async () => {
-    const { getByText, findByText } = render(<ConsolePage />);
+  const readStoredOfflineQueue = (): Record<string, unknown>[] =>
+    JSON.parse(localStorage.getItem('console-offline-action-queue') ?? '[]');
+
+  const postRequestCount = (): number =>
+    (global.fetch as jest.Mock).mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+    ).length;
+
+  const openPullRequestDetailInAirplaneMode = async (
+    view: ReturnType<typeof render>,
+  ): Promise<void> => {
+    await waitFor(() => {
+      expect(view.getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(view.getByText('Turn off')).toBeInTheDocument();
+    });
+    fireEvent.click(view.getByText('Add serveConsole subcommand'));
+    expect(await view.findByText('Approve & Merge')).toBeInTheDocument();
+  };
+
+  const dismissUndoToast = async (container: HTMLElement): Promise<void> => {
+    const dismissButton = await waitFor(() => {
+      const button = container.querySelector('.console-undo-toast-dismiss');
+      expect(button).not.toBeNull();
+      return button as HTMLElement;
+    });
+    fireEvent.click(dismissButton);
+  };
+
+  it('holds a queue action in the offline queue with its optimistic overlay, shows no airplane mode error, and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await openPullRequestDetailInAirplaneMode(view);
+
+    fireEvent.click(view.getByText('Approve & Merge'));
+    await dismissUndoToast(view.container);
 
     await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      expect(readStoredOfflineQueue()).toEqual([
+        expect.objectContaining({
+          itemUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+          apiPath: '/api/review',
+        }),
+      ]);
     });
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem(overlayStorageKey('acme')) ?? '{}')[
+        prItem.projectItemId
+      ],
+    ).toMatchObject({ done: true });
+    expect(postRequestCount()).toBe(0);
+  });
+
+  it('holds a composer comment with the item URL and body across a reload and sends no /api/comment request when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await openPullRequestDetailInAirplaneMode(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Written above the clouds.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
 
     await waitFor(() => {
-      expect(getByText('Turn off')).toBeInTheDocument();
+      expect(readStoredOfflineQueue()).toEqual([
+        expect.objectContaining({
+          itemUrl: prItem.url,
+          apiPath: '/api/comment',
+          requestBody: {
+            pjcode: 'acme',
+            url: prItem.url,
+            body: 'Written above the clouds.',
+          },
+        }),
+      ]);
     });
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    view.unmount();
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve & Merge'));
+    const reloadedView = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        reloadedView.container.querySelector('.console-offline-panel-header')
+          ?.textContent,
+      ).toMatch(/^1 action held/);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        apiPath: '/api/comment',
+        requestBody: {
+          pjcode: 'acme',
+          url: prItem.url,
+          body: 'Written above the clouds.',
+        },
+      }),
+    ]);
+    expect(postRequestCount()).toBe(0);
+  });
+
+  it('holds both the ok comment and the close of OK & Close in order and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await openPullRequestDetailInAirplaneMode(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
 
     await waitFor(() => {
-      expect(getByText('Airplane mode')).toBeInTheDocument();
+      expect(readStoredOfflineQueue()).toHaveLength(2);
     });
-    expect(getByText(/network connection/i)).toBeInTheDocument();
-    expect(document.querySelector('.console-undo-toast')).toBeNull();
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: prItem.url, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+        },
+      }),
+    ]);
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(postRequestCount()).toBe(0);
+  });
+
+  it('holds both the comment and the close of Comment & Close in order and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await openPullRequestDetailInAirplaneMode(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Closing above the clouds.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/comment',
+        requestBody: {
+          pjcode: 'acme',
+          url: prItem.url,
+          body: 'Closing above the clouds.',
+        },
+      }),
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+        },
+      }),
+    ]);
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(postRequestCount()).toBe(0);
+  });
+
+  it('holds both the ok comment and the move to Awaiting Workspace of ok & Awaiting Workspace from the list in order and sends nothing when airplane mode is on', async () => {
+    const view = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(view.getByText('Turn off')).toBeInTheDocument();
+    });
+    const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
+      name: 'ok & Awaiting Workspace',
+    });
+
+    fireEvent.click(okAndAwaitingWorkspaceButton);
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: prItem.url, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: prItem.url,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: prItem.url,
+          projectItemId: prItem.projectItemId,
+          statusName: 'Awaiting Workspace',
+        },
+      }),
+    ]);
+    expect(view.queryByText('Airplane mode')).toBeNull();
+    expect(postRequestCount()).toBe(0);
   });
 });
 
@@ -5052,5 +5238,994 @@ describe('ConsolePage selected item story color threading', () => {
     const dot = container.querySelector('.console-story-dot') as HTMLElement;
     expect(dot).toHaveStyle({ backgroundColor: colorFromEnum('PURPLE').dot });
     expect(dot.style.backgroundColor).not.toBe(colorFromEnum('RED').dot);
+  });
+});
+
+describe('ConsolePage offline action queue', () => {
+  const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+  const pullRequestUrl = 'https://github.com/o/r/pull/851';
+  const issueUrl = 'https://github.com/o/r/issues/866';
+
+  type PostResponder = (url: string, init: RequestInit) => Promise<unknown>;
+
+  const readStoredOfflineQueue = (): Record<string, unknown>[] =>
+    JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]');
+
+  const respondWithPostedComment: PostResponder = async (_url, init) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      comment: {
+        id: 7,
+        author: 'you',
+        body: (JSON.parse(String(init.body)) as { body: string }).body,
+        createdAt: '2026-06-19T02:00:00.000Z',
+      },
+    }),
+  });
+
+  const respondWithNetworkFailure: PostResponder = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+
+  const installOfflineQueueFetch = (
+    respondToPost: PostResponder,
+  ): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return respondToPost(url, init);
+      }
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.startsWith('/api/issuetitle')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            state: 'open',
+            merged: false,
+            isPullRequest: false,
+            title: 'Notify finished issue preparation',
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const postedRequestBodies = (
+    fetchMock: jest.Mock,
+    apiPath: string,
+  ): unknown[] =>
+    fetchMock.mock.calls
+      .filter(
+        ([url, init]) =>
+          String(url).endsWith(apiPath) &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+
+  const postCount = (fetchMock: jest.Mock): number =>
+    fetchMock.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+    ).length;
+
+  const openPullRequestDetail = async (
+    view: ReturnType<typeof render>,
+  ): Promise<void> => {
+    await waitFor(() => {
+      expect(view.getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(view.getByText('Add serveConsole subcommand'));
+    expect(await view.findByText('Approve & Merge')).toBeInTheDocument();
+  };
+
+  const dismissUndoToast = async (container: HTMLElement): Promise<void> => {
+    const dismissButton = await waitFor(() => {
+      const button = container.querySelector('.console-undo-toast-dismiss');
+      expect(button).not.toBeNull();
+      return button as HTMLElement;
+    });
+    fireEvent.click(dismissButton);
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  it('sends exactly one /api/comment request carrying the project, the item URL and the body when a comment is posted online', async () => {
+    const fetchMock = installOfflineQueueFetch(respondWithPostedComment);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Looks good from here.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+
+    await waitFor(() => {
+      expect(view.getByText('Looks good from here.')).toBeInTheDocument();
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'Looks good from here.' },
+    ]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+  });
+
+  it('shows the host rejection and holds nothing when /api/comment answers HTTP 500 online', async () => {
+    const fetchMock = installOfflineQueueFetch(async () => ({
+      ok: false,
+      status: 500,
+      text: async () => '',
+    }));
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Rejected on the merits.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+
+    expect(await view.findByText('Failed: HTTP 500.')).toBeInTheDocument();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-offline-panel')).toBeNull();
+  });
+
+  it('holds a board action in the offline queue without an error toast when its request fails because the network is unavailable', async () => {
+    installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(1);
+    });
+    expect(readStoredOfflineQueue()[0]).toMatchObject({
+      itemUrl: pullRequestUrl,
+      apiPath: '/api/triage',
+      requestBody: {
+        pjcode: 'acme',
+        action: 'close',
+        issueUrl: pullRequestUrl,
+        projectItemId: 'PVTI_1',
+      },
+    });
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  it('lists held comments with the other held actions and their re-fetched state on reconnect, sends nothing automatically, and sends exactly one /api/comment request when one is confirmed', async () => {
+    const heldItemFields = {
+      itemUrl: issueUrl,
+      projectItemId: 'PVTI_2',
+      itemNumber: 866,
+      repo: 'o/r',
+      isPr: false,
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'held-close',
+          message: 'Closed — Issue #866',
+          color: 'red',
+          enqueuedAt: 1,
+          ...heldItemFields,
+          apiPath: '/api/triage',
+          requestBody: {
+            pjcode: 'acme',
+            action: 'close',
+            issueUrl,
+            projectItemId: 'PVTI_2',
+          },
+        },
+        {
+          id: 'held-comment',
+          message: 'Commented — Issue #866',
+          color: 'blue',
+          enqueuedAt: 2,
+          ...heldItemFields,
+          apiPath: '/api/comment',
+          requestBody: {
+            pjcode: 'acme',
+            url: issueUrl,
+            body: 'Written while offline.',
+          },
+        },
+      ]),
+    );
+    let resolveCommentPost: (() => void) | undefined;
+    const fetchMock = installOfflineQueueFetch((url) =>
+      url.endsWith('/api/comment')
+        ? new Promise((resolve) => {
+            resolveCommentPost = () =>
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                  comment: {
+                    id: 7,
+                    author: 'you',
+                    body: 'Written while offline.',
+                    createdAt: '2026-06-19T02:00:00.000Z',
+                  },
+                }),
+              });
+          })
+        : Promise.resolve({ ok: true, status: 200, json: async () => ({}) }),
+    );
+    const view = render(<ConsolePage />);
+
+    expect(
+      await view.findByText('2 actions held — confirm each before sending'),
+    ).toBeInTheDocument();
+    expect(view.getByText('Closed — Issue #866')).toBeInTheDocument();
+    expect(view.getByText('Commented — Issue #866')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        view.getAllByText(
+          'Issue #866 — Notify finished issue preparation (open)',
+        ),
+      ).toHaveLength(2);
+    });
+    expect(postCount(fetchMock)).toBe(0);
+
+    const panelItemFor = (message: string): HTMLElement =>
+      view
+        .getByText(message)
+        .closest('.console-offline-panel-item') as HTMLElement;
+    fireEvent.click(
+      within(panelItemFor('Commented — Issue #866')).getByText('Send'),
+    );
+
+    await waitFor(() => {
+      expect(
+        within(panelItemFor('Closed — Issue #866')).getByText('Send'),
+      ).toBeDisabled();
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: issueUrl, body: 'Written while offline.' },
+    ]);
+
+    await act(async () => {
+      resolveCommentPost?.();
+    });
+
+    expect(
+      await view.findByText('1 action held — confirm each before sending'),
+    ).toBeInTheDocument();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(0);
+    expect(readStoredOfflineQueue().map((held) => held.id)).toEqual([
+      'held-close',
+    ]);
+  });
+
+  it('holds a composer comment with the item URL and body when its request fails because the network is unavailable', async () => {
+    const fetchMock = installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Written in a tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toEqual([
+        expect.objectContaining({
+          itemUrl: pullRequestUrl,
+          apiPath: '/api/comment',
+          requestBody: {
+            pjcode: 'acme',
+            url: pullRequestUrl,
+            body: 'Written in a tunnel.',
+          },
+        }),
+      ]);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+  });
+
+  it('holds both the ok comment and the close of OK & Close in order when its request fails because the network is unavailable', async () => {
+    installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: pullRequestUrl,
+          projectItemId: 'PVTI_1',
+        },
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  it('holds the ok comment before the move to Awaiting Workspace when ok & Awaiting Workspace from the list fails because the network is unavailable', async () => {
+    installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
+      name: 'ok & Awaiting Workspace',
+    });
+
+    fireEvent.click(okAndAwaitingWorkspaceButton);
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: pullRequestUrl,
+          projectItemId: 'PVTI_1',
+          statusName: 'Awaiting Workspace',
+        },
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  const respondWithOperationSucceeded: PostResponder = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  });
+
+  const respondWithHostRejection: PostResponder = async () => ({
+    ok: false,
+    status: 500,
+    text: async () => '',
+  });
+
+  const respondToCommentAsPostedAndOtherRequestsWith =
+    (respondToOtherRequests: PostResponder): PostResponder =>
+    (url, init) =>
+      url.endsWith('/api/comment')
+        ? respondWithPostedComment(url, init)
+        : respondToOtherRequests(url, init);
+
+  const closeRequestBodyForPullRequest = {
+    pjcode: 'acme',
+    action: 'close',
+    issueUrl: pullRequestUrl,
+    projectItemId: 'PVTI_1',
+  };
+
+  it('sends the ok comment and the close of OK & Close once each and holds nothing when both requests succeed online', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondToCommentAsPostedAndOtherRequestsWith(
+        respondWithOperationSucceeded,
+      ),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(1);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+    ]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  it('shows the host rejection and holds nothing when the ok comment of OK & Close was posted and the close answers HTTP 500 online', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondToCommentAsPostedAndOtherRequestsWith(respondWithHostRejection),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(
+        view.container.querySelector('.console-error-toast'),
+      ).not.toBeNull();
+    });
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-offline-panel')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+    ]);
+  });
+
+  it('holds both the comment and the close of Comment & Close in order without an error toast when its request fails because the network is unavailable', async () => {
+    installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Closing in a tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/comment',
+        requestBody: {
+          pjcode: 'acme',
+          url: pullRequestUrl,
+          body: 'Closing in a tunnel.',
+        },
+      }),
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  const installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork = (): {
+    fetchMock: jest.Mock;
+    restoreNetworkForOtherRequests: () => void;
+  } => {
+    let isNetworkAvailableForOtherRequests = false;
+    const respondToOtherRequestsAsSucceeded =
+      respondToCommentAsPostedAndOtherRequestsWith(
+        respondWithOperationSucceeded,
+      );
+    const fetchMock = installOfflineQueueFetch((url, init) =>
+      url.endsWith('/api/comment') || isNetworkAvailableForOtherRequests
+        ? respondToOtherRequestsAsSucceeded(url, init)
+        : respondWithNetworkFailure(url, init),
+    );
+    return {
+      fetchMock,
+      restoreNetworkForOtherRequests: () => {
+        isNetworkAvailableForOtherRequests = true;
+      },
+    };
+  };
+
+  it('holds only the close of OK & Close without an error toast and never posts the ok comment again when the comment was posted, the close fails because the network is unavailable and the held close is confirmed later', async () => {
+    const { fetchMock, restoreNetworkForOtherRequests } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+
+    restoreNetworkForOtherRequests();
+    const heldSendButton = await waitFor(() => {
+      const heldItems = view.container.querySelectorAll(
+        '.console-offline-panel-item',
+      );
+      expect(heldItems).toHaveLength(1);
+      const sendButton = within(heldItems[0] as HTMLElement).getByText('Send');
+      expect(sendButton).toBeEnabled();
+      return sendButton;
+    });
+    fireEvent.click(heldSendButton);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toEqual([]);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+      closeRequestBodyForPullRequest,
+    ]);
+  });
+
+  it('holds only the close of Comment & Close without an error toast when the comment was posted and the close fails because the network is unavailable', async () => {
+    const { fetchMock } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Posted before the tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment & Close'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      {
+        pjcode: 'acme',
+        url: pullRequestUrl,
+        body: 'Posted before the tunnel.',
+      },
+    ]);
+  });
+
+  it('holds only the move to Awaiting Workspace of ok & Awaiting Workspace from the list without an error toast when the ok comment was posted and the move fails because the network is unavailable', async () => {
+    const { fetchMock } =
+      installFetchPostingCommentsWhileOtherRequestsLoseTheNetwork();
+    const view = render(<ConsolePage />);
+    const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
+      name: 'ok & Awaiting Workspace',
+    });
+
+    fireEvent.click(okAndAwaitingWorkspaceButton);
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).not.toEqual([]);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: pullRequestUrl,
+          projectItemId: 'PVTI_1',
+          statusName: 'Awaiting Workspace',
+        },
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+  });
+
+  const awaitingWorkspaceRequestBodyForPullRequest = {
+    pjcode: 'acme',
+    action: 'set_status',
+    issueUrl: pullRequestUrl,
+    projectItemId: 'PVTI_1',
+    statusName: 'Awaiting Workspace',
+  };
+
+  const respondWithPostedCommentsAndTriageRequestsInTurn = (
+    respondToFirstTriageRequest: PostResponder,
+    respondToLaterTriageRequests: PostResponder,
+  ): PostResponder => {
+    let triageRequestCount = 0;
+    return respondToCommentAsPostedAndOtherRequestsWith((url, init) => {
+      if (!url.endsWith('/api/triage')) {
+        return respondWithOperationSucceeded(url, init);
+      }
+      triageRequestCount += 1;
+      return triageRequestCount === 1
+        ? respondToFirstTriageRequest(url, init)
+        : respondToLaterTriageRequests(url, init);
+    });
+  };
+
+  const findErrorToastRetryButton = (
+    container: HTMLElement,
+  ): Promise<HTMLElement> =>
+    waitFor(() => {
+      const button = container.querySelector('.console-error-toast-retry');
+      expect(button).not.toBeNull();
+      return button as HTMLElement;
+    });
+
+  type CommentThenSecondRequestAction = {
+    actionName: string;
+    startAction: (view: ReturnType<typeof render>) => Promise<void>;
+    expectedCommentBody: string;
+    expectedSecondRequestBody: Record<string, string>;
+  };
+
+  const commentThenSecondRequestActions: CommentThenSecondRequestAction[] = [
+    {
+      actionName: 'OK & Close from the detail',
+      startAction: async (view) => {
+        await openPullRequestDetail(view);
+        fireEvent.click(view.getByText('OK & Close'));
+      },
+      expectedCommentBody: 'ok',
+      expectedSecondRequestBody: closeRequestBodyForPullRequest,
+    },
+    {
+      actionName: 'Comment & Close from the detail',
+      startAction: async (view) => {
+        await openPullRequestDetail(view);
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'Closing after the outage.' },
+        });
+        fireEvent.click(view.getByText('Comment & Close'));
+      },
+      expectedCommentBody: 'Closing after the outage.',
+      expectedSecondRequestBody: closeRequestBodyForPullRequest,
+    },
+    {
+      actionName: 'ok & Awaiting Workspace from the detail',
+      startAction: async (view) => {
+        await openPullRequestDetail(view);
+        fireEvent.click(
+          view.getByRole('button', { name: 'ok & Awaiting Workspace' }),
+        );
+      },
+      expectedCommentBody: 'ok',
+      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+    },
+    {
+      actionName: 'Comment & Awaiting Workspace from the detail',
+      startAction: async (view) => {
+        await openPullRequestDetail(view);
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'Moving after the outage.' },
+        });
+        fireEvent.click(view.getByText('Comment & Awaiting Workspace'));
+      },
+      expectedCommentBody: 'Moving after the outage.',
+      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+    },
+    {
+      actionName: 'ok & Awaiting Workspace from the list',
+      startAction: async (view) => {
+        const [okAndAwaitingWorkspaceButton] = await view.findAllByRole(
+          'button',
+          { name: 'ok & Awaiting Workspace' },
+        );
+        fireEvent.click(okAndAwaitingWorkspaceButton);
+      },
+      expectedCommentBody: 'ok',
+      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+    },
+  ];
+
+  it.each(commentThenSecondRequestActions)(
+    'retries $actionName by sending only its second request again, never the comment, when the comment was posted and the second request answered HTTP 500 online',
+    async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      const fetchMock = installOfflineQueueFetch(
+        respondWithPostedCommentsAndTriageRequestsInTurn(
+          respondWithHostRejection,
+          respondWithOperationSucceeded,
+        ),
+      );
+      const view = render(<ConsolePage />);
+      await startAction(view);
+      await dismissUndoToast(view.container);
+      const retryButton = await findErrorToastRetryButton(view.container);
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
+      ]);
+
+      fireEvent.click(retryButton);
+
+      await waitFor(() => {
+        expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(2);
+      });
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
+      ]);
+      expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+        expectedSecondRequestBody,
+        expectedSecondRequestBody,
+      ]);
+      expect(readStoredOfflineQueue()).toEqual([]);
+      expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    },
+  );
+
+  it.each(commentThenSecondRequestActions)(
+    'holds only the second request of $actionName without an error toast and posts the comment only once when the comment was posted, the second request answered HTTP 500 online and its retry fails because the network is unavailable',
+    async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      const fetchMock = installOfflineQueueFetch(
+        respondWithPostedCommentsAndTriageRequestsInTurn(
+          respondWithHostRejection,
+          respondWithNetworkFailure,
+        ),
+      );
+      const view = render(<ConsolePage />);
+      await startAction(view);
+      await dismissUndoToast(view.container);
+      const retryButton = await findErrorToastRetryButton(view.container);
+
+      fireEvent.click(retryButton);
+
+      await waitFor(() => {
+        expect(readStoredOfflineQueue()).not.toEqual([]);
+      });
+      expect(readStoredOfflineQueue()).toEqual([
+        expect.objectContaining({
+          itemUrl: pullRequestUrl,
+          apiPath: '/api/triage',
+          requestBody: expectedSecondRequestBody,
+        }),
+      ]);
+      expect(view.container.querySelector('.console-error-toast')).toBeNull();
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
+      ]);
+      expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+        expectedSecondRequestBody,
+        expectedSecondRequestBody,
+      ]);
+    },
+  );
+
+  const airplaneSyncDoneStream = (): ReadableStream<Uint8Array> => {
+    const snapshot = {
+      capturedAt: '2026-06-19T01:00:00.000Z',
+      tabs: {
+        acme: Object.fromEntries(
+          [
+            'prs',
+            'workflow-blocker',
+            'failed-preparation',
+            'todo-by-human',
+            'stories',
+          ].map((tab) => [tab, listPayload(tab)]),
+        ),
+      },
+      items: {},
+      failures: [],
+    };
+    const encodedDoneEvent = new TextEncoder().encode(
+      `data: ${JSON.stringify({ type: 'done', snapshot })}\n\n`,
+    );
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encodedDoneEvent);
+        controller.close();
+      },
+    });
+  };
+
+  const installOfflineQueueFetchWithAirplaneModeSync = (
+    respondToPost: PostResponder,
+  ): jest.Mock => {
+    const respondWithoutAirplaneMode = installOfflineQueueFetch(respondToPost);
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/features') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ airplaneMode: true }),
+        };
+      }
+      if (url === '/api/airplanesync') {
+        return { ok: true, status: 200, body: airplaneSyncDoneStream() };
+      }
+      return respondWithoutAirplaneMode(url, init);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const installAirplaneSnapshotCacheStorage = (): void => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: {
+        open: jest.fn().mockResolvedValue({
+          put: jest.fn().mockResolvedValue(undefined),
+          match: jest.fn().mockResolvedValue(undefined),
+          delete: jest.fn().mockResolvedValue(true),
+        }),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+  };
+
+  const removeCacheStorage = (): void => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+  };
+
+  it.each(commentThenSecondRequestActions)(
+    'holds only the second request of $actionName without sending anything or showing an airplane mode error when the comment was posted, the second request answered HTTP 500 online and airplane mode is turned on before the retry',
+    async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      const fetchMock = installOfflineQueueFetchWithAirplaneModeSync(
+        respondWithPostedCommentsAndTriageRequestsInTurn(
+          respondWithHostRejection,
+          respondWithOperationSucceeded,
+        ),
+      );
+      try {
+        const view = render(<ConsolePage />);
+        await startAction(view);
+        await dismissUndoToast(view.container);
+        await findErrorToastRetryButton(view.container);
+        installAirplaneSnapshotCacheStorage();
+        fireEvent.click(
+          await view.findByRole('button', { name: '✈ Airplane mode' }),
+        );
+        expect(await view.findByText('Turn off')).toBeInTheDocument();
+
+        fireEvent.click(await findErrorToastRetryButton(view.container));
+
+        await waitFor(() => {
+          expect(readStoredOfflineQueue()).not.toEqual([]);
+        });
+        expect(readStoredOfflineQueue()).toEqual([
+          expect.objectContaining({
+            itemUrl: pullRequestUrl,
+            apiPath: '/api/triage',
+            requestBody: expectedSecondRequestBody,
+          }),
+        ]);
+        expect(postCount(fetchMock)).toBe(2);
+        expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+          { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
+        ]);
+        expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+          expectedSecondRequestBody,
+        ]);
+        expect(view.queryByText('Airplane mode')).toBeNull();
+        expect(view.container.querySelector('.console-error-toast')).toBeNull();
+      } finally {
+        removeCacheStorage();
+      }
+    },
+  );
+
+  const respondWithCommentsInTurnAndOtherRequestsSucceeded = (
+    respondToFirstComment: PostResponder,
+    respondToLaterComments: PostResponder,
+  ): PostResponder => {
+    let commentRequestCount = 0;
+    return (url, init) => {
+      if (!url.endsWith('/api/comment')) {
+        return respondWithOperationSucceeded(url, init);
+      }
+      commentRequestCount += 1;
+      return commentRequestCount === 1
+        ? respondToFirstComment(url, init)
+        : respondToLaterComments(url, init);
+    };
+  };
+
+  it('retries OK & Close by sending the ok comment again and then the close when the ok comment answered HTTP 500 online', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondWithCommentsInTurnAndOtherRequestsSucceeded(
+        respondWithHostRejection,
+        respondWithPostedComment,
+      ),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+    const retryButton = await findErrorToastRetryButton(view.container);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([]);
+
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(1);
+    });
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+    ]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
+      closeRequestBodyForPullRequest,
+    ]);
+    expect(readStoredOfflineQueue()).toEqual([]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+  });
+
+  it('holds both the ok comment and the close of OK & Close in order without an error toast when the ok comment answered HTTP 500 online and its retry fails because the network is unavailable', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondWithCommentsInTurnAndOtherRequestsSucceeded(
+        respondWithHostRejection,
+        respondWithNetworkFailure,
+      ),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+    fireEvent.click(view.getByText('OK & Close'));
+    await dismissUndoToast(view.container);
+    const retryButton = await findErrorToastRetryButton(view.container);
+
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(readStoredOfflineQueue()).toHaveLength(2);
+    });
+    expect(readStoredOfflineQueue()).toEqual([
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/comment',
+        requestBody: { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
+      }),
+      expect.objectContaining({
+        itemUrl: pullRequestUrl,
+        apiPath: '/api/triage',
+        requestBody: closeRequestBodyForPullRequest,
+      }),
+    ]);
+    expect(view.container.querySelector('.console-error-toast')).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(2);
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([]);
   });
 });
