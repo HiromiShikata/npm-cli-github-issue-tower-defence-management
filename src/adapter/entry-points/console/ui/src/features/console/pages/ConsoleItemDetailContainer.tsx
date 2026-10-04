@@ -69,7 +69,7 @@ export type ConsoleCommentErrorHandler = (
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
-  commit: () => Promise<void>;
+  commit: (sentStepCount: number) => Promise<void>;
   offline?: ConsoleOfflinePayload[];
   skipAdvance?: boolean;
   onAdvance?: () => void;
@@ -440,7 +440,8 @@ export const ConsoleItemDetailContainer = ({
       onQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commit: (sentStepCount) =>
+          operations.okAndMoveToAwaitingWorkspace(item, option, sentStepCount),
         offline:
           pjcode != null
             ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
@@ -571,13 +572,17 @@ export const ConsoleItemDetailContainer = ({
                   optionName: awaitingWorkspaceOption.name,
                 },
                 item,
-                commit: async () => {
+                commit: async (sentStepCount) => {
                   if (
+                    sentStepCount > 0 ||
                     commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
                   ) {
                     try {
                       await operations.setStatus(item, awaitingWorkspaceOption);
                     } catch (cause) {
+                      if (isNetworkError(cause) && pjcode != null) {
+                        throw new ConsoleActionPartiallySentError(1, cause);
+                      }
                       rejectWithMessage(
                         `Comment already posted, but retrying the move to Awaiting Workspace status failed: ${String(cause)}`,
                         cause,
@@ -674,14 +679,17 @@ export const ConsoleItemDetailContainer = ({
     onQueueAction({
       kind: { type: 'close', action: 'close' },
       item,
-      commit: () =>
-        consoleActionStepsRun([
-          async () => {
-            const comment = await operations.addComment(item, body);
-            setPostedComments((previous) => [...previous, comment]);
-          },
-          () => operations.closeIssue(item, 'close'),
-        ]),
+      commit: (sentStepCount) =>
+        consoleActionStepsRun(
+          [
+            async () => {
+              const comment = await operations.addComment(item, body);
+              setPostedComments((previous) => [...previous, comment]);
+            },
+            () => operations.closeIssue(item, 'close'),
+          ],
+          sentStepCount,
+        ),
       offline: [
         commentOfflinePayloadBuild(pjcode, item, body),
         buildTriageOfflinePayload(pjcode, item, 'close'),
@@ -700,13 +708,16 @@ export const ConsoleItemDetailContainer = ({
     onQueueAction({
       kind: { type: 'ok_and_close' },
       item,
-      commit: () =>
-        consoleActionStepsRun([
-          async () => {
-            await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
-          },
-          () => operations.closeIssue(item, 'close'),
-        ]),
+      commit: (sentStepCount) =>
+        consoleActionStepsRun(
+          [
+            async () => {
+              await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
+            },
+            () => operations.closeIssue(item, 'close'),
+          ],
+          sentStepCount,
+        ),
       offline:
         pjcode != null
           ? [

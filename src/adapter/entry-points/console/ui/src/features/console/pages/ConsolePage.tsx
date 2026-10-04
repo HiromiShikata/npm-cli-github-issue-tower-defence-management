@@ -1029,7 +1029,8 @@ export const ConsolePage = () => {
       handleQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commit: (sentStepCount) =>
+          operations.okAndMoveToAwaitingWorkspace(item, option, sentStepCount),
         offline:
           pjcode !== null
             ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
