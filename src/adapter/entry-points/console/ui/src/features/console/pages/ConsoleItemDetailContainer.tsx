@@ -532,6 +532,8 @@ export const ConsoleItemDetailContainer = ({
   const [isDraftEmpty, setIsDraftEmpty] = useState<boolean>(
     (initialCommentDraft ?? '').trim().length === 0,
   );
+  const [isCommentComposerOpen, setIsCommentComposerOpen] =
+    useState<boolean>(true);
 
   const handleDraftChange = useCallback(
     (draft: string) => {
@@ -637,6 +639,7 @@ export const ConsoleItemDetailContainer = ({
             addCommentAndMoveToAwaitingWorkspace
           }
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
+          onOpenChange={setIsCommentComposerOpen}
         />
       }
       operationBar={
@@ -657,6 +660,7 @@ export const ConsoleItemDetailContainer = ({
           onCommentAndClose={commentAndCloseWithDraft}
           onOkAndClose={okAndClose}
           isDraftEmpty={isDraftEmpty}
+          isVisible={isCommentComposerOpen}
         />
       }
     />
