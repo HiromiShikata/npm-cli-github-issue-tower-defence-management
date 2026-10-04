@@ -1,4 +1,5 @@
 const SHELL_CACHE = 'console-shell-v1';
+const PRESERVED_CACHES = [SHELL_CACHE, 'console-list-v1', 'tdpm-airplane-v1'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.add('/')));
@@ -12,7 +13,7 @@ self.addEventListener('activate', (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((name) => name !== SHELL_CACHE)
+            .filter((name) => !PRESERVED_CACHES.includes(name))
             .map((name) => caches.delete(name)),
         ),
       ),
