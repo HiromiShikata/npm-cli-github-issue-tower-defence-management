@@ -11,8 +11,8 @@ import * as consoleApi from '../lib/consoleApi';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey } from '../logic/overlay';
 import {
-  attachmentSubmissionParamsChanged,
   type AttachmentSubmissionProgress,
+  attachmentSubmissionParamsChanged,
   buildAttachmentSubmissionFailureMessage,
   ConsolePage,
   createEmptyAttachmentSubmissionProgress,
