@@ -168,7 +168,10 @@ export const createIssueWithAttachments = async (
         body: body ?? null,
       });
     } catch (cause: unknown) {
-      console.error('createIssueWithAttachments: failed to create issue', cause);
+      console.error(
+        'createIssueWithAttachments: failed to create issue',
+        cause,
+      );
       throw new Error('Failed to create the task. Please try again.');
     }
     progress.issueUrl = issueUrl;

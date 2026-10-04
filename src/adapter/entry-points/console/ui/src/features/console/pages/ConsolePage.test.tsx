@@ -6965,8 +6965,6 @@ describe('attachmentSubmissionParamsChanged', () => {
   ];
 
   it.each(rows)('$name', ({ previous, current, expected }) => {
-    expect(attachmentSubmissionParamsChanged(previous, current)).toBe(
-      expected,
-    );
+    expect(attachmentSubmissionParamsChanged(previous, current)).toBe(expected);
   });
 });
