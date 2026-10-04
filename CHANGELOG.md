@@ -1,3 +1,10 @@
+## [2.164.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.1...v2.164.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **console:** stabilize onCheckboxToggle callback in ConsoleCommentList ([#3253](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3253)) ([ea1c369](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ea1c369e73ad966169113a575d1f71bbf4e8176f))
+
 ## [2.164.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.0...v2.164.1) (2026-10-04)
 
 
