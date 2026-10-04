@@ -23,8 +23,15 @@ export type ConsoleActionKind =
 
 export const ACTION_TOAST_DELAY_MS = 5000;
 
+export const itemRepositoryLabel = (
+  nameWithOwner: string,
+  itemNumber: number,
+  isPr: boolean,
+): string =>
+  isPr ? `PR ${nameWithOwner}#${itemNumber}` : `${nameWithOwner}#${itemNumber}`;
+
 export const itemToastLabel = (item: ConsoleListItem): string =>
-  `${item.isPr ? 'PR #' : '#'}${item.number}`;
+  itemRepositoryLabel(item.nameWithOwner, item.number, item.isPr);
 
 export const actionToastMessage = (
   kind: ConsoleActionKind,
