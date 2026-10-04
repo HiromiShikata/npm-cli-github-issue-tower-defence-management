@@ -9,6 +9,7 @@ const meta: Meta<typeof ConsoleAirplaneModeButton> = {
     progress: null,
     capturedAt: null,
     failures: [],
+    retryTargetUrls: [],
     onStartSync: () => {},
     onTurnOff: () => {},
     onRetryFailed: () => {},
@@ -50,6 +51,20 @@ export const SyncError: Story = {
   args: {
     status: 'error',
     failures: [
+      'https://github.com/owner/repo/issues/99',
+      'https://github.com/owner/repo/pull/100',
+    ],
+  },
+};
+
+export const SyncErrorWithRetryTargets: Story = {
+  args: {
+    status: 'error',
+    failures: [
+      'https://github.com/owner/repo/issues/99',
+      'https://github.com/owner/repo/pull/100',
+    ],
+    retryTargetUrls: [
       'https://github.com/owner/repo/issues/99',
       'https://github.com/owner/repo/pull/100',
     ],

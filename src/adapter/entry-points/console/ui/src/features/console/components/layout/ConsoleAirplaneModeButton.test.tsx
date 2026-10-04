@@ -9,6 +9,7 @@ const baseProps: ConsoleAirplaneModeButtonProps = {
   progress: null,
   capturedAt: null,
   failures: [],
+  retryTargetUrls: [],
   onStartSync: jest.fn(),
   onTurnOff: jest.fn(),
   onRetryFailed: jest.fn(),
@@ -108,6 +109,45 @@ describe('ConsoleAirplaneModeButton', () => {
     const retryBtn = getByRole('button', { name: /retry/i });
     fireEvent.click(retryBtn);
     expect(onStartSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows retry-failed button with failure count when status is error and retryTargetUrls is non-empty', () => {
+    const onStartSync = jest.fn();
+    const onRetryFailed = jest.fn();
+    const { getByRole, getByText } = render(
+      <ConsoleAirplaneModeButton
+        {...baseProps}
+        status="error"
+        retryTargetUrls={['https://github.com/o/r/issues/1']}
+        onStartSync={onStartSync}
+        onRetryFailed={onRetryFailed}
+      />,
+    );
+    expect(getByText(/1 failed/)).not.toBeNull();
+    const retryFailedBtn = getByRole('button', { name: /retry failed/i });
+    fireEvent.click(retryFailedBtn);
+    expect(onRetryFailed).toHaveBeenCalledTimes(1);
+    expect(onStartSync).not.toHaveBeenCalled();
+  });
+
+  it('shows the generic retry button when status is error and retryTargetUrls is empty', () => {
+    const onStartSync = jest.fn();
+    const onRetryFailed = jest.fn();
+    const { getByRole, queryByText } = render(
+      <ConsoleAirplaneModeButton
+        {...baseProps}
+        status="error"
+        retryTargetUrls={[]}
+        failures={['HTTP 500']}
+        onStartSync={onStartSync}
+        onRetryFailed={onRetryFailed}
+      />,
+    );
+    expect(queryByText(/retry failed/i)).toBeNull();
+    const retryBtn = getByRole('button', { name: /retry/i });
+    fireEvent.click(retryBtn);
+    expect(onStartSync).toHaveBeenCalledTimes(1);
+    expect(onRetryFailed).not.toHaveBeenCalled();
   });
 
   it('does not show retry-failed button when status is on with no failures', () => {

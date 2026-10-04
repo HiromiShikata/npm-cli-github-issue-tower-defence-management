@@ -8,6 +8,7 @@ export type ConsoleAirplaneModeButtonProps = {
   progress: AirplaneSyncProgress | null;
   capturedAt: string | null;
   failures: string[];
+  retryTargetUrls: string[];
   onStartSync: () => void;
   onTurnOff: () => void;
   onRetryFailed: () => void;
@@ -25,6 +26,7 @@ export const ConsoleAirplaneModeButton = ({
   progress,
   capturedAt,
   failures,
+  retryTargetUrls,
   onStartSync,
   onTurnOff,
   onRetryFailed,
@@ -78,13 +80,23 @@ export const ConsoleAirplaneModeButton = ({
         <span className="console-airplane-mode-error-label" role="alert">
           Sync failed{failures.length > 0 ? `: ${failures.length} item(s)` : ''}
         </span>
-        <button
-          type="button"
-          className="console-airplane-mode-toggle"
-          onClick={onStartSync}
-        >
-          Retry
-        </button>
+        {retryTargetUrls.length > 0 ? (
+          <button
+            type="button"
+            className="console-airplane-mode-retry"
+            onClick={onRetryFailed}
+          >
+            ({retryTargetUrls.length} failed) Retry failed
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="console-airplane-mode-toggle"
+            onClick={onStartSync}
+          >
+            Retry
+          </button>
+        )}
       </div>
     );
   }

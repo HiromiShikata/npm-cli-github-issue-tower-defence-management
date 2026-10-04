@@ -28,6 +28,7 @@ const baseProps = {
   airplaneModeProgress: null,
   airplaneModeCapturedAt: null,
   airplaneModeFailures: [],
+  airplaneModeRetryTargetUrls: [],
   onAirplaneModeStartSync: () => {},
   onAirplaneModeTurnOff: () => {},
   onAirplaneModeRetryFailed: () => {},
@@ -468,6 +469,19 @@ describe('ConsoleTabList', () => {
     );
     fireEvent.click(getByRole('button', { name: /retry failed/i }));
     expect(onAirplaneModeRetryFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows retry-failed button when airplaneModeStatus is error and airplaneModeRetryTargetUrls is non-empty', () => {
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        airplaneModeStatus="error"
+        airplaneModeRetryTargetUrls={['https://github.com/o/r/issues/1']}
+      />,
+    );
+    expect(getByRole('button', { name: /retry failed/i })).not.toBeNull();
   });
 });
 

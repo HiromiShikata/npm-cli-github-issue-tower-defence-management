@@ -22,6 +22,7 @@ export type AirplaneModeState = {
   progress: AirplaneSyncProgress | null;
   snapshot: AirplaneSnapshot | null;
   failures: string[];
+  retryTargetUrls: string[];
   startSync: () => void;
   turnOff: () => void;
   retryFailed: () => void;
@@ -54,6 +55,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
   const [progress, setProgress] = useState<AirplaneSyncProgress | null>(null);
   const [snapshot, setSnapshot] = useState<AirplaneSnapshot | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
+  const [retryTargetUrls, setRetryTargetUrls] = useState<string[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -112,18 +114,21 @@ export const useAirplaneMode = (): AirplaneModeState => {
             if (parsed === null) {
               setStatus('error');
               setFailures(['Failed to parse snapshot']);
+              setRetryTargetUrls([]);
               return;
             }
             const mergeResult = airplaneSnapshotMerge(previousSnapshot, parsed);
             if (mergeResult.status === 'error') {
               setFailures(mergeResult.failures);
               setStatus('error');
+              setRetryTargetUrls(mergeResult.failures);
               return;
             }
             const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
             if (mergedSnapshot === null) {
               setStatus('error');
               setFailures(['Failed to merge snapshot']);
+              setRetryTargetUrls([]);
               return;
             }
             await storeAirplaneSnapshot(mergedSnapshot);
@@ -131,6 +136,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
             setSnapshot(mergedSnapshot);
             setStatus('on');
             setFailures(mergedSnapshot.failures);
+            setRetryTargetUrls([]);
           }
         }
       }
@@ -148,12 +154,14 @@ export const useAirplaneMode = (): AirplaneModeState => {
     setStatus('syncing');
     setProgress({ fetched: 0, total: 0 });
     setFailures([]);
+    setRetryTargetUrls([]);
 
     fetch(AIRPLANE_SYNC_PATH, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok || response.body === null) {
           setStatus('error');
           setFailures([`HTTP ${response.status}`]);
+          setRetryTargetUrls([]);
           return;
         }
         await processSyncStream(response.body, null);
@@ -164,6 +172,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
         }
         setStatus('error');
         setFailures([error instanceof Error ? error.message : String(error)]);
+        setRetryTargetUrls([]);
       });
   }, [processSyncStream]);
 
@@ -176,6 +185,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
     setSnapshot(null);
     setProgress(null);
     setFailures([]);
+    setRetryTargetUrls([]);
     writeAirplaneModeFlag(false);
     clearAirplaneSnapshot().catch(() => {});
   }, []);
@@ -194,6 +204,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
       setStatus('syncing');
       setProgress({ fetched: 0, total: targetUrls.length });
       setFailures([]);
+      setRetryTargetUrls([]);
 
       fetch(AIRPLANE_SYNC_PATH, {
         method: 'POST',
@@ -205,6 +216,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
           if (!response.ok || response.body === null) {
             setStatus('error');
             setFailures([`HTTP ${response.status}`]);
+            setRetryTargetUrls([]);
             return;
           }
           await processSyncStream(response.body, currentSnapshot);
@@ -215,6 +227,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
           }
           setStatus('error');
           setFailures([error instanceof Error ? error.message : String(error)]);
+          setRetryTargetUrls([]);
         });
     },
     [processSyncStream],
@@ -225,6 +238,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
     progress,
     snapshot,
     failures,
+    retryTargetUrls,
     startSync,
     turnOff,
     retryFailed: () => retryFailed(snapshot, failures),
