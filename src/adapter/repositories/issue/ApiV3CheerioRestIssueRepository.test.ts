@@ -3045,6 +3045,85 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.updateProjectTextField,
       ).not.toHaveBeenCalled();
     });
+
+    describe('live itemId cross-check logging via setDependedIssueUrl', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should log the live itemId cross-check diagnostic line naming operation=update, the PR URL, and the project item id used in the mutation when setting the field on an existing project item', async () => {
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+          makeProjectItem('existing-project-item-id', []),
+        );
+        graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+        await repository.setDependedIssueUrl(
+          prUrl,
+          projectWithDependedIssueUrlField,
+          taskIssueUrl,
+        );
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          `Depended issue URL field write live itemId cross-check: operation=update issueUrl=${prUrl} itemId=existing-project-item-id liveItemId=existing-project-item-id`,
+        );
+      });
+
+      it('should log the live itemId cross-check diagnostic line naming the newly created project item id when the target URL is an issue with no existing project item', async () => {
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+          null,
+        );
+        graphqlProjectItemRepository.addIssueToProject.mockResolvedValue(
+          'new-project-item-id',
+        );
+        graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+        await repository.setDependedIssueUrl(
+          issueTargetUrl,
+          projectWithDependedIssueUrlField,
+          taskIssueUrl,
+        );
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          `Depended issue URL field write live itemId cross-check: operation=update issueUrl=${issueTargetUrl} itemId=new-project-item-id liveItemId=null`,
+        );
+      });
+
+      it('should log ITEM_ID_MISMATCH with both identifiers when the live re-fetch returns a different project item id than the one used in the mutation', async () => {
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => {});
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.fetchProjectItemByUrl
+          .mockResolvedValueOnce(
+            makeProjectItem('existing-project-item-id', []),
+          )
+          .mockResolvedValueOnce(makeProjectItem('item-live-different', []));
+        graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+        await repository.setDependedIssueUrl(
+          prUrl,
+          projectWithDependedIssueUrlField,
+          taskIssueUrl,
+        );
+
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          `ITEM_ID_MISMATCH: operation=update issueUrl=${prUrl} itemId=existing-project-item-id liveItemId=item-live-different`,
+        );
+      });
+    });
   });
 
   describe('setIssueAgentField', () => {
@@ -11293,6 +11372,33 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expect(consoleLogSpy).toHaveBeenCalledWith(
           `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${crossCheckIssueUrl} itemId=${crossCheckItemId} liveItemId=${crossCheckItemId}`,
         );
+      },
+    );
+
+    it.each(writeOperations)(
+      '$operation: does not reject and still performs the real mutation when the diagnostic live itemId cross-check fetch rejects',
+      async ({ operation, write }) => {
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createRepositoryReadyToWrite();
+        const issue = buildStaleItemTestIssue(
+          crossCheckItemId,
+          crossCheckIssueUrl,
+        );
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockRejectedValue(
+          new Error('transient GraphQL error'),
+        );
+
+        await expect(
+          write(repository, projectWithDependedField, dependedFieldId, issue),
+        ).resolves.not.toThrow();
+
+        const realMutationMock =
+          operation === 'clear'
+            ? graphqlProjectItemRepository.clearProjectField
+            : graphqlProjectItemRepository.updateProjectTextField;
+        expect(realMutationMock).toHaveBeenCalled();
       },
     );
   });
