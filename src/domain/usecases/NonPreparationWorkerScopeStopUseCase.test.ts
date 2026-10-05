@@ -1,4 +1,4 @@
-import { NonPreparationWorkerScopeStopUseCase as NonPreparationWorkerScopeStopUseCaseImplementation } from './NonPreparationWorkerScopeStopUseCase';
+import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
@@ -10,33 +10,6 @@ import {
 } from '../entities/WorkflowStatus';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
-
-// The acceptance criteria for issue 3192 require
-// `NonPreparationWorkerScopeStopUseCase` to accept a second constructor
-// parameter (`issueRepository`) and a `project` field on `run()`'s input,
-// used for a live-status re-check immediately before stopping a scope. The
-// production class has not been updated to that shape yet (that is the
-// implementer's job, done after these tests are committed), so this test
-// file targets the shape the class WILL have via a type-level cast of the
-// constructor, rather than the shape it has today. This lets the suite
-// compile now and exercise the current, unfixed runtime behaviour, while
-// pinning the future interface contract.
-type NonPreparationWorkerScopeStopUseCaseWithLiveRecheck = new (
-  tmuxSessionRepository: Pick<
-    TmuxSessionRepository,
-    'listRunningWorkerScopeUnitNames' | 'stopWorkerScopeUnit'
-  >,
-  issueRepository: Pick<IssueRepository, 'get' | 'removeIssueFromProjectCache'>,
-) => {
-  run: (params: {
-    issues: Issue[];
-    currentProjectOrg: string;
-    project: Project;
-  }) => Promise<{ stoppedScopeUnitNames: string[] }>;
-};
-
-const NonPreparationWorkerScopeStopUseCase =
-  NonPreparationWorkerScopeStopUseCaseImplementation as unknown as NonPreparationWorkerScopeStopUseCaseWithLiveRecheck;
 
 const createMockTmuxSessionRepository = (): Mocked<
   Pick<
