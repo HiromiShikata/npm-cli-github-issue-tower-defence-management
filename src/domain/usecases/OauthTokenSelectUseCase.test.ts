@@ -685,7 +685,11 @@ describe('sevenDayUrgencyFactor', () => {
   ])(
     'stays neutral at exactly 1 when on pace with freeRatio=$freeRatio and hoursToReset=$hoursToReset',
     ({ freeRatio, hoursToReset }) => {
-      const onPace = sevenDayUrgencyFactor(freeRatio, now + hoursToReset * 3600, now);
+      const onPace = sevenDayUrgencyFactor(
+        freeRatio,
+        now + hoursToReset * 3600,
+        now,
+      );
 
       expect(onPace).toBe(1);
     },
