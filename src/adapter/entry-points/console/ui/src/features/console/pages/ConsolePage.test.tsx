@@ -1877,8 +1877,9 @@ describe('ConsolePage draft preservation', () => {
   it('restores the draft present at click time when Undo is clicked after Comment & Awaiting Workspace, once the task is reopened', async () => {
     jest.useFakeTimers();
     try {
-      const { container, getByText, findByText, getByPlaceholderText } =
-        render(<ConsolePage />);
+      const { container, getByText, findByText, getByPlaceholderText } = render(
+        <ConsolePage />,
+      );
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
