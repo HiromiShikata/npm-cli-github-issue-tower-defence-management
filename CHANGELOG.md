@@ -1,3 +1,10 @@
+## [2.164.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.3...v2.164.4) (2026-10-05)
+
+
+### Bug Fixes
+
+* **domain:** re-check issue status live before stopping a non-Preparation worker scope ([#3269](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3269)) ([2e948ed](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e948ed42e0a1830a4c2383fd64a78e25a596d27))
+
 ## [2.164.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.2...v2.164.3) (2026-10-04)
 
 
