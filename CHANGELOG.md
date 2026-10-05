@@ -1,3 +1,10 @@
+## [2.164.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.6...v2.164.7) (2026-10-05)
+
+
+### Bug Fixes
+
+* **issue-repository:** add live itemId cross-check logging to depended issue URL field writes ([#3277](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3277)) ([98f8f7c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/98f8f7cde1cc1d85cc4e7e7959d618d8862d18c9))
+
 ## [2.164.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.5...v2.164.6) (2026-10-05)
 
 
