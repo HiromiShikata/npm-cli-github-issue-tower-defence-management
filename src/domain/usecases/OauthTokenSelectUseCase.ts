@@ -63,6 +63,8 @@ export const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThre
 export const SEVEN_DAY_WINDOW_HOURS = 168;
 export const MIN_HOURS_TO_RESET = 1;
 export const SEVEN_DAY_SPEND_DEADLINE_HOURS = 72;
+export const SEVEN_DAY_SPEND_WINDOW_HOURS =
+  SEVEN_DAY_WINDOW_HOURS - SEVEN_DAY_SPEND_DEADLINE_HOURS;
 export const FIVE_HOUR_SPEND_DEADLINE_HOURS = 1;
 const SECONDS_PER_HOUR = 3600;
 export const FIVE_HOUR_WINDOW_HOURS = 5;
@@ -153,7 +155,7 @@ export const sevenDayUrgencyFactor = (
     hoursToReset - SEVEN_DAY_SPEND_DEADLINE_HOURS,
     MIN_HOURS_TO_RESET,
   );
-  return sevenDayFreeRatio * (SEVEN_DAY_WINDOW_HOURS / hoursToDeadline);
+  return sevenDayFreeRatio * (SEVEN_DAY_SPEND_WINDOW_HOURS / hoursToDeadline);
 };
 
 export const selectWeightedCandidate = <Entry>(
