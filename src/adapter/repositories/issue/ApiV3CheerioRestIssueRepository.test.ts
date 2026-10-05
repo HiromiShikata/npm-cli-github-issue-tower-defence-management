@@ -10750,6 +10750,17 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
       created.graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
       created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+      created.graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
+        async (issueUrl: string) => {
+          if (issueUrl === dependentIssueUrl) {
+            return buildProjectItem(dependentIssueUrl, 'Dependent');
+          }
+          if (issueUrl === blockerIssueUrl) {
+            return buildProjectItem(blockerIssueUrl, 'Blocker');
+          }
+          return null;
+        },
+      );
       created.restIssueRepository.createComment.mockImplementation(
         async (_issueUrl: string, comment: string) => ({
           id: 1,
@@ -10814,8 +10825,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItemsByIds,
       ).not.toHaveBeenCalled();
       expect(
-        graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).not.toHaveBeenCalled();
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mock.calls,
+      ).toEqual([[dependentIssueUrl, 'proj-dep']]);
       expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(2);
     });
 
@@ -10851,8 +10862,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       ]);
       expect(
-        graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).not.toHaveBeenCalled();
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mock.calls,
+      ).toEqual([[dependentIssueUrl, 'proj-dep']]);
     });
 
     it('leaves every read of this cycle and the issue cache unchanged when a different field is cleared', async () => {
@@ -10892,7 +10903,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(cacheStore.has(cacheKey)).toBe(false);
     });
 
-    it('updates the issue cache and fetches nothing when this process read no issue list before the write', async () => {
+    it('updates the issue cache, re-fetches no project item list, and performs the live itemId cross-check when this process read no issue list before the write', async () => {
       const earlierProcess = setUpRepositoryWithDependentIssue('OPEN');
       const dependent = findDependent(
         (await earlierProcess.repository.getAllIssues('proj-dep')).issues,
@@ -10916,8 +10927,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         laterProcess.graphqlProjectItemRepository.fetchProjectItems,
       ).not.toHaveBeenCalled();
       expect(
-        laterProcess.graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).not.toHaveBeenCalled();
+        laterProcess.graphqlProjectItemRepository.fetchProjectItemByUrl.mock
+          .calls,
+      ).toEqual([[dependentIssueUrl, 'proj-dep']]);
       expect(laterProcess.projectRepository.getProject).not.toHaveBeenCalled();
     });
 
@@ -10969,7 +10981,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         };
       };
 
-      it('makes the dependent of a blocker closed before this cycle dispatchable in the same cycle with one field clear, one comment read and one comment post as its only GitHub calls after the issue list fetch', async () => {
+      it('makes the dependent of a blocker closed before this cycle dispatchable in the same cycle with one live itemId cross-check, one field clear, one comment read and one comment post as its only GitHub calls after the issue list fetch', async () => {
         const {
           repository,
           commentReadUrls,
@@ -10992,8 +11004,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           graphqlProjectItemRepository.updateProjectTextField,
         ).not.toHaveBeenCalled();
         expect(
-          graphqlProjectItemRepository.fetchProjectItemByUrl,
-        ).not.toHaveBeenCalled();
+          graphqlProjectItemRepository.fetchProjectItemByUrl.mock.calls,
+        ).toEqual([[dependentIssueUrl, 'proj-dep']]);
         expect(
           graphqlProjectItemRepository.fetchProjectItemsLight,
         ).not.toHaveBeenCalled();
@@ -11042,6 +11054,247 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expect(restIssueRepository.createComment).not.toHaveBeenCalled();
       });
     });
+  });
+
+  describe('live itemId cross-check logging', () => {
+    const dependedFieldId = 'depended-field-id';
+    const dependedFieldName = 'Depended Issue URL separated by comma';
+    const otherFieldId = 'next-action-date-field-id';
+    const crossCheckIssueUrl = 'https://github.com/o/r/issues/42';
+    const crossCheckItemId = 'item-cross-check-existing';
+
+    const projectWithDependedField: Project = {
+      ...buildTestProject('proj-cross-check'),
+      dependedIssueUrlSeparatedByComma: {
+        name: dependedFieldName,
+        fieldId: dependedFieldId,
+      },
+    };
+    const projectWithoutDependedField: Project = buildTestProject(
+      'proj-cross-check-no-field',
+    );
+
+    type WriteOperation = {
+      operation: 'clear' | 'update';
+      write: (
+        repository: ApiV3CheerioRestIssueRepository,
+        project: Project,
+        fieldId: string,
+        issue: Issue,
+      ) => Promise<void>;
+    };
+
+    const writeOperations: WriteOperation[] = [
+      {
+        operation: 'clear',
+        write: (repository, project, fieldId, issue) =>
+          repository.clearProjectField(project, fieldId, issue),
+      },
+      {
+        operation: 'update',
+        write: (repository, project, fieldId, issue) =>
+          repository.updateProjectTextField(
+            project,
+            fieldId,
+            issue,
+            'new-text-value',
+          ),
+      },
+    ];
+
+    const createRepositoryReadyToWrite = () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      created.graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
+      created.graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+      return created;
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each(writeOperations)(
+      '$operation: logs the live itemId cross-check diagnostic line naming the operation, issue URL and itemId when writing to the depended-issue-URL field',
+      async ({ operation, write }) => {
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createRepositoryReadyToWrite();
+        const issue = buildStaleItemTestIssue(
+          crossCheckItemId,
+          crossCheckIssueUrl,
+        );
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
+          ...buildProjectItem(crossCheckIssueUrl, 'cross-check'),
+          id: crossCheckItemId,
+        });
+
+        await write(
+          repository,
+          projectWithDependedField,
+          dependedFieldId,
+          issue,
+        );
+
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).toHaveBeenCalledWith(crossCheckIssueUrl, 'proj-cross-check');
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${crossCheckIssueUrl} itemId=${crossCheckItemId} liveItemId=${crossCheckItemId}`,
+        );
+      },
+    );
+
+    const nonMatchingFieldScenarios: {
+      scenarioName: string;
+      project: Project;
+      fieldId: string;
+    }[] = [
+      {
+        scenarioName:
+          'the field written is a different field on a project that has a depended-issue-URL field configured',
+        project: projectWithDependedField,
+        fieldId: otherFieldId,
+      },
+      {
+        scenarioName: 'the project has no depended-issue-URL field configured',
+        project: projectWithoutDependedField,
+        fieldId: dependedFieldId,
+      },
+    ];
+
+    it.each(
+      writeOperations.flatMap((writeOperation) =>
+        nonMatchingFieldScenarios.map((scenario) => ({
+          ...writeOperation,
+          ...scenario,
+        })),
+      ),
+    )(
+      '$operation: performs no live fetch and logs neither diagnostic line when $scenarioName',
+      async ({ write, project, fieldId }) => {
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createRepositoryReadyToWrite();
+        const issue = buildStaleItemTestIssue(
+          crossCheckItemId,
+          crossCheckIssueUrl,
+        );
+
+        await write(repository, project, fieldId, issue);
+
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).not.toHaveBeenCalled();
+        expect(consoleLogSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Depended issue URL field write live itemId cross-check',
+          ),
+        );
+        expect(consoleWarnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('ITEM_ID_MISMATCH'),
+        );
+      },
+    );
+
+    const mismatchScenarios: {
+      scenarioName: string;
+      liveItem: ProjectItem | null;
+      expectedLiveItemId: string;
+    }[] = [
+      {
+        scenarioName: 'the live item id differs from the stale itemId',
+        liveItem: {
+          ...buildProjectItem(crossCheckIssueUrl, 'cross-check'),
+          id: 'item-live-different',
+        },
+        expectedLiveItemId: 'item-live-different',
+      },
+      {
+        scenarioName: 'fetchProjectItemByUrl resolves to null',
+        liveItem: null,
+        expectedLiveItemId: 'null',
+      },
+    ];
+
+    it.each(
+      writeOperations.flatMap((writeOperation) =>
+        mismatchScenarios.map((scenario) => ({
+          ...writeOperation,
+          ...scenario,
+        })),
+      ),
+    )(
+      '$operation: logs ITEM_ID_MISMATCH with both identifiers when $scenarioName',
+      async ({ operation, write, liveItem, expectedLiveItemId }) => {
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => {});
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createRepositoryReadyToWrite();
+        const issue = buildStaleItemTestIssue(
+          crossCheckItemId,
+          crossCheckIssueUrl,
+        );
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+          liveItem,
+        );
+
+        await write(
+          repository,
+          projectWithDependedField,
+          dependedFieldId,
+          issue,
+        );
+
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          `ITEM_ID_MISMATCH: operation=${operation} issueUrl=${crossCheckIssueUrl} itemId=${crossCheckItemId} liveItemId=${expectedLiveItemId}`,
+        );
+      },
+    );
+
+    it.each(writeOperations)(
+      '$operation: logs no ITEM_ID_MISMATCH line and still logs the normal diagnostic line when the live item id matches',
+      async ({ operation, write }) => {
+        const consoleWarnSpy = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => {});
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
+        const { repository, graphqlProjectItemRepository } =
+          createRepositoryReadyToWrite();
+        const issue = buildStaleItemTestIssue(
+          crossCheckItemId,
+          crossCheckIssueUrl,
+        );
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
+          ...buildProjectItem(crossCheckIssueUrl, 'cross-check'),
+          id: crossCheckItemId,
+        });
+
+        await write(
+          repository,
+          projectWithDependedField,
+          dependedFieldId,
+          issue,
+        );
+
+        expect(consoleWarnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('ITEM_ID_MISMATCH'),
+        );
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${crossCheckIssueUrl} itemId=${crossCheckItemId} liveItemId=${crossCheckItemId}`,
+        );
+      },
+    );
   });
 
   const wait = (milliseconds: number): Promise<void> =>
