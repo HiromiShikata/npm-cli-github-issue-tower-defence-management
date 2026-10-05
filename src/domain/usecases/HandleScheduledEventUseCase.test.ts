@@ -663,15 +663,20 @@ describe('HandleScheduledEventUseCase', () => {
       };
 
       const mockIssues = [mock<Issue>()];
+      const mockProject = mock<Project>();
       mockIssueRepository.getAllIssues.mockResolvedValue({
         issues: mockIssues,
-        project: mock<Project>(),
+        project: mockProject,
         cacheUsed: false,
       });
       await useCase.run(input);
 
       expect(mockNonPreparationWorkerScopeStopUseCase.run).toHaveBeenCalledWith(
-        { issues: mockIssues, currentProjectOrg: 'test-org' },
+        {
+          issues: mockIssues,
+          currentProjectOrg: 'test-org',
+          project: mockProject,
+        },
       );
     });
 

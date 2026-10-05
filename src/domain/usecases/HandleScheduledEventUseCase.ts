@@ -748,6 +748,7 @@ ${JSON.stringify(e)}
           await this.nonPreparationWorkerScopeStopUseCase.run({
             issues,
             currentProjectOrg: input.org,
+            project,
           });
         if (stoppedScopeUnitNames.length > 0) {
           console.log(
