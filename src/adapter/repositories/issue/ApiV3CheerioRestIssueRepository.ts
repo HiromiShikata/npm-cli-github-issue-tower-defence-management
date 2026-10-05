@@ -1677,6 +1677,13 @@ export class ApiV3CheerioRestIssueRepository
         project.id,
         prUrl,
       ));
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      dependedIssueUrlField.fieldId,
+      prUrl,
+      projectItemId,
+      'update',
+    );
     await this.graphqlProjectItemRepository.updateProjectTextField(
       project.id,
       dependedIssueUrlField.fieldId,
@@ -1863,11 +1870,49 @@ export class ApiV3CheerioRestIssueRepository
       throw new Error(response.errors.map((e) => e.message).join('; '));
     }
   };
+  private logDependedIssueUrlFieldWriteLiveItemIdCrossCheck = async (
+    project: Project,
+    fieldId: string,
+    issueUrl: string,
+    itemId: string,
+    operation: 'clear' | 'update',
+  ): Promise<void> => {
+    if (project.dependedIssueUrlSeparatedByComma?.fieldId !== fieldId) {
+      return;
+    }
+    try {
+      const liveItem =
+        await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+          issueUrl,
+          project.id,
+        );
+      const liveItemId = liveItem?.id ?? 'null';
+      console.log(
+        `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} liveItemId=${liveItemId}`,
+      );
+      if (liveItemId !== itemId) {
+        console.warn(
+          `ITEM_ID_MISMATCH: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} liveItemId=${liveItemId}`,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `Depended issue URL field write live itemId cross-check failed: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} error=${String(error)}`,
+      );
+    }
+  };
   clearProjectField = async (
     project: Project,
     fieldId: string,
     issue: Issue,
   ): Promise<void> => {
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      fieldId,
+      issue.url,
+      issue.itemId,
+      'clear',
+    );
     try {
       await this.graphqlProjectItemRepository.clearProjectField(
         project.id,
@@ -1897,6 +1942,13 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     text: string,
   ): Promise<void> => {
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      fieldId,
+      issue.url,
+      issue.itemId,
+      'update',
+    );
     try {
       await this.graphqlProjectItemRepository.updateProjectTextField(
         project.id,
