@@ -672,7 +672,11 @@ describe('HandleScheduledEventUseCase', () => {
       await useCase.run(input);
 
       expect(mockNonPreparationWorkerScopeStopUseCase.run).toHaveBeenCalledWith(
-        { issues: mockIssues, currentProjectOrg: 'test-org', project: mockProject },
+        {
+          issues: mockIssues,
+          currentProjectOrg: 'test-org',
+          project: mockProject,
+        },
       );
     });
 

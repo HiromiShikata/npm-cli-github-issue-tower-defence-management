@@ -429,54 +429,49 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
         liveIssue: null,
         expectedStopped: true,
       },
-    ])(
-      '$label',
-      async ({ snapshotStatus, liveIssue, expectedStopped }) => {
-        const tmuxSessionRepository = createMockTmuxSessionRepository();
-        const issueRepository = createMockIssueRepository();
-        tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue(
-          ['aw-owner-repo-1-100.scope'],
+    ])('$label', async ({ snapshotStatus, liveIssue, expectedStopped }) => {
+      const tmuxSessionRepository = createMockTmuxSessionRepository();
+      const issueRepository = createMockIssueRepository();
+      tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+        'aw-owner-repo-1-100.scope',
+      ]);
+      issueRepository.get.mockResolvedValue(liveIssue);
+      const useCase = new NonPreparationWorkerScopeStopUseCase(
+        tmuxSessionRepository,
+        issueRepository,
+      );
+
+      const result = await useCase.run({
+        issues: [
+          buildIssue({
+            org: 'owner',
+            repo: 'repo',
+            number: 1,
+            status: snapshotStatus,
+            url: 'https://github.com/owner/repo/issues/1',
+          }),
+        ],
+        currentProjectOrg: 'owner',
+        project,
+      });
+
+      if (expectedStopped) {
+        expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
+          'aw-owner-repo-1-100.scope',
         );
-        issueRepository.get.mockResolvedValue(liveIssue);
-        const useCase = new NonPreparationWorkerScopeStopUseCase(
-          tmuxSessionRepository,
-          issueRepository,
-        );
+        expect(result.stoppedScopeUnitNames).toEqual([
+          'aw-owner-repo-1-100.scope',
+        ]);
+      } else {
+        expect(
+          tmuxSessionRepository.stopWorkerScopeUnit,
+        ).not.toHaveBeenCalled();
+        expect(result.stoppedScopeUnitNames).toEqual([]);
+      }
+    });
 
-        const result = await useCase.run({
-          issues: [
-            buildIssue({
-              org: 'owner',
-              repo: 'repo',
-              number: 1,
-              status: snapshotStatus,
-              url: 'https://github.com/owner/repo/issues/1',
-            }),
-          ],
-          currentProjectOrg: 'owner',
-          project,
-        });
-
-        if (expectedStopped) {
-          expect(
-            tmuxSessionRepository.stopWorkerScopeUnit,
-          ).toHaveBeenCalledWith('aw-owner-repo-1-100.scope');
-          expect(result.stoppedScopeUnitNames).toEqual([
-            'aw-owner-repo-1-100.scope',
-          ]);
-        } else {
-          expect(
-            tmuxSessionRepository.stopWorkerScopeUnit,
-          ).not.toHaveBeenCalled();
-          expect(result.stoppedScopeUnitNames).toEqual([]);
-        }
-      },
-    );
-
-    it('isolates one scope\'s live re-check failure so it does not stop that scope and does not abort evaluating the other running scope in the same run', async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation();
+    it("isolates one scope's live re-check failure so it does not stop that scope and does not abort evaluating the other running scope in the same run", async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const tmuxSessionRepository = createMockTmuxSessionRepository();
       const issueRepository = createMockIssueRepository();
       tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
@@ -526,9 +521,9 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
       expect(result.stoppedScopeUnitNames).toContain(
         'aw-owner-repo-2-200.scope',
       );
-      expect(tmuxSessionRepository.stopWorkerScopeUnit).not.toHaveBeenCalledWith(
-        'aw-owner-repo-1-100.scope',
-      );
+      expect(
+        tmuxSessionRepository.stopWorkerScopeUnit,
+      ).not.toHaveBeenCalledWith('aw-owner-repo-1-100.scope');
       expect(tmuxSessionRepository.stopWorkerScopeUnit).toHaveBeenCalledWith(
         'aw-owner-repo-2-200.scope',
       );
