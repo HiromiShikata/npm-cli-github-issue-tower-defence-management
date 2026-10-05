@@ -3,7 +3,6 @@ import {
   OauthTokenCandidate,
   OauthTokenSelectUseCase,
   OauthTokenWindowSnapshot,
-  SEVEN_DAY_WINDOW_HOURS,
   isSevenDayBudgetUnspendableBeforeSpendDeadline,
   oauthTokenDrainOrderSort,
   oauthTokenFillTargetSelect,
@@ -657,13 +656,13 @@ describe('sevenDayUrgencyFactor', () => {
   it('clips the remaining hours at one hour so an imminent reset does not produce an unbounded factor', () => {
     const almostReset = sevenDayUrgencyFactor(1, now + 60, now);
 
-    expect(almostReset).toBe(SEVEN_DAY_WINDOW_HOURS);
+    expect(almostReset).toBe(96);
   });
 
   it('treats a token at the 72-hour spend deadline as maximally urgent for its free ratio', () => {
     const atDeadline = sevenDayUrgencyFactor(0.5, now + 72 * 3600, now);
 
-    expect(atDeadline).toBe(0.5 * SEVEN_DAY_WINDOW_HOURS);
+    expect(atDeadline).toBe(0.5 * 96);
   });
 
   it('gives higher urgency at 96h-to-reset than at 100h-to-reset using hours-to-deadline as the denominator', () => {
@@ -671,8 +670,26 @@ describe('sevenDayUrgencyFactor', () => {
     const further = sevenDayUrgencyFactor(0.5, now + 100 * 3600, now);
 
     expect(closer).toBeGreaterThan(further);
-    expect(closer).toBeCloseTo((0.5 * SEVEN_DAY_WINDOW_HOURS) / 24, 5);
+    expect(closer).toBeCloseTo((0.5 * 96) / 24, 5);
   });
+
+  it('equals exactly 1 immediately after a reset with nothing spent', () => {
+    const justReset = sevenDayUrgencyFactor(1, now + 168 * 3600, now);
+
+    expect(justReset).toBe(1);
+  });
+
+  it.each([
+    { freeRatio: 0.5, hoursToReset: 120 },
+    { freeRatio: 0.75, hoursToReset: 144 },
+  ])(
+    'stays neutral at exactly 1 when on pace with freeRatio=$freeRatio and hoursToReset=$hoursToReset',
+    ({ freeRatio, hoursToReset }) => {
+      const onPace = sevenDayUrgencyFactor(freeRatio, now + hoursToReset * 3600, now);
+
+      expect(onPace).toBe(1);
+    },
+  );
 });
 
 describe('OauthTokenSelectUseCase spend-deadline bypass with CL script thresholds', () => {
