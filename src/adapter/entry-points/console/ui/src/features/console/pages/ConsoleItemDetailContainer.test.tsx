@@ -591,6 +591,44 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
+  it('passes a revertAdvance callback on the Comment & Awaiting Workspace queue action that restores the draft typed at click time via onCommentDraftChange', async () => {
+    const operations = buildOperations();
+    const onCommentDraftChange = jest.fn();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        onCommentDraftChange={onCommentDraftChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'should survive undo' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    onCommentDraftChange.mockClear();
+
+    expect(typeof input.revertAdvance).toBe('function');
+    input.revertAdvance();
+
+    expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
+  });
+
   it('does not call addCommentAndMoveToAwaitingWorkspace merely from clicking Comment & Awaiting Workspace; only the queued commit triggers it', async () => {
     let resolveAddCommentAndMoveToAwaitingWorkspace: (() => void) | undefined;
     const addCommentAndMoveToAwaitingWorkspace = jest.fn(

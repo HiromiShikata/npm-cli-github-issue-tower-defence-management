@@ -8,6 +8,7 @@ import {
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
+import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey } from '../logic/overlay';
 import {
@@ -1871,6 +1872,156 @@ describe('ConsolePage draft preservation', () => {
         'work in progress',
       );
     });
+  });
+
+  it('restores the draft present at click time when Undo is clicked after Comment & Awaiting Workspace, once the task is reopened', async () => {
+    jest.useFakeTimers();
+    try {
+      const { container, getByText, findByText, getByPlaceholderText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: 'should survive undo' },
+      });
+      fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+
+      fireEvent.click(getByText('Undo'));
+
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 1000);
+      });
+
+      const postCalls = (global.fetch as jest.Mock).mock.calls.filter(
+        ([, init]: [string, RequestInit | undefined]) =>
+          init?.method === 'POST',
+      );
+      expect(postCalls.length).toBe(0);
+
+      const detailScreen = container.querySelector('.console-detail-screen');
+      expect(detailScreen).not.toBeNull();
+
+      swipeDetailScreen(
+        detailScreen as HTMLElement,
+        { clientX: 40, clientY: 100 },
+        { clientX: 240, clientY: 110 },
+      );
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_1');
+      });
+
+      await waitFor(() => {
+        expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+          'should survive undo',
+        );
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('leaves the comment input empty once the task is reopened after Comment & Awaiting Workspace commits for real without Undo', async () => {
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (init?.method === 'POST' && url.endsWith('/api/comment')) {
+        const requestBody = JSON.parse(String(init.body)) as { body: string };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              id: 7,
+              author: 'you',
+              body: requestBody.body,
+              createdAt: '2026-06-19T02:00:00.000Z',
+            },
+          }),
+        };
+      }
+      if (init?.method === 'POST' && url.endsWith('/api/triage')) {
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText, getByPlaceholderText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: 'posted for real' },
+      });
+      fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS - 100);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(
+            ([callUrl, callInit]) =>
+              String(callUrl).endsWith('/api/comment') &&
+              (callInit as RequestInit | undefined)?.method === 'POST',
+          ),
+        ).toBe(true);
+      });
+
+      await act(async () => {
+        window.location.hash = '#item/PVTI_1';
+        window.dispatchEvent(new Event('hashchange'));
+      });
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_1');
+      });
+
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 
