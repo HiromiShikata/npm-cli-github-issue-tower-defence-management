@@ -1112,7 +1112,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
-      [mockProject, stuckIssue, '4'],
+      [mockProject, stuckIssue, '1'],
     ]);
   });
 
@@ -1193,6 +1193,116 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
       [mockProject, stuckIssue, '4'],
     ]);
+  });
+
+  describe('needOwnerConfirmationOrApproval priority over dispatch-loop and PR-state escalation (issue #3193)', () => {
+    it('routes to Awaiting Owner instead of escalating the dispatch loop when the report reaching the dispatch-loop threshold requests owner confirmation with no reply after it', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        story: 'Default Story',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null, "needOwnerConfirmationOrApproval": true}\n```',
+          createdAt: new Date('2024-01-02T02:00:00Z'),
+          updatedAt: new Date('2024-01-02T02:00:00Z'),
+        },
+      ]);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        allowedIssueAuthors: ['bot'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
+
+    it('routes a developer-agent issue with a failing-CI pull request to its PR-state outcome in Awaiting Workspace, not Awaiting Owner, even though the last report requests owner confirmation and an untrusted reply follows it', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/11',
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'agent-bot',
+          content:
+            'From: :robot: developer (model)\n\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```\n',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'untrusted-bot',
+          content: '```json\n{}\n```',
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          isPassedAllCiJob: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['agent-bot'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    });
   });
 
   it('advances an orphaned issue with a developer agent field to Awaiting Owner when its single linked PR passes every check', async () => {
