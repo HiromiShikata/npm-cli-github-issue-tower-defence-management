@@ -1677,6 +1677,13 @@ export class ApiV3CheerioRestIssueRepository
         project.id,
         prUrl,
       ));
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      dependedIssueUrlField.fieldId,
+      prUrl,
+      projectItemId,
+      'update',
+    );
     await this.graphqlProjectItemRepository.updateProjectTextField(
       project.id,
       dependedIssueUrlField.fieldId,
@@ -1866,24 +1873,31 @@ export class ApiV3CheerioRestIssueRepository
   private logDependedIssueUrlFieldWriteLiveItemIdCrossCheck = async (
     project: Project,
     fieldId: string,
-    issue: Issue,
+    issueUrl: string,
+    itemId: string,
     operation: 'clear' | 'update',
   ): Promise<void> => {
     if (project.dependedIssueUrlSeparatedByComma?.fieldId !== fieldId) {
       return;
     }
-    const liveItem =
-      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-        issue.url,
-        project.id,
+    try {
+      const liveItem =
+        await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+          issueUrl,
+          project.id,
+        );
+      const liveItemId = liveItem?.id ?? 'null';
+      console.log(
+        `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} liveItemId=${liveItemId}`,
       );
-    const liveItemId = liveItem?.id ?? 'null';
-    console.log(
-      `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${issue.url} itemId=${issue.itemId} liveItemId=${liveItemId}`,
-    );
-    if (liveItemId !== issue.itemId) {
+      if (liveItemId !== itemId) {
+        console.warn(
+          `ITEM_ID_MISMATCH: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} liveItemId=${liveItemId}`,
+        );
+      }
+    } catch (error) {
       console.warn(
-        `ITEM_ID_MISMATCH: operation=${operation} issueUrl=${issue.url} itemId=${issue.itemId} liveItemId=${liveItemId}`,
+        `Depended issue URL field write live itemId cross-check failed: operation=${operation} issueUrl=${issueUrl} itemId=${itemId} error=${String(error)}`,
       );
     }
   };
@@ -1895,7 +1909,8 @@ export class ApiV3CheerioRestIssueRepository
     await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
       project,
       fieldId,
-      issue,
+      issue.url,
+      issue.itemId,
       'clear',
     );
     try {
@@ -1930,7 +1945,8 @@ export class ApiV3CheerioRestIssueRepository
     await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
       project,
       fieldId,
-      issue,
+      issue.url,
+      issue.itemId,
       'update',
     );
     try {
