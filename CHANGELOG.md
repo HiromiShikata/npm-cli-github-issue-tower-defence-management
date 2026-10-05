@@ -1,3 +1,10 @@
+## [2.164.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.7...v2.164.8) (2026-10-05)
+
+
+### Bug Fixes
+
+* **oauth-token-select:** seven-day urgency factor boosts concurrency immediately after a weekly reset ([#3280](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3280)) ([85dcacc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/85dcacc5c1757a71487fedc8385ed1f18bfbe8cc))
+
 ## [2.164.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.6...v2.164.7) (2026-10-05)
 
 
