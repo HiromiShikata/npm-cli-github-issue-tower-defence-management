@@ -22,6 +22,7 @@ import {
 import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
+import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -187,12 +188,12 @@ export class RevertOrphanedPreparationUseCase {
         if (!isStillInPreparation) {
           continue;
         }
-        const lastAgentReport = findLastAgentReport(comments, (author) =>
+        const isTrustedAuthor = (author: string) =>
           isAuthorAuthorizedForAutoStatusCheck(
             author,
             params.allowedIssueAuthors,
-          ),
-        );
+          );
+        const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
         const nextStepAgent = lastAgentReport
           ? extractNextStepAgent(lastAgentReport.content)
           : null;
@@ -247,6 +248,19 @@ export class RevertOrphanedPreparationUseCase {
           );
           continue;
         }
+        if (
+          nextStepAgent === null &&
+          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
+        ) {
+          if (awaitingOwnerStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingOwnerStatusOption.id,
+            );
+          }
+          continue;
+        }
         const isNoStory =
           nextStepAgent !== null &&
           (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
@@ -255,11 +269,7 @@ export class RevertOrphanedPreparationUseCase {
           nextStepAgent,
           currentDispatchHasNoReportRejection: false,
           comments,
-          isTrustedAuthor: (author) =>
-            isAuthorAuthorizedForAutoStatusCheck(
-              author,
-              params.allowedIssueAuthors,
-            ),
+          isTrustedAuthor,
           thresholdForAutoReject: params.thresholdForAutoReject,
           thresholdForDispatchLoop:
             params.thresholdForDispatchLoop ??
@@ -336,21 +346,6 @@ export class RevertOrphanedPreparationUseCase {
           );
           if (repetition.type !== 'notRepeated') {
             await this.createCommentWithDedup(issue, repetition.comment);
-          }
-          continue;
-        }
-
-        if (
-          nextStepAgent === null &&
-          lastAgentReport !== null &&
-          extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
-        ) {
-          if (awaitingOwnerStatusOption) {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              awaitingOwnerStatusOption.id,
-            );
           }
           continue;
         }
@@ -597,14 +592,19 @@ export class RevertOrphanedPreparationUseCase {
         !hasLabelNotRequiringPullRequest &&
         !hasNonE2eCategoryLabel
       ) {
-        const lastTrustedAgentReport = findLastAgentReport(comments, (author) =>
-          isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+        const isTrustedAuthor = (author: string) =>
+          isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
+        const lastTrustedAgentReport = findLastAgentReport(
+          comments,
+          isTrustedAuthor,
         );
-        const needsOwnerConfirmation = lastTrustedAgentReport
-          ? extractNeedOwnerConfirmationOrApproval(
-              lastTrustedAgentReport.content,
-            )
-          : false;
+        const needsOwnerConfirmation =
+          (lastTrustedAgentReport
+            ? extractNeedOwnerConfirmationOrApproval(
+                lastTrustedAgentReport.content,
+              )
+            : false) &&
+          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor);
         return {
           outcome: needsOwnerConfirmation
             ? 'advanceToQualityCheck'

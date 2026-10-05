@@ -9769,6 +9769,157 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
+  describe('needOwnerConfirmationOrApproval priority over dispatch-loop escalation (issue #3193)', () => {
+    const atHour = (hour: number): Date =>
+      new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
+    const noNextStepReport = (createdAt: Date): Comment =>
+      createMockComment({
+        content:
+          'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        createdAt,
+      });
+    const noNextStepReportRequestingOwnerConfirmation = (
+      createdAt: Date,
+    ): Comment =>
+      createMockComment({
+        content:
+          'From: :robot: agent (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        createdAt,
+      });
+
+    it('routes to Awaiting Owner instead of escalating to Failed Preparation when the 6th consecutive no-next-step-agent report also requests owner confirmation with no reply (CC1)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        noNextStepReport(atHour(0)),
+        noNextStepReport(atHour(1)),
+        noNextStepReport(atHour(2)),
+        noNextStepReport(atHour(3)),
+        noNextStepReportRequestingOwnerConfirmation(atHour(4)),
+        noNextStepReportRequestingOwnerConfirmation(atHour(5)),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('no-next-step-agent'),
+      );
+    });
+
+    it('still escalates to Failed Preparation at the dispatch loop threshold when none of the 6 consecutive reports requests owner confirmation (CC2 regression guard)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        noNextStepReport(atHour(0)),
+        noNextStepReport(atHour(1)),
+        noNextStepReport(atHour(2)),
+        noNextStepReport(atHour(3)),
+        noNextStepReport(atHour(4)),
+        noNextStepReport(atHour(5)),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('no-next-step-agent'),
+      );
+    });
+
+    it('still escalates to Failed Preparation when a trusted human reply resets the cycle after an earlier owner-confirmation report (CC3 regression guard)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        noNextStepReportRequestingOwnerConfirmation(atHour(0)),
+        createMockComment({
+          author: 'the-owner',
+          content: 'Go ahead.',
+          createdAt: atHour(1),
+        }),
+        noNextStepReport(atHour(2)),
+        noNextStepReport(atHour(3)),
+        noNextStepReport(atHour(4)),
+        noNextStepReport(atHour(5)),
+        noNextStepReport(atHour(6)),
+        noNextStepReport(atHour(7)),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('no-next-step-agent'),
+      );
+    });
+  });
+
   describe('notification suppression: prohibited GitHub Issue comment cases', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
