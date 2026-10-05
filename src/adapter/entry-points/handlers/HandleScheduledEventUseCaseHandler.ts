@@ -624,6 +624,7 @@ export class HandleScheduledEventUseCaseHandler {
     const nonPreparationWorkerScopeStopUseCase =
       new NonPreparationWorkerScopeStopUseCase(
         new NodeTmuxSessionRepository(nodeLocalCommandRunner),
+        issueRepository,
       );
     const conflictedIssueRevertUseCase = new ConflictedIssueRevertUseCase(
       projectRepository,
