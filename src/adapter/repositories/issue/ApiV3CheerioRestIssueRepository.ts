@@ -1863,11 +1863,41 @@ export class ApiV3CheerioRestIssueRepository
       throw new Error(response.errors.map((e) => e.message).join('; '));
     }
   };
+  private logDependedIssueUrlFieldWriteLiveItemIdCrossCheck = async (
+    project: Project,
+    fieldId: string,
+    issue: Issue,
+    operation: 'clear' | 'update',
+  ): Promise<void> => {
+    if (project.dependedIssueUrlSeparatedByComma?.fieldId !== fieldId) {
+      return;
+    }
+    const liveItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+        issue.url,
+        project.id,
+      );
+    const liveItemId = liveItem?.id ?? 'null';
+    console.log(
+      `Depended issue URL field write live itemId cross-check: operation=${operation} issueUrl=${issue.url} itemId=${issue.itemId} liveItemId=${liveItemId}`,
+    );
+    if (liveItemId !== issue.itemId) {
+      console.warn(
+        `ITEM_ID_MISMATCH: operation=${operation} issueUrl=${issue.url} itemId=${issue.itemId} liveItemId=${liveItemId}`,
+      );
+    }
+  };
   clearProjectField = async (
     project: Project,
     fieldId: string,
     issue: Issue,
   ): Promise<void> => {
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      fieldId,
+      issue,
+      'clear',
+    );
     try {
       await this.graphqlProjectItemRepository.clearProjectField(
         project.id,
@@ -1897,6 +1927,12 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     text: string,
   ): Promise<void> => {
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      fieldId,
+      issue,
+      'update',
+    );
     try {
       await this.graphqlProjectItemRepository.updateProjectTextField(
         project.id,
