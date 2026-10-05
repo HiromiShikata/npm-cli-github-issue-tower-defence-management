@@ -1,3 +1,10 @@
+## [2.164.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.5...v2.164.6) (2026-10-05)
+
+
+### Bug Fixes
+
+* **console-ui:** Restore comment draft when Comment & Awaiting Workspace is undone ([#3275](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3275)) ([4971487](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4971487084e1d5b0f0bff40ab89da4255b152e2a))
+
 ## [2.164.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.4...v2.164.5) (2026-10-05)
 
 
