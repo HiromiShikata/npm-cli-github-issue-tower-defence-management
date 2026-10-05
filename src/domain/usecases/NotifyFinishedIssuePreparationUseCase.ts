@@ -605,7 +605,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       (r) => r.type === 'NO_REPORT_FROM_AGENT_BOT',
     );
     if (
-      hasNoReportRejection &&
+      workflowError === null &&
+      nextStepAgent === null &&
       issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
     ) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
