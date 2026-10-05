@@ -1,3 +1,10 @@
+## [2.164.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.4...v2.164.5) (2026-10-05)
+
+
+### Bug Fixes
+
+* **dispatch-loop:** check for unanswered owner-confirmation report before escalating ([#3270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3270)) ([f960710](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f96071037561c133b7aeb9886e7336fc467b6819))
+
 ## [2.164.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.3...v2.164.4) (2026-10-05)
 
 
