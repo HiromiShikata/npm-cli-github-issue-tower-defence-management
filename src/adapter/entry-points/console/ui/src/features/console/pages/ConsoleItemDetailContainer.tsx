@@ -639,6 +639,7 @@ export const ConsoleItemDetailContainer = ({
                         }),
                       ]
                     : undefined,
+                revertAdvance: () => onCommentDraftChange?.(body),
                 overlayPatch: {
                   done: true,
                   status: {
