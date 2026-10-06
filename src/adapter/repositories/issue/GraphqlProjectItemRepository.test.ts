@@ -4323,7 +4323,7 @@ describeWhenLiveCredentials(
           value: knownStoryOption.name,
           optionId: knownStoryOption.id,
         });
-      });
+      }, 150000);
     });
   },
 );
