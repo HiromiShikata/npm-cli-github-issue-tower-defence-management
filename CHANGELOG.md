@@ -1,3 +1,10 @@
+## [2.164.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.11...v2.164.12) (2026-10-06)
+
+
+### Bug Fixes
+
+* **ci:** decouple flaky live GraphqlProjectItemRepository test from the publish-blocking test job ([#3293](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3293)) ([588b3d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/588b3d10cc8478922b50ce3c148dd05338c0eafc))
+
 ## [2.164.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.10...v2.164.11) (2026-10-06)
 
 
