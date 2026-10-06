@@ -67,6 +67,8 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
   return issue;
 };
 
+const DEFAULT_MOCK_ISSUE_CREATED_AT = new Date('2024-01-01T00:00:00.000Z');
+
 const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
@@ -89,7 +91,7 @@ const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isPr: false,
   isInProgress: false,
   isClosed: false,
-  createdAt: new Date(),
+  createdAt: DEFAULT_MOCK_ISSUE_CREATED_AT,
   author: 'owner',
   closingIssueReferenceUrls: [],
   plainCrossRepoIssueReferenceUrls: [],
