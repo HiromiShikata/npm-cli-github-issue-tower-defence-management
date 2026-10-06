@@ -27,6 +27,22 @@ const readResolvedVersion = (
   return entry.version;
 };
 
+const readPackageJsonOverrideVersion = (packageName: string): string => {
+  const raw: unknown = JSON.parse(
+    readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
+  );
+  if (!isRecord(raw) || !isRecord(raw.overrides)) {
+    throw new Error('package.json must declare an overrides map');
+  }
+  const overriddenVersion = raw.overrides[packageName];
+  if (typeof overriddenVersion !== 'string') {
+    throw new Error(
+      `package.json overrides must pin "${packageName}" to a plain version string`,
+    );
+  }
+  return overriddenVersion;
+};
+
 const parseNumericVersionTuple = (
   version: string,
 ): [number, number, number] => {
@@ -69,6 +85,11 @@ describe('direct and overridden dependency patched-version thresholds', () => {
       lockfileKey: 'node_modules/brace-expansion',
       requiredMinimumVersion: '5.0.12',
     },
+    {
+      packageName: 'source-map-js',
+      lockfileKey: 'node_modules/source-map-js',
+      requiredMinimumVersion: '1.2.2',
+    },
   ];
 
   it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
@@ -89,5 +110,11 @@ describe('direct and overridden dependency patched-version thresholds', () => {
         );
       },
     );
+  });
+
+  it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
+
+    expect(isVersionAtLeast(overriddenVersion, '1.2.2')).toBe(true);
   });
 });
