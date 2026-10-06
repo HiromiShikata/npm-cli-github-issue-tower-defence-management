@@ -1,3 +1,11 @@
+## [2.164.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.9...v2.164.10) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deps:** resolve source-map-js CVE from daily security scan ([#3296](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3296)) ([e600493](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e600493cd71dcc9b8ff4dfded445d5a90c68b8a0))
+* **stale-issue-write:** use issueSnapshotStalenessCheck's liveIssue for the write it guards, across all call sites ([#3286](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3286)) ([732fd7a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/732fd7adc344ee106481f83b285d9d4c9b5b742c))
+
 ## [2.164.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.8...v2.164.9) (2026-10-06)
 
 
