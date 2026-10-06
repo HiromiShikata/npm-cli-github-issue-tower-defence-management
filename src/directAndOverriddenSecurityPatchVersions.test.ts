@@ -69,6 +69,11 @@ describe('direct and overridden dependency patched-version thresholds', () => {
       lockfileKey: 'node_modules/brace-expansion',
       requiredMinimumVersion: '5.0.12',
     },
+    {
+      packageName: 'source-map-js',
+      lockfileKey: 'node_modules/source-map-js',
+      requiredMinimumVersion: '1.2.2',
+    },
   ];
 
   it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
