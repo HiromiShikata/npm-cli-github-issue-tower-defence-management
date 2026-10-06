@@ -2132,12 +2132,16 @@ describe('SetupTowerDefenceProjectUseCase', () => {
   it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the limbo Status/state check reports current', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
-    const mockIssueRepository = mock<
-      Pick<
-        IssueRepository,
-        'getAllIssues' | 'updateStatus' | 'get' | 'removeIssueFromProjectCache'
-      >
-    >();
+    const mockIssueRepository =
+      mock<
+        Pick<
+          IssueRepository,
+          | 'getAllIssues'
+          | 'updateStatus'
+          | 'get'
+          | 'removeIssueFromProjectCache'
+        >
+      >();
     const canonicalStatuses = buildCanonicalStatuses();
     const awaitingWorkspaceId = canonicalStatuses[0].id;
     const project = buildProject(canonicalStatuses);
@@ -2161,9 +2165,8 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(liveIssue);
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
-    const mockStatusDefaultRepository = mock<
-      Pick<StatusDefaultRepository, 'setStatusFieldDefault'>
-    >();
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,

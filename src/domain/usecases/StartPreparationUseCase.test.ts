@@ -652,7 +652,10 @@ describe('StartPreparationUseCase', () => {
           isClosed: false,
           itemId: 'placeholder-item-id',
         });
-        const liveIssue: Issue = { ...grayStoryIssue, itemId: 'resolved-item-id' };
+        const liveIssue: Issue = {
+          ...grayStoryIssue,
+          itemId: 'resolved-item-id',
+        };
         mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
         mockIssueRepository.getStoryObjectMap.mockResolvedValue(
           createMockStoryObjectMap([grayStoryIssue], 'GRAY'),

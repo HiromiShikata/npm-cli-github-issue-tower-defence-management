@@ -924,9 +924,7 @@ describe('HandleScheduledEventUseCase', () => {
           const result = await useCase.run(input);
 
           expect(result).not.toBeNull();
-          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(
-            1,
-          );
+          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(1);
           expect(
             mockRevertNotReadyReviewQueueIssueUseCase.run,
           ).toHaveBeenCalledTimes(1);

@@ -155,7 +155,8 @@ describe('QualityCheckAdvanceUseCase', () => {
         .fn()
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(
-            createdIssuesByUrl.get(issueUrl) ?? buildMockIssue({ url: issueUrl }),
+            createdIssuesByUrl.get(issueUrl) ??
+              buildMockIssue({ url: issueUrl }),
           ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),

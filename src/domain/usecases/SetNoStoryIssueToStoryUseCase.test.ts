@@ -515,7 +515,11 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       await promise;
 
       expect(mockIssueRepository.updateStory.mock.calls).toEqual([
-        [{ ...basicProject, story: basicProject.story }, liveIssue, 'noStoryId'],
+        [
+          { ...basicProject, story: basicProject.story },
+          liveIssue,
+          'noStoryId',
+        ],
       ]);
     });
 
