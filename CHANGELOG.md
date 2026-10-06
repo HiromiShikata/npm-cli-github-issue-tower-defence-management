@@ -1,3 +1,10 @@
+## [2.164.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.8...v2.164.9) (2026-10-06)
+
+
+### Bug Fixes
+
+* **jest-config:** merged pull request 3216 touches files beyond playwright.config.ts, failing UAT criterion 1 ([#3282](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3282)) ([b77acee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b77acee9a8b9b41352d11ddd2a6cadde116447de)), closes [#3216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3216) [#3182](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3182) [#3182](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3182)
+
 ## [2.164.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.7...v2.164.8) (2026-10-05)
 
 
