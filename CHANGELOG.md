@@ -1,3 +1,10 @@
+## [2.164.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.10...v2.164.11) (2026-10-06)
+
+
+### Bug Fixes
+
+* **revert-not-ready-review-queue:** make mock issue createdAt deterministic to stop millisecond-boundary flake ([#3297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3297)) ([4aaebbb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4aaebbb46c5aba8a15bd429d4e79fec347f4212a))
+
 ## [2.164.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.9...v2.164.10) (2026-10-06)
 
 
