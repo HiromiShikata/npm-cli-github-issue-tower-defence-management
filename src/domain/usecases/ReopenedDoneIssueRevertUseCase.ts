@@ -6,6 +6,7 @@ import {
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class ReopenedDoneIssueRevertUseCase {
   constructor(
@@ -50,11 +51,21 @@ export class ReopenedDoneIssueRevertUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          params.project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            params.project,
+            staleness.liveIssue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `ReopenedDoneIssueRevertUseCase: project item no longer exists in GitHub, skipping. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         revertedCount++;
       } catch (error) {
         errors.push(error);

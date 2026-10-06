@@ -52,19 +52,18 @@ export class ChangeStatusByStoryColorUseCase {
           if (issue.status && issue.status === ICEBOX_STATUS_NAME) {
             continue;
           }
-          if (
-            !(await this.isSnapshotStoryAndStatusStillCurrent(
-              input.project,
-              issue,
-              disabledStatusObject.name,
-            ))
-          ) {
+          const liveIssue = await this.isSnapshotStoryAndStatusStillCurrent(
+            input.project,
+            issue,
+            disabledStatusObject.name,
+          );
+          if (liveIssue === null) {
             continue;
           }
           try {
             await this.issueRepository.updateStatus(
               input.project,
-              issue,
+              liveIssue,
               disabledStatusObject.id,
             );
           } catch (error) {
@@ -97,19 +96,18 @@ export class ChangeStatusByStoryColorUseCase {
             );
             continue;
           }
-          if (
-            !(await this.isSnapshotStoryAndStatusStillCurrent(
-              input.project,
-              issue,
-              firstStatus.name,
-            ))
-          ) {
+          const liveIssue = await this.isSnapshotStoryAndStatusStillCurrent(
+            input.project,
+            issue,
+            firstStatus.name,
+          );
+          if (liveIssue === null) {
             continue;
           }
           try {
             await this.issueRepository.updateStatus(
               input.project,
-              issue,
+              liveIssue,
               firstStatus.id,
             );
           } catch (error) {
@@ -142,7 +140,7 @@ export class ChangeStatusByStoryColorUseCase {
     project: Project,
     issue: Issue,
     plannedStatusName: string,
-  ): Promise<boolean> => {
+  ): Promise<Issue | null> => {
     const staleness = await issueSnapshotStalenessCheck({
       issueRepository: this.issueRepository,
       project,
@@ -150,7 +148,7 @@ export class ChangeStatusByStoryColorUseCase {
       checkedFieldNames: ['story', 'status'],
       skippedWriteDescription: `the ${plannedStatusName} Status write`,
     });
-    return staleness.type === 'current';
+    return staleness.type === 'current' ? staleness.liveIssue : null;
   };
 
   private createCommentWithDedup = async (

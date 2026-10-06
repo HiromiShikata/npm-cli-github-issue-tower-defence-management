@@ -678,6 +678,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
       };
       const issue2: Issue = {
         ...mock<Issue>(),
@@ -687,6 +688,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
       };
       mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
         if (issueUrl === issue1.url) {
@@ -1280,6 +1282,72 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       }
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, via the workflow management branch when the Story check reports current', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:workflow-management', 'other'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'placeholder-item-id',
+      };
+      const liveIssue: Issue = { ...issue, itemId: 'resolved-item-id' };
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          liveIssue,
+          'workflowManagementStoryId',
+        ],
+      ]);
+    });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, via the matched story label branch when the Story check reports current', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: ['story:high-priority'],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'placeholder-item-id',
+      };
+      const liveIssue: Issue = { ...issue, itemId: 'resolved-item-id' };
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          liveIssue,
+          'highPriorityId',
+        ],
+      ]);
     });
 
     describe('stale project item isolation and failure aggregation (issue #2789)', () => {

@@ -60,6 +60,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
+        let liveIssue: Issue;
         try {
           const staleness = await issueSnapshotStalenessCheck({
             issueRepository: this.issueRepository,
@@ -71,6 +72,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
           if (staleness.type !== 'current') {
             continue;
           }
+          liveIssue = staleness.liveIssue;
         } catch (error) {
           errors.push(
             new Error(
@@ -83,7 +85,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         try {
           await this.issueRepository.updateStory(
             { ...input.project, story },
-            issue,
+            liveIssue,
             story.workflowManagementStory.id,
           );
           const workflowLabel = issue.labels.find(
@@ -156,6 +158,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         continue;
       }
 
+      let liveIssue: Issue;
       try {
         const staleness = await issueSnapshotStalenessCheck({
           issueRepository: this.issueRepository,
@@ -167,6 +170,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
+        liveIssue = staleness.liveIssue;
       } catch (error) {
         errors.push(
           new Error(
@@ -180,7 +184,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       try {
         await this.issueRepository.updateStory(
           { ...input.project, story },
-          issue,
+          liveIssue,
           matchingStory.id,
         );
         await this.issueRepository.removeLabel(issue, storyLabel);

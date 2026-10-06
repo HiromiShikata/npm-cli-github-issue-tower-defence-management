@@ -59,7 +59,15 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   ...overrides,
 });
 
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
+let createdIssuesByUrl = new Map<string, Issue>();
+
+const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
+  const issue = buildMockIssue(overrides);
+  createdIssuesByUrl.set(issue.url, issue);
+  return issue;
+};
+
+const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -179,6 +187,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    createdIssuesByUrl = new Map<string, Issue>();
 
     mockProject = createMockProject();
 
@@ -206,7 +215,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         .fn()
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(
-            createMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
+            createdIssuesByUrl.get(issueUrl) ??
+              buildMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
           ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
@@ -2183,6 +2193,36 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when reverting an issue with a pending reactivation trigger and the Status check reports current', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const snapshotIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [snapshotIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        liveIssue,
+        'awaiting-workspace-id',
+      );
+    });
   });
 
   describe('dependent issue URL gating', () => {
@@ -2226,6 +2266,34 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when reverting an issue with depended issue URLs and the Status check reports current', async () => {
+      const snapshotIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [snapshotIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        liveIssue,
+        'awaiting-workspace-id',
+      );
     });
   });
 
@@ -2967,6 +3035,111 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect.stringContaining('Auto Status Check: REJECTED'),
       );
     });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when escalating a silently-redispatched issue to Failed Preparation and the Status check reports current', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const snapshotIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [snapshotIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const silentRedispatchComment = (count: number) => ({
+        author: 'owner',
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        createdAt: new Date(),
+      });
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        humanComment,
+        silentRedispatchComment(1),
+        silentRedispatchComment(2),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        liveIssue,
+        'failed-preparation-id',
+      );
+    });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when escalating a reporting-loop issue to Failed Preparation and the Status check reports current', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const snapshotIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [snapshotIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const silentRedispatchComment = (count: number) => ({
+        author: 'owner',
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+        createdAt: new Date(),
+      });
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        humanComment,
+        silentRedispatchComment(1),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        liveIssue,
+        'failed-preparation-id',
+      );
+    });
   });
 
   describe('when the Status changed after the item snapshot was taken', () => {
@@ -3055,5 +3228,32 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       },
     );
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when reverting a rejected issue via the default fallback branch and the Status check reports current', async () => {
+      const snapshotIssue = createMockIssue({
+        status: 'Awaiting Owner',
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [snapshotIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        liveIssue,
+        'awaiting-workspace-id',
+      );
+    });
   });
 });

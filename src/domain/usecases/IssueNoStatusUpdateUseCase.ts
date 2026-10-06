@@ -42,7 +42,7 @@ export class IssueNoStatusUpdateUseCase {
       try {
         await this.issueRepository.updateStatus(
           input.project,
-          issue,
+          staleness.liveIssue,
           awaitingWorkspaceStatus.id,
         );
       } catch (error) {

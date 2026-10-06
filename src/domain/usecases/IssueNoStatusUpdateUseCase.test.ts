@@ -187,6 +187,15 @@ describe('IssueNoStatusUpdateUseCase', () => {
 
       beforeEach(() => {
         warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          if (url === staleIssue.url) {
+            return staleIssue;
+          }
+          if (url === remainingIssue.url) {
+            return remainingIssue;
+          }
+          return null;
+        });
         mockIssueRepository.updateStatus.mockImplementation(
           async (_project, issue) => {
             if (issue.url === staleIssue.url) {
@@ -264,6 +273,27 @@ describe('IssueNoStatusUpdateUseCase', () => {
         expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
           expectedUpdateStatusCalls,
         );
+      });
+
+      it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status/isClosed check reports current', async () => {
+        const snapshotIssueWithPlaceholderItemId: Issue = {
+          ...snapshotIssue,
+          itemId: 'placeholder-item-id',
+        };
+        const liveIssue: Issue = {
+          ...snapshotIssueWithPlaceholderItemId,
+          itemId: 'resolved-item-id',
+        };
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          project: basicProject,
+          issues: [snapshotIssueWithPlaceholderItemId],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, liveIssue, 'status-awaiting'],
+        ]);
       });
     });
   });

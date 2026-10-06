@@ -7,6 +7,7 @@ import {
 } from '../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class QualityCheckAdvanceUseCase {
   constructor(
@@ -68,11 +69,21 @@ export class QualityCheckAdvanceUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          params.project,
-          issue,
-          doneStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            params.project,
+            staleness.liveIssue,
+            doneStatusOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `QualityCheckAdvanceUseCase: project item no longer exists in GitHub, skipping. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         advancedCount++;
       } catch (error) {
         errors.push(error);

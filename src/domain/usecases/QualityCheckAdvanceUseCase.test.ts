@@ -6,10 +6,19 @@ import {
   AWAITING_OWNER_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
+let createdIssuesByUrl = new Map<string, Issue>();
+
+const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
+  const issue = buildMockIssue(overrides);
+  createdIssuesByUrl.set(issue.url, issue);
+  return issue;
+};
+
+const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -41,6 +50,15 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 });
 
 const createMergedPr = (
+  closingIssueUrl: string,
+  overrides: Partial<Issue> = {},
+): Issue => {
+  const pr = buildMergedPr(closingIssueUrl, overrides);
+  createdIssuesByUrl.set(pr.url, pr);
+  return pr;
+};
+
+const buildMergedPr = (
   closingIssueUrl: string,
   overrides: Partial<Issue> = {},
 ): Issue => ({
@@ -130,12 +148,16 @@ describe('QualityCheckAdvanceUseCase', () => {
   >;
 
   beforeEach(() => {
+    createdIssuesByUrl = new Map<string, Issue>();
     mockIssueRepository = {
       updateStatus: jest.fn(),
       get: jest
         .fn()
         .mockImplementation((issueUrl: string) =>
-          Promise.resolve(createMockIssue({ url: issueUrl })),
+          Promise.resolve(
+            createdIssuesByUrl.get(issueUrl) ??
+              buildMockIssue({ url: issueUrl }),
+          ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
@@ -401,6 +423,70 @@ describe('QualityCheckAdvanceUseCase', () => {
     );
   });
 
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status check reports current', async () => {
+    const snapshotIssue = createMockIssue({ itemId: 'placeholder-item-id' });
+    const liveIssue = createMockIssue({ itemId: 'resolved-item-id' });
+    const mergedPr = createMergedPr(snapshotIssue.url);
+    const project = createMockProject();
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+    await useCase.run({
+      project,
+      issues: [snapshotIssue, mergedPr],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      'done-id',
+    );
+  });
+
+  it('skips an issue whose updateStatus call throws StaleProjectItemError and still advances the remaining issues without throwing', async () => {
+    const issue1 = createMockIssue({
+      number: 1,
+      url: 'https://github.com/user/repo/issues/1',
+      itemId: 'item-1',
+    });
+    const issue2 = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+      itemId: 'item-2',
+    });
+    const mergedPr1 = createMergedPr(issue1.url, {
+      number: 101,
+      url: 'https://github.com/user/repo/pull/101',
+      itemId: 'pr-item-101',
+    });
+    const mergedPr2 = createMergedPr(issue2.url, {
+      number: 102,
+      url: 'https://github.com/user/repo/pull/102',
+      itemId: 'pr-item-102',
+    });
+    const project = createMockProject();
+    mockIssueRepository.updateStatus.mockImplementation(
+      (_project: Project, issue: Issue) =>
+        issue.url === issue1.url
+          ? Promise.reject(new StaleProjectItemError('item-1'))
+          : Promise.resolve(undefined),
+    );
+
+    const advancedCount = await useCase.run({
+      project,
+      issues: [issue1, issue2, mergedPr1, mergedPr2],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue2,
+      'done-id',
+    );
+    expect(advancedCount).toBe(1);
+  });
+
   it('does not advance an issue with stateReason REOPENED even when it has a merged PR', async () => {
     const issue = createMockIssue({ stateReason: 'REOPENED' });
     const mergedPr = createMergedPr(issue.url);
@@ -473,7 +559,7 @@ describe('QualityCheckAdvanceUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
         Array.from({ length: expectedUpdateStatusCallCount }, () => [
           project,
-          snapshotIssue,
+          liveIssue,
           'done-id',
         ]),
       );

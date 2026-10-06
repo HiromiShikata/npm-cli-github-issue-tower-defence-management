@@ -412,11 +412,15 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         dependedIssueUrls: [],
       }),
     );
-    mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({
-        status: 'Awaiting Workspace',
-        dependedIssueUrls: [],
-      }),
+    mockIssueRepository.get.mockImplementation(async (url: string) =>
+      url === firstAwaitingIssue.url
+        ? firstAwaitingIssue
+        : url === secondAwaitingIssue.url
+          ? secondAwaitingIssue
+          : createMockIssue({
+              status: 'Awaiting Workspace',
+              dependedIssueUrls: [],
+            }),
     );
     mockIssueRepository.removeIssueFromProjectCache.mockResolvedValue(
       undefined,

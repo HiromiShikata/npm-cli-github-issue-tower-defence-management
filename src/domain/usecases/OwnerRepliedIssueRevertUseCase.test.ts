@@ -1,6 +1,7 @@
 import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { Comment } from '../entities/Comment';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
@@ -683,6 +684,73 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     });
   });
 
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status check reports current', async () => {
+    const issue = createMockIssue({ itemId: 'placeholder-item-id' });
+    const liveIssue = createMockIssue({
+      url: issue.url,
+      status: AWAITING_OWNER_STATUS_NAME,
+      itemId: 'resolved-item-id',
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+      commentsWithOwnerReplyAfterAgentReport(),
+    );
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+    await expect(
+      useCase.run({
+        project,
+        issues: [issue],
+        allowedIssueAuthors: ALLOWED_ISSUE_AUTHORS,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      AWAITING_WORKSPACE_OPTION_ID,
+    );
+  });
+
+  it('skips an issue whose updateStatus call throws StaleProjectItemError and still reverts the remaining issues without throwing', async () => {
+    const staleIssue = createMockIssue({
+      number: 1,
+      url: 'https://github.com/example-org/example-repo/issues/1',
+      itemId: 'item-1',
+    });
+    const otherIssue = createMockIssue({
+      number: 2,
+      url: 'https://github.com/example-org/example-repo/issues/2',
+      itemId: 'item-2',
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+      commentsWithOwnerReplyAfterAgentReport(),
+    );
+    mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+      Promise.resolve(issueUrl === staleIssue.url ? staleIssue : otherIssue),
+    );
+    mockIssueRepository.updateStatus.mockImplementation(
+      (_project: Project, issue: Issue) =>
+        issue.url === staleIssue.url
+          ? Promise.reject(new StaleProjectItemError('item-1'))
+          : Promise.resolve(undefined),
+    );
+
+    await expect(
+      useCase.run({
+        project,
+        issues: [staleIssue, otherIssue],
+        allowedIssueAuthors: ALLOWED_ISSUE_AUTHORS,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      otherIssue,
+      AWAITING_WORKSPACE_OPTION_ID,
+    );
+  });
+
   describe('keeps processing the other issues when one issue fails, then rejects naming the failed issue', () => {
     const failingIssue = createMockIssue({
       number: 1,
@@ -731,12 +799,7 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
               ? Promise.reject(
                   new Error('simulated issueRepository.get failure'),
                 )
-              : Promise.resolve(
-                  createMockIssue({
-                    url: issueUrl,
-                    status: AWAITING_OWNER_STATUS_NAME,
-                  }),
-                ),
+              : Promise.resolve(succeedingIssue),
           );
         },
       },
@@ -745,6 +808,11 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     it.each(singleFailureCases)('$name', async (testCase) => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
         commentsWithOwnerReplyAfterAgentReport(),
+      );
+      mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+        Promise.resolve(
+          issueUrl === failingIssue.url ? failingIssue : succeedingIssue,
+        ),
       );
       testCase.arrangeFailureForIssueUrl(failingIssue.url);
 
@@ -777,6 +845,11 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
                 new Error('simulated getCommentsFromIssue failure'),
               )
             : Promise.resolve(commentsWithOwnerReplyAfterAgentReport()),
+      );
+      mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+        Promise.resolve(
+          issueUrl === succeedingIssue.url ? succeedingIssue : failingIssue,
+        ),
       );
 
       const runPromise = useCase.run({

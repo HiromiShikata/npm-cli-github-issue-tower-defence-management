@@ -60,6 +60,7 @@ export class SetNoStoryIssueToStoryUseCase {
       ) {
         continue;
       }
+      let liveIssue: Issue;
       try {
         const staleness = await issueSnapshotStalenessCheck({
           issueRepository: this.issueRepository,
@@ -71,6 +72,7 @@ export class SetNoStoryIssueToStoryUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
+        liveIssue = staleness.liveIssue;
       } catch (error) {
         errors.push(
           new Error(
@@ -83,7 +85,7 @@ export class SetNoStoryIssueToStoryUseCase {
       try {
         await this.issueRepository.updateStory(
           { ...input.project, story },
-          issue,
+          liveIssue,
           noStoryOption.id,
         );
       } catch (error) {

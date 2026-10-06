@@ -567,17 +567,16 @@ ${JSON.stringify(e)}
     runSlowSweep: boolean,
     now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
-    try {
-      await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
-        project,
-        issues,
-      });
-    } catch (setDependedIssueUrlForOpenTaskPRsError) {
-      console.error(
-        `[HandleScheduledEvent] Failed to set depended issue URL for open task PRs for project ${project.url}: ${setDependedIssueUrlForOpenTaskPRsError instanceof Error ? setDependedIssueUrlForOpenTaskPRsError.message : String(setDependedIssueUrlForOpenTaskPRsError)}`,
-        setDependedIssueUrlForOpenTaskPRsError,
-      );
-    }
+    const failures: string[] = [];
+    await this.runOperationIsolated(
+      `set depended issue URL for open task PRs for project ${project.url}`,
+      () =>
+        this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+          project,
+          issues,
+        }),
+      failures,
+    );
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
         input,
@@ -589,30 +588,26 @@ ${JSON.stringify(e)}
         now,
       );
     } else {
-      try {
-        await this.clearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
-          { project, issues },
-        );
-      } catch (removalError) {
-        console.error(
-          `[HandleScheduledEvent] Failed to remove resolved depended issue URLs for project ${project.url}: ${removalError instanceof Error ? removalError.message : String(removalError)}`,
-          removalError,
-        );
-      }
-      try {
-        await this.changeStatusByStoryColorUseCase.run({
-          project,
-          org: input.org,
-          repo: input.workingReport.repo,
-          storyObjectMap,
-          manager: input.manager,
-        });
-      } catch (changeStatusByStoryColorError) {
-        console.error(
-          `[HandleScheduledEvent] Failed to change status by story color for project ${project.url}: ${changeStatusByStoryColorError instanceof Error ? changeStatusByStoryColorError.message : String(changeStatusByStoryColorError)}`,
-          changeStatusByStoryColorError,
-        );
-      }
+      await this.runOperationIsolated(
+        `remove resolved depended issue URLs for project ${project.url}`,
+        () =>
+          this.clearDependedIssueURLUseCase.removeResolvedDependedIssueUrlsFromIssuesWithClosedDependedIssue(
+            { project, issues },
+          ),
+        failures,
+      );
+      await this.runOperationIsolated(
+        `change status by story color for project ${project.url}`,
+        () =>
+          this.changeStatusByStoryColorUseCase.run({
+            project,
+            org: input.org,
+            repo: input.workingReport.repo,
+            storyObjectMap,
+            manager: input.manager,
+          }),
+        failures,
+      );
     }
     await this.createNewStoryByLabelUseCase.run({
       project,
@@ -637,70 +632,71 @@ ${JSON.stringify(e)}
       agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
       defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
-    try {
-      await this.setWorkflowManagementIssueToStoryUseCase.run({
-        targetDates: targetDateTimes,
-        project,
-        issues,
-        cacheUsed,
-      });
-    } catch (error) {
-      console.error(
-        `[HandleScheduledEvent] Failed to set workflow-management issues to Story for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
-        error,
-      );
-    }
-    try {
-      await this.setNoStoryIssueToStoryUseCase.run({
-        targetDates: targetDateTimes,
-        project,
-        issues,
-        cacheUsed,
-      });
-    } catch (error) {
-      console.error(
-        `[HandleScheduledEvent] Failed to set NO STORY issues to Story for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
-        error,
-      );
-    }
-    try {
-      await this.updateIssueStatusByLabelUseCase.run({ project, issues });
-    } catch (updateStatusByLabelError) {
-      console.error(
-        `[HandleScheduledEvent] Failed to update issue status by label for project ${project.url}: ${updateStatusByLabelError instanceof Error ? updateStatusByLabelError.message : String(updateStatusByLabelError)}`,
-        updateStatusByLabelError,
-      );
-    }
-    try {
-      await this.ownerRepliedIssueRevertUseCase.run({
-        project,
-        issues,
-        allowedIssueAuthors,
-      });
-    } catch (ownerRepliedIssueRevertError) {
-      console.error(
-        `[HandleScheduledEvent] Failed to revert owner-replied Awaiting Owner issues for project ${project.url}: ${ownerRepliedIssueRevertError instanceof Error ? ownerRepliedIssueRevertError.message : String(ownerRepliedIssueRevertError)}`,
-        ownerRepliedIssueRevertError,
-      );
-    }
-    await this.conflictedIssueRevertUseCase.run({
-      projectUrl: input.projectUrl,
-      allowedIssueAuthors,
-      thresholdForAutoReject: input.thresholdForAutoReject,
-      thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-    });
-    await this.revertNotReadyReviewQueueIssueUseCase.run({
-      projectUrl: input.projectUrl,
-      manager: input.manager,
-      labelsAsLlmAgentName,
-      labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
-      changeTargetPathAliases: input.changeTargetPathAliases,
-      allowedIssueAuthors,
-      developerAgentNames: input.developerAgentNames,
-      evaluatedAt: now,
-      thresholdForAutoReject: input.thresholdForAutoReject,
-      thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-    });
+    await this.runOperationIsolated(
+      `set workflow-management issues to Story for project ${project.url}`,
+      () =>
+        this.setWorkflowManagementIssueToStoryUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `set NO STORY issues to Story for project ${project.url}`,
+      () =>
+        this.setNoStoryIssueToStoryUseCase.run({
+          targetDates: targetDateTimes,
+          project,
+          issues,
+          cacheUsed,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `update issue status by label for project ${project.url}`,
+      () => this.updateIssueStatusByLabelUseCase.run({ project, issues }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `revert owner-replied Awaiting Owner issues for project ${project.url}`,
+      () =>
+        this.ownerRepliedIssueRevertUseCase.run({
+          project,
+          issues,
+          allowedIssueAuthors,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `revert conflicted issues for project ${project.url}`,
+      () =>
+        this.conflictedIssueRevertUseCase.run({
+          projectUrl: input.projectUrl,
+          allowedIssueAuthors,
+          thresholdForAutoReject: input.thresholdForAutoReject,
+          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `revert not-ready review-queue issues for project ${project.url}`,
+      () =>
+        this.revertNotReadyReviewQueueIssueUseCase.run({
+          projectUrl: input.projectUrl,
+          manager: input.manager,
+          labelsAsLlmAgentName,
+          labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+          changeTargetPathAliases: input.changeTargetPathAliases,
+          allowedIssueAuthors,
+          developerAgentNames: input.developerAgentNames,
+          evaluatedAt: now,
+          thresholdForAutoReject: input.thresholdForAutoReject,
+          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+        }),
+      failures,
+    );
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({
         targetDates: targetDateTimes,
@@ -710,102 +706,102 @@ ${JSON.stringify(e)}
       });
     }
     if (input.startPreparation) {
+      const startPreparation = input.startPreparation;
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({
           nowEpochSeconds: Date.now() / 1000,
         });
       }
-      if (input.startPreparation.preparationProcessCheckCommand) {
-        try {
-          await this.revertOrphanedPreparationUseCase.run({
-            projectUrl: input.projectUrl,
-            preparationProcessCheckCommand:
-              input.startPreparation.preparationProcessCheckCommand,
-            thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
-            thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-            awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
-            awLogStaleThresholdMinutes:
-              input.startPreparation.awLogStaleThresholdMinutes,
-            awaitingOwnerStatus:
-              input.startPreparation.awaitingOwnerStatus ?? undefined,
-            labelsAsLlmAgentName,
-            labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
-            allowedIssueAuthors,
-            agents: input.agents ?? null,
-            developerAgentNames: input.developerAgentNames ?? null,
-            workflowIssueReporterSettings:
-              input.workflowIssueReporterSettings ?? null,
-          });
-        } catch (error) {
-          console.error(
-            `[HandleScheduledEvent] Failed to revert orphaned preparation issues for project ${project.url}: ${error instanceof Error ? error.message : String(error)}`,
-            error,
-          );
-        }
-      }
-      try {
-        const { stoppedScopeUnitNames } =
-          await this.nonPreparationWorkerScopeStopUseCase.run({
-            issues,
-            currentProjectOrg: input.org,
-            project,
-          });
-        if (stoppedScopeUnitNames.length > 0) {
-          console.log(
-            `[HandleScheduledEvent] Stopped ${stoppedScopeUnitNames.length} worker scope(s) whose issue Status is not ${PREPARATION_STATUS_NAME} for project ${project.url}: ${stoppedScopeUnitNames.join(', ')}`,
-          );
-        }
-      } catch (stopError) {
-        console.error(
-          `[HandleScheduledEvent] Failed to stop non-${PREPARATION_STATUS_NAME} worker scopes for project ${project.url}: ${stopError instanceof Error ? stopError.message : String(stopError)}`,
-          stopError,
+      if (startPreparation.preparationProcessCheckCommand) {
+        const preparationProcessCheckCommand =
+          startPreparation.preparationProcessCheckCommand;
+        await this.runOperationIsolated(
+          `revert orphaned preparation issues for project ${project.url}`,
+          () =>
+            this.revertOrphanedPreparationUseCase.run({
+              projectUrl: input.projectUrl,
+              preparationProcessCheckCommand,
+              thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
+              thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+              awLogDirectoryPath: startPreparation.awLogDirectoryPath,
+              awLogStaleThresholdMinutes:
+                startPreparation.awLogStaleThresholdMinutes,
+              awaitingOwnerStatus:
+                startPreparation.awaitingOwnerStatus ?? undefined,
+              labelsAsLlmAgentName,
+              labelsNotRequiringPullRequest:
+                input.labelsNotRequiringPullRequest,
+              allowedIssueAuthors,
+              agents: input.agents ?? null,
+              developerAgentNames: input.developerAgentNames ?? null,
+              workflowIssueReporterSettings:
+                input.workflowIssueReporterSettings ?? null,
+            }),
+          failures,
         );
       }
-      if (input.startPreparation.autoRevertReopenedDoneEnabled) {
-        try {
-          await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
-        } catch (revertError) {
-          console.error(
-            `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
-            revertError,
-          );
-        }
+      await this.runOperationIsolated(
+        `stop non-${PREPARATION_STATUS_NAME} worker scopes for project ${project.url}`,
+        async () => {
+          const { stoppedScopeUnitNames } =
+            await this.nonPreparationWorkerScopeStopUseCase.run({
+              issues,
+              currentProjectOrg: input.org,
+              project,
+            });
+          if (stoppedScopeUnitNames.length > 0) {
+            console.log(
+              `[HandleScheduledEvent] Stopped ${stoppedScopeUnitNames.length} worker scope(s) whose issue Status is not ${PREPARATION_STATUS_NAME} for project ${project.url}: ${stoppedScopeUnitNames.join(', ')}`,
+            );
+          }
+        },
+        failures,
+      );
+      if (startPreparation.autoRevertReopenedDoneEnabled) {
+        await this.runOperationIsolated(
+          `revert reopened Done issues for project ${project.url}`,
+          async () => {
+            await this.reopenedDoneIssueRevertUseCase.run({
+              project,
+              issues,
+            });
+          },
+          failures,
+        );
       }
-      if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
-        try {
-          await this.qualityCheckAdvanceUseCase.run({
-            project,
-            issues,
-            awaitingOwnerStatusName:
-              input.startPreparation.awaitingOwnerStatus ?? undefined,
-            evaluatedAt: now,
-          });
-        } catch (advanceError) {
-          console.error(
-            `[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`,
-            advanceError,
-          );
-        }
+      if (startPreparation.autoAdvanceQualityCheckEnabled) {
+        await this.runOperationIsolated(
+          `advance quality check items for project ${project.url}`,
+          async () => {
+            await this.qualityCheckAdvanceUseCase.run({
+              project,
+              issues,
+              awaitingOwnerStatusName:
+                startPreparation.awaitingOwnerStatus ?? undefined,
+              evaluatedAt: now,
+            });
+          },
+          failures,
+        );
       }
       await this.issueNoStatusUpdateUseCase.run({ project, issues });
       const preparationResult = await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
-        defaultAgentName: input.startPreparation.defaultAgentName,
-        defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
-        fallbackLlmModelName:
-          input.startPreparation.fallbackLlmModelName ?? null,
-        defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
-        configFilePath: input.startPreparation.configFilePath,
+        defaultAgentName: startPreparation.defaultAgentName,
+        defaultLlmModelName: startPreparation.defaultLlmModelName ?? null,
+        fallbackLlmModelName: startPreparation.fallbackLlmModelName ?? null,
+        defaultLlmAgentName: startPreparation.defaultLlmAgentName ?? null,
+        configFilePath: startPreparation.configFilePath,
         maximumPreparingIssuesCount:
-          input.startPreparation.maximumPreparingIssuesCount,
+          startPreparation.maximumPreparingIssuesCount,
         utilizationPercentageThreshold:
-          input.startPreparation.utilizationPercentageThreshold ?? 90,
+          startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
         manager: input.manager,
-        codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+        codexHomeCandidates: startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,
         agents: input.agents ?? null,
-        urgentStoryNames: input.startPreparation.urgentStoryNames ?? [],
+        urgentStoryNames: startPreparation.urgentStoryNames ?? [],
       });
       return { rotationOrder: preparationResult.rotationOrder };
     }

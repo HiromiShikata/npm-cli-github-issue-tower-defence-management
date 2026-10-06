@@ -488,6 +488,41 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Story check reports current', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+        itemId: 'placeholder-item-id',
+      };
+      const liveIssue: Issue = {
+        ...issue,
+        story: null,
+        itemId: 'resolved-item-id',
+      };
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      const promise = useCase.run({
+        targetDates: [targetDate],
+        project: basicProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      await jest.runAllTimersAsync();
+      await promise;
+
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [
+          { ...basicProject, story: basicProject.story },
+          liveIssue,
+          'noStoryId',
+        ],
+      ]);
+    });
+
     it('should not overwrite Story when the live re-read shows a Story was already set since the snapshot was taken', async () => {
       const issue: Issue = {
         ...mock<Issue>(),

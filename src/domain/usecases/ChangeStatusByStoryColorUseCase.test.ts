@@ -870,5 +870,51 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         );
       },
     );
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when disabling a story and the Story/Status check reports current', async () => {
+      const snapshotIssue: Issue = {
+        ...disabledStorySnapshotIssue,
+        itemId: 'placeholder-item-id',
+      };
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      await useCase.run({
+        project: basicProject,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: storyObjectMapFor('GRAY', snapshotIssue),
+        manager,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        liveIssue,
+        'status3',
+      );
+    });
+
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when enabling a story and the Story/Status check reports current', async () => {
+      const snapshotIssue: Issue = {
+        ...enabledStorySnapshotIssue,
+        itemId: 'placeholder-item-id',
+      };
+      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+      await useCase.run({
+        project: basicProject,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: storyObjectMapFor('RED', snapshotIssue),
+        manager,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        basicProject,
+        liveIssue,
+        'status1',
+      );
+    });
   });
 });
