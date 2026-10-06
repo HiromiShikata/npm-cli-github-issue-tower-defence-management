@@ -1,6 +1,6 @@
 import { GraphqlProjectItemRepository } from './GraphqlProjectItemRepository';
 
-export const projectItemsConnectionReadRetryAttemptsAfterRecentAddition = 25;
+export const projectItemsConnectionReadRetryAttemptsAfterRecentAddition = 60;
 export const projectItemsConnectionReadRetryDelayMs = 1000;
 
 export const findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition =
