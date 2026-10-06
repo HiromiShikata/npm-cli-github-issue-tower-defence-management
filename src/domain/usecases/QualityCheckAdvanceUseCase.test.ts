@@ -6,6 +6,7 @@ import {
   AWAITING_OWNER_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -399,6 +400,70 @@ describe('QualityCheckAdvanceUseCase', () => {
       issue2,
       'done-id',
     );
+  });
+
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status check reports current', async () => {
+    const snapshotIssue = createMockIssue({ itemId: 'placeholder-item-id' });
+    const liveIssue = createMockIssue({ itemId: 'resolved-item-id' });
+    const mergedPr = createMergedPr(snapshotIssue.url);
+    const project = createMockProject();
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+    await useCase.run({
+      project,
+      issues: [snapshotIssue, mergedPr],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      'done-id',
+    );
+  });
+
+  it('skips an issue whose updateStatus call throws StaleProjectItemError and still advances the remaining issues without throwing', async () => {
+    const issue1 = createMockIssue({
+      number: 1,
+      url: 'https://github.com/user/repo/issues/1',
+      itemId: 'item-1',
+    });
+    const issue2 = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+      itemId: 'item-2',
+    });
+    const mergedPr1 = createMergedPr(issue1.url, {
+      number: 101,
+      url: 'https://github.com/user/repo/pull/101',
+      itemId: 'pr-item-101',
+    });
+    const mergedPr2 = createMergedPr(issue2.url, {
+      number: 102,
+      url: 'https://github.com/user/repo/pull/102',
+      itemId: 'pr-item-102',
+    });
+    const project = createMockProject();
+    mockIssueRepository.updateStatus.mockImplementation(
+      (_project: Project, issue: Issue) =>
+        issue.url === issue1.url
+          ? Promise.reject(new StaleProjectItemError('item-1'))
+          : Promise.resolve(undefined),
+    );
+
+    const advancedCount = await useCase.run({
+      project,
+      issues: [issue1, issue2, mergedPr1, mergedPr2],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue2,
+      'done-id',
+    );
+    expect(advancedCount).toBe(1);
   });
 
   it('does not advance an issue with stateReason REOPENED even when it has a merged PR', async () => {

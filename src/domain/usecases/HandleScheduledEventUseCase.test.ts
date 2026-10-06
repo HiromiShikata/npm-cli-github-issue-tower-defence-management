@@ -887,6 +887,63 @@ describe('HandleScheduledEventUseCase', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
+    describe('conflictedIssueRevertUseCase failure isolation', () => {
+      it('still invokes revertNotReadyReviewQueueIssueUseCase and startPreparationUseCase in the same cycle, without the error propagating out of run(), when conflictedIssueRevertUseCase rejects', async () => {
+        const conflictedIssueRevertError = new Error(
+          'simulated conflictedIssueRevertUseCase failure',
+        );
+        mockConflictedIssueRevertUseCase.run.mockRejectedValueOnce(
+          conflictedIssueRevertError,
+        );
+        mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        const input: Parameters<HandleScheduledEventUseCase['run']>[0] = {
+          projectName: 'test-project',
+          org: 'test-org',
+          projectUrl: 'https://github.com/test-org/test-project',
+          manager: 'test-manager',
+          workingReport: {
+            repo: 'test-repo',
+            members: ['member1'],
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+          },
+          urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+          disabled: false,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+          },
+        };
+
+        try {
+          const result = await useCase.run(input);
+
+          expect(result).not.toBeNull();
+          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(
+            1,
+          );
+          expect(
+            mockRevertNotReadyReviewQueueIssueUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+          expect(mockIssueNoStatusUpdateUseCase.run).toHaveBeenCalledTimes(1);
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'simulated conflictedIssueRevertUseCase failure',
+            ),
+            conflictedIssueRevertError,
+          );
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+    });
+
     describe('ownerRepliedIssueRevertUseCase runs on every scheduled run', () => {
       const ownerRepliedRevertBaseInput = {
         projectName: 'test-project',

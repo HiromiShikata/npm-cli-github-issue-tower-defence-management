@@ -1064,6 +1064,68 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
   });
 
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Awaiting Task Breakdown Status check reports current', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<
+        Pick<
+          IssueRepository,
+          | 'getAllIssues'
+          | 'updateStatus'
+          | 'get'
+          | 'removeIssueFromProjectCache'
+        >
+      >();
+    const todoStatusId = 'todo-status-id';
+    const statuses: FieldOption[] = [
+      {
+        id: 'atb-id',
+        name: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+        color: 'ORANGE',
+        description: '',
+      },
+      ...buildCanonicalStatuses().map((s) =>
+        s.name === TODO_STATUS_NAME ? { ...s, id: todoStatusId } : s,
+      ),
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    const snapshotAtbIssue = buildIssue({
+      number: 22,
+      url: 'https://github.com/test-org/test-repo/issues/22',
+      itemId: 'placeholder-item-id',
+      status: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+    });
+    const liveIssue: Issue = {
+      ...snapshotAtbIssue,
+      itemId: 'resolved-item-id',
+    };
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [snapshotAtbIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      todoStatusId,
+    );
+  });
+
   it('should skip issue migration when "Awaiting Task Breakdown" status does not exist', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
@@ -1617,6 +1679,69 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
   });
 
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Unread Status check reports current', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<
+        Pick<
+          IssueRepository,
+          | 'getAllIssues'
+          | 'updateStatus'
+          | 'get'
+          | 'removeIssueFromProjectCache'
+        >
+      >();
+    const awaitingWorkspaceId = 'aws-status-id';
+    const statuses: FieldOption[] = [
+      { id: 'unread-id', name: 'Unread', color: 'ORANGE', description: '' },
+      {
+        id: awaitingWorkspaceId,
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: '',
+      },
+      ...buildCanonicalStatuses().filter(
+        (s) => s.name !== AWAITING_WORKSPACE_STATUS_NAME,
+      ),
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    const snapshotUnreadIssue = buildIssue({
+      number: 23,
+      url: 'https://github.com/test-org/test-repo/issues/23',
+      itemId: 'placeholder-item-id',
+      status: 'Unread',
+    });
+    const liveIssue: Issue = {
+      ...snapshotUnreadIssue,
+      itemId: 'resolved-item-id',
+    };
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [snapshotUnreadIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      awaitingWorkspaceId,
+    );
+  });
+
   it('should call setStatusFieldDefault with Awaiting Workspace option id when statuses are already in canonical order', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
@@ -2001,6 +2126,55 @@ describe('SetupTowerDefenceProjectUseCase', () => {
           ]),
         );
       },
+    );
+  });
+
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the limbo Status/state check reports current', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository = mock<
+      Pick<
+        IssueRepository,
+        'getAllIssues' | 'updateStatus' | 'get' | 'removeIssueFromProjectCache'
+      >
+    >();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const awaitingWorkspaceId = canonicalStatuses[0].id;
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const snapshotOpenDoneIssue = buildIssue({
+      number: 24,
+      url: 'https://github.com/test-org/test-repo/issues/24',
+      itemId: 'placeholder-item-id',
+      state: 'OPEN',
+      status: DONE_STATUS_NAME,
+    });
+    const liveIssue: Issue = {
+      ...snapshotOpenDoneIssue,
+      itemId: 'resolved-item-id',
+    };
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [snapshotOpenDoneIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const mockStatusDefaultRepository = mock<
+      Pick<StatusDefaultRepository, 'setStatusFieldDefault'>
+    >();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      awaitingWorkspaceId,
     );
   });
 });

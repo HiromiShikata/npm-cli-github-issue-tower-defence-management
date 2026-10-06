@@ -6,6 +6,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -167,6 +168,54 @@ describe('ReopenedDoneIssueRevertUseCase', () => {
     expect(result).toBe(0);
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status check reports current', async () => {
+    const snapshotIssue = createMockIssue({ itemId: 'placeholder-item-id' });
+    const liveIssue = createMockIssue({ itemId: 'resolved-item-id' });
+    const project = createMockProject();
+    mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+    await useCase.run({ project, issues: [snapshotIssue] });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      liveIssue,
+      'awaiting-workspace-id',
+    );
+  });
+
+  it('skips an issue whose updateStatus call throws StaleProjectItemError and still reverts the remaining issues without throwing', async () => {
+    const issue1 = createMockIssue({
+      number: 1,
+      url: 'https://github.com/user/repo/issues/1',
+      itemId: 'item-1',
+    });
+    const issue2 = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+      itemId: 'item-2',
+    });
+    const project = createMockProject();
+    mockIssueRepository.updateStatus.mockImplementation(
+      (_project: Project, issue: Issue) =>
+        issue.url === issue1.url
+          ? Promise.reject(new StaleProjectItemError('item-1'))
+          : Promise.resolve(undefined),
+    );
+
+    const revertedCount = await useCase.run({
+      project,
+      issues: [issue1, issue2],
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue2,
+      'awaiting-workspace-id',
+    );
+    expect(revertedCount).toBe(1);
   });
 
   it('collects updateStatus failures and re-throws as AggregateError after processing all items', async () => {

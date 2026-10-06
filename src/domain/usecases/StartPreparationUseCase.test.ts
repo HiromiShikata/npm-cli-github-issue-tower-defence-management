@@ -624,6 +624,67 @@ describe('StartPreparationUseCase', () => {
         expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
         expect(grayStoryIssue.status).toBe('Awaiting Workspace');
       });
+
+      it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Icebox snapshot check reports current', async () => {
+        const grayStoryIssue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/913',
+          title:
+            'Issue under a disabled story whose project item ID changed since the snapshot',
+          labels: ['category:impl'],
+          status: 'Awaiting Workspace',
+          story: 'Default Story',
+          isClosed: false,
+          itemId: 'placeholder-item-id',
+        });
+        const liveIssue: Issue = { ...grayStoryIssue, itemId: 'resolved-item-id' };
+        mockProjectRepository.getByUrl.mockResolvedValue(projectWithIcebox);
+        mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+          createMockStoryObjectMap([grayStoryIssue], 'GRAY'),
+        );
+        mockIssueRepository.get.mockImplementation(async (url: string) => {
+          if (url === grayStoryIssue.url) {
+            return liveIssue;
+          }
+          return createMockIssue({
+            status: 'Awaiting Workspace',
+            dependedIssueUrls: [],
+          });
+        });
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+        });
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+          projectWithIcebox,
+        );
+        expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject(
+          {
+            url: grayStoryIssue.url,
+            itemId: 'resolved-item-id',
+          },
+        );
+        expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+          iceboxStatusId,
+        );
+      });
     });
   });
 
@@ -10381,6 +10442,102 @@ describe('StartPreparationUseCase', () => {
         }),
       ).rejects.toThrow('GitHub API rate limit exceeded');
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    });
+  });
+
+  describe('resolved project item ID use in updateStatus calls', () => {
+    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Preparation status write staleness check reports current', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...issue, itemId: 'resolved-item-id' };
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([issue]),
+      );
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+        url: issue.url,
+        itemId: 'resolved-item-id',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+    });
+
+    it('writes the live issue with the resolved project item ID on the revert-to-Awaiting-Workspace call too, when the Preparation write succeeded using the live item ID and the aw command then exits non-zero', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        itemId: 'placeholder-item-id',
+      });
+      const liveIssue: Issue = { ...issue, itemId: 'resolved-item-id' };
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([issue]),
+      );
+      mockIssueRepository.get.mockResolvedValue(liveIssue);
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: 'The URL includes test-repository. Exiting.',
+        stderr: '',
+        exitCode: 1,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+        url: issue.url,
+        itemId: 'resolved-item-id',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
+      expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+        url: issue.url,
+        itemId: 'resolved-item-id',
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('1');
     });
   });
 

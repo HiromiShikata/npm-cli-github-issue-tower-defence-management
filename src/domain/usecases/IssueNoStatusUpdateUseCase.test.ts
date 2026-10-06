@@ -265,6 +265,27 @@ describe('IssueNoStatusUpdateUseCase', () => {
           expectedUpdateStatusCalls,
         );
       });
+
+      it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when the Status/isClosed check reports current', async () => {
+        const snapshotIssueWithPlaceholderItemId: Issue = {
+          ...snapshotIssue,
+          itemId: 'placeholder-item-id',
+        };
+        const liveIssue: Issue = {
+          ...snapshotIssueWithPlaceholderItemId,
+          itemId: 'resolved-item-id',
+        };
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          project: basicProject,
+          issues: [snapshotIssueWithPlaceholderItemId],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, liveIssue, 'status-awaiting'],
+        ]);
+      });
     });
   });
 });
