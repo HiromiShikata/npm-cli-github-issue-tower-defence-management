@@ -40,3 +40,19 @@ describe('console/ui/e2e tsconfig.json', () => {
     expect(tsconfig.compilerOptions.types).toEqual(['node']);
   });
 });
+
+describe('console/ui/e2e/playwright.config.test.ts', () => {
+  it('does not exist (pre-#3216 scope)', () => {
+    const playwrightConfigTestPath = path.join(
+      __dirname,
+      'src',
+      'adapter',
+      'entry-points',
+      'console',
+      'ui',
+      'e2e',
+      'playwright.config.test.ts',
+    );
+    expect(fs.existsSync(playwrightConfigTestPath)).toBe(false);
+  });
+});
