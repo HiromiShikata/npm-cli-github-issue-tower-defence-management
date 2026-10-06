@@ -189,3 +189,5 @@ playwright/.cache
 bin/
 types/
 src/adapter/entry-points/console/ui-dist/
+mutation-patches/pr-*.patch
+mutation-patches/pr-*-result.txt
