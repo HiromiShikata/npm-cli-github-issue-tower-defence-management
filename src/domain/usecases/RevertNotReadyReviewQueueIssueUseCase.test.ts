@@ -67,6 +67,8 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
   return issue;
 };
 
+const DEFAULT_MOCK_ISSUE_CREATED_AT = new Date('2024-01-01T00:00:00.000Z');
+
 const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
@@ -89,7 +91,7 @@ const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   isPr: false,
   isInProgress: false,
   isClosed: false,
-  createdAt: new Date(),
+  createdAt: DEFAULT_MOCK_ISSUE_CREATED_AT,
   author: 'owner',
   closingIssueReferenceUrls: [],
   plainCrossRepoIssueReferenceUrls: [],
@@ -3228,6 +3230,40 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       },
     );
+
+    it('does not flake when the live issue mock and the snapshot issue mock are constructed with createdAt values one millisecond apart', async () => {
+      jest.useFakeTimers();
+      try {
+        jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+        const snapshotIssue = createMockIssue({ status: 'Awaiting Owner' });
+        jest.setSystemTime(new Date('2026-01-01T00:00:00.001Z'));
+        const liveIssue = createMockIssue({ status: 'Awaiting Owner' });
+        jest.useRealTimers();
+
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [snapshotIssue],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockResolvedValue(liveIssue);
+
+        await useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [mockProject, snapshotIssue, 'awaiting-workspace-id'],
+        ]);
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          1,
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
 
     it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when reverting a rejected issue via the default fallback branch and the Status check reports current', async () => {
       const snapshotIssue = createMockIssue({
