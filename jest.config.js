@@ -40,6 +40,21 @@ module.exports = {
         '/dist/',
         '/src/adapter/entry-points/console/ui/',
         '/scripts/typescript/',
+        '/src/adapter/repositories/issue/GraphqlProjectItemRepository.integration.test.ts',
+      ],
+    },
+    {
+      displayName: 'backend-live-integration',
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      setupFiles: ['<rootDir>/jest.setup.js'],
+      transform: {
+        '^.+\\.ts?$': 'ts-jest',
+        '^.+\\.js$': ['ts-jest', { tsconfig: { allowJs: true } }],
+      },
+      transformIgnorePatterns: ['<rootDir>/node_modules/(?!(ky|commander)/)'],
+      testMatch: [
+        '<rootDir>/src/adapter/repositories/issue/GraphqlProjectItemRepository.integration.test.ts',
       ],
     },
     {

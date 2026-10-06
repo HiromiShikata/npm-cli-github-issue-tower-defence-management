@@ -78,3 +78,41 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_BASE_REF: ${{ github.event.repository.default_branch }}
           PR_NUMBER: ${{ steps.find_pr.outputs.pr_number }}
+
+  live-project-items-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    continue-on-error: true
+
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build native modules
+        working-directory: node_modules/better-sqlite3
+        run: node ../prebuild-install/bin.js || npm exec --yes -- node-gyp rebuild --release
+
+      - name: Prepare
+        run: npm run prepare
+
+      - name: Build
+        run: npm run build
+
+      - name: Build console UI and copy to served bundle path
+        run: npm run build:console-ui && node scripts/copyConsoleUiDist.mjs
+
+      - name: Run live project items test
+        run: npm run test:live-project-items
+        env:
+          GH_TOKEN: ${{ secrets.TEST_GH_TOKEN }}
