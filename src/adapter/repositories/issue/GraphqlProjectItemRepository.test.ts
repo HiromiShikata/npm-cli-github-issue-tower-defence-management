@@ -4238,37 +4238,7 @@ const requireGraphqlProjectItemRepositoryClassWithRealUnmockedKyHttpClient =
     }>('./GraphqlProjectItemRepository').GraphqlProjectItemRepository;
   };
 
-const projectItemsConnectionReadRetryAttemptsAfterRecentAddition = 10;
-const projectItemsConnectionReadRetryDelayMs = 1000;
-
-const findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition =
-  async (
-    projectItemRepository: GraphqlProjectItemRepository,
-    targetProjectId: string,
-    recentlyAddedItemId: string,
-  ): Promise<
-    | Awaited<
-        ReturnType<GraphqlProjectItemRepository['fetchProjectItems']>
-      >['issues'][number]
-    | undefined
-  > => {
-    for (
-      let attempt = 0;
-      attempt < projectItemsConnectionReadRetryAttemptsAfterRecentAddition;
-      attempt++
-    ) {
-      const { issues: items } =
-        await projectItemRepository.fetchProjectItems(targetProjectId);
-      const found = items.find((item) => item.id === recentlyAddedItemId);
-      if (found !== undefined) {
-        return found;
-      }
-      await new Promise((resolve) =>
-        setTimeout(resolve, projectItemsConnectionReadRetryDelayMs),
-      );
-    }
-    return undefined;
-  };
+import { findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition } from './findProjectItemRetryingWhileProjectItemsConnectionLagsRecentAddition';
 
 describeWhenLiveCredentials(
   'GraphqlProjectItemRepository (live GitHub GraphQL API)',
