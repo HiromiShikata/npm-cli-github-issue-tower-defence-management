@@ -3257,9 +3257,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
           [mockProject, snapshotIssue, 'awaiting-workspace-id'],
         ]);
-        expect(
-          mockIssueCommentRepository.createComment,
-        ).toHaveBeenCalledTimes(1);
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
+          1,
+        );
       } finally {
         jest.useRealTimers();
       }
