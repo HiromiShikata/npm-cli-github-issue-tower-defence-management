@@ -749,7 +749,7 @@ export class StartPreparationUseCase {
     try {
       await this.issueRepository.updateStatus(
         project,
-        issue,
+        staleness.liveIssue,
         iceboxStatusOption.id,
       );
     } catch (error) {
@@ -1261,10 +1261,11 @@ export class StartPreparationUseCase {
           : agentNameFromDesignation(staleness.liveIssue.agent ?? '')) ||
         params.defaultAgentName;
 
+      const resolvedLiveIssue: Issue = staleness.liveIssue;
       try {
         await this.issueRepository.updateStatus(
           project,
-          issue,
+          resolvedLiveIssue,
           preparationStatusOption.id,
         );
       } catch (error) {
@@ -1274,7 +1275,7 @@ export class StartPreparationUseCase {
         );
         continue;
       }
-      issue.status = PREPARATION_STATUS_NAME;
+      resolvedLiveIssue.status = PREPARATION_STATUS_NAME;
 
       const revertToAwaitingWorkspace = async (
         reason: string,
@@ -1291,7 +1292,7 @@ export class StartPreparationUseCase {
         try {
           await this.issueRepository.updateStatus(
             project,
-            issue,
+            resolvedLiveIssue,
             awaitingWorkspaceStatusOption.id,
           );
         } catch (error) {
@@ -1301,7 +1302,7 @@ export class StartPreparationUseCase {
           );
           return;
         }
-        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        resolvedLiveIssue.status = AWAITING_WORKSPACE_STATUS_NAME;
       };
 
       let spawnEnv: Record<string, string> | undefined;

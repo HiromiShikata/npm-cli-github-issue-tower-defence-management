@@ -99,7 +99,7 @@ export class SetupTowerDefenceProjectUseCase {
         try {
           await this.issueRepository.updateStatus(
             project,
-            issue,
+            staleness.liveIssue,
             awaitingWorkspaceStatus.id,
           );
         } catch (error) {
@@ -136,7 +136,7 @@ export class SetupTowerDefenceProjectUseCase {
           try {
             await this.issueRepository.updateStatus(
               project,
-              issue,
+              staleness.liveIssue,
               todoStatus.id,
             );
           } catch (error) {
@@ -170,7 +170,7 @@ export class SetupTowerDefenceProjectUseCase {
         try {
           await this.issueRepository.updateStatus(
             project,
-            issue,
+            staleness.liveIssue,
             awaitingWorkspaceStatus.id,
           );
         } catch (error) {

@@ -59,7 +59,15 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   ...overrides,
 });
 
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
+let createdIssuesByUrl = new Map<string, Issue>();
+
+const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
+  const issue = buildMockIssue(overrides);
+  createdIssuesByUrl.set(issue.url, issue);
+  return issue;
+};
+
+const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -179,6 +187,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    createdIssuesByUrl = new Map<string, Issue>();
 
     mockProject = createMockProject();
 
@@ -206,7 +215,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         .fn()
         .mockImplementation((issueUrl: string) =>
           Promise.resolve(
-            createMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
+            createdIssuesByUrl.get(issueUrl) ??
+              buildMockIssue({ url: issueUrl, status: 'Awaiting Owner' }),
           ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),

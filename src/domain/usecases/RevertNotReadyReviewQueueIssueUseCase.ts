@@ -164,19 +164,18 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       }
 
       if (issue.dependedIssueUrls.length > 0) {
-        if (
-          !(await this.isSnapshotStatusStillCurrent(
-            project,
-            issue,
-            awaitingWorkspaceStatusOption.name,
-          ))
-        ) {
+        const liveIssue = await this.isSnapshotStatusStillCurrent(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.name,
+        );
+        if (liveIssue === null) {
           continue;
         }
         try {
           await this.issueRepository.updateStatus(
             project,
-            issue,
+            liveIssue,
             awaitingWorkspaceStatusOption.id,
           );
         } catch (error) {
@@ -199,19 +198,18 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         issue.nextActionDate !== null &&
         issueReactivationTriggerIsPending(issue, evaluatedAt)
       ) {
-        if (
-          !(await this.isSnapshotStatusStillCurrent(
-            project,
-            issue,
-            awaitingWorkspaceStatusOption.name,
-          ))
-        ) {
+        const liveIssue = await this.isSnapshotStatusStillCurrent(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.name,
+        );
+        if (liveIssue === null) {
           continue;
         }
         try {
           await this.issueRepository.updateStatus(
             project,
-            issue,
+            liveIssue,
             awaitingWorkspaceStatusOption.id,
           );
         } catch (error) {
@@ -282,18 +280,17 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 latestReopenedAt,
               });
               if (repetition.type === 'escalateSilentRedispatch') {
-                if (
-                  !(await this.isSnapshotStatusStillCurrent(
-                    project,
-                    issue,
-                    failedPreparationStatusOption.name,
-                  ))
-                ) {
+                const liveIssue = await this.isSnapshotStatusStillCurrent(
+                  project,
+                  issue,
+                  failedPreparationStatusOption.name,
+                );
+                if (liveIssue === null) {
                   continue;
                 }
                 await this.issueRepository.updateStatus(
                   project,
-                  issue,
+                  liveIssue,
                   failedPreparationStatusOption.id,
                 );
                 await this.createCommentWithDedup(issue, repetition.comment);
@@ -303,18 +300,17 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 repetition.type === 'escalateReportingLoop' ||
                 repetition.type === 'escalateDispatchLoop'
               ) {
-                if (
-                  !(await this.isSnapshotStatusStillCurrent(
-                    project,
-                    issue,
-                    failedPreparationStatusOption.name,
-                  ))
-                ) {
+                const liveIssue = await this.isSnapshotStatusStillCurrent(
+                  project,
+                  issue,
+                  failedPreparationStatusOption.name,
+                );
+                if (liveIssue === null) {
                   continue;
                 }
                 await this.issueRepository.updateStatus(
                   project,
-                  issue,
+                  liveIssue,
                   failedPreparationStatusOption.id,
                 );
                 await this.createCommentWithDedup(issue, repetition.comment);
@@ -322,19 +318,18 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               }
             }
           }
-          if (
-            !(await this.isSnapshotStatusStillCurrent(
-              project,
-              issue,
-              awaitingWorkspaceStatusOption.name,
-            ))
-          ) {
+          const liveIssue = await this.isSnapshotStatusStillCurrent(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.name,
+          );
+          if (liveIssue === null) {
             continue;
           }
           try {
             await this.issueRepository.updateStatus(
               project,
-              issue,
+              liveIssue,
               awaitingWorkspaceStatusOption.id,
             );
           } catch (error) {
@@ -386,7 +381,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     project: Project,
     issue: Issue,
     plannedStatusName: string,
-  ): Promise<boolean> => {
+  ): Promise<Issue | null> => {
     const staleness = await issueSnapshotStalenessCheck({
       issueRepository: this.issueRepository,
       project,
@@ -394,7 +389,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       checkedFieldNames: ['status'],
       skippedWriteDescription: `the ${plannedStatusName} Status write of an ${AWAITING_OWNER_STATUS_NAME} item`,
     });
-    return staleness.type === 'current';
+    return staleness.type === 'current' ? staleness.liveIssue : null;
   };
 
   private resolveRelatedOpenPrUrlsForUncoveredIssues = async (

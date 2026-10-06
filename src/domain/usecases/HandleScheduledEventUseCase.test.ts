@@ -2847,7 +2847,7 @@ describe('HandleScheduledEventUseCase', () => {
         const nonTransientError = new Error(
           'something went wrong unexpectedly',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
 
@@ -2887,7 +2887,7 @@ describe('HandleScheduledEventUseCase', () => {
         const nonTransientError = new Error(
           'something went wrong unexpectedly',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
         const existingIssueUrl =
@@ -2922,7 +2922,7 @@ describe('HandleScheduledEventUseCase', () => {
         const nonTransientError = new Error(
           'something went wrong unexpectedly',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
         const existingIssueUrl =
@@ -3002,7 +3002,7 @@ describe('HandleScheduledEventUseCase', () => {
         const nonTransientError = new Error(
           'something went wrong unexpectedly',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           nonTransientError,
         );
         const existingIssueUrl =
@@ -3082,7 +3082,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a transient 401 error', async () => {
         const transientError = new Error('HttpError: 401 Unauthorized');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3095,7 +3095,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a transient 429 rate limit error', async () => {
         const transientError = new Error('API rate limit exceeded 429');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3108,7 +3108,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a transient 502 error', async () => {
         const transientError = new Error('502 Bad Gateway');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3121,7 +3121,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a transient 503 error', async () => {
         const transientError = new Error('503 Service Unavailable');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3134,7 +3134,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a GraphQL RATE_LIMIT error', async () => {
         const transientError = new Error('GraphQL error: RATE_LIMIT exceeded');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3147,7 +3147,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       it('should not create or comment an incident issue for a bad credentials error', async () => {
         const transientError = new Error('Bad credentials');
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           transientError,
         );
 
@@ -3165,7 +3165,7 @@ describe('HandleScheduledEventUseCase', () => {
           'The operation was aborted due to timeout',
           'TimeoutError',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           timeoutError,
         );
 
@@ -3183,7 +3183,7 @@ describe('HandleScheduledEventUseCase', () => {
           'Request timed out: POST https://api.github.com/graphql',
         );
         timeoutError.name = 'TimeoutError';
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           timeoutError,
         );
 
@@ -3200,7 +3200,7 @@ describe('HandleScheduledEventUseCase', () => {
         const timeoutError = new Error(
           'Request timed out: POST https://api.github.com/graphql',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           timeoutError,
         );
 
@@ -3217,7 +3217,7 @@ describe('HandleScheduledEventUseCase', () => {
         const staleOptionError = new Error(
           'The single select option Id does not belong to the field',
         );
-        mockRevertNotReadyReviewQueueIssueUseCase.run.mockRejectedValueOnce(
+        mockCreateNewStoryByLabelUseCase.run.mockRejectedValueOnce(
           staleOptionError,
         );
 

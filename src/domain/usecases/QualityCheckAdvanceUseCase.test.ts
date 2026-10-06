@@ -10,7 +10,15 @@ import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
+let createdIssuesByUrl = new Map<string, Issue>();
+
+const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
+  const issue = buildMockIssue(overrides);
+  createdIssuesByUrl.set(issue.url, issue);
+  return issue;
+};
+
+const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -42,6 +50,15 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 });
 
 const createMergedPr = (
+  closingIssueUrl: string,
+  overrides: Partial<Issue> = {},
+): Issue => {
+  const pr = buildMergedPr(closingIssueUrl, overrides);
+  createdIssuesByUrl.set(pr.url, pr);
+  return pr;
+};
+
+const buildMergedPr = (
   closingIssueUrl: string,
   overrides: Partial<Issue> = {},
 ): Issue => ({
@@ -131,12 +148,15 @@ describe('QualityCheckAdvanceUseCase', () => {
   >;
 
   beforeEach(() => {
+    createdIssuesByUrl = new Map<string, Issue>();
     mockIssueRepository = {
       updateStatus: jest.fn(),
       get: jest
         .fn()
         .mockImplementation((issueUrl: string) =>
-          Promise.resolve(createMockIssue({ url: issueUrl })),
+          Promise.resolve(
+            createdIssuesByUrl.get(issueUrl) ?? buildMockIssue({ url: issueUrl }),
+          ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
     };
@@ -538,7 +558,7 @@ describe('QualityCheckAdvanceUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
         Array.from({ length: expectedUpdateStatusCallCount }, () => [
           project,
-          snapshotIssue,
+          liveIssue,
           'done-id',
         ]),
       );

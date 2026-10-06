@@ -11,6 +11,7 @@ import { isAgentReportBody } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { isHumanComment } from './isHumanComment';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const AGENT_COMMENT_PREFIX = 'From: :robot: ';
 
@@ -114,11 +115,21 @@ export class OwnerRepliedIssueRevertUseCase {
         if (staleness.type !== 'current') {
           continue;
         }
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            staleness.liveIssue,
+            awaitingWorkspaceStatusOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `OwnerRepliedIssueRevertUseCase: project item no longer exists in GitHub, skipping. issueUrl: ${issue.url} itemId: ${error.itemId}`,
+            );
+            continue;
+          }
+          throw error;
+        }
       } catch (error) {
         failures.push({ issueUrl: issue.url, error });
       }

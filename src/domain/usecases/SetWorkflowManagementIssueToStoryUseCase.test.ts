@@ -678,6 +678,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        url: 'https://github.com/user/repo/issues/1',
       };
       const issue2: Issue = {
         ...mock<Issue>(),
@@ -687,6 +688,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         nextActionDate: null,
         nextActionHour: null,
         isPr: false,
+        url: 'https://github.com/user/repo/issues/2',
       };
       mockIssueRepository.get.mockImplementation(async (issueUrl: string) => {
         if (issueUrl === issue1.url) {

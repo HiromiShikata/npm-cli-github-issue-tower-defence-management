@@ -187,6 +187,15 @@ describe('IssueNoStatusUpdateUseCase', () => {
 
       beforeEach(() => {
         warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        mockIssueRepository.get.mockImplementation(async (url) => {
+          if (url === staleIssue.url) {
+            return staleIssue;
+          }
+          if (url === remainingIssue.url) {
+            return remainingIssue;
+          }
+          return null;
+        });
         mockIssueRepository.updateStatus.mockImplementation(
           async (_project, issue) => {
             if (issue.url === staleIssue.url) {

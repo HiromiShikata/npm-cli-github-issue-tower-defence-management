@@ -71,7 +71,15 @@ const createMockStoryObjectMap = (
   return map;
 };
 
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
+let createdIssuesByUrl = new Map<string, Issue>();
+
+const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
+  const issue = buildMockIssue(overrides);
+  createdIssuesByUrl.set(issue.url, issue);
+  return issue;
+};
+
+const buildMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -138,6 +146,7 @@ describe('StartPreparationUseCase', () => {
   let mockProject: Project;
   beforeEach(() => {
     jest.resetAllMocks();
+    createdIssuesByUrl = new Map<string, Issue>();
     mockProject = createMockProject();
     mockProjectRepository = {
       getByUrl: jest.fn(),
@@ -157,8 +166,15 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getIssueByUrl.mockResolvedValue(
       createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
     );
-    mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
+    mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+      Promise.resolve(
+        createdIssuesByUrl.get(issueUrl) ??
+          buildMockIssue({
+            url: issueUrl,
+            status: 'Awaiting Workspace',
+            dependedIssueUrls: [],
+          }),
+      ),
     );
     mockIssueRepository.removeIssueFromProjectCache.mockResolvedValue(
       undefined,

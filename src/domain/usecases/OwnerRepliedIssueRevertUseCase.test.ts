@@ -725,6 +725,9 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
       commentsWithOwnerReplyAfterAgentReport(),
     );
+    mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+      Promise.resolve(issueUrl === staleIssue.url ? staleIssue : otherIssue),
+    );
     mockIssueRepository.updateStatus.mockImplementation(
       (_project: Project, issue: Issue) =>
         issue.url === staleIssue.url
@@ -796,12 +799,7 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
               ? Promise.reject(
                   new Error('simulated issueRepository.get failure'),
                 )
-              : Promise.resolve(
-                  createMockIssue({
-                    url: issueUrl,
-                    status: AWAITING_OWNER_STATUS_NAME,
-                  }),
-                ),
+              : Promise.resolve(succeedingIssue),
           );
         },
       },
@@ -810,6 +808,11 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     it.each(singleFailureCases)('$name', async (testCase) => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
         commentsWithOwnerReplyAfterAgentReport(),
+      );
+      mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+        Promise.resolve(
+          issueUrl === failingIssue.url ? failingIssue : succeedingIssue,
+        ),
       );
       testCase.arrangeFailureForIssueUrl(failingIssue.url);
 
@@ -842,6 +845,11 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
                 new Error('simulated getCommentsFromIssue failure'),
               )
             : Promise.resolve(commentsWithOwnerReplyAfterAgentReport()),
+      );
+      mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+        Promise.resolve(
+          issueUrl === succeedingIssue.url ? succeedingIssue : failingIssue,
+        ),
       );
 
       const runPromise = useCase.run({
