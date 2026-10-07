@@ -46,13 +46,13 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { secretaryScopeLibPath } from '../../repositories/secretaryScopeLibPath';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { FileSystemWorkerSessionFailureStreakRepository } from '../../repositories/FileSystemWorkerSessionFailureStreakRepository';
 import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSystemWorkerSessionLogRepository';
-import * as os from 'os';
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
@@ -374,23 +374,6 @@ type StartSpecificationTaskOptions = {
 type RemovePullRequestProjectItemsOptions = {
   projectId: string;
   backupFilePath: string;
-};
-
-const resolveScopeLibPath = (): string | null => {
-  const explicitPath = process.env.CL_SCOPE_LIB_PATH;
-  if (explicitPath !== undefined && fs.existsSync(explicitPath)) {
-    return explicitPath;
-  }
-  const defaultPath = path.join(
-    os.homedir(),
-    'git',
-    'secretary',
-    'machine',
-    'sk',
-    'sh',
-    'cl-scope-lib.sh',
-  );
-  return fs.existsSync(defaultPath) ? defaultPath : null;
 };
 
 const buildGithubRepositoryParams = (
@@ -1904,7 +1887,7 @@ program
     const tmuxSessionRepository = new NodeTmuxSessionRepository(
       localCommandRunner,
     );
-    const scopeLibPath = resolveScopeLibPath();
+    const scopeLibPath = secretaryScopeLibPath();
     await tmuxSessionRepository.attachOrCreateInteractiveSession(
       options.issueUrl,
       scopeLibPath,
