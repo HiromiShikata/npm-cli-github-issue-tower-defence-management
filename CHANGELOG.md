@@ -1,3 +1,10 @@
+## [2.164.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.12...v2.164.13) (2026-10-07)
+
+
+### Bug Fixes
+
+* **gitignore:** exclude mutation-patches PR artifacts and remove tracked files ([#3303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3303)) ([fc924e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fc924e44f7595a353abeb2b053a12b971972a324))
+
 ## [2.164.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.11...v2.164.12) (2026-10-06)
 
 
