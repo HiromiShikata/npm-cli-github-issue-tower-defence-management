@@ -1,3 +1,10 @@
+## [2.164.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.13...v2.164.14) (2026-10-07)
+
+
+### Bug Fixes
+
+* **session-repository:** strip urgent-taskforce-leader title suffix when extracting issue url from session name ([#3306](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3306)) ([88d06f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/88d06f701c675ce92bea2f3aaff2eaa98ac89470))
+
 ## [2.164.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.12...v2.164.13) (2026-10-07)
 
 
