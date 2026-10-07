@@ -1,7 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ProcClaudeInteractiveSessionRepository } from './ProcClaudeInteractiveSessionRepository';
+import {
+  ProcClaudeInteractiveSessionRepository,
+  URGENT_TASKFORCE_LEADER_TITLE_SUFFIX,
+  extractIssueUrl,
+} from './ProcClaudeInteractiveSessionRepository';
+import { secretaryScopeLibPath } from './secretaryScopeLibPath';
 
 type FakeProcess = {
   pid: number;
@@ -181,4 +187,96 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
 
     expect(repository.listInteractiveSessions()).toEqual([]);
   });
+
+  it('extracts the issue url from the --name argument value, stripping any urgent-taskforce-leader title suffix regardless of how many times it repeats, and leaving a near-miss suffix or an absent --name argument unaffected', () => {
+    const testCases: {
+      name: string;
+      commandArguments: string[];
+      expectedIssueUrl: string | null;
+    }[] = [
+      {
+        name: 'no suffix (existing case, regression check)',
+        commandArguments: ['claude', '--name', issueUrl],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'suffix appears once',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
+        ],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'suffix appears twice in a row',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
+        ],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'suffix repeated six times in a row (maximum stacked count observed in production)',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX.repeat(6)}`,
+        ],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'not a url (existing case, regression check)',
+        commandArguments: ['claude', '--name', 'just-a-label'],
+        expectedIssueUrl: null,
+      },
+      {
+        name: 'resembles but does not exactly match the suffix, so it must not be truncated',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}-extra`,
+        ],
+        expectedIssueUrl: `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}-extra`,
+      },
+      {
+        name: 'no --name argument present (existing case, regression check)',
+        commandArguments: ['claude'],
+        expectedIssueUrl: null,
+      },
+    ];
+
+    for (const testCase of testCases) {
+      expect(extractIssueUrl(testCase.commandArguments)).toBe(
+        testCase.expectedIssueUrl,
+      );
+    }
+  });
+
+  const scopeLibPath = secretaryScopeLibPath();
+  const urgentTaskforceLeaderSuffixContractTest =
+    scopeLibPath === null ? it.skip : it;
+  urgentTaskforceLeaderSuffixContractTest(
+    'URGENT_TASKFORCE_LEADER_TITLE_SUFFIX matches the suffix the cl_claude_session_title shell function actually appends',
+    () => {
+      if (scopeLibPath === null) {
+        return;
+      }
+      const sessionTitle = execFileSync(
+        'bash',
+        [
+          '-c',
+          'source "$1" && cl_claude_session_title "$2"',
+          'bash',
+          scopeLibPath,
+          issueUrl,
+        ],
+        { encoding: 'utf8' },
+      );
+      expect(sessionTitle).toBe(
+        `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
+      );
+    },
+  );
 });

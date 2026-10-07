@@ -1,9 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { toTmuxSessionName } from '../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 import { clSessionScopeUnitName } from './clSessionScopeUnitName';
+import { secretaryScopeLibPath } from './secretaryScopeLibPath';
 
 const issueUrls = [
   'https://github.com/HiromiShikata/secretary/issues/1261',
@@ -18,23 +16,6 @@ const sessionNames = [
   'plain-session',
   'ALLCAPS123',
 ];
-
-const canonicalScopeLibPath = (): string | null => {
-  const explicitPath = process.env.CL_SCOPE_LIB_PATH;
-  if (explicitPath !== undefined && existsSync(explicitPath)) {
-    return explicitPath;
-  }
-  const defaultPath = join(
-    homedir(),
-    'git',
-    'secretary',
-    'machine',
-    'sk',
-    'sh',
-    'cl-scope-lib.sh',
-  );
-  return existsSync(defaultPath) ? defaultPath : null;
-};
 
 describe('clSessionScopeUnitName cross-component contract', () => {
   it('derives a systemd-safe scope unit name of the form cl-<safe>.scope for every session form', () => {
@@ -55,7 +36,7 @@ describe('clSessionScopeUnitName cross-component contract', () => {
     }
   });
 
-  const libPath = canonicalScopeLibPath();
+  const libPath = secretaryScopeLibPath();
   const canonicalContractTest = libPath === null ? it.skip : it;
   canonicalContractTest(
     'matches the canonical cl_scope_unit_name derivation shared with cl',
