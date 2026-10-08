@@ -6682,6 +6682,7 @@ describe('consoleOperationApi', () => {
         storyOptionId: 'opt_alpha',
         newName: 'Alpha renamed',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateIssue).toHaveBeenCalledWith(
@@ -6704,11 +6705,12 @@ describe('consoleOperationApi', () => {
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
-      await handleStoryRename(renameStoryContext(p), {
+      const response = await handleStoryRename(renameStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_alpha',
         newName: 'Alpha renamed',
       });
+      await response.backgroundTask;
 
       expect(issueRepository.updateIssue).not.toHaveBeenCalled();
     });
@@ -6745,6 +6747,91 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_server_only' }),
         ]),
       );
+    });
+
+    it('returns the response before the story issue lookup resolves, then renames the issue once the background task completes', async () => {
+      const p = projectWithStoriesToRename();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRename = story.stories.find((s) => s.id === 'opt_alpha');
+      if (storyToRename === undefined)
+        throw new Error('test fixture must have opt_alpha story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/10',
+        title: 'Alpha story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRename.id, { story: storyToRename, storyIssue, issues: [] }],
+      ]);
+      let resolveGetStoryObjectMap!: () => void;
+      const getStoryObjectMapPromise = new Promise<void>((resolve) => {
+        resolveGetStoryObjectMap = resolve;
+      });
+      issueRepository.getStoryObjectMap.mockReturnValue(
+        getStoryObjectMapPromise.then(() => storyObjectMap),
+      );
+
+      const racedOutcome = await Promise.race([
+        handleStoryRename(renameStoryContext(p), {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          newName: 'Alpha renamed',
+        }).then((response) => ({ kind: 'responded' as const, response })),
+        new Promise<{ kind: 'timedOut' }>((resolve) =>
+          setTimeout(() => resolve({ kind: 'timedOut' }), 50),
+        ),
+      ]);
+
+      expect(racedOutcome.kind).toBe('responded');
+      if (racedOutcome.kind !== 'responded') {
+        resolveGetStoryObjectMap();
+        return;
+      }
+      const { response } = racedOutcome;
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(issueRepository.updateIssue).not.toHaveBeenCalled();
+
+      resolveGetStoryObjectMap();
+      await response.backgroundTask;
+      expect(issueRepository.updateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Alpha renamed' }),
+      );
+    });
+
+    it('logs the error and does not throw out of the background task when the background story issue rename fails', async () => {
+      const p = projectWithStoriesToRename();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRename = story.stories.find((s) => s.id === 'opt_alpha');
+      if (storyToRename === undefined)
+        throw new Error('test fixture must have opt_alpha story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/10',
+        title: 'Alpha story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRename.id, { story: storyToRename, storyIssue, issues: [] }],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+      const updateIssueError = new Error('update issue failed upstream');
+      issueRepository.updateIssue.mockRejectedValue(updateIssueError);
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+      await expect(response.backgroundTask).resolves.toBeUndefined();
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy.mock.calls.flat()).toContain(updateIssueError);
+      consoleErrorSpy.mockRestore();
     });
   });
 
