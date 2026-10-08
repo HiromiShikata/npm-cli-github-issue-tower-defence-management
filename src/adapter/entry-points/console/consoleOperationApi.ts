@@ -1557,12 +1557,12 @@ const handleRenamedStoryIssueInBackground = async (
   storyOptionId: string,
   newName: string,
 ): Promise<void> => {
-  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
-  const storyIssue = storyObjectMap.get(storyOptionId)?.storyIssue ?? null;
-  if (storyIssue === null) {
-    return;
-  }
   try {
+    const storyObjectMap = await issueRepository.getStoryObjectMap(project);
+    const storyIssue = storyObjectMap.get(storyOptionId)?.storyIssue ?? null;
+    if (storyIssue === null) {
+      return;
+    }
     await issueRepository.updateIssue({ ...storyIssue, title: newName });
   } catch (e) {
     console.error('Background story issue rename failed:', e);
@@ -1623,9 +1623,6 @@ export const handleStoryRename = async (
     project,
     storyOptionId,
     newName,
-  );
-  backgroundTask.catch((e) =>
-    console.error('Background story issue rename failed:', e),
   );
   return { statusCode: 200, body: { ok: true }, backgroundTask };
 };
