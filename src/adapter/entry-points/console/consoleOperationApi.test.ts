@@ -6833,6 +6833,28 @@ describe('consoleOperationApi', () => {
       expect(consoleErrorSpy.mock.calls.flat()).toContain(updateIssueError);
       consoleErrorSpy.mockRestore();
     });
+
+    it('logs the error and does not throw out of the background task when the story object map lookup fails', async () => {
+      const p = projectWithStoriesToRename();
+      const storyObjectMapError = new Error(
+        'story object map lookup failed upstream',
+      );
+      issueRepository.getStoryObjectMap.mockRejectedValue(storyObjectMapError);
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+      await expect(response.backgroundTask).resolves.toBeUndefined();
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy.mock.calls.flat()).toContain(storyObjectMapError);
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe('handleStoryUpdateDescription', () => {
