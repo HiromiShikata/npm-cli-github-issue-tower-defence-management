@@ -276,6 +276,7 @@ Report body.`,
         comments,
         isTrustedAuthor: trustAll,
         latestReopenedAt: null,
+        agentFieldValue: 'developer',
       });
       expect(withoutReopen).toBe(3);
 
@@ -284,6 +285,7 @@ Report body.`,
           comments,
           isTrustedAuthor: trustAll,
           latestReopenedAt: new Date(hour(1).getTime() + 30 * 60 * 1000),
+          agentFieldValue: 'developer',
         });
       expect(withReopenBetweenFirstAndSecond).toBe(2);
     });

@@ -41,7 +41,7 @@ export const stripLeadingFencedBlocks = (body: string): string => {
   return lines.slice(index).join('\n');
 };
 
-const AGENT_PREFIX_REGEX = /^From: :robot: (\S+)/m;
+const AGENT_PREFIX_REGEX = /^From: :robot: (.+?)(?: \([^)]*\))?$/m;
 
 export const extractAgentNameFromReportBody = (body: string): string | null => {
   const match = AGENT_PREFIX_REGEX.exec(normalizeReportBody(body));

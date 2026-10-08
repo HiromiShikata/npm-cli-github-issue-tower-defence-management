@@ -136,6 +136,7 @@ const isRateLimitSilentFailureExclusionActive = <
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   latestReopenedAt: Date | null;
+  targetAgentName: string | null;
 }): boolean => {
   const activeRateLimitBoundaryIndex = resolveActiveRateLimitBoundaryIndex({
     comments: params.comments,
@@ -147,11 +148,23 @@ const isRateLimitSilentFailureExclusionActive = <
   }
   const hasAgentResponseSinceRateLimitBoundary = params.comments
     .slice(activeRateLimitBoundaryIndex + 1)
-    .some(
-      (comment) =>
-        params.isTrustedAuthor(comment.author) &&
-        isAgentReportBody(comment.content),
-    );
+    .some((comment) => {
+      if (!params.isTrustedAuthor(comment.author)) {
+        return false;
+      }
+      if (!isAgentReportBody(comment.content)) {
+        return false;
+      }
+      const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (reportAgentName === null) {
+        return true;
+      }
+      return (
+        params.targetAgentName !== null &&
+        normalizeProjectFieldName(reportAgentName) ===
+          normalizeProjectFieldName(params.targetAgentName)
+      );
+    });
   return !hasAgentResponseSinceRateLimitBoundary;
 };
 
@@ -161,17 +174,33 @@ export const countConsecutiveNoReportDispatches = <
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   latestReopenedAt?: Date | null;
+  agentFieldValue: string | null;
 }): number => {
   const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
     params.isTrustedAuthor,
   );
   const lastAgentReportIndex = params.comments.reduce(
-    (found, comment, index) =>
-      params.isTrustedAuthor(comment.author) &&
-      isAgentReportBody(comment.content)
-        ? index
-        : found,
+    (found, comment, index) => {
+      if (!params.isTrustedAuthor(comment.author)) {
+        return found;
+      }
+      if (!isAgentReportBody(comment.content)) {
+        return found;
+      }
+      const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (reportAgentName === null) {
+        return index;
+      }
+      if (
+        params.agentFieldValue === null ||
+        normalizeProjectFieldName(reportAgentName) !==
+          normalizeProjectFieldName(params.agentFieldValue)
+      ) {
+        return found;
+      }
+      return index;
+    },
     -1,
   );
   const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
@@ -299,11 +328,22 @@ const countSilentRedispatches = <
     firstRedispatchIndex >= 0 &&
     commentsAfterLastEscalation
       .slice(firstRedispatchIndex + 1)
-      .some(
-        (comment) =>
-          params.isTrustedAuthor(comment.author) &&
-          isAgentReportBody(comment.content),
-      );
+      .some((comment) => {
+        if (!params.isTrustedAuthor(comment.author)) {
+          return false;
+        }
+        if (!isAgentReportBody(comment.content)) {
+          return false;
+        }
+        const reportAgentName = extractAgentNameFromReportBody(comment.content);
+        if (reportAgentName === null) {
+          return true;
+        }
+        return (
+          normalizeProjectFieldName(reportAgentName) ===
+          normalizeProjectFieldName(nextStepAgent)
+        );
+      });
   const agentSelfReported =
     firstRedispatchIndex === -1 &&
     ((): boolean => {
@@ -333,6 +373,7 @@ const countDispatchesInCurrentCycle = <
   CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   nextStepAgent: string | null;
+  agentFieldValue: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   latestReopenedAt: Date | null;
@@ -384,7 +425,20 @@ const countDispatchesInCurrentCycle = <
     reportsInCurrentCycle.slice(0, -1).filter((comment) => {
       const declared = extractNextStepAgent(comment.content);
       if (params.nextStepAgent === null) {
-        return declared === null;
+        if (declared !== null) {
+          return false;
+        }
+        if (params.agentFieldValue === null) {
+          return true;
+        }
+        const reportAgentName = extractAgentNameFromReportBody(comment.content);
+        if (reportAgentName === null) {
+          return true;
+        }
+        return (
+          normalizeProjectFieldName(reportAgentName) ===
+          normalizeProjectFieldName(params.agentFieldValue)
+        );
       }
       return (
         declared !== null &&
@@ -510,6 +564,7 @@ export const resolveNextStepAgentDispatchRepetition = <
           comments: params.comments,
           isTrustedAuthor: params.isTrustedAuthor,
           latestReopenedAt: params.latestReopenedAt ?? null,
+          targetAgentName: params.agentFieldValue,
         })
       ) {
         return {
@@ -547,6 +602,7 @@ The agent has been reporting every cycle but cannot advance — it has been disp
           comments: params.comments,
           isTrustedAuthor: params.isTrustedAuthor,
           latestReopenedAt: params.latestReopenedAt ?? null,
+          targetAgentName: params.agentFieldValue,
         })
       ) {
         return {
