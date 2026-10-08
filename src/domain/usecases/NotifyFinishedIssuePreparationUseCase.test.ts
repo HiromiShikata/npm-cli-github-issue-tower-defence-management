@@ -976,6 +976,54 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should pass issue.agent (not null) as agentFieldValue so a same-agent report resets the no-report streak and avoids premature escalation', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'In Tmux by agent',
+      agent: 'developer',
+    });
+    const dispatchStartedAt = new Date(Date.now() - 45 * 60 * 1000);
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'Auto Status Check: NO_REPORT_AGAIN 1/3\n\nNo completion comment was posted. Dispatch 1 of 3 before escalation.',
+        createdAt: new Date(Date.now() - 90 * 60 * 1000),
+      }),
+      createMockComment({
+        author: 'test-user',
+        content: `From: :robot: developer (model)\n\n\`\`\`json\n{"nextStepAgent": null}\n\`\`\`\n\nReport.`,
+        createdAt: new Date(Date.now() - 70 * 60 * 1000),
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: NO_REPORT_AGAIN 2/3\n\nNo completion comment was posted. Dispatch 2 of 3 before escalation.',
+        createdAt: new Date(Date.now() - 20 * 60 * 1000),
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+      dispatchStartedAt,
+    });
+
+    expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Failed Preparation' }),
+      expect.anything(),
+    );
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Failed Preparation' }),
+      'failed-preparation-id',
+    );
+  });
+
   it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
