@@ -142,7 +142,6 @@ jest.mock('../cli/fleetConfig', () => ({
   loadWorkflowImprovementIssueUrl: jest.fn(),
   loadWorkflowIssueReporterSettings: jest.fn(),
   loadSilentNotificationEnabled: jest.fn(),
-  loadFleetClaudeCodeOauthTokenListJsonPath: jest.fn().mockReturnValue(null),
 }));
 jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
@@ -270,7 +269,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     mockLoadSilentNotificationEnabled.mockReturnValue(null);
     mockLoadStartPreparationFleetSettings.mockReturnValue({
       maximumPreparingIssuesCount: 80,
-      urgentStoryNames: [],
     });
     mockLoadWorkflowImprovementIssueUrl.mockReturnValue(null);
     mockLoadWorkflowIssueReporterSettings.mockReturnValue(null);

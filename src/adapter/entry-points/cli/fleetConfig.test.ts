@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
+  DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
   DEFAULT_PREPARATION_WORKER_SETTINGS,
   DEFAULT_START_PREPARATION_FLEET_SETTINGS,
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
@@ -16,6 +17,7 @@ import {
   loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
+import * as fleetConfigModule from './fleetConfig';
 
 describe('resolveFleetConfigFilePath', () => {
   const originalEnvironmentValue =
@@ -466,7 +468,6 @@ describe('loadStartPreparationFleetSettings', () => {
 
     expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
       maximumPreparingIssuesCount: 100,
-      urgentStoryNames: [],
     });
   });
 
@@ -519,9 +520,87 @@ describe('loadStartPreparationFleetSettings', () => {
       loadStartPreparationFleetSettings(fleetConfigFilePath),
     ).toThrow('must be a mapping');
   });
+
+  it.each([
+    {
+      label: 'an unknown key next to maximumPreparingIssuesCount',
+      startPreparationYamlLines: [
+        '  maximumPreparingIssuesCount: 100',
+        '  unknownStartPreparationSetting: value',
+      ],
+      expectedMaximumPreparingIssuesCount: 100,
+    },
+    {
+      label: 'only an unknown key',
+      startPreparationYamlLines: ['  unknownStartPreparationSetting: value'],
+      expectedMaximumPreparingIssuesCount:
+        DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+    },
+  ])(
+    'reads maximumPreparingIssuesCount when the startPreparation section has $label',
+    ({ startPreparationYamlLines, expectedMaximumPreparingIssuesCount }) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        ['startPreparation:', ...startPreparationYamlLines].join('\n'),
+      );
+
+      expect(
+        loadStartPreparationFleetSettings(fleetConfigFilePath)
+          .maximumPreparingIssuesCount,
+      ).toBe(expectedMaximumPreparingIssuesCount);
+    },
+  );
+
+  it.each([
+    {
+      label: 'next to maximumPreparingIssuesCount',
+      startPreparationYamlLines: [
+        '  maximumPreparingIssuesCount: 100',
+        '  urgentStoryNames:',
+        "    - 'Story A'",
+      ],
+      expectedSettings: { maximumPreparingIssuesCount: 100 },
+    },
+    {
+      label: 'as its only key',
+      startPreparationYamlLines: ['  urgentStoryNames:', "    - 'Story A'"],
+      expectedSettings: {
+        maximumPreparingIssuesCount:
+          DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+      },
+    },
+  ])(
+    'loads a startPreparation section listing urgentStoryNames ["Story A"] $label into settings without an urgentStoryNames property',
+    ({ startPreparationYamlLines, expectedSettings }) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        ['startPreparation:', ...startPreparationYamlLines].join('\n'),
+      );
+
+      const settings = loadStartPreparationFleetSettings(fleetConfigFilePath);
+
+      expect(settings).toEqual(expectedSettings);
+      expect(settings).not.toHaveProperty('urgentStoryNames');
+    },
+  );
+
+  it('loads a startPreparation section whose urgentStoryNames is the plain string "Story A" instead of throwing', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  maximumPreparingIssuesCount: 100',
+        "  urgentStoryNames: 'Story A'",
+      ].join('\n'),
+    );
+
+    expect(() =>
+      loadStartPreparationFleetSettings(fleetConfigFilePath),
+    ).not.toThrow();
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+      maximumPreparingIssuesCount: 100,
+    });
+  });
 });
 
-describe('loadStartPreparationFleetSettings urgentStoryNames', () => {
+describe('fleet config carrying a top-level claudeCodeOauthTokenListJsonPath', () => {
   let tempDir: string;
 
   const writeFleetConfig = (content: string): string => {
@@ -538,120 +617,92 @@ describe('loadStartPreparationFleetSettings urgentStoryNames', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('reads urgentStoryNames from the startPreparation section', () => {
+  it('keeps every other fleet setting readable from the same file', () => {
     const fleetConfigFilePath = writeFleetConfig(
       [
+        'claudeCodeOauthTokenListJsonPath: /srv/fleet/claude-code-oauth-tokens.json',
+        'silentNotificationEnabled: true',
+        'workflowImprovementIssueUrl: https://github.com/owner/repo/issues/new',
+        'errorReportingRepository: owner/error-reports',
         'startPreparation:',
         '  maximumPreparingIssuesCount: 100',
-        '  urgentStoryNames:',
-        "    - 'urgent / production incident'",
-        "    - 'urgent / customer escalation'",
+        'preparationWorker:',
+        '  normalConcurrentLimit: 5',
       ].join('\n'),
     );
 
-    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+    expect({
+      silentNotificationEnabled:
+        loadSilentNotificationEnabled(fleetConfigFilePath),
+      workflowImprovementIssueUrl:
+        loadWorkflowImprovementIssueUrl(fleetConfigFilePath),
+      errorReportingRepository:
+        loadErrorReportingRepository(fleetConfigFilePath),
+      maximumPreparingIssuesCount:
+        loadStartPreparationFleetSettings(fleetConfigFilePath)
+          .maximumPreparingIssuesCount,
+      normalConcurrentLimit:
+        loadPreparationWorkerSettings(fleetConfigFilePath)
+          .normalConcurrentLimit,
+    }).toEqual({
+      silentNotificationEnabled: true,
+      workflowImprovementIssueUrl: 'https://github.com/owner/repo/issues/new',
+      errorReportingRepository: 'owner/error-reports',
       maximumPreparingIssuesCount: 100,
-      urgentStoryNames: [
-        'urgent / production incident',
-        'urgent / customer escalation',
-      ],
+      normalConcurrentLimit: 5,
     });
   });
 
-  it('keeps reading maximumPreparingIssuesCount when the startPreparation section also lists urgentStoryNames', () => {
+  it('loads through every fleet config loader without any loaded result carrying the fleet-level claudeCodeOauthTokenListJsonPath value', () => {
+    const fleetClaudeCodeOauthTokenListJsonPath =
+      '/srv/fleet/claude-code-oauth-tokens.json';
     const fleetConfigFilePath = writeFleetConfig(
       [
+        `claudeCodeOauthTokenListJsonPath: ${fleetClaudeCodeOauthTokenListJsonPath}`,
         'startPreparation:',
         '  maximumPreparingIssuesCount: 100',
-        '  urgentStoryNames:',
-        "    - 'urgent / production incident'",
+        'workflowIssueReporter:',
+        '  owner: owner',
+        '  repo: repo',
       ].join('\n'),
     );
+    const isFleetConfigLoader = (
+      exportedValue: unknown,
+    ): exportedValue is (fleetConfigFilePath: string | null) => unknown =>
+      typeof exportedValue === 'function';
 
-    expect(
-      loadStartPreparationFleetSettings(fleetConfigFilePath)
-        .maximumPreparingIssuesCount,
-    ).toBe(100);
-  });
-
-  it('reads an empty urgentStoryNames list as no urgent story names', () => {
-    const fleetConfigFilePath = writeFleetConfig(
-      ['startPreparation:', '  urgentStoryNames: []'].join('\n'),
-    );
-
-    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual(
-      expect.objectContaining({ urgentStoryNames: [] }),
-    );
-  });
-
-  it('returns no urgent story names when the startPreparation section omits urgentStoryNames', () => {
-    const fleetConfigFilePath = writeFleetConfig(
-      ['startPreparation:', '  maximumPreparingIssuesCount: 100'].join('\n'),
-    );
-
-    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
-      maximumPreparingIssuesCount: 100,
-      urgentStoryNames: [],
-    });
-  });
-
-  it.each<{ label: string; fleetConfigFilePathOf: () => string | null }>([
-    {
-      label: 'no fleet config path is given',
-      fleetConfigFilePathOf: () => null,
-    },
-    {
-      label: 'the fleet config has no startPreparation section',
-      fleetConfigFilePathOf: () =>
-        writeFleetConfig('inTmuxLauncherCommand: cl\n'),
-    },
-    {
-      label: 'the fleet config file is empty',
-      fleetConfigFilePathOf: () => writeFleetConfig(''),
-    },
-  ])(
-    'returns no urgent story names when $label',
-    ({ fleetConfigFilePathOf }) => {
-      expect(
-        loadStartPreparationFleetSettings(fleetConfigFilePathOf()),
-      ).toEqual(expect.objectContaining({ urgentStoryNames: [] }));
-    },
-  );
-
-  it.each<{ label: string; urgentStoryNamesYamlLines: string[] }>([
-    {
-      label: 'a single string',
-      urgentStoryNamesYamlLines: [
-        "  urgentStoryNames: 'urgent / production incident'",
-      ],
-    },
-    {
-      label: 'a list holding a number',
-      urgentStoryNamesYamlLines: [
-        '  urgentStoryNames:',
-        "    - 'urgent / production incident'",
-        '    - 42',
-      ],
-    },
-    {
-      label: 'a mapping',
-      urgentStoryNamesYamlLines: [
-        '  urgentStoryNames:',
-        "    urgent: 'urgent / production incident'",
-      ],
-    },
-  ])(
-    'throws naming urgentStoryNames when urgentStoryNames is $label',
-    ({ urgentStoryNamesYamlLines }) => {
-      const fleetConfigFilePath = writeFleetConfig(
-        ['startPreparation:', ...urgentStoryNamesYamlLines].join('\n'),
+    const loadedResultByLoaderName = new Map<string, unknown>();
+    for (const [exportName, exportedValue] of Object.entries(
+      fleetConfigModule,
+    )) {
+      if (
+        !exportName.startsWith('load') ||
+        !isFleetConfigLoader(exportedValue)
+      ) {
+        continue;
+      }
+      loadedResultByLoaderName.set(
+        exportName,
+        exportedValue(fleetConfigFilePath),
       );
+    }
 
-      expect(() =>
-        loadStartPreparationFleetSettings(fleetConfigFilePath),
-      ).toThrow('urgentStoryNames');
-    },
-  );
+    expect(Array.from(loadedResultByLoaderName.keys())).toEqual(
+      expect.arrayContaining([
+        'loadStartPreparationFleetSettings',
+        'loadWorkflowIssueReporterSettings',
+      ]),
+    );
+    expect(
+      Array.from(loadedResultByLoaderName.entries())
+        .filter(([, loadedResult]) =>
+          JSON.stringify(loadedResult ?? null).includes(
+            fleetClaudeCodeOauthTokenListJsonPath,
+          ),
+        )
+        .map(([loaderName]) => loaderName),
+    ).toEqual([]);
+  });
 });
 
 describe('loadWorkflowImprovementIssueUrl', () => {

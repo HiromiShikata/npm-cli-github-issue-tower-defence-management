@@ -22,13 +22,6 @@ import {
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
-  ClaudeTokenUsageRepository & {
-    getPendingTokenLaunchReservationCounts: (
-      tokens: string[],
-    ) => Promise<Record<string, number>>;
-  };
-
 // StartPreparationUseCase.run() captures `new Date().toISOString()` immediately before spawning
 // `aw`, so the exact value is not deterministic across test runs; every assertion on the full
 // `awArgs` array matches this UTC ISO-8601 shape instead of a fixed string.
@@ -140,7 +133,7 @@ describe('StartPreparationUseCase', () => {
   >;
   let mockIssueRepository: MockProxy<IssueRepository>;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
-  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts>;
+  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
   let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
   let mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository>;
   let mockProject: Project;
@@ -190,7 +183,6 @@ describe('StartPreparationUseCase', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     mockTakeOwnershipSpawnRepository = {
       listSpawns: jest.fn().mockReturnValue([]),
@@ -2478,8 +2470,6 @@ describe('StartPreparationUseCase', () => {
       mockTakeOwnershipSpawnRepository,
       mockGitHubGraphqlRateLimitRepository,
       new InMemoryIssueLatestSessionBranchRepository(new Map()),
-      null,
-      null,
       mockSleep,
     );
 
@@ -2621,8 +2611,6 @@ describe('StartPreparationUseCase', () => {
       mockTakeOwnershipSpawnRepository,
       mockGitHubGraphqlRateLimitRepository,
       new InMemoryIssueLatestSessionBranchRepository(new Map()),
-      null,
-      null,
       mockSleep,
     );
 
@@ -8494,8 +8482,6 @@ describe('StartPreparationUseCase', () => {
       mockTakeOwnershipSpawnRepository,
       mockGitHubGraphqlRateLimitRepository,
       new InMemoryIssueLatestSessionBranchRepository(new Map()),
-      null,
-      null,
       mockSleep,
     );
 
@@ -8560,8 +8546,6 @@ describe('StartPreparationUseCase', () => {
       mockTakeOwnershipSpawnRepository,
       mockGitHubGraphqlRateLimitRepository,
       new InMemoryIssueLatestSessionBranchRepository(new Map()),
-      null,
-      null,
       mockSleep,
     );
 
@@ -10863,14 +10847,13 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     runCommand: jest.fn(),
     spawnInteractive: jest.fn(),
   };
-  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepositoryWithPendingReservationCounts> =
+  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
     {
       ensureObservable: jest.fn(),
       getAvailableTokenUsages: jest.fn(),
       getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
 
   const useCase = new StartPreparationUseCase(
@@ -11188,7 +11171,6 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
       getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     useCase = new StartPreparationUseCase(
       {
@@ -11330,7 +11312,6 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({ [token]: 0 }),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     const mockTakeOwnershipSpawnRepository = {
       listSpawns: jest.fn().mockReturnValue([]),
@@ -11420,7 +11401,6 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     const useCase = new StartPreparationUseCase(
       mockProjectRepository,
@@ -11510,7 +11490,6 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     const useCase = new StartPreparationUseCase(
       mockProjectRepository,
@@ -11603,7 +11582,6 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
       proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     const useCase = new StartPreparationUseCase(
       mockProjectRepository,
@@ -11727,7 +11705,6 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
       const useCase = new StartPreparationUseCase(
         mockProjectRepository,
@@ -11790,7 +11767,6 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
       getTokenInFlightCounts: jest.fn(),
       proxyBaseUrl: jest.fn(),
       reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
-      getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
     };
     return new StartPreparationUseCase(
       {
