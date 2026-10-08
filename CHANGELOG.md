@@ -1,3 +1,10 @@
+## [2.164.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.15...v2.164.16) (2026-10-08)
+
+
+### Bug Fixes
+
+* **console:** unblock story rename dialog by deferring issue title update ([#3316](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3316)) ([f075f82](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f075f8299fd24e8bd93e1d2cfb1f28fdd17753a7))
+
 ## [2.164.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.14...v2.164.15) (2026-10-08)
 
 
