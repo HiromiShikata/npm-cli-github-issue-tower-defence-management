@@ -178,24 +178,27 @@ export const countConsecutiveNoReportDispatches = <
     params.comments,
     params.isTrustedAuthor,
   );
-  const lastAgentReportIndex = params.comments.reduce((found, comment, index) => {
-    if (!params.isTrustedAuthor(comment.author)) {
-      return found;
-    }
-    if (!isAgentReportBody(comment.content)) {
-      return found;
-    }
-    const reportAgentName = extractAgentNameFromReportBody(comment.content);
-    if (
-      reportAgentName === null ||
-      params.agentFieldValue === null ||
-      normalizeProjectFieldName(reportAgentName) !==
-        normalizeProjectFieldName(params.agentFieldValue)
-    ) {
-      return found;
-    }
-    return index;
-  }, -1);
+  const lastAgentReportIndex = params.comments.reduce(
+    (found, comment, index) => {
+      if (!params.isTrustedAuthor(comment.author)) {
+        return found;
+      }
+      if (!isAgentReportBody(comment.content)) {
+        return found;
+      }
+      const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (
+        reportAgentName === null ||
+        params.agentFieldValue === null ||
+        normalizeProjectFieldName(reportAgentName) !==
+          normalizeProjectFieldName(params.agentFieldValue)
+      ) {
+        return found;
+      }
+      return index;
+    },
+    -1,
+  );
   const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
     params.comments,
     params.latestReopenedAt ?? null,
@@ -328,9 +331,7 @@ const countSilentRedispatches = <
         if (!isAgentReportBody(comment.content)) {
           return false;
         }
-        const reportAgentName = extractAgentNameFromReportBody(
-          comment.content,
-        );
+        const reportAgentName = extractAgentNameFromReportBody(comment.content);
         return (
           reportAgentName !== null &&
           normalizeProjectFieldName(reportAgentName) ===
@@ -424,9 +425,7 @@ const countDispatchesInCurrentCycle = <
         if (params.agentFieldValue === null) {
           return true;
         }
-        const reportAgentName = extractAgentNameFromReportBody(
-          comment.content,
-        );
+        const reportAgentName = extractAgentNameFromReportBody(comment.content);
         return (
           reportAgentName !== null &&
           normalizeProjectFieldName(reportAgentName) ===
