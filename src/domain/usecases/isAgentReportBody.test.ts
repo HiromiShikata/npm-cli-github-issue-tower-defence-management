@@ -22,6 +22,14 @@ describe('extractAgentNameFromReportBody', () => {
     ).toBe('pr-reviewer');
   });
 
+  it('extracts a multi-word agent name without truncating at the first space', () => {
+    expect(
+      extractAgentNameFromReportBody(
+        'From: :robot: PR Reviewer (model)\n\n```json\n{ "nextStep": null }\n```\n',
+      ),
+    ).toBe('PR Reviewer');
+  });
+
   it('returns null when there is no From: :robot: prefix', () => {
     expect(
       extractAgentNameFromReportBody('Some body without prefix'),
