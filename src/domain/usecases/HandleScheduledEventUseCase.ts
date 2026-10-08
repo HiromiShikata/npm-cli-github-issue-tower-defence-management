@@ -188,7 +188,6 @@ export class HandleScheduledEventUseCase {
       autoAdvanceQualityCheckEnabled?: boolean;
       autoRevertReopenedDoneEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
-      urgentStoryNames?: string[];
     } | null;
     thresholdForAutoReject?: number;
     thresholdForDispatchLoop?: number;
@@ -801,7 +800,6 @@ ${JSON.stringify(e)}
         codexHomeCandidates: startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,
         agents: input.agents ?? null,
-        urgentStoryNames: startPreparation.urgentStoryNames ?? [],
       });
       return { rotationOrder: preparationResult.rotationOrder };
     }

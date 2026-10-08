@@ -13,13 +13,6 @@ import { StartPreparationUseCase } from './StartPreparationUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
-type ClaudeTokenUsageRepositoryWithPendingReservationCounts =
-  ClaudeTokenUsageRepository & {
-    getPendingTokenLaunchReservationCounts: (
-      tokens: string[],
-    ) => Promise<Record<string, number>>;
-  };
-
 class InMemoryIssueLatestSessionBranchRepository implements IssueLatestSessionBranchRepository {
   findBranchNameByIssue = async (): Promise<string | null> => null;
 }
@@ -157,7 +150,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       spawnInteractive: jest.fn(),
     };
     const mockReserveTokenLaunchSlot = jest.fn().mockResolvedValue(false);
-    const claudeTokenUsageRepositoryWithReservation: ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+    const claudeTokenUsageRepositoryWithReservation: ClaudeTokenUsageRepository =
       {
         ensureObservable: jest.fn().mockResolvedValue(undefined),
         getAvailableTokenUsages: jest.fn().mockResolvedValue([
@@ -176,7 +169,6 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         getTokenInFlightCounts: jest.fn().mockResolvedValue({ 'token-a': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {
@@ -281,7 +273,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       .mockImplementation(
         async (params: { token: string }) => params.token !== 'first-token',
       );
-    const claudeTokenUsageRepositoryWithTwoTokens: ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+    const claudeTokenUsageRepositoryWithTwoTokens: ClaudeTokenUsageRepository =
       {
         ensureObservable: jest.fn().mockResolvedValue(undefined),
         getAvailableTokenUsages: jest.fn().mockResolvedValue([
@@ -313,7 +305,6 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
           .mockResolvedValue({ 'first-token': 0, 'second-token': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {
@@ -440,7 +431,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         new Error('Timed out waiting for project cache lock'),
       )
       .mockResolvedValueOnce(true);
-    const claudeTokenUsageRepositoryWithReservation: ClaudeTokenUsageRepositoryWithPendingReservationCounts =
+    const claudeTokenUsageRepositoryWithReservation: ClaudeTokenUsageRepository =
       {
         ensureObservable: jest.fn().mockResolvedValue(undefined),
         getAvailableTokenUsages: jest.fn().mockResolvedValue([
@@ -459,7 +450,6 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
         getTokenInFlightCounts: jest.fn().mockResolvedValue({ 'token-a': 0 }),
         proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
         reserveTokenLaunchSlot: mockReserveTokenLaunchSlot,
-        getPendingTokenLaunchReservationCounts: jest.fn().mockResolvedValue({}),
       };
     const mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository> =
       {

@@ -170,18 +170,6 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
     return counts;
   };
 
-  getPendingTokenLaunchReservationCounts = async (
-    tokens: string[],
-  ): Promise<Record<string, number>> => {
-    const nowMs = Date.now();
-    return Object.fromEntries(
-      tokens.map((token) => [
-        token,
-        this.pendingTokenLaunchReservationCountScanAndPrune(token, nowMs),
-      ]),
-    );
-  };
-
   reserveTokenLaunchSlot = async (params: {
     token: string;
     concurrentLimit: number;

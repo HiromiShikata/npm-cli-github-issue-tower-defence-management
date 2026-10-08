@@ -24,9 +24,7 @@ import type {
 } from './adapter-interfaces/IssueRepository';
 import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import type { Sleeper } from './adapter-interfaces/Sleeper';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
-import type { UrgentStoryLaunchHoldRepository } from './adapter-interfaces/UrgentStoryLaunchHoldRepository';
 import {
   CanonicalPullRequestSelection,
   canonicalPullRequestSelect,
@@ -40,12 +38,6 @@ import {
   oauthTokenFillTargetSelect,
   windowFreeRatioOfUtilization,
 } from './OauthTokenSelectUseCase';
-import { tokenEffectiveInFlightCountsOf } from './tokenEffectiveInFlightCountsOf';
-import {
-  URGENT_STORY_LAUNCH_HOLD_TIMED_OUT_ISSUE_IGNORED_SECONDS,
-  type UrgentStoryLaunchHoldDecision,
-  urgentStoryLaunchHoldDecide,
-} from './urgentStoryLaunchHoldDecide';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -54,27 +46,6 @@ export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 export const DEFAULT_MINIMUM_ISSUE_AGE_MS = 5 * 60 * 1000;
-const URGENT_STORY_LAUNCH_HOLD_POLL_INTERVAL_MILLISECONDS = 10_000;
-const URGENT_STORY_LAUNCH_HOLD_TIMEOUT_SECONDS = 300;
-const URGENT_STORY_LAUNCH_HOLD_BOUND_SECONDS = 420;
-const URGENT_STORY_LAUNCH_HOLD_UTILIZATION_PERCENTAGE_THRESHOLD = 90;
-const URGENT_STORY_LAUNCH_HOLD_TOKEN_MODEL_NAME = 'any-model';
-const URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX = 'urgentStoryLaunchHold: ';
-
-type UrgentStoryLaunchHoldTarget = {
-  callerIssueUrl: string;
-  urgentStoryNames: string[];
-  configuredProjectUrl: string;
-  manager: string;
-};
-
-type UrgentStoryLaunchHoldProgress = { boundReached: boolean };
-
-const urgentStoryLaunchHoldFailureLog = (error: unknown): void => {
-  console.error(
-    `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}failed (${error instanceof Error ? error.message : String(error)}); the spawn goes ahead`,
-  );
-};
 
 export type SpawnCandidateExclusionReason =
   | 'dependedIssueUrls'
@@ -139,8 +110,6 @@ export class StartPreparationUseCase {
     private readonly takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository,
     private readonly gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository,
     private readonly issueLatestSessionBranchRepository: IssueLatestSessionBranchRepository,
-    private readonly urgentStoryLaunchHoldRepository: UrgentStoryLaunchHoldRepository | null = null,
-    private readonly sleeper: Sleeper | null = null,
     private readonly sleep: Sleep = realSleep,
   ) {}
 
@@ -524,207 +493,6 @@ export class StartPreparationUseCase {
     return [...selectedEntries, ...excluded];
   };
 
-  private urgentStoryLaunchHoldWait = async (
-    target: UrgentStoryLaunchHoldTarget,
-  ): Promise<void> => {
-    const holdRepository = this.urgentStoryLaunchHoldRepository;
-    const sleeper = this.sleeper;
-    if (
-      holdRepository === null ||
-      sleeper === null ||
-      target.urgentStoryNames.length === 0
-    ) {
-      return;
-    }
-    const holdProgress: UrgentStoryLaunchHoldProgress = { boundReached: false };
-    await new Promise<void>((resolve) => {
-      const holdBoundTimer = setTimeout(() => {
-        holdProgress.boundReached = true;
-        resolve();
-      }, URGENT_STORY_LAUNCH_HOLD_BOUND_SECONDS * 1000);
-      void this.urgentStoryLaunchHoldRun(
-        holdRepository,
-        sleeper,
-        target,
-        holdProgress,
-      ).then(() => {
-        clearTimeout(holdBoundTimer);
-        resolve();
-      });
-    });
-    if (holdProgress.boundReached) {
-      console.warn(
-        `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}stopped waiting for the hold of ${target.callerIssueUrl} after ${URGENT_STORY_LAUNCH_HOLD_BOUND_SECONDS}s; the spawn goes ahead`,
-      );
-      await this.urgentStoryLaunchHoldingRecordDelete(holdRepository);
-    }
-  };
-
-  private urgentStoryLaunchHoldRun = async (
-    holdRepository: UrgentStoryLaunchHoldRepository,
-    sleeper: Sleeper,
-    target: UrgentStoryLaunchHoldTarget,
-    holdProgress: UrgentStoryLaunchHoldProgress,
-  ): Promise<void> => {
-    try {
-      await this.urgentStoryLaunchHoldPoll(
-        holdRepository,
-        sleeper,
-        target,
-        holdProgress,
-      );
-    } catch (error) {
-      urgentStoryLaunchHoldFailureLog(error);
-    }
-    await this.urgentStoryLaunchHoldingRecordDelete(holdRepository);
-  };
-
-  private urgentStoryLaunchHoldingRecordDelete = async (
-    holdRepository: UrgentStoryLaunchHoldRepository,
-  ): Promise<void> => {
-    try {
-      await holdRepository.deleteHoldingRecord();
-    } catch (error) {
-      urgentStoryLaunchHoldFailureLog(error);
-    }
-  };
-
-  private urgentStoryLaunchHoldPoll = async (
-    holdRepository: UrgentStoryLaunchHoldRepository,
-    sleeper: Sleeper,
-    target: UrgentStoryLaunchHoldTarget,
-    holdProgress: UrgentStoryLaunchHoldProgress,
-  ): Promise<void> => {
-    const { callerIssueUrl } = target;
-    const holdStartedAtMilliseconds = Date.now();
-    let holding = false;
-    for (;;) {
-      const evaluatedAt = new Date();
-      const decision = await this.urgentStoryLaunchHoldEvaluate(
-        holdRepository,
-        target,
-        evaluatedAt,
-      );
-      if (holdProgress.boundReached) {
-        return;
-      }
-      const waitedSeconds = Math.round(
-        (evaluatedAt.getTime() - holdStartedAtMilliseconds) / 1000,
-      );
-      const proceedLog = (reason: string): void => {
-        console.log(
-          holding
-            ? `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}released ${callerIssueUrl} after ${waitedSeconds}s: ${reason}`
-            : `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}${callerIssueUrl} proceeds to spawn: ${reason}`,
-        );
-      };
-      switch (decision.kind) {
-        case 'callerStoryIsUrgent':
-          console.log(
-            `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}urgent-story task ${callerIssueUrl} (story ${decision.callerStory}) proceeds to spawn`,
-          );
-          return;
-        case 'urgentTaskDependsOnCaller':
-          console.log(
-            `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}${callerIssueUrl} proceeds to spawn because urgent-story task ${decision.dependingUrgentIssueUrl} depends on it and is waiting in Awaiting Workspace`,
-          );
-          return;
-        case 'noUrgentTaskWaiting':
-          proceedLog('no urgent-story task of another project is waiting');
-          return;
-        case 'freeSlotCountUnknown':
-          console.warn(
-            `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}cannot count free token slots; ${callerIssueUrl} spawns without the urgent-story hold`,
-          );
-          return;
-        case 'freeSlotsExceedWaitingUrgentTasks':
-          proceedLog(
-            `${decision.freeSlotCount} free slot(s) exceed the ${decision.waitingUrgentIssueUrls.length} waiting urgent-story task(s)`,
-          );
-          return;
-        case 'hold':
-          break;
-      }
-      if (waitedSeconds >= URGENT_STORY_LAUNCH_HOLD_TIMEOUT_SECONDS) {
-        await holdRepository.recordTimedOutIssueUrls(
-          decision.waitingUrgentIssueUrls,
-          new Date(),
-        );
-        console.warn(
-          `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}stopped holding ${callerIssueUrl} after ${waitedSeconds}s; urgent-story task(s) still not spawned and not waited for during the next ${URGENT_STORY_LAUNCH_HOLD_TIMED_OUT_ISSUE_IGNORED_SECONDS}s: ${decision.waitingUrgentIssueUrls.join(' ')}`,
-        );
-        return;
-      }
-      if (!holding) {
-        holding = true;
-        await holdRepository.createHoldingRecord(decision.callerProjectUrl);
-        console.log(
-          `${URGENT_STORY_LAUNCH_HOLD_LOG_PREFIX}holding ${callerIssueUrl} (story ${decision.callerStory ?? 'unknown'}) because ${decision.waitingUrgentIssueUrls.length} urgent-story task(s) wait for ${decision.freeSlotCount} free slot(s): ${decision.waitingUrgentIssueUrls.join(' ')}`,
-        );
-      }
-      await sleeper.sleep(URGENT_STORY_LAUNCH_HOLD_POLL_INTERVAL_MILLISECONDS);
-    }
-  };
-
-  private urgentStoryLaunchHoldEvaluate = async (
-    holdRepository: UrgentStoryLaunchHoldRepository,
-    target: UrgentStoryLaunchHoldTarget,
-    evaluatedAt: Date,
-  ): Promise<UrgentStoryLaunchHoldDecision> => {
-    const decideInputWithoutFreeSlotCount = {
-      urgentStoryNames: target.urgentStoryNames,
-      callerIssueUrl: target.callerIssueUrl,
-      configuredProjectUrl: target.configuredProjectUrl,
-      manager: target.manager,
-      boardState: await holdRepository.readBoardState(evaluatedAt),
-      now: evaluatedAt,
-    };
-    const decisionWithoutFreeSlotCount = urgentStoryLaunchHoldDecide({
-      ...decideInputWithoutFreeSlotCount,
-      freeSlotCount: null,
-    });
-    if (decisionWithoutFreeSlotCount.kind !== 'freeSlotCountUnknown') {
-      return decisionWithoutFreeSlotCount;
-    }
-    return urgentStoryLaunchHoldDecide({
-      ...decideInputWithoutFreeSlotCount,
-      freeSlotCount:
-        await this.urgentStoryLaunchHoldFreeSlotCountRead(holdRepository),
-    });
-  };
-
-  private urgentStoryLaunchHoldFreeSlotCountRead = async (
-    holdRepository: UrgentStoryLaunchHoldRepository,
-  ): Promise<number | null> => {
-    const tokenUsages = await holdRepository.getAvailableTokenUsages();
-    if (tokenUsages.length === 0) {
-      return null;
-    }
-    const { tokensWithLimits } = this.selectRotationTokens(
-      tokenUsages,
-      URGENT_STORY_LAUNCH_HOLD_UTILIZATION_PERCENTAGE_THRESHOLD,
-      URGENT_STORY_LAUNCH_HOLD_TOKEN_MODEL_NAME,
-      null,
-      Number.MAX_SAFE_INTEGER,
-      NORMAL_CONCURRENT_LIMIT,
-    );
-    const tokens = tokensWithLimits.map(({ token }) => token);
-    const tokenInFlightCounts = await holdRepository.getTokenInFlightCounts();
-    const pendingTokenLaunchReservationCounts =
-      await holdRepository.getPendingTokenLaunchReservationCounts(tokens);
-    const effectiveTokenInFlightCounts = tokenEffectiveInFlightCountsOf(
-      tokenInFlightCounts,
-      pendingTokenLaunchReservationCounts,
-      tokens,
-    );
-    return tokensWithLimits.reduce(
-      (freeSlotCount, { token, limit }) =>
-        freeSlotCount +
-        Math.max(0, limit - (effectiveTokenInFlightCounts[token] ?? 0)),
-      0,
-    );
-  };
-
   private moveDisabledStoryIssueToIcebox = async (
     issue: Issue,
     project: Project,
@@ -780,7 +548,6 @@ export class StartPreparationUseCase {
     maxConcurrentWorkers?: number | null;
     graphqlRateLimitFloor?: number | null;
     minimumIssueAgeMs?: number;
-    urgentStoryNames?: string[];
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const normalConcurrentLimit =
       params.normalConcurrentLimit ?? NORMAL_CONCURRENT_LIMIT;
@@ -1419,12 +1186,6 @@ export class StartPreparationUseCase {
           ];
         awArgs.push('--codexHome', codexHome);
       }
-      await this.urgentStoryLaunchHoldWait({
-        callerIssueUrl: issue.url,
-        urgentStoryNames: params.urgentStoryNames ?? [],
-        configuredProjectUrl: params.projectUrl,
-        manager: params.manager,
-      });
       const spawnResult = await this.localCommandRunner.runCommand(
         'aw',
         awArgs,

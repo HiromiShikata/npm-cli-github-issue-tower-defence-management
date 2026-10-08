@@ -1212,47 +1212,54 @@ describe('HandleScheduledEventUseCase', () => {
       ]);
     });
 
-    it('passes startPreparation.urgentStoryNames to StartPreparationUseCase.run as urgentStoryNames', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
+    it.each([
+      {
+        label: 'omit urgentStoryNames',
         startPreparation: {
           defaultAgentName: 'agent1',
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          urgentStoryNames: [
-            'urgent / production incident',
-            'urgent / customer escalation',
-          ],
         },
-      };
+      },
+      {
+        label: 'still list urgentStoryNames',
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          urgentStoryNames: ['Story A'],
+        },
+      },
+    ])(
+      'calls StartPreparationUseCase.run with an input that has no urgentStoryNames property when the startPreparation settings $label',
+      async ({ startPreparation }) => {
+        const input = {
+          projectName: 'test-project',
+          org: 'test-org',
+          projectUrl: 'https://github.com/test-org/test-project',
+          manager: 'test-manager',
+          workingReport: {
+            repo: 'test-repo',
+            members: ['member1'],
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+          },
+          urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+          disabled: false,
+          startPreparation,
+        };
 
-      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
-      mockStartPreparationUseCase.run.mockResolvedValue({
-        rotationOrder: null,
-      });
-      await useCase.run(input);
+        mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+        mockStartPreparationUseCase.run.mockResolvedValue({
+          rotationOrder: null,
+        });
+        await useCase.run(input);
 
-      expect(mockStartPreparationUseCase.run.mock.calls).toEqual([
-        [
-          expect.objectContaining({
-            urgentStoryNames: [
-              'urgent / production incident',
-              'urgent / customer escalation',
-            ],
-          }),
-        ],
-      ]);
-    });
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
+        expect(
+          mockStartPreparationUseCase.run.mock.calls[0][0],
+        ).not.toHaveProperty('urgentStoryNames');
+      },
+    );
 
     it('should invoke UpdateRateLimitCacheUseCase before StartPreparationUseCase when startPreparation is configured', async () => {
       const callOrder: string[] = [];
