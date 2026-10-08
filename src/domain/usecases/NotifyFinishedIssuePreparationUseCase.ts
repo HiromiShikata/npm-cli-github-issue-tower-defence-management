@@ -624,6 +624,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         comments,
         isTrustedAuthor,
         latestReopenedAt,
+        agentFieldValue: issue.agent,
       });
       const thisDispatchCount = consecutiveCount + 1;
       if (thisDispatchCount >= params.thresholdForAutoReject) {
