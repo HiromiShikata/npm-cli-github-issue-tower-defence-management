@@ -578,7 +578,7 @@ This issue's story field has been unset for ${params.thresholdForDispatchLoop} c
         type: 'storyUnset',
         comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_KEYWORD} ${params.nextStepAgent}
 
-The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead. (${storyUnsetDispatchState.count}/${params.thresholdForDispatchLoop})`,
+The story field is not set on this issue. The designated agent "${params.nextStepAgent}" will be dispatched again once a story is assigned. (${storyUnsetDispatchState.count}/${params.thresholdForDispatchLoop})`,
         existingCommentId: storyUnsetDispatchState.existingCommentId,
       };
     }
