@@ -156,8 +156,10 @@ const isRateLimitSilentFailureExclusionActive = <
         return false;
       }
       const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (reportAgentName === null) {
+        return true;
+      }
       return (
-        reportAgentName !== null &&
         params.targetAgentName !== null &&
         normalizeProjectFieldName(reportAgentName) ===
           normalizeProjectFieldName(params.targetAgentName)
@@ -187,8 +189,10 @@ export const countConsecutiveNoReportDispatches = <
         return found;
       }
       const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (reportAgentName === null) {
+        return index;
+      }
       if (
-        reportAgentName === null ||
         params.agentFieldValue === null ||
         normalizeProjectFieldName(reportAgentName) !==
           normalizeProjectFieldName(params.agentFieldValue)
@@ -332,10 +336,12 @@ const countSilentRedispatches = <
           return false;
         }
         const reportAgentName = extractAgentNameFromReportBody(comment.content);
+        if (reportAgentName === null) {
+          return true;
+        }
         return (
-          reportAgentName !== null &&
           normalizeProjectFieldName(reportAgentName) ===
-            normalizeProjectFieldName(nextStepAgent)
+          normalizeProjectFieldName(nextStepAgent)
         );
       });
   const agentSelfReported =
@@ -426,10 +432,12 @@ const countDispatchesInCurrentCycle = <
           return true;
         }
         const reportAgentName = extractAgentNameFromReportBody(comment.content);
+        if (reportAgentName === null) {
+          return true;
+        }
         return (
-          reportAgentName !== null &&
           normalizeProjectFieldName(reportAgentName) ===
-            normalizeProjectFieldName(params.agentFieldValue)
+          normalizeProjectFieldName(params.agentFieldValue)
         );
       }
       return (
