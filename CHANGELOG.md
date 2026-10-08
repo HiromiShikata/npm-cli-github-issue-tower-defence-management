@@ -1,3 +1,10 @@
+# [2.165.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.16...v2.165.0) (2026-10-08)
+
+
+### Features
+
+* **StartPreparationUseCase:** remove the urgent-story launch hold ([#3320](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3320)) ([b7a37f9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7a37f95bf93ed016438419e19dd2d0083eb3451))
+
 ## [2.164.16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.15...v2.164.16) (2026-10-08)
 
 
