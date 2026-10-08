@@ -1551,6 +1551,24 @@ export const handleIssueCommentBodyUpdate = async (
   return ok();
 };
 
+const handleRenamedStoryIssueInBackground = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  storyOptionId: string,
+  newName: string,
+): Promise<void> => {
+  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
+  const storyIssue = storyObjectMap.get(storyOptionId)?.storyIssue ?? null;
+  if (storyIssue === null) {
+    return;
+  }
+  try {
+    await issueRepository.updateIssue({ ...storyIssue, title: newName });
+  } catch (e) {
+    console.error('Background story issue rename failed:', e);
+  }
+};
+
 export const handleStoryRename = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -1585,15 +1603,13 @@ export const handleStoryRename = async (
   if (isOperationResponse(resolved)) {
     return resolved;
   }
-  const { storyOption, freshStories, projectWithFreshStoryFieldId } = resolved;
+  const { freshStories, projectWithFreshStoryFieldId } = resolved;
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
   }
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
-  const storyIssue = storyObjectMap.get(storyOption.id)?.storyIssue ?? null;
   const renamedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, name: newName } : s,
   );
@@ -1602,10 +1618,16 @@ export const handleStoryRename = async (
     renamedStories,
   );
   context.invalidateProject?.(pjcode);
-  if (storyIssue !== null) {
-    await issueRepository.updateIssue({ ...storyIssue, title: newName });
-  }
-  return ok();
+  const backgroundTask = handleRenamedStoryIssueInBackground(
+    issueRepository,
+    project,
+    storyOptionId,
+    newName,
+  );
+  backgroundTask.catch((e) =>
+    console.error('Background story issue rename failed:', e),
+  );
+  return { statusCode: 200, body: { ok: true }, backgroundTask };
 };
 
 export const handleStoryUpdateDescription = async (
