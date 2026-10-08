@@ -239,6 +239,37 @@ This no-next-step-agent task has been dispatched 3 times since the last human co
   createdAt: TEST_COMMENT_CREATED_AT,
 });
 
+const reportWithNoNextStepAgent = (
+  selfDeclaredAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `From: :robot: ${selfDeclaredAgent} (model)
+
+\`\`\`json
+{ "nextStep": null }
+\`\`\`
+
+Report body.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
+});
+
+const reportDeclaringNextStepAgent = (
+  selfDeclaredAgent: string,
+  declaredNextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `From: :robot: ${selfDeclaredAgent} (model)
+
+\`\`\`json
+{ "nextStepAgent": "${declaredNextStepAgent}" }
+\`\`\`
+
+Report body.`,
+  createdAt: TEST_COMMENT_CREATED_AT,
+});
+
 describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('silent agent bound', () => {
     it('returns notRepeated when the agent field holds no value', () => {
@@ -1470,6 +1501,162 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   });
 });
 
+describe('countDispatchesInCurrentCycle null-target branch cross-agent attribution fix', () => {
+  it('excludes a report from a different agent dispatched elsewhere so the cross-agent count no longer reaches the dispatch loop threshold (table case 1)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: null,
+      comments: [
+        reportWithNoNextStepAgent('other-agent'),
+        reportWithNoNextStepAgent('developer'),
+        reportWithNoNextStepAgent('developer'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 3,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('notRepeated');
+  });
+
+  it('still escalates to escalateDispatchLoop when every report self-declares the agent field value (table case 2, regression check)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: null,
+      comments: [
+        reportWithNoNextStepAgent('developer'),
+        reportWithNoNextStepAgent('developer'),
+        reportWithNoNextStepAgent('developer'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 3,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateDispatchLoop');
+  });
+
+  it('leaves the named-target branch dispatch count unaffected by the self-declared-name cross-check (table case 3, regression check)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: 'agentY',
+      comments: [
+        reportDeclaringNextStepAgent('agentX', 'agentY'),
+        reportDeclaringNextStepAgent('agentY', 'agentY'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 2,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateDispatchLoop');
+  });
+});
+
+describe('countSilentRedispatches hasReportsAfterFirstRedispatch cross-agent attribution fix', () => {
+  it('does not treat a report from a different agent after the first silent redispatch as evidence the dispatched agent itself reported (table case 4)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: [
+        repetitionComment('developer'),
+        reportWithNoNextStepAgent('other-agent'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 2,
+      thresholdForDispatchLoop: 99,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateSilentRedispatch');
+  });
+
+  it('still treats a same-agent report after the first silent redispatch as evidence the dispatched agent reported (table case 5, regression check)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: [
+        repetitionComment('developer'),
+        reportWithNoNextStepAgent('developer'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 2,
+      thresholdForDispatchLoop: 99,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateReportingLoop');
+  });
+});
+
+describe('isRateLimitSilentFailureExclusionActive target-agent attribution fix', () => {
+  it('preserves the post-rate-limit grace period on the self-redispatch path when an unrelated agent report follows the rate-limit record (table case 6)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: [
+        rateLimitRecordComment(),
+        reportWithNoNextStepAgent('other-agent'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 1,
+      thresholdForDispatchLoop: 99,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('dispatchAgain');
+    expect(result.type === 'dispatchAgain' ? result.comment : '').toContain(
+      '(1/1)',
+    );
+  });
+
+  it('preserves the post-rate-limit grace period on the story-unset path even when a report happens to self-declare the nominated (inactive) agent name (table case 7)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'otherAgent',
+      comments: [
+        rateLimitRecordComment(),
+        reportWithNoNextStepAgent('otherAgent'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 1,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('storyUnset');
+  });
+
+  it('leaves the escalation result unaffected when no rate-limit record exists in the comment history (table case 10, regression check)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: [
+        repetitionComment('developer'),
+        repetitionComment('developer'),
+        repetitionComment('developer'),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 99,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+
+    expect(result.type).toBe('escalateSilentRedispatch');
+  });
+});
+
 describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
   it.each([
     {
@@ -1660,6 +1847,7 @@ describe('countConsecutiveNoReportDispatches', () => {
       countConsecutiveNoReportDispatches({
         comments: [],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(0);
   });
@@ -1669,6 +1857,7 @@ describe('countConsecutiveNoReportDispatches', () => {
       countConsecutiveNoReportDispatches({
         comments: [humanComment(), report('developer')],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(0);
   });
@@ -1678,6 +1867,7 @@ describe('countConsecutiveNoReportDispatches', () => {
       countConsecutiveNoReportDispatches({
         comments: [noReportAgainComment(1, 3)],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(1);
   });
@@ -1687,6 +1877,7 @@ describe('countConsecutiveNoReportDispatches', () => {
       countConsecutiveNoReportDispatches({
         comments: [noReportAgainComment(1, 3), noReportAgainComment(2, 3)],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(2);
   });
@@ -1700,6 +1891,7 @@ describe('countConsecutiveNoReportDispatches', () => {
           humanComment(),
         ],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(0);
   });
@@ -1714,6 +1906,7 @@ describe('countConsecutiveNoReportDispatches', () => {
           noReportAgainComment(1, 3),
         ],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(1);
   });
@@ -1727,6 +1920,7 @@ describe('countConsecutiveNoReportDispatches', () => {
           report('developer'),
         ],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(0);
   });
@@ -1741,6 +1935,7 @@ describe('countConsecutiveNoReportDispatches', () => {
           noReportAgainComment(1, 3),
         ],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(1);
   });
@@ -1754,6 +1949,7 @@ describe('countConsecutiveNoReportDispatches', () => {
           noReportAgainComment(2, 3, 'untrusted-user'),
         ],
         isTrustedAuthor: trustNone,
+        agentFieldValue: 'developer',
       }),
     ).toBe(0);
   });
@@ -1768,7 +1964,33 @@ describe('countConsecutiveNoReportDispatches', () => {
           noReportAgainComment(1, 3),
         ],
         isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
       }),
     ).toBe(1);
+  });
+
+  it('excludes a report from a different agent dispatched elsewhere from resetting the streak, so the NO_REPORT_AGAIN count keeps accumulating through it (table case 8)', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [
+          noReportAgainComment(1, 3),
+          noReportAgainComment(2, 3),
+          reportWithNoNextStepAgent('other-agent'),
+          noReportAgainComment(1, 3),
+        ],
+        isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
+      }),
+    ).toBe(3);
+  });
+
+  it('still returns the same consecutive count when no report-type comment is present (table case 9, regression check)', () => {
+    expect(
+      countConsecutiveNoReportDispatches({
+        comments: [noReportAgainComment(1, 3), noReportAgainComment(2, 3)],
+        isTrustedAuthor: trustAll,
+        agentFieldValue: 'developer',
+      }),
+    ).toBe(2);
   });
 });
