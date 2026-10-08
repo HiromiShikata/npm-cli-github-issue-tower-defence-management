@@ -1,3 +1,10 @@
+## [2.164.15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.14...v2.164.15) (2026-10-08)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** require self-declared agent name match before counting a report ([#3314](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3314)) ([c96ef72](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c96ef722543ea6fea331d192cb57dc39e595ff66)), closes [#3291](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3291)
+
 ## [2.164.14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.13...v2.164.14) (2026-10-07)
 
 
