@@ -338,7 +338,7 @@ describe('ClosedAwaitingOwnerIssueRevertUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it('reverts the Status to Awaiting Workspace when a comment matching isAgentComment\'s content pattern is posted by the issue\'s own hostile author and that author is not in allowedIssueAuthors, proving the fresh-agent-comment check cannot be defeated by the issue author impersonating an agent', async () => {
+    it("reverts the Status to Awaiting Workspace when a comment matching isAgentComment's content pattern is posted by the issue's own hostile author and that author is not in allowedIssueAuthors, proving the fresh-agent-comment check cannot be defeated by the issue author impersonating an agent", async () => {
       const latestReopenedAt = new Date('2026-10-02T10:00:00Z');
       const issue = createMockIssue({
         author: 'maliciousUser',
