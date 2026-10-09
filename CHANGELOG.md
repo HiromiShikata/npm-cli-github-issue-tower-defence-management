@@ -1,3 +1,10 @@
+## [2.165.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.0...v2.165.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** correct false "default agent" description in no-story fallback status comment ([#3322](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3322)) ([4e7cd84](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4e7cd84e448ad95378c3ea0b95d4c367896fdf53))
+
 # [2.165.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.164.16...v2.165.0) (2026-10-08)
 
 
