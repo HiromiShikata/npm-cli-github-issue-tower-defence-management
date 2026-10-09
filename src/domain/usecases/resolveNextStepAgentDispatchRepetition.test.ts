@@ -1057,8 +1057,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         (clause) => !/default/i.test(clause),
       );
       const redispatchStatedForNamedAgent = clausesNotAboutADefaultAgent.some(
-        (clause) =>
-          clause.includes(nextStepAgent) && /dispatch/i.test(clause),
+        (clause) => clause.includes(nextStepAgent) && /dispatch/i.test(clause),
       );
       expect(redispatchStatedForNamedAgent).toBe(true);
     });
