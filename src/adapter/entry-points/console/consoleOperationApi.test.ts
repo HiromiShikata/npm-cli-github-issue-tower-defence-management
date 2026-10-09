@@ -949,6 +949,22 @@ describe('consoleOperationApi', () => {
       }
     });
 
+    it('updateStatusByName rejects a set_status write with a bad-gateway error naming the issue when the live issue cannot be loaded', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_live_issue_missing',
+        statusName: 'Awaiting workspace',
+        expectedStatusName: 'Preparation',
+      });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(response.statusCode).toBe(502);
+      const errorBody = response.body as { error: string };
+      expect(errorBody.error).toContain('https://github.com/o/r/issues/1');
+    });
+
     it('sets the story option', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
