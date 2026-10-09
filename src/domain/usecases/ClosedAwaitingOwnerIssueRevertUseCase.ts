@@ -7,6 +7,7 @@ import {
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { isAgentComment, TrustedAuthorCheck } from './isAgentComment';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
@@ -29,8 +30,9 @@ export class ClosedAwaitingOwnerIssueRevertUseCase {
   run = async (params: {
     project: Project;
     issues: Issue[];
+    allowedIssueAuthors?: string[] | null;
   }): Promise<number> => {
-    const { project } = params;
+    const { project, allowedIssueAuthors } = params;
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
       (statusOption) => statusOption.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
@@ -58,12 +60,15 @@ export class ClosedAwaitingOwnerIssueRevertUseCase {
           const latestReopenedAt =
             await this.issueRepository.getLatestReopenedEventAt(issue);
           if (latestReopenedAt === null) {
+            console.warn(
+              `ClosedAwaitingOwnerIssueRevertUseCase: no reopened-event timeline entry found for issue with stateReason REOPENED despite GitHub reporting one, skipping. issueUrl: ${issue.url}`,
+            );
             continue;
           }
           const comments =
             await this.issueCommentRepository.getCommentsFromIssue(issue);
           const isTrustedAuthor: TrustedAuthorCheck = (author) =>
-            author === issue.author;
+            isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
           const hasFreshAgentComment = comments.some(
             (comment) =>
               comment.createdAt.getTime() > latestReopenedAt.getTime() &&

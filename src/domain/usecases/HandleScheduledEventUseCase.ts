@@ -676,6 +676,7 @@ ${JSON.stringify(e)}
         await this.closedAwaitingOwnerIssueRevertUseCase.run({
           project,
           issues,
+          allowedIssueAuthors,
         });
       },
       failures,
