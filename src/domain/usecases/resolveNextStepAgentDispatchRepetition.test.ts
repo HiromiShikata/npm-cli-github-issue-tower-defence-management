@@ -113,7 +113,7 @@ const storyUnsetMarkerComment = (
   author,
   content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET ${nextStepAgent}
 
-The story field is not set on this issue. The designated agent "${nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+The story field is not set on this issue. The designated agent "${nextStepAgent}" will be dispatched again once a story is assigned.`,
   createdAt: TEST_COMMENT_CREATED_AT,
 });
 
@@ -1017,6 +1017,69 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const comment = result.type === 'storyUnset' ? result.comment : '';
       expect(comment).not.toContain('crashed');
       expect(comment).not.toContain('silently');
+    });
+
+    it('storyUnset comment contains no "default agent" substitution language', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      const comment = result.type === 'storyUnset' ? result.comment : '';
+      expect(comment).not.toContain('default agent');
+      expect(comment).not.toContain('being dispatched instead');
+    });
+
+    it('storyUnset comment states that the designated agent itself will be redispatched, never a substituted default agent', () => {
+      const nextStepAgent = 'developer';
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: nextStepAgent,
+        nextStepAgent,
+        comments: [report(nextStepAgent)],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      const comment = result.type === 'storyUnset' ? result.comment : '';
+      const sentenceClauses = comment
+        .split(/[.;]/)
+        .filter((clause) => clause.trim().length > 0);
+      const clausesNotAboutADefaultAgent = sentenceClauses.filter(
+        (clause) => !/default/i.test(clause),
+      );
+      const redispatchStatedForNamedAgent = clausesNotAboutADefaultAgent.some(
+        (clause) => clause.includes(nextStepAgent) && /dispatch/i.test(clause),
+      );
+      expect(redispatchStatedForNamedAgent).toBe(true);
+    });
+
+    it('storyUnset comment keeps the marker first line and the trailing (count/threshold) suffix format', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+        currentDispatchHasNoReportRejection: false,
+      });
+
+      const comment = result.type === 'storyUnset' ? result.comment : '';
+      const firstLine = comment.split('\n')[0];
+      expect(firstLine).toBe(
+        `${AUTO_STATUS_CHECK_MESSAGE_HEAD} STORY_UNSET developer`,
+      );
+      expect(comment.trimEnd()).toMatch(/\(1\/6\)$/);
     });
 
     it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold', () => {
