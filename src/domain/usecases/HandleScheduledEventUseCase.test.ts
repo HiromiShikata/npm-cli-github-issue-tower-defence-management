@@ -1141,9 +1141,7 @@ describe('HandleScheduledEventUseCase', () => {
           expect(
             mockClosedAwaitingOwnerIssueRevertUseCase.run,
           ).toHaveBeenCalledTimes(1);
-          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(
-            1,
-          );
+          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(1);
           expect(
             mockRevertNotReadyReviewQueueIssueUseCase.run,
           ).toHaveBeenCalledTimes(1);
