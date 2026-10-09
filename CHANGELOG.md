@@ -1,3 +1,10 @@
+## [2.165.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.1...v2.165.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **ClosedAwaitingOwnerIssueRevertUseCase:** reopen and revert a closed Awaiting Owner issue to Awaiting Workspace for re-dispatch ([#3324](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3324)) ([085ec5d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/085ec5d9db03c6054d6b5d78780c0587c0c1d480))
+
 ## [2.165.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.0...v2.165.1) (2026-10-09)
 
 
