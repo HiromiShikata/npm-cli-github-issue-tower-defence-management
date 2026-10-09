@@ -7,23 +7,11 @@ import {
 } from '../entities/WorkflowStatus';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { isAgentReportBody } from './isAgentReportBody';
+import { isAgentComment, TrustedAuthorCheck } from './isAgentComment';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { isHumanComment } from './isHumanComment';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
-
-const AGENT_COMMENT_PREFIX = 'From: :robot: ';
-
-type TrustedAuthorCheck = (author: string) => boolean;
-
-const isAgentComment = (
-  comment: Comment,
-  isTrustedAuthor: TrustedAuthorCheck,
-): boolean =>
-  isTrustedAuthor(comment.author) &&
-  (comment.content.trimStart().startsWith(AGENT_COMMENT_PREFIX) ||
-    isAgentReportBody(comment.content));
 
 const isOwnerReply = (
   comment: Comment,

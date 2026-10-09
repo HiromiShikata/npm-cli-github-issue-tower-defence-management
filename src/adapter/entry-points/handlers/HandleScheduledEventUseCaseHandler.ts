@@ -81,6 +81,7 @@ import { ReopenedDoneIssueRevertUseCase } from '../../../domain/usecases/Reopene
 import { ClosedStoryIssueReopenUseCase } from '../../../domain/usecases/ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from '../../../domain/usecases/ConflictedIssueRevertUseCase';
 import { OwnerRepliedIssueRevertUseCase } from '../../../domain/usecases/OwnerRepliedIssueRevertUseCase';
+import { ClosedAwaitingOwnerIssueRevertUseCase } from '../../../domain/usecases/ClosedAwaitingOwnerIssueRevertUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
@@ -610,6 +611,11 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       issueCommentRepository,
     );
+    const closedAwaitingOwnerIssueRevertUseCase =
+      new ClosedAwaitingOwnerIssueRevertUseCase(
+        issueRepository,
+        issueCommentRepository,
+      );
     const revertNotReadyReviewQueueIssueUseCase =
       new RevertNotReadyReviewQueueIssueUseCase(
         projectRepository,
@@ -661,6 +667,7 @@ export class HandleScheduledEventUseCaseHandler {
       nonPreparationWorkerScopeStopUseCase,
       conflictedIssueRevertUseCase,
       ownerRepliedIssueRevertUseCase,
+      closedAwaitingOwnerIssueRevertUseCase,
       revertNotReadyReviewQueueIssueUseCase,
       agentDesignationLabelAdoptUseCase,
       updateRateLimitCacheUseCase,
