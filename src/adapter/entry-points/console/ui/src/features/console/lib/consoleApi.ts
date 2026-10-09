@@ -32,6 +32,7 @@ export type ConsoleReviewRequest = {
   changedFilePath?: string;
   line?: number;
   side?: ConsoleReviewCommentSide;
+  expectedStatusName?: string | null;
 };
 
 export type ConsoleTriageRequest = {
@@ -43,6 +44,7 @@ export type ConsoleTriageRequest = {
   storyOptionId?: string;
   agentOptionId?: string;
   commentBody?: string;
+  expectedStatusName?: string | null;
 };
 
 export type ConsoleIntmuxRequest = {
@@ -50,6 +52,7 @@ export type ConsoleIntmuxRequest = {
   action: 'set_intmux';
   issueUrl: string;
   projectItemId: string;
+  expectedStatusName?: string | null;
 };
 
 export type ConsoleReviewCommentSide = 'LEFT' | 'RIGHT';

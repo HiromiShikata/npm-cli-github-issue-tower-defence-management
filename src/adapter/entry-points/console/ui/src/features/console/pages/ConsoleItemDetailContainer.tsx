@@ -104,7 +104,7 @@ const buildReviewOfflinePayload = (
   ) as unknown as Record<string, unknown>,
 });
 
-const buildTriageOfflinePayload = (
+export const buildTriageOfflinePayload = (
   pjcode: string,
   item: ConsoleListItem,
   action:
@@ -129,7 +129,7 @@ const buildTriageOfflinePayload = (
   ) as unknown as Record<string, unknown>,
 });
 
-const buildIntmuxOfflinePayload = (
+export const buildIntmuxOfflinePayload = (
   pjcode: string,
   item: ConsoleListItem,
 ): ConsoleOfflinePayload => ({

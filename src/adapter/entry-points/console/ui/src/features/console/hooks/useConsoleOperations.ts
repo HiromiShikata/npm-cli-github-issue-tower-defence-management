@@ -117,6 +117,7 @@ export const reviewRequest = (
       action: 'approve_and_merge',
       prUrl,
       projectItemId: item.projectItemId,
+      expectedStatusName: item.status,
     };
   }
   if (action === 'request_changes') {
@@ -127,6 +128,7 @@ export const reviewRequest = (
       prUrl,
       projectItemId: item.projectItemId,
       commentBody: buildRequestChangesBody(pendingReviewComments),
+      expectedStatusName: item.status,
       ...(firstComment === undefined
         ? {}
         : {
@@ -144,6 +146,7 @@ export const reviewRequest = (
       issueUrl: item.url,
       projectItemId: item.projectItemId,
       commentBody: TOTALLY_WRONG_COMMENT_BODY,
+      expectedStatusName: item.status,
     };
   }
   return {
@@ -154,6 +157,7 @@ export const reviewRequest = (
     issueUrl: item.url,
     commentBody: UNNECESSARY_COMMENT_BODY,
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
+    expectedStatusName: item.status,
   };
 };
 
@@ -176,6 +180,7 @@ export const buildTriageRequest = (
   action,
   issueUrl: item.url,
   projectItemId: item.projectItemId,
+  expectedStatusName: item.status,
   ...(extra ?? {}),
 });
 
@@ -187,6 +192,7 @@ export const buildIntmuxRequest = (
   action: 'set_intmux',
   issueUrl: item.url,
   projectItemId: item.projectItemId,
+  expectedStatusName: item.status,
 });
 
 export const commentRequestBuild = (
@@ -311,13 +317,9 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
+      const request = buildTriageRequest(pjcode, item, 'set_status', {
         statusName: option.name,
-      };
+      });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
@@ -329,12 +331,7 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleIntmuxRequest = {
-        pjcode,
-        action: 'set_intmux',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-      };
+      const request = buildIntmuxRequest(pjcode, item);
       await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
