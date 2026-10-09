@@ -328,10 +328,48 @@ describe('ClosedAwaitingOwnerIssueRevertUseCase', () => {
         }),
       ]);
 
-      await useCase.run({ project, issues: [issue] });
+      await useCase.run({
+        project,
+        issues: [issue],
+        allowedIssueAuthors: ['HiromiShikata'],
+      });
 
       expect(mockIssueRepository.reopenIssueByUrl).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('reverts the Status to Awaiting Workspace when a comment matching isAgentComment\'s content pattern is posted by the issue\'s own hostile author and that author is not in allowedIssueAuthors, proving the fresh-agent-comment check cannot be defeated by the issue author impersonating an agent', async () => {
+      const latestReopenedAt = new Date('2026-10-02T10:00:00Z');
+      const issue = createMockIssue({
+        author: 'maliciousUser',
+        isClosed: false,
+        state: 'OPEN',
+        stateReason: 'REOPENED',
+      });
+      const project = createMockProject();
+      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValue(
+        latestReopenedAt,
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment({
+          author: 'maliciousUser',
+          content: AGENT_REPORT_BODY,
+          createdAt: new Date('2026-10-03T00:00:00Z'),
+        }),
+      ]);
+
+      await useCase.run({
+        project,
+        issues: [issue],
+        allowedIssueAuthors: ['HiromiShikata'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.reopenIssueByUrl).not.toHaveBeenCalled();
     });
 
     it('leaves the issue untouched when getLatestReopenedEventAt resolves to null', async () => {
@@ -342,11 +380,21 @@ describe('ClosedAwaitingOwnerIssueRevertUseCase', () => {
       });
       const project = createMockProject();
       mockIssueRepository.getLatestReopenedEventAt.mockResolvedValue(null);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
-      await useCase.run({ project, issues: [issue] });
+      try {
+        await useCase.run({ project, issues: [issue] });
 
-      expect(mockIssueRepository.reopenIssueByUrl).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueRepository.reopenIssueByUrl).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(issue.url),
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
     });
   });
 });

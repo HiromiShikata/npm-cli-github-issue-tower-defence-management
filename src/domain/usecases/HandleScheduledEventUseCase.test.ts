@@ -1077,6 +1077,7 @@ describe('HandleScheduledEventUseCase', () => {
       const closedAwaitingOwnerRevertInputCases: {
         name: string;
         input: Parameters<HandleScheduledEventUseCase['run']>[0];
+        expectedAllowedIssueAuthors: string[] | null;
       }[] = [
         {
           name: 'invokes closedAwaitingOwnerIssueRevertUseCase once with the cycle project and issues when allowedIssueAuthors is set',
@@ -1084,10 +1085,12 @@ describe('HandleScheduledEventUseCase', () => {
             ...closedAwaitingOwnerRevertBaseInput,
             allowedIssueAuthors: ['HiromiShikata'],
           },
+          expectedAllowedIssueAuthors: ['HiromiShikata'],
         },
         {
           name: 'invokes closedAwaitingOwnerIssueRevertUseCase once with the cycle project and issues when allowedIssueAuthors is absent, proving there is no feature flag gating it',
           input: closedAwaitingOwnerRevertBaseInput,
+          expectedAllowedIssueAuthors: null,
         },
       ];
 
@@ -1116,6 +1119,7 @@ describe('HandleScheduledEventUseCase', () => {
           ).toHaveBeenCalledWith({
             project: mockProject,
             issues: [awaitingOwnerIssue],
+            allowedIssueAuthors: testCase.expectedAllowedIssueAuthors,
           });
         },
       );
