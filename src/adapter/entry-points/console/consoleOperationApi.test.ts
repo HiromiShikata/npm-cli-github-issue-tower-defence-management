@@ -346,6 +346,28 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_c_totally_wrong');
     });
 
+    it('updateStatusByName rejects or allows a review-triggered write based on whether expectedStatusName matches the live Status', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/9',
+        itemId: 'PVTI_row5_review',
+        status: 'Done',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/9',
+        projectItemId: 'PVTI_row5_review',
+        expectedStatusName: 'Awaiting Quality Check',
+      });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(response.statusCode).toBe(400);
+      const errorBody = response.body as { error: string };
+      expect(errorBody.error).toContain('Awaiting Quality Check');
+      expect(errorBody.error).toContain('Done');
+    });
+
     it('marks a pull request unnecessary by closing it, labelling the item chore and moving it to Awaiting workspace', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
@@ -807,6 +829,124 @@ describe('consoleOperationApi', () => {
 
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
       expect(response.statusCode).toBeLessThan(500);
+    });
+
+    it('updateStatusByName rejects or allows a set_status write based on whether expectedStatusName matches the live Status', async () => {
+      const projectWithPreparation: Project = {
+        ...project,
+        status: {
+          ...project.status,
+          statuses: [
+            ...project.status.statuses,
+            {
+              id: 'status_prep',
+              name: 'Preparation',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const preparationContext = contextForProject(projectWithPreparation);
+      const testCases: {
+        projectItemId: string;
+        expectedStatusNamePresent: boolean;
+        expectedStatusName: string | null;
+        liveStatus: string | null;
+        requestedStatusName: string;
+        writeProceeds: boolean;
+      }[] = [
+        {
+          projectItemId: 'PVTI_row1_key_absent',
+          expectedStatusNamePresent: false,
+          expectedStatusName: null,
+          liveStatus: 'Preparation',
+          requestedStatusName: 'Awaiting Workspace',
+          writeProceeds: true,
+        },
+        {
+          projectItemId: 'PVTI_row2_match',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Awaiting Workspace',
+          requestedStatusName: 'Preparation',
+          writeProceeds: true,
+        },
+        {
+          projectItemId: 'PVTI_row3_mismatch',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Preparation',
+          requestedStatusName: 'Awaiting Workspace',
+          writeProceeds: false,
+        },
+        {
+          projectItemId: 'PVTI_row4_match_own_status',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Preparation',
+          liveStatus: 'Preparation',
+          requestedStatusName: 'Awaiting Workspace',
+          writeProceeds: true,
+        },
+        {
+          projectItemId: 'PVTI_row6_mismatch_moved_on',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Preparation',
+          liveStatus: 'Awaiting Workspace',
+          requestedStatusName: 'Preparation',
+          writeProceeds: false,
+        },
+        {
+          projectItemId: 'PVTI_row7_both_unset',
+          expectedStatusNamePresent: true,
+          expectedStatusName: null,
+          liveStatus: null,
+          requestedStatusName: 'Awaiting Workspace',
+          writeProceeds: true,
+        },
+        {
+          projectItemId: 'PVTI_row8_unset_then_set',
+          expectedStatusNamePresent: true,
+          expectedStatusName: null,
+          liveStatus: 'Preparation',
+          requestedStatusName: 'Awaiting Workspace',
+          writeProceeds: false,
+        },
+      ];
+      for (const testCase of testCases) {
+        issueRepository.updateStatus.mockClear();
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: 'https://github.com/o/r/issues/1',
+          itemId: testCase.projectItemId,
+          status: testCase.liveStatus,
+        });
+        const body: Record<string, unknown> = {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: testCase.projectItemId,
+          statusName: testCase.requestedStatusName,
+        };
+        if (testCase.expectedStatusNamePresent) {
+          body.expectedStatusName = testCase.expectedStatusName;
+        }
+        const response = await handleTriage(preparationContext, body);
+        if (testCase.writeProceeds) {
+          expect(response.statusCode).toBe(200);
+          expect(issueRepository.updateStatus).toHaveBeenCalled();
+        } else {
+          expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+          expect(response.statusCode).toBe(400);
+          const errorBody = response.body as { error: string };
+          if (testCase.expectedStatusName !== null) {
+            expect(errorBody.error).toContain(testCase.expectedStatusName);
+          }
+          if (testCase.liveStatus !== null) {
+            expect(errorBody.error).toContain(testCase.liveStatus);
+          }
+        }
+      }
     });
 
     it('sets the story option', async () => {
@@ -1940,6 +2080,54 @@ describe('consoleOperationApi', () => {
         projectItemId: 'PVTI_i',
       });
       expect(response.statusCode).toBe(400);
+    });
+
+    it('updateStatusByName rejects or allows a set_intmux write based on whether expectedStatusName matches the live Status', async () => {
+      const testCases: {
+        projectItemId: string;
+        expectedStatusName: string;
+        liveStatus: string;
+        writeProceeds: boolean;
+      }[] = [
+        {
+          projectItemId: 'PVTI_row9_mismatch',
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Preparation',
+          writeProceeds: false,
+        },
+        {
+          projectItemId: 'PVTI_row10_match',
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Awaiting Workspace',
+          writeProceeds: true,
+        },
+      ];
+      for (const testCase of testCases) {
+        issueRepository.updateStatus.mockClear();
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: 'https://github.com/o/r/issues/1',
+          itemId: testCase.projectItemId,
+          status: testCase.liveStatus,
+        });
+        const response = await handleIntmux(context, {
+          pjcode: 'acme',
+          action: 'set_intmux',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: testCase.projectItemId,
+          expectedStatusName: testCase.expectedStatusName,
+        });
+        if (testCase.writeProceeds) {
+          expect(response.statusCode).toBe(200);
+          expect(issueRepository.updateStatus).toHaveBeenCalled();
+        } else {
+          expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+          expect(response.statusCode).toBe(400);
+          const errorBody = response.body as { error: string };
+          expect(errorBody.error).toContain(testCase.expectedStatusName);
+          expect(errorBody.error).toContain(testCase.liveStatus);
+        }
+      }
     });
   });
 
