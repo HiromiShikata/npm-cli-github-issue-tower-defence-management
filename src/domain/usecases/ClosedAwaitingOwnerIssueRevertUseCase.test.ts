@@ -9,6 +9,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -279,6 +280,62 @@ describe('ClosedAwaitingOwnerIssueRevertUseCase', () => {
       succeedingIssue,
       'awaiting-workspace-id',
     );
+  });
+
+  it('skips an issue whose updateStatus call throws StaleProjectItemError without counting it as reverted or failed, and still reverts the other closed issue', async () => {
+    const staleIssue = createMockIssue({
+      number: 1,
+      url: 'https://github.com/user/repo/issues/1',
+      itemId: 'item-1',
+      isClosed: true,
+    });
+    const succeedingIssue = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+      itemId: 'item-2',
+      isClosed: true,
+    });
+    const project = createMockProject();
+    mockIssueRepository.updateStatus.mockImplementation(
+      (_project: Project, issue: Issue) =>
+        issue.url === staleIssue.url
+          ? Promise.reject(new StaleProjectItemError('item-1'))
+          : Promise.resolve(undefined),
+    );
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
+    try {
+      const revertedCount = await useCase.run({
+        project,
+        issues: [staleIssue, succeedingIssue],
+      });
+
+      expect(mockIssueRepository.reopenIssueByUrl).toHaveBeenCalledWith(
+        staleIssue.url,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        staleIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        succeedingIssue,
+        'awaiting-workspace-id',
+      );
+      expect(revertedCount).toBe(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(staleIssue.url),
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('item-1'),
+      );
+    } finally {
+      consoleWarnSpy.mockRestore();
+    }
   });
 
   describe('an issue already reopened (stateReason REOPENED) by a prior incomplete run', () => {
