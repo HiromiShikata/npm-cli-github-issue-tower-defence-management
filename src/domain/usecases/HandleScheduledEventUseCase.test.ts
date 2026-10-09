@@ -26,6 +26,7 @@ import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUse
 import { NonPreparationWorkerScopeStopUseCase } from './NonPreparationWorkerScopeStopUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
+import { ClosedAwaitingOwnerIssueRevertUseCase } from './ClosedAwaitingOwnerIssueRevertUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -131,6 +132,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ConflictedIssueRevertUseCase>();
     const mockOwnerRepliedIssueRevertUseCase =
       mock<OwnerRepliedIssueRevertUseCase>();
+    const mockClosedAwaitingOwnerIssueRevertUseCase =
+      mock<ClosedAwaitingOwnerIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockAgentDesignationLabelAdoptUseCase =
@@ -168,6 +171,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockNonPreparationWorkerScopeStopUseCase,
       mockConflictedIssueRevertUseCase,
       mockOwnerRepliedIssueRevertUseCase,
+      mockClosedAwaitingOwnerIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockAgentDesignationLabelAdoptUseCase,
       mockUpdateRateLimitCacheUseCase,
@@ -1048,6 +1052,108 @@ describe('HandleScheduledEventUseCase', () => {
               'simulated ownerRepliedIssueRevertUseCase failure',
             ),
             ownerRepliedRevertError,
+          );
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+    });
+
+    describe('closedAwaitingOwnerIssueRevertUseCase runs on every scheduled run', () => {
+      const closedAwaitingOwnerRevertBaseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      const closedAwaitingOwnerRevertInputCases: {
+        name: string;
+        input: Parameters<HandleScheduledEventUseCase['run']>[0];
+        expectedAllowedIssueAuthors: string[] | null;
+      }[] = [
+        {
+          name: 'invokes closedAwaitingOwnerIssueRevertUseCase once with the cycle project and issues when allowedIssueAuthors is set',
+          input: {
+            ...closedAwaitingOwnerRevertBaseInput,
+            allowedIssueAuthors: ['HiromiShikata'],
+          },
+          expectedAllowedIssueAuthors: ['HiromiShikata'],
+        },
+        {
+          name: 'invokes closedAwaitingOwnerIssueRevertUseCase once with the cycle project and issues when allowedIssueAuthors is absent, proving there is no feature flag gating it',
+          input: closedAwaitingOwnerRevertBaseInput,
+          expectedAllowedIssueAuthors: null,
+        },
+      ];
+
+      it.each(closedAwaitingOwnerRevertInputCases)(
+        '$name',
+        async (testCase) => {
+          const mockProject = mock<Project>();
+          const awaitingOwnerIssue = mock<Issue>();
+          awaitingOwnerIssue.isPr = false;
+          awaitingOwnerIssue.url =
+            'https://github.com/test-org/test-repo/issues/21';
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [awaitingOwnerIssue],
+            project: mockProject,
+            cacheUsed: false,
+          });
+          mockProjectRepository.getProject.mockResolvedValue(mockProject);
+
+          await useCase.run(testCase.input);
+
+          expect(
+            mockClosedAwaitingOwnerIssueRevertUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+          expect(
+            mockClosedAwaitingOwnerIssueRevertUseCase.run,
+          ).toHaveBeenCalledWith({
+            project: mockProject,
+            issues: [awaitingOwnerIssue],
+            allowedIssueAuthors: testCase.expectedAllowedIssueAuthors,
+          });
+        },
+      );
+
+      it('should still invoke conflictedIssueRevertUseCase and revertNotReadyReviewQueueIssueUseCase and log the error when closedAwaitingOwnerIssueRevertUseCase rejects', async () => {
+        const closedAwaitingOwnerRevertError = new Error(
+          'simulated closedAwaitingOwnerIssueRevertUseCase failure',
+        );
+        mockClosedAwaitingOwnerIssueRevertUseCase.run.mockRejectedValueOnce(
+          closedAwaitingOwnerRevertError,
+        );
+        mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        try {
+          await useCase.run({
+            ...closedAwaitingOwnerRevertBaseInput,
+            allowedIssueAuthors: ['HiromiShikata'],
+          });
+
+          expect(
+            mockClosedAwaitingOwnerIssueRevertUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+          expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledTimes(1);
+          expect(
+            mockRevertNotReadyReviewQueueIssueUseCase.run,
+          ).toHaveBeenCalledTimes(1);
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'simulated closedAwaitingOwnerIssueRevertUseCase failure',
+            ),
+            closedAwaitingOwnerRevertError,
           );
         } finally {
           consoleErrorSpy.mockRestore();
@@ -2977,6 +3083,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockNonPreparationWorkerScopeStopUseCase,
           mockConflictedIssueRevertUseCase,
           mockOwnerRepliedIssueRevertUseCase,
+          mockClosedAwaitingOwnerIssueRevertUseCase,
           mockRevertNotReadyReviewQueueIssueUseCase,
           mockAgentDesignationLabelAdoptUseCase,
           mockUpdateRateLimitCacheUseCase,
@@ -3063,6 +3170,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockNonPreparationWorkerScopeStopUseCase,
           mockConflictedIssueRevertUseCase,
           mockOwnerRepliedIssueRevertUseCase,
+          mockClosedAwaitingOwnerIssueRevertUseCase,
           mockRevertNotReadyReviewQueueIssueUseCase,
           mockAgentDesignationLabelAdoptUseCase,
           mockUpdateRateLimitCacheUseCase,
@@ -4250,6 +4358,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<NonPreparationWorkerScopeStopUseCase>(),
       mock<ConflictedIssueRevertUseCase>(),
       mock<OwnerRepliedIssueRevertUseCase>(),
+      mock<ClosedAwaitingOwnerIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),
       null,

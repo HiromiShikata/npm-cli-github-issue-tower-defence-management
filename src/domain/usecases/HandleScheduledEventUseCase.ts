@@ -45,6 +45,7 @@ import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase
 import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
+import { ClosedAwaitingOwnerIssueRevertUseCase } from './ClosedAwaitingOwnerIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import {
   commentCreateWithDedupRetry,
@@ -138,6 +139,7 @@ export class HandleScheduledEventUseCase {
     readonly nonPreparationWorkerScopeStopUseCase: NonPreparationWorkerScopeStopUseCase,
     readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
     readonly ownerRepliedIssueRevertUseCase: OwnerRepliedIssueRevertUseCase,
+    readonly closedAwaitingOwnerIssueRevertUseCase: ClosedAwaitingOwnerIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
@@ -666,6 +668,17 @@ ${JSON.stringify(e)}
           issues,
           allowedIssueAuthors,
         }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `revert closed/reopened Awaiting Owner issues for project ${project.url}`,
+      async () => {
+        await this.closedAwaitingOwnerIssueRevertUseCase.run({
+          project,
+          issues,
+          allowedIssueAuthors,
+        });
+      },
       failures,
     );
     await this.runOperationIsolated(
