@@ -3552,9 +3552,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
-    requestBody: {
-      ...buildTriageRequest('acme', item, action, extra),
-    },
+    requestBody: buildTriageRequest('acme', item, action, extra),
   });
 
   const commentBodyWrittenOffline = 'Checked during the flight.';

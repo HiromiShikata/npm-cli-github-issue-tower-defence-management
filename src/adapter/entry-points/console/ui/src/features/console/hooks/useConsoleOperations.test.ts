@@ -9,6 +9,10 @@ import type {
   ConsoleListItem,
 } from '../logic/types';
 import {
+  buildIntmuxOfflinePayload,
+  buildTriageOfflinePayload,
+} from '../pages/ConsoleItemDetailContainer';
+import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
@@ -204,6 +208,93 @@ describe('useConsoleOperations', () => {
       pjcode: 'acme',
       action: 'set_intmux',
     });
+  });
+
+  it('setStatus produces the same expectedStatusName as buildTriageOfflinePayload for the same item and target status', async () => {
+    const { result } = setup();
+    const option = consoleStatusOptionsFixture[1];
+
+    const itemWithStatus: ConsoleListItem = {
+      ...issueItem,
+      status: 'Preparation',
+    };
+    const fetchMockForStatus = captureFetch();
+    await act(async () => {
+      await result.current.operations.setStatus(itemWithStatus, option);
+    });
+    const hookBodyForStatus = lastBody(fetchMockForStatus);
+    expect(hookBodyForStatus.expectedStatusName).toBe('Preparation');
+    const offlinePayloadForStatus = buildTriageOfflinePayload(
+      'acme',
+      itemWithStatus,
+      'set_status',
+      { statusName: option.name },
+    );
+    expect(offlinePayloadForStatus.requestBody.expectedStatusName).toBe(
+      'Preparation',
+    );
+
+    const itemWithNullStatus: ConsoleListItem = {
+      ...issueItem,
+      status: null,
+    };
+    const fetchMockForNull = captureFetch();
+    await act(async () => {
+      await result.current.operations.setStatus(itemWithNullStatus, option);
+    });
+    const hookBodyForNull = lastBody(fetchMockForNull);
+    expect('expectedStatusName' in hookBodyForNull).toBe(true);
+    expect(hookBodyForNull.expectedStatusName).toBeNull();
+    const offlinePayloadForNull = buildTriageOfflinePayload(
+      'acme',
+      itemWithNullStatus,
+      'set_status',
+      { statusName: option.name },
+    );
+    expect(offlinePayloadForNull.requestBody.expectedStatusName).toBeNull();
+  });
+
+  it('setInTmuxByHuman produces the same expectedStatusName as buildIntmuxOfflinePayload for the same item', async () => {
+    const { result } = setup();
+    const option = consoleStatusOptionsFixture[5];
+
+    const itemWithStatus: ConsoleListItem = {
+      ...issueItem,
+      status: 'Preparation',
+    };
+    const fetchMockForStatus = captureFetch();
+    await act(async () => {
+      await result.current.operations.setInTmuxByHuman(itemWithStatus, option);
+    });
+    const hookBodyForStatus = lastBody(fetchMockForStatus);
+    expect(hookBodyForStatus.expectedStatusName).toBe('Preparation');
+    const offlinePayloadForStatus = buildIntmuxOfflinePayload(
+      'acme',
+      itemWithStatus,
+    );
+    expect(offlinePayloadForStatus.requestBody.expectedStatusName).toBe(
+      'Preparation',
+    );
+
+    const itemWithNullStatus: ConsoleListItem = {
+      ...issueItem,
+      status: null,
+    };
+    const fetchMockForNull = captureFetch();
+    await act(async () => {
+      await result.current.operations.setInTmuxByHuman(
+        itemWithNullStatus,
+        option,
+      );
+    });
+    const hookBodyForNull = lastBody(fetchMockForNull);
+    expect('expectedStatusName' in hookBodyForNull).toBe(true);
+    expect(hookBodyForNull.expectedStatusName).toBeNull();
+    const offlinePayloadForNull = buildIntmuxOfflinePayload(
+      'acme',
+      itemWithNullStatus,
+    );
+    expect(offlinePayloadForNull.requestBody.expectedStatusName).toBeNull();
   });
 
   it('posts set_next_action_date without writing the overlay entry (overlay is set at enqueue time)', async () => {

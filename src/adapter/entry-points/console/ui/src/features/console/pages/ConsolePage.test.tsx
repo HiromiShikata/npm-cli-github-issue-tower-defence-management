@@ -3615,6 +3615,7 @@ describe('ConsolePage airplane mode write guard', () => {
           action: 'close',
           issueUrl: prItem.url,
           projectItemId: prItem.projectItemId,
+          expectedStatusName: prItem.status,
         },
       }),
     ]);
@@ -3653,6 +3654,7 @@ describe('ConsolePage airplane mode write guard', () => {
           action: 'close',
           issueUrl: prItem.url,
           projectItemId: prItem.projectItemId,
+          expectedStatusName: prItem.status,
         },
       }),
     ]);
@@ -3690,6 +3692,7 @@ describe('ConsolePage airplane mode write guard', () => {
           issueUrl: prItem.url,
           projectItemId: prItem.projectItemId,
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6546,6 +6549,7 @@ describe('ConsolePage offline action queue', () => {
           action: 'close',
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6580,6 +6584,7 @@ describe('ConsolePage offline action queue', () => {
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6610,6 +6615,11 @@ describe('ConsolePage offline action queue', () => {
     action: 'close',
     issueUrl: pullRequestUrl,
     projectItemId: 'PVTI_1',
+  };
+
+  const closeOfflineRequestBodyForPullRequest = {
+    ...closeRequestBodyForPullRequest,
+    expectedStatusName: 'Awaiting Owner',
   };
 
   it('sends the ok comment and the close of OK & Close once each and holds nothing when both requests succeed online', async () => {
@@ -6689,7 +6699,7 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/triage',
-        requestBody: closeRequestBodyForPullRequest,
+        requestBody: closeOfflineRequestBodyForPullRequest,
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
@@ -6733,7 +6743,7 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/triage',
-        requestBody: closeRequestBodyForPullRequest,
+        requestBody: closeOfflineRequestBodyForPullRequest,
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
@@ -6759,7 +6769,7 @@ describe('ConsolePage offline action queue', () => {
     expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
     expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
       closeRequestBodyForPullRequest,
-      closeRequestBodyForPullRequest,
+      closeOfflineRequestBodyForPullRequest,
     ]);
   });
 
@@ -6782,7 +6792,7 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/triage',
-        requestBody: closeRequestBodyForPullRequest,
+        requestBody: closeOfflineRequestBodyForPullRequest,
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
@@ -6819,6 +6829,7 @@ describe('ConsolePage offline action queue', () => {
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6834,6 +6845,7 @@ describe('ConsolePage offline action queue', () => {
     issueUrl: pullRequestUrl,
     projectItemId: 'PVTI_1',
     statusName: 'Awaiting Workspace',
+    expectedStatusName: 'Awaiting Owner',
   };
 
   const respondWithPostedCommentsAndTriageRequestsInTurn = (
@@ -6866,6 +6878,7 @@ describe('ConsolePage offline action queue', () => {
     startAction: (view: ReturnType<typeof render>) => Promise<void>;
     expectedCommentBody: string;
     expectedSecondRequestBody: Record<string, string>;
+    expectedSecondRequestOfflinePayload: Record<string, string>;
   };
 
   const commentThenSecondRequestActions: CommentThenSecondRequestAction[] = [
@@ -6877,6 +6890,8 @@ describe('ConsolePage offline action queue', () => {
       },
       expectedCommentBody: 'ok',
       expectedSecondRequestBody: closeRequestBodyForPullRequest,
+      expectedSecondRequestOfflinePayload:
+        closeOfflineRequestBodyForPullRequest,
     },
     {
       actionName: 'Comment & Close from the detail',
@@ -6889,6 +6904,8 @@ describe('ConsolePage offline action queue', () => {
       },
       expectedCommentBody: 'Closing after the outage.',
       expectedSecondRequestBody: closeRequestBodyForPullRequest,
+      expectedSecondRequestOfflinePayload:
+        closeOfflineRequestBodyForPullRequest,
     },
     {
       actionName: 'ok & Awaiting Workspace from the detail',
@@ -6900,6 +6917,8 @@ describe('ConsolePage offline action queue', () => {
       },
       expectedCommentBody: 'ok',
       expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestOfflinePayload:
+        awaitingWorkspaceRequestBodyForPullRequest,
     },
     {
       actionName: 'Comment & Awaiting Workspace from the detail',
@@ -6912,6 +6931,8 @@ describe('ConsolePage offline action queue', () => {
       },
       expectedCommentBody: 'Moving after the outage.',
       expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestOfflinePayload:
+        awaitingWorkspaceRequestBodyForPullRequest,
     },
     {
       actionName: 'ok & Awaiting Workspace from the list',
@@ -6924,6 +6945,8 @@ describe('ConsolePage offline action queue', () => {
       },
       expectedCommentBody: 'ok',
       expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestOfflinePayload:
+        awaitingWorkspaceRequestBodyForPullRequest,
     },
   ];
 
@@ -6963,7 +6986,12 @@ describe('ConsolePage offline action queue', () => {
 
   it.each(commentThenSecondRequestActions)(
     'holds only the second request of $actionName without an error toast and posts the comment only once when the comment was posted, the second request answered HTTP 500 online and its retry fails because the network is unavailable',
-    async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+    async ({
+      startAction,
+      expectedCommentBody,
+      expectedSecondRequestBody,
+      expectedSecondRequestOfflinePayload,
+    }) => {
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
@@ -6984,7 +7012,7 @@ describe('ConsolePage offline action queue', () => {
         expect.objectContaining({
           itemUrl: pullRequestUrl,
           apiPath: '/api/triage',
-          requestBody: expectedSecondRequestBody,
+          requestBody: expectedSecondRequestOfflinePayload,
         }),
       ]);
       expect(view.container.querySelector('.console-error-toast')).toBeNull();
@@ -7072,7 +7100,12 @@ describe('ConsolePage offline action queue', () => {
 
   it.each(commentThenSecondRequestActions)(
     'holds only the second request of $actionName without sending anything or showing an airplane mode error when the comment was posted, the second request answered HTTP 500 online and airplane mode is turned on before the retry',
-    async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+    async ({
+      startAction,
+      expectedCommentBody,
+      expectedSecondRequestBody,
+      expectedSecondRequestOfflinePayload,
+    }) => {
       const fetchMock = installOfflineQueueFetchWithAirplaneModeSync(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
@@ -7099,7 +7132,7 @@ describe('ConsolePage offline action queue', () => {
           expect.objectContaining({
             itemUrl: pullRequestUrl,
             apiPath: '/api/triage',
-            requestBody: expectedSecondRequestBody,
+            requestBody: expectedSecondRequestOfflinePayload,
           }),
         ]);
         expect(postCount(fetchMock)).toBe(2);
@@ -7190,7 +7223,7 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/triage',
-        requestBody: closeRequestBodyForPullRequest,
+        requestBody: closeOfflineRequestBodyForPullRequest,
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();

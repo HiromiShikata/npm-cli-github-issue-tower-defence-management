@@ -321,16 +321,57 @@ const resolveConfiguredPjcode = (
   return pjcode;
 };
 
+const EXPECTED_STATUS_NAME_KEY = 'expectedStatusName';
+
+type ExpectedStatusAtActionTime =
+  { present: false } | { present: true; statusName: string | null };
+
+const readExpectedStatusAtActionTime = (
+  body: Record<string, unknown>,
+): ExpectedStatusAtActionTime => {
+  if (!Object.prototype.hasOwnProperty.call(body, EXPECTED_STATUS_NAME_KEY)) {
+    return { present: false };
+  }
+  const rawValue = body[EXPECTED_STATUS_NAME_KEY];
+  return {
+    present: true,
+    statusName: typeof rawValue === 'string' ? rawValue : null,
+  };
+};
+
+const describeStatusNameForMismatchMessage = (
+  statusName: string | null,
+): string => (statusName === null ? 'no Status' : `"${statusName}"`);
+
 const updateStatusByName = async (
   issueRepository: IssueRepository,
   project: Project,
   issueUrl: string,
   projectItemId: string,
   statusName: string,
+  expectedStatusAtActionTime: ExpectedStatusAtActionTime,
 ): Promise<ConsoleOperationResponse | null> => {
   const statusId = resolveStatusId(project, statusName);
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
+  }
+  if (expectedStatusAtActionTime.present) {
+    const liveIssue = await issueRepository.getIssueByUrl(issueUrl, {
+      bypassCache: true,
+    });
+    if (liveIssue === null) {
+      return badGateway(`issue "${issueUrl}" could not be loaded`);
+    }
+    const liveStatusName = liveIssue.status;
+    if (liveStatusName !== expectedStatusAtActionTime.statusName) {
+      return badRequest(
+        `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
+          expectedStatusAtActionTime.statusName,
+        )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
+          liveStatusName,
+        )}. Please re-check the issue and act again.`,
+      );
+    }
   }
   await issueRepository.updateStatus(
     project,
@@ -365,6 +406,7 @@ export const handleReview = async (
   const action = body.action;
   const prUrl = body.prUrl;
   const projectItemId = body.projectItemId;
+  const expectedStatusAtActionTime = readExpectedStatusAtActionTime(body);
   if (!isNonEmptyString(action)) {
     return badRequest('action is required');
   }
@@ -398,6 +440,7 @@ export const handleReview = async (
         issueUrl,
         projectItemId,
         AWAITING_WORKSPACE_STATUS_NAME,
+        expectedStatusAtActionTime,
       );
       if (statusFailure !== null) {
         return statusFailure;
@@ -442,6 +485,7 @@ export const handleReview = async (
       issueUrl,
       projectItemId,
       AWAITING_WORKSPACE_STATUS_NAME,
+      expectedStatusAtActionTime,
     );
     if (failure !== null) {
       return failure;
@@ -469,6 +513,7 @@ export const handleReview = async (
         prUrl,
         projectItemId,
         AWAITING_WORKSPACE_STATUS_NAME,
+        expectedStatusAtActionTime,
       );
       if (conflictFailure !== null) {
         return conflictFailure;
@@ -514,6 +559,7 @@ export const handleReview = async (
       prUrl,
       projectItemId,
       AWAITING_WORKSPACE_STATUS_NAME,
+      expectedStatusAtActionTime,
     );
     if (failure !== null) {
       return failure;
@@ -551,6 +597,7 @@ export const handleReview = async (
       prUrl,
       projectItemId,
       AWAITING_WORKSPACE_STATUS_NAME,
+      expectedStatusAtActionTime,
     );
     if (failure !== null) {
       return failure;
@@ -623,6 +670,7 @@ export const handleTriage = async (
         issueUrl,
         projectItemId,
         statusName,
+        readExpectedStatusAtActionTime(body),
       );
     } catch (error) {
       if (!(error instanceof StaleProjectItemError)) throw error;
@@ -1210,6 +1258,7 @@ export const handleIntmux = async (
     issueUrl,
     projectItemId,
     IN_TMUX_BY_HUMAN_STATUS_NAME,
+    readExpectedStatusAtActionTime(body),
   );
   if (failure !== null) {
     return failure;

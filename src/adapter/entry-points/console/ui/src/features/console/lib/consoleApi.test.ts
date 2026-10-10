@@ -1,3 +1,6 @@
+import { buildTriageRequest } from '../hooks/useConsoleOperations';
+import type { ConsoleListItem } from '../logic/types';
+import { consoleListItemsFixture } from '../testing/fixtures';
 import {
   ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
@@ -401,6 +404,54 @@ describe('postConsoleOperation', () => {
   it('falls back to the status code when the error body is empty', async () => {
     mockFetchFailureOnce(500, '');
     await expect(failingReview()).rejects.toThrow('HTTP 500');
+  });
+
+  it('serializes expectedStatusName as a string, as null, or omits it, matching the value passed to the request builder', async () => {
+    const itemWithStringStatus: ConsoleListItem = {
+      ...consoleListItemsFixture[1],
+      status: 'Preparation',
+    };
+    const stringRequest = buildTriageRequest(
+      'acme',
+      itemWithStringStatus,
+      'set_status',
+      { statusName: 'Awaiting Workspace' },
+    );
+    const fetchMockForString = mockFetchOnce({ ok: true });
+    await postConsoleOperation('/api/triage', stringRequest);
+    const [, stringInit] = fetchMockForString.mock.calls[0];
+    const stringBody = JSON.parse(stringInit.body);
+    expect(stringBody.expectedStatusName).toBe('Preparation');
+
+    const itemWithNullStatus: ConsoleListItem = {
+      ...consoleListItemsFixture[1],
+      status: null,
+    };
+    const nullRequest = buildTriageRequest(
+      'acme',
+      itemWithNullStatus,
+      'set_status',
+      { statusName: 'Awaiting Workspace' },
+    );
+    const fetchMockForNull = mockFetchOnce({ ok: true });
+    await postConsoleOperation('/api/triage', nullRequest);
+    const [, nullInit] = fetchMockForNull.mock.calls[0];
+    const nullBody = JSON.parse(nullInit.body);
+    expect('expectedStatusName' in nullBody).toBe(true);
+    expect(nullBody.expectedStatusName).toBeNull();
+
+    const legacyPreDeployRequest = {
+      pjcode: 'acme',
+      action: 'set_status',
+      issueUrl: itemWithStringStatus.url,
+      projectItemId: itemWithStringStatus.projectItemId,
+      statusName: 'Awaiting Workspace',
+    };
+    const fetchMockForAbsentKey = mockFetchOnce({ ok: true });
+    await postConsoleOperation('/api/triage', legacyPreDeployRequest);
+    const [, absentKeyInit] = fetchMockForAbsentKey.mock.calls[0];
+    const absentKeyBody = JSON.parse(absentKeyInit.body);
+    expect('expectedStatusName' in absentKeyBody).toBe(false);
   });
 });
 
