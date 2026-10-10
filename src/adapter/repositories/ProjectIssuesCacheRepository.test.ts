@@ -17,6 +17,7 @@ jest.mock('ky', () => ({
 import { mock } from 'jest-mock-extended';
 import {
   ProjectIssuesCacheRepository,
+  deserializeItemUpdatedAtByItemId,
   deserializeStoryOptions,
 } from './ProjectIssuesCacheRepository';
 import { Issue } from '../../domain/entities/Issue';
@@ -155,6 +156,7 @@ const seedCache = async (
     issues: [],
     storyIssueUrlByOptionName: {},
     storyOptions: [],
+    itemUpdatedAtByItemId: {},
   });
 };
 
@@ -284,6 +286,7 @@ describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
       issues: [],
       storyIssueUrlByOptionName: map,
       storyOptions: [],
+      itemUpdatedAtByItemId: {},
     });
 
     const result = await repo.read(projectId);
@@ -317,6 +320,123 @@ describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
   });
 });
 
+describe('ProjectIssuesCacheRepository itemUpdatedAtByItemId', () => {
+  it('preserves itemUpdatedAtByItemId through a write-read round-trip', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const itemUpdatedAtByItemId = {
+      PVTI_first: '2026-07-06T23:58:00.000Z',
+      PVTI_second: '2026-07-07T00:10:00.000Z',
+    };
+
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+      itemUpdatedAtByItemId,
+    });
+
+    const result = await repo.read(projectId);
+
+    expect(result?.itemUpdatedAtByItemId).toEqual(itemUpdatedAtByItemId);
+  });
+
+  it('returns an empty map when the stored cache has no itemUpdatedAtByItemId field', async () => {
+    const store = new Map<string, unknown>();
+    store.set(`allIssues-${projectId}`, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+    const legacyCache: Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle' | 'withLock'
+    > = {
+      getSingle: async (key: string) => store.get(key) ?? null,
+      setSingle: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+      withLock: async (_key, fn) => fn(),
+    };
+    const repo = new ProjectIssuesCacheRepository(legacyCache);
+
+    const result = await repo.read(projectId);
+
+    expect(result).not.toBeNull();
+    expect(result?.itemUpdatedAtByItemId).toEqual({});
+  });
+
+  type ItemUpdatedAtByItemIdDeserializeCase = {
+    storedCacheDescription: string;
+    storedCache: object;
+    expectedItemUpdatedAtByItemId: Record<string, string>;
+  };
+
+  const itemUpdatedAtByItemIdDeserializeCases: ItemUpdatedAtByItemIdDeserializeCase[] =
+    [
+      {
+        storedCacheDescription: 'no itemUpdatedAtByItemId field',
+        storedCache: {},
+        expectedItemUpdatedAtByItemId: {},
+      },
+      {
+        storedCacheDescription: 'a null itemUpdatedAtByItemId',
+        storedCache: { itemUpdatedAtByItemId: null },
+        expectedItemUpdatedAtByItemId: {},
+      },
+      {
+        storedCacheDescription: 'a string itemUpdatedAtByItemId',
+        storedCache: { itemUpdatedAtByItemId: 'not-a-record' },
+        expectedItemUpdatedAtByItemId: {},
+      },
+      {
+        storedCacheDescription: 'an array itemUpdatedAtByItemId',
+        storedCache: { itemUpdatedAtByItemId: ['2026-07-07T00:10:00.000Z'] },
+        expectedItemUpdatedAtByItemId: {},
+      },
+      {
+        storedCacheDescription:
+          'an itemUpdatedAtByItemId holding a non-string timestamp',
+        storedCache: {
+          itemUpdatedAtByItemId: {
+            PVTI_first: '2026-07-07T00:10:00.000Z',
+            PVTI_second: 1783382400000,
+          },
+        },
+        expectedItemUpdatedAtByItemId: {},
+      },
+      {
+        storedCacheDescription:
+          'an itemUpdatedAtByItemId holding only string timestamps',
+        storedCache: {
+          itemUpdatedAtByItemId: {
+            PVTI_first: '2026-07-06T23:58:00.000Z',
+            PVTI_second: '2026-07-07T00:10:00.000Z',
+          },
+        },
+        expectedItemUpdatedAtByItemId: {
+          PVTI_first: '2026-07-06T23:58:00.000Z',
+          PVTI_second: '2026-07-07T00:10:00.000Z',
+        },
+      },
+    ];
+
+  it.each(itemUpdatedAtByItemIdDeserializeCases)(
+    'deserializeItemUpdatedAtByItemId reads a stored cache with $storedCacheDescription',
+    ({ storedCache, expectedItemUpdatedAtByItemId }) => {
+      expect(deserializeItemUpdatedAtByItemId(storedCache)).toEqual(
+        expectedItemUpdatedAtByItemId,
+      );
+    },
+  );
+});
+
 describe('ProjectIssuesCacheRepository storyOptions', () => {
   it('preserves storyOptions through a write-read round-trip', async () => {
     const cache = buildSharedCache();
@@ -333,6 +453,7 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
       issues: [],
       storyIssueUrlByOptionName: {},
       storyOptions: options,
+      itemUpdatedAtByItemId: {},
     });
 
     const result = await repo.read(projectId);
@@ -375,6 +496,7 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
       issues: [],
       storyIssueUrlByOptionName: {},
       storyOptions: [{ name: 'First Story', description: '' }],
+      itemUpdatedAtByItemId: {},
     });
     const updatedOptions: FieldOption[] = [
       {
@@ -413,6 +535,7 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
       issues: [],
       storyIssueUrlByOptionName: {},
       storyOptions: originalStoryOptions,
+      itemUpdatedAtByItemId: {},
     });
     const newStatusOptions: FieldOption[] = [
       { id: 'st1', name: 'Todo', color: 'GRAY', description: '' },
@@ -480,6 +603,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       issues: [issue1, issue2],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
+      itemUpdatedAtByItemId: {},
     });
 
     await repo.removeIssueByItemId(projectId, 'PVTI_stale');
@@ -503,6 +627,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       issues: [issue1],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
+      itemUpdatedAtByItemId: {},
     });
 
     await repo.removeIssueByItemId(projectId, 'PVTI_not_here');
@@ -541,6 +666,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
         'My Story': 'https://github.com/o/r/issues/10',
       },
       storyOptions,
+      itemUpdatedAtByItemId: {},
     });
 
     await repo.removeIssueByItemId(projectId, 'PVTI_stale');
@@ -625,6 +751,7 @@ describe('ProjectIssuesCacheRepository concurrent writes on the same on-disk cac
       issues: [issueA, issueB, issueKeep],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
+      itemUpdatedAtByItemId: {},
     });
 
     await Promise.all([
@@ -647,6 +774,7 @@ describe('ProjectIssuesCacheRepository concurrent writes on the same on-disk cac
       issues: [],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
+      itemUpdatedAtByItemId: {},
     });
     const newStoryOptions: FieldOption[] = [
       { id: 'story1', name: 'First Story', color: 'BLUE', description: '' },
