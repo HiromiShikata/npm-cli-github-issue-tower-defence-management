@@ -45,7 +45,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       writeRepository.appendIssueToProjectCache(projectId, issue),
     removeIssueFromProjectCache: (projectId: Project['id'], issue: Issue) =>
       writeRepository.removeIssueFromProjectCache(projectId, issue),
-    getIssueByUrl: (url: string) => rotate((r) => r.getIssueByUrl(url)),
+    getIssueByUrl: (url: string, options?: { bypassCache?: boolean }) =>
+      rotate((r) => r.getIssueByUrl(url, options)),
     getIssueBodyByUrl: (url: string) => rotate((r) => r.getIssueBodyByUrl(url)),
     searchIssue: (query: Parameters<IssueRepository['searchIssue']>[0]) =>
       rotate((r) => r.searchIssue(query)),
