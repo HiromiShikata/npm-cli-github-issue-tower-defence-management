@@ -362,6 +362,32 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.reviewReady).toBe(true);
     });
 
+    it('should keep skipping PULL_REQUEST_NOT_FOUND via defaultAgentName when a later comment comes from a different agent', async () => {
+      const issue = createMockIssue({ agent: 'my-developer' });
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "my-developer", "nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: some-other-agent (claude-sonnet-4-6)\n```json\n{"reviewResult": "PASS"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+        defaultAgentName: 'custom-triage-agent',
+        developerAgentNames: ['my-developer'],
+      });
+
+      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(true);
+    });
+
     it('should return reviewReady=true with empty rejections when all checks pass', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);

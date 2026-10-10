@@ -260,6 +260,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                   author,
                   allowedIssueAuthors,
                 ),
+              issue.agent,
             );
             if (nextStepAgent !== null) {
               const repetition = resolveNextStepAgentDispatchRepetition({

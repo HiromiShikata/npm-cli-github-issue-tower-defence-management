@@ -4541,7 +4541,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+        createMockComment({
+          content: 'From: :robot: developer\n```json\n{"nextStep": null}\n```',
+        }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -5019,6 +5021,33 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           options: [{ name: 'impl', color: 'GRAY', description: '' }],
         },
       );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it("does not call setIssueAgentField when the only report's self-declared posting agent does not match the issue agent field", async () => {
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      const projectWithAgent = makeProjectWithAgent();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: pr-reviewer (model)\n```json\n{"nextStep": null, "nextStepAgent": "impl"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
@@ -8826,13 +8855,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
         {
           description:
-            'dispatchStartedAt supplied, agent field differs from reporter, story key present -> updateStory called (the fix)',
+            'dispatchStartedAt supplied, agent field differs from reporter, story key present -> updateStory not called (corrected protection applies on every dispatch)',
           dispatchStartedAt: DISPATCH_STARTED_AT,
           issueAgent: 'chore',
           reportHasFromRobotPrefix: true,
           storyKeyPresent: true,
           hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: true,
+          expectUpdateStoryCalled: false,
         },
         {
           description:
@@ -9538,6 +9567,37 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
       );
     });
+
+    it("does not route to Failed Preparation when the only report's self-declared posting agent does not match the issue agent field", async () => {
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: pr-reviewer (model)\n```json\n{"workflowError": "missing required configuration", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        expect.anything(),
+      );
+    });
   });
 
   describe('needOwnerConfirmationOrApproval routing', () => {
@@ -9810,6 +9870,37 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Awaiting Workspace' }),
         expect.anything(),
       );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+    });
+
+    it("does not move the issue to Awaiting Owner when the only report's self-declared posting agent does not match the issue agent field", async () => {
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: pr-reviewer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
       expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
         expect.objectContaining({ status: 'Awaiting Owner' }),
         expect.anything(),
@@ -11236,6 +11327,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
       expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+    });
+
+    it("does not close the issue when the only report's self-declared posting agent does not match the issue agent field", async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: { agent: 'developer' },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
     });
   });
 });

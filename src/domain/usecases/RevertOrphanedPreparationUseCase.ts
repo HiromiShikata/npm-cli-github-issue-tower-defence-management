@@ -23,7 +23,7 @@ import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
-import { findLastAgentReport } from './findLastAgentReport';
+import { findLastAgentReport, TRIAGER_AGENT_NAME } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {
@@ -193,7 +193,17 @@ export class RevertOrphanedPreparationUseCase {
             author,
             params.allowedIssueAuthors,
           );
-        const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+        const strictAgentReport = findLastAgentReport(
+          comments,
+          isTrustedAuthor,
+          issue.agent,
+        );
+        const triagerAgentReport = findLastAgentReport(
+          comments,
+          isTrustedAuthor,
+          TRIAGER_AGENT_NAME,
+        );
+        const lastAgentReport = strictAgentReport ?? triagerAgentReport;
         const nextStepAgent = lastAgentReport
           ? extractNextStepAgent(lastAgentReport.content)
           : null;
@@ -250,7 +260,11 @@ export class RevertOrphanedPreparationUseCase {
         }
         if (
           nextStepAgent === null &&
-          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
+          issueHasUnansweredOwnerConfirmationRequest(
+            comments,
+            isTrustedAuthor,
+            issue.agent,
+          )
         ) {
           if (awaitingOwnerStatusOption) {
             await this.issueRepository.updateStatus(
@@ -597,6 +611,7 @@ export class RevertOrphanedPreparationUseCase {
         const lastTrustedAgentReport = findLastAgentReport(
           comments,
           isTrustedAuthor,
+          issue.agent,
         );
         const needsOwnerConfirmation =
           (lastTrustedAgentReport
@@ -604,7 +619,11 @@ export class RevertOrphanedPreparationUseCase {
                 lastTrustedAgentReport.content,
               )
             : false) &&
-          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor);
+          issueHasUnansweredOwnerConfirmationRequest(
+            comments,
+            isTrustedAuthor,
+            issue.agent,
+          );
         return {
           outcome: needsOwnerConfirmation
             ? 'advanceToQualityCheck'

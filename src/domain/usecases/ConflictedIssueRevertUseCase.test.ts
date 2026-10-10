@@ -2603,5 +2603,131 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
+
+    it('detects the unanswered owner confirmation request from the issue-agent-matched report even when a later report from a different agent carries no flag (identity regression guard)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/32',
+        status: AWAITING_OWNER_STATUS_NAME,
+        author: trustedAuthor,
+        agent: 'developer',
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/32',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const ciFailingPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isCiFailing: true,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[ciFailingPr.url, ciFailingPr]]),
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: developer (model-id)\n\n## Summary\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
+        },
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+          updatedAt: new Date('2026-01-02T00:00:00Z'),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('derives the dispatch-loop escalation from the issue-agent-matched reports, not a later stray report from a different agent (identity regression guard)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/33',
+        status: AWAITING_OWNER_STATUS_NAME,
+        author: trustedAuthor,
+        agent: 'triager',
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/33',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr.url, conflictedPr]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-02-01T00:00:00Z'),
+          updatedAt: new Date('2026-02-01T00:00:00Z'),
+        },
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-02-02T00:00:00Z'),
+          updatedAt: new Date('2026-02-02T00:00:00Z'),
+        },
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-02-03T00:00:00Z'),
+          updatedAt: new Date('2026-02-03T00:00:00Z'),
+        },
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: some-other-agent (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
+          createdAt: new Date('2026-02-04T00:00:00Z'),
+          updatedAt: new Date('2026-02-04T00:00:00Z'),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: [trustedAuthor],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+    });
   });
 });

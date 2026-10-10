@@ -38,15 +38,15 @@ import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfir
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
-import { findLastAgentReportPostedSince } from './findLastAgentReport';
+import {
+  findLastAgentReportPostedSince,
+  TRIAGER_AGENT_NAME,
+} from './findLastAgentReport';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
 import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 
-import {
-  extractAgentNameFromReportBody,
-  isAgentReportBodyFromAgent,
-} from './isAgentReportBody';
+import { isAgentReportBodyFromAgent } from './isAgentReportBody';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { isHumanComment } from './isHumanComment';
 import {
@@ -464,11 +464,19 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueRepository.getLatestReopenedEventAt(issue);
 
     const dispatchStartedAt = params.dispatchStartedAt ?? null;
-    const lastAgentReport = findLastAgentReportPostedSince(
+    const strictAgentReport = findLastAgentReportPostedSince(
       comments,
       isTrustedAuthor,
       dispatchStartedAt,
+      issue.agent,
     );
+    const triagerAgentReport = findLastAgentReportPostedSince(
+      comments,
+      isTrustedAuthor,
+      dispatchStartedAt,
+      TRIAGER_AGENT_NAME,
+    );
+    const lastAgentReport = strictAgentReport ?? triagerAgentReport;
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
@@ -506,26 +514,9 @@ export class NotifyFinishedIssuePreparationUseCase {
         return;
       }
     }
-    let storyName = lastAgentReport
-      ? extractStory(lastAgentReport.content)
+    const storyName = strictAgentReport
+      ? extractStory(strictAgentReport.content)
       : null;
-    const reporterName =
-      lastAgentReport !== null
-        ? extractAgentNameFromReportBody(lastAgentReport.content)
-        : null;
-    if (
-      lastAgentReport === null ||
-      reporterName === null ||
-      (dispatchStartedAt === null &&
-        issue.agent !== null &&
-        !isAgentReportBodyFromAgent(
-          lastAgentReport.content,
-          reporterName,
-          issue.agent,
-        ))
-    ) {
-      storyName = null;
-    }
     if (
       nextStepAgent !== null &&
       params.agents &&
@@ -607,7 +598,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (
       workflowError === null &&
       nextStepAgent === null &&
-      issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        isTrustedAuthor,
+        issue.agent,
+      )
     ) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
@@ -978,7 +973,13 @@ export class NotifyFinishedIssuePreparationUseCase {
   ): Promise<void> => {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+    if (
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        isTrustedAuthor,
+        issue.agent,
+      )
+    ) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -1017,7 +1018,13 @@ export class NotifyFinishedIssuePreparationUseCase {
   ): Promise<void> => {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+    if (
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        isTrustedAuthor,
+        issue.agent,
+      )
+    ) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -1051,7 +1058,13 @@ export class NotifyFinishedIssuePreparationUseCase {
   ): Promise<void> => {
     const comments =
       await this.issueCommentRepository.getCommentsFromIssue(issue);
-    if (issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)) {
+    if (
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        isTrustedAuthor,
+        issue.agent,
+      )
+    ) {
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
