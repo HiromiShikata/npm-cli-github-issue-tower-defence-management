@@ -1,3 +1,6 @@
+import { buildTriageRequest } from '../hooks/useConsoleOperations';
+import type { ConsoleListItem } from '../logic/types';
+import { consoleListItemsFixture } from '../testing/fixtures';
 import {
   ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
@@ -17,9 +20,6 @@ import {
   postProjectMaxPreparingUpdate,
   STORY_RENAME_OPERATION_PATH,
 } from './consoleApi';
-import { buildTriageRequest } from '../hooks/useConsoleOperations';
-import type { ConsoleListItem } from '../logic/types';
-import { consoleListItemsFixture } from '../testing/fixtures';
 
 const mockFetchOnce = (body: unknown, ok = true): jest.Mock => {
   const fetchMock = jest.fn().mockResolvedValue({

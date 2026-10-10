@@ -46,6 +46,19 @@ import { readProjectTimer } from './consoleProjectTimerStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { createConsoleProjectResolver } from './consoleProjectResolver';
 
+const hasErrorMessage = (body: unknown): body is { error: string } =>
+  typeof body === 'object' &&
+  body !== null &&
+  'error' in body &&
+  typeof body.error === 'string';
+
+const errorMessageOf = (body: unknown): string => {
+  if (!hasErrorMessage(body)) {
+    throw new Error('response body does not carry a string error message');
+  }
+  return body.error;
+};
+
 describe('consoleOperationApi', () => {
   let baseDir: string;
   let issueRepository: ReturnType<typeof mock<IssueRepository>>;
@@ -363,9 +376,9 @@ describe('consoleOperationApi', () => {
       });
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
       expect(response.statusCode).toBe(400);
-      const errorBody = response.body as { error: string };
-      expect(errorBody.error).toContain('Awaiting Quality Check');
-      expect(errorBody.error).toContain('Done');
+      const errorMessage = errorMessageOf(response.body);
+      expect(errorMessage).toContain('Awaiting Quality Check');
+      expect(errorMessage).toContain('Done');
     });
 
     it('marks a pull request unnecessary by closing it, labelling the item chore and moving it to Awaiting workspace', async () => {
@@ -938,12 +951,12 @@ describe('consoleOperationApi', () => {
         } else {
           expect(issueRepository.updateStatus).not.toHaveBeenCalled();
           expect(response.statusCode).toBe(400);
-          const errorBody = response.body as { error: string };
+          const errorMessage = errorMessageOf(response.body);
           if (testCase.expectedStatusName !== null) {
-            expect(errorBody.error).toContain(testCase.expectedStatusName);
+            expect(errorMessage).toContain(testCase.expectedStatusName);
           }
           if (testCase.liveStatus !== null) {
-            expect(errorBody.error).toContain(testCase.liveStatus);
+            expect(errorMessage).toContain(testCase.liveStatus);
           }
         }
       }
@@ -961,8 +974,8 @@ describe('consoleOperationApi', () => {
       });
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
       expect(response.statusCode).toBe(502);
-      const errorBody = response.body as { error: string };
-      expect(errorBody.error).toContain('https://github.com/o/r/issues/1');
+      const errorMessage = errorMessageOf(response.body);
+      expect(errorMessage).toContain('https://github.com/o/r/issues/1');
     });
 
     it('sets the story option', async () => {
@@ -2139,9 +2152,9 @@ describe('consoleOperationApi', () => {
         } else {
           expect(issueRepository.updateStatus).not.toHaveBeenCalled();
           expect(response.statusCode).toBe(400);
-          const errorBody = response.body as { error: string };
-          expect(errorBody.error).toContain(testCase.expectedStatusName);
-          expect(errorBody.error).toContain(testCase.liveStatus);
+          const errorMessage = errorMessageOf(response.body);
+          expect(errorMessage).toContain(testCase.expectedStatusName);
+          expect(errorMessage).toContain(testCase.liveStatus);
         }
       }
     });

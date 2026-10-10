@@ -324,8 +324,7 @@ const resolveConfiguredPjcode = (
 const EXPECTED_STATUS_NAME_KEY = 'expectedStatusName';
 
 type ExpectedStatusAtActionTime =
-  | { present: false }
-  | { present: true; statusName: string | null };
+  { present: false } | { present: true; statusName: string | null };
 
 const readExpectedStatusAtActionTime = (
   body: Record<string, unknown>,

@@ -9,6 +9,10 @@ import type {
   ConsoleListItem,
 } from '../logic/types';
 import {
+  buildIntmuxOfflinePayload,
+  buildTriageOfflinePayload,
+} from '../pages/ConsoleItemDetailContainer';
+import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
@@ -17,10 +21,6 @@ import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOperationsApi } from './useConsoleOperations';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
-import {
-  buildIntmuxOfflinePayload,
-  buildTriageOfflinePayload,
-} from '../pages/ConsoleItemDetailContainer';
 
 type OperationsWithAtomicAwaitingWorkspace = ConsoleOperationsApi & {
   addCommentAndMoveToAwaitingWorkspace: (
@@ -264,10 +264,7 @@ describe('useConsoleOperations', () => {
     };
     const fetchMockForStatus = captureFetch();
     await act(async () => {
-      await result.current.operations.setInTmuxByHuman(
-        itemWithStatus,
-        option,
-      );
+      await result.current.operations.setInTmuxByHuman(itemWithStatus, option);
     });
     const hookBodyForStatus = lastBody(fetchMockForStatus);
     expect(hookBodyForStatus.expectedStatusName).toBe('Preparation');
