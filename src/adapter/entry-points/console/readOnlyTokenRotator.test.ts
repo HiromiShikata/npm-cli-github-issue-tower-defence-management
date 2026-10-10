@@ -28,6 +28,26 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
+    it('forwards the bypassCache option to the underlying repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const issue = mock<Issue>();
+      repo.getIssueByUrl.mockResolvedValue(issue);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      await rotating.getIssueByUrl('https://github.com/o/r/issues/1', {
+        bypassCache: true,
+      });
+
+      expect(repo.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        { bypassCache: true },
+      );
+    });
+
     it('re-throws any error from the single repository without rotating', async () => {
       const repo = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
