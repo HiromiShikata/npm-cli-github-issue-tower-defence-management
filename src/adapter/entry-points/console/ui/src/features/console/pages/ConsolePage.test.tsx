@@ -3690,6 +3690,7 @@ describe('ConsolePage airplane mode write guard', () => {
           issueUrl: prItem.url,
           projectItemId: prItem.projectItemId,
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6580,6 +6581,7 @@ describe('ConsolePage offline action queue', () => {
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6819,6 +6821,7 @@ describe('ConsolePage offline action queue', () => {
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
           statusName: 'Awaiting Workspace',
+          expectedStatusName: 'Awaiting Owner',
         },
       }),
     ]);
@@ -6834,6 +6837,7 @@ describe('ConsolePage offline action queue', () => {
     issueUrl: pullRequestUrl,
     projectItemId: 'PVTI_1',
     statusName: 'Awaiting Workspace',
+    expectedStatusName: 'Awaiting Owner',
   };
 
   const respondWithPostedCommentsAndTriageRequestsInTurn = (
