@@ -3142,6 +3142,70 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         'failed-preparation-id',
       );
     });
+
+    it('derives the dispatch-loop escalation from the issue-agent-matched reports, not a later stray report from a different agent (identity regression guard)', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'triager',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'owner',
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-03-01T00:00:00Z'),
+        },
+        {
+          author: 'owner',
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-03-02T00:00:00Z'),
+        },
+        {
+          author: 'owner',
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+          createdAt: new Date('2026-03-03T00:00:00Z'),
+        },
+        {
+          author: 'owner',
+          content:
+            'From: :robot: some-other-agent (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
+          createdAt: new Date('2026-03-04T00:00:00Z'),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['triager'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+    });
   });
 
   describe('when the Status changed after the item snapshot was taken', () => {

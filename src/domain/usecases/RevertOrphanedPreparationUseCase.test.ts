@@ -1303,6 +1303,52 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
+
+    it('routes a non-developer-agent issue to Awaiting Owner based on the issue-agent-matched report, not a later stray report from a different agent', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/12',
+        status: 'Preparation',
+        labels: [],
+        agent: 'pr-reviewer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'agent-bot',
+          content:
+            'From: :robot: pr-reviewer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'agent-bot',
+          content:
+            'From: :robot: some-other-agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+          updatedAt: new Date('2024-01-02T01:00:00Z'),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['agent-bot'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
   });
 
   it('advances an orphaned issue with a developer agent field to Awaiting Owner when its single linked PR passes every check', async () => {

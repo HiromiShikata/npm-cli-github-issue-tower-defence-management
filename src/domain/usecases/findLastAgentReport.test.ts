@@ -8,12 +8,24 @@ const trustEveryAuthor = (): boolean => true;
 const report = (agent: string): string =>
   `From: :robot: agent (model)\n\`\`\`json\n{"nextStepAgent": "${agent}"}\n\`\`\``;
 
+// Unlike `report` above, this helper varies the self-declared posting agent
+// in the `From: :robot: {name}` line itself, so it can be used to prove the
+// selection functions filter candidates by who actually posted them.
+const reportPostedByAgent = (agentName: string): string =>
+  `From: :robot: ${agentName} (model)\n\`\`\`json\n{"nextStepAgent": "${agentName}"}\n\`\`\``;
+
+// A report-shaped comment (a fenced JSON object block) that carries no
+// `From: :robot: {name}` line at all, so it has no self-declared posting agent.
+const reportWithoutPostingAgentDeclared =
+  '```json\n{"nextStepAgent": "developer"}\n```';
+
 describe('findLastAgentReport', () => {
   it('returns the only agent report', () => {
     expect(
       findLastAgentReport(
         [{ author: 'bot', content: report('impl') }],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(report('impl'));
   });
@@ -26,6 +38,7 @@ describe('findLastAgentReport', () => {
           { author: 'bot', content: report('pr-reviewer') },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(report('pr-reviewer'));
   });
@@ -40,6 +53,7 @@ describe('findLastAgentReport', () => {
           { author: 'bot', content: withoutDeclaration },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(withoutDeclaration);
   });
@@ -54,6 +68,7 @@ describe('findLastAgentReport', () => {
           { author: 'bot', content: withoutJsonBlock },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(report('impl'));
   });
@@ -68,6 +83,7 @@ describe('findLastAgentReport', () => {
           { author: 'bot', content: fencedBeforePrefix },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(fencedBeforePrefix);
   });
@@ -82,6 +98,7 @@ describe('findLastAgentReport', () => {
           { author: 'bot', content: prefixInsideFence },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(report('impl'));
   });
@@ -98,6 +115,7 @@ describe('findLastAgentReport', () => {
           },
         ],
         trustEveryAuthor,
+        null,
       )?.content,
     ).toBe(report('impl'));
   });
@@ -114,12 +132,84 @@ describe('findLastAgentReport', () => {
           },
         ],
         (author) => author === 'bot',
+        null,
       )?.content,
     ).toBe(report('impl'));
   });
 
   it('returns null when no comment carries an agent report', () => {
-    expect(findLastAgentReport([], trustEveryAuthor)).toBeNull();
+    expect(findLastAgentReport([], trustEveryAuthor, null)).toBeNull();
+  });
+
+  describe('agent-identity filtering (agentFieldValue)', () => {
+    const trustBotOnly = (author: string): boolean => author === 'bot';
+
+    it.each([
+      {
+        description: 'no identity filter requested',
+        comments: [{ author: 'bot', content: reportPostedByAgent('developer') }],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: null,
+        expectedContent: reportPostedByAgent('developer'),
+      },
+      {
+        description: 'identity matches',
+        comments: [{ author: 'bot', content: reportPostedByAgent('developer') }],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: 'developer',
+        expectedContent: reportPostedByAgent('developer'),
+      },
+      {
+        description: 'identity mismatch, no earlier candidate',
+        comments: [{ author: 'bot', content: reportPostedByAgent('pr-reviewer') }],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: 'developer',
+        expectedContent: null,
+      },
+      {
+        description:
+          'core fix: a later mismatched comment must not hide an earlier matching one',
+        comments: [
+          { author: 'bot', content: reportPostedByAgent('developer') },
+          { author: 'bot', content: reportPostedByAgent('pr-reviewer') },
+        ],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: 'developer',
+        expectedContent: reportPostedByAgent('developer'),
+      },
+      {
+        description:
+          'comment has a JSON body but no self-declared posting agent at all, identity requested',
+        comments: [{ author: 'bot', content: reportWithoutPostingAgentDeclared }],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: 'developer',
+        expectedContent: null,
+      },
+      {
+        description: 'same comment as the previous case, no identity requested',
+        comments: [{ author: 'bot', content: reportWithoutPostingAgentDeclared }],
+        isTrustedAuthor: trustEveryAuthor,
+        agentFieldValue: null,
+        expectedContent: reportWithoutPostingAgentDeclared,
+      },
+      {
+        description: 'untrusted author, identity would otherwise match',
+        comments: [
+          { author: 'stranger', content: reportPostedByAgent('developer') },
+        ],
+        isTrustedAuthor: trustBotOnly,
+        agentFieldValue: 'developer',
+        expectedContent: null,
+      },
+    ])(
+      'returns $description',
+      ({ comments, isTrustedAuthor, agentFieldValue, expectedContent }) => {
+        expect(
+          findLastAgentReport(comments, isTrustedAuthor, agentFieldValue)
+            ?.content ?? null,
+        ).toBe(expectedContent);
+      },
+    );
   });
 });
 
@@ -179,7 +269,7 @@ describe('findLastAgentReportPostedSince', () => {
     },
   ])('returns $description', ({ comments, postedSince, expectedContent }) => {
     expect(
-      findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince)
+      findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince, null)
         ?.content ?? null,
     ).toBe(expectedContent);
   });
@@ -205,6 +295,7 @@ describe('findLastAgentReportPostedSince', () => {
         [editedTrustedReport, untrustedComment],
         isTrustedAuthor,
         postedSince,
+        null,
       ),
     ).toBeNull();
   });
@@ -232,6 +323,7 @@ describe('findLastAgentReportPostedSince', () => {
         ],
         trustEveryAuthor,
         postedSince,
+        null,
       )?.content,
     ).toBe(report('pr-reviewer'));
   });
@@ -312,7 +404,7 @@ describe('findLastAgentReportPostedSince', () => {
     'keeps returning $description',
     ({ comments, postedSince, expectedContent }) => {
       expect(
-        findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince)
+        findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince, null)
           ?.content ?? null,
       ).toBe(expectedContent);
     },
@@ -379,9 +471,61 @@ describe('findLastAgentReportPostedSince', () => {
       const isTrustedAuthor = (author: string): boolean => author === 'bot';
 
       expect(
-        findLastAgentReportPostedSince(comments, isTrustedAuthor, postedSince)
+        findLastAgentReportPostedSince(comments, isTrustedAuthor, postedSince, null)
           ?.content ?? null,
       ).toBe(expectedContent);
     },
   );
+
+  describe('agent-identity filtering combined with the time window (agentFieldValue)', () => {
+    it('returns no report when the identity-matching comment falls outside the time window', () => {
+      const windowStart = postedAt('2026-09-25T10:00:00Z');
+      const beforeWindowMatching = {
+        author: 'bot',
+        content: reportPostedByAgent('developer'),
+        createdAt: postedAt('2026-09-25T08:00:00Z'),
+        updatedAt: postedAt('2026-09-25T08:00:00Z'),
+      };
+      const afterWindowMismatching = {
+        author: 'bot',
+        content: reportPostedByAgent('pr-reviewer'),
+        createdAt: postedAt('2026-09-25T11:00:00Z'),
+        updatedAt: postedAt('2026-09-25T11:00:00Z'),
+      };
+
+      expect(
+        findLastAgentReportPostedSince(
+          [beforeWindowMatching, afterWindowMismatching],
+          trustEveryAuthor,
+          windowStart,
+          'developer',
+        ),
+      ).toBeNull();
+    });
+
+    it('prefers an earlier identity-matching comment inside the window over a later, more-recently-updated mismatching one also inside the window', () => {
+      const windowStart = postedAt('2026-09-25T09:00:00Z');
+      const insideWindowMatching = {
+        author: 'bot',
+        content: reportPostedByAgent('developer'),
+        createdAt: postedAt('2026-09-25T09:30:00Z'),
+        updatedAt: postedAt('2026-09-25T09:30:00Z'),
+      };
+      const insideWindowMismatchingUpdatedLater = {
+        author: 'bot',
+        content: reportPostedByAgent('pr-reviewer'),
+        createdAt: postedAt('2026-09-25T09:40:00Z'),
+        updatedAt: postedAt('2026-09-25T12:00:00Z'),
+      };
+
+      expect(
+        findLastAgentReportPostedSince(
+          [insideWindowMatching, insideWindowMismatchingUpdatedLater],
+          trustEveryAuthor,
+          windowStart,
+          'developer',
+        )?.content,
+      ).toBe(reportPostedByAgent('developer'));
+    });
+  });
 });

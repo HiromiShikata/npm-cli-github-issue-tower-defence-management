@@ -56,6 +56,29 @@ const machineGeneratedByTrustedAuthor = (updatedAt: Date): Comment => ({
   updatedAt,
 });
 
+// Unlike `reportWithFlagTrue` and `reportWithoutFlag` above, which always
+// self-declare "developer" as the posting agent, these two vary the posting
+// agent so the effect of the new agentFieldValue parameter can be observed.
+const reportWithFlagTrueFromAgent = (
+  agentName: string,
+  updatedAt: Date,
+): Comment => ({
+  author: 'test-user',
+  content: `From: :robot: ${agentName} (model)\n\`\`\`json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n\`\`\``,
+  createdAt: updatedAt,
+  updatedAt,
+});
+
+const reportWithoutFlagFromAgent = (
+  agentName: string,
+  updatedAt: Date,
+): Comment => ({
+  author: 'test-user',
+  content: `From: :robot: ${agentName} (model)\n\`\`\`json\n{"nextStep": null}\n\`\`\``,
+  createdAt: updatedAt,
+  updatedAt,
+});
+
 describe('issueHasUnansweredOwnerConfirmationRequest', () => {
   it('returns the expected boolean for every combination of last-report content and reply timing', () => {
     const cases: {
@@ -173,7 +196,11 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
 
     cases.forEach(({ comments, expected }) => {
       expect(
-        issueHasUnansweredOwnerConfirmationRequest(comments, trustTestUser),
+        issueHasUnansweredOwnerConfirmationRequest(
+          comments,
+          trustTestUser,
+          null,
+        ),
       ).toBe(expected);
     });
   });
@@ -225,7 +252,11 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
 
     cases.forEach(({ comments, expected }) => {
       expect(
-        issueHasUnansweredOwnerConfirmationRequest(comments, trustTestUser),
+        issueHasUnansweredOwnerConfirmationRequest(
+          comments,
+          trustTestUser,
+          null,
+        ),
       ).toBe(expected);
     });
   });
@@ -264,7 +295,68 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
 
     cases.forEach(({ comments, expected }) => {
       expect(
-        issueHasUnansweredOwnerConfirmationRequest(comments, trustTestUser),
+        issueHasUnansweredOwnerConfirmationRequest(
+          comments,
+          trustTestUser,
+          null,
+        ),
+      ).toBe(expected);
+    });
+  });
+
+  it('forwards agentFieldValue to the identity-filtered report selection', () => {
+    const cases: {
+      description: string;
+      comments: Comment[];
+      agentFieldValue: string | null;
+      expected: boolean;
+    }[] = [
+      {
+        description:
+          'agentFieldValue null selects the only report regardless of its posting agent',
+        comments: [
+          reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+        ],
+        agentFieldValue: null,
+        expected: true,
+      },
+      {
+        description:
+          "agentFieldValue matching the only report's posting agent still returns true",
+        comments: [
+          reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+        ],
+        agentFieldValue: 'developer',
+        expected: true,
+      },
+      {
+        description:
+          "agentFieldValue not matching the only report's posting agent returns false",
+        comments: [
+          reportWithFlagTrueFromAgent('pr-reviewer', at('2026-09-25T08:00:00Z')),
+        ],
+        agentFieldValue: 'developer',
+        expected: false,
+      },
+      {
+        description:
+          'a later mismatching report without the flag does not hide an earlier matching report that carries it',
+        comments: [
+          reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+          reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
+        ],
+        agentFieldValue: 'developer',
+        expected: true,
+      },
+    ];
+
+    cases.forEach(({ comments, agentFieldValue, expected }) => {
+      expect(
+        issueHasUnansweredOwnerConfirmationRequest(
+          comments,
+          trustTestUser,
+          agentFieldValue,
+        ),
       ).toBe(expected);
     });
   });
