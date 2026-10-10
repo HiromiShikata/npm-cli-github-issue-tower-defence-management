@@ -1553,9 +1553,14 @@ export class ApiV3CheerioRestIssueRepository
     return null;
   };
 
-  getIssueByUrl = async (url: string): Promise<Issue | null> => {
+  getIssueByUrl = async (
+    url: string,
+    options?: { bypassCache?: boolean },
+  ): Promise<Issue | null> => {
     const pendingProjectId = this.pendingCacheUpdateByIssueUrl.get(url);
-    const cached = await this.findIssueInAllIssuesCache(url);
+    const cached = options?.bypassCache
+      ? null
+      : await this.findIssueInAllIssuesCache(url);
     if (cached) {
       if (pendingProjectId !== undefined) {
         this.pendingCacheUpdateByIssueUrl.delete(url);

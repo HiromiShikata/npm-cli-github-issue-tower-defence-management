@@ -978,6 +978,27 @@ describe('consoleOperationApi', () => {
       expect(errorMessage).toContain('https://github.com/o/r/issues/1');
     });
 
+    it('updateStatusByName reads the live Status via the cache-bypassing option so a worker-side status change made after the dashboard snapshot is not masked by a stale cache', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        itemId: 'PVTI_bypass_cache_check',
+        status: 'Preparation',
+      });
+      await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_bypass_cache_check',
+        statusName: 'Awaiting workspace',
+        expectedStatusName: 'Preparation',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        { bypassCache: true },
+      );
+    });
+
     it('sets the story option', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',

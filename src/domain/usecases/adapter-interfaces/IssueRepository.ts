@@ -89,7 +89,10 @@ export interface IssueRepository {
     projectId: Project['id'],
     issue: Issue,
   ) => Promise<void>;
-  getIssueByUrl: (url: string) => Promise<Issue | null>;
+  getIssueByUrl: (
+    url: string,
+    options?: { bypassCache?: boolean },
+  ) => Promise<Issue | null>;
   getIssueBodyByUrl: (url: string) => Promise<string | null>;
   createNewIssue: (
     org: string,

@@ -13228,6 +13228,42 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('bypasses a fresh matching cache entry and reaches fetchProjectItemByUrl when options.bypassCache is true', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/1';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [buildCachedIssueRecord(issueUrl, 'Cached Issue')],
+        }),
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Fresh Issue From GraphQL'),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl, {
+        bypassCache: true,
+      });
+
+      expect(result?.title).toBe('Fresh Issue From GraphQL');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(issueUrl);
+      expect(localStorageRepository.listFiles).not.toHaveBeenCalled();
+    });
+
     it('falls back to fetchProjectItemByUrl when the matching cache entry is stale', async () => {
       const {
         repository,

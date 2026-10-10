@@ -118,17 +118,16 @@ export const buildTriageOfflinePayload = (
     storyOptionId?: string;
     agentOptionId?: string;
   },
-): ConsoleOfflinePayload => {
-  const { expectedStatusName, ...requestWithoutExpectedStatusName } =
-    buildTriageRequest(pjcode, item, action, extra);
-  return {
-    ...itemOfflineBase(item),
-    apiPath: TRIAGE_OPERATION_PATH,
-    requestBody: (action === 'set_status'
-      ? { ...requestWithoutExpectedStatusName, expectedStatusName }
-      : requestWithoutExpectedStatusName) as unknown as Record<string, unknown>,
-  };
-};
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: TRIAGE_OPERATION_PATH,
+  requestBody: buildTriageRequest(
+    pjcode,
+    item,
+    action,
+    extra,
+  ) as unknown as Record<string, unknown>,
+});
 
 export const buildIntmuxOfflinePayload = (
   pjcode: string,

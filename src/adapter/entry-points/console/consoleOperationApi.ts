@@ -356,7 +356,9 @@ const updateStatusByName = async (
     return badRequest(`status option "${statusName}" not found in project`);
   }
   if (expectedStatusAtActionTime.present) {
-    const liveIssue = await issueRepository.getIssueByUrl(issueUrl);
+    const liveIssue = await issueRepository.getIssueByUrl(issueUrl, {
+      bypassCache: true,
+    });
     if (liveIssue === null) {
       return badGateway(`issue "${issueUrl}" could not be loaded`);
     }
