@@ -25,10 +25,12 @@ import { RestIssueRepository } from './RestIssueRepository';
 import {
   GraphqlProjectItemRepository,
   ProjectItem,
+  ProjectItemLight,
 } from './GraphqlProjectItemRepository';
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import {
   CachedProjectIssues,
+  deserializeItemUpdatedAtByItemId,
   deserializeStoryIssueUrlByOptionName,
   deserializeStoryOptions,
   isIssueArray,
@@ -62,6 +64,7 @@ import { secondaryRateLimitStateFilePath } from './githubSecondaryRateLimitBreak
 
 export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -91,6 +94,28 @@ const buildStoryOptions = (project: Project): StoryOptionEntry[] =>
     name: s.name,
     description: s.description ?? '',
   })) ?? [];
+
+const buildItemUpdatedAtByItemIdOfResultingIssues = (
+  resultingIssues: Issue[],
+  projectItemsObservedByFullFetch: ProjectItem[],
+): Record<string, string> => {
+  const resultingItemIds = new Set(
+    resultingIssues.map((issue) => issue.itemId),
+  );
+  return Object.fromEntries(
+    projectItemsObservedByFullFetch
+      .filter((item) => resultingItemIds.has(item.id))
+      .map((item) => [item.id, item.updatedAt]),
+  );
+};
+
+const isLightItemNeverSyncedOrUpdatedAfterItsWatermark = (
+  lightItem: ProjectItemLight,
+  itemUpdatedAtByItemId: Readonly<Record<string, string>>,
+): boolean =>
+  !Object.hasOwn(itemUpdatedAtByItemId, lightItem.id) ||
+  new Date(lightItem.updatedAt).getTime() >
+    new Date(itemUpdatedAtByItemId[lightItem.id]).getTime();
 
 const parseDependedIssueUrls = (
   dependedIssueUrlFieldText: string | null | undefined,
@@ -1125,6 +1150,7 @@ export class ApiV3CheerioRestIssueRepository
       issues,
       storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
       storyOptions: deserializeStoryOptions(raw),
+      itemUpdatedAtByItemId: deserializeItemUpdatedAtByItemId(raw),
     };
   };
 
@@ -1337,6 +1363,13 @@ export class ApiV3CheerioRestIssueRepository
                 project.story?.stories ?? [],
               ),
               storyOptions: buildStoryOptions(project),
+              itemUpdatedAtByItemId:
+                buildItemUpdatedAtByItemIdOfResultingIssues(reconciledIssues, [
+                  ...items,
+                  ...[
+                    ...liveProjectItemsByItemIdAbsentFromFetchResult.values(),
+                  ].flatMap((liveProjectItem) => liveProjectItem ?? []),
+                ]),
             });
             return { mergedIssues: reconciledIssues, mergedProject };
           },
@@ -1359,17 +1392,26 @@ export class ApiV3CheerioRestIssueRepository
     const { lightItems, inconsistencyMessage: lightFetchInconsistencyMessage } =
       await this.graphqlProjectItemRepository.fetchProjectItemsLight(
         projectId,
-        `updated:>=${this.toDateString(cutoff)}`,
+        `updated:>=${this.toDateString(new Date(cutoff.getTime() - ONE_DAY_MS))}`,
       );
-    const changedItemIds = lightItems
-      .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
-      .map((item) => item.id);
+    const changedLightItems = lightItems.filter((item) =>
+      isLightItemNeverSyncedOrUpdatedAfterItsWatermark(
+        item,
+        cache.itemUpdatedAtByItemId,
+      ),
+    );
     const changedItems =
-      changedItemIds.length > 0
+      changedLightItems.length > 0
         ? await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
-            changedItemIds,
+            changedLightItems.map((item) => item.id),
           )
         : [];
+    const detailFetchedItemIds = new Set(changedItems.map((item) => item.id));
+    const observedUpdatedAtByDetailFetchedItemId = Object.fromEntries(
+      changedLightItems
+        .filter((item) => detailFetchedItemIds.has(item.id))
+        .map((item) => [item.id, item.updatedAt]),
+    );
     const nowIso = now.toISOString();
     const { mergedIssues: issues, mergedProject } =
       await this.projectIssuesCacheRepository.withLock(projectId, async () => {
@@ -1399,6 +1441,10 @@ export class ApiV3CheerioRestIssueRepository
             project.story?.stories ?? [],
           ),
           storyOptions: buildStoryOptions(project),
+          itemUpdatedAtByItemId: {
+            ...(freshCache ?? cache).itemUpdatedAtByItemId,
+            ...observedUpdatedAtByDetailFetchedItemId,
+          },
         });
         return { mergedIssues, mergedProject };
       });

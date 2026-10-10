@@ -14,6 +14,7 @@ export type CachedProjectIssues = {
   issues: Issue[];
   storyIssueUrlByOptionName: Record<string, string>;
   storyOptions: StoryOptionEntry[];
+  itemUpdatedAtByItemId: Record<string, string>;
 };
 
 export const isProject = (value: unknown): value is Project => {
@@ -45,6 +46,14 @@ export const deserializeStoryIssueUrlByOptionName = (
 ): Record<string, string> => {
   const rawMap =
     'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
+  return isStringRecord(rawMap) ? rawMap : {};
+};
+
+export const deserializeItemUpdatedAtByItemId = (
+  raw: object,
+): Record<string, string> => {
+  const rawMap =
+    'itemUpdatedAtByItemId' in raw ? raw.itemUpdatedAtByItemId : null;
   return isStringRecord(rawMap) ? rawMap : {};
 };
 
@@ -124,6 +133,7 @@ export class ProjectIssuesCacheRepository {
       issues: raw.issues,
       storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
       storyOptions: deserializeStoryOptions(raw),
+      itemUpdatedAtByItemId: deserializeItemUpdatedAtByItemId(raw),
     };
   };
 

@@ -1396,7 +1396,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
   });
 
   describe('getAllIssues incremental fetch', () => {
-    it('light-scans the lastFetchedAt UTC day with no previous-day overlap, detail-fetches changed items by id, and upserts by url', async () => {
+    it('light-scans from the UTC day before the lastFetchedAt UTC day, detail-fetches changed items by id, and upserts by url', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -1450,7 +1450,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const lightCall =
         graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
       expect(lightCall[0]).toBe('cached-project');
-      expect(lightCall[1]).toBe('updated:>=2026-07-07');
+      expect(lightCall[1]).toBe('updated:>=2026-07-06');
       expect(
         graphqlProjectItemRepository.fetchProjectItems,
       ).not.toHaveBeenCalled();
@@ -1537,7 +1537,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('includes items within the clock-skew buffer before lastFetchedAt and excludes items older than the buffer', async () => {
+    it('detail-fetches every light-scanned item without a watermark entry, including one updated before lastFetchedAt minus the clock-skew buffer', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -1551,6 +1551,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFullFetchAt: '2026-07-07T00:00:00.000Z',
         project: buildTestProject('cached-project'),
         issues: [],
+        itemUpdatedAtByItemId: {},
       });
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
@@ -1587,10 +1588,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(
         graphqlProjectItemRepository.fetchProjectItemsByIds,
-      ).toHaveBeenCalledWith(['withinBuffer', 'atLastFetched', 'after']);
+      ).toHaveBeenCalledWith([
+        'wellBefore',
+        'withinBuffer',
+        'atLastFetched',
+        'after',
+      ]);
     });
 
-    it('applies the skew buffer across a UTC-midnight boundary, scanning the previous UTC day rather than today', async () => {
+    it('applies the skew buffer and the one-day lookback across a UTC-midnight boundary, scanning from two UTC days before today', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -1604,6 +1610,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFullFetchAt: '2026-07-07T00:00:00.000Z',
         project: buildTestProject('cached-project'),
         issues: [],
+        itemUpdatedAtByItemId: { beforeBuffer: '2026-07-06T23:55:00.000Z' },
       });
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
@@ -1630,13 +1637,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const lightCall =
         graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
-      expect(lightCall[1]).toBe('updated:>=2026-07-06');
+      expect(lightCall[1]).toBe('updated:>=2026-07-05');
       expect(
         graphqlProjectItemRepository.fetchProjectItemsByIds,
       ).toHaveBeenCalledWith(['previousDay']);
     });
 
-    it('skips the detail fetch entirely when no light item changed since lastFetchedAt', async () => {
+    it('skips the detail fetch entirely when no light item changed since its watermark', async () => {
       const {
         repository,
         graphqlProjectItemRepository,
@@ -1655,6 +1662,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             'unchanged title',
           ),
         ],
+        itemUpdatedAtByItemId: { stale: '2026-07-07T00:10:00.000Z' },
       });
       projectRepository.getProject.mockResolvedValue(
         buildTestProject('cached-project'),
@@ -1987,6 +1995,57 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('light-scans from the UTC day before the cutoff day and detail-fetches an unwatermarked item updated on the previous UTC day shortly before a cutoff just after midnight', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:20:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:08:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+        itemUpdatedAtByItemId: {},
+      });
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('cached-project'),
+      );
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [
+          buildLightItem(
+            'item-delayed-index',
+            'https://github.com/o/r/issues/1',
+            '2026-07-06T23:58:00.000Z',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/1',
+            'delayed index issue',
+          ),
+          id: 'item-delayed-index',
+          updatedAt: '2026-07-06T23:58:00.000Z',
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const lightCall =
+        graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
+      expect(lightCall[1]).toBe('updated:>=2026-07-06');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-delayed-index']);
+    });
+
     type IncrementalFetchLastFetchedAtCase = {
       name: string;
       inconsistencyMessage: string | null;
@@ -2045,6 +2104,461 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         });
       },
     );
+  });
+
+  describe('getAllIssues per-item updatedAt watermark', () => {
+    const buildWatermarkedProjectItem = (
+      itemId: string,
+      url: string,
+      updatedAt: string,
+    ): ProjectItem => ({
+      ...buildProjectItem(url, `title of ${itemId}`),
+      id: itemId,
+      updatedAt,
+    });
+
+    const buildCachedIssueRecordForItem = (itemId: string, url: string) => ({
+      ...buildCachedIssueRecord(url, `cached title of ${itemId}`),
+      itemId,
+    });
+
+    type ItemUpdatedAtWatermarkCase = {
+      scenario: string;
+      now: string;
+      cachedIssues: ReturnType<typeof buildCachedIssueRecordForItem>[];
+      storedItemUpdatedAtByItemId:
+        Record<string, string> | 'field absent from a legacy cache';
+      lightItems: ProjectItemLight[];
+      fullFetchItems: ProjectItem[];
+      liveProjectItemsOfCachedIssuesAbsentFromFullFetch: ProjectItem[];
+      expectedDetailFetchedItemIds: string[];
+      expectedResultItemIds: string[];
+      expectedItemUpdatedAtByItemId: Record<string, string>;
+    };
+
+    const itemUpdatedAtWatermarkCases: ItemUpdatedAtWatermarkCase[] = [
+      {
+        scenario:
+          'an incremental fetch detail-fetches a light item without a watermark entry even when it was updated before lastFetchedAt, and records its updatedAt',
+        now: '2026-07-07T00:45:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-watermarked',
+            'https://github.com/o/r/issues/1',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: {
+          'item-watermarked': '2026-07-07T00:10:00.000Z',
+        },
+        lightItems: [
+          buildLightItem(
+            'item-never-synced',
+            'https://github.com/o/r/issues/2',
+            '2026-07-06T12:00:00.000Z',
+          ),
+        ],
+        fullFetchItems: [],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [],
+        expectedDetailFetchedItemIds: ['item-never-synced'],
+        expectedResultItemIds: ['item-never-synced', 'item-watermarked'],
+        expectedItemUpdatedAtByItemId: {
+          'item-watermarked': '2026-07-07T00:10:00.000Z',
+          'item-never-synced': '2026-07-06T12:00:00.000Z',
+        },
+      },
+      {
+        scenario:
+          'an incremental fetch detail-fetches a light item updated after its watermark even when it was updated before lastFetchedAt, and advances its watermark',
+        now: '2026-07-07T00:45:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-updated',
+            'https://github.com/o/r/issues/1',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: {
+          'item-updated': '2026-07-07T00:10:00.000Z',
+        },
+        lightItems: [
+          buildLightItem(
+            'item-updated',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:20:00.000Z',
+          ),
+        ],
+        fullFetchItems: [],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [],
+        expectedDetailFetchedItemIds: ['item-updated'],
+        expectedResultItemIds: ['item-updated'],
+        expectedItemUpdatedAtByItemId: {
+          'item-updated': '2026-07-07T00:20:00.000Z',
+        },
+      },
+      {
+        scenario:
+          'an incremental fetch skips a light item whose updatedAt equals its watermark even when it was updated after lastFetchedAt, and keeps its watermark',
+        now: '2026-07-07T00:45:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-unchanged',
+            'https://github.com/o/r/issues/1',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: {
+          'item-unchanged': '2026-07-07T00:40:00.000Z',
+        },
+        lightItems: [
+          buildLightItem(
+            'item-unchanged',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:40:00.000Z',
+          ),
+        ],
+        fullFetchItems: [],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [],
+        expectedDetailFetchedItemIds: [],
+        expectedResultItemIds: ['item-unchanged'],
+        expectedItemUpdatedAtByItemId: {
+          'item-unchanged': '2026-07-07T00:40:00.000Z',
+        },
+      },
+      {
+        scenario:
+          'an incremental fetch skips a light item whose updatedAt is older than its watermark even when it was updated after lastFetchedAt, and keeps its watermark',
+        now: '2026-07-07T00:45:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-older',
+            'https://github.com/o/r/issues/1',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: {
+          'item-older': '2026-07-07T00:42:00.000Z',
+        },
+        lightItems: [
+          buildLightItem(
+            'item-older',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:41:00.000Z',
+          ),
+        ],
+        fullFetchItems: [],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [],
+        expectedDetailFetchedItemIds: [],
+        expectedResultItemIds: ['item-older'],
+        expectedItemUpdatedAtByItemId: {
+          'item-older': '2026-07-07T00:42:00.000Z',
+        },
+      },
+      {
+        scenario:
+          'an incremental fetch reads a legacy cache without itemUpdatedAtByItemId and treats every light item as unwatermarked',
+        now: '2026-07-07T00:45:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-legacy-cached',
+            'https://github.com/o/r/issues/1',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: 'field absent from a legacy cache',
+        lightItems: [
+          buildLightItem(
+            'item-legacy-cached',
+            'https://github.com/o/r/issues/1',
+            '2026-07-07T00:10:00.000Z',
+          ),
+          buildLightItem(
+            'item-legacy-new',
+            'https://github.com/o/r/issues/2',
+            '2026-07-07T00:40:00.000Z',
+          ),
+        ],
+        fullFetchItems: [],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [],
+        expectedDetailFetchedItemIds: ['item-legacy-cached', 'item-legacy-new'],
+        expectedResultItemIds: ['item-legacy-cached', 'item-legacy-new'],
+        expectedItemUpdatedAtByItemId: {
+          'item-legacy-cached': '2026-07-07T00:10:00.000Z',
+          'item-legacy-new': '2026-07-07T00:40:00.000Z',
+        },
+      },
+      {
+        scenario:
+          'a full fetch rebuilds the map from exactly the resulting items, dropping the entries of an item removed from the board and of an item without a cached issue',
+        now: '2026-07-07T02:00:00Z',
+        cachedIssues: [
+          buildCachedIssueRecordForItem(
+            'item-removed-from-board',
+            'https://github.com/o/r/issues/10',
+          ),
+          buildCachedIssueRecordForItem(
+            'item-live-refetched',
+            'https://github.com/o/r/issues/11',
+          ),
+        ],
+        storedItemUpdatedAtByItemId: {
+          'item-removed-from-board': '2026-07-07T00:10:00.000Z',
+          'item-orphan': '2026-07-07T00:15:00.000Z',
+          'item-live-refetched': '2026-07-07T00:20:00.000Z',
+        },
+        lightItems: [],
+        fullFetchItems: [
+          buildWatermarkedProjectItem(
+            'item-fetched-a',
+            'https://github.com/o/r/issues/12',
+            '2026-07-07T01:10:00.000Z',
+          ),
+          buildWatermarkedProjectItem(
+            'item-fetched-b',
+            'https://github.com/o/r/issues/13',
+            '2026-07-07T01:50:00.000Z',
+          ),
+        ],
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch: [
+          buildWatermarkedProjectItem(
+            'item-live-refetched',
+            'https://github.com/o/r/issues/11',
+            '2026-07-07T01:30:00.000Z',
+          ),
+        ],
+        expectedDetailFetchedItemIds: [],
+        expectedResultItemIds: [
+          'item-fetched-a',
+          'item-fetched-b',
+          'item-live-refetched',
+        ],
+        expectedItemUpdatedAtByItemId: {
+          'item-fetched-a': '2026-07-07T01:10:00.000Z',
+          'item-fetched-b': '2026-07-07T01:50:00.000Z',
+          'item-live-refetched': '2026-07-07T01:30:00.000Z',
+        },
+      },
+    ];
+
+    it.each(itemUpdatedAtWatermarkCases)(
+      'writes itemUpdatedAtByItemId and detail-fetches by per-item watermark: $scenario',
+      async ({
+        now,
+        cachedIssues,
+        storedItemUpdatedAtByItemId,
+        lightItems,
+        fullFetchItems,
+        liveProjectItemsOfCachedIssuesAbsentFromFullFetch,
+        expectedDetailFetchedItemIds,
+        expectedResultItemIds,
+        expectedItemUpdatedAtByItemId,
+      }) => {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          localStorageCacheRepository,
+          projectRepository,
+          dateRepository,
+        } = createApiV3CheerioRestIssueRepository();
+        dateRepository.now.mockResolvedValue(new Date(now));
+        localStorageCacheRepository.getSingle.mockResolvedValue({
+          lastFetchedAt: '2026-07-07T00:30:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+          project: buildTestProject('cached-project'),
+          issues: cachedIssues,
+          storyIssueUrlByOptionName: {},
+          storyOptions: [],
+          ...(storedItemUpdatedAtByItemId === 'field absent from a legacy cache'
+            ? {}
+            : { itemUpdatedAtByItemId: storedItemUpdatedAtByItemId }),
+        });
+        projectRepository.getProject.mockResolvedValue(
+          buildTestProject('cached-project'),
+        );
+        graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+          lightItems,
+          inconsistencyMessage: null,
+        });
+        const detailProjectItems = lightItems.map((lightItem) =>
+          buildWatermarkedProjectItem(
+            lightItem.id,
+            lightItem.url,
+            lightItem.updatedAt,
+          ),
+        );
+        graphqlProjectItemRepository.fetchProjectItemsByIds.mockImplementation(
+          async (itemIds: string[]) =>
+            detailProjectItems.filter((item) => itemIds.includes(item.id)),
+        );
+        graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+          issues: fullFetchItems,
+          inconsistencyMessage: null,
+        });
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
+          async (issueUrl: string) =>
+            liveProjectItemsOfCachedIssuesAbsentFromFullFetch.find(
+              (item) => item.url === issueUrl,
+            ) ?? null,
+        );
+        localStorageCacheRepository.setSingle.mockResolvedValue();
+
+        const result = await repository.getAllIssues('cached-project');
+
+        const detailFetchedItemIds =
+          graphqlProjectItemRepository.fetchProjectItemsByIds.mock.calls.flatMap(
+            ([itemIds]) => itemIds,
+          );
+        expect([...detailFetchedItemIds].sort()).toEqual(
+          [...expectedDetailFetchedItemIds].sort(),
+        );
+        expect(result.issues.map((issue) => issue.itemId).sort()).toEqual(
+          [...expectedResultItemIds].sort(),
+        );
+        const cacheWrite =
+          localStorageCacheRepository.setSingle.mock.calls[0][1];
+        expect(cacheWrite).toEqual(
+          expect.objectContaining({
+            itemUpdatedAtByItemId: expectedItemUpdatedAtByItemId,
+          }),
+        );
+      },
+    );
+
+    it('keeps the watermark of an item absent from several consecutive light scans untouched and detail-fetches it on the first cycle it reappears with an updatedAt newer than that watermark', async () => {
+      const projectId = 'proj-delayed-item-watermark';
+      const cacheKey = `allIssues-${projectId}`;
+      const project = buildTestProject(projectId);
+      const cache = buildRacyLocalStorageCacheRepository();
+      const syncedIssueUrl = 'https://github.com/o/r/issues/1';
+      const delayedIssueUrl = 'https://github.com/o/r/issues/2';
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(syncedIssueUrl, 'synced issue'),
+            itemId: 'item-synced',
+          },
+          {
+            ...buildCachedIssueRecord(
+              delayedIssueUrl,
+              'delayed issue before update',
+            ),
+            itemId: 'item-delayed',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+        itemUpdatedAtByItemId: {
+          'item-synced': '2026-07-07T00:20:00.000Z',
+          'item-delayed': '2026-07-07T00:05:00.000Z',
+        },
+      });
+      const syncedLightItem = buildLightItem(
+        'item-synced',
+        syncedIssueUrl,
+        '2026-07-07T00:20:00.000Z',
+      );
+      const reappearedDelayedLightItem = buildLightItem(
+        'item-delayed',
+        delayedIssueUrl,
+        '2026-07-07T00:32:00.000Z',
+      );
+      const updatedDelayedProjectItem: ProjectItem = {
+        ...buildProjectItem(delayedIssueUrl, 'delayed issue after update'),
+        id: 'item-delayed',
+        updatedAt: '2026-07-07T00:32:00.000Z',
+      };
+      const refreshCycles: { now: string; lightItems: ProjectItemLight[] }[] = [
+        { now: '2026-07-07T00:40:00Z', lightItems: [syncedLightItem] },
+        { now: '2026-07-07T00:45:00Z', lightItems: [syncedLightItem] },
+        { now: '2026-07-07T00:50:00Z', lightItems: [syncedLightItem] },
+        {
+          now: '2026-07-07T00:55:00Z',
+          lightItems: [syncedLightItem, reappearedDelayedLightItem],
+        },
+      ];
+      const observedRefreshCycles: {
+        now: string;
+        detailFetchedItemIds: string[];
+        delayedIssueTitle: string | null;
+        storedItemUpdatedAtByItemId: unknown;
+      }[] = [];
+
+      for (const refreshCycle of refreshCycles) {
+        const {
+          repository,
+          graphqlProjectItemRepository,
+          projectRepository,
+          dateRepository,
+        } = buildProcessRepository(cache);
+        dateRepository.now.mockResolvedValue(new Date(refreshCycle.now));
+        projectRepository.getProject.mockResolvedValue(project);
+        graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+          lightItems: refreshCycle.lightItems,
+          inconsistencyMessage: null,
+        });
+        graphqlProjectItemRepository.fetchProjectItemsByIds.mockImplementation(
+          async (itemIds: string[]) =>
+            [updatedDelayedProjectItem].filter((item) =>
+              itemIds.includes(item.id),
+            ),
+        );
+
+        const result = await repository.getAllIssues(projectId);
+
+        const storedCache = await cache.getSingle(cacheKey);
+        observedRefreshCycles.push({
+          now: refreshCycle.now,
+          detailFetchedItemIds:
+            graphqlProjectItemRepository.fetchProjectItemsByIds.mock.calls.flatMap(
+              ([itemIds]) => itemIds,
+            ),
+          delayedIssueTitle:
+            result.issues.find((issue) => issue.url === delayedIssueUrl)
+              ?.title ?? null,
+          storedItemUpdatedAtByItemId:
+            typeof storedCache === 'object' &&
+            storedCache !== null &&
+            'itemUpdatedAtByItemId' in storedCache
+              ? storedCache.itemUpdatedAtByItemId
+              : 'field absent from the stored cache',
+        });
+      }
+
+      const watermarksWhileDelayedItemIsAbsentFromLightScan = {
+        'item-synced': '2026-07-07T00:20:00.000Z',
+        'item-delayed': '2026-07-07T00:05:00.000Z',
+      };
+      expect(observedRefreshCycles).toEqual([
+        {
+          now: '2026-07-07T00:40:00Z',
+          detailFetchedItemIds: [],
+          delayedIssueTitle: 'delayed issue before update',
+          storedItemUpdatedAtByItemId:
+            watermarksWhileDelayedItemIsAbsentFromLightScan,
+        },
+        {
+          now: '2026-07-07T00:45:00Z',
+          detailFetchedItemIds: [],
+          delayedIssueTitle: 'delayed issue before update',
+          storedItemUpdatedAtByItemId:
+            watermarksWhileDelayedItemIsAbsentFromLightScan,
+        },
+        {
+          now: '2026-07-07T00:50:00Z',
+          detailFetchedItemIds: [],
+          delayedIssueTitle: 'delayed issue before update',
+          storedItemUpdatedAtByItemId:
+            watermarksWhileDelayedItemIsAbsentFromLightScan,
+        },
+        {
+          now: '2026-07-07T00:55:00Z',
+          detailFetchedItemIds: ['item-delayed'],
+          delayedIssueTitle: 'delayed issue after update',
+          storedItemUpdatedAtByItemId: {
+            'item-synced': '2026-07-07T00:20:00.000Z',
+            'item-delayed': '2026-07-07T00:32:00.000Z',
+          },
+        },
+      ]);
+    });
   });
 
   describe('getAllIssues story option rename detection', () => {
