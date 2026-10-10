@@ -1,3 +1,10 @@
+## [2.165.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.4...v2.165.5) (2026-10-10)
+
+
+### Bug Fixes
+
+* **deps:** resolve handlebars CVEs from daily security scan ([#3341](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3341)) ([c71f262](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c71f262c2f61a0cb9073deaa008f717c879a282f))
+
 ## [2.165.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.3...v2.165.4) (2026-10-10)
 
 
