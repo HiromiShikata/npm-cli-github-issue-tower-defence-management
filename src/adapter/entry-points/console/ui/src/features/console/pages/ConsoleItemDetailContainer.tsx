@@ -126,10 +126,7 @@ export const buildTriageOfflinePayload = (
     apiPath: TRIAGE_OPERATION_PATH,
     requestBody: (action === 'set_status'
       ? { ...requestWithoutExpectedStatusName, expectedStatusName }
-      : requestWithoutExpectedStatusName) as unknown as Record<
-      string,
-      unknown
-    >,
+      : requestWithoutExpectedStatusName) as unknown as Record<string, unknown>,
   };
 };
 
