@@ -1,3 +1,10 @@
+## [2.165.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.5...v2.165.6) (2026-10-10)
+
+
+### Bug Fixes
+
+* **agent-identity:** filter report selection by the issue's own assigned agent ([#3342](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3342)) ([16f1b36](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/16f1b36c7ffbafb5013224fdda85f28884ce98e9)), closes [#3312](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3312)
+
 ## [2.165.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.4...v2.165.5) (2026-10-10)
 
 
