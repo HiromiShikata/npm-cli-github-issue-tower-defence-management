@@ -56,9 +56,6 @@ const machineGeneratedByTrustedAuthor = (updatedAt: Date): Comment => ({
   updatedAt,
 });
 
-// Unlike `reportWithFlagTrue` and `reportWithoutFlag` above, which always
-// self-declare "developer" as the posting agent, these two vary the posting
-// agent so the effect of the new agentFieldValue parameter can be observed.
 const reportWithFlagTrueFromAgent = (
   agentName: string,
   updatedAt: Date,

@@ -8,14 +8,9 @@ const trustEveryAuthor = (): boolean => true;
 const report = (agent: string): string =>
   `From: :robot: agent (model)\n\`\`\`json\n{"nextStepAgent": "${agent}"}\n\`\`\``;
 
-// Unlike `report` above, this helper varies the self-declared posting agent
-// in the `From: :robot: {name}` line itself, so it can be used to prove the
-// selection functions filter candidates by who actually posted them.
 const reportPostedByAgent = (agentName: string): string =>
   `From: :robot: ${agentName} (model)\n\`\`\`json\n{"nextStepAgent": "${agentName}"}\n\`\`\``;
 
-// A report-shaped comment (a fenced JSON object block) that carries no
-// `From: :robot: {name}` line at all, so it has no self-declared posting agent.
 const reportWithoutPostingAgentDeclared =
   '```json\n{"nextStepAgent": "developer"}\n```';
 
