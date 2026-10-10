@@ -23,7 +23,10 @@ import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
-import { findLastAgentReport } from './findLastAgentReport';
+import {
+  findLastAgentReport,
+  TRIAGER_AGENT_NAME,
+} from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {
@@ -193,11 +196,17 @@ export class RevertOrphanedPreparationUseCase {
             author,
             params.allowedIssueAuthors,
           );
-        const lastAgentReport = findLastAgentReport(
+        const strictAgentReport = findLastAgentReport(
           comments,
           isTrustedAuthor,
-          null,
+          issue.agent,
         );
+        const triagerAgentReport = findLastAgentReport(
+          comments,
+          isTrustedAuthor,
+          TRIAGER_AGENT_NAME,
+        );
+        const lastAgentReport = strictAgentReport ?? triagerAgentReport;
         const nextStepAgent = lastAgentReport
           ? extractNextStepAgent(lastAgentReport.content)
           : null;

@@ -4,6 +4,8 @@ import {
 } from './isAgentReportBody';
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 
+export const TRIAGER_AGENT_NAME = 'triager';
+
 const isAgentReportMatchingIdentity = (
   content: string,
   agentFieldValue: string | null,

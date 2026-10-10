@@ -38,7 +38,10 @@ import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfir
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
-import { findLastAgentReportPostedSince } from './findLastAgentReport';
+import {
+  findLastAgentReportPostedSince,
+  TRIAGER_AGENT_NAME,
+} from './findLastAgentReport';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
 import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
@@ -461,12 +464,19 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueRepository.getLatestReopenedEventAt(issue);
 
     const dispatchStartedAt = params.dispatchStartedAt ?? null;
-    const lastAgentReport = findLastAgentReportPostedSince(
+    const strictAgentReport = findLastAgentReportPostedSince(
       comments,
       isTrustedAuthor,
       dispatchStartedAt,
       issue.agent,
     );
+    const triagerAgentReport = findLastAgentReportPostedSince(
+      comments,
+      isTrustedAuthor,
+      dispatchStartedAt,
+      TRIAGER_AGENT_NAME,
+    );
+    const lastAgentReport = strictAgentReport ?? triagerAgentReport;
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
@@ -504,8 +514,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         return;
       }
     }
-    const storyName = lastAgentReport
-      ? extractStory(lastAgentReport.content)
+    const storyName = strictAgentReport
+      ? extractStory(strictAgentReport.content)
       : null;
     if (
       nextStepAgent !== null &&
