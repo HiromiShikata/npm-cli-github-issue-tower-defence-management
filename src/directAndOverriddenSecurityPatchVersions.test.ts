@@ -90,6 +90,11 @@ describe('direct and overridden dependency patched-version thresholds', () => {
       lockfileKey: 'node_modules/source-map-js',
       requiredMinimumVersion: '1.2.2',
     },
+    {
+      packageName: 'handlebars',
+      lockfileKey: 'node_modules/handlebars',
+      requiredMinimumVersion: '4.7.10',
+    },
   ];
 
   it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
@@ -116,5 +121,11 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
 
     expect(isVersionAtLeast(overriddenVersion, '1.2.2')).toBe(true);
+  });
+
+  it('pins handlebars to at or above its patched version threshold via a package.json override', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('handlebars');
+
+    expect(isVersionAtLeast(overriddenVersion, '4.7.10')).toBe(true);
   });
 });
