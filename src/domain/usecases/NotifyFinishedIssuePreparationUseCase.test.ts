@@ -5025,7 +5025,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it("does not call setIssueAgentField when the only report's self-declared posting agent does not match the issue agent field", async () => {
-      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
       const projectWithAgent = makeProjectWithAgent();
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -9566,7 +9569,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it("does not route to Failed Preparation when the only report's self-declared posting agent does not match the issue agent field", async () => {
-      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(
         projectWithAwaitingOwner(),
       );
@@ -9871,7 +9877,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it("does not move the issue to Awaiting Owner when the only report's self-declared posting agent does not match the issue agent field", async () => {
-      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(
         projectWithAwaitingOwner(),
       );

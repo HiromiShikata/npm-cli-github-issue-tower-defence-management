@@ -333,7 +333,10 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
         description:
           "agentFieldValue not matching the only report's posting agent returns false",
         comments: [
-          reportWithFlagTrueFromAgent('pr-reviewer', at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrueFromAgent(
+            'pr-reviewer',
+            at('2026-09-25T08:00:00Z'),
+          ),
         ],
         agentFieldValue: 'developer',
         expected: false,

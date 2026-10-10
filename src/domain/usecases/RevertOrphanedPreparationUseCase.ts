@@ -23,10 +23,7 @@ import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractWorkflowError } from './extractWorkflowError';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
-import {
-  findLastAgentReport,
-  TRIAGER_AGENT_NAME,
-} from './findLastAgentReport';
+import { findLastAgentReport, TRIAGER_AGENT_NAME } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {

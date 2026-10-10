@@ -147,21 +147,27 @@ describe('findLastAgentReport', () => {
     it.each([
       {
         description: 'no identity filter requested',
-        comments: [{ author: 'bot', content: reportPostedByAgent('developer') }],
+        comments: [
+          { author: 'bot', content: reportPostedByAgent('developer') },
+        ],
         isTrustedAuthor: trustEveryAuthor,
         agentFieldValue: null,
         expectedContent: reportPostedByAgent('developer'),
       },
       {
         description: 'identity matches',
-        comments: [{ author: 'bot', content: reportPostedByAgent('developer') }],
+        comments: [
+          { author: 'bot', content: reportPostedByAgent('developer') },
+        ],
         isTrustedAuthor: trustEveryAuthor,
         agentFieldValue: 'developer',
         expectedContent: reportPostedByAgent('developer'),
       },
       {
         description: 'identity mismatch, no earlier candidate',
-        comments: [{ author: 'bot', content: reportPostedByAgent('pr-reviewer') }],
+        comments: [
+          { author: 'bot', content: reportPostedByAgent('pr-reviewer') },
+        ],
         isTrustedAuthor: trustEveryAuthor,
         agentFieldValue: 'developer',
         expectedContent: null,
@@ -180,14 +186,18 @@ describe('findLastAgentReport', () => {
       {
         description:
           'comment has a JSON body but no self-declared posting agent at all, identity requested',
-        comments: [{ author: 'bot', content: reportWithoutPostingAgentDeclared }],
+        comments: [
+          { author: 'bot', content: reportWithoutPostingAgentDeclared },
+        ],
         isTrustedAuthor: trustEveryAuthor,
         agentFieldValue: 'developer',
         expectedContent: null,
       },
       {
         description: 'same comment as the previous case, no identity requested',
-        comments: [{ author: 'bot', content: reportWithoutPostingAgentDeclared }],
+        comments: [
+          { author: 'bot', content: reportWithoutPostingAgentDeclared },
+        ],
         isTrustedAuthor: trustEveryAuthor,
         agentFieldValue: null,
         expectedContent: reportWithoutPostingAgentDeclared,
@@ -269,8 +279,12 @@ describe('findLastAgentReportPostedSince', () => {
     },
   ])('returns $description', ({ comments, postedSince, expectedContent }) => {
     expect(
-      findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince, null)
-        ?.content ?? null,
+      findLastAgentReportPostedSince(
+        comments,
+        trustEveryAuthor,
+        postedSince,
+        null,
+      )?.content ?? null,
     ).toBe(expectedContent);
   });
 
@@ -404,8 +418,12 @@ describe('findLastAgentReportPostedSince', () => {
     'keeps returning $description',
     ({ comments, postedSince, expectedContent }) => {
       expect(
-        findLastAgentReportPostedSince(comments, trustEveryAuthor, postedSince, null)
-          ?.content ?? null,
+        findLastAgentReportPostedSince(
+          comments,
+          trustEveryAuthor,
+          postedSince,
+          null,
+        )?.content ?? null,
       ).toBe(expectedContent);
     },
   );
@@ -471,8 +489,12 @@ describe('findLastAgentReportPostedSince', () => {
       const isTrustedAuthor = (author: string): boolean => author === 'bot';
 
       expect(
-        findLastAgentReportPostedSince(comments, isTrustedAuthor, postedSince, null)
-          ?.content ?? null,
+        findLastAgentReportPostedSince(
+          comments,
+          isTrustedAuthor,
+          postedSince,
+          null,
+        )?.content ?? null,
       ).toBe(expectedContent);
     },
   );
