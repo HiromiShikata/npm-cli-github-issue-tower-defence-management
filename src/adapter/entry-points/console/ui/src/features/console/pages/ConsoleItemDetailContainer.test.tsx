@@ -3549,13 +3549,18 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     item: ConsoleListItem,
     action: 'close' | 'set_status',
     extra?: { statusName: string },
-  ): ConsoleOfflinePayload => ({
-    ...offlinePayloadBaseFor(item),
-    apiPath: TRIAGE_OPERATION_PATH,
-    requestBody: {
-      ...buildTriageRequest('acme', item, action, extra),
-    },
-  });
+  ): ConsoleOfflinePayload => {
+    const { expectedStatusName, ...requestWithoutExpectedStatusName } =
+      buildTriageRequest('acme', item, action, extra);
+    return {
+      ...offlinePayloadBaseFor(item),
+      apiPath: TRIAGE_OPERATION_PATH,
+      requestBody:
+        action === 'set_status'
+          ? { ...requestWithoutExpectedStatusName, expectedStatusName }
+          : requestWithoutExpectedStatusName,
+    };
+  };
 
   const commentBodyWrittenOffline = 'Checked during the flight.';
 
