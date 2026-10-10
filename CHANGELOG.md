@@ -1,3 +1,10 @@
+## [2.165.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.2...v2.165.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **console:** guard Status writes against stale deferred actions ([#3332](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3332)) ([53163f6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/53163f6e5a5c5b9229cafda44faa76af1c9cfd1d)), closes [#3307](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3307)
+
 ## [2.165.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.1...v2.165.2) (2026-10-09)
 
 
