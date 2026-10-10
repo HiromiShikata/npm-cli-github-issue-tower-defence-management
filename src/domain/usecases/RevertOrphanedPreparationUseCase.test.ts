@@ -444,7 +444,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        content:
+          'From: :robot: developer\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
         updatedAt: new Date('2024-01-02T00:00:00Z'),
       },
@@ -456,7 +457,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
       {
         author: 'bot',
-        content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        content:
+          'From: :robot: developer\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T01:30:00Z'),
         updatedAt: new Date('2024-01-02T01:30:00Z'),
       },
