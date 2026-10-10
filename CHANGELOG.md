@@ -1,3 +1,10 @@
+## [2.165.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.3...v2.165.4) (2026-10-10)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** incremental fetch can permanently drop delayed project items ([#3337](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3337)) ([984817f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/984817f649684391449579cd274faf76dbb9f69f))
+
 ## [2.165.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.2...v2.165.3) (2026-10-10)
 
 
