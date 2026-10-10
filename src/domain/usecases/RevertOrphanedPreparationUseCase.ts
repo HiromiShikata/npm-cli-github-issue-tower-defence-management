@@ -193,7 +193,11 @@ export class RevertOrphanedPreparationUseCase {
             author,
             params.allowedIssueAuthors,
           );
-        const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+        const lastAgentReport = findLastAgentReport(
+          comments,
+          isTrustedAuthor,
+          null,
+        );
         const nextStepAgent = lastAgentReport
           ? extractNextStepAgent(lastAgentReport.content)
           : null;
@@ -250,7 +254,11 @@ export class RevertOrphanedPreparationUseCase {
         }
         if (
           nextStepAgent === null &&
-          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor)
+          issueHasUnansweredOwnerConfirmationRequest(
+            comments,
+            isTrustedAuthor,
+            issue.agent,
+          )
         ) {
           if (awaitingOwnerStatusOption) {
             await this.issueRepository.updateStatus(
@@ -597,6 +605,7 @@ export class RevertOrphanedPreparationUseCase {
         const lastTrustedAgentReport = findLastAgentReport(
           comments,
           isTrustedAuthor,
+          issue.agent,
         );
         const needsOwnerConfirmation =
           (lastTrustedAgentReport
@@ -604,7 +613,11 @@ export class RevertOrphanedPreparationUseCase {
                 lastTrustedAgentReport.content,
               )
             : false) &&
-          issueHasUnansweredOwnerConfirmationRequest(comments, isTrustedAuthor);
+          issueHasUnansweredOwnerConfirmationRequest(
+            comments,
+            isTrustedAuthor,
+            issue.agent,
+          );
         return {
           outcome: needsOwnerConfirmation
             ? 'advanceToQualityCheck'

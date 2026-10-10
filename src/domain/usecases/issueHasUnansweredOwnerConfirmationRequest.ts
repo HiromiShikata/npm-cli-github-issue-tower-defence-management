@@ -6,8 +6,13 @@ import { isHumanComment } from './isHumanComment';
 export const issueHasUnansweredOwnerConfirmationRequest = (
   comments: Comment[],
   isTrustedAuthor: (author: string) => boolean,
+  agentFieldValue: string | null,
 ): boolean => {
-  const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+  const lastAgentReport = findLastAgentReport(
+    comments,
+    isTrustedAuthor,
+    agentFieldValue,
+  );
   if (lastAgentReport === null) {
     return false;
   }

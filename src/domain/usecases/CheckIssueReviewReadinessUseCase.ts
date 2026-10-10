@@ -5,10 +5,7 @@ import {
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import {
-  extractAgentNameFromReportBody,
-  isAgentReportBody,
-} from './isAgentReportBody';
+import { isAgentReportBody } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
 import { findEffectiveLastComment } from './autoStatusCheckComments';
@@ -83,14 +80,13 @@ export class CheckIssueReviewReadinessUseCase {
       });
     }
 
-    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const reportingAgentName = lastAgentReport
-      ? extractAgentNameFromReportBody(lastAgentReport.content)
-      : null;
+    const lastAgentReport = findLastAgentReport(
+      comments,
+      isTrustedAuthor,
+      params.defaultAgentName ?? null,
+    );
     const lastReportIsFromDefaultAgent =
-      reportingAgentName !== null &&
-      params.defaultAgentName != null &&
-      reportingAgentName === params.defaultAgentName;
+      lastAgentReport !== null && params.defaultAgentName != null;
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(

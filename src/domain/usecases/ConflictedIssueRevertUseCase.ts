@@ -162,6 +162,7 @@ export class ConflictedIssueRevertUseCase {
           issueHasUnansweredOwnerConfirmationRequest(
             existingComments,
             isTrustedAuthorForAutoStatusCheck,
+            issue.agent,
           )
         ) {
           continue;
@@ -172,6 +173,7 @@ export class ConflictedIssueRevertUseCase {
           const nextStepAgent = extractNextStepAgentFromComments(
             existingComments,
             isTrustedAuthorForAutoStatusCheck,
+            issue.agent,
           );
           if (nextStepAgent !== null) {
             const repetition = resolveNextStepAgentDispatchRepetition({
