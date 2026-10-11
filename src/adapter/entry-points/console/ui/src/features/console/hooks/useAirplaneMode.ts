@@ -83,6 +83,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
     async (
       responseBody: ReadableStream<Uint8Array>,
       previousSnapshot: AirplaneSnapshot | null,
+      fallbackRetryTargetUrls: string[],
     ): Promise<void> => {
       const reader = responseBody.getReader();
       const decoder = new TextDecoder();
@@ -114,7 +115,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
             if (parsed === null) {
               setStatus('error');
               setFailures(['Failed to parse snapshot']);
-              setRetryTargetUrls([]);
+              setRetryTargetUrls(fallbackRetryTargetUrls);
               return;
             }
             const mergeResult = airplaneSnapshotMerge(previousSnapshot, parsed);
@@ -128,7 +129,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
             if (mergedSnapshot === null) {
               setStatus('error');
               setFailures(['Failed to merge snapshot']);
-              setRetryTargetUrls([]);
+              setRetryTargetUrls(fallbackRetryTargetUrls);
               return;
             }
             await storeAirplaneSnapshot(mergedSnapshot);
@@ -136,7 +137,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
             setSnapshot(mergedSnapshot);
             setStatus('on');
             setFailures(mergedSnapshot.failures);
-            setRetryTargetUrls([]);
+            setRetryTargetUrls(mergedSnapshot.failures);
           }
         }
       }
@@ -164,7 +165,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
           setRetryTargetUrls([]);
           return;
         }
-        await processSyncStream(response.body, null);
+        await processSyncStream(response.body, null, []);
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === 'AbortError') {
@@ -216,10 +217,10 @@ export const useAirplaneMode = (): AirplaneModeState => {
           if (!response.ok || response.body === null) {
             setStatus('error');
             setFailures([`HTTP ${response.status}`]);
-            setRetryTargetUrls([]);
+            setRetryTargetUrls(targetUrls);
             return;
           }
-          await processSyncStream(response.body, currentSnapshot);
+          await processSyncStream(response.body, currentSnapshot, targetUrls);
         })
         .catch((error: unknown) => {
           if (error instanceof Error && error.name === 'AbortError') {
@@ -227,7 +228,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
           }
           setStatus('error');
           setFailures([error instanceof Error ? error.message : String(error)]);
-          setRetryTargetUrls([]);
+          setRetryTargetUrls(targetUrls);
         });
     },
     [processSyncStream],
@@ -241,6 +242,6 @@ export const useAirplaneMode = (): AirplaneModeState => {
     retryTargetUrls,
     startSync,
     turnOff,
-    retryFailed: () => retryFailed(snapshot, failures),
+    retryFailed: () => retryFailed(snapshot, retryTargetUrls),
   };
 };

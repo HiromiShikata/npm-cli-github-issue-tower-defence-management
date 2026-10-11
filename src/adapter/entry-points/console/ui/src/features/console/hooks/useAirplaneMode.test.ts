@@ -1,11 +1,28 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
+  type AirplaneSnapshotMergeResult,
+  airplaneSnapshotMerge,
+} from '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase';
+import {
   type AirplaneItemSnapshot,
   type AirplaneSnapshot,
   readAirplaneModeFlag,
   writeAirplaneModeFlag,
 } from '../lib/airplaneSnapshot';
 import { useAirplaneMode } from './useAirplaneMode';
+
+jest.mock(
+  '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase',
+  () => {
+    const actual = jest.requireActual(
+      '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase',
+    );
+    return {
+      ...actual,
+      airplaneSnapshotMerge: jest.fn(actual.airplaneSnapshotMerge),
+    };
+  },
+);
 
 const makeMinimalItemSnapshot = (): AirplaneItemSnapshot => ({
   body: '',
@@ -553,5 +570,361 @@ describe('useAirplaneMode', () => {
     });
 
     expect(result.current.retryTargetUrls).toEqual([]);
+  });
+
+  it('preserves the retried target URLs when a second retryFailed call gets a non-OK HTTP response', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      body: null,
+    });
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failures).toContain('HTTP 500');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+  });
+
+  it('preserves the retried target URLs when a second retryFailed call rejects with a network error', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failures).toContain('network down');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+  });
+
+  it('preserves the retried target URLs when a second retryFailed call gets a done event whose snapshot fails to parse', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    mockFetchSse([{ type: 'done', snapshot: null }]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failures).toEqual(['Failed to parse snapshot']);
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+  });
+
+  it('preserves the retried target URLs when a second retryFailed call reaches the merged-snapshot reparse-failure branch', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    jest.mocked(airplaneSnapshotMerge).mockReturnValueOnce({
+      status: 'on',
+      snapshot: null,
+    } as unknown as AirplaneSnapshotMergeResult);
+    mockFetchSse([{ type: 'done', snapshot: makeMinimalSnapshot() }]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failures).toEqual(['Failed to merge snapshot']);
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+  });
+
+  it('leaves retryTargetUrls empty when startSync receives a non-OK HTTP response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      body: null,
+    });
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.failures).toContain('HTTP 500');
+    expect(result.current.retryTargetUrls).toEqual([]);
+  });
+
+  it('leaves retryTargetUrls empty when startSync receives a done event whose snapshot fails to parse', async () => {
+    mockFetchSse([{ type: 'done', snapshot: null }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.failures).toEqual(['Failed to parse snapshot']);
+    expect(result.current.retryTargetUrls).toEqual([]);
+  });
+
+  it('leaves retryTargetUrls empty when startSync reaches the merged-snapshot reparse-failure branch', async () => {
+    jest.mocked(airplaneSnapshotMerge).mockReturnValueOnce({
+      status: 'on',
+      snapshot: null,
+    } as unknown as AirplaneSnapshotMergeResult);
+
+    mockFetchSse([{ type: 'done', snapshot: makeMinimalSnapshot() }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.failures).toEqual(['Failed to merge snapshot']);
+    expect(result.current.retryTargetUrls).toEqual([]);
+  });
+
+  it('sends the actual failed target URLs, not the failure messages, when the exposed retryFailed is called', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      body: null,
+    });
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    const realTargetUrls = [...result.current.retryTargetUrls];
+    expect(realTargetUrls).toEqual(['https://github.com/o/r/issues/2']);
+    expect(result.current.failures).toEqual(['HTTP 500']);
+    expect(result.current.failures).not.toEqual(realTargetUrls);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: buildSseBody([{ type: 'done', snapshot: makeMinimalSnapshot() }]),
+    });
+    const thirdCallFetchMock = global.fetch as jest.Mock;
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    const [, requestInit] = thirdCallFetchMock.mock.calls[0] as [
+      string,
+      { body: string },
+    ];
+    const sentBody = JSON.parse(requestInit.body) as { targetUrls: string[] };
+
+    expect(sentBody.targetUrls).toEqual(realTargetUrls);
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
   });
 });
