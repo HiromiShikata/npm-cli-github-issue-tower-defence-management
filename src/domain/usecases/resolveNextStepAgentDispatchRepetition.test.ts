@@ -2155,4 +2155,33 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
 
     expect(result.type).toBe('escalateDispatchLoop');
   });
+
+  it('produces the same result whether sessionEndedWithoutCompletingTurn is set or omitted when nextStepAgent is already declared (criterion 6)', () => {
+    const resultWithFlagOmitted = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: 'developer',
+      comments: [],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+    const resultWithFlagTrue = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: 'developer',
+      comments: [],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: true,
+    });
+
+    expect(resultWithFlagTrue).toEqual(resultWithFlagOmitted);
+    expect(resultWithFlagTrue.type).not.toBe(
+      'sessionInterruptedBeforeCompletion',
+    );
+  });
 });
