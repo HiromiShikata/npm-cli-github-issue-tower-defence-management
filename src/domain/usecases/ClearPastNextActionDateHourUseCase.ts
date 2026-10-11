@@ -43,6 +43,29 @@ export class ClearPastNextActionDateHourUseCase {
     );
   };
 
+  private isLiveNextActionDateUnchanged = async (
+    snapshotIssue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(snapshotIssue.url, project);
+    } catch (error) {
+      console.error(
+        `[ClearPastNextActionDateHourUseCase] Failed to re-read the live Next Action Date before clearing. issueUrl: ${snapshotIssue.url}`,
+        error,
+      );
+      return false;
+    }
+    return (
+      liveIssue !== null &&
+      isSameNextActionDate(
+        liveIssue.nextActionDate,
+        snapshotIssue.nextActionDate,
+      )
+    );
+  };
+
   run = async (input: {
     targetDates: Date[];
     project: Project;
@@ -99,6 +122,9 @@ export class ClearPastNextActionDateHourUseCase {
         }
         await new Promise((resolve) => setTimeout(resolve, 5000));
         if (!nextActionDateField || issue.nextActionDate === null) {
+          continue;
+        }
+        if (!(await this.isLiveNextActionDateUnchanged(issue, input.project))) {
           continue;
         }
         try {
