@@ -847,4 +847,84 @@ describe('useAirplaneMode', () => {
     expect(result.current.failures).toEqual(['Failed to merge snapshot']);
     expect(result.current.retryTargetUrls).toEqual([]);
   });
+
+  it('sends the actual failed target URLs, not the failure messages, when the exposed retryFailed is called', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.retryTargetUrls).toEqual([
+      'https://github.com/o/r/issues/2',
+    ]);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      body: null,
+    });
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    const realTargetUrls = [...result.current.retryTargetUrls];
+    expect(realTargetUrls).toEqual(['https://github.com/o/r/issues/2']);
+    expect(result.current.failures).toEqual(['HTTP 500']);
+    expect(result.current.failures).not.toEqual(realTargetUrls);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: buildSseBody([{ type: 'done', snapshot: makeMinimalSnapshot() }]),
+    });
+    const thirdCallFetchMock = global.fetch as jest.Mock;
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    const [, requestInit] = thirdCallFetchMock.mock.calls[0] as [
+      string,
+      { body: string },
+    ];
+    const sentBody = JSON.parse(requestInit.body) as { targetUrls: string[] };
+
+    expect(sentBody.targetUrls).toEqual(realTargetUrls);
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+  });
 });
