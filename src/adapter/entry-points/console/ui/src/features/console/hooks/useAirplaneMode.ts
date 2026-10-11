@@ -137,7 +137,7 @@ export const useAirplaneMode = (): AirplaneModeState => {
             setSnapshot(mergedSnapshot);
             setStatus('on');
             setFailures(mergedSnapshot.failures);
-            setRetryTargetUrls([]);
+            setRetryTargetUrls(mergedSnapshot.failures);
           }
         }
       }
@@ -242,6 +242,6 @@ export const useAirplaneMode = (): AirplaneModeState => {
     retryTargetUrls,
     startSync,
     turnOff,
-    retryFailed: () => retryFailed(snapshot, failures),
+    retryFailed: () => retryFailed(snapshot, retryTargetUrls),
   };
 };
