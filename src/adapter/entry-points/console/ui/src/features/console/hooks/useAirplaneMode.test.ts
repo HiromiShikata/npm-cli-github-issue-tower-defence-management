@@ -1,15 +1,15 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
+  type AirplaneSnapshotMergeResult,
+  airplaneSnapshotMerge,
+} from '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase';
+import {
   type AirplaneItemSnapshot,
   type AirplaneSnapshot,
   readAirplaneModeFlag,
   writeAirplaneModeFlag,
 } from '../lib/airplaneSnapshot';
 import { useAirplaneMode } from './useAirplaneMode';
-import {
-  airplaneSnapshotMerge,
-  type AirplaneSnapshotMergeResult,
-} from '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase';
 
 jest.mock(
   '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase',
