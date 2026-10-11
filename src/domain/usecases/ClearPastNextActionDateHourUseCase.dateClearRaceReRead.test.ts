@@ -96,9 +96,7 @@ describe('ClearPastNextActionDateHourUseCase - date clear race re-read', () => {
         issue: openIssueWithHourAndDate,
         liveGetResponsesInCallOrder: [
           { ...openIssueWithHourAndDate },
-          new Error(
-            'simulated network error during Next Action Date re-read',
-          ),
+          new Error('simulated network error during Next Action Date re-read'),
         ],
         expectedClearProjectFieldCalls: [
           [basicProject, 'hourFieldId', openIssueWithHourAndDate],
