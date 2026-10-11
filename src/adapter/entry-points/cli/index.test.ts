@@ -4200,7 +4200,9 @@ mysteryKey: 'value'
 
           expect(mockRun).toHaveBeenCalledTimes(1);
           expect(mockRun).toHaveBeenCalledWith(
-            expect.objectContaining({ sessionEndedWithoutCompletingTurn: true }),
+            expect.objectContaining({
+              sessionEndedWithoutCompletingTurn: true,
+            }),
           );
         });
 
@@ -4217,7 +4219,9 @@ mysteryKey: 'value'
 
           expect(mockRun).toHaveBeenCalledTimes(1);
           expect(mockRun).toHaveBeenCalledWith(
-            expect.objectContaining({ sessionEndedWithoutCompletingTurn: null }),
+            expect.objectContaining({
+              sessionEndedWithoutCompletingTurn: null,
+            }),
           );
         });
       });

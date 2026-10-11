@@ -1874,7 +1874,8 @@ describe('WorkerSessionEndClassifyUseCase', () => {
 describe('turnNotCompleted (issue 3325)', () => {
   it.each([
     {
-      label: 'a log without any line holding terminal_reason and no rate-limit signal',
+      label:
+        'a log without any line holding terminal_reason and no rate-limit signal',
       logLines: [launcherSessionResumptionTextLine, assistantTextLine],
       expectedTurnNotCompleted: true,
     },
