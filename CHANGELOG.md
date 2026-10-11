@@ -1,3 +1,10 @@
+## [2.165.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.7...v2.165.8) (2026-10-11)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** exclude dispatches ended before completing a turn from the DISPATCH_LOOP_ESCALATED count ([#3351](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3351)) ([16b1ee0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/16b1ee01a5a69d977f8f51f8aabf81b1855c73bd))
+
 ## [2.165.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.6...v2.165.7) (2026-10-11)
 
 
