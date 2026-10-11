@@ -1,3 +1,10 @@
+## [2.165.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.8...v2.165.9) (2026-10-11)
+
+
+### Bug Fixes
+
+* **tdpm-race-guard:** Re-read live Next Action Date before clearing it in ClearPastNextActionDateHourUseCase's hour-handling loop ([#3352](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3352)) ([dca57c1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dca57c1ccbd7ee6eee3ad8b03b42c7709211795c))
+
 ## [2.165.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.7...v2.165.8) (2026-10-11)
 
 
