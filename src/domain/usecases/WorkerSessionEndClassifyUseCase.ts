@@ -16,6 +16,7 @@ export type WorkerSessionEndClassification = {
   moveToFailedPreparation: boolean;
   rateLimitRejected: boolean;
   promptTooLongOnResume: boolean;
+  turnNotCompleted: boolean;
   sessionErrorLine: string | null;
   diagnosticLines: string[];
 };
@@ -219,6 +220,9 @@ export class WorkerSessionEndClassifyUseCase {
         input.sessionWasResumed &&
         logEnding.terminalReason === BLOCKING_LIMIT_TERMINAL_REASON &&
         !logEnding.assistantToolCallFound,
+      turnNotCompleted:
+        logEnding.finalTerminalLine === null &&
+        !rateLimitRejection.rateLimitRejected,
       sessionErrorLine: failureStreakOutcome.sessionErrorLine,
       diagnosticLines: [
         ...logReadDiagnosticLines,

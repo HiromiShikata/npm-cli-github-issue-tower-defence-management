@@ -196,6 +196,7 @@ type NotifyFinishedSessionEndFlags = {
   rateLimitRejected: boolean | null;
   promptTooLongOnResume: boolean | null;
   moveToFailedPreparation: boolean | null;
+  turnNotCompleted: boolean | null;
 };
 
 const notifyFinishedSessionEndFlagsResolve = async (
@@ -206,6 +207,7 @@ const notifyFinishedSessionEndFlagsResolve = async (
     rateLimitRejected: options.rateLimitRejected ?? null,
     promptTooLongOnResume: options.promptTooLongOnResume ?? null,
     moveToFailedPreparation: options.moveToFailedPreparation ?? null,
+    turnNotCompleted: null,
   };
   if (options.sessionLogFilePath === undefined) {
     return explicitSessionEndFlags;
@@ -239,6 +241,9 @@ const notifyFinishedSessionEndFlagsResolve = async (
       workerSessionEndClassification.moveToFailedPreparation
         ? true
         : explicitSessionEndFlags.moveToFailedPreparation,
+    turnNotCompleted: workerSessionEndClassification.turnNotCompleted
+      ? true
+      : explicitSessionEndFlags.turnNotCompleted,
   };
 };
 
@@ -1045,6 +1050,7 @@ program
             rateLimitRejected: sessionEndFlags.rateLimitRejected,
             promptTooLongOnResume: sessionEndFlags.promptTooLongOnResume,
             moveToFailedPreparation: sessionEndFlags.moveToFailedPreparation,
+            sessionEndedWithoutCompletingTurn: sessionEndFlags.turnNotCompleted,
             workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
             tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
             projectName: config.projectName ?? null,

@@ -1,6 +1,7 @@
 import {
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
   RATE_LIMIT_SESSION_END_MESSAGE,
+  SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
 } from './autoStatusCheckComments';
 import * as ResolveNextStepAgentDispatchRepetitionModule from './resolveNextStepAgentDispatchRepetition';
 import {
@@ -103,6 +104,12 @@ This agent has been dispatched 3 times since the last human comment on this issu
 const rateLimitRecordComment = (author = 'bot'): TestComment => ({
   author,
   content: RATE_LIMIT_SESSION_END_MESSAGE,
+  createdAt: TEST_COMMENT_CREATED_AT,
+});
+
+const sessionInterruptedMarkerComment = (author = 'bot'): TestComment => ({
+  author,
+  content: SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
   createdAt: TEST_COMMENT_CREATED_AT,
 });
 
@@ -2055,5 +2062,126 @@ describe('countConsecutiveNoReportDispatches', () => {
         agentFieldValue: 'developer',
       }),
     ).toBe(2);
+  });
+});
+
+describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
+  it('returns sessionInterruptedBeforeCompletion instead of counting toward the dispatch loop when the current dispatch was interrupted before completing its turn (criterion 6)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: null,
+      comments: [reportWithNullNextStep()],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: true,
+    });
+
+    expect(result.type).toBe('sessionInterruptedBeforeCompletion');
+    if (result.type === 'sessionInterruptedBeforeCompletion') {
+      expect(
+        result.comment.startsWith(
+          'Auto Status Check: SESSION_INTERRUPTED_BEFORE_COMPLETION (no next-step agent)',
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('still escalates to escalateDispatchLoop when sessionEndedWithoutCompletingTurn is explicitly false and null-nextStep reports reach the dispatch loop threshold (criterion 8, pinning)', () => {
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: null,
+      comments: [
+        reportWithNullNextStep(),
+        reportWithNullNextStep(),
+        reportWithNullNextStep(),
+      ],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: false,
+    });
+
+    expect(result.type).toBe('escalateDispatchLoop');
+  });
+
+  it('does not trigger escalateDispatchLoop when every non-advancing report since the last human comment is preceded by its own session-interrupted marker (criteria 9 and 10)', () => {
+    const comments: TestComment[] = [];
+    for (let pairIndex = 0; pairIndex < 6; pairIndex += 1) {
+      comments.push(sessionInterruptedMarkerComment());
+      comments.push(reportWithNullNextStep());
+    }
+
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: null,
+      comments,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: false,
+    });
+
+    expect(result.type).toBe('notRepeated');
+  });
+
+  it('escalates to escalateDispatchLoop for the same 6 non-advancing reports when no session-interrupted marker resets the boundary (regression sanity check, not one of the 10 numbered criteria)', () => {
+    const comments: TestComment[] = [
+      reportWithNullNextStep(),
+      reportWithNullNextStep(),
+      reportWithNullNextStep(),
+      reportWithNullNextStep(),
+      reportWithNullNextStep(),
+      reportWithNullNextStep(),
+    ];
+
+    const result = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: null,
+      comments,
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: false,
+    });
+
+    expect(result.type).toBe('escalateDispatchLoop');
+  });
+
+  it('produces the same result whether sessionEndedWithoutCompletingTurn is set or omitted when nextStepAgent is already declared (criterion 6)', () => {
+    const resultWithFlagOmitted = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: 'developer',
+      comments: [],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    });
+    const resultWithFlagTrue = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: null,
+      nextStepAgent: 'developer',
+      comments: [],
+      isTrustedAuthor: trustAll,
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+      sessionEndedWithoutCompletingTurn: true,
+    });
+
+    expect(resultWithFlagTrue).toEqual(resultWithFlagOmitted);
+    expect(resultWithFlagTrue.type).not.toBe(
+      'sessionInterruptedBeforeCompletion',
+    );
   });
 });

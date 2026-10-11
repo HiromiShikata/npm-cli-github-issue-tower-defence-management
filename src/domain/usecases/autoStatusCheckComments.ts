@@ -7,6 +7,9 @@ export const AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE =
   "Auto Status Check: CI_FAILURE\nThis pull request's CI checks are failing and it has been returned to Awaiting Workspace.";
 export const RATE_LIMIT_SESSION_END_MESSAGE =
   'Session ended due to API rate limit; returning to Awaiting Workspace without incrementing the consecutive-no-report counter.';
+export const SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE =
+  'Auto Status Check: SESSION_INTERRUPTED_BEFORE_COMPLETION (no next-step agent)\n' +
+  "The prior dispatch's worker session ended before completing its turn, so this report is excluded from the consecutive-dispatch loop count.";
 
 export const isAutoStatusCheckComment = (content: string): boolean =>
   content.startsWith(AUTO_STATUS_CHECK_MESSAGE_HEAD);
