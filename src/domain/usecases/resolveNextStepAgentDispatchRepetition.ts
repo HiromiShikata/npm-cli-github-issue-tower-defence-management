@@ -2,6 +2,7 @@ import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import {
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
   RATE_LIMIT_SESSION_END_MESSAGE,
+  SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
 } from './autoStatusCheckComments';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { extractNextStepAgent } from './extractNextStepAgent';
@@ -33,7 +34,8 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
   | { type: 'storyUnset'; comment: string; existingCommentId: string | null }
-  | { type: 'escalateStoryUnsetLoop'; comment: string };
+  | { type: 'escalateStoryUnsetLoop'; comment: string }
+  | { type: 'sessionInterruptedBeforeCompletion'; comment: string };
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
@@ -93,6 +95,21 @@ const findRateLimitBoundaryIndex = <
     (found, comment, index) =>
       isTrustedAuthor(comment.author) &&
       comment.content.startsWith(RATE_LIMIT_SESSION_END_MESSAGE)
+        ? index
+        : found,
+    -1,
+  );
+
+const findSessionInterruptedBoundaryIndex = <
+  CommentLike extends { author: string; content: string; createdAt: Date },
+>(
+  comments: CommentLike[],
+  isTrustedAuthor: (author: string) => boolean,
+): number =>
+  comments.reduce(
+    (found, comment, index) =>
+      isTrustedAuthor(comment.author) &&
+      comment.content.startsWith(SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE)
         ? index
         : found,
     -1,
@@ -408,11 +425,16 @@ const countDispatchesInCurrentCycle = <
     params.comments,
     params.latestReopenedAt,
   );
+  const sessionInterruptedBoundaryIndex = findSessionInterruptedBoundaryIndex(
+    params.comments,
+    params.isTrustedAuthor,
+  );
   const cycleStart = Math.max(
     lastHumanCommentIndex,
     lastEscalationCommentIndex,
     lastReactivationTriggerConfirmationIndex,
     reopenedEventBoundaryIndex,
+    sessionInterruptedBoundaryIndex,
   );
   const reportsInCurrentCycle = params.comments
     .slice(cycleStart + 1)
@@ -535,6 +557,7 @@ export const resolveNextStepAgentDispatchRepetition = <
   thresholdForDispatchLoop: number;
   isNoStory: boolean;
   latestReopenedAt?: Date | null;
+  sessionEndedWithoutCompletingTurn?: boolean;
 }): NextStepAgentDispatchRepetition => {
   const effectiveNextStepAgent =
     params.nextStepAgent ??
@@ -619,6 +642,15 @@ No report has been received from the dispatched agent since the last human comme
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
       };
     }
+  }
+  if (
+    params.sessionEndedWithoutCompletingTurn === true &&
+    effectiveNextStepAgent === null
+  ) {
+    return {
+      type: 'sessionInterruptedBeforeCompletion',
+      comment: SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
+    };
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle({
     ...params,

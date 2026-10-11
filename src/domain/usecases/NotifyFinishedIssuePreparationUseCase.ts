@@ -119,6 +119,7 @@ type NotifyFinishedIssuePreparationParams = {
   rateLimitRejected?: boolean | null;
   promptTooLongOnResume?: boolean | null;
   moveToFailedPreparation?: boolean | null;
+  sessionEndedWithoutCompletingTurn?: boolean | null;
   workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
   projectName?: string | null;
@@ -706,6 +707,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.thresholdForDispatchLoop ?? DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory,
       latestReopenedAt,
+      sessionEndedWithoutCompletingTurn:
+        params.sessionEndedWithoutCompletingTurn ?? false,
     });
     if (repetition.type === 'escalateSilentRedispatch') {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
@@ -764,6 +767,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.workflowBlockerResolvedWebhookUrl,
         project,
       );
+      return;
+    }
+
+    if (repetition.type === 'sessionInterruptedBeforeCompletion') {
+      await this.createCommentWithDedup(issue, repetition.comment);
       return;
     }
 
