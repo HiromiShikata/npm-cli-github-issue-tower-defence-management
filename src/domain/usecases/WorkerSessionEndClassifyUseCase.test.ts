@@ -1870,3 +1870,59 @@ describe('WorkerSessionEndClassifyUseCase', () => {
     });
   });
 });
+
+describe('turnNotCompleted (issue 3325)', () => {
+  it.each([
+    {
+      label: 'a log without any line holding terminal_reason and no rate-limit signal',
+      logLines: [launcherSessionResumptionTextLine, assistantTextLine],
+      expectedTurnNotCompleted: true,
+    },
+    {
+      label: 'a log ending in a terminal_reason line of completed',
+      logLines: [assistantToolUseLine, completedEndingLine],
+      expectedTurnNotCompleted: false,
+    },
+    {
+      label:
+        'a log with no terminal_reason line but a rejected rate-limit event the launcher records',
+      logLines: [launcherRejectedRateLimitEventLine],
+      expectedTurnNotCompleted: false,
+    },
+  ])(
+    'reports turnNotCompleted for $label',
+    async ({ logLines, expectedTurnNotCompleted }) => {
+      const { classification } = await classifyWorkerSessionEnd({
+        logLines,
+        storedStreak: null,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+
+      expect(classification.turnNotCompleted).toBe(expectedTurnNotCompleted);
+    },
+  );
+
+  it('reports turnNotCompleted as false for a third consecutive blocking_limit ending that moves to Failed Preparation', async () => {
+    const { classification, streakAfterClassification } =
+      await classifyWorkerSessionEnd({
+        logLines: [promptTooLongEndingLine],
+        storedStreak: {
+          terminalReason: 'blocking_limit',
+          consecutiveFailureCount: 2,
+        },
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+
+    expect(classification.turnNotCompleted).toBe(false);
+    expect(classification.moveToFailedPreparation).toBe(true);
+    expect(classification.sessionErrorLine).toBe(
+      failedPreparationSessionErrorLine('blocking_limit', 3),
+    );
+    expect(streakAfterClassification).toEqual({
+      terminalReason: 'blocking_limit',
+      consecutiveFailureCount: 3,
+    });
+  });
+});

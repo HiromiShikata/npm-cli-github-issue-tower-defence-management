@@ -4185,6 +4185,42 @@ mysteryKey: 'value'
           consoleErrorSpy.mockRestore();
         }
       });
+
+      describe('sessionEndedWithoutCompletingTurn forwarding (issue 3325)', () => {
+        it('passes sessionEndedWithoutCompletingTurn as true to run for a log with no terminal_reason line and no rate-limit signal', async () => {
+          const sessionLogFilePath = writeWorkerSessionLog([
+            launcherSessionResumptionTextLine,
+          ]);
+          const mockRun = jest.fn().mockResolvedValue(undefined);
+          useNotifyRun(mockRun);
+
+          await program.parseAsync(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+          );
+
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({ sessionEndedWithoutCompletingTurn: true }),
+          );
+        });
+
+        it('passes sessionEndedWithoutCompletingTurn as null to run for a log ending in a terminal_reason line of completed', async () => {
+          const sessionLogFilePath = writeWorkerSessionLog([
+            completedEndingLine,
+          ]);
+          const mockRun = jest.fn().mockResolvedValue(undefined);
+          useNotifyRun(mockRun);
+
+          await program.parseAsync(
+            notifyFinishedArgv(['--sessionLogFilePath', sessionLogFilePath]),
+          );
+
+          expect(mockRun).toHaveBeenCalledTimes(1);
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({ sessionEndedWithoutCompletingTurn: null }),
+          );
+        });
+      });
     });
   });
 

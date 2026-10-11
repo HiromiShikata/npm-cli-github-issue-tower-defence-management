@@ -1,5 +1,8 @@
 import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePreparationUseCase';
-import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
+import {
+  RATE_LIMIT_SESSION_END_MESSAGE,
+  SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
+} from './autoStatusCheckComments';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
@@ -11340,6 +11343,100 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
+    it('posts the session-interrupted comment instead of escalating to Failed Preparation when the current dispatch was interrupted before completing its turn (criterion 6, 7)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        sessionEndedWithoutCompletingTurn: true,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining(SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE),
+      );
+    });
+
+    it('still escalates to Failed Preparation at the dispatch loop threshold when sessionEndedWithoutCompletingTurn is explicitly false (criterion 8, pinning)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        story: 'regular / some story',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        sessionEndedWithoutCompletingTurn: false,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('no-next-step-agent'),
+      );
     });
   });
 });
