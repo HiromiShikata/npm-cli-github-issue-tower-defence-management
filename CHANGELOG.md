@@ -1,3 +1,10 @@
+## [2.165.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.6...v2.165.7) (2026-10-11)
+
+
+### Bug Fixes
+
+* **console-airplane-mode:** preserve retryTargetUrls when retryFailed itself errors ([#3346](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3346)) ([a4d3009](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a4d3009434eba0f8dbbbad44b40a7b3cefbfba97))
+
 ## [2.165.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.5...v2.165.6) (2026-10-10)
 
 
