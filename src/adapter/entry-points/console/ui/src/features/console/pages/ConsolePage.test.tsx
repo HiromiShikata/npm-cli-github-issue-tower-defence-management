@@ -2294,6 +2294,7 @@ describe('ConsolePage comment draft reload persistence', () => {
         'typed while storage writes are throwing',
       );
       expect(container.querySelector('.console-error-toast')).toBeNull();
+      expect(container.querySelector('.console-composer-error')).toBeNull();
       expect(getByText('Approve & Merge')).toBeInTheDocument();
 
       const detailScreen = container.querySelector('.console-detail-screen');
