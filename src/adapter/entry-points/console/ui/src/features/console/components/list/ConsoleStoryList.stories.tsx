@@ -91,14 +91,6 @@ const storiesWithoutUrl = [
   },
 ];
 
-const BASE_VIEW_URL =
-  'https://github.com/orgs/HiromiShikata/projects/6/views/1';
-
-const storiesWithUrl = storiesWithoutUrl.map((s) => ({
-  ...s,
-  storyViewUrl: `${BASE_VIEW_URL}?sliceBy%5Bvalue%5D=${encodeURI(s.storyName).replace(/#/g, '%23').replace(/&/g, '%26')}`,
-}));
-
 const storiesWithArchived = [
   ...storiesWithoutUrl,
   {
@@ -146,9 +138,16 @@ export const WithStories: Story = {
 
 export const WithStoriesLinked: Story = {
   args: {
-    stories: storiesWithUrl,
+    stories: storiesWithoutUrl,
     isLoading: false,
     error: null,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstStoryBadge] = canvas.getAllByRole('button', {
+      name: 'TDPM Console port',
+    });
+    await userEvent.click(firstStoryBadge);
   },
 };
 
