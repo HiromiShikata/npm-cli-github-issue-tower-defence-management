@@ -272,6 +272,11 @@ describe('webServer integration', () => {
       throw new Error('server is not listening on a TCP port');
     }
     const port = address.port;
+    const serverReceivedPartialRequestBytes = new Promise<void>((resolve) => {
+      server.once('connection', (serverSideSocket: net.Socket) => {
+        serverSideSocket.once('data', () => resolve());
+      });
+    });
     const socket = net.connect(port, '127.0.0.1');
     try {
       await new Promise<void>((resolve, reject) => {
@@ -279,6 +284,7 @@ describe('webServer integration', () => {
         socket.once('error', reject);
       });
       socket.write('GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n');
+      await serverReceivedPartialRequestBytes;
 
       const result = await Promise.race([
         stopWebServer(server).then(() => 'stopped'),
