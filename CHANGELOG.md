@@ -1,3 +1,10 @@
+## [2.167.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.0...v2.167.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **console:** settings dialog minutes input clips two-digit values at desktop viewport widths ([#3371](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3371)) ([047641c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/047641cb11e342f75cef8a64df4ee09887e245db))
+
 # [2.167.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.166.0...v2.167.0) (2026-10-12)
 
 
