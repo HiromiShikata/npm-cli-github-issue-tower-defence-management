@@ -1315,3 +1315,15 @@ export const startWebServer = (
       resolve(server);
     });
   });
+
+export const stopWebServer = (server: http.Server): Promise<void> =>
+  new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+    server.closeAllConnections();
+  });

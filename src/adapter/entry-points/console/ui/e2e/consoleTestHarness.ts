@@ -1,5 +1,4 @@
 import * as fs from 'node:fs';
-import type * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Issue } from '../../../../../domain/entities/Issue';
@@ -26,7 +25,7 @@ import {
   IssueTitleStateCache,
   PullRequestStatusCache,
 } from '../../consoleReadApi';
-import { startWebServer } from '../../webServer';
+import { startWebServer, stopWebServer } from '../../webServer';
 
 export const CONSOLE_E2E_PJCODE = 'acme';
 export const CONSOLE_E2E_SECOND_PJCODE = 'beta';
@@ -1116,7 +1115,7 @@ export const startConsoleE2eHarness = async (options?: {
 
   const address = server.address();
   if (address === null || typeof address === 'string') {
-    await closeServer(server);
+    await stopWebServer(server);
     fs.rmSync(tmpRoot, { recursive: true, force: true });
     throw new Error('console E2E server is not listening on a TCP port');
   }
@@ -1162,19 +1161,8 @@ export const startConsoleE2eHarness = async (options?: {
       deleteProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE);
     },
     stop: async (): Promise<void> => {
-      await closeServer(server);
+      await stopWebServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     },
   };
 };
-
-const closeServer = (server: http.Server): Promise<void> =>
-  new Promise((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve();
-    });
-  });
