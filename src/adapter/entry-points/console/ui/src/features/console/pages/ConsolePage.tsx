@@ -789,14 +789,26 @@ export const ConsolePage = () => {
 
   const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
 
-  const [showGray, setShowGray] = useState(
-    () => localStorage.getItem('console-story-show-gray') === 'true',
+  const [showArchived, setShowArchived] = useState(
+    () => localStorage.getItem('console-story-show-archived') === 'true',
   );
 
-  const handleToggleGray = useCallback((): void => {
-    setShowGray((prev) => {
+  const handleToggleArchived = useCallback((): void => {
+    setShowArchived((prev) => {
       const next = !prev;
-      localStorage.setItem('console-story-show-gray', String(next));
+      localStorage.setItem('console-story-show-archived', String(next));
+      return next;
+    });
+  }, []);
+
+  const [showDone, setShowDone] = useState(
+    () => localStorage.getItem('console-story-show-done') === 'true',
+  );
+
+  const handleToggleDone = useCallback((): void => {
+    setShowDone((prev) => {
+      const next = !prev;
+      localStorage.setItem('console-story-show-done', String(next));
       return next;
     });
   }, []);
@@ -1376,11 +1388,13 @@ export const ConsolePage = () => {
             stories={storyEntries}
             isLoading={isLoading}
             error={error}
-            showGray={showGray}
+            showArchived={showArchived}
+            showDone={showDone}
             onCreateIssue={handleCreateIssue}
             onAddStory={handleStoryAdd}
             onSelectColor={handleSelectColor}
-            onToggleGray={handleToggleGray}
+            onToggleArchived={handleToggleArchived}
+            onToggleDone={handleToggleDone}
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}

@@ -58,15 +58,51 @@ const grayStoryEntry: ConsoleStoryEntry = {
 
 const entriesWithGray: ConsoleStoryEntry[] = [...storyEntries, grayStoryEntry];
 
+const allDoneStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Completed Story',
+  storyOptionId: 'done-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 1,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      status: 'Done',
+      url: 'https://github.com/demo/repo/issues/2',
+    }),
+  ],
+};
+
+const partiallyDoneStoryEntry: ConsoleStoryEntry = {
+  storyName: 'In Progress Story',
+  storyOptionId: 'partial-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 2,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      status: 'Done',
+      url: 'https://github.com/demo/repo/issues/3',
+    }),
+    makeItem({
+      status: 'In Progress',
+      url: 'https://github.com/demo/repo/issues/4',
+    }),
+  ],
+};
+
 const defaultProps = {
   stories: storyEntries,
   isLoading: false,
   error: null,
-  showGray: false,
+  showArchived: false,
+  showDone: false,
   onCreateIssue: () => Promise.resolve(),
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
-  onToggleGray: () => undefined,
+  onToggleArchived: () => undefined,
+  onToggleDone: () => undefined,
   onReorderStory: () => Promise.resolve(),
   onDeleteStory: () => Promise.resolve(),
   onRenameStory: () => Promise.resolve(),
@@ -676,84 +712,148 @@ describe('ConsoleStoryList', () => {
     });
   });
 
-  describe('gray story toggle', () => {
-    it('hides gray stories when showGray is false', () => {
+  describe('archived and done visibility controls', () => {
+    it('hides gray stories when showArchived is false', () => {
       const { queryByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={entriesWithGray}
-          showGray={false}
+          showArchived={false}
         />,
       );
       expect(queryByText('Archived Story')).toBeNull();
       expect(queryByText('TDPM Console port')).toBeInTheDocument();
     });
 
-    it('shows gray stories when showGray is true', () => {
+    it('shows gray stories when showArchived is true without hiding stories already visible', () => {
       const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={entriesWithGray}
-          showGray={true}
+          showArchived={true}
         />,
       );
       expect(getByText('Archived Story')).toBeInTheDocument();
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Move to Okinawa')).toBeInTheDocument();
     });
 
-    it('shows the toggle button labeled Show archived when at least one gray story exists and showGray is false', () => {
-      const { getByRole } = render(
+    it('hides a story whose tasks are all at Status Done when showDone is false', () => {
+      const { queryByText } = render(
         <ConsoleStoryList
           {...defaultProps}
-          stories={entriesWithGray}
-          showGray={false}
+          stories={[...storyEntries, allDoneStoryEntry]}
+          showDone={false}
         />,
       );
-      expect(
-        getByRole('button', { name: 'Show archived' }),
-      ).toBeInTheDocument();
+      expect(queryByText('Completed Story')).toBeNull();
     });
 
-    it('shows the toggle button labeled Hide archived when showGray is true', () => {
-      const { getByRole } = render(
+    it('shows a story whose tasks are all at Status Done when showDone is true, independently of showArchived', () => {
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
-          stories={entriesWithGray}
-          showGray={true}
+          stories={[...storyEntries, allDoneStoryEntry]}
+          showDone={true}
+          showArchived={false}
         />,
       );
-      expect(
-        getByRole('button', { name: 'Hide archived' }),
-      ).toBeInTheDocument();
+      expect(getByText('Completed Story')).toBeInTheDocument();
     });
 
-    it('does not show the toggle button when no gray stories exist', () => {
-      const { queryByRole } = render(
+    it('does not hide a story that has at least one task not at Status Done when showDone is false', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...storyEntries, partiallyDoneStoryEntry]}
+          showDone={false}
+        />,
+      );
+      expect(getByText('In Progress Story')).toBeInTheDocument();
+    });
+
+    it('keeps a zero-task, non-gray story visible when showDone is false', () => {
+      const { getByText } = render(
+        <ConsoleStoryList {...defaultProps} showDone={false} />,
+      );
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Move to Okinawa')).toBeInTheDocument();
+    });
+
+    it('keeps a zero-task, non-gray story visible when showDone is true', () => {
+      const { getByText } = render(
+        <ConsoleStoryList {...defaultProps} showDone={true} />,
+      );
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Move to Okinawa')).toBeInTheDocument();
+    });
+
+    it('renders exactly one Archived switch and one Done switch even when no story qualifies for either filter', () => {
+      const { getByRole } = render(
         <ConsoleStoryList {...defaultProps} stories={storyEntries} />,
+      );
+      expect(getByRole('switch', { name: 'Archived' })).toBeInTheDocument();
+      expect(getByRole('switch', { name: 'Done' })).toBeInTheDocument();
+    });
+
+    it('does not render the bottom Show archived or Hide archived button', () => {
+      const { queryByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...entriesWithGray, allDoneStoryEntry]}
+        />,
       );
       expect(queryByRole('button', { name: 'Show archived' })).toBeNull();
       expect(queryByRole('button', { name: 'Hide archived' })).toBeNull();
     });
 
-    it('calls onToggleGray when the toggle button is clicked', () => {
-      const onToggleGray = jest.fn();
+    it('calls onToggleArchived and not onToggleDone when the Archived switch is clicked', () => {
+      const onToggleArchived = jest.fn();
+      const onToggleDone = jest.fn();
       const { getByRole } = render(
         <ConsoleStoryList
           {...defaultProps}
-          stories={entriesWithGray}
-          showGray={false}
-          onToggleGray={onToggleGray}
+          onToggleArchived={onToggleArchived}
+          onToggleDone={onToggleDone}
         />,
       );
-      fireEvent.click(getByRole('button', { name: 'Show archived' }));
-      expect(onToggleGray).toHaveBeenCalledTimes(1);
+      fireEvent.click(getByRole('switch', { name: 'Archived' }));
+      expect(onToggleArchived).toHaveBeenCalledTimes(1);
+      expect(onToggleDone).not.toHaveBeenCalled();
     });
 
-    it('shows No active stories when all stories are gray and showGray is false', () => {
+    it('calls onToggleDone and not onToggleArchived when the Done switch is clicked', () => {
+      const onToggleArchived = jest.fn();
+      const onToggleDone = jest.fn();
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          onToggleArchived={onToggleArchived}
+          onToggleDone={onToggleDone}
+        />,
+      );
+      fireEvent.click(getByRole('switch', { name: 'Done' }));
+      expect(onToggleDone).toHaveBeenCalledTimes(1);
+      expect(onToggleArchived).not.toHaveBeenCalled();
+    });
+
+    it('shows No active stories when all stories are gray and showArchived is false', () => {
       const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[grayStoryEntry]}
-          showGray={false}
+          showArchived={false}
+        />,
+      );
+      expect(getByText('No active stories')).toBeInTheDocument();
+    });
+
+    it('shows No active stories when all stories are fully Done and showDone is false', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[allDoneStoryEntry]}
+          showDone={false}
         />,
       );
       expect(getByText('No active stories')).toBeInTheDocument();

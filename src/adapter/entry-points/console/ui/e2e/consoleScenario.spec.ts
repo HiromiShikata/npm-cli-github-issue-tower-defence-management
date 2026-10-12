@@ -383,7 +383,7 @@ test('renders the stories tab with non-gray stories, their open item counts, and
   ).toHaveCount(0);
 });
 
-test('shows and hides gray stories with the Show archived toggle button on the stories tab', async ({
+test('shows and hides gray stories with the Archived toggle switch on the stories tab', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -391,9 +391,9 @@ test('shows and hides gray stories with the Show archived toggle button on the s
   await tabByLabel(page, 'Stories').click();
   await expect(activeTabLabel(page)).toHaveText('Stories');
 
-  await expect(
-    page.locator('.console-op-button', { hasText: 'Show archived' }),
-  ).toBeVisible();
+  const archivedSwitch = page.getByRole('switch', { name: 'Archived' });
+  await expect(archivedSwitch).toBeVisible();
+  await expect(archivedSwitch).not.toBeChecked();
 
   await expect(
     page.locator('.console-story-list-row', {
@@ -401,31 +401,23 @@ test('shows and hides gray stories with the Show archived toggle button on the s
     }),
   ).toHaveCount(0);
 
-  await page
-    .locator('.console-op-button', { hasText: 'Show archived' })
-    .click();
+  await archivedSwitch.click();
 
+  await expect(archivedSwitch).toBeChecked();
   await expect(
     page.locator('.console-story-list-row', {
       hasText: 'regular / workflow improvement',
     }),
   ).toBeVisible();
-  await expect(
-    page.locator('.console-op-button', { hasText: 'Hide archived' }),
-  ).toBeVisible();
 
-  await page
-    .locator('.console-op-button', { hasText: 'Hide archived' })
-    .click();
+  await archivedSwitch.click();
 
+  await expect(archivedSwitch).not.toBeChecked();
   await expect(
     page.locator('.console-story-list-row', {
       hasText: 'regular / workflow improvement',
     }),
   ).toHaveCount(0);
-  await expect(
-    page.locator('.console-op-button', { hasText: 'Show archived' }),
-  ).toBeVisible();
 });
 
 test('creates an issue for a story when the add-task button and form are used', async ({
