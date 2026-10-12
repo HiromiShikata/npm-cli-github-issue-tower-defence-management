@@ -1804,6 +1804,26 @@ test('Create new task dialog body is scrollable in landscape orientation', async
   expect(scrollHeight).toBeGreaterThan(clientHeight);
 });
 
+test('Settings dialog minutes input is not clipped at desktop viewport width', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await expect(dialog).toBeVisible();
+
+  const minutesInput = dialog.locator(`#timer-minutes-${CONSOLE_E2E_PJCODE}`);
+  await expect(minutesInput).toBeVisible();
+
+  const { scrollWidth, clientWidth } = await minutesInput.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+
 test('in timer mode, automatically navigates away from a project with zero prs and zero todo-by-human items', async ({
   page,
 }) => {
