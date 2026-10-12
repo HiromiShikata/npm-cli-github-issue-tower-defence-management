@@ -112,15 +112,49 @@ const storiesWithArchived = [
   },
 ];
 
+const completedStoryEntry = {
+  storyName: 'Ship v1 release',
+  storyOptionId: 'a3f91c02',
+  color: 'BLUE' as const,
+  description: '',
+  openItemCount: 1,
+  storyViewUrl: null,
+  items: [
+    {
+      number: 201,
+      title: 'Finalize release notes',
+      url: 'https://github.com/HiromiShikata/secretary/issues/201',
+      repo: 'HiromiShikata/secretary',
+      nameWithOwner: 'HiromiShikata/secretary',
+      projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb201',
+      itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb201',
+      isPr: false,
+      story: 'Ship v1 release',
+      status: 'Done',
+      agent: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-05-01T08:00:00.000Z',
+      relatedOpenPullRequestUrls: [],
+    },
+  ],
+};
+
+const storiesWithArchivedAndDone = [...storiesWithArchived, completedStoryEntry];
+
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',
   component: ConsoleStoryList,
   args: {
-    showGray: false,
+    showArchived: false,
+    showDone: false,
     onCreateIssue: () => Promise.resolve(),
     onAddStory: () => Promise.resolve(),
     onSelectColor: () => undefined,
-    onToggleGray: () => undefined,
+    onToggleArchived: () => undefined,
+    onToggleDone: () => undefined,
     onReorderStory: () => Promise.resolve(),
     onDeleteStory: () => Promise.resolve(),
     onRenameStory: () => Promise.resolve(),
@@ -176,21 +210,43 @@ export const ErrorState: Story = {
   },
 };
 
-export const WithArchivedHidden: Story = {
+export const VisibilityControlsBothHidden: Story = {
   args: {
-    stories: storiesWithArchived,
+    stories: storiesWithArchivedAndDone,
     isLoading: false,
     error: null,
-    showGray: false,
+    showArchived: false,
+    showDone: false,
   },
 };
 
-export const WithArchivedShown: Story = {
+export const VisibilityControlsArchivedShown: Story = {
   args: {
-    stories: storiesWithArchived,
+    stories: storiesWithArchivedAndDone,
     isLoading: false,
     error: null,
-    showGray: true,
+    showArchived: true,
+    showDone: false,
+  },
+};
+
+export const VisibilityControlsDoneShown: Story = {
+  args: {
+    stories: storiesWithArchivedAndDone,
+    isLoading: false,
+    error: null,
+    showArchived: false,
+    showDone: true,
+  },
+};
+
+export const VisibilityControlsBothShown: Story = {
+  args: {
+    stories: storiesWithArchivedAndDone,
+    isLoading: false,
+    error: null,
+    showArchived: true,
+    showDone: true,
   },
 };
 

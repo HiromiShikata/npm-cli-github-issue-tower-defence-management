@@ -5,6 +5,7 @@ import type {
   ConsoleListItem,
   ConsoleStoryEntry,
 } from '../../logic/types';
+import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 import { ConsoleStoryColorSelectModalDialog } from './ConsoleStoryColorSelectModalDialog';
 import { ConsoleStoryCreateModalDialog } from './ConsoleStoryCreateModalDialog';
 import { ConsoleStoryDeleteModalDialog } from './ConsoleStoryDeleteModalDialog';
@@ -21,6 +22,27 @@ type StoryTaskListProps = {
   items: ConsoleListItem[];
   onOpenItem: (item: ConsoleListItem) => void;
 };
+
+type StoryVisibilityToggleProps = {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+};
+
+const StoryVisibilityToggle = ({
+  label,
+  checked,
+  onChange,
+}: StoryVisibilityToggleProps) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ fontSize: '0.875rem', color: '#c9d1d9' }}>{label}</span>
+    <ConsoleToggleSwitch
+      checked={checked}
+      ariaLabel={label}
+      onChange={() => onChange()}
+    />
+  </div>
+);
 
 const StoryTaskList = ({ items, onOpenItem }: StoryTaskListProps) => (
   <ul className="console-story-task-list">
@@ -57,11 +79,13 @@ export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
   error: string | null;
-  showGray: boolean;
+  showArchived: boolean;
+  showDone: boolean;
   onCreateIssue: (storyName: string, title: string) => Promise<void>;
   onAddStory: (storyName: string) => Promise<void>;
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
-  onToggleGray: () => void;
+  onToggleArchived: () => void;
+  onToggleDone: () => void;
   onReorderStory: (
     storyOptionId: string,
     direction: 'up' | 'down',
@@ -91,11 +115,13 @@ export const ConsoleStoryList = ({
   stories,
   isLoading,
   error,
-  showGray,
+  showArchived,
+  showDone,
   onCreateIssue,
   onAddStory,
   onSelectColor,
-  onToggleGray,
+  onToggleArchived,
+  onToggleDone,
   onReorderStory,
   onDeleteStory,
   onRenameStory,
@@ -216,10 +242,20 @@ export const ConsoleStoryList = ({
     }
   };
 
-  const visibleStories = showGray
-    ? stories
-    : stories.filter((s) => s.color !== 'GRAY');
-  const hasGrayStories = stories.some((s) => s.color === 'GRAY');
+  const visibleStories = stories.filter((entry) => {
+    if (!showArchived && entry.color === 'GRAY') {
+      return false;
+    }
+    const items = entry.items ?? [];
+    if (
+      !showDone &&
+      items.length > 0 &&
+      items.every((item) => item.status === 'Done')
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   const taskCreateEntry =
     taskCreateDialogId !== null
@@ -252,6 +288,25 @@ export const ConsoleStoryList = ({
 
   return (
     <div className="console-story-list-container">
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
+        <StoryVisibilityToggle
+          label="Archived"
+          checked={showArchived}
+          onChange={onToggleArchived}
+        />
+        <StoryVisibilityToggle
+          label="Done"
+          checked={showDone}
+          onChange={onToggleDone}
+        />
+      </div>
       {visibleStories.length === 0 ? (
         <p className="console-list-empty">No active stories</p>
       ) : (
@@ -436,15 +491,6 @@ export const ConsoleStoryList = ({
             );
           })}
         </ul>
-      )}
-      {hasGrayStories && (
-        <button
-          type="button"
-          className="console-op-button"
-          onClick={onToggleGray}
-        >
-          {showGray ? 'Hide archived' : 'Show archived'}
-        </button>
       )}
       <div className="console-add-story-section">
         <button
