@@ -2520,8 +2520,8 @@ describe('ConsolePage auto-advance tab', () => {
     });
   });
 
-  it('reads console-story-show-gray from localStorage and shows gray stories when true', async () => {
-    localStorage.setItem('console-story-show-gray', 'true');
+  it('reads console-story-show-archived from localStorage and shows gray stories when true', async () => {
+    localStorage.setItem('console-story-show-archived', 'true');
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
@@ -2566,13 +2566,17 @@ describe('ConsolePage auto-advance tab', () => {
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;
 
-    const { findByText } = render(<ConsolePage />);
+    const { findByText, findByRole } = render(<ConsolePage />);
     expect(
       await findByText('regular / workflow improvement'),
     ).toBeInTheDocument();
+    expect(await findByRole('switch', { name: 'Archived' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
-  it('writes true to console-story-show-gray in localStorage when the toggle button is clicked', async () => {
+  it('writes true to console-story-show-archived in localStorage when the Archived switch is clicked', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
@@ -2618,9 +2622,112 @@ describe('ConsolePage auto-advance tab', () => {
     }) as unknown as typeof fetch;
 
     const { findByRole } = render(<ConsolePage />);
-    const toggleBtn = await findByRole('button', { name: 'Show archived' });
-    fireEvent.click(toggleBtn);
-    expect(localStorage.getItem('console-story-show-gray')).toBe('true');
+    const archivedSwitch = await findByRole('switch', { name: 'Archived' });
+    fireEvent.click(archivedSwitch);
+    expect(localStorage.getItem('console-story-show-archived')).toBe('true');
+  });
+
+  it('reads console-story-show-done from localStorage and shows a story whose tasks are all Done when true', async () => {
+    localStorage.setItem('console-story-show-done', 'true');
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                },
+                {
+                  storyName: 'Completed Story',
+                  storyOptionId: 'st3',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [
+                    {
+                      number: 777,
+                      title: 'Nested done task',
+                      url: 'https://github.com/o/r/issues/777',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_DONE',
+                      itemId: 'PVTI_DONE',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'Completed Story',
+                      status: 'Done',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { findByText, findByRole } = render(<ConsolePage />);
+    expect(await findByText('Completed Story')).toBeInTheDocument();
+    expect(await findByRole('switch', { name: 'Done' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+
+  it('writes true to console-story-show-done in localStorage when the Done switch is clicked', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetch();
+
+    const { findByRole } = render(<ConsolePage />);
+    const doneSwitch = await findByRole('switch', { name: 'Done' });
+    fireEvent.click(doneSwitch);
+    expect(localStorage.getItem('console-story-show-done')).toBe('true');
+  });
+
+  it('does not render the Archived or Done switches on a non-Stories tab', async () => {
+    const { queryByRole, getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(queryByRole('switch', { name: 'Archived' })).toBeNull();
+    expect(queryByRole('switch', { name: 'Done' })).toBeNull();
+  });
+
+  it('renders the Archived and Done switches on the Stories tab', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetch();
+
+    const { findByRole } = render(<ConsolePage />);
+    expect(await findByRole('switch', { name: 'Archived' })).toBeInTheDocument();
+    expect(await findByRole('switch', { name: 'Done' })).toBeInTheDocument();
   });
 
   it('renders the new story in the list immediately after handleStoryAdd succeeds without waiting for a poll cycle', async () => {
