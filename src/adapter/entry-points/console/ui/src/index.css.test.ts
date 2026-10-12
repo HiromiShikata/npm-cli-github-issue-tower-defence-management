@@ -135,6 +135,13 @@ describe('console CSS class contract', () => {
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
 
+  it('sets margin: 0.5em 0 on console-markdown p so consecutive paragraphs render with a visible vertical gap, matching the separation GitHub.com renders for the same Markdown', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-markdown p');
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('margin: 0.5em 0');
+  });
+
   it('sets flex: 0 1 auto, min-width: 0, overflow: hidden, white-space: nowrap, and text-overflow: ellipsis on console-error-toast-title so the title truncates with ellipsis instead of wrapping at narrow viewports', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-error-toast-title');
