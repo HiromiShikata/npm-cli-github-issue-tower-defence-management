@@ -362,12 +362,8 @@ test('renders the stories tab with non-gray stories, their open item counts, and
     tdpmRow.locator('.console-op-button', { hasText: 'Add task' }),
   ).toBeVisible();
 
-  const tdpmLink = tdpmRow.locator('a.console-storytag');
-  await expect(tdpmLink).toBeVisible();
-  await expect(tdpmLink).toHaveAttribute(
-    'href',
-    'https://github.com/orgs/HiromiShikata/projects/6/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
-  );
+  await expect(tdpmRow.locator('a.console-storytag')).toHaveCount(0);
+  await expect(tdpmRow.locator('.console-storytag')).toBeVisible();
 
   const publishRow = page.locator('.console-story-list-row', {
     hasText: 'Publish product documentation site',
@@ -1685,6 +1681,11 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
   ).toContainText(
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
   );
+
+  const titleTextAlign = await pr867Row
+    .locator('.console-story-task-title')
+    .evaluate((el) => window.getComputedStyle(el).textAlign);
+  expect(titleTextAlign).toBe('left');
 
   await tdpmRow.getByRole('button', { name: 'Hide tasks' }).click();
 

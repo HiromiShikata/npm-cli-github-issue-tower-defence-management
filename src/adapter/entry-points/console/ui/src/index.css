@@ -760,6 +760,16 @@ body {
   white-space: nowrap;
 }
 
+.console-story-name-toggle {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
 .console-story-dot {
   width: 10px;
   height: 10px;
@@ -3049,57 +3059,6 @@ body {
   gap: 8px;
 }
 
-.console-story-task-list {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 0;
-}
-
-.console-story-task-row {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  padding: 2px 8px;
-  font-size: 0.8125rem;
-}
-
-.console-story-task-title {
-  flex: 1;
-  color: #e6edf3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.console-story-task-status {
-  color: #8b949e;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.console-story-task-agent {
-  color: #8b949e;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.console-story-task-depended-urls {
-  color: #4493f8;
-  font-size: 0.75rem;
-}
-
-.console-story-task-next-action-date {
-  color: #8b949e;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.console-story-task-next-action-hour {
-  color: #8b949e;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
 .console-story-reorder-panel {
   display: flex;
   flex-direction: column;
@@ -3594,6 +3553,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 
 .console-story-task-title:hover {
@@ -3607,6 +3567,7 @@ body {
   color: #8b949e;
   white-space: nowrap;
   flex-shrink: 0;
+  font-size: 0.75rem;
 }
 
 .console-story-task-depended-urls {

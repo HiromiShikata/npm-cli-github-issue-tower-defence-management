@@ -251,7 +251,7 @@ describe('ConsoleStoryList', () => {
     expect(nameEl.tagName).toBe('SPAN');
   });
 
-  it('renders story name as an anchor when storyViewUrl is non-null', () => {
+  it('renders story name as a span with no href even when storyViewUrl is non-null', () => {
     const entriesWithUrl: ConsoleStoryEntry[] = [
       {
         ...storyEntries[0],
@@ -263,13 +263,8 @@ describe('ConsoleStoryList', () => {
       <ConsoleStoryList {...defaultProps} stories={entriesWithUrl} />,
     );
     const nameEl = getByText('TDPM Console port');
-    expect(nameEl.tagName).toBe('A');
-    expect(nameEl).toHaveAttribute(
-      'href',
-      'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
-    );
-    expect(nameEl).toHaveAttribute('target', '_blank');
-    expect(nameEl).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(nameEl.tagName).toBe('SPAN');
+    expect(nameEl).not.toHaveAttribute('href');
   });
 
   it('renders an Add story button', () => {
@@ -1378,6 +1373,54 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
       fireEvent.click(getByText('Fix login bug'));
       expect(onOpenItem).toHaveBeenCalledWith(storyWithItems[0].items[0]);
+    });
+
+    it('shows task titles when the story-name badge is clicked', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const [firstStoryNameBadge] = getAllByRole('button', {
+        name: 'TDPM Console port',
+      });
+      fireEvent.click(firstStoryNameBadge);
+      expect(getByText('Fix login bug')).toBeInTheDocument();
+      expect(getByText('Add analytics')).toBeInTheDocument();
+    });
+
+    it('hides tasks when the story-name badge is clicked again', () => {
+      const { getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const [firstStoryNameBadge] = getAllByRole('button', {
+        name: 'TDPM Console port',
+      });
+      fireEvent.click(firstStoryNameBadge);
+      fireEvent.click(firstStoryNameBadge);
+      expect(queryByText('Fix login bug')).toBeNull();
+    });
+
+    it('collapses the task list when the story-name badge is clicked after the chevron expanded it', () => {
+      const { getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      const [firstStoryNameBadge] = getAllByRole('button', {
+        name: 'TDPM Console port',
+      });
+      fireEvent.click(firstStoryNameBadge);
+      expect(queryByText('Fix login bug')).toBeNull();
+    });
+
+    it('collapses the task list when the chevron is clicked after the story-name badge expanded it', () => {
+      const { getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const [firstStoryNameBadge] = getAllByRole('button', {
+        name: 'TDPM Console port',
+      });
+      fireEvent.click(firstStoryNameBadge);
+      fireEvent.click(getAllByRole('button', { name: 'Hide tasks' })[0]);
+      expect(queryByText('Fix login bug')).toBeNull();
     });
   });
 
