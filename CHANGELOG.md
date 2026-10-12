@@ -1,3 +1,10 @@
+# [2.166.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.12...v2.166.0) (2026-10-12)
+
+
+### Features
+
+* **console-ui:** split Stories tab archived toggle into Archived/Done visibility switches ([#3364](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3364)) ([33e8aee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/33e8aee45654838a04b68d4783d577fe84bfccb3))
+
 ## [2.165.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.11...v2.165.12) (2026-10-12)
 
 
