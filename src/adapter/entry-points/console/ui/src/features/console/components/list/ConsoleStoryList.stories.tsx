@@ -142,7 +142,10 @@ const completedStoryEntry = {
   ],
 };
 
-const storiesWithArchivedAndDone = [...storiesWithArchived, completedStoryEntry];
+const storiesWithArchivedAndDone = [
+  ...storiesWithArchived,
+  completedStoryEntry,
+];
 
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',

@@ -2726,7 +2726,9 @@ describe('ConsolePage auto-advance tab', () => {
     installFetch();
 
     const { findByRole } = render(<ConsolePage />);
-    expect(await findByRole('switch', { name: 'Archived' })).toBeInTheDocument();
+    expect(
+      await findByRole('switch', { name: 'Archived' }),
+    ).toBeInTheDocument();
     expect(await findByRole('switch', { name: 'Done' })).toBeInTheDocument();
   });
 
