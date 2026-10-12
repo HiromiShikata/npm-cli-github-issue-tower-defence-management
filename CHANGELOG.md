@@ -1,3 +1,10 @@
+## [2.165.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.9...v2.165.10) (2026-10-12)
+
+
+### Bug Fixes
+
+* **console-markdown:** add margin rule for p to restore paragraph gap ([#3361](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3361)) ([29acc67](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/29acc67a0838eecb3327aab0cd140af6b93ee0e2))
+
 ## [2.165.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.8...v2.165.9) (2026-10-11)
 
 
