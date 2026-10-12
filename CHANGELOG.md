@@ -1,3 +1,10 @@
+# [2.167.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.166.0...v2.167.0) (2026-10-12)
+
+
+### Features
+
+* **console-ui:** toggle task list on story-name click and left-align task title column ([#3367](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3367)) ([8ea483d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ea483dfcbb0e3dcae3baa35b215daf0a158acc9))
+
 # [2.166.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.12...v2.166.0) (2026-10-12)
 
 
