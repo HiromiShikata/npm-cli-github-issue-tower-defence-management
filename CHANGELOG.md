@@ -1,3 +1,10 @@
+## [2.167.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.1...v2.167.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* **console:** forward bypassCache option through findRelatedOpenPRs rotation ([#3378](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3378)) ([3f78679](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3f7867914ef520b8e530841d77b1550a3ff75780))
+
 ## [2.167.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.0...v2.167.1) (2026-10-12)
 
 
