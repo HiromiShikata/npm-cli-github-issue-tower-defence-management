@@ -1692,6 +1692,64 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
   await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 });
 
+test('toggles the story task list via the story-name badge button identically to the chevron, with no external navigation, and opens a task detail from its title', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  const badgeButton = tdpmRow.locator('.console-story-name-toggle');
+
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
+
+  const urlBeforeBadgeExpand = page.url();
+  const pagesBeforeBadgeExpand = page.context().pages().length;
+  const popupOnBadgeExpand = page
+    .waitForEvent('popup', { timeout: 500 })
+    .catch(() => null);
+  await badgeButton.click();
+  expect(await popupOnBadgeExpand).toBeNull();
+  expect(page.context().pages().length).toBe(pagesBeforeBadgeExpand);
+  expect(page.url()).toBe(urlBeforeBadgeExpand);
+
+  await expect(tdpmRow.locator('.console-story-task-list')).toBeVisible();
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(2);
+  const taskListMarkupViaBadge = await tdpmRow
+    .locator('.console-story-task-list')
+    .innerHTML();
+
+  await badgeButton.click();
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
+
+  await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(2);
+  const taskListMarkupViaChevron = await tdpmRow
+    .locator('.console-story-task-list')
+    .innerHTML();
+  expect(taskListMarkupViaChevron).toBe(taskListMarkupViaBadge);
+
+  const pagesBeforeTaskTitleOpen = page.context().pages().length;
+  const popupOnTaskTitleOpen = page
+    .waitForEvent('popup', { timeout: 500 })
+    .catch(() => null);
+  await tdpmRow
+    .locator('.console-story-task-title', {
+      hasText: 'Serve the committed console UI bundle from serveConsole',
+    })
+    .click();
+  expect(await popupOnTaskTitleOpen).toBeNull();
+  expect(page.context().pages().length).toBe(pagesBeforeTaskTitleOpen);
+
+  await expect(page.locator('.console-detail-title-text')).toContainText(
+    'Serve the committed console UI bundle from serveConsole',
+  );
+});
+
 test.describe('expanded comment body renders github images through the image proxy', () => {
   let commentHarness: ConsoleE2eHarness;
 
