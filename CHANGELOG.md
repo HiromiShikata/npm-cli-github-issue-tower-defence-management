@@ -1,3 +1,10 @@
+## [2.165.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.11...v2.165.12) (2026-10-12)
+
+
+### Bug Fixes
+
+* **console:** persist comment drafts across a full page reload ([#3246](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3246)) ([ba857f5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ba857f55551e3ee8f708c453d84ec5bb6ce7fc84))
+
 ## [2.165.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.10...v2.165.11) (2026-10-12)
 
 
