@@ -2268,6 +2268,64 @@ describe('ConsolePage comment draft reload persistence', () => {
     });
     expect(reloaded.getByPlaceholderText('Issue title')).toHaveValue('');
   });
+
+  it('continues to accept typed comment text with no error indicator, and still shows that text after navigating to another task and back within the page, when localStorage.setItem throws', async () => {
+    const { container, getByText, findByText, getByPlaceholderText } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    const setItemSpy = jest
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('simulated failure');
+      });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: 'typed while storage writes are throwing' },
+      });
+
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+        'typed while storage writes are throwing',
+      );
+      expect(container.querySelector('.console-error-toast')).toBeNull();
+      expect(container.querySelector('.console-composer-error')).toBeNull();
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
+
+      const detailScreen = container.querySelector('.console-detail-screen');
+      expect(detailScreen).not.toBeNull();
+
+      swipeDetailScreen(
+        detailScreen as HTMLElement,
+        { clientX: 240, clientY: 100 },
+        { clientX: 40, clientY: 110 },
+      );
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+
+      swipeDetailScreen(
+        detailScreen as HTMLElement,
+        { clientX: 40, clientY: 100 },
+        { clientX: 240, clientY: 110 },
+      );
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_1');
+      });
+
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+        'typed while storage writes are throwing',
+      );
+    } finally {
+      setItemSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
 });
 
 describe('ConsolePage auto-advance tab', () => {
