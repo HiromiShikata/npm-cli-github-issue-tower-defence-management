@@ -58,8 +58,15 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       rotate((r) => r.getStoryObjectMap(project)),
     getAuthenticatedUserLogin: () =>
       rotate((r) => r.getAuthenticatedUserLogin()),
-    findRelatedOpenPRs: (issueUrl: string) =>
-      rotate((r) => r.findRelatedOpenPRs(issueUrl)),
+    findRelatedOpenPRs: (
+      issueUrl: string,
+      options?: { bypassCache?: boolean },
+    ) =>
+      rotate((r) =>
+        options !== undefined
+          ? r.findRelatedOpenPRs(issueUrl, options)
+          : r.findRelatedOpenPRs(issueUrl),
+      ),
     findRelatedOpenPrUrls: (issueUrls: string[]) =>
       rotate((r) => r.findRelatedOpenPrUrls(issueUrls)),
     getOpenPullRequest: (prUrl: string) =>
