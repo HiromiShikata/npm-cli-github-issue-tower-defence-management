@@ -1,3 +1,10 @@
+## [2.165.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.10...v2.165.11) (2026-10-12)
+
+
+### Bug Fixes
+
+* **console-e2e:** stop webServer forcefully to prevent harness hang on in-progress connections ([#3363](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3363)) ([3e069fd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3e069fdf227d97f3290419e6ac45e07bd43f0648))
+
 ## [2.165.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.165.9...v2.165.10) (2026-10-12)
 
 
