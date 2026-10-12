@@ -48,6 +48,44 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
+    it('forwards the bypassCache option to findRelatedOpenPRs on the underlying repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      await rotating.findRelatedOpenPRs('https://github.com/o/r/issues/1', {
+        bypassCache: true,
+      });
+
+      expect(repo.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        { bypassCache: true },
+      );
+    });
+
+    it('forwards a findRelatedOpenPRs call with only an issueUrl to the underlying repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      const result = await rotating.findRelatedOpenPRs(
+        'https://github.com/o/r/issues/1',
+      );
+
+      expect(result).toEqual([]);
+      expect(repo.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
+    });
+
     it('re-throws any error from the single repository without rotating', async () => {
       const repo = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
@@ -177,6 +215,32 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(repo2.findRelatedOpenPrUrls).toHaveBeenCalledWith([
         'https://github.com/o/r/issues/1',
       ]);
+    });
+
+    it('rotates on findRelatedOpenPRs when the first repository throws GitHubRateLimitError', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.findRelatedOpenPRs.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result = await rotating.findRelatedOpenPRs(
+        'https://github.com/o/r/issues/1',
+      );
+
+      expect(result).toEqual([]);
+      expect(repo1.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
+      expect(repo2.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
     });
 
     it('rotates on getIssueOrPullRequestComments as well', async () => {
