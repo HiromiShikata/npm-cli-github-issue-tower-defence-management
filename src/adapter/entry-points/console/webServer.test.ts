@@ -28,6 +28,7 @@ import {
   resolveDashboardFilePath,
   createWebServer,
   startWebServer,
+  stopWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
@@ -252,6 +253,45 @@ describe('webServer integration', () => {
     expect(typeof address).not.toBe('string');
     await closeServer(server);
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('stopWebServer resolves even when a connection has an incomplete in-progress request', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    const socket = net.connect(port, '127.0.0.1');
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('connect', () => resolve());
+        socket.once('error', reject);
+      });
+      socket.write('GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n');
+
+      const result = await Promise.race([
+        stopWebServer(server).then(() => 'stopped'),
+        new Promise<string>((resolve) =>
+          setTimeout(() => resolve('timed out'), 2000),
+        ),
+      ]);
+
+      expect(result).toBe('stopped');
+    } finally {
+      socket.destroy();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it('serves the placeholder index without a token when ui-dist is absent', async () => {
