@@ -2,6 +2,7 @@ import {
   TokenExhaustionHandoverUseCase,
   TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS,
   TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS,
+  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
 } from './TokenExhaustionHandoverUseCase';
 import {
   ClaudeHandoverSession,
@@ -91,6 +92,7 @@ const defaultInput = (
     state: TokenExhaustionHandoverState;
     now: Date;
     handoverActionCooldownSeconds: number;
+    relaunchStaggerSeconds: number;
   }> = {},
 ) => ({
   enabled: true,
@@ -98,6 +100,7 @@ const defaultInput = (
   bareNameLeaderMessage: '',
   gracePeriodSeconds: 0,
   handoverActionCooldownSeconds: 180,
+  relaunchStaggerSeconds: 20,
   state: { entries: {} },
   now,
   ...overrides,
@@ -952,5 +955,176 @@ describe('TokenExhaustionHandoverUseCase', () => {
         },
       });
     });
+  });
+
+  describe('relaunchStaggerSeconds pacing', () => {
+    type RelaunchStaggerSessionSpec = {
+      id: string;
+      needsRelaunch: boolean;
+    };
+
+    const buildRelaunchStaggerSession = (
+      spec: RelaunchStaggerSessionSpec,
+      index: number,
+    ): ClaudeHandoverSession =>
+      spec.needsRelaunch
+        ? {
+            ...bareNameLeaderSession(),
+            pid: 6000 + index,
+            sessionName: `stagger-${spec.id}`,
+            name: `stagger-${spec.id}`,
+          }
+        : {
+            ...issueUrlLeaderSession(),
+            pid: 6000 + index,
+            sessionName: `stagger-${spec.id}`,
+            name: `stagger-${spec.id}`,
+            issueUrl: `https://github.com/owner/repo/issues/${6000 + index}`,
+          };
+
+    type RelaunchStaggerPacingCase = {
+      description: string;
+      sessionSpecs: RelaunchStaggerSessionSpec[];
+      relaunchStaggerSeconds: number;
+      expectedSleepCallCount: number;
+    };
+
+    const cases: RelaunchStaggerPacingCase[] = [
+      {
+        description:
+          '0 sessions needing relaunch (one kill-only session) -> no sleep call',
+        sessionSpecs: [{ id: 'kill-only-a', needsRelaunch: false }],
+        relaunchStaggerSeconds:
+          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
+        expectedSleepCallCount: 0,
+      },
+      {
+        description: '1 session needing relaunch -> no sleep call',
+        sessionSpecs: [{ id: 'relaunch-a', needsRelaunch: true }],
+        relaunchStaggerSeconds:
+          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
+        expectedSleepCallCount: 0,
+      },
+      {
+        description:
+          '2 sessions needing relaunch -> one sleep call, ordered kill1-relaunch1-kill2-sleep-relaunch2',
+        sessionSpecs: [
+          { id: 'relaunch-a', needsRelaunch: true },
+          { id: 'relaunch-b', needsRelaunch: true },
+        ],
+        relaunchStaggerSeconds:
+          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
+        expectedSleepCallCount: 1,
+      },
+      {
+        description:
+          '3 sessions needing relaunch -> two sleep calls, ordering extended to a third session',
+        sessionSpecs: [
+          { id: 'relaunch-a', needsRelaunch: true },
+          { id: 'relaunch-b', needsRelaunch: true },
+          { id: 'relaunch-c', needsRelaunch: true },
+        ],
+        relaunchStaggerSeconds:
+          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
+        expectedSleepCallCount: 2,
+      },
+      {
+        description:
+          '2 sessions needing relaunch with a kill-only session interleaved -> one sleep call, ordering preserved across it',
+        sessionSpecs: [
+          { id: 'relaunch-a', needsRelaunch: true },
+          { id: 'kill-only-b', needsRelaunch: false },
+          { id: 'relaunch-c', needsRelaunch: true },
+        ],
+        relaunchStaggerSeconds:
+          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
+        expectedSleepCallCount: 1,
+      },
+      {
+        description:
+          'non-default stagger duration is forwarded to sleep in milliseconds',
+        sessionSpecs: [
+          { id: 'relaunch-a', needsRelaunch: true },
+          { id: 'relaunch-b', needsRelaunch: true },
+        ],
+        relaunchStaggerSeconds: 45,
+        expectedSleepCallCount: 1,
+      },
+    ];
+
+    it.each(cases)(
+      '$description',
+      async ({
+        sessionSpecs,
+        relaunchStaggerSeconds,
+        expectedSleepCallCount,
+      }) => {
+        const sleep = jest.fn().mockResolvedValue(undefined);
+        const staggeredUseCase = new TokenExhaustionHandoverUseCase(
+          handoverSessionRepository,
+          snapshotRepository,
+          tmuxSessionRepository,
+          processSignalRepository,
+          issueCheckpointRepository,
+          stateRepository,
+          sleep,
+        );
+        const sessions = sessionSpecs.map(buildRelaunchStaggerSession);
+        handoverSessionRepository.listHandoverSessions.mockReturnValue(
+          sessions,
+        );
+        snapshotRepository.listSnapshots.mockReturnValue([
+          snapshot(TOKEN_EXHAUSTED, { rejected: true }),
+          snapshot(TOKEN_FRESH),
+        ]);
+
+        await staggeredUseCase.run(defaultInput({ relaunchStaggerSeconds }));
+
+        expect(sleep).toHaveBeenCalledTimes(expectedSleepCallCount);
+        for (const call of sleep.mock.calls) {
+          expect(call[0]).toBe(relaunchStaggerSeconds * 1000);
+        }
+
+        const orderMarkers: number[] = [];
+        let relaunchesSoFar = 0;
+        let nextSleepCallIndex = 0;
+        sessionSpecs.forEach((spec, index) => {
+          const session = sessions[index];
+          const killCallIndex =
+            tmuxSessionRepository.killSession.mock.calls.findIndex(
+              (args) => args[0] === session.sessionName,
+            );
+          expect(killCallIndex).toBeGreaterThanOrEqual(0);
+          orderMarkers.push(
+            tmuxSessionRepository.killSession.mock.invocationCallOrder[
+              killCallIndex
+            ],
+          );
+
+          if (spec.needsRelaunch) {
+            relaunchesSoFar += 1;
+            if (relaunchesSoFar > 1) {
+              orderMarkers.push(
+                sleep.mock.invocationCallOrder[nextSleepCallIndex],
+              );
+              nextSleepCallIndex += 1;
+            }
+            const relaunchCallIndex =
+              tmuxSessionRepository.launchBareNameLeaderSession.mock.calls.findIndex(
+                (args) => args[0] === session.name,
+              );
+            expect(relaunchCallIndex).toBeGreaterThanOrEqual(0);
+            orderMarkers.push(
+              tmuxSessionRepository.launchBareNameLeaderSession.mock
+                .invocationCallOrder[relaunchCallIndex],
+            );
+          }
+        });
+
+        for (let i = 1; i < orderMarkers.length; i += 1) {
+          expect(orderMarkers[i]).toBeGreaterThan(orderMarkers[i - 1]);
+        }
+      },
+    );
   });
 });
