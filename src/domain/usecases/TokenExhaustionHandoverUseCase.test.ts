@@ -1059,7 +1059,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
         relaunchStaggerSeconds,
         expectedSleepCallCount,
       }) => {
-        const sleep = jest.fn().mockResolvedValue(undefined);
+        const sleep = jest
+          .fn<Promise<void>, [number]>()
+          .mockResolvedValue(undefined);
         const staggeredUseCase = new TokenExhaustionHandoverUseCase(
           handoverSessionRepository,
           snapshotRepository,
