@@ -121,16 +121,16 @@
     "dompurify": "3.4.16",
     "dotenv": "^18.0.0",
     "gemoji": "8.1.0",
-    "googleapis": "^181.0.0",
+    "googleapis": "^183.0.0",
     "ky": "^2.0.2",
-    "marked": "18.0.13",
+    "marked": "18.1.0",
     "marked-emoji": "3.0.0",
     "playwright": "1.63.0",
     "yaml": "^2.9.0"
   },
   "overrides": {
     "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat",
-    "npm": "12.1.0",
+    "npm": "12.2.0",
     "@actions/http-client": {
       "undici": "6.28.1"
     },

@@ -26,5 +26,8 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0"
+  },
+  "overrides": {
+    "handlebars": "4.7.10"
   }
 }
