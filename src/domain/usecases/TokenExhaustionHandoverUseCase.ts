@@ -13,12 +13,14 @@ import {
   TokenRateLimitSnapshotRepository,
 } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
 import { TokenExhaustionHandoverStateRepository } from './adapter-interfaces/TokenExhaustionHandoverStateRepository';
+import { Sleep, realSleep } from '../services/commentCreateWithDedupRetry';
 
 export const TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS = 900;
 export const TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS = 3600;
 export const TOKEN_EXHAUSTION_FIVE_HOUR_WARNING_FREE_THRESHOLD = 0.25;
 export const TOKEN_EXHAUSTION_SEVEN_DAY_WARNING_FREE_THRESHOLD = 0.15;
 export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS = 180;
+export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS = 20;
 
 type SnapshotVerdict = {
   stale: boolean;
@@ -35,6 +37,7 @@ export type TokenExhaustionHandoverInput = {
   state: TokenExhaustionHandoverState;
   now: Date;
   handoverActionCooldownSeconds: number;
+  relaunchStaggerSeconds: number;
 };
 
 export type TokenExhaustionHandoverResult = {
@@ -72,6 +75,7 @@ export class TokenExhaustionHandoverUseCase {
       TokenExhaustionHandoverStateRepository,
       'save'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (
@@ -158,6 +162,9 @@ export class TokenExhaustionHandoverUseCase {
           pid: session.pid,
         });
         if (this.needsRelaunch(session)) {
+          if (relaunchedLeaderNames.length > 0) {
+            await this.sleep(input.relaunchStaggerSeconds * 1000);
+          }
           await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
         }
         if (hasTmux) {
