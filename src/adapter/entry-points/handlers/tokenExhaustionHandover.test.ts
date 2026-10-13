@@ -82,6 +82,7 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 999,
+      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -104,6 +105,7 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 45,
+      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -124,6 +126,7 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 180,
+      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -146,6 +149,7 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 180,
+      relaunchStaggerSeconds: 20,
     });
   });
 
