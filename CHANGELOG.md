@@ -1,3 +1,10 @@
+# [2.168.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.2...v2.168.0) (2026-10-13)
+
+
+### Features
+
+* **domain:** stagger bare-name-leader relaunches within a single token-exhaustion handover cycle ([#3384](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3384)) ([dff23aa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dff23aa0f3908ce183e2cac486682786fd5cac0d))
+
 ## [2.167.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.1...v2.167.2) (2026-10-12)
 
 
