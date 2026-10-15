@@ -309,6 +309,21 @@ describe('ConsoleTabList', () => {
     ).toBeNull();
   });
 
+  it('closes the dropdown when a mousedown event occurs outside the dropdown and the button', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+    const tabBar = baseElement.querySelector('.console-tabbar') as HTMLElement;
+    fireEvent.mouseDown(tabBar);
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+  });
+
   it('does not render the airplane mode button when airplaneModeEnabled is false', () => {
     const { baseElement } = render(
       <ConsoleTabList
