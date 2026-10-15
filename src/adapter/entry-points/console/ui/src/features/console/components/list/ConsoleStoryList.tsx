@@ -259,7 +259,8 @@ export const ConsoleStoryList = ({
       items.length > 0 &&
       items.every(
         (item) =>
-          item.status !== null && !OWNER_ACTIONABLE_STATUS_NAMES.has(item.status),
+          item.status !== null &&
+          !OWNER_ACTIONABLE_STATUS_NAMES.has(item.status),
       )
     ) {
       return false;
