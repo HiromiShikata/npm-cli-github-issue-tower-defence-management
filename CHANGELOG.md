@@ -1,3 +1,10 @@
+# [2.169.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.168.0...v2.169.0) (2026-10-15)
+
+
+### Features
+
+* **console-ui:** extend Stories tab Done-visibility filter to also hide stories with no owner-actionable task status ([#3398](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3398)) ([8cfad0f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cfad0fff82ee739745cf3ba1fb6bdf8130d16fd))
+
 # [2.168.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.167.2...v2.168.0) (2026-10-13)
 
 
