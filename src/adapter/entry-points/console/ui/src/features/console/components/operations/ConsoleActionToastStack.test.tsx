@@ -1,20 +1,23 @@
-import { fireEvent, render, within } from '@testing-library/react';
+import { act, fireEvent, render, within } from '@testing-library/react';
 import type {
   ConsoleActionError,
   ConsolePendingActionView,
 } from '../../hooks/useConsoleActionQueue';
-import { ConsoleActionToastStack } from './ConsoleActionToastStack';
+import { ACTION_TOAST_DELAY_MS } from '../../logic/actionToast';
+import {
+  ConsoleActionToastStack,
+  type ConsoleActionToastStackProps,
+} from './ConsoleActionToastStack';
 
 const makePendingEntry = (
   overrides: Partial<ConsolePendingActionView> & { id: string },
-): ConsolePendingActionView => ({
-  createdAt: 0,
-  message: 'Pending default',
-  color: 'green',
-  remainingSeconds: 5,
-  progress: 1,
-  ...overrides,
-});
+): ConsolePendingActionView =>
+  ({
+    createdAt: 0,
+    message: 'Pending default',
+    color: 'green',
+    ...overrides,
+  }) as unknown as ConsolePendingActionView;
 
 const makeErrorEntry = (
   overrides: Partial<ConsoleActionError> & { id: string },
@@ -230,5 +233,101 @@ describe('ConsoleActionToastStack', () => {
     );
     expect(onUndo).toHaveBeenCalledTimes(2);
     expect(onUndo).toHaveBeenCalledWith('p-2');
+  });
+
+  describe('local countdown ticking', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('recalculates remainingSeconds and progress itself from createdAt every 100ms, independent of the pendingEntries prop values', () => {
+      jest.useFakeTimers();
+      const createdAt = Date.now();
+      const { container } = render(
+        <ConsoleActionToastStack
+          {...baseProps}
+          pendingEntries={[makePendingEntry({ id: 'p1', createdAt })]}
+          errorEntries={[]}
+        />,
+      );
+
+      const toastAtStart = findToastContainingText(
+        container,
+        'Pending default',
+      );
+      const countdownAtStart = toastAtStart.querySelector(
+        '.console-undo-toast-countdown',
+      );
+      const barAtStart = toastAtStart.querySelector('.console-undo-toast-bar');
+      expect(countdownAtStart?.textContent).toBe('5s');
+      expect(barAtStart).toHaveStyle({ width: '100%' });
+
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      const expectedRemainingSeconds = Math.max(
+        0,
+        Math.ceil((ACTION_TOAST_DELAY_MS - 2000) / 1000),
+      );
+      const expectedProgressPercent =
+        Math.max(0, 1 - 2000 / ACTION_TOAST_DELAY_MS) * 100;
+      const toastAfterTick = findToastContainingText(
+        container,
+        'Pending default',
+      );
+      const countdownAfterTick = toastAfterTick.querySelector(
+        '.console-undo-toast-countdown',
+      );
+      const barAfterTick = toastAfterTick.querySelector(
+        '.console-undo-toast-bar',
+      );
+      expect(countdownAfterTick?.textContent).toBe(
+        `${expectedRemainingSeconds}s`,
+      );
+      expect(barAfterTick).toHaveStyle({
+        width: `${expectedProgressPercent}%`,
+      });
+    });
+
+    it('ticks its own countdown locally on a 100ms timer without ever re-rendering whatever renders it', () => {
+      jest.useFakeTimers();
+      const renderCounts: number[] = [];
+      const ParentWrapper = (props: ConsoleActionToastStackProps) => {
+        renderCounts.push(Date.now());
+        return <ConsoleActionToastStack {...props} />;
+      };
+      const createdAt = Date.now();
+
+      const { container } = render(
+        <ParentWrapper
+          {...baseProps}
+          pendingEntries={[makePendingEntry({ id: 'p1', createdAt })]}
+          errorEntries={[]}
+        />,
+      );
+      const renderCountAfterInitialRender = renderCounts.length;
+
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      expect(renderCounts.length).toBe(renderCountAfterInitialRender);
+
+      const expectedRemainingSeconds = Math.max(
+        0,
+        Math.ceil((ACTION_TOAST_DELAY_MS - 2000) / 1000),
+      );
+      const toastAfterTick = findToastContainingText(
+        container,
+        'Pending default',
+      );
+      const countdownAfterTick = toastAfterTick.querySelector(
+        '.console-undo-toast-countdown',
+      );
+      expect(countdownAfterTick?.textContent).toBe(
+        `${expectedRemainingSeconds}s`,
+      );
+    });
   });
 });

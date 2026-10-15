@@ -131,7 +131,6 @@ describe('useConsoleActionQueue', () => {
     expect(action.advance).toHaveBeenCalledTimes(1);
     expect(action.commit).not.toHaveBeenCalled();
     expect(result.current.pending[0]?.message).toBe('Approved — PR #851');
-    expect(result.current.pending[0]?.remainingSeconds).toBe(5);
 
     act(() => {
       jest.advanceTimersByTime(4900);
@@ -143,18 +142,6 @@ describe('useConsoleActionQueue', () => {
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
     expect(result.current.pending).toHaveLength(0);
-  });
-
-  it('counts the remaining seconds down during the window', () => {
-    const { result } = renderHook(() => useConsoleActionQueue());
-    act(() => {
-      result.current.enqueue(makeAction());
-    });
-    act(() => {
-      jest.advanceTimersByTime(2000);
-    });
-    expect(result.current.pending[0]?.remainingSeconds).toBe(3);
-    expect(result.current.pending[0]?.progress).toBeCloseTo(0.6, 1);
   });
 
   it('cancels the command when undo is called within the window', () => {
@@ -1738,7 +1725,7 @@ describe('useConsoleActionQueue', () => {
 
         expect(result.current.enqueueSequence).toBe(1);
         expect(action.commit).not.toHaveBeenCalled();
-        expect(result.current.pending[0]?.remainingSeconds).toBe(5);
+        expect(result.current.pending).toHaveLength(1);
 
         await act(async () => {
           jest.advanceTimersByTime(5000);
