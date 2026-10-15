@@ -55,22 +55,18 @@ export const ConsoleActionToastStack = ({
   }, [hasPendingEntries]);
 
   const items: ConsoleActionToastStackItem[] = [
-    ...pendingEntries.map(
-      (entry): ConsoleActionToastStackItem => ({
-        kind: 'pending',
-        id: entry.id,
-        createdAt: entry.createdAt,
-        entry,
-      }),
-    ),
-    ...errorEntries.map(
-      (entry): ConsoleActionToastStackItem => ({
-        kind: 'error',
-        id: entry.id,
-        createdAt: entry.createdAt,
-        entry,
-      }),
-    ),
+    ...pendingEntries.map((entry): ConsoleActionToastStackItem => ({
+      kind: 'pending',
+      id: entry.id,
+      createdAt: entry.createdAt,
+      entry,
+    })),
+    ...errorEntries.map((entry): ConsoleActionToastStackItem => ({
+      kind: 'error',
+      id: entry.id,
+      createdAt: entry.createdAt,
+      entry,
+    })),
   ];
 
   if (items.length === 0) {

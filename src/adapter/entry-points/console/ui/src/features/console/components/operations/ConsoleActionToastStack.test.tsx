@@ -45,9 +45,7 @@ const getOverflowToggle = (
   ).filter((element) => element.textContent?.includes(needle) ?? false);
   const innermost = candidates.find(
     (element) =>
-      !candidates.some(
-        (other) => other !== element && element.contains(other),
-      ),
+      !candidates.some((other) => other !== element && element.contains(other)),
   );
   if (innermost === undefined) {
     throw new Error(`overflow toggle with text "${needle}" not found`);

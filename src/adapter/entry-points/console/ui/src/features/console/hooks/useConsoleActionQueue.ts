@@ -233,7 +233,11 @@ export const useConsoleActionQueue = (
   const [enqueueSequence, setEnqueueSequence] = useState(0);
 
   const appendError = useCallback(
-    (newError: { message: string; reason: string; retry?: () => void }): void => {
+    (newError: {
+      message: string;
+      reason: string;
+      retry?: () => void;
+    }): void => {
       setError((prev) => [
         ...prev,
         { id: generateId(), createdAt: Date.now(), ...newError },
