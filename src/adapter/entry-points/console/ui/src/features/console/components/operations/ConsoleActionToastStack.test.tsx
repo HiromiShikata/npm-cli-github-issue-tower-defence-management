@@ -69,6 +69,23 @@ const findToastContainingText = (
   return match;
 };
 
+const mockBoundingClientRectHeight = (
+  element: HTMLElement,
+  height: number,
+): void => {
+  jest.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+    height,
+    width: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect);
+};
+
 describe('ConsoleActionToastStack', () => {
   it('renders nothing when there are no pending or error entries', () => {
     const { container } = render(
@@ -231,6 +248,131 @@ describe('ConsoleActionToastStack', () => {
     );
     expect(onUndo).toHaveBeenCalledTimes(2);
     expect(onUndo).toHaveBeenCalledWith('p-2');
+  });
+
+  it('stacks visible toasts bottom-to-top, placing the most recently created entry at the bottom inset and offsetting each older entry by the measured heights and gaps of the entries below it', () => {
+    const pendingEntries = [
+      makePendingEntry({ id: 'p-1', createdAt: 1, message: 'Pending One' }),
+      makePendingEntry({ id: 'p-2', createdAt: 2, message: 'Pending Two' }),
+    ];
+    const { container, rerender } = render(
+      <ConsoleActionToastStack
+        {...baseProps}
+        pendingEntries={pendingEntries}
+        errorEntries={[]}
+      />,
+    );
+
+    const toastOne = findToastContainingText(container, 'Pending One');
+    const toastTwo = findToastContainingText(container, 'Pending Two');
+    mockBoundingClientRectHeight(toastOne, 50);
+    mockBoundingClientRectHeight(toastTwo, 30);
+
+    rerender(
+      <ConsoleActionToastStack
+        {...baseProps}
+        pendingEntries={pendingEntries}
+        errorEntries={[]}
+      />,
+    );
+
+    expect(toastTwo.style.bottom).toBe('12px');
+    expect(toastOne.style.bottom).toBe(`${12 + 30 + 8}px`);
+  });
+
+  it('positions the overflow toggle above the stack of visible entries using their measured heights', () => {
+    const pendingEntries = [
+      makePendingEntry({ id: 'p-1', createdAt: 1, message: 'Pending One' }),
+      makePendingEntry({ id: 'p-2', createdAt: 2, message: 'Pending Two' }),
+    ];
+    const { container, rerender } = render(
+      <ConsoleActionToastStack
+        {...baseProps}
+        displayLimit={1}
+        pendingEntries={pendingEntries}
+        errorEntries={[]}
+      />,
+    );
+
+    const toastTwo = findToastContainingText(container, 'Pending Two');
+    mockBoundingClientRectHeight(toastTwo, 40);
+
+    rerender(
+      <ConsoleActionToastStack
+        {...baseProps}
+        displayLimit={1}
+        pendingEntries={pendingEntries}
+        errorEntries={[]}
+      />,
+    );
+
+    const toggle = getOverflowToggle(container, 1);
+    expect(toastTwo.style.bottom).toBe('12px');
+    expect(toggle.style.bottom).toBe(`${12 + 40 + 8}px`);
+  });
+
+  it('wires Dismiss, Retry, and Dismiss independently for entries revealed by expanding the overflow toggle', () => {
+    const onDismiss = jest.fn();
+    const onDismissError = jest.fn();
+    const retryOldError = jest.fn();
+    const pendingEntries = [
+      makePendingEntry({ id: 'p-old', createdAt: 1, message: 'Pending Old' }),
+      makePendingEntry({
+        id: 'p-visible',
+        createdAt: 4,
+        message: 'Pending Visible',
+      }),
+    ];
+    const errorEntries = [
+      makeErrorEntry({
+        id: 'e-retry',
+        createdAt: 2,
+        message: 'Error Retry',
+        reason: 'Reason Retry',
+        retry: retryOldError,
+      }),
+      makeErrorEntry({
+        id: 'e-dismiss',
+        createdAt: 3,
+        message: 'Error Dismiss',
+        reason: 'Reason Dismiss',
+      }),
+    ];
+    const { container } = render(
+      <ConsoleActionToastStack
+        {...baseProps}
+        displayLimit={1}
+        onDismiss={onDismiss}
+        onDismissError={onDismissError}
+        pendingEntries={pendingEntries}
+        errorEntries={errorEntries}
+      />,
+    );
+
+    const toggle = getOverflowToggle(container, 3);
+    fireEvent.click(toggle);
+
+    const pendingOldToast = findToastContainingText(container, 'Pending Old');
+    fireEvent.click(within(pendingOldToast).getByText('✕'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledWith('p-old');
+
+    const errorRetryToast = findToastContainingText(container, 'Error Retry');
+    expect(within(errorRetryToast).queryByText('Retry')).not.toBeNull();
+    fireEvent.click(within(errorRetryToast).getByText('Retry'));
+    expect(retryOldError).toHaveBeenCalledTimes(1);
+    expect(onDismissError).toHaveBeenCalledTimes(1);
+    expect(onDismissError).toHaveBeenCalledWith('e-retry');
+
+    const errorDismissToast = findToastContainingText(
+      container,
+      'Error Dismiss',
+    );
+    expect(within(errorDismissToast).queryByText('Retry')).toBeNull();
+    fireEvent.click(within(errorDismissToast).getByText('Dismiss'));
+    expect(onDismissError).toHaveBeenCalledTimes(2);
+    expect(onDismissError).toHaveBeenCalledWith('e-dismiss');
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   describe('local countdown ticking', () => {
