@@ -1032,9 +1032,7 @@ describe('ConsoleStoryList', () => {
           showDone={true}
         />,
       );
-      expect(
-        getByText('Awaiting Workspace Toggle Story'),
-      ).toBeInTheDocument();
+      expect(getByText('Awaiting Workspace Toggle Story')).toBeInTheDocument();
       expect(getByText('TDPM Console port')).toBeInTheDocument();
       expect(getByText('Move to Okinawa')).toBeInTheDocument();
     });
