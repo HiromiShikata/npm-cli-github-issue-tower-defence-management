@@ -288,6 +288,27 @@ describe('ConsoleTabList', () => {
     ).toBeNull();
   });
 
+  it('closes the dropdown when the active project changes via a rerender without any click', () => {
+    const { getByRole, baseElement, rerender } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+    rerender(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        pjcode="beta"
+      />,
+    );
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+  });
+
   it('does not render the airplane mode button when airplaneModeEnabled is false', () => {
     const { baseElement } = render(
       <ConsoleTabList
