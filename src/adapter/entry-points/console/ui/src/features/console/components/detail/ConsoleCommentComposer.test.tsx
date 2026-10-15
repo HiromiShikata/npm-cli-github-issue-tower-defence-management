@@ -895,6 +895,20 @@ describe('ConsoleCommentComposer', () => {
       expect(textarea.value).not.toContain('![uploading shot.png]()');
     });
   });
+
+  it('does not disable the ok & Awaiting Workspace button when the draft has content', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOkAndAwaitingWorkspace={() => {}}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'some text' },
+    });
+    expect(getByText('ok & Awaiting Workspace')).not.toBeDisabled();
+  });
 });
 
 describe('insertUploadPlaceholder', () => {
