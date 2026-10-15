@@ -317,9 +317,7 @@ describe('ConsoleTabList', () => {
     expect(
       baseElement.querySelector('.console-tab-pjname-dropdown'),
     ).toBeInTheDocument();
-    const tabBar = baseElement.querySelector(
-      '.console-tabbar',
-    ) as HTMLElement;
+    const tabBar = baseElement.querySelector('.console-tabbar') as HTMLElement;
     fireEvent.mouseDown(tabBar);
     expect(
       baseElement.querySelector('.console-tab-pjname-dropdown'),
