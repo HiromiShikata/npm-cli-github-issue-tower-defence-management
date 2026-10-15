@@ -13,7 +13,7 @@ const sampleItems = [
     itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb101',
     isPr: false,
     story: 'TDPM Console port',
-    status: 'Awaiting Workspace',
+    status: 'Awaiting Owner',
     agent: 'developer',
     nextActionDate: '2026-09-10',
     nextActionHour: 10,
@@ -32,7 +32,7 @@ const sampleItems = [
     itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb102',
     isPr: false,
     story: 'TDPM Console port',
-    status: 'Awaiting Workspace',
+    status: 'Awaiting Owner',
     agent: null,
     nextActionDate: null,
     nextActionHour: null,
@@ -251,6 +251,48 @@ export const VisibilityControlsBothShown: Story = {
     showDone: true,
   },
 };
+
+export const VisibilityControlsDoneHiddenWithAwaitingWorkspaceOnlyStory: Story =
+  {
+    args: {
+      stories: [
+        ...storiesWithoutUrl,
+        {
+          storyName: 'Automate console deployment',
+          storyOptionId: 'b62e4d17',
+          color: 'ORANGE' as const,
+          description: 'Deploy the TDPM console from GitHub Actions.',
+          openItemCount: 1,
+          storyViewUrl: null,
+          items: [
+            {
+              number: 301,
+              title: 'Add console deploy workflow',
+              url: 'https://github.com/HiromiShikata/secretary/issues/301',
+              repo: 'HiromiShikata/secretary',
+              nameWithOwner: 'HiromiShikata/secretary',
+              projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb301',
+              itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb301',
+              isPr: false,
+              story: 'Automate console deployment',
+              status: 'Awaiting Workspace',
+              agent: 'developer',
+              nextActionDate: null,
+              nextActionHour: null,
+              dependedIssueUrls: [],
+              labels: [],
+              createdAt: '2026-09-15T08:00:00.000Z',
+              relatedOpenPullRequestUrls: [],
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      showArchived: false,
+      showDone: false,
+    },
+  };
 
 export const OverflowMenuOpen: Story = {
   args: {
