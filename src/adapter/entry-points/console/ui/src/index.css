@@ -2104,25 +2104,16 @@ body {
   text-overflow: ellipsis;
 }
 
-.console-action-toast-stack {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
-  z-index: 9998;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 45vw;
-}
-
-.console-action-toast-stack .console-undo-toast,
-.console-action-toast-stack .console-error-toast {
-  position: static;
-  max-width: none;
+.console-action-toast-stack,
+.console-action-toast-stack-entry {
+  display: contents;
 }
 
 .console-action-toast-stack-toggle {
-  align-self: flex-start;
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 9998;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.12);
   border: none;
@@ -2135,12 +2126,6 @@ body {
 
 .console-action-toast-stack-toggle:hover {
   background: rgba(255, 255, 255, 0.22);
-}
-
-.console-action-toast-stack-expanded {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .console-file-row {

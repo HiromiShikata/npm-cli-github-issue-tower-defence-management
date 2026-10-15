@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type {
   ConsoleActionError,
   ConsolePendingActionView,
@@ -12,6 +12,10 @@ const computeRemainingSeconds = (elapsedMs: number): number =>
 
 const computeProgress = (elapsedMs: number): number =>
   Math.max(0, 1 - elapsedMs / ACTION_TOAST_DELAY_MS);
+
+const STACK_BOTTOM_INSET_PX = 12;
+const STACK_ENTRY_GAP_PX = 8;
+const STACK_TOGGLE_KEY = 'console-action-toast-stack-toggle';
 
 export type ConsoleActionToastStackProps = {
   pendingEntries: ConsolePendingActionView[];
@@ -69,12 +73,36 @@ export const ConsoleActionToastStack = ({
     })),
   ];
 
+  const { visibleEntries, collapsedEntries, collapsedCount } =
+    splitActionToastStack(items, displayLimit);
+
+  const stackOrderBottomToTop: string[] = [
+    ...[...visibleEntries].reverse().map((item) => item.id),
+    ...(isExpanded
+      ? [...collapsedEntries].reverse().map((item) => item.id)
+      : []),
+    ...(collapsedCount > 0 ? [STACK_TOGGLE_KEY] : []),
+  ];
+
+  const toggleElementRef = useRef<HTMLButtonElement | null>(null);
+  const entryElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  useLayoutEffect(() => {
+    let bottom = STACK_BOTTOM_INSET_PX;
+    for (const key of stackOrderBottomToTop) {
+      const element =
+        key === STACK_TOGGLE_KEY
+          ? toggleElementRef.current
+          : (entryElementsRef.current.get(key)?.firstElementChild ?? null);
+      if (!(element instanceof HTMLElement)) continue;
+      element.style.bottom = `${bottom}px`;
+      bottom += element.getBoundingClientRect().height + STACK_ENTRY_GAP_PX;
+    }
+  });
+
   if (items.length === 0) {
     return null;
   }
-
-  const { visibleEntries, collapsedEntries, collapsedCount } =
-    splitActionToastStack(items, displayLimit);
 
   const renderItem = (item: ConsoleActionToastStackItem) =>
     item.kind === 'pending' ? (
@@ -104,23 +132,36 @@ export const ConsoleActionToastStack = ({
       />
     );
 
+  const renderStackEntry = (item: ConsoleActionToastStackItem) => (
+    <div
+      key={item.id}
+      className="console-action-toast-stack-entry"
+      ref={(element) => {
+        if (element) {
+          entryElementsRef.current.set(item.id, element);
+        } else {
+          entryElementsRef.current.delete(item.id);
+        }
+      }}
+    >
+      {renderItem(item)}
+    </div>
+  );
+
   return (
     <div className="console-action-toast-stack">
       {collapsedCount > 0 && (
         <button
           type="button"
+          ref={toggleElementRef}
           className="console-action-toast-stack-toggle"
           onClick={() => setIsExpanded((previous) => !previous)}
         >
           {isExpanded ? 'Show less' : `+${collapsedCount} more`}
         </button>
       )}
-      {isExpanded && collapsedEntries.length > 0 && (
-        <div className="console-action-toast-stack-expanded">
-          {collapsedEntries.map(renderItem)}
-        </div>
-      )}
-      {visibleEntries.map(renderItem)}
+      {isExpanded && collapsedEntries.map(renderStackEntry)}
+      {visibleEntries.map(renderStackEntry)}
     </div>
   );
 };
