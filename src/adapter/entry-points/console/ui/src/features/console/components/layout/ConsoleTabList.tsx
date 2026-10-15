@@ -66,6 +66,7 @@ export const ConsoleTabList = ({
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const previousPjcodeRef = useRef(pjcode);
 
   useEffect(() => {
     if (!isDropdownOpen) return;
@@ -84,6 +85,13 @@ export const ConsoleTabList = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  useEffect(() => {
+    if (previousPjcodeRef.current === pjcode) return;
+    previousPjcodeRef.current = pjcode;
+    setIsDropdownOpen(false);
+    setDropdownPos(null);
+  }, [pjcode]);
 
   const handleButtonClick = () => {
     if (!isDropdownOpen && buttonRef.current) {
