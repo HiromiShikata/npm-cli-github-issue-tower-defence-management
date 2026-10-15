@@ -92,6 +92,137 @@ const partiallyDoneStoryEntry: ConsoleStoryEntry = {
   ],
 };
 
+const nonOwnerActionableHiddenCandidateCases: Array<{
+  storyName: string;
+  storyOptionId: string;
+  statuses: string[];
+}> = [
+  {
+    storyName: 'Awaiting Workspace Only Story',
+    storyOptionId: 'aw-only-id',
+    statuses: ['Awaiting Workspace'],
+  },
+  {
+    storyName: 'Preparation Only Story',
+    storyOptionId: 'prep-only-id',
+    statuses: ['Preparation'],
+  },
+  {
+    storyName: 'In Tmux By Agent Only Story',
+    storyOptionId: 'tmux-agent-only-id',
+    statuses: ['In Tmux by agent'],
+  },
+  {
+    storyName: 'Icebox Only Story',
+    storyOptionId: 'icebox-only-id',
+    statuses: ['Icebox'],
+  },
+  {
+    storyName: 'Done And Preparation Story',
+    storyOptionId: 'done-and-prep-id',
+    statuses: ['Done', 'Preparation'],
+  },
+];
+
+const nonOwnerActionableHiddenCandidateEntries: ConsoleStoryEntry[] =
+  nonOwnerActionableHiddenCandidateCases.map((testCase, caseIndex) => ({
+    storyName: testCase.storyName,
+    storyOptionId: testCase.storyOptionId,
+    color: 'BLUE',
+    description: '',
+    openItemCount: testCase.statuses.length,
+    storyViewUrl: null,
+    items: testCase.statuses.map((status, itemIndex) =>
+      makeItem({
+        status,
+        url: `https://github.com/demo/repo/issues/${9000 + caseIndex * 10 + itemIndex}`,
+      }),
+    ),
+  }));
+
+const ownerActionableStatusNamesForTest = [
+  'Todo by human',
+  'Awaiting Owner',
+  'Failed Preparation',
+  'In Tmux by human',
+];
+
+const visibleOwnerActionableCases: Array<{
+  storyName: string;
+  storyOptionId: string;
+  actionableStatus: string;
+}> = ownerActionableStatusNamesForTest.map((actionableStatus, caseIndex) => ({
+  storyName: `${actionableStatus} Present Story`,
+  storyOptionId: `actionable-present-${caseIndex}`,
+  actionableStatus,
+}));
+
+const visibleOwnerActionableEntries: ConsoleStoryEntry[] =
+  visibleOwnerActionableCases.map((testCase, caseIndex) => ({
+    storyName: testCase.storyName,
+    storyOptionId: testCase.storyOptionId,
+    color: 'BLUE',
+    description: '',
+    openItemCount: 2,
+    storyViewUrl: null,
+    items: [
+      makeItem({
+        status: 'Preparation',
+        url: `https://github.com/demo/repo/issues/${9100 + caseIndex * 10}`,
+      }),
+      makeItem({
+        status: testCase.actionableStatus,
+        url: `https://github.com/demo/repo/issues/${9100 + caseIndex * 10 + 1}`,
+      }),
+    ],
+  }));
+
+const hiddenOnlyByExtendedRuleStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Awaiting Workspace Toggle Story',
+  storyOptionId: 'toggle-aw-only-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 1,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      status: 'Awaiting Workspace',
+      url: 'https://github.com/demo/repo/issues/9200',
+    }),
+  ],
+};
+
+const zeroTaskStoryEntryForToggleTest: ConsoleStoryEntry = {
+  storyName: 'Zero Task Toggle Story',
+  storyOptionId: 'zero-task-toggle-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 0,
+  storyViewUrl: null,
+  items: [],
+};
+
+const taskTitleMatchesStoryNameStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Task/921',
+  storyOptionId: 'task-921-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 2,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      title: 'Task/921',
+      status: 'Preparation',
+      url: 'https://github.com/demo/repo/issues/921',
+    }),
+    makeItem({
+      title: 'Other task',
+      status: 'Icebox',
+      url: 'https://github.com/demo/repo/issues/922',
+    }),
+  ],
+};
+
 const defaultProps = {
   stories: storyEntries,
   isLoading: false,
@@ -852,6 +983,96 @@ describe('ConsoleStoryList', () => {
         />,
       );
       expect(getByText('No active stories')).toBeInTheDocument();
+    });
+
+    it('hides each story whose tasks are all at a non-owner-actionable, non-Done status when showDone is false', () => {
+      const { queryByText, getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[
+            ...storyEntries,
+            ...nonOwnerActionableHiddenCandidateEntries,
+          ]}
+          showDone={false}
+        />,
+      );
+      nonOwnerActionableHiddenCandidateCases.forEach((testCase) => {
+        expect(queryByText(testCase.storyName)).toBeNull();
+      });
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Move to Okinawa')).toBeInTheDocument();
+    });
+
+    it('does not hide a story that has at least one task at an owner-actionable status when showDone is false', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...storyEntries, ...visibleOwnerActionableEntries]}
+          showDone={false}
+        />,
+      );
+      visibleOwnerActionableCases.forEach((testCase) => {
+        expect(getByText(testCase.storyName)).toBeInTheDocument();
+      });
+    });
+
+    it('shows a story immediately without remounting when the Done switch is turned on after being hidden only under the extended owner-actionable rule', () => {
+      const { queryByText, getByText, rerender } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...storyEntries, hiddenOnlyByExtendedRuleStoryEntry]}
+          showDone={false}
+        />,
+      );
+      expect(queryByText('Awaiting Workspace Toggle Story')).toBeNull();
+      rerender(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...storyEntries, hiddenOnlyByExtendedRuleStoryEntry]}
+          showDone={true}
+        />,
+      );
+      expect(
+        getByText('Awaiting Workspace Toggle Story'),
+      ).toBeInTheDocument();
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Move to Okinawa')).toBeInTheDocument();
+    });
+
+    it('keeps a zero-task story visible across a showDone toggle', () => {
+      const { getByText, rerender } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[
+            zeroTaskStoryEntryForToggleTest,
+            hiddenOnlyByExtendedRuleStoryEntry,
+          ]}
+          showDone={false}
+        />,
+      );
+      expect(getByText('Zero Task Toggle Story')).toBeInTheDocument();
+      rerender(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[
+            zeroTaskStoryEntryForToggleTest,
+            hiddenOnlyByExtendedRuleStoryEntry,
+          ]}
+          showDone={true}
+        />,
+      );
+      expect(getByText('Zero Task Toggle Story')).toBeInTheDocument();
+    });
+
+    it('hides a story whose storyName matches the title of one of its own tasks when every task is outside the owner-actionable status set', () => {
+      const { queryByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[...storyEntries, taskTitleMatchesStoryNameStoryEntry]}
+          showDone={false}
+        />,
+      );
+      expect(queryByText('Task/921')).toBeNull();
     });
   });
 
