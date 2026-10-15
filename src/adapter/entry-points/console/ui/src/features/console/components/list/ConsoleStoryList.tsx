@@ -18,6 +18,13 @@ type RowReorderState = {
   error: string | null;
 };
 
+const OWNER_ACTIONABLE_STATUS_NAMES = new Set<string>([
+  'Todo by human',
+  'Awaiting Owner',
+  'Failed Preparation',
+  'In Tmux by human',
+]);
+
 type StoryTaskListProps = {
   items: ConsoleListItem[];
   onOpenItem: (item: ConsoleListItem) => void;
@@ -250,7 +257,10 @@ export const ConsoleStoryList = ({
     if (
       !showDone &&
       items.length > 0 &&
-      items.every((item) => item.status === 'Done')
+      items.every(
+        (item) =>
+          item.status !== null && !OWNER_ACTIONABLE_STATUS_NAMES.has(item.status),
+      )
     ) {
       return false;
     }
