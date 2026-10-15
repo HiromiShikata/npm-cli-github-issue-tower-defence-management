@@ -51,6 +51,8 @@ export type ConsoleActionQueueOptions = {
 };
 
 export type ConsolePendingActionView = {
+  id: string;
+  createdAt: number;
   message: string;
   color: ConsoleToastColor;
   remainingSeconds: number;
@@ -58,6 +60,8 @@ export type ConsolePendingActionView = {
 };
 
 export type ConsoleActionError = {
+  id: string;
+  createdAt: number;
   message: string;
   reason: string;
   retry?: () => void;
@@ -183,19 +187,27 @@ const computeProgress = (elapsedMs: number): number =>
   Math.max(0, 1 - elapsedMs / ACTION_TOAST_DELAY_MS);
 
 export type ConsoleActionQueue = {
-  pending: ConsolePendingActionView | null;
-  error: ConsoleActionError | null;
+  pending: ConsolePendingActionView[];
+  error: ConsoleActionError[];
   offlineActions: ConsoleOfflineQueuedAction[];
   writeState: ConsoleActionWriteState;
   enqueueSequence: number;
   enqueue: (action: ConsoleQueuedAction) => void;
   offlineActionsCreate: (request: ConsoleOfflineActionsCreateRequest) => void;
   showError: (message: string, reason: string) => void;
-  undo: () => void;
-  dismiss: () => void;
-  dismissError: () => void;
+  undo: (id: string) => void;
+  dismiss: (id: string) => void;
+  dismissError: (id: string) => void;
   confirmOfflineAction: (id: string) => Promise<void>;
   discardOfflineAction: (id: string) => void;
+};
+
+type ConsolePendingEntryState = {
+  id: string;
+  createdAt: number;
+  action: ConsoleQueuedAction;
+  startedAt: number;
+  timer: ReturnType<typeof setInterval> | null;
 };
 
 export const useConsoleActionQueue = (
@@ -203,20 +215,23 @@ export const useConsoleActionQueue = (
 ): ConsoleActionQueue => {
   const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
   isAirplaneModeOnRef.current = options.isAirplaneModeOn;
-  const [pending, setPending] = useState<ConsolePendingActionView | null>(null);
-  const [error, setError] = useState<ConsoleActionError | null>(null);
+  const [pending, setPending] = useState<ConsolePendingActionView[]>([]);
+  const [error, setError] = useState<ConsoleActionError[]>([]);
   const [offlineActions, setOfflineActions] =
     useState<ConsoleOfflineQueuedAction[]>(loadOfflineQueue);
   const offlineActionsRef =
     useRef<ConsoleOfflineQueuedAction[]>(offlineActions);
   offlineActionsRef.current = offlineActions;
 
-  const actionRef = useRef<ConsoleQueuedAction | null>(null);
-  const startRef = useRef<number>(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const committedRef = useRef<boolean>(false);
+  const pendingEntriesRef = useRef<Map<string, ConsolePendingEntryState>>(
+    new Map(),
+  );
   const runCommitRef = useRef<
-    (action: ConsoleQueuedAction, sentStepCount: number) => void
+    (
+      action: ConsoleQueuedAction,
+      sentStepCount: number,
+      retryOfErrorId?: string,
+    ) => void
   >(() => {});
   const attemptRef = useRef(0);
   const [writeState, setWriteState] = useState<ConsoleActionWriteState>({
@@ -225,12 +240,15 @@ export const useConsoleActionQueue = (
   });
   const [enqueueSequence, setEnqueueSequence] = useState(0);
 
-  const clearTimer = useCallback((): void => {
-    if (timerRef.current !== null) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+  const appendError = useCallback(
+    (newError: { message: string; reason: string; retry?: () => void }): void => {
+      setError((prev) => [
+        ...prev,
+        { id: generateId(), createdAt: Date.now(), ...newError },
+      ]);
+    },
+    [],
+  );
 
   const offlineActionsCreate = useCallback(
     ({
@@ -256,9 +274,32 @@ export const useConsoleActionQueue = (
   );
 
   const runCommit = useCallback(
-    (action: ConsoleQueuedAction, sentStepCount: number): void => {
+    (
+      action: ConsoleQueuedAction,
+      sentStepCount: number,
+      retryOfErrorId?: string,
+    ): void => {
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
+      const errorId = retryOfErrorId ?? generateId();
+      const applyError = (newError: {
+        message: string;
+        reason: string;
+        retry?: () => void;
+      }): void => {
+        setError((prev) => {
+          const existingIndex = prev.findIndex((e) => e.id === errorId);
+          if (existingIndex === -1) {
+            return [
+              ...prev,
+              { id: errorId, createdAt: Date.now(), ...newError },
+            ];
+          }
+          return prev.map((e, index) =>
+            index === existingIndex ? { ...e, ...newError } : e,
+          );
+        });
+      };
       const offlinePayloads = action.offline ?? [];
       const actionHoldOffline = (
         unsentOfflinePayloads: ConsoleOfflinePayload[],
@@ -277,7 +318,7 @@ export const useConsoleActionQueue = (
         } else {
           action.revertAdvance?.();
           action.revertOptimistic?.();
-          setError({
+          applyError({
             message: AIRPLANE_MODE_ERROR_MESSAGE,
             reason: AIRPLANE_MODE_ERROR_REASON,
           });
@@ -307,11 +348,15 @@ export const useConsoleActionQueue = (
           ) {
             actionHoldOffline(unsentOfflinePayloads);
           } else {
-            setError({
+            applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
               retry: () =>
-                runCommitRef.current(action, sentStepCountAfterAttempt),
+                runCommitRef.current(
+                  action,
+                  sentStepCountAfterAttempt,
+                  errorId,
+                ),
             });
             setWriteState({ status: 'failed', attempt });
           }
@@ -321,39 +366,50 @@ export const useConsoleActionQueue = (
   );
   runCommitRef.current = runCommit;
 
-  const commitPending = useCallback((): void => {
-    const action = actionRef.current;
-    clearTimer();
-    actionRef.current = null;
-    setPending(null);
-    if (action !== null && !committedRef.current) {
-      committedRef.current = true;
+  const commitEntry = useCallback(
+    (id: string): void => {
+      const entry = pendingEntriesRef.current.get(id);
+      if (entry === undefined) return;
+      if (entry.timer !== null) {
+        clearInterval(entry.timer);
+      }
+      pendingEntriesRef.current.delete(id);
+      setPending((prev) => prev.filter((p) => p.id !== id));
       clearAllCommentExpandedStates();
-      runCommit(action, 0);
+      runCommit(entry.action, 0);
+    },
+    [runCommit],
+  );
+
+  const undo = useCallback((id: string): void => {
+    const entry = pendingEntriesRef.current.get(id);
+    if (entry === undefined) return;
+    if (entry.timer !== null) {
+      clearInterval(entry.timer);
     }
-  }, [clearTimer, runCommit]);
-
-  const undo = useCallback((): void => {
-    const action = actionRef.current;
-    clearTimer();
-    actionRef.current = null;
-    committedRef.current = true;
-    setPending(null);
-    action?.revertAdvance?.();
-    action?.revertOptimistic?.();
-  }, [clearTimer]);
-
-  const dismiss = useCallback((): void => {
-    commitPending();
-  }, [commitPending]);
-
-  const dismissError = useCallback((): void => {
-    setError(null);
+    pendingEntriesRef.current.delete(id);
+    setPending((prev) => prev.filter((p) => p.id !== id));
+    entry.action.revertAdvance?.();
+    entry.action.revertOptimistic?.();
   }, []);
 
-  const showError = useCallback((message: string, reason: string): void => {
-    setError({ message, reason });
+  const dismiss = useCallback(
+    (id: string): void => {
+      commitEntry(id);
+    },
+    [commitEntry],
+  );
+
+  const dismissError = useCallback((id: string): void => {
+    setError((prev) => prev.filter((e) => e.id !== id));
   }, []);
+
+  const showError = useCallback(
+    (message: string, reason: string): void => {
+      appendError({ message, reason });
+    },
+    [appendError],
+  );
 
   const discardOfflineAction = useCallback((id: string): void => {
     setOfflineActions((prev) => {
@@ -381,7 +437,7 @@ export const useConsoleActionQueue = (
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
-          setError({
+          appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,
           });
@@ -391,58 +447,74 @@ export const useConsoleActionQueue = (
         discardOfflineAction(id);
       } catch (cause: unknown) {
         if (isNetworkError(cause)) {
-          setError({
+          appendError({
             message: action.message,
             reason: 'Still offline — action is still held in the queue',
           });
         } else {
-          setError({ message: action.message, reason: errorReason(cause) });
+          appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
         }
       }
     },
-    [discardOfflineAction],
+    [appendError, discardOfflineAction],
   );
 
   const enqueue = useCallback(
     (action: ConsoleQueuedAction): void => {
       setEnqueueSequence((previous) => previous + 1);
-      if (actionRef.current !== null && !committedRef.current) {
-        const previous = actionRef.current;
-        clearTimer();
-        committedRef.current = true;
-        clearAllCommentExpandedStates();
-        runCommit(previous, 0);
-      }
-      committedRef.current = false;
-      actionRef.current = action;
-      startRef.current = Date.now();
-      setPending({
-        message: action.message,
-        color: action.color,
-        remainingSeconds: computeRemainingSeconds(0),
-        progress: computeProgress(0),
-      });
-      action.advance();
-      action.optimistic?.();
-      timerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startRef.current;
-        if (elapsed >= ACTION_TOAST_DELAY_MS) {
-          commitPending();
-          return;
-        }
-        setPending({
+      const id = generateId();
+      const createdAt = Date.now();
+      const entry: ConsolePendingEntryState = {
+        id,
+        createdAt,
+        action,
+        startedAt: createdAt,
+        timer: null,
+      };
+      pendingEntriesRef.current.set(id, entry);
+      setPending((prev) => [
+        ...prev,
+        {
+          id,
+          createdAt,
           message: action.message,
           color: action.color,
-          remainingSeconds: computeRemainingSeconds(elapsed),
-          progress: computeProgress(elapsed),
-        });
+          remainingSeconds: computeRemainingSeconds(0),
+          progress: computeProgress(0),
+        },
+      ]);
+      action.advance();
+      action.optimistic?.();
+      entry.timer = setInterval(() => {
+        const elapsed = Date.now() - entry.startedAt;
+        if (elapsed >= ACTION_TOAST_DELAY_MS) {
+          commitEntry(id);
+          return;
+        }
+        setPending((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  remainingSeconds: computeRemainingSeconds(elapsed),
+                  progress: computeProgress(elapsed),
+                }
+              : p,
+          ),
+        );
       }, COUNTDOWN_TICK_MS);
     },
-    [clearTimer, commitPending, runCommit],
+    [commitEntry],
   );
 
-  useEffect(() => commitPending, [commitPending]);
+  useEffect(() => {
+    return () => {
+      for (const id of Array.from(pendingEntriesRef.current.keys())) {
+        commitEntry(id);
+      }
+    };
+  }, [commitEntry]);
 
   return {
     pending,

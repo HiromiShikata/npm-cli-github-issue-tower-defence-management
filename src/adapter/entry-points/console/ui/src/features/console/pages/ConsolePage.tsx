@@ -12,14 +12,11 @@ import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsolePrsAgentFilter } from '../components/list/ConsolePrsAgentFilter';
 import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
+import { ConsoleActionToastStack } from '../components/operations/ConsoleActionToastStack';
 import {
   type ConsoleOfflinePendingActionItem,
   ConsoleOfflinePendingActionsPanel,
 } from '../components/operations/ConsoleOfflinePendingActionsPanel';
-import {
-  ConsoleErrorToast,
-  ConsoleUndoToast,
-} from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
@@ -1177,31 +1174,14 @@ export const ConsolePage = () => {
 
   return (
     <main className="console-app">
-      {actionQueue.pending !== null && (
-        <ConsoleUndoToast
-          message={actionQueue.pending.message}
-          color={actionQueue.pending.color}
-          remainingSeconds={actionQueue.pending.remainingSeconds}
-          progress={actionQueue.pending.progress}
-          onUndo={actionQueue.undo}
-          onDismiss={actionQueue.dismiss}
-        />
-      )}
-      {actionQueue.error !== null && (
-        <ConsoleErrorToast
-          title={actionQueue.error.message}
-          message={`Operation failed: ${actionQueue.error.reason}`}
-          onDismiss={actionQueue.dismissError}
-          onRetry={
-            actionQueue.error.retry !== undefined
-              ? () => {
-                  actionQueue.dismissError();
-                  actionQueue.error?.retry?.();
-                }
-              : undefined
-          }
-        />
-      )}
+      <ConsoleActionToastStack
+        pendingEntries={actionQueue.pending}
+        errorEntries={actionQueue.error}
+        displayLimit={4}
+        onUndo={actionQueue.undo}
+        onDismiss={actionQueue.dismiss}
+        onDismissError={actionQueue.dismissError}
+      />
       <ConsoleOfflinePendingActionsPanel
         actions={offlinePanelActions}
         isOnline={isOnline}
