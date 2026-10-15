@@ -887,15 +887,15 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Completed Story')).toBeInTheDocument();
     });
 
-    it('does not hide a story that has at least one task not at Status Done when showDone is false', () => {
-      const { getByText } = render(
+    it('hides a story whose tasks mix Status Done with another non-owner-actionable status when showDone is false', () => {
+      const { queryByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[...storyEntries, partiallyDoneStoryEntry]}
           showDone={false}
         />,
       );
-      expect(getByText('In Progress Story')).toBeInTheDocument();
+      expect(queryByText('In Progress Story')).toBeNull();
     });
 
     it('keeps a zero-task, non-gray story visible when showDone is false', () => {
