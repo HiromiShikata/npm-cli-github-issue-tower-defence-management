@@ -2104,6 +2104,30 @@ body {
   text-overflow: ellipsis;
 }
 
+.console-action-toast-stack,
+.console-action-toast-stack-entry {
+  display: contents;
+}
+
+.console-action-toast-stack-toggle {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 9998;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: #c9d1d9;
+}
+
+.console-action-toast-stack-toggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .console-file-row {
   display: flex;
   align-items: center;

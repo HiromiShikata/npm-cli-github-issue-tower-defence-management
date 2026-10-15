@@ -909,11 +909,15 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         status: 'failed',
         attempt: 1,
       });
-      expect(result.current.error).toEqual({
-        message: approvedActionMessage,
-        reason: 'HTTP 422 review cannot be requested',
-        retry: expect.any(Function),
-      });
+      expect(result.current.error).toEqual([
+        {
+          id: expect.any(String),
+          createdAt: expect.any(Number),
+          message: approvedActionMessage,
+          reason: 'HTTP 422 review cannot be requested',
+          retry: expect.any(Function),
+        },
+      ]);
       expect(result.current.offlineActions).toEqual([]);
       expect(revertAdvance).not.toHaveBeenCalled();
       expect(revertOptimistic).not.toHaveBeenCalled();
@@ -921,7 +925,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         [switchedToBetaUrl],
       ]);
 
-      const retry = result.current.error?.retry;
+      const retry = result.current.error[0]?.retry;
       await act(async () => {
         retry?.();
         await flushMicrotasks();
@@ -932,11 +936,15 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         status: 'failed',
         attempt: 2,
       });
-      expect(result.current.error).toEqual({
-        message: approvedActionMessage,
-        reason: 'HTTP 500 internal server error',
-        retry: expect.any(Function),
-      });
+      expect(result.current.error).toEqual([
+        {
+          id: expect.any(String),
+          createdAt: expect.any(Number),
+          message: approvedActionMessage,
+          reason: 'HTTP 500 internal server error',
+          retry: expect.any(Function),
+        },
+      ]);
       expect(result.current.offlineActions).toEqual([]);
       expect(revertAdvance).not.toHaveBeenCalled();
       expect(revertOptimistic).not.toHaveBeenCalled();
@@ -982,7 +990,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         status: 'offline',
         attempt: 1,
       });
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toEqual([]);
       expect(result.current.offlineActions).toEqual([
         {
           ...approveReviewOfflinePayload,
@@ -1004,7 +1012,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
       });
 
       expect(result.current.offlineActions).toEqual([]);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toEqual([]);
       expect(revertAdvance).not.toHaveBeenCalled();
       expect(revertOptimistic).not.toHaveBeenCalled();
       expect((navigatePush as jest.Mock).mock.calls).toEqual([
