@@ -1,3 +1,10 @@
+## [2.169.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.0...v2.169.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **console-ui:** close project switcher dropdown when pjcode changes ([#3407](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3407)) ([9ac0230](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ac0230645592f8d281639f2a5d8a385d0b0517f))
+
 # [2.169.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.168.0...v2.169.0) (2026-10-15)
 
 
