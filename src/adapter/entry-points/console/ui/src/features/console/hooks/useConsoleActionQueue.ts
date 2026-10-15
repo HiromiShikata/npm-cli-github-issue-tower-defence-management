@@ -55,8 +55,6 @@ export type ConsolePendingActionView = {
   createdAt: number;
   message: string;
   color: ConsoleToastColor;
-  remainingSeconds: number;
-  progress: number;
 };
 
 export type ConsoleActionError = {
@@ -179,12 +177,6 @@ const errorReason = (error: unknown): string => {
 };
 
 const COUNTDOWN_TICK_MS = 100;
-
-const computeRemainingSeconds = (elapsedMs: number): number =>
-  Math.max(0, Math.ceil((ACTION_TOAST_DELAY_MS - elapsedMs) / 1000));
-
-const computeProgress = (elapsedMs: number): number =>
-  Math.max(0, 1 - elapsedMs / ACTION_TOAST_DELAY_MS);
 
 export type ConsoleActionQueue = {
   pending: ConsolePendingActionView[];
@@ -480,8 +472,6 @@ export const useConsoleActionQueue = (
           createdAt,
           message: action.message,
           color: action.color,
-          remainingSeconds: computeRemainingSeconds(0),
-          progress: computeProgress(0),
         },
       ]);
       action.advance();
@@ -490,19 +480,7 @@ export const useConsoleActionQueue = (
         const elapsed = Date.now() - entry.startedAt;
         if (elapsed >= ACTION_TOAST_DELAY_MS) {
           commitEntry(id);
-          return;
         }
-        setPending((prev) =>
-          prev.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  remainingSeconds: computeRemainingSeconds(elapsed),
-                  progress: computeProgress(elapsed),
-                }
-              : p,
-          ),
-        );
       }, COUNTDOWN_TICK_MS);
     },
     [commitEntry],

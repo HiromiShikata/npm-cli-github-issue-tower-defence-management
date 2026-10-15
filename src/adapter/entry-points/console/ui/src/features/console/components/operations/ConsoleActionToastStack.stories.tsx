@@ -21,19 +21,15 @@ export const MultipleSimultaneousActions: Story = {
     pendingEntries: [
       {
         id: 'pending-1',
-        createdAt: 1,
+        createdAt: Date.now() - 1000,
         message: 'Approved — PR #851',
         color: 'green',
-        remainingSeconds: 5,
-        progress: 1,
       },
       {
         id: 'pending-2',
-        createdAt: 2,
+        createdAt: Date.now() - 2000,
         message: 'Rejected — PR #853',
         color: 'amber',
-        remainingSeconds: 3,
-        progress: 0.6,
       },
     ],
     errorEntries: [
@@ -52,35 +48,27 @@ export const OverflowWithExpandToggle: Story = {
     pendingEntries: [
       {
         id: 'pending-1',
-        createdAt: 1,
+        createdAt: Date.now() - 1000,
         message: 'Approved — PR #851',
         color: 'green',
-        remainingSeconds: 5,
-        progress: 1,
       },
       {
         id: 'pending-2',
-        createdAt: 2,
+        createdAt: Date.now() - 2000,
         message: 'Rejected — PR #853',
         color: 'amber',
-        remainingSeconds: 3,
-        progress: 0.6,
       },
       {
         id: 'pending-3',
-        createdAt: 4,
+        createdAt: Date.now() - 1500,
         message: 'Approved — PR #857',
         color: 'green',
-        remainingSeconds: 4,
-        progress: 0.8,
       },
       {
         id: 'pending-4',
-        createdAt: 6,
+        createdAt: Date.now() - 3500,
         message: 'Approved — PR #861',
         color: 'green',
-        remainingSeconds: 2,
-        progress: 0.4,
       },
     ],
     errorEntries: [
