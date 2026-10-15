@@ -130,8 +130,8 @@ describe('useConsoleActionQueue', () => {
     });
     expect(action.advance).toHaveBeenCalledTimes(1);
     expect(action.commit).not.toHaveBeenCalled();
-    expect(result.current.pending?.message).toBe('Approved — PR #851');
-    expect(result.current.pending?.remainingSeconds).toBe(5);
+    expect(result.current.pending[0]?.message).toBe('Approved — PR #851');
+    expect(result.current.pending[0]?.remainingSeconds).toBe(5);
 
     act(() => {
       jest.advanceTimersByTime(4900);
@@ -142,7 +142,7 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(200);
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
-    expect(result.current.pending).toBeNull();
+    expect(result.current.pending).toHaveLength(0);
   });
 
   it('counts the remaining seconds down during the window', () => {
@@ -153,8 +153,8 @@ describe('useConsoleActionQueue', () => {
     act(() => {
       jest.advanceTimersByTime(2000);
     });
-    expect(result.current.pending?.remainingSeconds).toBe(3);
-    expect(result.current.pending?.progress).toBeCloseTo(0.6, 1);
+    expect(result.current.pending[0]?.remainingSeconds).toBe(3);
+    expect(result.current.pending[0]?.progress).toBeCloseTo(0.6, 1);
   });
 
   it('cancels the command when undo is called within the window', () => {
@@ -163,18 +163,19 @@ describe('useConsoleActionQueue', () => {
     act(() => {
       result.current.enqueue(action);
     });
+    const id = result.current.pending[0].id;
     act(() => {
       jest.advanceTimersByTime(2000);
-      result.current.undo();
+      result.current.undo(id);
     });
-    expect(result.current.pending).toBeNull();
+    expect(result.current.pending).toHaveLength(0);
     act(() => {
       jest.advanceTimersByTime(5000);
     });
     expect(action.commit).not.toHaveBeenCalled();
   });
 
-  it('flushes the previous pending action when a new one is enqueued', () => {
+  it('does not commit the first pending action when a second one is enqueued before its own window elapses (FR-009/SC-008)', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const first = makeAction({ message: 'Approved — PR #851' });
     const second = makeAction({
@@ -188,16 +189,28 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(1000);
       result.current.enqueue(second);
     });
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(result.current.pending).toHaveLength(2);
+    expect(result.current.pending.map((entry) => entry.message)).toEqual([
+      'Approved — PR #851',
+      'Rejected — PR #853',
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
     expect(first.commit).toHaveBeenCalledTimes(1);
     expect(second.commit).not.toHaveBeenCalled();
-    expect(result.current.pending?.message).toBe('Rejected — PR #853');
+    expect(result.current.pending).toHaveLength(1);
+    expect(result.current.pending[0]?.message).toBe('Rejected — PR #853');
     act(() => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(1000);
     });
     expect(second.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.pending).toHaveLength(0);
   });
 
-  it('does not commit twice if the window elapses after a manual flush', () => {
+  it('commits both pending actions exactly once, never twice, when they were enqueued at the same instant and their shared window elapses', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const first = makeAction();
     const second = makeAction({ message: 'Closed — #845', color: 'red' });
@@ -207,12 +220,80 @@ describe('useConsoleActionQueue', () => {
     act(() => {
       result.current.enqueue(second);
     });
-    expect(first.commit).toHaveBeenCalledTimes(1);
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(result.current.pending).toHaveLength(2);
     act(() => {
       jest.advanceTimersByTime(6000);
     });
     expect(first.commit).toHaveBeenCalledTimes(1);
     expect(second.commit).toHaveBeenCalledTimes(1);
+    expect(result.current.pending).toHaveLength(0);
+  });
+
+  it('never force-commits an already-queued pending action no matter how many more actions are enqueued afterward, and each stays independently operable (FR-009/SC-008)', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const first = makeAction({ message: 'Approved — PR #851' });
+    const second = makeAction({
+      message: 'Rejected — PR #853',
+      color: 'amber',
+    });
+    const third = makeAction({ message: 'Closed — #845', color: 'red' });
+    act(() => {
+      result.current.enqueue(first);
+    });
+    act(() => {
+      result.current.enqueue(second);
+    });
+    act(() => {
+      result.current.enqueue(third);
+    });
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(third.commit).not.toHaveBeenCalled();
+    expect(result.current.pending).toHaveLength(3);
+    expect(result.current.pending.map((entry) => entry.message)).toEqual([
+      'Approved — PR #851',
+      'Rejected — PR #853',
+      'Closed — #845',
+    ]);
+    const firstId = result.current.pending[0].id;
+    act(() => {
+      result.current.undo(firstId);
+    });
+    expect(result.current.pending).toHaveLength(2);
+    expect(result.current.pending.map((entry) => entry.message)).toEqual([
+      'Rejected — PR #853',
+      'Closed — #845',
+    ]);
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(third.commit).not.toHaveBeenCalled();
+  });
+
+  it('enqueues a second action synchronously in the same act() call even though the first action commit() never resolves (FR-008/SC-007)', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const first = makeAction({
+      message: 'Approved — PR #851',
+      commit: jest.fn<Promise<void>, []>(() => new Promise<void>(() => {})),
+    });
+    const second = makeAction({
+      message: 'Rejected — PR #853',
+      color: 'amber',
+    });
+    act(() => {
+      result.current.enqueue(first);
+      result.current.enqueue(second);
+    });
+    expect(result.current.pending).toHaveLength(2);
+    expect(result.current.pending.map((entry) => entry.message)).toEqual([
+      'Approved — PR #851',
+      'Rejected — PR #853',
+    ]);
+    expect(first.advance).toHaveBeenCalledTimes(1);
+    expect(second.advance).toHaveBeenCalledTimes(1);
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
   });
 
   it('surfaces the failure reason when the timer commit rejects', async () => {
@@ -225,19 +306,19 @@ describe('useConsoleActionQueue', () => {
     act(() => {
       result.current.enqueue(action);
     });
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     await act(async () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'Approved — PR #851',
       reason: 'HTTP 422 review cannot be requested',
     });
   });
 
-  it('surfaces the failure reason when the previous action commit rejects on enqueue', async () => {
+  it('surfaces the failure reason once the first pending action commits on its own window, unaffected by a second enqueue', async () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const first = makeAction({
       commit: jest
@@ -256,11 +337,21 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(second);
       await flushMicrotasks();
     });
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(result.current.error).toHaveLength(0);
+    expect(result.current.pending).toHaveLength(2);
+
+    await act(async () => {
+      jest.advanceTimersByTime(4000);
+      await flushMicrotasks();
+    });
     expect(first.commit).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'Approved — PR #851',
       reason: 'network down',
     });
+    expect(result.current.pending).toHaveLength(1);
+    expect(result.current.pending[0]?.message).toBe('Rejected — PR #853');
   });
 
   it('clears the surfaced error when dismissError is called', async () => {
@@ -275,11 +366,11 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).not.toBeNull();
+    expect(result.current.error).not.toHaveLength(0);
     act(() => {
-      result.current.dismissError();
+      result.current.dismissError(result.current.error[0].id);
     });
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
   });
 
   it('does not surface an error when the commit resolves', async () => {
@@ -292,7 +383,7 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
   });
 
   it('showError sets the error state without touching pending', () => {
@@ -303,11 +394,15 @@ describe('useConsoleActionQueue', () => {
         'This action requires a network connection.',
       );
     });
-    expect(result.current.error).toEqual({
-      message: 'Airplane mode',
-      reason: 'This action requires a network connection.',
-    });
-    expect(result.current.pending).toBeNull();
+    expect(result.current.error).toEqual([
+      {
+        id: expect.any(String),
+        createdAt: expect.any(Number),
+        message: 'Airplane mode',
+        reason: 'This action requires a network connection.',
+      },
+    ]);
+    expect(result.current.pending).toHaveLength(0);
   });
   it('adds the action to the offline queue when the commit rejects with a network error', async () => {
     const { result } = renderHook(() => useConsoleActionQueue());
@@ -324,7 +419,7 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.offlineActions).toHaveLength(1);
     expect(result.current.offlineActions[0].message).toBe('Approved — PR #851');
     expect(result.current.offlineActions[0].apiPath).toBe('/api/review');
@@ -345,7 +440,7 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'Approved — PR #851',
       reason: 'HTTP 422 review cannot be requested',
     });
@@ -428,7 +523,7 @@ describe('useConsoleActionQueue', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(result.current.offlineActions).toHaveLength(0);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
   });
 
   it('sets an error and keeps the action when confirmOfflineAction encounters a network error', async () => {
@@ -454,10 +549,14 @@ describe('useConsoleActionQueue', () => {
     await act(async () => {
       await result.current.confirmOfflineAction(id);
     });
-    expect(result.current.error).toEqual({
-      message: 'Approved — PR #851',
-      reason: 'Still offline — action is still held in the queue',
-    });
+    expect(result.current.error).toEqual([
+      {
+        id: expect.any(String),
+        createdAt: expect.any(Number),
+        message: 'Approved — PR #851',
+        reason: 'Still offline — action is still held in the queue',
+      },
+    ]);
     expect(result.current.offlineActions).toHaveLength(1);
   });
 
@@ -486,7 +585,7 @@ describe('useConsoleActionQueue', () => {
     await act(async () => {
       await result.current.confirmOfflineAction(id);
     });
-    expect(result.current.error).not.toBeNull();
+    expect(result.current.error).not.toHaveLength(0);
     expect(result.current.offlineActions).toHaveLength(0);
   });
 
@@ -579,7 +678,7 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(action);
     });
     act(() => {
-      result.current.undo();
+      result.current.undo(result.current.pending[0].id);
     });
     expect(revertAdvance).toHaveBeenCalledTimes(1);
   });
@@ -607,7 +706,7 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(action);
     });
     act(() => {
-      result.current.undo();
+      result.current.undo(result.current.pending[0].id);
     });
     await act(async () => {
       unmount();
@@ -635,7 +734,7 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(action);
     });
     act(() => {
-      result.current.undo();
+      result.current.undo(result.current.pending[0].id);
     });
     expect(revertOptimistic).toHaveBeenCalledTimes(1);
   });
@@ -746,8 +845,8 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error?.retry).toBeDefined();
-    expect(typeof result.current.error?.retry).toBe('function');
+    expect(result.current.error[0]?.retry).toBeDefined();
+    expect(typeof result.current.error[0]?.retry).toBe('function');
   });
 
   it('calling retry re-invokes commit', async () => {
@@ -764,8 +863,8 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).not.toBeNull();
-    const retry = result.current.error?.retry;
+    expect(result.current.error).not.toHaveLength(0);
+    const retry = result.current.error[0]?.retry;
     await act(async () => {
       retry?.();
       await flushMicrotasks();
@@ -787,16 +886,16 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).not.toBeNull();
-    const retry = result.current.error?.retry;
+    expect(result.current.error).not.toHaveLength(0);
+    const retry = result.current.error[0]?.retry;
     act(() => {
-      result.current.dismissError();
+      result.current.dismissError(result.current.error[0].id);
     });
     await act(async () => {
       retry?.();
       await flushMicrotasks();
     });
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(commit).toHaveBeenCalledTimes(2);
   });
 
@@ -814,17 +913,17 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error?.reason).toBe('HTTP 422');
-    const retry = result.current.error?.retry;
+    expect(result.current.error[0]?.reason).toBe('HTTP 422');
+    const retry = result.current.error[0]?.retry;
     await act(async () => {
       retry?.();
       await flushMicrotasks();
     });
-    expect(result.current.error?.reason).toBe('HTTP 500');
-    expect(result.current.error?.retry).toBeDefined();
+    expect(result.current.error[0]?.reason).toBe('HTTP 500');
+    expect(result.current.error[0]?.retry).toBeDefined();
   });
 
-  it('clears comment expanded states when a new action flushes the pending one', () => {
+  it('does not clear comment expanded states merely because a second action is enqueued while the first is still pending, only once the first actually commits', () => {
     seedCommentExpandedState();
     expect(
       localStorage.getItem(
@@ -848,6 +947,16 @@ describe('useConsoleActionQueue', () => {
       localStorage.getItem(
         `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
       ),
+    ).not.toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
+    expect(first.commit).toHaveBeenCalledTimes(1);
+    expect(
+      localStorage.getItem(
+        `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+      ),
     ).toBeNull();
   });
 
@@ -858,10 +967,10 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(action);
     });
     act(() => {
-      result.current.dismiss();
+      result.current.dismiss(result.current.pending[0].id);
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
-    expect(result.current.pending).toBeNull();
+    expect(result.current.pending).toHaveLength(0);
   });
 
   it('dismiss then timer firing does not double-commit', () => {
@@ -871,7 +980,7 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(action);
     });
     act(() => {
-      result.current.dismiss();
+      result.current.dismiss(result.current.pending[0].id);
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
     act(() => {
@@ -880,14 +989,14 @@ describe('useConsoleActionQueue', () => {
     expect(action.commit).toHaveBeenCalledTimes(1);
   });
 
-  it('dismiss with no pending action is a no-op', () => {
+  it('dismiss with an id that matches no pending entry is a no-op', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     expect(() => {
       act(() => {
-        result.current.dismiss();
+        result.current.dismiss('nonexistent-id');
       });
     }).not.toThrow();
-    expect(result.current.pending).toBeNull();
+    expect(result.current.pending).toHaveLength(0);
   });
 
   it('surfaces a network error as an error and holds nothing when the action carries no offline payload', async () => {
@@ -904,7 +1013,7 @@ describe('useConsoleActionQueue', () => {
       jest.advanceTimersByTime(5000);
       await flushMicrotasks();
     });
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'Approved — PR #851',
       reason: 'Failed to fetch',
     });
@@ -1023,7 +1132,7 @@ describe('useConsoleActionQueue', () => {
     {
       commitTrigger: 'the undo toast is dismissed',
       triggerCommit: (queue: ConsoleActionQueue): void => {
-        queue.dismiss();
+        queue.dismiss(queue.pending[0].id);
       },
     },
   ])(
@@ -1055,7 +1164,7 @@ describe('useConsoleActionQueue', () => {
       expect(optimistic).toHaveBeenCalledTimes(1);
       expect(revertOptimistic).not.toHaveBeenCalled();
       expect(revertAdvance).not.toHaveBeenCalled();
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
       const expectedHeld = [
         expect.objectContaining({
           ...offlinePayload,
@@ -1111,11 +1220,11 @@ describe('useConsoleActionQueue', () => {
       expect(action.commit).toHaveBeenCalledTimes(expectedCommitCalls);
       expect(result.current.offlineActions).toHaveLength(expectedHeldCount);
       expect(readStoredOfflineQueue()).toHaveLength(expectedHeldCount);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
     },
   );
 
-  it('holds a pending action that a newer action flushes while airplane mode is on and keeps the newer one pending', async () => {
+  it('holds both pending actions independently in the offline queue once their own window elapses while airplane mode is on', async () => {
     const { result } = renderHook(() =>
       useConsoleActionQueue({ isAirplaneModeOn: true }),
     );
@@ -1129,16 +1238,30 @@ describe('useConsoleActionQueue', () => {
       result.current.enqueue(first);
     });
     await act(async () => {
+      jest.advanceTimersByTime(1000);
       result.current.enqueue(second);
       await flushMicrotasks();
     });
     expect(first.commit).not.toHaveBeenCalled();
     expect(second.commit).not.toHaveBeenCalled();
-    expect(result.current.offlineActions.map((held) => held.apiPath)).toEqual([
-      '/api/review',
+    expect(result.current.offlineActions).toHaveLength(0);
+    expect(result.current.pending).toHaveLength(2);
+    expect(result.current.pending.map((entry) => entry.message)).toEqual([
+      'Approved — PR #851',
+      'Closed — #866',
     ]);
-    expect(result.current.pending?.message).toBe('Closed — #866');
-    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(first.commit).not.toHaveBeenCalled();
+    expect(second.commit).not.toHaveBeenCalled();
+    expect(result.current.pending).toHaveLength(0);
+    expect(result.current.error).toHaveLength(0);
+    expect(
+      result.current.offlineActions.map((held) => held.apiPath).sort(),
+    ).toEqual(['/api/review', '/api/triage']);
   });
 
   it.each([
@@ -1184,7 +1307,7 @@ describe('useConsoleActionQueue', () => {
       expect(
         new Set(result.current.offlineActions.map((held) => held.id)).size,
       ).toBe(2);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
     },
   );
 
@@ -1206,7 +1329,7 @@ describe('useConsoleActionQueue', () => {
       await flushMicrotasks();
     });
     expect(action.commit).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'OK & Close — #866',
       reason: 'HTTP 500 close refused',
     });
@@ -1242,7 +1365,7 @@ describe('useConsoleActionQueue', () => {
     ];
     expect(result.current.offlineActions).toEqual(expectedHeld);
     expect(readStoredOfflineQueue()).toEqual(expectedHeld);
-    expect(result.current.pending).toBeNull();
+    expect(result.current.pending).toHaveLength(0);
     await act(async () => {
       jest.advanceTimersByTime(10000);
       await flushMicrotasks();
@@ -1346,7 +1469,7 @@ describe('useConsoleActionQueue', () => {
         expect(result.current.offlineActions).toHaveLength(1);
         expect(readStoredOfflineQueue()).toHaveLength(1);
         for (const expectedReasonPart of expectedReasonParts) {
-          expect(result.current.error?.reason).toContain(expectedReasonPart);
+          expect(result.current.error[0]?.reason).toContain(expectedReasonPart);
         }
       },
     );
@@ -1377,10 +1500,14 @@ describe('useConsoleActionQueue', () => {
         await result.current.confirmOfflineAction(id);
       });
 
-      expect(result.current.error).toEqual({
-        message: 'Comment — #866',
-        reason: 'Still offline — action is still held in the queue',
-      });
+      expect(result.current.error).toEqual([
+        {
+          id: expect.any(String),
+          createdAt: expect.any(Number),
+          message: 'Comment — #866',
+          reason: 'Still offline — action is still held in the queue',
+        },
+      ]);
       expect(result.current.offlineActions).toHaveLength(1);
       expect(readStoredOfflineQueue()).toHaveLength(1);
     });
@@ -1407,7 +1534,7 @@ describe('useConsoleActionQueue', () => {
       });
 
       act(() => {
-        result.current.dismiss();
+        result.current.dismiss(result.current.pending[0].id);
       });
       expect(action.commit).toHaveBeenCalledTimes(1);
       expect(result.current.writeState).toEqual({
@@ -1423,7 +1550,7 @@ describe('useConsoleActionQueue', () => {
         result.current.enqueue(action);
       });
       await act(async () => {
-        result.current.dismiss();
+        result.current.dismiss(result.current.pending[0].id);
         await flushMicrotasks();
       });
       expect(result.current.writeState).toEqual({
@@ -1492,7 +1619,7 @@ describe('useConsoleActionQueue', () => {
         attempt: 1,
       });
 
-      const retry = result.current.error?.retry;
+      const retry = result.current.error[0]?.retry;
       await act(async () => {
         retry?.();
         await flushMicrotasks();
@@ -1523,7 +1650,7 @@ describe('useConsoleActionQueue', () => {
         attempt: 1,
       });
 
-      const retry = result.current.error?.retry;
+      const retry = result.current.error[0]?.retry;
       await act(async () => {
         retry?.();
         await flushMicrotasks();
@@ -1611,7 +1738,7 @@ describe('useConsoleActionQueue', () => {
 
         expect(result.current.enqueueSequence).toBe(1);
         expect(action.commit).not.toHaveBeenCalled();
-        expect(result.current.pending?.remainingSeconds).toBe(5);
+        expect(result.current.pending[0]?.remainingSeconds).toBe(5);
 
         await act(async () => {
           jest.advanceTimersByTime(5000);
@@ -2021,7 +2148,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       expect(
         new Set(result.current.offlineActions.map((held) => held.id)).size,
       ).toBe(expectedHeldPayloads.length);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
       expect(result.current.writeState).toEqual({
         status: 'offline',
         attempt: 1,
@@ -2098,7 +2225,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       await commitAfterUndoWindow(result, action);
 
       expect(action.commit).toHaveBeenCalledTimes(1);
-      expect(result.current.error).toMatchObject({
+      expect(result.current.error[0]).toMatchObject({
         message: 'OK & Close — #866',
         reason: expectedReason,
       });
@@ -2114,9 +2241,12 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
   const retryFromErrorToast = async (queue: {
     current: ConsoleActionQueue;
   }): Promise<void> => {
-    const retry = queue.current.error?.retry;
+    const errorEntry = queue.current.error[0];
+    const retry = errorEntry?.retry;
     act(() => {
-      queue.current.dismissError();
+      if (errorEntry !== undefined) {
+        queue.current.dismissError(errorEntry.id);
+      }
     });
     await act(async () => {
       retry?.();
@@ -2171,7 +2301,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       offline: [commentOfflinePayload, closeOfflinePayload],
     });
     await commitAfterUndoWindow(result, action);
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'OK & Close — #866',
       reason: 'HTTP 500 close refused',
     });
@@ -2181,7 +2311,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(commit.mock.calls).toEqual([[0], [1]]);
     expect(commentStep).toHaveBeenCalledTimes(1);
     expect(closeStep).toHaveBeenCalledTimes(2);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.offlineActions).toEqual([]);
     expect(readStoredOfflineQueue()).toEqual([]);
     expect(result.current.writeState).toEqual({
@@ -2234,7 +2364,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
 
       await retryFromErrorToast(result);
 
-      expect(result.current.error).toMatchObject({
+      expect(result.current.error[0]).toMatchObject({
         message: 'OK & Close — #866',
         reason: expectedReason,
       });
@@ -2246,7 +2376,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       await retryFromErrorToast(result);
 
       expect(commit.mock.calls).toEqual(expectedCommitCalls);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
       expect(result.current.offlineActions).toEqual([]);
       expect(result.current.writeState).toEqual({
         status: 'succeeded',
@@ -2294,7 +2424,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       expect(commit.mock.calls).toEqual([[0], [1]]);
       expect(result.current.offlineActions).toEqual(heldCloseOnly);
       expect(readStoredOfflineQueue()).toEqual(heldCloseOnly);
-      expect(result.current.error).toBeNull();
+      expect(result.current.error).toHaveLength(0);
       expect(result.current.writeState).toEqual({
         status: 'offline',
         attempt: 2,
@@ -2332,7 +2462,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(revertAdvance).not.toHaveBeenCalled();
     expect(result.current.offlineActions).toEqual(heldCloseOnly);
     expect(readStoredOfflineQueue()).toEqual(heldCloseOnly);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.writeState).toEqual({
       status: 'offline',
       attempt: 2,
@@ -2365,11 +2495,15 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(commit).toHaveBeenCalledTimes(1);
     expect(revertAdvance).toHaveBeenCalledTimes(1);
     expect(result.current.offlineActions).toEqual([]);
-    expect(result.current.error).toEqual({
-      message: 'Airplane mode',
-      reason:
-        'This action requires a network connection. Turn off airplane mode and try again.',
-    });
+    expect(result.current.error).toEqual([
+      {
+        id: expect.any(String),
+        createdAt: expect.any(Number),
+        message: 'Airplane mode',
+        reason:
+          'This action requires a network connection. Turn off airplane mode and try again.',
+      },
+    ]);
     expect(result.current.writeState).toEqual({
       status: 'failed',
       attempt: 2,
@@ -2393,7 +2527,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       offline: [commentOfflinePayload, closeOfflinePayload],
     });
     await commitAfterUndoWindow(result, action);
-    expect(result.current.error).toMatchObject({
+    expect(result.current.error[0]).toMatchObject({
       message: 'OK & Close — #866',
       reason: 'HTTP 500 comment refused',
     });
@@ -2403,7 +2537,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(commit).toHaveBeenCalledTimes(2);
     expect(commentStep).toHaveBeenCalledTimes(2);
     expect(closeStep).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.offlineActions).toEqual([]);
     expect(result.current.writeState).toEqual({
       status: 'succeeded',
@@ -2435,7 +2569,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(closeStep).not.toHaveBeenCalled();
     expect(result.current.offlineActions).toEqual(heldCommentAndClose);
     expect(readStoredOfflineQueue()).toEqual(heldCommentAndClose);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.writeState).toEqual({
       status: 'offline',
       attempt: 2,
@@ -2468,7 +2602,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     expect(closeStep).not.toHaveBeenCalled();
     expect(result.current.offlineActions).toEqual(heldCommentAndClose);
     expect(readStoredOfflineQueue()).toEqual(heldCommentAndClose);
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toHaveLength(0);
     expect(result.current.writeState).toEqual({
       status: 'offline',
       attempt: 2,
