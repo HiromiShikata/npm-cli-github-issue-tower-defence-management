@@ -1,3 +1,10 @@
+## [2.169.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.1...v2.169.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* **console-ui:** stop force-committing queued actions and stack toasts independently ([#3404](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3404)) ([c1daf78](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1daf78975d25ea423933db33f9749ccf21b2651)), closes [HiromiShikata/umino-corporait-operation#33368](https://github.com/HiromiShikata/umino-corporait-operation/issues/33368)
+
 ## [2.169.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.0...v2.169.1) (2026-10-15)
 
 
