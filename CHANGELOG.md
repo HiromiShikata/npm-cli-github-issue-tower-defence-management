@@ -1,3 +1,10 @@
+## [2.169.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.2...v2.169.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **story-gate:** exclude linked regular / story from story adoption ([#3415](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3415)) ([9253c9c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9253c9ca2927f1dec4b7a1db04d638fde3b9854f))
+
 ## [2.169.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.1...v2.169.2) (2026-10-15)
 
 
