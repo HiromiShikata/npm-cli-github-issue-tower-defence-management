@@ -6510,6 +6510,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   describe('nextStepAgent validation against agents list', () => {
+    const requireSecondCallArgument = (mockCalls: unknown): unknown => {
+      if (!Array.isArray(mockCalls) || mockCalls.length === 0) {
+        throw new Error('Expected at least one recorded mock call.');
+      }
+      const firstCall: unknown = mockCalls[0];
+      if (!Array.isArray(firstCall) || firstCall.length < 2) {
+        throw new Error(
+          'Expected the first mock call to have at least two arguments.',
+        );
+      }
+      return firstCall[1];
+    };
+
     it('creates a workflow blocker issue and returns original task to Awaiting Workspace when nextStepAgent is not in configured agents list', async () => {
       const issueUrl = 'https://github.com/user/repo/issues/1';
       const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
@@ -7134,6 +7147,223 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
         expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+    });
+
+    it('dispatches normally when nextStepAgent is in the configured agents list even though fleetBannedAgents contains a different, unrelated agent name', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "developer"}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        fleetBannedAgents: ['urgent-taskforce-leader'],
+      });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+    });
+
+    it('does not create a blocker issue and instead posts one informational comment then falls through to Awaiting Workspace when nextStepAgent matches fleetBannedAgents and no owner confirmation is pending', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        agent: 'triager',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "urgent-taskforce-leader"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        fleetBannedAgents: ['urgent-taskforce-leader'],
+      });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      const informationalCommentBody: unknown = requireSecondCallArgument(
+        mockIssueCommentRepository.createComment.mock.calls,
+      );
+      expect(informationalCommentBody).toContain('urgent-taskforce-leader');
+      expect(informationalCommentBody).toMatch(
+        /excluded from automatic dispatch|will not be re-dispatched/,
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('does not create a blocker issue and routes to Awaiting Owner via the existing unanswered-owner-confirmation branch when nextStepAgent matches fleetBannedAgents', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "urgent-taskforce-leader", "needOwnerConfirmationOrApproval": true}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        fleetBannedAgents: ['urgent-taskforce-leader'],
+      });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      const informationalCommentBody: unknown = requireSecondCallArgument(
+        mockIssueCommentRepository.createComment.mock.calls,
+      );
+      expect(informationalCommentBody).toContain('urgent-taskforce-leader');
+      expect(informationalCommentBody).toMatch(
+        /excluded from automatic dispatch|will not be re-dispatched/,
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+    });
+
+    it('does not post an exclusion comment and runs only the existing null handling when the latest report has no nextStepAgent at all, even though fleetBannedAgents is configured', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        agent: 'triager',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner approval.',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['triager', 'developer'],
+        fleetBannedAgents: ['urgent-taskforce-leader'],
+      });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringMatching(
+          /excluded from automatic dispatch|will not be re-dispatched/,
+        ),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Workspace',
+        }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('creates a workflow blocker issue for an agent name that would otherwise be fleet-banned when fleetBannedAgents is unset, preserving backward compatibility', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "urgent-taskforce-leader"}\n```',
+        }),
+      ]);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        fleetBannedAgents: null,
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        expect.stringContaining('urgent-taskforce-leader'),
+        expect.stringContaining(issueUrl),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+        issueUrl,
+        mockProject,
+        blockerIssueUrl,
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         mockProject,
       );
     });

@@ -395,3 +395,36 @@ export const loadErrorReportingRepository = (
   }
   return value;
 };
+
+export const FLEET_BANNED_AGENTS_KEY = 'fleetBannedAgents';
+
+export const loadFleetBannedAgents = (
+  fleetConfigFilePath: string | null,
+): string[] | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const value = top[FLEET_BANNED_AGENTS_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `${FLEET_BANNED_AGENTS_KEY} in ${fleetConfigFilePath} must be an array of strings.`,
+    );
+  }
+  const agentNames: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error(
+        `${FLEET_BANNED_AGENTS_KEY} in ${fleetConfigFilePath} must be an array of strings.`,
+      );
+    }
+    agentNames.push(item);
+  }
+  return agentNames;
+};

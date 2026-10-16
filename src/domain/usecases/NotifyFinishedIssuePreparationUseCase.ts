@@ -110,6 +110,7 @@ type NotifyFinishedIssuePreparationParams = {
   labelsNotRequiringPullRequest?: string[] | null;
   changeTargetPathAliases?: Record<string, string> | null;
   agents?: string[] | null;
+  fleetBannedAgents?: string[] | null;
   missingAgentName?: string | null;
   sessionErrorLine?: string | null;
   manager?: string | null;
@@ -478,7 +479,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       TRIAGER_AGENT_NAME,
     );
     const lastAgentReport = strictAgentReport ?? triagerAgentReport;
-    const nextStepAgent = lastAgentReport
+    let nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
     const workflowError = lastAgentReport
@@ -518,7 +519,17 @@ export class NotifyFinishedIssuePreparationUseCase {
     const storyName = strictAgentReport
       ? extractStory(strictAgentReport.content)
       : null;
-    if (
+    const isNextStepAgentFleetBanned =
+      nextStepAgent !== null &&
+      params.fleetBannedAgents != null &&
+      params.fleetBannedAgents.includes(nextStepAgent);
+    if (isNextStepAgentFleetBanned) {
+      await this.createCommentWithDedup(
+        issue,
+        `\`${nextStepAgent}\` is excluded from automatic dispatch and will not be re-dispatched by TDPM.`,
+      );
+      nextStepAgent = null;
+    } else if (
       nextStepAgent !== null &&
       params.agents &&
       params.agents.length > 0 &&
