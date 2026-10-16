@@ -1,3 +1,10 @@
+## [2.171.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.2...v2.171.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **DependedIssueURLRestoreUseCase:** Non-blocking Tier 3 findings from DependedIssueURLRestoreUseCase PR review ([#3434](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3434)) ([228d265](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/228d26564faecfb6a7cfb9eda758415242e5670b))
+
 ## [2.171.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.1...v2.171.2) (2026-10-16)
 
 
