@@ -255,6 +255,23 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedUpdateProjectTextFieldText: null,
         expectedCreateCommentBody: null,
       },
+      {
+        name: 'should restore only the URL that already left Icebox from a bundled two-URL Icebox clear comment while the other URL stays in Icebox (criterion 10: bundled two-URL clear, partial restore)',
+        dependedIssues: [
+          buildDependedIssue({ url: DEP_10_URL }),
+          buildDependedIssue({ url: DEP_11_URL, status: ICEBOX_STATUS_NAME }),
+        ],
+        dependingIssueCurrentDependedIssueUrls: [],
+        dependingIssueComments: [
+          buildComment(
+            `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}\n- ${DEP_11_URL}`,
+            T1,
+            1,
+          ),
+        ],
+        expectedUpdateProjectTextFieldText: DEP_10_URL,
+        expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      },
     ];
 
     testCases.forEach(
@@ -405,6 +422,73 @@ describe('DependedIssueURLRestoreUseCase', () => {
 
       expect(mockIssueRepository.updateProjectTextField).not.toHaveBeenCalled();
       expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should add the second bundled URL to the field without duplicating the first once it also leaves Icebox in a later sweep (criterion 12: bundled two-URL clear, completed restoration across sweeps)', async () => {
+      jest.clearAllMocks();
+      const dep10Issue = buildDependedIssue({ url: DEP_10_URL });
+      const dep11IssueStillInIcebox = buildDependedIssue({
+        url: DEP_11_URL,
+        status: ICEBOX_STATUS_NAME,
+      });
+      const bundledClearComment = buildComment(
+        `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}\n- ${DEP_11_URL}`,
+        T1,
+        1,
+      );
+      const firstSweepDependingIssue = buildDependingIssue([]);
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) =>
+          url === firstSweepDependingIssue.url ? [bundledClearComment] : [],
+      );
+      const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+      await useCase.run({
+        project: basicProject,
+        issues: [dep10Issue, dep11IssueStillInIcebox, firstSweepDependingIssue],
+      });
+
+      expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
+        basicProject,
+        'fieldId',
+        firstSweepDependingIssue,
+        DEP_10_URL,
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        firstSweepDependingIssue,
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      );
+
+      jest.clearAllMocks();
+      const dep11IssueLeftIcebox = buildDependedIssue({ url: DEP_11_URL });
+      const firstSweepRestoreComment = buildComment(
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+        T2,
+        2,
+      );
+      const secondSweepDependingIssue = buildDependingIssue([DEP_10_URL]);
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) =>
+          url === secondSweepDependingIssue.url
+            ? [bundledClearComment, firstSweepRestoreComment]
+            : [],
+      );
+
+      await useCase.run({
+        project: basicProject,
+        issues: [dep10Issue, dep11IssueLeftIcebox, secondSweepDependingIssue],
+      });
+
+      expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
+        basicProject,
+        'fieldId',
+        secondSweepDependingIssue,
+        `${DEP_10_URL},${DEP_11_URL}`,
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        secondSweepDependingIssue,
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_11_URL}`,
+      );
     });
   });
 });
