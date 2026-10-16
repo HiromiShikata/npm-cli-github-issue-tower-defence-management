@@ -97,6 +97,7 @@ import {
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
   loadErrorReportingRepository,
+  loadFleetBannedAgents,
   loadFleetTaskCreateUrl,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
@@ -916,6 +917,15 @@ program
       notifyEffectiveErrorReportingRepo ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
+    let notifyLoadedFleetBannedAgents: string[] | null;
+    try {
+      notifyLoadedFleetBannedAgents = loadFleetBannedAgents(
+        notifyFleetConfigFilePath,
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return process.exit(1);
+    }
 
     const projectUrl = config.projectUrl;
 
@@ -1041,6 +1051,7 @@ program
               config.labelsNotRequiringPullRequest ?? null,
             changeTargetPathAliases: config.changeTargetPathAliases ?? null,
             agents: config.agents ?? null,
+            fleetBannedAgents: notifyLoadedFleetBannedAgents,
             missingAgentName: options.missingAgentName ?? null,
             sessionErrorLine: sessionEndFlags.sessionErrorLine,
             manager: config.manager ?? null,
