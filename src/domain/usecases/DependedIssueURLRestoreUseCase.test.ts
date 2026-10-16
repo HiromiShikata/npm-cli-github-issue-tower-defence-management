@@ -59,9 +59,10 @@ describe('DependedIssueURLRestoreUseCase', () => {
       body: string,
       createdAt: Date,
       id: number,
+      author: string = 'hs-bot-gh-app[bot]',
     ): IssueComment => ({
       id,
-      author: 'hs-bot-gh-app[bot]',
+      author,
       body,
       createdAt,
     });
@@ -71,6 +72,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
       dependedIssues: Issue[];
       dependingIssueCurrentDependedIssueUrls: string[];
       dependingIssueComments: IssueComment[];
+      allowedIssueAuthors?: string[] | null;
       expectedUpdateProjectTextFieldText: string | null;
       expectedCreateCommentBody: string | null;
     }[] = [
@@ -85,6 +87,39 @@ describe('DependedIssueURLRestoreUseCase', () => {
             1,
           ),
         ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+        expectedUpdateProjectTextFieldText: DEP_10_URL,
+        expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      },
+      {
+        name: 'should never restore a cleared depended issue URL based on an icebox-clear comment from an untrusted author, even though the depended issue has left Icebox and is not closed (follow-up issue acceptance criterion 3: author check)',
+        dependedIssues: [buildDependedIssue({ url: DEP_10_URL })],
+        dependingIssueCurrentDependedIssueUrls: [],
+        dependingIssueComments: [
+          buildComment(
+            `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+            T1,
+            1,
+            'some-random-impostor-user',
+          ),
+        ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+        expectedUpdateProjectTextFieldText: null,
+        expectedCreateCommentBody: null,
+      },
+      {
+        name: 'should restore a cleared depended issue URL from an icebox-clear comment authored by anyone when allowedIssueAuthors is left unconfigured (regression: pr-reviewer Tier 1 finding on PR #3434 — undefined allowedIssueAuthors must not fail closed for every unconfigured caller)',
+        dependedIssues: [buildDependedIssue({ url: DEP_10_URL })],
+        dependingIssueCurrentDependedIssueUrls: [],
+        dependingIssueComments: [
+          buildComment(
+            `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+            T1,
+            1,
+            'some-random-impostor-user',
+          ),
+        ],
+        allowedIssueAuthors: undefined,
         expectedUpdateProjectTextFieldText: DEP_10_URL,
         expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
       },
@@ -102,6 +137,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
             1,
           ),
         ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
         expectedUpdateProjectTextFieldText: `${DEP_10_URL},${DEP_11_URL}`,
         expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}\n- ${DEP_11_URL}`,
       },
@@ -116,11 +152,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
             1,
           ),
         ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
         expectedUpdateProjectTextFieldText: `${UNRELATED_URL},${DEP_10_URL}`,
         expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
       },
       {
-        name: 'should never restore while the depended issue is still in Icebox (criterion 4)',
+        name: 'should never restore while the depended issue is still in Icebox (criterion 3)',
         dependedIssues: [
           buildDependedIssue({ url: DEP_10_URL, status: ICEBOX_STATUS_NAME }),
         ],
@@ -136,7 +173,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedCreateCommentBody: null,
       },
       {
-        name: 'should never restore if the depended issue is closed (criterion 5)',
+        name: 'should never restore if the depended issue is closed (criterion 4)',
         dependedIssues: [
           buildDependedIssue({
             url: DEP_10_URL,
@@ -184,7 +221,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedCreateCommentBody: null,
       },
       {
-        name: 'should never restore a circular-dependency-caused clear even after the cycle is broken (criterion 7)',
+        name: 'should never restore a circular-dependency-caused clear even after the cycle is broken (criterion 8)',
         dependedIssues: [
           buildDependedIssue({ url: DEP_10_URL, dependedIssueUrls: [] }),
         ],
@@ -200,7 +237,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedCreateCommentBody: null,
       },
       {
-        name: 'should not restore when a later Icebox clear cycle governs and the depended issue is still in Icebox, even though an earlier cycle had already been restored (criteria 10-12: latest relevant comment governs, still in Icebox)',
+        name: 'should not restore when a later Icebox clear cycle governs and the depended issue is still in Icebox, even though an earlier cycle had already been restored (criterion 9: latest relevant comment governs, still in Icebox)',
         dependedIssues: [
           buildDependedIssue({ url: DEP_10_URL, status: ICEBOX_STATUS_NAME }),
         ],
@@ -226,7 +263,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedCreateCommentBody: null,
       },
       {
-        name: 'should restore again when a later Icebox clear cycle governs and the depended issue has left Icebox again, even though an earlier cycle had already been restored (criteria 10-12: latest relevant comment governs, left Icebox again)',
+        name: 'should restore again when a later Icebox clear cycle governs and the depended issue has left Icebox again, even though an earlier cycle had already been restored (criterion 9: latest relevant comment governs, left Icebox again)',
         dependedIssues: [buildDependedIssue({ url: DEP_10_URL })],
         dependingIssueCurrentDependedIssueUrls: [],
         dependingIssueComments: [
@@ -246,11 +283,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
             3,
           ),
         ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
         expectedUpdateProjectTextFieldText: DEP_10_URL,
         expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
       },
       {
-        name: 'should never restore when a later clear cycle is caused by the depended issue being closed, even though an earlier Icebox cycle had already been restored (criteria 10-12: latest relevant comment governs and its own cause applies)',
+        name: 'should never restore when a later clear cycle is caused by the depended issue being closed, even though an earlier Icebox cycle had already been restored (criterion 9: latest relevant comment governs and its own cause applies)',
         dependedIssues: [buildDependedIssue({ url: DEP_10_URL })],
         dependingIssueCurrentDependedIssueUrls: [],
         dependingIssueComments: [
@@ -287,6 +325,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
             1,
           ),
         ],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
         expectedUpdateProjectTextFieldText: DEP_10_URL,
         expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
       },
@@ -298,6 +337,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         dependedIssues,
         dependingIssueCurrentDependedIssueUrls,
         dependingIssueComments,
+        allowedIssueAuthors,
         expectedUpdateProjectTextFieldText,
         expectedCreateCommentBody,
       }) => {
@@ -314,10 +354,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
             mockIssueRepository,
           );
 
-          await useCase.run({
+          const runInput = {
             project: basicProject,
             issues: [...dependedIssues, dependingIssue],
-          });
+            allowedIssueAuthors,
+          };
+          await useCase.run(runInput);
 
           if (expectedUpdateProjectTextFieldText === null) {
             expect(
@@ -397,10 +439,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
       );
       const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
 
-      await useCase.run({
+      const firstSweepRunInput = {
         project: basicProject,
         issues: [dependedIssue, firstSweepDependingIssue],
-      });
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      await useCase.run(firstSweepRunInput);
 
       expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
         basicProject,
@@ -461,10 +505,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
       );
       const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
 
-      await useCase.run({
+      const firstSweepRunInput = {
         project: basicProject,
         issues: [dep10Issue, dep11IssueStillInIcebox, firstSweepDependingIssue],
-      });
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      await useCase.run(firstSweepRunInput);
 
       expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
         basicProject,
@@ -492,10 +538,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
             : [],
       );
 
-      await useCase.run({
+      const secondSweepRunInput = {
         project: basicProject,
         issues: [dep10Issue, dep11IssueLeftIcebox, secondSweepDependingIssue],
-      });
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      await useCase.run(secondSweepRunInput);
 
       expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
         basicProject,
@@ -539,10 +587,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
       );
       const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
 
-      const runPromise = useCase.run({
+      const runInput = {
         project: basicProject,
         issues: [dependedIssue, firstDependingIssue, secondDependingIssue],
-      });
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      const runPromise = useCase.run(runInput);
       runPromise.catch(() => {});
 
       let caughtError: unknown;
@@ -596,12 +646,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
         .mockResolvedValueOnce(undefined);
       const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
 
-      await expect(
-        useCase.run({
-          project: basicProject,
-          issues: [dependedIssue, dependingIssue],
-        }),
-      ).resolves.toBeUndefined();
+      const runInput = {
+        project: basicProject,
+        issues: [dependedIssue, dependingIssue],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      await expect(useCase.run(runInput)).resolves.toBeUndefined();
 
       expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
       expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
@@ -646,12 +696,12 @@ describe('DependedIssueURLRestoreUseCase', () => {
       );
       const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
 
-      await expect(
-        useCase.run({
-          project: basicProject,
-          issues: [dependedIssue, staleDependingIssue, okDependingIssue],
-        }),
-      ).resolves.toBeUndefined();
+      const runInput = {
+        project: basicProject,
+        issues: [dependedIssue, staleDependingIssue, okDependingIssue],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      };
+      await expect(useCase.run(runInput)).resolves.toBeUndefined();
 
       const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
         call.join(' '),

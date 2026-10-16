@@ -4459,6 +4459,26 @@ describe('HandleScheduledEventUseCase', () => {
             .invocationCallOrder[0],
         );
       });
+
+      it('passes the resolved allowedIssueAuthors through to dependedIssueURLRestoreUseCase.run', async () => {
+        const allowedIssueAuthors = ['HiromiShikata'];
+
+        await useCase.runSlowSweepUseCases(
+          { ...isolationInput, allowedIssueAuthors },
+          project,
+          issues,
+          false,
+          [],
+          storyObjectMap,
+          now,
+        );
+
+        expect(mockDependedIssueURLRestoreUseCase.run).toHaveBeenCalledWith({
+          project,
+          issues,
+          allowedIssueAuthors,
+        });
+      });
     });
 
     describe('changeStatusByStoryColorUseCase runs every cycle (issue #3091)', () => {

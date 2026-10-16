@@ -18,6 +18,7 @@ import {
   realSleep,
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type ClearCause = 'icebox' | 'closed' | 'circular' | 'restored';
@@ -63,7 +64,11 @@ export class DependedIssueURLRestoreUseCase {
     private readonly sleep: Sleep = realSleep,
   ) {}
 
-  run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
+  run = async (input: {
+    project: Project;
+    issues: Issue[];
+    allowedIssueAuthors?: string[] | null;
+  }): Promise<void> => {
     const dependedIssueUrlSeparatedByComma =
       input.project.dependedIssueUrlSeparatedByComma;
     if (!dependedIssueUrlSeparatedByComma) {
@@ -80,6 +85,7 @@ export class DependedIssueURLRestoreUseCase {
           fieldId: dependedIssueUrlSeparatedByComma.fieldId,
           dependingIssue: issue,
           issues: input.issues,
+          allowedIssueAuthors: input.allowedIssueAuthors,
         });
       } catch (error) {
         if (error instanceof StaleProjectItemError) {
@@ -105,12 +111,17 @@ export class DependedIssueURLRestoreUseCase {
     fieldId: string;
     dependingIssue: Issue;
     issues: Issue[];
+    allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
-    const { project, fieldId, dependingIssue, issues } = input;
+    const { project, fieldId, dependingIssue, issues, allowedIssueAuthors } =
+      input;
     const comments = await this.issueRepository.getIssueOrPullRequestComments(
       dependingIssue.url,
     );
-    const relevantComments = this.parseRelevantComments(comments);
+    const relevantComments = this.parseRelevantComments(
+      comments,
+      allowedIssueAuthors,
+    );
     if (relevantComments.length === 0) {
       return;
     }
@@ -202,9 +213,20 @@ export class DependedIssueURLRestoreUseCase {
 
   private parseRelevantComments = (
     comments: IssueComment[],
+    allowedIssueAuthors: string[] | null | undefined,
   ): RelevantComment[] => {
     const relevantComments: RelevantComment[] = [];
     for (const comment of comments) {
+      if (
+        allowedIssueAuthors &&
+        allowedIssueAuthors.length > 0 &&
+        !isAuthorAuthorizedForAutoStatusCheck(
+          comment.author,
+          allowedIssueAuthors,
+        )
+      ) {
+        continue;
+      }
       const cause = this.resolveClearCause(comment.body);
       if (!cause) {
         continue;
