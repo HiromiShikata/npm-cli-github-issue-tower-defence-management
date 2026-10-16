@@ -13,6 +13,7 @@ import {
   ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD,
   CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD,
   DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD,
+  SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
 
@@ -31,6 +32,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
     const SECOND_DEPENDING_ISSUE_URL = 'https://github.com/o/r/issues/21';
     const DEP_10_URL = 'https://github.com/o/r/issues/10';
     const DEP_11_URL = 'https://github.com/o/r/issues/11';
+    const DEP_12_URL = 'https://github.com/o/r/issues/12';
     const UNRELATED_URL = 'https://github.com/o/r/issues/99';
     const T1 = new Date('2026-01-01T00:00:00Z');
     const T2 = new Date('2026-01-02T00:00:00Z');
@@ -160,6 +162,20 @@ describe('DependedIssueURLRestoreUseCase', () => {
         dependingIssueComments: [
           buildComment(
             `${ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+            T1,
+            1,
+          ),
+        ],
+        expectedUpdateProjectTextFieldText: null,
+        expectedCreateCommentBody: null,
+      },
+      {
+        name: 'should never restore a some-depended-closed-caused clear even after the depended issue is reopened',
+        dependedIssues: [buildDependedIssue({ url: DEP_12_URL })],
+        dependingIssueCurrentDependedIssueUrls: [],
+        dependingIssueComments: [
+          buildComment(
+            `${SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n- ${DEP_12_URL}`,
             T1,
             1,
           ),
