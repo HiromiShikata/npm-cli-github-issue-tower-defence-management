@@ -1,3 +1,10 @@
+# [2.171.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.2...v2.171.0) (2026-10-16)
+
+
+### Features
+
+* **usecases:** restore Depended Issue URL field when a depended issue leaves Icebox status ([#3421](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3421)) ([666b3ec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/666b3ec94f30f3494d52b8559934e93236a6ce5e))
+
 ## [2.170.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.1...v2.170.2) (2026-10-16)
 
 
