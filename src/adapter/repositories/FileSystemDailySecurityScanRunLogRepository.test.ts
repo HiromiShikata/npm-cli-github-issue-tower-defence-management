@@ -2,7 +2,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { DailySecurityScanRunLogEntry } from '../../domain/entities/DailySecurityScanRunLogEntry';
+import { isRecord } from '../../domain/usecases/isRecord';
 import { FileSystemDailySecurityScanRunLogRepository } from './FileSystemDailySecurityScanRunLogRepository';
+
+const isUnknownArray = (value: unknown): value is unknown[] =>
+  Array.isArray(value);
 
 describe('FileSystemDailySecurityScanRunLogRepository', () => {
   let temporaryDirectory: string;
@@ -52,7 +56,7 @@ describe('FileSystemDailySecurityScanRunLogRepository', () => {
 
     await repository.append(entry);
 
-    const stored = JSON.parse(
+    const stored: unknown = JSON.parse(
       fs.readFileSync(path.join(baseDirectory, 'app.json'), 'utf8'),
     );
     expect(stored).toEqual([entry]);
@@ -96,11 +100,13 @@ describe('FileSystemDailySecurityScanRunLogRepository', () => {
     });
 
     for (let index = 1; index <= 31; index += 1) {
-      // eslint-disable-next-line no-await-in-loop
       await repository.append(entryAt(index));
     }
 
-    const stored = readStored('app') as DailySecurityScanRunLogEntry[];
+    const stored = readStored('app');
+    if (!isUnknownArray(stored)) {
+      throw new Error('expected the stored run log to be an array');
+    }
     expect(stored).toHaveLength(30);
     expect(stored[0]).toEqual(entryAt(2));
     expect(stored[stored.length - 1]).toEqual(entryAt(31));
@@ -172,9 +178,16 @@ describe('FileSystemDailySecurityScanRunLogRepository', () => {
 
       const raw = fs.readFileSync(filePathFor('app'), 'utf8');
       const parsed: unknown = JSON.parse(raw);
-      expect(Array.isArray(parsed)).toBe(true);
+      if (!isUnknownArray(parsed)) {
+        throw new Error('expected the stored run log to be an array');
+      }
       expect(parsed).toEqual([entry]);
-      const [storedEntry] = parsed as DailySecurityScanRunLogEntry[];
+      const [storedEntry] = parsed;
+      if (!isRecord(storedEntry) || !isRecord(storedEntry.outcome)) {
+        throw new Error(
+          'expected the stored entry to be an object with an outcome',
+        );
+      }
       expect(typeof storedEntry.repositoryName).toBe('string');
       expect(typeof storedEntry.executedAtIso).toBe('string');
       expect(storedEntry.outcome.type).toBe(outcome.type);
