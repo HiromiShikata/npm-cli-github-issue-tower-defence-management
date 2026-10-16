@@ -137,8 +137,6 @@ export class DependedIssueURLRestoreUseCase {
       }
       for (const url of comment.dependedIssueUrls) {
         if (latestRelevantCommentByUrl.get(url) !== comment) {
-          // A later comment (another Icebox clear, a permanent clear, or a
-          // prior restore) governs this URL's current state instead.
           continue;
         }
         const dependedIssue = issues.find((candidate) => candidate.url === url);
