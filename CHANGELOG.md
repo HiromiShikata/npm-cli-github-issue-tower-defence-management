@@ -1,3 +1,10 @@
+## [2.170.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.1...v2.170.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* skip Failed Preparation escalation for issues with a pending dependency ([#3419](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3419)) ([e0d696d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e0d696d766de29be93333152b8035d6120c529be))
+
 ## [2.170.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.0...v2.170.1) (2026-10-16)
 
 
