@@ -1,3 +1,10 @@
+# [2.170.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.3...v2.170.0) (2026-10-16)
+
+
+### Features
+
+* **daily-security-scan:** persist per-repository run log entries ([#3416](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3416)) ([4a84922](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a84922ed9e41990cd59c007e686f9ef1bf34616))
+
 ## [2.169.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.2...v2.169.3) (2026-10-16)
 
 
