@@ -497,8 +497,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       : { kind: 'notRequested' };
     const isHumanAuthoredInvestigationTaskCloseOverrideApplicable =
       closeIssueAsRequest.kind === 'requested' &&
-      nextStepAgent === null &&
-      workflowError === null &&
       isHumanAuthoredInvestigationTaskCloseOverride({
         title: issue.title,
         body: issue.body,

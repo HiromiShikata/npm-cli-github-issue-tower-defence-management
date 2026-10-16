@@ -25,8 +25,12 @@ const isAutomatedReportBody = (body: string): boolean =>
     normalizeReportBody(body).split('\n')[0],
   );
 
-const containsInvestigationTaskKeyword = (text: string): boolean =>
-  INVESTIGATION_TASK_KEYWORDS.some((keyword) => text.includes(keyword));
+const containsInvestigationTaskKeyword = (text: string): boolean => {
+  const lowerCaseText = text.toLowerCase();
+  return INVESTIGATION_TASK_KEYWORDS.some((keyword) =>
+    lowerCaseText.includes(keyword.toLowerCase()),
+  );
+};
 
 export const isHumanAuthoredInvestigationTaskCloseOverride = (args: {
   title: string;
