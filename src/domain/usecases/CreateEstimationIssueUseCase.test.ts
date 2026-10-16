@@ -133,6 +133,221 @@ describe('CreateEstimationIssueUseCase', () => {
     });
   });
 
+  describe('run — GRAY story option skip (issue #3349)', () => {
+    const weekdayAt07hUTC = new Date(Date.UTC(2026, 0, 15, 7, 0, 0));
+
+    it('does not throw for a story option whose name starts with "regular / " even when no matching issue exists in input.issues', async () => {
+      const regularStory = {
+        id: 'story-regular-1',
+        name: 'regular / Housekeeping',
+        color: 'BLUE' as const,
+        description: '',
+      };
+      const projectWithRegularStory: Project = {
+        ...projectWithStory,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 1,
+          stories: [regularStory],
+          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+        },
+      };
+
+      await expect(
+        useCase.run({
+          ...commonInput,
+          project: projectWithRegularStory,
+          targetDates: [weekdayAt07hUTC],
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('does not throw for a GRAY story option when no matching issue exists in input.issues', async () => {
+      const grayStoryNoMatch = {
+        id: 'story-gray-1',
+        name: 'Feature GRAY NoMatch',
+        color: 'GRAY' as const,
+        description: '',
+      };
+      const projectWithGrayStoryNoMatch: Project = {
+        ...projectWithStory,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 1,
+          stories: [grayStoryNoMatch],
+          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+        },
+      };
+
+      await expect(
+        useCase.run({
+          ...commonInput,
+          project: projectWithGrayStoryNoMatch,
+          targetDates: [weekdayAt07hUTC],
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('skips without throwing for a GRAY story option whose matching issue lacks the schedule-control label', async () => {
+      const grayStoryNoLabel = {
+        id: 'story-gray-2',
+        name: 'Feature GRAY NoLabel',
+        color: 'GRAY' as const,
+        description: '',
+      };
+      const matchingNoLabelStoryIssue: Issue = {
+        ...mock<Issue>(),
+        title: 'Feature GRAY NoLabel',
+        labels: [],
+        isClosed: false,
+        isPr: false,
+        url: 'https://github.com/org/repo/issues/201',
+      };
+      const projectWithGrayStoryNoLabel: Project = {
+        ...projectWithStory,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 1,
+          stories: [grayStoryNoLabel],
+          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+        },
+      };
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          grayStoryNoLabel.id,
+          {
+            story: grayStoryNoLabel,
+            storyIssue: matchingNoLabelStoryIssue,
+            issues: [],
+          },
+        ],
+      ]);
+
+      await expect(
+        useCase.run({
+          ...commonInput,
+          project: projectWithGrayStoryNoLabel,
+          issues: [matchingNoLabelStoryIssue],
+          storyObjectMap,
+          targetDates: [weekdayAt07hUTC],
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('proceeds to estimation-issue creation for a GRAY story option whose matching issue has the schedule-control label', async () => {
+      const grayStoryLabeled = {
+        id: 'story-gray-3',
+        name: 'Feature GRAY Labeled',
+        color: 'GRAY' as const,
+        description: '',
+      };
+      const matchingLabeledStoryIssue: Issue = {
+        ...mock<Issue>(),
+        title: 'Feature GRAY Labeled',
+        labels: ['story', 'story:action:schedule-control'],
+        isClosed: false,
+        isPr: false,
+        url: 'https://github.com/org/repo/issues/202',
+      };
+      const issueInStory: Issue = {
+        ...mock<Issue>(),
+        title: 'Task issue',
+        labels: [],
+        isClosed: false,
+        isPr: false,
+        status: null,
+        estimationMinutes: null,
+        completionDate50PercentConfidence: null,
+        assignees: ['dev-user'],
+      };
+      const projectWithGrayStoryLabeled: Project = {
+        ...projectWithStory,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 1,
+          stories: [grayStoryLabeled],
+          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+        },
+      };
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          grayStoryLabeled.id,
+          {
+            story: grayStoryLabeled,
+            storyIssue: matchingLabeledStoryIssue,
+            issues: [issueInStory],
+          },
+        ],
+      ]);
+
+      await useCase.run({
+        ...commonInput,
+        project: projectWithGrayStoryLabeled,
+        issues: [matchingLabeledStoryIssue],
+        storyObjectMap,
+        targetDates: [weekdayAt07hUTC],
+      });
+
+      const body = mockIssueRepository.createNewIssue.mock.calls[0]?.[3];
+      expect(body).toContain('This issue is experimental workflow :pray:');
+    });
+
+    it('skips without throwing for a non-GRAY story option whose matching issue lacks the schedule-control label', async () => {
+      const yellowStoryNoLabel = {
+        id: 'story-yellow-1',
+        name: 'Feature YELLOW NoLabel',
+        color: 'YELLOW' as const,
+        description: '',
+      };
+      const matchingNoLabelStoryIssue: Issue = {
+        ...mock<Issue>(),
+        title: 'Feature YELLOW NoLabel',
+        labels: [],
+        isClosed: false,
+        isPr: false,
+        url: 'https://github.com/org/repo/issues/203',
+      };
+      const projectWithYellowStoryNoLabel: Project = {
+        ...projectWithStory,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field',
+          databaseId: 1,
+          stories: [yellowStoryNoLabel],
+          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+        },
+      };
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          yellowStoryNoLabel.id,
+          {
+            story: yellowStoryNoLabel,
+            storyIssue: matchingNoLabelStoryIssue,
+            issues: [],
+          },
+        ],
+      ]);
+
+      await expect(
+        useCase.run({
+          ...commonInput,
+          project: projectWithYellowStoryNoLabel,
+          issues: [matchingNoLabelStoryIssue],
+          storyObjectMap,
+          targetDates: [weekdayAt07hUTC],
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+  });
+
   describe('run — completionDate50PercentConfidence Monday UTC reset', () => {
     const mondayAt07hUTC = new Date(Date.UTC(2026, 0, 12, 7, 0, 0));
 
