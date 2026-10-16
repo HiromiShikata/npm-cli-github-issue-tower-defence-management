@@ -1353,9 +1353,9 @@ describe('IssueCreateModalDialog', () => {
       '.console-task-create-dialog-destination-selector button',
     );
     expect(destinationButtons.length).toBe(2);
-    expect(
-      [...destinationButtons].map((button) => button.textContent),
-    ).toEqual(['Project', 'Workflow']);
+    expect([...destinationButtons].map((button) => button.textContent)).toEqual(
+      ['Project', 'Workflow'],
+    );
   });
 
   it('renders exactly 1 destination selector button named "Project" when onSubmitWorkflow is undefined', () => {
@@ -1364,9 +1364,9 @@ describe('IssueCreateModalDialog', () => {
       '.console-task-create-dialog-destination-selector button',
     );
     expect(destinationButtons.length).toBe(1);
-    expect(
-      [...destinationButtons].map((button) => button.textContent),
-    ).toEqual(['Project']);
+    expect([...destinationButtons].map((button) => button.textContent)).toEqual(
+      ['Project'],
+    );
   });
 
   it('renders identical Story and Agent option lists after switching from Project to Workflow when workflowStoryEntries and workflowAgentOptions are not provided', () => {
