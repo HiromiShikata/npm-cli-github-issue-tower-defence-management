@@ -857,6 +857,10 @@ ${JSON.stringify(e)}
     now: Date,
   ): Promise<void> => {
     const failures: string[] = [];
+    const allowedIssueAuthors = resolveAllowedIssueAuthors({
+      topLevel: input.allowedIssueAuthors,
+      startPreparation: input.startPreparation?.allowedIssueAuthors,
+    });
     await this.runOperationIsolated(
       `run action announcements for project ${project.url}`,
       () =>
@@ -936,6 +940,7 @@ ${JSON.stringify(e)}
         this.dependedIssueURLRestoreUseCase.run({
           project,
           issues,
+          allowedIssueAuthors,
         }),
       failures,
     );
