@@ -1,3 +1,10 @@
+## [2.171.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.3...v2.171.4) (2026-10-16)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository, webServer:** Fix GitHub rate-limit misclassification in console repository and web server layers ([#3444](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3444)) ([59bc984](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/59bc984e9e3b233922dd91061475d5f1f3b0d640))
+
 ## [2.171.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.2...v2.171.3) (2026-10-16)
 
 
