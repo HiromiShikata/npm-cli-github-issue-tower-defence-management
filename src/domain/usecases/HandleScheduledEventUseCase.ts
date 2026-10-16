@@ -356,6 +356,16 @@ export class HandleScheduledEventUseCase {
             failures: storyOptionWriteFailures,
           });
         }
+        if (matchedIssueState) {
+          const isAlreadyInIssues = issues.some(
+            (issue) => issue.url === matchedIssueState.url,
+          );
+          if (!isAlreadyInIssues) {
+            issues.push(matchedIssueState);
+          }
+          storyObject.storyIssue = matchedIssueState;
+          storyObject.issues.push(matchedIssueState);
+        }
         continue;
       }
       const storyStartTime = Date.now();
