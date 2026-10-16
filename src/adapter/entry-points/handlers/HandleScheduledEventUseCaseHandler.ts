@@ -84,6 +84,7 @@ import { OwnerRepliedIssueRevertUseCase } from '../../../domain/usecases/OwnerRe
 import { ClosedAwaitingOwnerIssueRevertUseCase } from '../../../domain/usecases/ClosedAwaitingOwnerIssueRevertUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
+import { FileSystemDailySecurityScanRunLogRepository } from '../../repositories/FileSystemDailySecurityScanRunLogRepository';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -631,6 +632,7 @@ export class HandleScheduledEventUseCaseHandler {
           issueRepository,
           new KyHttpRepository(),
           new FileSystemKevReportWatermarkRepository(),
+          new FileSystemDailySecurityScanRunLogRepository(),
         )
       : null;
 
