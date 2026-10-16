@@ -11622,6 +11622,30 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
+    it('does not close the issue, sets Awaiting Owner and posts no duplicate comment when a triager-authored report (not matching the issue agent field) already set needOwnerConfirmationOrApproval alongside a matching human-authored investigation title/body (closeIssueAs criterion 19)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          createMockComment({
+            author: 'test-user',
+            content:
+              'From: :robot: triager (model)\n\nThe deliverable is finished and verified against every acceptance criterion.\n\n```json\n{"closeIssueAs": "completed", "needOwnerConfirmationOrApproval": true}\n```',
+            createdAt: new Date(),
+          }),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          agent: 'developer',
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
     it('closes the issue and sets Done normally when the calendar edit-template link excludes the safeguard even though the title/body otherwise looks like a report request (closeIssueAs criterion 15)', async () => {
       const project = projectWithDoneStatus();
 

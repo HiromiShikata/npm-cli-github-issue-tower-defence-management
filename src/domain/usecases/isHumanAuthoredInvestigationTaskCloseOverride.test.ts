@@ -62,6 +62,12 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       body: '',
       expected: false,
     },
+    {
+      name: 'returns true when the keyword is capitalized',
+      title: 'Research the login failure impact',
+      body: 'Please look into this.',
+      expected: true,
+    },
   ])('$name', ({ title, body, expected }) => {
     expect(isHumanAuthoredInvestigationTaskCloseOverride({ title, body })).toBe(
       expected,
