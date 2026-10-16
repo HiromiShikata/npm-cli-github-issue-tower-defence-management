@@ -13,6 +13,12 @@ import {
   SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
+import {
+  commentCreateWithDedupRetry,
+  realSleep,
+  Sleep,
+} from '../services/commentCreateWithDedupRetry';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 type ClearCause = 'icebox' | 'closed' | 'circular' | 'restored';
 
@@ -54,6 +60,7 @@ export class DependedIssueURLRestoreUseCase {
       | 'updateProjectTextField'
       | 'createComment'
     >,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
@@ -62,16 +69,34 @@ export class DependedIssueURLRestoreUseCase {
     if (!dependedIssueUrlSeparatedByComma) {
       return;
     }
+    const failedIssueDescriptions: string[] = [];
     for (const issue of input.issues) {
       if (issue.isClosed) {
         continue;
       }
-      await this.restoreForDependingIssue({
-        project: input.project,
-        fieldId: dependedIssueUrlSeparatedByComma.fieldId,
-        dependingIssue: issue,
-        issues: input.issues,
-      });
+      try {
+        await this.restoreForDependingIssue({
+          project: input.project,
+          fieldId: dependedIssueUrlSeparatedByComma.fieldId,
+          dependingIssue: issue,
+          issues: input.issues,
+        });
+      } catch (error) {
+        if (error instanceof StaleProjectItemError) {
+          console.warn(
+            `Skipping stale project item while restoring depended issue URL: ${issue.url} (itemId=${error.itemId})`,
+          );
+          continue;
+        }
+        failedIssueDescriptions.push(
+          `${issue.url}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    if (failedIssueDescriptions.length > 0) {
+      throw new Error(
+        `Failed to restore depended issue URL for ${failedIssueDescriptions.length} issue(s): ${failedIssueDescriptions.join('; ')}`,
+      );
     }
   };
 
@@ -116,11 +141,33 @@ export class DependedIssueURLRestoreUseCase {
       dependingIssue,
       updatedDependedIssueUrls.join(','),
     );
-    await this.issueRepository.createComment(
+    await this.createCommentWithDedup(
       dependingIssue,
       `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n${restorableDependedIssueUrls
         .map((url) => `- ${url}`)
         .join('\n')}`,
+    );
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    await commentCreateWithDedupRetry(
+      commentBody,
+      async () => {
+        const existing =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        return existing.map((c) => ({
+          text: c.body,
+          createdAt: c.createdAt,
+        }));
+      },
+      async () => {
+        await this.issueRepository.createComment(issue, commentBody);
+      },
+      () => new Date(),
+      this.sleep,
     );
   };
 
