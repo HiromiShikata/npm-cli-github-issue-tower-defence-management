@@ -31,9 +31,7 @@ const isDailySecurityScanRunLogEntry = (
 export const defaultDailySecurityScanRunLogDirectory = (): string =>
   path.join(tdpmCacheDirectory(), 'daily-security-scan-run-log');
 
-export class FileSystemDailySecurityScanRunLogRepository
-  implements DailySecurityScanRunLogRepository
-{
+export class FileSystemDailySecurityScanRunLogRepository implements DailySecurityScanRunLogRepository {
   constructor(
     private readonly baseDirectory: string = defaultDailySecurityScanRunLogDirectory(),
   ) {}

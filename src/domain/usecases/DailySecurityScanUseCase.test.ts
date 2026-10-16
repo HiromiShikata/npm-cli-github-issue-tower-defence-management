@@ -1910,15 +1910,17 @@ describe('DailySecurityScanUseCase', () => {
         scanStderr?: string;
       };
 
-      const buildRunLogScanRunner = (
-        repositoryBehaviors: Record<string, RunLogScanRepositoryBehavior>,
-      ) =>
+      const buildRunLogScanRunner =
+        (repositoryBehaviors: Record<string, RunLogScanRepositoryBehavior>) =>
         async (program: string, args: string[]) => {
           if (program === 'find') {
             return {
               stdout:
                 Object.keys(repositoryBehaviors)
-                  .map((repositoryName) => `/repos/example-org/${repositoryName}/.git`)
+                  .map(
+                    (repositoryName) =>
+                      `/repos/example-org/${repositoryName}/.git`,
+                  )
                   .join('\n') + '\n',
               stderr: '',
               exitCode: 0,
@@ -1966,7 +1968,11 @@ describe('DailySecurityScanUseCase', () => {
                 exitCode: 128,
               };
             }
-            return { stdout: `${SCANNED_COMMIT_SHA}\n`, stderr: '', exitCode: 0 };
+            return {
+              stdout: `${SCANNED_COMMIT_SHA}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
           }
           if (program === 'git') {
             const repositoryDirectory = args[1];
@@ -2044,9 +2050,9 @@ describe('DailySecurityScanUseCase', () => {
 
           await runDailySecurityScanOnce(useCase);
 
-          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
-            1,
-          );
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(1);
           const loggedEntry =
             mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
           expect(loggedEntry.repositoryName).toBe('app');
@@ -2077,7 +2083,9 @@ describe('DailySecurityScanUseCase', () => {
         ],
       });
 
-      const osvScanOutputOf = (packages: ReturnType<typeof exampleVulnerablePackage>[]) =>
+      const osvScanOutputOf = (
+        packages: ReturnType<typeof exampleVulnerablePackage>[],
+      ) =>
         JSON.stringify({
           results: [
             {
@@ -2159,10 +2167,12 @@ describe('DailySecurityScanUseCase', () => {
 
           await runDailySecurityScanOnce(useCase);
 
-          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
-            1,
-          );
-          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledWith({
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(1);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledWith({
             repositoryName: 'app',
             executedAtIso: EXECUTED_AT_ISO,
             outcome: expectedOutcome,
@@ -2197,9 +2207,9 @@ describe('DailySecurityScanUseCase', () => {
 
         await runDailySecurityScanOnce(useCase);
 
-        expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
-          2,
-        );
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenCalledTimes(2);
         expect(
           mockDailySecurityScanRunLogRepository.append.mock.calls[0][0]
             .repositoryName,
