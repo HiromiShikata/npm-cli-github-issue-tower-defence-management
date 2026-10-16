@@ -3,6 +3,7 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
 import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
+import { DailySecurityScanRunLogRepository } from './adapter-interfaces/DailySecurityScanRunLogRepository';
 import { mock } from 'jest-mock-extended';
 
 const KEV_CATALOG_URL =
@@ -17,11 +18,16 @@ describe('DailySecurityScanUseCase', () => {
       mock<KevReportWatermarkRepository>();
     mockKevReportWatermarkRepository.load.mockResolvedValue({ type: 'absent' });
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    const mockDailySecurityScanRunLogRepository =
+      mock<DailySecurityScanRunLogRepository>();
+    const clock = jest.fn<Date, []>(() => new Date('2024-03-05T10:15:00.000Z'));
     const useCase = new DailySecurityScanUseCase(
       mockLocalCommandRunner,
       mockIssueRepository,
       mockHttpRepository,
       mockKevReportWatermarkRepository,
+      mockDailySecurityScanRunLogRepository,
+      clock,
     );
     return {
       useCase,
@@ -29,6 +35,8 @@ describe('DailySecurityScanUseCase', () => {
       mockIssueRepository,
       mockHttpRepository,
       mockKevReportWatermarkRepository,
+      mockDailySecurityScanRunLogRepository,
+      clock,
     };
   };
 
@@ -1194,6 +1202,8 @@ describe('DailySecurityScanUseCase', () => {
         mockIssueRepository,
         deps.mockHttpRepository,
         deps.mockKevReportWatermarkRepository,
+        deps.mockDailySecurityScanRunLogRepository,
+        undefined,
         mockSleep,
       );
 
@@ -1275,6 +1285,8 @@ describe('DailySecurityScanUseCase', () => {
         mockIssueRepository,
         deps.mockHttpRepository,
         deps.mockKevReportWatermarkRepository,
+        deps.mockDailySecurityScanRunLogRepository,
+        undefined,
         mockSleep,
       );
 
@@ -1874,6 +1886,332 @@ describe('DailySecurityScanUseCase', () => {
         expect.stringContaining('disk is read-only'),
       );
       errorSpy.mockRestore();
+    });
+
+    describe('daily security scan run log persistence', () => {
+      const EXECUTED_AT_ISO = '2024-03-05T10:15:00.000Z';
+      const SCANNED_COMMIT_SHA = 'c0ffee1234567890abcdef1234567890abcdef12';
+      const CHECKOUT_DIRECTORY_SUFFIX = '-abc123';
+
+      const checkoutDirectoryOf = (repositoryName: string): string =>
+        `/tmp/tdpm-daily-security-scan-${repositoryName}${CHECKOUT_DIRECTORY_SUFFIX}`;
+
+      const repositoryNameFromCheckoutDirectory = (
+        checkoutDirectory: string,
+      ): string =>
+        checkoutDirectory
+          .replace(/^\/tmp\/tdpm-daily-security-scan-/, '')
+          .replace(new RegExp(`${CHECKOUT_DIRECTORY_SUFFIX}$`), '');
+
+      type RunLogScanRepositoryBehavior = {
+        checkoutFailure?: 'mktemp' | 'clone' | 'rev-parse';
+        scanExitCode: number;
+        scanStdout?: string;
+        scanStderr?: string;
+      };
+
+      const buildRunLogScanRunner = (
+        repositoryBehaviors: Record<string, RunLogScanRepositoryBehavior>,
+      ) =>
+        async (program: string, args: string[]) => {
+          if (program === 'find') {
+            return {
+              stdout:
+                Object.keys(repositoryBehaviors)
+                  .map((repositoryName) => `/repos/example-org/${repositoryName}/.git`)
+                  .join('\n') + '\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            const template = args[args.length - 1];
+            const match = template.match(
+              /^tdpm-daily-security-scan-(.+)-XXXXXX$/,
+            );
+            const repositoryName = match ? match[1] : '';
+            const behavior = repositoryBehaviors[repositoryName];
+            if (behavior?.checkoutFailure === 'mktemp') {
+              return { stdout: '', stderr: '', exitCode: 1 };
+            }
+            return {
+              stdout: `${checkoutDirectoryOf(repositoryName)}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git' && args[0] === 'clone') {
+            const checkoutDirectory = args[args.length - 1];
+            const repositoryName =
+              repositoryNameFromCheckoutDirectory(checkoutDirectory);
+            const behavior = repositoryBehaviors[repositoryName];
+            if (behavior?.checkoutFailure === 'clone') {
+              return {
+                stdout: '',
+                stderr: 'fatal: repository not found',
+                exitCode: 128,
+              };
+            }
+            return { stdout: '', stderr: '', exitCode: 0 };
+          }
+          if (program === 'git' && args.includes('rev-parse')) {
+            const checkoutDirectory = args[1];
+            const repositoryName =
+              repositoryNameFromCheckoutDirectory(checkoutDirectory);
+            const behavior = repositoryBehaviors[repositoryName];
+            if (behavior?.checkoutFailure === 'rev-parse') {
+              return {
+                stdout: '',
+                stderr: 'fatal: ambiguous argument HEAD',
+                exitCode: 128,
+              };
+            }
+            return { stdout: `${SCANNED_COMMIT_SHA}\n`, stderr: '', exitCode: 0 };
+          }
+          if (program === 'git') {
+            const repositoryDirectory = args[1];
+            const repositoryName = repositoryDirectory.split('/').pop() ?? '';
+            return {
+              stdout: `git@github.com:example-org/${repositoryName}.git\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            const checkoutDirectory = args[args.indexOf('-r') + 1];
+            const repositoryName =
+              repositoryNameFromCheckoutDirectory(checkoutDirectory);
+            const behavior = repositoryBehaviors[repositoryName];
+            return {
+              stdout: behavior?.scanStdout ?? '',
+              stderr: behavior?.scanStderr ?? '',
+              exitCode: behavior?.scanExitCode ?? 0,
+            };
+          }
+          if (program === 'rm') {
+            return { stdout: '', stderr: '', exitCode: 0 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        };
+
+      const runDailySecurityScanOnce = async (
+        useCase: DailySecurityScanUseCase,
+      ): Promise<void> => {
+        await useCase.run({
+          targetDates: [new Date('2024-01-02T05:00:00Z')],
+          org: 'example-org',
+          manager: 'manager-name',
+          dailySecurityScan: {
+            scanBaseDirectory: '/repos',
+            targetHourUtc: 5,
+          },
+        });
+      };
+
+      it.each([
+        {
+          name: 'the temporary checkout directory cannot be created',
+          checkoutFailure: 'mktemp' as const,
+        },
+        {
+          name: 'the git clone of the default branch fails',
+          checkoutFailure: 'clone' as const,
+        },
+        {
+          name: 'git rev-parse HEAD fails after an otherwise successful clone',
+          checkoutFailure: 'rev-parse' as const,
+        },
+      ])(
+        'logs a checkoutFailed run log entry with a non-empty reason when $name',
+        async ({ checkoutFailure }) => {
+          const {
+            useCase,
+            mockLocalCommandRunner,
+            mockIssueRepository,
+            mockDailySecurityScanRunLogRepository,
+            clock,
+          } = buildUseCase();
+          clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+          mockIssueRepository.searchIssue.mockResolvedValue([]);
+          const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+          mockLocalCommandRunner.runCommand.mockImplementation(
+            buildRunLogScanRunner({
+              app: { checkoutFailure, scanExitCode: 0 },
+            }),
+          );
+
+          await runDailySecurityScanOnce(useCase);
+
+          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
+            1,
+          );
+          const loggedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(loggedEntry.repositoryName).toBe('app');
+          expect(loggedEntry.executedAtIso).toBe(EXECUTED_AT_ISO);
+          expect(loggedEntry.outcome.type).toBe('checkoutFailed');
+          if (loggedEntry.outcome.type !== 'checkoutFailed') {
+            throw new Error('unreachable: asserted above');
+          }
+          expect(typeof loggedEntry.outcome.reason).toBe('string');
+          expect(loggedEntry.outcome.reason.length).toBeGreaterThan(0);
+
+          errorSpy.mockRestore();
+        },
+      );
+
+      const exampleVulnerablePackage = (suffix: string) => ({
+        package: {
+          name: `example-library-${suffix}`,
+          version: '1.2.3',
+          ecosystem: 'npm',
+        },
+        vulnerabilities: [
+          {
+            id: `GHSA-1111-2222-${suffix}`,
+            aliases: [],
+            summary: `Example Library Deserialization ${suffix}`,
+          },
+        ],
+      });
+
+      const osvScanOutputOf = (packages: ReturnType<typeof exampleVulnerablePackage>[]) =>
+        JSON.stringify({
+          results: [
+            {
+              source: { path: '/repos/example-org/app', type: 'lockfile' },
+              packages,
+            },
+          ],
+        });
+
+      it.each([
+        {
+          name: 'exits 0 because no vulnerability was found',
+          scanExitCode: 0,
+          scanStdout: '',
+          scanStderr: '',
+          expectedOutcome: {
+            type: 'scanCompletedClean' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+          },
+        },
+        {
+          name: 'exits 1 with exactly one vulnerable package detected',
+          scanExitCode: 1,
+          scanStdout: osvScanOutputOf([exampleVulnerablePackage('one')]),
+          scanStderr: '',
+          expectedOutcome: {
+            type: 'scanCompletedWithVulnerabilities' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            vulnerablePackageCount: 1,
+          },
+        },
+        {
+          name: 'exits 1 with exactly three vulnerable packages detected',
+          scanExitCode: 1,
+          scanStdout: osvScanOutputOf([
+            exampleVulnerablePackage('a'),
+            exampleVulnerablePackage('b'),
+            exampleVulnerablePackage('c'),
+          ]),
+          scanStderr: '',
+          expectedOutcome: {
+            type: 'scanCompletedWithVulnerabilities' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            vulnerablePackageCount: 3,
+          },
+        },
+        {
+          name: 'exits with an unexpected exit code',
+          scanExitCode: 2,
+          scanStdout: '',
+          scanStderr: 'osv-scanner crashed: out of memory',
+          expectedOutcome: {
+            type: 'scanFailed' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            exitCode: 2,
+            stderr: 'osv-scanner crashed: out of memory',
+          },
+        },
+      ])(
+        'logs a run log entry carrying the cloned commit SHA when osv-scanner $name',
+        async ({ scanExitCode, scanStdout, scanStderr, expectedOutcome }) => {
+          const {
+            useCase,
+            mockLocalCommandRunner,
+            mockIssueRepository,
+            mockDailySecurityScanRunLogRepository,
+            clock,
+          } = buildUseCase();
+          clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+          mockIssueRepository.searchIssue.mockResolvedValue([]);
+          const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+          mockLocalCommandRunner.runCommand.mockImplementation(
+            buildRunLogScanRunner({
+              app: { scanExitCode, scanStdout, scanStderr },
+            }),
+          );
+
+          await runDailySecurityScanOnce(useCase);
+
+          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
+            1,
+          );
+          expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledWith({
+            repositoryName: 'app',
+            executedAtIso: EXECUTED_AT_ISO,
+            outcome: expectedOutcome,
+          });
+
+          errorSpy.mockRestore();
+        },
+      );
+
+      it('still appends a run log entry for every subsequent repository when append throws for an earlier one', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRunLogScanRunner({
+            flaky: { scanExitCode: 0 },
+            stable: { scanExitCode: 0 },
+          }),
+        );
+        mockDailySecurityScanRunLogRepository.append.mockRejectedValueOnce(
+          new Error('disk is full'),
+        );
+
+        await runDailySecurityScanOnce(useCase);
+
+        expect(mockDailySecurityScanRunLogRepository.append).toHaveBeenCalledTimes(
+          2,
+        );
+        expect(
+          mockDailySecurityScanRunLogRepository.append.mock.calls[0][0]
+            .repositoryName,
+        ).toBe('flaky');
+        expect(
+          mockDailySecurityScanRunLogRepository.append.mock.calls[1][0]
+            .repositoryName,
+        ).toBe('stable');
+        expect(errorSpy).toHaveBeenCalled();
+
+        errorSpy.mockRestore();
+      });
     });
   });
 });
