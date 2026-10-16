@@ -1069,9 +1069,7 @@ describe('loadFleetBannedAgents', () => {
   it('throws when the fleetBannedAgents value is not an array', () => {
     const fleetConfigFilePath = writeFleetConfig('fleetBannedAgents: 42\n');
 
-    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow(
-      'must be',
-    );
+    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow('must be');
   });
 
   it('throws when the fleetBannedAgents array contains a non-string element', () => {
@@ -1079,9 +1077,7 @@ describe('loadFleetBannedAgents', () => {
       'fleetBannedAgents:\n  - urgent-taskforce-leader\n  - 42\n',
     );
 
-    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow(
-      'must be',
-    );
+    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow('must be');
   });
 });
 

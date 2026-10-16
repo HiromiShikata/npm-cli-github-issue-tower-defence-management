@@ -6516,7 +6516,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }
       const firstCall: unknown = mockCalls[0];
       if (!Array.isArray(firstCall) || firstCall.length < 2) {
-        throw new Error('Expected the first mock call to have at least two arguments.');
+        throw new Error(
+          'Expected the first mock call to have at least two arguments.',
+        );
       }
       return firstCall[1];
     };
@@ -7214,9 +7216,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
       const informationalCommentBody: unknown = requireSecondCallArgument(
         mockIssueCommentRepository.createComment.mock.calls,
       );
@@ -7259,9 +7259,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
       const informationalCommentBody: unknown = requireSecondCallArgument(
         mockIssueCommentRepository.createComment.mock.calls,
       );
@@ -7309,9 +7307,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(
-        mockIssueCommentRepository.createComment,
-      ).not.toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.stringMatching(
           /excluded from automatic dispatch|will not be re-dispatched/,
