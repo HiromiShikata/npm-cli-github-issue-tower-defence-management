@@ -13,3 +13,5 @@ export const SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD =
 export const DEPENDENCY_REMOVED_COMMENT_HEAD = 'Dependency removed:';
 export const CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD =
   'Circular dependency removed:';
+export const DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD =
+  'Depended issue URL restored to dependency field:';

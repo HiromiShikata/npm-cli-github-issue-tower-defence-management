@@ -53,6 +53,7 @@ import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecas
 import { StaleTaskPullRequestCloseUseCase } from '../../../domain/usecases/StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
+import { DependedIssueURLRestoreUseCase } from '../../../domain/usecases/DependedIssueURLRestoreUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
@@ -554,6 +555,9 @@ export class HandleScheduledEventUseCaseHandler {
       systemDateRepository,
       issueRepository,
     );
+    const dependedIssueURLRestoreUseCase = new DependedIssueURLRestoreUseCase(
+      issueRepository,
+    );
 
     const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase(
       issueRepository,
@@ -659,6 +663,7 @@ export class HandleScheduledEventUseCaseHandler {
       staleTaskPullRequestCloseUseCase,
       createEstimationIssueUseCase,
       changeStatusByStoryColorUseCase,
+      dependedIssueURLRestoreUseCase,
       setNoStoryIssueToStoryUseCase,
       createNewStoryByLabel,
       assignNoAssigneeIssueToManagerUseCase,
