@@ -1,3 +1,10 @@
+## [2.171.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.1...v2.171.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase, CreateEstimationIssueUseCase:** backfill matched story issue into same-cycle issues list and skip GRAY story options ([#3427](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3427)) ([2de5b0b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2de5b0b713d4351e849eeab6b6266a2c64de1160))
+
 ## [2.171.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.0...v2.171.1) (2026-10-16)
 
 
