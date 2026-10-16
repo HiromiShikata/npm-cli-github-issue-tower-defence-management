@@ -1341,4 +1341,62 @@ describe('IssueCreateModalDialog', () => {
     expect(projectOptionTexts.length).toBeGreaterThan(0);
     expect(projectOptionTexts).toEqual(workflowOptionTexts);
   });
+
+  it('renders exactly 2 destination selector buttons named "Project" and "Workflow" when onSubmitWorkflow is provided', () => {
+    render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const destinationButtons = document.body.querySelectorAll(
+      '.console-task-create-dialog-destination-selector button',
+    );
+    expect(destinationButtons.length).toBe(2);
+    expect([...destinationButtons].map((button) => button.textContent)).toEqual(
+      ['Project', 'Workflow'],
+    );
+  });
+
+  it('renders exactly 1 destination selector button named "Project" when onSubmitWorkflow is undefined', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const destinationButtons = document.body.querySelectorAll(
+      '.console-task-create-dialog-destination-selector button',
+    );
+    expect(destinationButtons.length).toBe(1);
+    expect([...destinationButtons].map((button) => button.textContent)).toEqual(
+      ['Project'],
+    );
+  });
+
+  it('renders identical Story and Agent option lists after switching from Project to Workflow when workflowStoryEntries and workflowAgentOptions are not provided', () => {
+    const collectOptionListTexts = (): string[][] =>
+      [
+        ...document.body.querySelectorAll(
+          '.console-task-create-dialog-option-list',
+        ),
+      ].map((optionList) =>
+        [...optionList.querySelectorAll('button')].map(
+          (button) => button.textContent ?? '',
+        ),
+      );
+
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        initialDestination="project"
+        onSubmitWorkflow={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const [projectStoryTexts, projectAgentTexts] = collectOptionListTexts();
+
+    fireEvent.click(getByRole('button', { name: 'Workflow' }));
+
+    const [workflowStoryTexts, workflowAgentTexts] = collectOptionListTexts();
+
+    expect(projectStoryTexts.length).toBeGreaterThan(0);
+    expect(projectAgentTexts.length).toBeGreaterThan(0);
+    expect(workflowStoryTexts).toEqual(projectStoryTexts);
+    expect(workflowAgentTexts).toEqual(projectAgentTexts);
+  });
 });
