@@ -717,6 +717,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       thresholdForDispatchLoop:
         params.thresholdForDispatchLoop ?? DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory,
+      dependedIssueUrls: issue.dependedIssueUrls,
       latestReopenedAt,
       sessionEndedWithoutCompletingTurn:
         params.sessionEndedWithoutCompletingTurn ?? false,

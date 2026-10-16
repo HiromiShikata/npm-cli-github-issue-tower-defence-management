@@ -543,6 +543,67 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
+  it('should not escalate to Failed Preparation for a dispatch-loop-shaped comment history when dependedIssueUrls is set, and should post an informational comment naming the dependency URL instead', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      agent: 'systems-analyst',
+      dependedIssueUrls: ['https://github.com/user/repo/issues/999'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    const namesReviewer = {
+      author: 'bot',
+      content:
+        'From: :robot: systems-analyst\n```json\n{"nextStep":null,"nextStepAgent":"system-design-reviewer"}\n```',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
+      updatedAt: new Date('2024-01-02T00:00:00Z'),
+    };
+    const namesAnalyst = {
+      author: 'bot',
+      content:
+        'From: :robot: system-design-reviewer\n```json\n{"nextStep":null,"nextStepAgent":"systems-analyst"}\n```',
+      createdAt: new Date('2024-01-02T01:00:00Z'),
+      updatedAt: new Date('2024-01-02T01:00:00Z'),
+    };
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      allowedIssueAuthors: ['bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('https://github.com/user/repo/issues/999'),
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining(
+        'dispatched 3 times since the last human comment',
+      ),
+    );
+  });
+
   it('should record the repeated dispatch even when the project has no Failed Preparation status', async () => {
     mockProject.status.statuses = mockProject.status.statuses.filter(
       (status) => status.name !== 'Failed Preparation',
@@ -2341,6 +2402,57 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stuckIssue,
     );
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
+      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
+    );
+  });
+
+  it('should not escalate to Failed Preparation when the pre-existing REJECTED-comment count meets the rejection threshold but dependedIssueUrls is set, and should post an informational comment naming the dependency URL instead', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      dependedIssueUrls: ['https://github.com/user/repo/issues/999'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: 'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('https://github.com/user/repo/issues/999'),
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      stuckIssue,
       'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
     );
   });

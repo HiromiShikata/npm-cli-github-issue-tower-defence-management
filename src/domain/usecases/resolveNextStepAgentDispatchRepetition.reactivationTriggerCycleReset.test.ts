@@ -49,6 +49,7 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
       thresholdForAutoReject: 99,
       thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory: false,
+      dependedIssueUrls: [],
     });
 
     expect(result.type).toBe('escalateDispatchLoop');
@@ -72,6 +73,7 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
       thresholdForAutoReject: 99,
       thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory: false,
+      dependedIssueUrls: [],
     });
 
     expect(result.type).not.toBe('escalateDispatchLoop');
