@@ -11631,8 +11631,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         openPullRequests: [],
         issueOverrides: {
           title: 'Weekly report',
-          body:
-            'Produce the performance evaluation report. [edit this template](https://calendar.google.com/calendar/event?eid=abc123)',
+          body: 'Produce the performance evaluation report. [edit this template](https://calendar.google.com/calendar/event?eid=abc123)',
         },
       });
 
@@ -11703,8 +11702,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('has no effect on routing when closeIssueAs was not requested even though the title/body looks like a human-authored investigation task (closeIssueAs criterion 18)', async () => {
-      const statusIdsWithInvestigationTitleAndBody =
-        await statusIdsForScenario({
+      const statusIdsWithInvestigationTitleAndBody = await statusIdsForScenario(
+        {
           project: projectWithDoneStatus(),
           comments: [agentReportEndingWith('{}')],
           openPullRequests: [],
@@ -11712,7 +11711,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
             title: investigationTaskTitle,
             body: investigationTaskBody,
           },
-        });
+        },
+      );
 
       expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
 
