@@ -1,3 +1,10 @@
+## [2.171.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.4...v2.171.5) (2026-10-16)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** reimplement isHumanAuthoredInvestigationTaskCloseOverride with calendar-marker exclusion and research keyword ([#3442](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3442)) ([e8dcff9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e8dcff9e54235a40234f1d7460928438643801ae)), closes [#3121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3121) [#3147](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3147)
+
 ## [2.171.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.3...v2.171.4) (2026-10-16)
 
 
