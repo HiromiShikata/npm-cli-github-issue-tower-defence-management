@@ -3260,6 +3260,177 @@ mysteryKey: 'value'
           }
         }
       });
+
+      it('reports an error and exits without calling handleFatalError when fleetBannedAgents in fleet config is invalid', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-banned-agents-invalid.config.yaml',
+          { fleetBannedAgents: 42 },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).toHaveBeenCalledWith(1);
+          const errorOutput = consoleErrorSpy.mock.calls
+            .flat()
+            .map(String)
+            .join('');
+          expect(errorOutput).toContain('fleetBannedAgents');
+          expect(mockRun).not.toHaveBeenCalled();
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('proceeds normally when fleetBannedAgents in fleet config is valid', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-banned-agents-valid.config.yaml',
+          { fleetBannedAgents: ['urgent-taskforce-leader'] },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalled();
+          expect(consoleErrorSpy).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({
+              fleetBannedAgents: ['urgent-taskforce-leader'],
+            }),
+          );
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
+
+      it('passes null fleetBannedAgents when fleet config has no fleetBannedAgents key', async () => {
+        const fleetConfigFilePath = writeFleetConfig(
+          'fleet-notify-banned-agents-unset.config.yaml',
+          { errorReportingRepository: 'fleet-owner/fleet-repo' },
+        );
+        const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+        jest
+          .mocked(NotifyFinishedIssuePreparationUseCase)
+          .mockImplementation(function (
+            this: NotifyFinishedIssuePreparationUseCase,
+          ) {
+            this.run = mockRun;
+            return this;
+          });
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(
+            jest.fn<never, Parameters<typeof process.exit>>(),
+          );
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const handleFatalError = jest.fn();
+
+        try {
+          await runCliProgram(
+            [
+              'node',
+              'test',
+              'notifyFinishedIssuePreparation',
+              '--configFilePath',
+              configFilePath,
+              '--issueUrl',
+              'https://github.com/test/repo/issues/1',
+              '--fleetConfigFilePath',
+              fleetConfigFilePath,
+            ],
+            handleFatalError,
+          );
+
+          expect(handleFatalError).not.toHaveBeenCalled();
+          expect(processExitSpy).not.toHaveBeenCalled();
+          expect(consoleErrorSpy).not.toHaveBeenCalled();
+          expect(mockRun).toHaveBeenCalledWith(
+            expect.objectContaining({
+              fleetBannedAgents: null,
+            }),
+          );
+        } finally {
+          processExitSpy.mockRestore();
+          consoleErrorSpy.mockRestore();
+          if (fs.existsSync(fleetConfigFilePath)) {
+            fs.unlinkSync(fleetConfigFilePath);
+          }
+        }
+      });
     });
 
     describe('worker session ending classification and notification retry', () => {
