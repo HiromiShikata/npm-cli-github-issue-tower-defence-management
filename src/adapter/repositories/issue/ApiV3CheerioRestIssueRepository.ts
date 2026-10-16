@@ -933,7 +933,10 @@ export class ApiV3CheerioRestIssueRepository
     const formatted = await this.formatGitHubErrorWithStatus(response);
     const message = `${prefix}: ${formatted}`;
     if (isRateLimit) {
-      throw new GitHubRateLimitError(message);
+      throw new GitHubRateLimitError(
+        message,
+        computeRateLimitResetIso(response.headers),
+      );
     }
     throw new Error(message);
   };
@@ -2346,9 +2349,9 @@ export class ApiV3CheerioRestIssueRepository
         `ApiV3CheerioRestIssueRepository: branch rules are not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
       );
     } else if (rulesResponse.status !== 404) {
-      const reason = await this.formatGitHubErrorWithStatus(rulesResponse);
-      throw new Error(
-        `Failed to fetch branch rules for ${owner}/${repo}/${branch}: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to fetch branch rules for ${owner}/${repo}/${branch}`,
+        rulesResponse,
       );
     }
 
@@ -2381,9 +2384,9 @@ export class ApiV3CheerioRestIssueRepository
         `ApiV3CheerioRestIssueRepository: branch detail (classic protection) is not accessible for ${owner}/${repo}/${branch}, treating as no required checks. reason: ${reason}`,
       );
     } else if (branchResponse.status !== 404) {
-      const reason = await this.formatGitHubErrorWithStatus(branchResponse);
-      throw new Error(
-        `Failed to fetch branch detail for ${owner}/${repo}/${branch}: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to fetch branch detail for ${owner}/${repo}/${branch}`,
+        branchResponse,
       );
     }
 
@@ -2465,10 +2468,9 @@ export class ApiV3CheerioRestIssueRepository
         );
         return [];
       }
-      const reason =
-        await this.formatGitHubErrorWithStatus(checkSuitesResponse);
-      throw new Error(
-        `Failed to fetch check suites for ${owner}/${repo}@${commitSha}: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to fetch check suites for ${owner}/${repo}@${commitSha}`,
+        checkSuitesResponse,
       );
     }
 
@@ -2498,9 +2500,9 @@ export class ApiV3CheerioRestIssueRepository
           { method: 'GET', path: sanitizeRestPath(runsUrl) },
         );
         if (!runsResponse.ok) {
-          const reason = await this.formatGitHubErrorWithStatus(runsResponse);
-          throw new Error(
-            `Failed to fetch check runs for suite ${suite.id} in ${owner}/${repo}: ${reason}`,
+          await this.throwGitHubError(
+            `Failed to fetch check runs for suite ${suite.id} in ${owner}/${repo}`,
+            runsResponse,
           );
         }
         const runsBody: unknown = await runsResponse.json();
@@ -2602,6 +2604,7 @@ export class ApiV3CheerioRestIssueRepository
       const formatted = await this.formatGitHubErrorWithStatus(page1Response);
       throw new GitHubRateLimitError(
         `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${formatted}`,
+        computeRateLimitResetIso(page1Response.headers),
       );
     }
 
@@ -2704,6 +2707,7 @@ export class ApiV3CheerioRestIssueRepository
         const formatted = await this.formatGitHubErrorWithStatus(pageResponse);
         throw new GitHubRateLimitError(
           `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${formatted}`,
+          computeRateLimitResetIso(pageResponse.headers),
         );
       }
 
@@ -2784,6 +2788,7 @@ export class ApiV3CheerioRestIssueRepository
       );
       throw new GitHubRateLimitError(
         `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${formatted}`,
+        computeRateLimitResetIso(combinedStatusResponse.headers),
       );
     }
 
@@ -3833,8 +3838,7 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'PATCH', path: sanitizeRestPath(closePrUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to close PR ${prUrl}: ${reason}`);
+      await this.throwGitHubError(`Failed to close PR ${prUrl}`, response);
     }
   };
 
@@ -3859,8 +3863,10 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'PATCH', path: sanitizeRestPath(closeIssueUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to close issue ${issueUrl}: ${reason}`);
+      await this.throwGitHubError(
+        `Failed to close issue ${issueUrl}`,
+        response,
+      );
     }
   };
 
@@ -3882,8 +3888,10 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'PATCH', path: sanitizeRestPath(reopenIssueUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to reopen issue ${issueUrl}: ${reason}`);
+      await this.throwGitHubError(
+        `Failed to reopen issue ${issueUrl}`,
+        response,
+      );
     }
   };
 
@@ -3931,9 +3939,9 @@ export class ApiV3CheerioRestIssueRepository
         { method: 'GET', path: sanitizeRestPath(eventsUrl) },
       );
       if (!response.ok) {
-        const reason = await this.formatGitHubErrorWithStatus(response);
-        throw new Error(
-          `Failed to fetch events for issue ${issue.url}: ${reason}`,
+        await this.throwGitHubError(
+          `Failed to fetch events for issue ${issue.url}`,
+          response,
         );
       }
       const body: unknown = await response.json();
@@ -3993,9 +4001,9 @@ export class ApiV3CheerioRestIssueRepository
       variables,
     });
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(
-        `Failed to fetch the latest reopened timeline item of issue ${issue.url} from GitHub GraphQL API: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to fetch the latest reopened timeline item of issue ${issue.url} from GitHub GraphQL API`,
+        response,
       );
     }
     const responseBody: unknown = await response.json();
@@ -4064,9 +4072,9 @@ export class ApiV3CheerioRestIssueRepository
         { method: 'GET', path: sanitizeRestPath(repositoryIssueEventFeedUrl) },
       );
       if (!response.ok) {
-        const reason = await this.formatGitHubErrorWithStatus(response);
-        throw new Error(
-          `Failed to fetch page ${page} of the repository issue event feed of ${owner}/${repo} for issue ${issue.url}: ${reason}`,
+        await this.throwGitHubError(
+          `Failed to fetch page ${page} of the repository issue event feed of ${owner}/${repo} for issue ${issue.url}`,
+          response,
         );
       }
       const body: unknown = await response.json();
@@ -4116,9 +4124,9 @@ export class ApiV3CheerioRestIssueRepository
         { method: 'GET', path: sanitizeRestPath(prFilesUrl) },
       );
       if (!response.ok) {
-        const reason = await this.formatGitHubErrorWithStatus(response);
-        throw new Error(
-          `Failed to fetch changed files for PR ${prUrl}: ${reason}`,
+        await this.throwGitHubError(
+          `Failed to fetch changed files for PR ${prUrl}`,
+          response,
         );
       }
       const body: unknown = await response.json();
@@ -4152,8 +4160,10 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'GET', path: '/user' },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to fetch authenticated user: ${reason}`);
+      await this.throwGitHubError(
+        'Failed to fetch authenticated user',
+        response,
+      );
     }
     const body: unknown = await response.json();
     if (!isAuthenticatedUserResponse(body)) {
@@ -4181,8 +4191,7 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'POST', path: sanitizeRestPath(approveUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
+      await this.throwGitHubError(`Failed to approve PR ${prUrl}`, response);
     }
   };
 
@@ -4217,13 +4226,13 @@ export class ApiV3CheerioRestIssueRepository
         if (retryResponse.ok) {
           return;
         }
-        const retryReason =
-          await this.formatGitHubErrorWithStatus(retryResponse);
-        throw new Error(`Failed to merge PR ${prUrl}: ${retryReason}`);
+        await this.throwGitHubError(
+          `Failed to merge PR ${prUrl}`,
+          retryResponse,
+        );
       }
     }
-    const reason = await this.formatGitHubErrorWithStatus(response);
-    throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
+    await this.throwGitHubError(`Failed to merge PR ${prUrl}`, response);
   };
 
   private resolveAllowedMergeMethod = async (
@@ -4297,10 +4306,12 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'POST', path: sanitizeRestPath(reviewUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
+      const probeReason = await this.formatGitHubErrorWithStatus(
+        response.clone(),
+      );
       if (
         response.status === 422 &&
-        reason.includes(SELF_AUTHORED_REVIEW_REFUSAL)
+        probeReason.includes(SELF_AUTHORED_REVIEW_REFUSAL)
       ) {
         await this.recordRequestedChangesWithoutReview(
           prUrl,
@@ -4310,7 +4321,10 @@ export class ApiV3CheerioRestIssueRepository
         );
         return;
       }
-      throw new Error(`Failed to request changes on PR ${prUrl}: ${reason}`);
+      await this.throwGitHubError(
+        `Failed to request changes on PR ${prUrl}`,
+        response,
+      );
     }
   };
 
@@ -4354,8 +4368,10 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'GET', path: sanitizeRestPath(headShaUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to fetch head commit for PR ${prUrl}: ${reason}`);
+      await this.throwGitHubError(
+        `Failed to fetch head commit for PR ${prUrl}`,
+        response,
+      );
     }
     const body: unknown = await response.json();
     if (
@@ -4407,9 +4423,9 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'POST', path: sanitizeRestPath(reviewCommentUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(
-        `Failed to create review comment on PR ${prUrl}: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to create review comment on PR ${prUrl}`,
+        response,
       );
     }
   };
@@ -4487,14 +4503,18 @@ export class ApiV3CheerioRestIssueRepository
     if (response.status === 422) {
       return false;
     }
-    const reason = await this.formatGitHubErrorWithStatus(response);
     if (response.status >= 500) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
       console.warn(
         `ApiV3CheerioRestIssueRepository: transient error updating branch for PR ${prUrl}, treating as not updated. reason: ${reason}`,
       );
       return false;
     }
-    throw new Error(`Failed to update branch for PR ${prUrl}: ${reason}`);
+    const neverResolves = await this.throwGitHubError(
+      `Failed to update branch for PR ${prUrl}`,
+      response,
+    );
+    return neverResolves;
   };
 
   deletePullRequestBranch = async (
@@ -4514,9 +4534,9 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'DELETE', path: sanitizeRestPath(deleteBranchUrl) },
     );
     if (!response.ok && response.status !== 422) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(
-        `Failed to delete branch ${branchName} for PR ${prUrl}: ${reason}`,
+      await this.throwGitHubError(
+        `Failed to delete branch ${branchName} for PR ${prUrl}`,
+        response,
       );
     }
   };
@@ -4571,8 +4591,7 @@ export class ApiV3CheerioRestIssueRepository
       return null;
     }
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
+      await this.throwGitHubError(`Failed to fetch body for ${url}`, response);
     }
     return this.parseIssueBodyResponse(url, response);
   };
@@ -4906,8 +4925,10 @@ export class ApiV3CheerioRestIssueRepository
       { method: 'GET', path: sanitizeRestPath(prSummaryUrl) },
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to fetch summary for PR ${prUrl}: ${reason}`);
+      await this.throwGitHubError(
+        `Failed to fetch summary for PR ${prUrl}`,
+        response,
+      );
     }
     const body: unknown = await response.json();
     if (!isPullRequestDetailResponse(body)) {
