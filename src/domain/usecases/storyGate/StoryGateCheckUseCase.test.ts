@@ -623,6 +623,11 @@ describe('StoryGateCheckUseCase', () => {
         linked: [{ number: 2, story: 'milestone on Backlog 2026' }],
       },
       {
+        name: 'the linked Story is a regular catch-all',
+        body: agentBodyLinking(2),
+        linked: [{ number: 2, story: 'regular / chores' }],
+      },
+      {
         name: 'the only link is the issue itself',
         body: agentBodyLinking(ASSIGNED),
         linked: [],
@@ -661,6 +666,32 @@ describe('StoryGateCheckUseCase', () => {
       expect(result.storyAdoption.outcome).toBe('NO_UNIQUE_LINKED_STORY');
       expect(scenario.repository.projectItemReads).not.toContain(issueUrl(4));
       expect(scenario.repository.updates).toEqual([]);
+    });
+
+    it('excludes a linked regular catch-all Story and adopts the remaining distinct Story', async () => {
+      const scenario = new StoryGateScenario({
+        story: null,
+        body: agentBodyLinking(2, 3),
+      });
+      scenario.linkedTaskAdd(2, 'regular / chores');
+      scenario.linkedTaskAdd(3, 'feature A');
+
+      const { result } = await scenario.run();
+
+      expect(result.storyAdoption.outcome).toBe('WRITTEN');
+      expect(result.story).toEqual({
+        value: 'feature A',
+        source: 'ADOPTED',
+        adoptedFromUrls: [issueUrl(3)],
+      });
+      expect(scenario.repository.updates).toEqual([
+        {
+          projectId: BOARD_PROJECT_ID,
+          itemId: `ITEM_${ASSIGNED}`,
+          fieldId: STORY_FIELD_ID,
+          optionId: 'OPT_feature_a',
+        },
+      ]);
     });
 
     it.each([
