@@ -954,6 +954,65 @@ describe('GitHubIssueCommentRepository', () => {
       });
       expect(result.map((c) => c.content)).toEqual(['Freshly fetched comment']);
     });
+
+    describe('circuit breaker', () => {
+      it('issues the GET when the circuit breaker is not blocked', async () => {
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response(JSON.stringify([]), {
+            status: 200,
+          }),
+        );
+
+        await repository.getCommentsFromIssue(buildIssue(TEST_URL));
+
+        expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+          headers: {
+            Authorization: 'Bearer test-token',
+            Accept: 'application/vnd.github+json',
+          },
+        });
+      });
+
+      it('throws GitHubRateLimitError and does not issue the GET request when the circuit breaker is open', async () => {
+        const resetTimeMs = Date.now() + 90_000;
+        mockCheckSecondaryRateLimitBreaker.mockReturnValue({
+          isBlocked: true,
+          resetTimeMs,
+        });
+
+        const fetchSpy = jest.spyOn(global, 'fetch');
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+
+        await expect(
+          repository.getCommentsFromIssue(buildIssue(TEST_URL)),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+
+      it('writes to the breaker state file and throws GitHubRateLimitError when the GET returns a secondary rate limit response', async () => {
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response(
+            'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+            {
+              status: 403,
+              headers: { 'retry-after': '60' },
+            },
+          ),
+        );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+
+        await expect(
+          repository.getCommentsFromIssue(buildIssue(TEST_URL)),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 
   describe('createComment', () => {

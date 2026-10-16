@@ -201,6 +201,15 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
   async getCommentsFromIssue(issue: Issue): Promise<Comment[]> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
+    const stateFilePath = secondaryRateLimitStateFilePath();
+    const breaker = checkSecondaryRateLimitBreaker(Date.now(), stateFilePath);
+    if (breaker.isBlocked && breaker.resetTimeMs !== null) {
+      throw new GitHubRateLimitError(
+        `GitHub secondary rate limit is active until ${new Date(breaker.resetTimeMs).toISOString()}`,
+        new Date(breaker.resetTimeMs).toISOString(),
+      );
+    }
+
     const existingCache = await this.readCommentPageCache(
       owner,
       repo,
@@ -249,6 +258,19 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       }
 
       if (!response.ok) {
+        const bodyText = await response.text().catch(() => '');
+        const nowMs = Date.now();
+        if (isSecondaryRateLimit(response.headers, bodyText)) {
+          const backoffMs = computeSecondaryRateLimitBackoffMs(
+            response.headers,
+            nowMs,
+          );
+          writeSecondaryRateLimitState(nowMs + backoffMs, nowMs, stateFilePath);
+          throw new GitHubRateLimitError(
+            `HTTP ${response.status} GitHub API secondary rate limit exceeded`,
+            new Date(nowMs + backoffMs).toISOString(),
+          );
+        }
         throw new GitHubCommentFetchHttpError(
           response.status,
           `Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`,
