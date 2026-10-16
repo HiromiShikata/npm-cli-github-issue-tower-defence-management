@@ -1,3 +1,10 @@
+## [2.171.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.0...v2.171.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **GitHubIssueCommentRepository:** classify secondary rate limit 403s in getCommentsFromIssue ([#3428](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3428)) ([5124f67](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5124f67737ea01703f3ba1cd79b421380183e736))
+
 # [2.171.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.2...v2.171.0) (2026-10-16)
 
 
