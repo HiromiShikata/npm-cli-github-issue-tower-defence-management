@@ -108,6 +108,22 @@ describe('DependedIssueURLRestoreUseCase', () => {
         expectedCreateCommentBody: null,
       },
       {
+        name: 'should restore a cleared depended issue URL from an icebox-clear comment authored by anyone when allowedIssueAuthors is left unconfigured (regression: pr-reviewer Tier 1 finding on PR #3434 — undefined allowedIssueAuthors must not fail closed for every unconfigured caller)',
+        dependedIssues: [buildDependedIssue({ url: DEP_10_URL })],
+        dependingIssueCurrentDependedIssueUrls: [],
+        dependingIssueComments: [
+          buildComment(
+            `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+            T1,
+            1,
+            'some-random-impostor-user',
+          ),
+        ],
+        allowedIssueAuthors: undefined,
+        expectedUpdateProjectTextFieldText: DEP_10_URL,
+        expectedCreateCommentBody: `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      },
+      {
         name: 'should restore all originally-cleared URLs from a bundled multi-URL Icebox clear, not just one (criterion 2: restore of a bundled multi-URL clear)',
         dependedIssues: [
           buildDependedIssue({ url: DEP_10_URL }),
