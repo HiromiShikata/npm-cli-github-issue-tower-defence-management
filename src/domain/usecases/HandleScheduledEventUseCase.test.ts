@@ -16,6 +16,7 @@ import { FieldOption, Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
+import { DependedIssueURLRestoreUseCase } from './DependedIssueURLRestoreUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
@@ -114,6 +115,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<CreateEstimationIssueUseCase>();
     const mockChangeStatusByStoryColorUseCase =
       mock<ChangeStatusByStoryColorUseCase>();
+    const mockDependedIssueURLRestoreUseCase =
+      mock<DependedIssueURLRestoreUseCase>();
     const mockSetNoStoryIssueToStoryUseCase =
       mock<SetNoStoryIssueToStoryUseCase>();
     const mockCreateNewStoryByLabelUseCase =
@@ -161,6 +164,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockStaleTaskPullRequestCloseUseCase,
       mockCreateEstimationIssueUseCase,
       mockChangeStatusByStoryColorUseCase,
+      mockDependedIssueURLRestoreUseCase,
       mockSetNoStoryIssueToStoryUseCase,
       mockCreateNewStoryByLabelUseCase,
       mockAssignNoAssigneeIssueToManagerUseCase,
@@ -3073,6 +3077,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockStaleTaskPullRequestCloseUseCase,
           mockCreateEstimationIssueUseCase,
           mockChangeStatusByStoryColorUseCase,
+          mockDependedIssueURLRestoreUseCase,
           mockSetNoStoryIssueToStoryUseCase,
           mockCreateNewStoryByLabelUseCase,
           mockAssignNoAssigneeIssueToManagerUseCase,
@@ -3160,6 +3165,7 @@ describe('HandleScheduledEventUseCase', () => {
           mockStaleTaskPullRequestCloseUseCase,
           mockCreateEstimationIssueUseCase,
           mockChangeStatusByStoryColorUseCase,
+          mockDependedIssueURLRestoreUseCase,
           mockSetNoStoryIssueToStoryUseCase,
           mockCreateNewStoryByLabelUseCase,
           mockAssignNoAssigneeIssueToManagerUseCase,
@@ -4241,10 +4247,11 @@ describe('HandleScheduledEventUseCase', () => {
         mockStaleTaskPullRequestCloseUseCase.run,
         mockCreateEstimationIssueUseCase.run,
         mockChangeStatusByStoryColorUseCase.run,
+        mockDependedIssueURLRestoreUseCase.run,
         mockAssignNoAssigneeIssueToManagerUseCase.run,
       ];
 
-      it('calls each of the other 7 slow-sweep operations exactly once per SLOW_SWEEP_INTERVAL_SECONDS cycle but never calls setDependedIssueUrlForOpenTaskPRsUseCase.run', async () => {
+      it('calls each of the other 8 slow-sweep operations exactly once per SLOW_SWEEP_INTERVAL_SECONDS cycle but never calls setDependedIssueUrlForOpenTaskPRsUseCase.run', async () => {
         await useCase.runSlowSweepUseCases(
           isolationInput,
           project,
@@ -4261,6 +4268,17 @@ describe('HandleScheduledEventUseCase', () => {
         expect(
           mockSetDependedIssueUrlForOpenTaskPRsUseCase.run,
         ).not.toHaveBeenCalled();
+        expect(
+          mockDependedIssueURLRestoreUseCase.run.mock.invocationCallOrder[0],
+        ).toBeGreaterThan(
+          mockChangeStatusByStoryColorUseCase.run.mock.invocationCallOrder[0],
+        );
+        expect(
+          mockDependedIssueURLRestoreUseCase.run.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          mockAssignNoAssigneeIssueToManagerUseCase.run.mock
+            .invocationCallOrder[0],
+        );
       });
     });
 
@@ -4348,6 +4366,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<StaleTaskPullRequestCloseUseCase>(),
       mock<CreateEstimationIssueUseCase>(),
       mock<ChangeStatusByStoryColorUseCase>(),
+      mock<DependedIssueURLRestoreUseCase>(),
       mock<SetNoStoryIssueToStoryUseCase>(),
       mock<CreateNewStoryByLabelUseCase>(),
       mock<AssignNoAssigneeIssueToManagerUseCase>(),
