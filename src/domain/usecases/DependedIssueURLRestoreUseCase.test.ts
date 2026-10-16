@@ -1,5 +1,8 @@
 import { mock } from 'jest-mock-extended';
-import { IssueComment, IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueComment,
+  IssueRepository,
+} from './adapter-interfaces/IssueRepository';
 import { DependedIssueURLRestoreUseCase } from './DependedIssueURLRestoreUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
@@ -337,9 +340,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         issues: [dependedIssue, dependingIssue],
       });
 
-      expect(
-        mockIssueRepository.updateProjectTextField,
-      ).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateProjectTextField).not.toHaveBeenCalled();
       expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
     });
 
@@ -402,9 +403,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
         issues: [dependedIssue, secondSweepDependingIssue],
       });
 
-      expect(
-        mockIssueRepository.updateProjectTextField,
-      ).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateProjectTextField).not.toHaveBeenCalled();
       expect(mockIssueRepository.createComment).not.toHaveBeenCalled();
     });
   });
