@@ -4,6 +4,7 @@ import {
   IssueRepository,
 } from './adapter-interfaces/IssueRepository';
 import { DependedIssueURLRestoreUseCase } from './DependedIssueURLRestoreUseCase';
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
@@ -593,6 +594,71 @@ describe('DependedIssueURLRestoreUseCase', () => {
         dependingIssue,
         DEP_10_URL,
       );
+    });
+
+    it('should skip an issue whose updateProjectTextField call fails with StaleProjectItemError, logging it via console.warn with the issue url and stale item id, without that issue causing run to reject, while the other issue in the same run is still restored normally (regression test mirroring ClearDependedIssueURLUseCase.run StaleProjectItemError isolation)', async () => {
+      jest.clearAllMocks();
+      const dependedIssue = buildDependedIssue({ url: DEP_10_URL });
+      const staleDependingIssue = buildDependingIssue([]);
+      const okDependingIssue: Issue = {
+        ...mock<Issue>(),
+        url: SECOND_DEPENDING_ISSUE_URL,
+        dependedIssueUrls: [],
+        isClosed: false,
+      };
+      const staleItemId = 'item-stale-1';
+      const icebergClearComment = buildComment(
+        `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+        T1,
+        1,
+      );
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) =>
+          url === staleDependingIssue.url || url === okDependingIssue.url
+            ? [icebergClearComment]
+            : [],
+      );
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.updateProjectTextField.mockImplementation(
+        async (_project, _fieldId, issue) => {
+          if (issue.url === staleDependingIssue.url) {
+            throw new StaleProjectItemError(staleItemId);
+          }
+        },
+      );
+      const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+      await expect(
+        useCase.run({
+          project: basicProject,
+          issues: [dependedIssue, staleDependingIssue, okDependingIssue],
+        }),
+      ).resolves.toBeUndefined();
+
+      const warnedMessages = consoleWarnSpy.mock.calls.map((call) =>
+        call.join(' '),
+      );
+      expect(
+        warnedMessages.some((message) =>
+          message.includes(staleDependingIssue.url),
+        ),
+      ).toBe(true);
+      expect(
+        warnedMessages.some((message) => message.includes(staleItemId)),
+      ).toBe(true);
+      expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
+        basicProject,
+        'fieldId',
+        okDependingIssue,
+        DEP_10_URL,
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        okDependingIssue,
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      );
+      consoleWarnSpy.mockRestore();
     });
   });
 });
