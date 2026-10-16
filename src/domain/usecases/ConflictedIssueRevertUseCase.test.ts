@@ -1693,6 +1693,45 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
+    it('does not escalate to Failed Preparation for an escalateDispatchLoop-shaped comment history when dependedIssueUrls is set, posting the normal conflict comment instead', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithEscalationStatuses,
+      );
+      issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithEscalationStatuses,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('dispatched 3 times'),
+      );
+    });
+
     it('keeps an escalateDispatchLoop issue out of the conflict target set on the following cycle', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithAllEscalationStatuses,
@@ -1799,6 +1838,58 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
+    it('does not escalate to Failed Preparation for an escalateSilentRedispatch-shaped comment history when dependedIssueUrls is set, posting the normal conflict comment instead', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithEscalationStatuses,
+      );
+      issue.agent = 'developer';
+      issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
+
+      const silentRedispatchCommentForGuardTest = (count: number) => ({
+        author: 'owner',
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        createdAt: new Date(),
+      });
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        humanComment,
+        silentRedispatchCommentForGuardTest(1),
+        silentRedispatchCommentForGuardTest(2),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithEscalationStatuses,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Failed to receive a report'),
+      );
+    });
+
     const silentRedispatchComment = (count: number) => ({
       author: 'owner',
       content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
@@ -1857,6 +1948,54 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
         expect.stringContaining('Owner judgment is required to break the loop'),
+      );
+    });
+
+    it('does not escalate to Failed Preparation for an escalateReportingLoop-shaped comment history when dependedIssueUrls is set, posting the normal conflict comment instead', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithAllEscalationStatuses,
+      );
+      issue.agent = 'developer';
+      issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
+
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        humanComment,
+        silentRedispatchComment(1),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithAllEscalationStatuses,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining(
+          'This task has been marked as Failed Preparation',
+        ),
       );
     });
 

@@ -146,6 +146,7 @@ const buildStoryUnsetCommentsAfterPriorDispatches = (
     dispatchNumber += 1
   ) {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: nextStepAgent,
       nextStepAgent,
       comments: history,
@@ -193,6 +194,7 @@ const buildStoryUnsetHistoryAfterRateLimitRecord = (params: {
     dispatchNumber += 1
   ) {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: params.nextStepAgent,
       nextStepAgent: params.nextStepAgent,
       comments: history,
@@ -282,6 +284,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('returns notRepeated when the agent field holds no value', () => {
       expect(
         resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: null,
           nextStepAgent: 'accounting',
           comments: [report('accounting')],
@@ -297,6 +300,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('returns notRepeated when the agent field holds another agent', () => {
       expect(
         resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: 'triager',
           nextStepAgent: 'accounting',
           comments: [report('accounting')],
@@ -311,6 +315,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns dispatchAgain with the attempt count when the declared agent is already assigned', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [report('accounting')],
@@ -330,6 +335,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('matches the agent field and the declared agent ignoring case, spaces and hyphens', () => {
       expect(
         resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: 'PR Reviewer',
           nextStepAgent: 'pr-reviewer',
           comments: [report('pr-reviewer')],
@@ -344,6 +350,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('counts only repetition comments written by a trusted author', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -363,6 +370,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('reports against the dispatch loop threshold, not the silent agent one, when the agent did report', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [report('chore'), report('chore')],
@@ -381,6 +389,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns dispatchAgain when count is 2 and agent has reported in the cycle', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -400,6 +409,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('dispatches again for self-reference when silent dispatch count reaches threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -421,6 +431,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateSilentRedispatch when the agent reported only before the first re-dispatch but not after', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -440,6 +451,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateReportingLoop for self-reference when agent reports after each re-dispatch and count reaches threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -461,6 +473,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateSilentRedispatch when the agent never reported in the cycle', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -479,6 +492,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('emits a no-report message when the agent reported only before the first re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -501,6 +515,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('emits a no-report message when no reports are present at escalation', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
@@ -522,6 +537,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateReportingLoop for self-reference when agent name casing in prior comments differs and count reaches threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'pr-reviewer',
         nextStepAgent: 'pr-reviewer',
         comments: [
@@ -542,6 +558,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateReportingLoop for self-reference when count exceeds threshold and agent reports in cycle', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -563,6 +580,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the silent dispatch count after a human comment even if a routing comment follows', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -585,6 +603,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the count after a previous silent-failure escalation so the first re-dispatch is not immediately re-escalated', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -607,6 +626,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the count after a previous reporting-loop escalation so the first re-dispatch is not immediately re-escalated', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -629,6 +649,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the count when a reporting-loop escalation comment uses the legacy phrase', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -655,6 +676,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateReportingLoop for self-reference after a previous escalation when count reaches threshold and reports follow re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -676,6 +698,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateReportingLoop for self-reference with bare repetition comments when count reaches threshold and reports follow', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
@@ -697,6 +720,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('dispatch loop bound', () => {
     it('escalates when two agents alternate until one reaches the dispatch loop threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [
@@ -721,6 +745,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('dispatches again for self-reference when same agent is named every round', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [report('chore'), report('chore'), report('chore')],
@@ -736,6 +761,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('reports the dispatch count against the dispatch loop threshold before escalating', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [report('reviewer'), report('analyst'), report('reviewer')],
@@ -755,6 +781,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('returns notRepeated for a chain of distinct agents', () => {
       expect(
         resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: 'analyst',
           nextStepAgent: 'developer',
           comments: [
@@ -773,6 +800,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('restarts counting after a human comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [
@@ -798,6 +826,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('treats a comment from an untrusted author as human input that restarts counting', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [
@@ -824,6 +853,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('does not restart counting on its own repetition comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [
@@ -846,6 +876,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('does not restart counting on an auto status check comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'analyst',
         nextStepAgent: 'reviewer',
         comments: [
@@ -872,6 +903,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('matches the declared agent across reports ignoring case, spaces and hyphens', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'pr-reviewer',
         comments: [
@@ -892,6 +924,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('ignores reports that declare no next step agent', () => {
       expect(
         resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: 'analyst',
           nextStepAgent: 'reviewer',
           comments: [
@@ -910,6 +943,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the dispatch loop count after an escalation comment so one new dispatch does not re-trigger the loop', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: 'chore',
         comments: [
@@ -933,6 +967,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('no-story guard', () => {
     it('returns storyUnset instead of dispatchAgain when story is unset and the designated agent is already assigned', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -948,6 +983,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns storyUnset when story is unset and nextStepAgent is set but agent field is null', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -962,6 +998,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns storyUnset when story is unset and nextStepAgent designates a different agent than the field', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'triager',
         nextStepAgent: 'developer',
         comments: [],
@@ -976,6 +1013,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns storyUnset instead of escalateSilentRedispatch when story is unset and the cycle count reaches the threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -995,6 +1033,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('storyUnset comment mentions the designated agent name', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -1011,6 +1050,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('storyUnset comment does not contain the crash escalation phrase', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -1028,6 +1068,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('storyUnset comment contains no "default agent" substitution language', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -1046,6 +1087,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     it('storyUnset comment states that the designated agent itself will be redispatched, never a substituted default agent', () => {
       const nextStepAgent = 'developer';
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: nextStepAgent,
         nextStepAgent,
         comments: [report(nextStepAgent)],
@@ -1071,6 +1113,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('storyUnset comment keeps the marker first line and the trailing (count/threshold) suffix format', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -1091,6 +1134,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1124,6 +1168,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('surfaces the prior STORY_UNSET comment id and increments its embedded count even when the newly reported nextStepAgent differs from the agent name embedded in that comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'code-reviewer',
         comments: [
@@ -1159,6 +1204,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           priorStoryUnsetComments,
         );
         const result = resolveNextStepAgentDispatchRepetition({
+          dependedIssueUrls: [],
           agentFieldValue: 'developer',
           nextStepAgent: 'developer',
           comments,
@@ -1179,6 +1225,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         2,
       );
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments,
@@ -1198,6 +1245,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the count after a human comment so the loop does not escalate immediately', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1218,6 +1266,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the count after its own STORY_UNSET_ESCALATED comment so one new dispatch does not re-trigger the loop', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1240,6 +1289,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('null nextStepAgent', () => {
     it('returns notRepeated when fewer null-nextStep reports exist than the dispatch loop threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [reportWithNullNextStep(), reportWithNullNextStep()],
@@ -1255,6 +1305,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('returns escalateDispatchLoop when null-nextStep reports reach the dispatch loop threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [
@@ -1274,6 +1325,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('uses the no-next-step-agent label in the escalation comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [
@@ -1295,6 +1347,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('uses the null-specific dispatch loop message body', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [
@@ -1316,6 +1369,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the null dispatch count after a human comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [
@@ -1336,6 +1390,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('resets the null dispatch count after a null dispatch loop escalation comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: null,
         nextStepAgent: null,
         comments: [
@@ -1358,6 +1413,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('legitimate multi-session continuation', () => {
     it('does not report no-report-received when the agent nominated itself in its own report', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('developer')],
@@ -1375,6 +1431,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('does not report no-report-received when the agent re-nominated itself after a prior re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1396,6 +1453,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('does claim no-report-received when a prior agent nominated the agent but it never reported', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [report('triager')],
@@ -1415,6 +1473,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('self-reference (nextStepAgent equals agentFieldValue)', () => {
     it('escalates to escalateReportingLoop for self-reference when agent reports beyond threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1447,6 +1506,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         report('developer'),
       ];
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: manyDispatches,
@@ -1462,6 +1522,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('should still escalate silent redispatch when agent does not report after self-nomination', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
         comments: [
@@ -1484,6 +1545,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('currentDispatchHasNoReportRejection (a dispatch for which no agent report was found)', () => {
     it('does not return notRepeated when a silent dispatch of a real agentFieldValue happens with no next-step agent declared and no prior history', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: null,
         comments: [],
@@ -1515,6 +1577,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       ({ agentFieldValue, currentDispatchHasNoReportRejection }) => {
         expect(
           resolveNextStepAgentDispatchRepetition({
+            dependedIssueUrls: [],
             agentFieldValue,
             nextStepAgent: null,
             comments: [],
@@ -1530,6 +1593,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('escalates to escalateSilentRedispatch when a silent dispatch pushes a self-referencing agent already one short of the threshold to the limit', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: null,
         comments: [
@@ -1552,6 +1616,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
     it('does not escalate through escalateDispatchLoop when a silent dispatch of the currently-assigned agent occurs, even with many prior comments', () => {
       const result = resolveNextStepAgentDispatchRepetition({
+        dependedIssueUrls: [],
         agentFieldValue: 'developer',
         nextStepAgent: null,
         comments: [
@@ -1574,6 +1639,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 describe('countDispatchesInCurrentCycle null-target branch cross-agent attribution fix', () => {
   it('excludes a report from a different agent dispatched elsewhere so the cross-agent count no longer reaches the dispatch loop threshold (table case 1)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: null,
       comments: [
@@ -1593,6 +1659,7 @@ describe('countDispatchesInCurrentCycle null-target branch cross-agent attributi
 
   it('still escalates to escalateDispatchLoop when every report self-declares the agent field value (table case 2, regression check)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: null,
       comments: [
@@ -1612,6 +1679,7 @@ describe('countDispatchesInCurrentCycle null-target branch cross-agent attributi
 
   it('leaves the named-target branch dispatch count unaffected by the self-declared-name cross-check (table case 3, regression check)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: 'agentY',
       comments: [
@@ -1632,6 +1700,7 @@ describe('countDispatchesInCurrentCycle null-target branch cross-agent attributi
 describe('countSilentRedispatches hasReportsAfterFirstRedispatch cross-agent attribution fix', () => {
   it('does not treat a report from a different agent after the first silent redispatch as evidence the dispatched agent itself reported (table case 4)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: [
@@ -1650,6 +1719,7 @@ describe('countSilentRedispatches hasReportsAfterFirstRedispatch cross-agent att
 
   it('still treats a same-agent report after the first silent redispatch as evidence the dispatched agent reported (table case 5, regression check)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: [
@@ -1670,6 +1740,7 @@ describe('countSilentRedispatches hasReportsAfterFirstRedispatch cross-agent att
 describe('isRateLimitSilentFailureExclusionActive target-agent attribution fix', () => {
   it('preserves the post-rate-limit grace period on the self-redispatch path when an unrelated agent report follows the rate-limit record (table case 6)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: [
@@ -1691,6 +1762,7 @@ describe('isRateLimitSilentFailureExclusionActive target-agent attribution fix',
 
   it('preserves the post-rate-limit grace period on the story-unset path even when a report happens to self-declare the nominated (inactive) agent name (table case 7)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'otherAgent',
       comments: [
@@ -1709,6 +1781,7 @@ describe('isRateLimitSilentFailureExclusionActive target-agent attribution fix',
 
   it('leaves the escalation result unaffected when no rate-limit record exists in the comment history (table case 10, regression check)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: [
@@ -1806,6 +1879,7 @@ describe('rate-limit record boundary (parameterized test cases 1-7)', () => {
     },
   ])('$description', ({ comments, expectedType, expectedCommentContains }) => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'accounting',
       nextStepAgent: 'accounting',
       comments,
@@ -1833,6 +1907,7 @@ describe('rate-limit record boundary with story-unset tracking (parameterized te
     });
 
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: history,
@@ -1860,6 +1935,7 @@ describe('rate-limit record boundary with story-unset tracking (parameterized te
     });
 
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: history,
@@ -1887,6 +1963,7 @@ describe('rate-limit record boundary with story-unset tracking (parameterized te
     });
 
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: 'developer',
       nextStepAgent: 'developer',
       comments: history,
@@ -2068,6 +2145,7 @@ describe('countConsecutiveNoReportDispatches', () => {
 describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
   it('returns sessionInterruptedBeforeCompletion instead of counting toward the dispatch loop when the current dispatch was interrupted before completing its turn (criterion 6)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: null,
       comments: [reportWithNullNextStep()],
@@ -2091,6 +2169,7 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
 
   it('still escalates to escalateDispatchLoop when sessionEndedWithoutCompletingTurn is explicitly false and null-nextStep reports reach the dispatch loop threshold (criterion 8, pinning)', () => {
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: null,
       comments: [
@@ -2117,6 +2196,7 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
     }
 
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: null,
       comments,
@@ -2142,6 +2222,7 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
     ];
 
     const result = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: null,
       comments,
@@ -2158,6 +2239,7 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
 
   it('produces the same result whether sessionEndedWithoutCompletingTurn is set or omitted when nextStepAgent is already declared (criterion 6)', () => {
     const resultWithFlagOmitted = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: 'developer',
       comments: [],
@@ -2168,6 +2250,7 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
       currentDispatchHasNoReportRejection: false,
     });
     const resultWithFlagTrue = resolveNextStepAgentDispatchRepetition({
+      dependedIssueUrls: [],
       agentFieldValue: null,
       nextStepAgent: 'developer',
       comments: [],
@@ -2184,4 +2267,127 @@ describe('sessionEndedWithoutCompletingTurn (issue 3325)', () => {
       'sessionInterruptedBeforeCompletion',
     );
   });
+});
+
+describe('dependedIssueUrls guard (criterion 4, issue 3413)', () => {
+  const singleDependedIssueUrl = ['https://github.com/user/repo/issues/999'];
+  const multipleDependedIssueUrls = [
+    'https://github.com/user/repo/issues/999',
+    'https://github.com/user/repo/issues/1000',
+  ];
+
+  it.each([
+    {
+      description:
+        'an escalateSilentRedispatch-shaped history (agent never reported since being silently redispatched to the threshold)',
+      dependedIssueUrls: singleDependedIssueUrl,
+      agentFieldValue: 'accounting',
+      nextStepAgent: 'accounting',
+      comments: [
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'an escalateReportingLoop-shaped history (agent reports every cycle but never advances past the threshold)',
+      dependedIssueUrls: singleDependedIssueUrl,
+      agentFieldValue: 'accounting',
+      nextStepAgent: 'accounting',
+      comments: [
+        report('accounting'),
+        repetitionComment('accounting'),
+        report('accounting'),
+        repetitionComment('accounting'),
+        repetitionComment('accounting'),
+      ],
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'an escalateDispatchLoop-shaped history (two agents alternate past the dispatch loop threshold)',
+      dependedIssueUrls: singleDependedIssueUrl,
+      agentFieldValue: 'analyst',
+      nextStepAgent: 'reviewer',
+      comments: [
+        report('reviewer'),
+        report('analyst'),
+        report('reviewer'),
+        report('analyst'),
+        report('reviewer'),
+      ],
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'an escalateStoryUnsetLoop-shaped history (isNoStory true, story-unset dispatch count past the dispatch loop threshold)',
+      dependedIssueUrls: singleDependedIssueUrl,
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: buildStoryUnsetCommentsAfterPriorDispatches('developer', 2),
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 3,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'a storyUnset-shaped history (isNoStory true, story-unset dispatch count below the dispatch loop threshold)',
+      dependedIssueUrls: multipleDependedIssueUrls,
+      agentFieldValue: 'developer',
+      nextStepAgent: 'developer',
+      comments: buildStoryUnsetCommentsAfterPriorDispatches('developer', 1),
+      thresholdForAutoReject: 99,
+      thresholdForDispatchLoop: 3,
+      isNoStory: true,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'a self-referencing agent with a plain non-escalating history and multiple dependedIssueUrls entries',
+      dependedIssueUrls: multipleDependedIssueUrls,
+      agentFieldValue: 'chore',
+      nextStepAgent: 'chore',
+      comments: [report('chore')],
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: false,
+    },
+    {
+      description:
+        'nextStepAgent null with currentDispatchHasNoReportRejection true, which would otherwise attribute the silent dispatch to the agent field',
+      dependedIssueUrls: singleDependedIssueUrl,
+      agentFieldValue: 'developer',
+      nextStepAgent: null,
+      comments: [
+        repetitionComment('developer'),
+        repetitionComment('developer'),
+      ],
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 6,
+      isNoStory: false,
+      currentDispatchHasNoReportRejection: true,
+    },
+  ])(
+    'returns notRepeated when dependedIssueUrls is non-empty, regardless of $description',
+    ({ description: _description, ...params }) => {
+      expect(
+        resolveNextStepAgentDispatchRepetition({
+          ...params,
+          isTrustedAuthor: trustAll,
+        }),
+      ).toEqual({ type: 'notRepeated' });
+    },
+  );
 });
