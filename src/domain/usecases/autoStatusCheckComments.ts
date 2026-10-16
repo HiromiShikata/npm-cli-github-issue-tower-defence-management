@@ -10,6 +10,9 @@ export const RATE_LIMIT_SESSION_END_MESSAGE =
 export const SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE =
   'Auto Status Check: SESSION_INTERRUPTED_BEFORE_COMPLETION (no next-step agent)\n' +
   "The prior dispatch's worker session ended before completing its turn, so this report is excluded from the consecutive-dispatch loop count.";
+export const AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE =
+  'Auto Status Check: HUMAN_AUTHORED_INVESTIGATION_TASK\n' +
+  'This issue looks like a human-authored investigation or report request, so the requested close was skipped and the issue was routed to Awaiting Owner for the requester to review.';
 
 export const isAutoStatusCheckComment = (content: string): boolean =>
   content.startsWith(AUTO_STATUS_CHECK_MESSAGE_HEAD);

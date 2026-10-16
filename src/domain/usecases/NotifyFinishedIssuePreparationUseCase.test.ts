@@ -11083,6 +11083,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const openClosingPullRequestUrl = 'https://github.com/user/repo/pull/7';
     const invalidNotPlannedValueComment =
       'Invalid closeIssueAs value "not planned": allowed values are "completed" and "not_planned". The issue was not closed.';
+    const investigationTaskTitle = 'Please research the login failure';
+    const investigationTaskBody =
+      'Users cannot log in since yesterday. Please research this.';
+    const AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE =
+      'Auto Status Check: HUMAN_AUTHORED_INVESTIGATION_TASK\n' +
+      'This issue looks like a human-authored investigation or report request, so the requested close was skipped and the issue was routed to Awaiting Owner for the requester to review.';
 
     const statusOptionsWithoutDone: Project['status']['statuses'] = [
       {
@@ -11573,6 +11579,177 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
+    it('does not close the issue, sets Awaiting Owner and posts the explanatory comment when the title/body looks like a human-authored investigation task and needOwnerConfirmationOrApproval was not already set (closeIssueAs criterion 13)', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: {
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
+      );
+    });
+
+    it('does not close the issue, sets Awaiting Owner and posts no duplicate comment when needOwnerConfirmationOrApproval was already set alongside a matching human-authored investigation title/body (closeIssueAs criterion 14)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "needOwnerConfirmationOrApproval": true}',
+          ),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('does not close the issue, sets Awaiting Owner and posts no duplicate comment when a triager-authored report (not matching the issue agent field) already set needOwnerConfirmationOrApproval alongside a matching human-authored investigation title/body (closeIssueAs criterion 19)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          createMockComment({
+            author: 'test-user',
+            content:
+              'From: :robot: triager (model)\n\nThe deliverable is finished and verified against every acceptance criterion.\n\n```json\n{"closeIssueAs": "completed", "needOwnerConfirmationOrApproval": true}\n```',
+            createdAt: new Date(),
+          }),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          agent: 'developer',
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('closes the issue and sets Done normally when the calendar edit-template link excludes the safeguard even though the title/body otherwise looks like a report request (closeIssueAs criterion 15)', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: {
+          title: 'Weekly report',
+          body: 'Produce the performance evaluation report. [edit this template](https://calendar.google.com/calendar/event?eid=abc123)',
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        issueUrl,
+        'completed',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ url: issueUrl }),
+        'done-id',
+      );
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['done-id']);
+      expect(
+        mockIssueRepository.closeIssueByUrl.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        mockIssueRepository.updateStatus.mock.invocationCallOrder[0],
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('keeps nextStepAgent routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 16)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "nextStepAgent": "developer"}',
+          ),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+        runOverrides: { agents: ['developer'] },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'awaiting-workspace-id',
+      ]);
+    });
+
+    it('keeps workflowError routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 17)', async () => {
+      await runScenario({
+        project: projectWithDoneStatus(),
+        comments: [
+          agentReportEndingWith(
+            '{"closeIssueAs": "completed", "workflowError": "missing required configuration"}',
+          ),
+        ],
+        openPullRequests: [],
+        issueOverrides: {
+          title: investigationTaskTitle,
+          body: investigationTaskBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual([
+        'failed-preparation-id',
+      ]);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        'Workflow error: missing required configuration',
+      );
+    });
+
+    it('has no effect on routing when closeIssueAs was not requested even though the title/body looks like a human-authored investigation task (closeIssueAs criterion 18)', async () => {
+      const statusIdsWithInvestigationTitleAndBody = await statusIdsForScenario(
+        {
+          project: projectWithDoneStatus(),
+          comments: [agentReportEndingWith('{}')],
+          openPullRequests: [],
+          issueOverrides: {
+            title: investigationTaskTitle,
+            body: investigationTaskBody,
+          },
+        },
+      );
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+
+      const statusIdsWithDefaultTitleAndBody = await statusIdsForScenario({
+        project: projectWithDoneStatus(),
+        comments: [agentReportEndingWith('{}')],
+        openPullRequests: [],
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsWithInvestigationTitleAndBody).toEqual(
+        statusIdsWithDefaultTitleAndBody,
+      );
     });
   });
 
