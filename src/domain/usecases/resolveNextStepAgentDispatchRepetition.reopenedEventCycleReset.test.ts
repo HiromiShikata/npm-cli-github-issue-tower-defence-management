@@ -144,6 +144,7 @@ Report body.`,
       thresholdForAutoReject: 99,
       thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       isNoStory: false,
+      dependedIssueUrls: [],
       latestReopenedAt: testCase.latestReopenedAt,
     });
 
@@ -168,6 +169,7 @@ Report body.`,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         isNoStory: false,
+        dependedIssueUrls: [],
         latestReopenedAt,
       });
 
@@ -195,6 +197,7 @@ Report body.`,
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: dispatchCount + 1,
           isNoStory: true,
+          dependedIssueUrls: [],
         });
         if (result.type !== 'storyUnset') {
           throw new Error(
@@ -227,6 +230,7 @@ Report body.`,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 6,
         isNoStory: true,
+        dependedIssueUrls: [],
         latestReopenedAt: null,
       });
       expect(withoutReopen.type).toBe('escalateStoryUnsetLoop');
@@ -241,6 +245,7 @@ Report body.`,
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: 6,
           isNoStory: true,
+          dependedIssueUrls: [],
           latestReopenedAt: new Date(
             lastStoryUnsetCommentAt.getTime() + 30 * 60 * 1000,
           ),
