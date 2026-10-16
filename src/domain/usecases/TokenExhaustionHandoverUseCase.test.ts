@@ -91,7 +91,6 @@ const defaultInput = (
     state: TokenExhaustionHandoverState;
     now: Date;
     handoverActionCooldownSeconds: number;
-    relaunchStaggerSeconds: number;
   }> = {},
 ) => ({
   enabled: true,
@@ -99,7 +98,6 @@ const defaultInput = (
   bareNameLeaderMessage: '',
   gracePeriodSeconds: 0,
   handoverActionCooldownSeconds: 180,
-  relaunchStaggerSeconds: 20,
   state: { entries: {} },
   now,
   ...overrides,
@@ -119,7 +117,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
       | 'sendKeys'
       | 'killSession'
       | 'listLiveSessionNames'
-      | 'launchBareNameLeaderSession'
     >
   >;
   let processSignalRepository: Mocked<ProcessSignalRepository>;
@@ -145,7 +142,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
       sendKeys: jest.fn().mockResolvedValue(undefined),
       killSession: jest.fn().mockResolvedValue(undefined),
       listLiveSessionNames: jest.fn().mockResolvedValue([]),
-      launchBareNameLeaderSession: jest.fn().mockResolvedValue(undefined),
     };
     processSignalRepository = {
       isProcessAlive: jest.fn().mockReturnValue(true),
@@ -528,9 +524,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
     expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
     expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).not.toHaveBeenCalled();
     expect(processSignalRepository.killProcess).not.toHaveBeenCalled();
     expect(result.killedSessionNames).toEqual([]);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(BARE_NAME));
@@ -797,9 +790,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
     const result = await useCase.run(defaultInput());
 
     expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).not.toHaveBeenCalled();
     expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
       LEADER_PID,
     );
