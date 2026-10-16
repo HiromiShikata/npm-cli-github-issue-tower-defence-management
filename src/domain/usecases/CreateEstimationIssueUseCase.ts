@@ -67,6 +67,9 @@ export class CreateEstimationIssueUseCase {
       if (story.name.startsWith('regular / ')) {
         continue;
       } else if (!storyIssue || !storyObject) {
+        if (story.color === 'GRAY') {
+          continue;
+        }
         throw new Error(`Story issue not found: ${story.name}`);
       } else if (!storyIssue.labels.includes('story:action:schedule-control')) {
         continue;

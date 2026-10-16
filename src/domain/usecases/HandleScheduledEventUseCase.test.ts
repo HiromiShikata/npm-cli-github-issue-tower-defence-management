@@ -2091,6 +2091,185 @@ describe('HandleScheduledEventUseCase', () => {
         });
       });
 
+      describe('matchedOpenStoryIssue backfill into issues/storyObject (issue #3349)', () => {
+        it('backfills matchedIssueState into issues and storyObject while the Story field write still runs for an unset option id', async () => {
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/77';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '77',
+            },
+          ]);
+          const matchedIssueState = mock<Issue>();
+          matchedIssueState.url = existingIssueUrl;
+          matchedIssueState.itemId = 'item-77';
+          matchedIssueState.storyOptionId = null;
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            matchedIssueState,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          const result = await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).toHaveBeenCalledWith(expect.anything(), 'item-77', 'story-1');
+          expect(result?.issues).toContain(matchedIssueState);
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBe(
+            matchedIssueState,
+          );
+          expect(result?.storyIssues.get('story-1')?.issues).toContain(
+            matchedIssueState,
+          );
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).not.toHaveBeenCalled();
+        });
+
+        it('backfills matchedIssueState into issues and storyObject without writing the Story field when the option id is already set', async () => {
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/78';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '78',
+            },
+          ]);
+          const matchedIssueState = mock<Issue>();
+          matchedIssueState.url = existingIssueUrl;
+          matchedIssueState.itemId = 'item-78';
+          matchedIssueState.storyOptionId = 'story-1';
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            matchedIssueState,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          const result = await runPromise;
+
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).not.toHaveBeenCalled();
+          expect(result?.issues).toContain(matchedIssueState);
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBe(
+            matchedIssueState,
+          );
+          expect(result?.storyIssues.get('story-1')?.issues).toContain(
+            matchedIssueState,
+          );
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).not.toHaveBeenCalled();
+        });
+
+        it('does not duplicate the matched issue by URL in the issues array but still sets storyObject.storyIssue when it was unset', async () => {
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/79';
+          const stalePreExistingEntry: Issue = {
+            ...mock<Issue>(),
+            url: existingIssueUrl,
+            itemId: 'item-79',
+            title: 'unrelated stale title',
+            isClosed: false,
+          };
+          mockIssueRepository.getAllIssues.mockResolvedValue({
+            issues: [stalePreExistingEntry],
+            project: storyProject,
+            cacheUsed: false,
+          });
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '79',
+            },
+          ]);
+          const matchedIssueState = mock<Issue>();
+          matchedIssueState.url = existingIssueUrl;
+          matchedIssueState.itemId = 'item-79';
+          matchedIssueState.storyOptionId = 'story-1';
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(
+            matchedIssueState,
+          );
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          const result = await runPromise;
+
+          expect(
+            result?.issues.filter((issue) => issue.url === existingIssueUrl),
+          ).toHaveLength(1);
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBe(
+            matchedIssueState,
+          );
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).not.toHaveBeenCalled();
+        });
+
+        it('performs no backfill and does not throw when the live re-fetch returns no issue for the matched URL', async () => {
+          const existingIssueUrl =
+            'https://github.com/test-org/test-repo/issues/80';
+          mockIssueRepository.searchIssue.mockResolvedValue([
+            {
+              url: existingIssueUrl,
+              title: 'feature / StoryOne',
+              number: '80',
+            },
+          ]);
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          await expect(runPromise).resolves.not.toBeNull();
+          const result = await runPromise;
+
+          expect(result?.issues).toHaveLength(0);
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBeNull();
+          expect(
+            mockIssueRepository.updateStoryByProjectItemId,
+          ).not.toHaveBeenCalled();
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).not.toHaveBeenCalled();
+          const storyIssueCalls =
+            mockIssueRepository.createNewIssue.mock.calls.filter(
+              (call) => Array.isArray(call[5]) && call[5].includes('story'),
+            );
+          expect(storyIssueCalls).toHaveLength(0);
+        });
+
+        it('backfills the newly created story issue into issues and storyObject and appends it to the project cache', async () => {
+          const createdIssue: Issue = {
+            ...mock<Issue>(),
+            url: 'https://github.com/test-org/test-repo/issues/99',
+            itemId: 'item-99',
+            title: 'feature / StoryOne',
+            isClosed: false,
+          };
+          mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+
+          const runPromise = useCase.run(storyInput);
+          await jest.runAllTimersAsync();
+          const result = await runPromise;
+
+          expect(result?.issues).toContain(createdIssue);
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBe(
+            createdIssue,
+          );
+          expect(result?.storyIssues.get('story-1')?.issues).toContain(
+            createdIssue,
+          );
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).toHaveBeenCalledWith('project-1', createdIssue);
+        });
+      });
+
       describe('storyOptionWriteFailures collection on unexpected write error (issue #2781)', () => {
         it('resolves run() without throwing and records a failure entry when the Story field write rejects unexpectedly', async () => {
           const distinctiveWriteError = new Error(
