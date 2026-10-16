@@ -2,12 +2,14 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
 import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
+import { DailySecurityScanRunLogRepository } from './adapter-interfaces/DailySecurityScanRunLogRepository';
 import {
   commentCreateWithDedupRetry,
   realSleep,
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
 import { KevReportWatermark } from '../entities/KevReportWatermark';
+import { DailySecurityScanRunLogEntry } from '../entities/DailySecurityScanRunLogEntry';
 import { Member } from '../entities/Member';
 
 export type DailySecurityScanConfig = {
@@ -53,6 +55,10 @@ const isKevCatalog = (value: unknown): value is KevCatalog => {
     record.vulnerabilities.every(isKevVulnerability)
   );
 };
+
+type DailySecurityScanCheckoutResult =
+  | { type: 'checkedOut'; checkoutDirectory: string; clonedCommitSha: string }
+  | { type: 'checkoutFailed'; reason: string };
 
 type ScannedVulnerablePackage = {
   repositoryName: string;
@@ -175,6 +181,8 @@ export class DailySecurityScanUseCase {
     >,
     readonly httpRepository: HttpRepository,
     readonly kevReportWatermarkRepository: KevReportWatermarkRepository,
+    private readonly dailySecurityScanRunLogRepository: DailySecurityScanRunLogRepository,
+    private readonly clock: () => Date = () => new Date(),
     private readonly sleep: Sleep = realSleep,
   ) {}
 
@@ -271,13 +279,23 @@ export class DailySecurityScanUseCase {
     const scannedVulnerablePackages: ScannedVulnerablePackage[] = [];
     for (const [repositoryName, remoteUrl] of remoteUrlByRepositoryName) {
       const repositoryOrg = org;
-      const checkoutDirectory = await this.checkoutDefaultBranch(
+      const executedAtIso = this.clock().toISOString();
+      const checkoutResult = await this.checkoutDefaultBranch(
         repositoryName,
         remoteUrl,
       );
-      if (checkoutDirectory === null) {
+      if (checkoutResult.type === 'checkoutFailed') {
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: {
+            type: 'checkoutFailed',
+            reason: checkoutResult.reason,
+          },
+        });
         continue;
       }
+      const { checkoutDirectory, clonedCommitSha } = checkoutResult;
 
       const {
         stdout: scanOutput,
@@ -296,12 +314,27 @@ export class DailySecurityScanUseCase {
         checkoutDirectory,
       ]);
       if (scanExitCode === 0) {
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: { type: 'scanCompletedClean', clonedCommitSha },
+        });
         continue;
       }
       if (scanExitCode !== 1) {
         console.error(
           `osv-scanner failed with exit code ${scanExitCode} for ${repositoryName}: ${scanStderr}`,
         );
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: {
+            type: 'scanFailed',
+            clonedCommitSha,
+            exitCode: scanExitCode,
+            stderr: scanStderr,
+          },
+        });
         continue;
       }
 
@@ -310,6 +343,15 @@ export class DailySecurityScanUseCase {
         scanOutput,
       );
       scannedVulnerablePackages.push(...vulnerablePackages);
+      await this.appendDailySecurityScanRunLogEntry({
+        repositoryName,
+        executedAtIso,
+        outcome: {
+          type: 'scanCompletedWithVulnerabilities',
+          clonedCommitSha,
+          vulnerablePackageCount: vulnerablePackages.length,
+        },
+      });
 
       const findingsBody = renderScannerFindings(today, vulnerablePackages);
       try {
@@ -347,6 +389,18 @@ export class DailySecurityScanUseCase {
     return scannedVulnerablePackages;
   };
 
+  private appendDailySecurityScanRunLogEntry = async (
+    entry: DailySecurityScanRunLogEntry,
+  ): Promise<void> => {
+    try {
+      await this.dailySecurityScanRunLogRepository.append(entry);
+    } catch (error) {
+      console.error(
+        `Failed to persist the daily security scan run log entry for ${entry.repositoryName}: ${String(error)}. The remaining repositories are still scanned.`,
+      );
+    }
+  };
+
   private createCommentByUrlWithDedup = async (
     url: string,
     commentBody: string,
@@ -372,7 +426,7 @@ export class DailySecurityScanUseCase {
   private checkoutDefaultBranch = async (
     repositoryName: string,
     remoteUrl: string,
-  ): Promise<string | null> => {
+  ): Promise<DailySecurityScanCheckoutResult> => {
     const { stdout: checkoutDirectoryOutput, exitCode: checkoutDirectoryExit } =
       await this.localCommandRunner.runCommand('mktemp', [
         '-d',
@@ -381,10 +435,9 @@ export class DailySecurityScanUseCase {
       ]);
     const checkoutDirectory = checkoutDirectoryOutput.trim();
     if (checkoutDirectoryExit !== 0 || checkoutDirectory.length === 0) {
-      console.error(
-        `Failed to create a checkout directory for ${repositoryName}`,
-      );
-      return null;
+      const reason = `Failed to create a checkout directory for ${repositoryName}`;
+      console.error(reason);
+      return { type: 'checkoutFailed', reason };
     }
     const { stderr: cloneStderr, exitCode: cloneExitCode } =
       await this.localCommandRunner.runCommand('git', [
@@ -395,16 +448,38 @@ export class DailySecurityScanUseCase {
         checkoutDirectory,
       ]);
     if (cloneExitCode !== 0) {
-      console.error(
-        `Failed to clone the default branch of ${repositoryName}: ${cloneStderr}`,
-      );
+      const reason = `Failed to clone the default branch of ${repositoryName}: ${cloneStderr}`;
+      console.error(reason);
       await this.localCommandRunner.runCommand('rm', [
         '-rf',
         checkoutDirectory,
       ]);
-      return null;
+      return { type: 'checkoutFailed', reason };
     }
-    return checkoutDirectory;
+    const {
+      stdout: revParseStdout,
+      stderr: revParseStderr,
+      exitCode: revParseExitCode,
+    } = await this.localCommandRunner.runCommand('git', [
+      '-C',
+      checkoutDirectory,
+      'rev-parse',
+      'HEAD',
+    ]);
+    if (revParseExitCode !== 0) {
+      const reason = `Failed to resolve the cloned commit SHA for ${repositoryName}: ${revParseStderr}`;
+      console.error(reason);
+      await this.localCommandRunner.runCommand('rm', [
+        '-rf',
+        checkoutDirectory,
+      ]);
+      return { type: 'checkoutFailed', reason };
+    }
+    return {
+      type: 'checkedOut',
+      checkoutDirectory,
+      clonedCommitSha: revParseStdout.trim(),
+    };
   };
 
   private reportKevAdditions = async (
