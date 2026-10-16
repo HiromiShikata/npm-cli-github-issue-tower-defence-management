@@ -1,3 +1,10 @@
+## [2.170.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.170.0...v2.170.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** suppress false-positive Unregistered agent blocker for fleet-banned nextStepAgent values ([#3417](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3417)) ([0acb51b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0acb51b59618d6e2d024f749b73cf388f459d35c))
+
 # [2.170.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.169.3...v2.170.0) (2026-10-16)
 
 
