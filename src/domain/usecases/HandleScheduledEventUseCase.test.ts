@@ -2229,9 +2229,7 @@ describe('HandleScheduledEventUseCase', () => {
           const result = await runPromise;
 
           expect(result?.issues).toHaveLength(0);
-          expect(
-            result?.storyIssues.get('story-1')?.storyIssue,
-          ).toBeNull();
+          expect(result?.storyIssues.get('story-1')?.storyIssue).toBeNull();
           expect(
             mockIssueRepository.updateStoryByProjectItemId,
           ).not.toHaveBeenCalled();

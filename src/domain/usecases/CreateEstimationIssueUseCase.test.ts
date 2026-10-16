@@ -150,7 +150,10 @@ describe('CreateEstimationIssueUseCase', () => {
           fieldId: 'story-field',
           databaseId: 1,
           stories: [regularStory],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       };
 
@@ -178,7 +181,10 @@ describe('CreateEstimationIssueUseCase', () => {
           fieldId: 'story-field',
           databaseId: 1,
           stories: [grayStoryNoMatch],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       };
 
@@ -214,7 +220,10 @@ describe('CreateEstimationIssueUseCase', () => {
           fieldId: 'story-field',
           databaseId: 1,
           stories: [grayStoryNoLabel],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       };
       const storyObjectMap = new Map<string, StoryObject>([
@@ -273,7 +282,10 @@ describe('CreateEstimationIssueUseCase', () => {
           fieldId: 'story-field',
           databaseId: 1,
           stories: [grayStoryLabeled],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       };
       const storyObjectMap = new Map<string, StoryObject>([
@@ -321,7 +333,10 @@ describe('CreateEstimationIssueUseCase', () => {
           fieldId: 'story-field',
           databaseId: 1,
           stories: [yellowStoryNoLabel],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       };
       const storyObjectMap = new Map<string, StoryObject>([
