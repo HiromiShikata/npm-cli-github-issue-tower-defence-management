@@ -3932,14 +3932,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should throw a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited failing status', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ message: 'Bad credentials' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Bad credentials' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = repository.getAuthenticatedUserLogin();
@@ -14951,16 +14949,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited, non-422, sub-500 status', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              message: 'Resource not accessible by integration',
-            }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } },
-          ),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = repository.updateBranch(
@@ -15030,16 +15026,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited, non-422 status', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              message: 'Resource not accessible by integration',
-            }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } },
-          ),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = repository.deletePullRequestBranch(
