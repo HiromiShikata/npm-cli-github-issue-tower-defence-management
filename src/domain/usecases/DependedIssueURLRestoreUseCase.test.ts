@@ -27,6 +27,7 @@ describe('DependedIssueURLRestoreUseCase', () => {
       },
     };
     const DEPENDING_ISSUE_URL = 'https://github.com/o/r/issues/20';
+    const SECOND_DEPENDING_ISSUE_URL = 'https://github.com/o/r/issues/21';
     const DEP_10_URL = 'https://github.com/o/r/issues/10';
     const DEP_11_URL = 'https://github.com/o/r/issues/11';
     const UNRELATED_URL = 'https://github.com/o/r/issues/99';
@@ -488,6 +489,109 @@ describe('DependedIssueURLRestoreUseCase', () => {
       expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
         secondSweepDependingIssue,
         `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_11_URL}`,
+      );
+    });
+
+    it('should still restore a later issue when an earlier issue in the same run throws, and surface a rejection naming the failing issue and its underlying error instead of aborting the rest of the sweep (regression test for per-issue error isolation, mirroring ClearDependedIssueURLUseCase.run failedIssueDescriptions)', async () => {
+      jest.clearAllMocks();
+      const dependedIssue = buildDependedIssue({ url: DEP_10_URL });
+      const firstDependingIssue = buildDependingIssue([]);
+      const secondDependingIssue: Issue = {
+        ...mock<Issue>(),
+        url: SECOND_DEPENDING_ISSUE_URL,
+        dependedIssueUrls: [],
+        isClosed: false,
+      };
+      const underlyingError = new Error('GitHub API rate limit exceeded');
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) => {
+          if (url === firstDependingIssue.url) {
+            throw underlyingError;
+          }
+          if (url === secondDependingIssue.url) {
+            return [
+              buildComment(
+                `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+                T1,
+                1,
+              ),
+            ];
+          }
+          return [];
+        },
+      );
+      const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+      const runPromise = useCase.run({
+        project: basicProject,
+        issues: [dependedIssue, firstDependingIssue, secondDependingIssue],
+      });
+      runPromise.catch(() => {});
+
+      let caughtError: unknown;
+      try {
+        await runPromise;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      if (!(caughtError instanceof Error)) {
+        throw new Error('Expected run() to reject with an Error instance');
+      }
+      expect(caughtError.message).toContain(firstDependingIssue.url);
+      expect(caughtError.message).toContain(underlyingError.message);
+      expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
+        basicProject,
+        'fieldId',
+        secondDependingIssue,
+        DEP_10_URL,
+      );
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        secondDependingIssue,
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      );
+    });
+
+    it('should retry and succeed when createComment first fails with a transient 502 error, instead of aborting the sweep on the first transient failure (regression test mirroring ClearDependedIssueURLUseCase.createCommentWithDedup backoff retry)', async () => {
+      jest.clearAllMocks();
+      const dependedIssue = buildDependedIssue({ url: DEP_10_URL });
+      const dependingIssue = buildDependingIssue([]);
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) =>
+          url === dependingIssue.url
+            ? [
+                buildComment(
+                  `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+                  T1,
+                  1,
+                ),
+              ]
+            : [],
+      );
+      const transientError = Object.assign(
+        new Error(
+          'Failed to create comment via GitHub REST API: 502 Bad Gateway',
+        ),
+        { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
+      );
+      mockIssueRepository.createComment
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce(undefined);
+      const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+      await expect(
+        useCase.run({
+          project: basicProject,
+          issues: [dependedIssue, dependingIssue],
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockIssueRepository.updateProjectTextField).toHaveBeenCalledWith(
+        basicProject,
+        'fieldId',
+        dependingIssue,
+        DEP_10_URL,
       );
     });
   });
