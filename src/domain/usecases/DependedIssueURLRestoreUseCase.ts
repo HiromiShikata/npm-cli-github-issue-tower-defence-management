@@ -218,6 +218,8 @@ export class DependedIssueURLRestoreUseCase {
     const relevantComments: RelevantComment[] = [];
     for (const comment of comments) {
       if (
+        allowedIssueAuthors &&
+        allowedIssueAuthors.length > 0 &&
         !isAuthorAuthorizedForAutoStatusCheck(
           comment.author,
           allowedIssueAuthors,
