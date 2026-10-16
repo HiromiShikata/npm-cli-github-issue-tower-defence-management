@@ -17,6 +17,7 @@ import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlF
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
+import { DependedIssueURLRestoreUseCase } from './DependedIssueURLRestoreUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
@@ -129,6 +130,7 @@ export class HandleScheduledEventUseCase {
     readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
+    readonly dependedIssueURLRestoreUseCase: DependedIssueURLRestoreUseCase,
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
@@ -915,6 +917,15 @@ ${JSON.stringify(e)}
           repo: input.workingReport.repo,
           storyObjectMap: storyObjectMap,
           manager: input.manager,
+        }),
+      failures,
+    );
+    await this.runOperationIsolated(
+      `restore depended issue URL for project ${project.url}`,
+      () =>
+        this.dependedIssueURLRestoreUseCase.run({
+          project,
+          issues,
         }),
       failures,
     );
