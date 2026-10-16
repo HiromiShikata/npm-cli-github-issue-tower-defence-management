@@ -8,6 +8,7 @@ import {
   DEFAULT_START_PREPARATION_FLEET_SETTINGS,
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
   loadErrorReportingRepository,
+  loadFleetBannedAgents,
   loadFleetTaskCreateUrl,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
@@ -1003,6 +1004,83 @@ describe('loadErrorReportingRepository', () => {
 
     expect(() => loadErrorReportingRepository(fleetConfigFilePath)).toThrow(
       'must be a string',
+    );
+  });
+});
+
+describe('loadFleetBannedAgents', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadFleetBannedAgents(null)).toBeNull();
+  });
+
+  it('returns the agent name array from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'fleetBannedAgents:\n  - urgent-taskforce-leader\n  - another-banned-agent\n',
+    );
+
+    expect(loadFleetBannedAgents(fleetConfigFilePath)).toEqual([
+      'urgent-taskforce-leader',
+      'another-banned-agent',
+    ]);
+  });
+
+  it('returns null when the key is absent from the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+
+    expect(loadFleetBannedAgents(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadFleetBannedAgents(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null when the fleetBannedAgents value is explicitly null', () => {
+    const fleetConfigFilePath = writeFleetConfig('fleetBannedAgents: null\n');
+
+    expect(loadFleetBannedAgents(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('throws when the fleet config file does not exist', () => {
+    expect(() =>
+      loadFleetBannedAgents(path.join(tempDir, 'missing.yaml')),
+    ).toThrow();
+  });
+
+  it('throws when the fleetBannedAgents value is not an array', () => {
+    const fleetConfigFilePath = writeFleetConfig('fleetBannedAgents: 42\n');
+
+    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow(
+      'must be',
+    );
+  });
+
+  it('throws when the fleetBannedAgents array contains a non-string element', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'fleetBannedAgents:\n  - urgent-taskforce-leader\n  - 42\n',
+    );
+
+    expect(() => loadFleetBannedAgents(fleetConfigFilePath)).toThrow(
+      'must be',
     );
   });
 });
