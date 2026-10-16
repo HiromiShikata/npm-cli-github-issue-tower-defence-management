@@ -44,7 +44,10 @@ import {
 } from './findLastAgentReport';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { isSilentDispatchAllowedByIssueBody } from './isSilentDispatchAllowedByIssueBody';
-import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
+import {
+  RATE_LIMIT_SESSION_END_MESSAGE,
+  AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
+} from './autoStatusCheckComments';
 
 import { isAgentReportBodyFromAgent } from './isAgentReportBody';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
@@ -61,6 +64,7 @@ import {
 } from './resolveNextStepAgentDispatchRepetition';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { isHumanAuthoredInvestigationTaskCloseOverride } from './isHumanAuthoredInvestigationTaskCloseOverride';
 import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
@@ -491,10 +495,19 @@ export class NotifyFinishedIssuePreparationUseCase {
     const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
       ? extractCloseIssueAs(lastAgentReport.content)
       : { kind: 'notRequested' };
+    const isHumanAuthoredInvestigationTaskCloseOverrideApplicable =
+      closeIssueAsRequest.kind === 'requested' &&
+      nextStepAgent === null &&
+      workflowError === null &&
+      isHumanAuthoredInvestigationTaskCloseOverride({
+        title: issue.title,
+        body: issue.body,
+      });
     const isCloseIssueAsOverriddenByReportRouting =
       nextStepAgent !== null ||
       workflowError !== null ||
-      needOwnerConfirmationOrApproval;
+      needOwnerConfirmationOrApproval ||
+      isHumanAuthoredInvestigationTaskCloseOverrideApplicable;
     if (
       closeIssueAsRequest.kind === 'requested' &&
       !isCloseIssueAsOverriddenByReportRouting
@@ -875,7 +888,19 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    if (needOwnerConfirmationOrApproval) {
+    if (
+      needOwnerConfirmationOrApproval ||
+      isHumanAuthoredInvestigationTaskCloseOverrideApplicable
+    ) {
+      if (
+        isHumanAuthoredInvestigationTaskCloseOverrideApplicable &&
+        !needOwnerConfirmationOrApproval
+      ) {
+        await this.createCommentWithDedup(
+          issue,
+          AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
+        );
+      }
       issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
