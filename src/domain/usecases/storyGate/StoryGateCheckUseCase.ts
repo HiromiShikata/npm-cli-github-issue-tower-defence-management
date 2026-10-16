@@ -436,6 +436,7 @@ export class StoryGateCheckUseCase {
         option === undefined ||
         isStoryUnset(linkedStory) ||
         option.color === DISABLED_STORY_OPTION_COLOR ||
+        isRegularStory(linkedStory) ||
         (linkedStory.includes(BACKLOG_MILESTONE_STORY_MARKER) &&
           !hasBacklogTicketUrl(body))
       ) {
