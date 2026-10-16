@@ -187,6 +187,7 @@ export class ConflictedIssueRevertUseCase {
                 params.thresholdForDispatchLoop ??
                 DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
               isNoStory: false,
+              dependedIssueUrls: issue.dependedIssueUrls,
               latestReopenedAt,
             });
             if (repetition.type === 'escalateSilentRedispatch') {

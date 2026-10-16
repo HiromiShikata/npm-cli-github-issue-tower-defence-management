@@ -556,9 +556,13 @@ export const resolveNextStepAgentDispatchRepetition = <
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
   isNoStory: boolean;
+  dependedIssueUrls?: string[];
   latestReopenedAt?: Date | null;
   sessionEndedWithoutCompletingTurn?: boolean;
 }): NextStepAgentDispatchRepetition => {
+  if ((params.dependedIssueUrls ?? []).length > 0) {
+    return { type: 'notRepeated' };
+  }
   const effectiveNextStepAgent =
     params.nextStepAgent ??
     (params.currentDispatchHasNoReportRejection

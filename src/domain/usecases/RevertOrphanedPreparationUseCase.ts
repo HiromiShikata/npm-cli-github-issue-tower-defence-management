@@ -169,6 +169,18 @@ export class RevertOrphanedPreparationUseCase {
         if (!isOrphaned) {
           continue;
         }
+        if (issue.dependedIssueUrls.length > 0) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+          await this.createCommentWithDedup(
+            issue,
+            `This issue has a dependency on: ${issue.dependedIssueUrls.join(', ')}. Reverting to Awaiting Workspace instead of escalating.`,
+          );
+          continue;
+        }
         const { outcome, comments, ciFailingPrUrl, latestReopenedAt } =
           await this.evaluateOutcome(
             issue,
@@ -289,6 +301,7 @@ export class RevertOrphanedPreparationUseCase {
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
           isNoStory,
+          dependedIssueUrls: issue.dependedIssueUrls,
           latestReopenedAt,
         });
         if (
