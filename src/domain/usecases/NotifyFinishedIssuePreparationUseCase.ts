@@ -1,3 +1,4 @@
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
@@ -1267,11 +1268,21 @@ export class NotifyFinishedIssuePreparationUseCase {
           project,
           blockerIssueUrl,
         );
-        await this.issueRepository.updateStoryByProjectItemId(
-          { ...project, story: project.story },
-          projectItemId,
-          workflowBlockerStory.id,
-        );
+        try {
+          await this.issueRepository.updateStoryByProjectItemId(
+            { ...project, story: project.story },
+            projectItemId,
+            workflowBlockerStory.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `Skipping stale project item while setting workflow blocker story: itemId=${error.itemId}`,
+            );
+          } else {
+            throw error;
+          }
+        }
       }
     }
 

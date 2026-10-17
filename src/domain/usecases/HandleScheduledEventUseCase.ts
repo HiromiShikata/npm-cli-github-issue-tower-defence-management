@@ -35,7 +35,10 @@ import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
-import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import {
+  SetupTowerDefenceProjectUseCase,
+  StaleProjectItemError,
+} from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import {
   DailySecurityScanConfig,
@@ -561,11 +564,21 @@ ${JSON.stringify(e)}
           );
           return;
         }
-        await this.issueRepository.updateStoryByProjectItemId(
-          { ...freshProject, story: freshStory },
-          projectItemId,
-          matchingStoryOption.id,
-        );
+        try {
+          await this.issueRepository.updateStoryByProjectItemId(
+            { ...freshProject, story: freshStory },
+            projectItemId,
+            matchingStoryOption.id,
+          );
+        } catch (error) {
+          if (error instanceof StaleProjectItemError) {
+            console.warn(
+              `[HandleScheduledEvent] Skipping stale project item while writing Story field for issue ${issueUrl}: itemId=${error.itemId}`,
+            );
+            return;
+          }
+          throw error;
+        }
       },
       failures,
     );

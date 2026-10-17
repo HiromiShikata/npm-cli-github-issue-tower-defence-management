@@ -944,18 +944,21 @@ export class ApiV3CheerioRestIssueRepository
   private evictAndThrowStaleProjectItemErrorOrRethrow = async (
     error: unknown,
     project: Project,
-    issue: Issue,
+    itemId: string,
   ): Promise<never> => {
     if (
       error instanceof Error &&
-      error.message.includes('Could not resolve to a node with the global id')
+      (error.message.includes(
+        'Could not resolve to a node with the global id',
+      ) ||
+        error.message.includes('The item does not exist in the project'))
     ) {
       this.getAllIssuesRefreshMemo.delete(project.id);
       await this.projectIssuesCacheRepository.removeIssueByItemId(
         project.id,
-        issue.itemId,
+        itemId,
       );
-      throw new StaleProjectItemError(issue.itemId);
+      throw new StaleProjectItemError(itemId);
     }
     throw error;
   };
@@ -976,7 +979,7 @@ export class ApiV3CheerioRestIssueRepository
       await this.evictAndThrowStaleProjectItemErrorOrRethrow(
         error,
         project,
-        issue,
+        issue.itemId,
       );
     }
     const memoized = this.getAllIssuesRefreshMemo.get(project.id);
@@ -1692,12 +1695,20 @@ export class ApiV3CheerioRestIssueRepository
     projectItemId: string,
     storyOptionId: string,
   ): Promise<void> => {
-    await this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.story.fieldId,
-      projectItemId,
-      { singleSelectOptionId: storyOptionId },
-    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.story.fieldId,
+        projectItemId,
+        { singleSelectOptionId: storyOptionId },
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        projectItemId,
+      );
+    }
   };
   setDependedIssueUrl = async (
     prUrl: string,
@@ -1860,7 +1871,7 @@ export class ApiV3CheerioRestIssueRepository
       await this.evictAndThrowStaleProjectItemErrorOrRethrow(
         error,
         project,
-        issue,
+        issue.itemId,
       );
     }
     const storyName = project.story.stories.find(
@@ -1977,7 +1988,7 @@ export class ApiV3CheerioRestIssueRepository
       await this.evictAndThrowStaleProjectItemErrorOrRethrow(
         error,
         project,
-        issue,
+        issue.itemId,
       );
     }
     await this.applyDependedIssueUrlFieldWriteToLaterReads(
@@ -2014,7 +2025,7 @@ export class ApiV3CheerioRestIssueRepository
       await this.evictAndThrowStaleProjectItemErrorOrRethrow(
         error,
         project,
-        issue,
+        issue.itemId,
       );
     }
     await this.applyDependedIssueUrlFieldWriteToLaterReads(
