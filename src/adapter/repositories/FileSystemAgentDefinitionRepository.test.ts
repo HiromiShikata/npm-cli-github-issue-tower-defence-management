@@ -123,6 +123,36 @@ describe('FileSystemAgentDefinitionRepository', () => {
       consoleWarnSpy.mockRestore();
     });
 
+    it('resolves null without throwing and logs a prefixed console.warn when the parsed frontmatter YAML is not a mapping', async () => {
+      writeAgentDefinitionFile(
+        'triager',
+        [
+          '---',
+          'just-a-plain-scalar-not-a-mapping',
+          '---',
+          '',
+          '# Triager',
+          '',
+        ].join('\n'),
+      );
+      const repository = new FileSystemAgentDefinitionRepository(dir);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const model = await repository.getLlmModelName('triager');
+
+      expect(model).toBeNull();
+      expect(
+        consoleWarnSpy.mock.calls.some(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].startsWith('FileSystemAgentDefinitionRepository:'),
+        ),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+    });
+
     it('resolves null without throwing and logs a prefixed console.warn when the frontmatter block has no closing delimiter', async () => {
       writeAgentDefinitionFile(
         'triager',
