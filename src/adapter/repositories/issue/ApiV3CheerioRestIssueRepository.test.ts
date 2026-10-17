@@ -15669,6 +15669,73 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     );
   });
 
+  describe('updateStoryByProjectItemId stale project item handling', () => {
+    const storyProjectForByProjectItemIdStaleTest: Project & {
+      story: NonNullable<Project['story']>;
+    } = {
+      ...buildTestProject('proj-story-by-item-id-stale'),
+      story: {
+        name: 'Story',
+        fieldId: 'story-field-id-by-item-id-stale',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'story-opt-by-item-id',
+            name: 'regular / workflow improvement',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow management' },
+      },
+    };
+
+    it.each([
+      [
+        'Could not resolve to a node with the global id',
+        `Could not resolve to a node with the global id of 'PVTI_by_item_id_stale_1'.`,
+      ],
+      [
+        'The item does not exist in the project',
+        'The item does not exist in the project.',
+      ],
+    ])(
+      'throws StaleProjectItemError when updateProjectField fails with "%s"',
+      async (_label, message) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValueOnce(
+          new Error(message),
+        );
+
+        await expect(
+          repository.updateStoryByProjectItemId(
+            storyProjectForByProjectItemIdStaleTest,
+            'PVTI_by_item_id_stale_1',
+            'story-opt-by-item-id',
+          ),
+        ).rejects.toThrow(StaleProjectItemError);
+      },
+    );
+
+    it('rethrows the original error unchanged when updateProjectField fails with an unrelated error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const unrelatedError = new Error('distinctive-unrelated-failure-9f2b');
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValueOnce(
+        unrelatedError,
+      );
+
+      await expect(
+        repository.updateStoryByProjectItemId(
+          storyProjectForByProjectItemIdStaleTest,
+          'item-by-item-id-other',
+          'story-opt-by-item-id',
+        ),
+      ).rejects.toBe(unrelatedError);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
