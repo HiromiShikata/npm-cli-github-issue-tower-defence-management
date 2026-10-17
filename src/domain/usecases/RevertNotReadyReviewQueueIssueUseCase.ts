@@ -15,6 +15,7 @@ import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprov
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
@@ -92,6 +93,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     thresholdForDispatchLoop?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
+    const isTrustedAuthorForAutoStatusCheck = (author: string): boolean =>
+      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
     const evaluatedAt = params.evaluatedAt ?? new Date();
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -164,6 +167,14 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       }
 
       if (issue.dependedIssueUrls.length > 0) {
+        if (
+          await this.shouldSkipForUnansweredOwnerConfirmation(
+            issue,
+            isTrustedAuthorForAutoStatusCheck,
+          )
+        ) {
+          continue;
+        }
         const liveIssue = await this.isSnapshotStatusStillCurrent(
           project,
           issue,
@@ -198,6 +209,14 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         issue.nextActionDate !== null &&
         issueReactivationTriggerIsPending(issue, evaluatedAt)
       ) {
+        if (
+          await this.shouldSkipForUnansweredOwnerConfirmation(
+            issue,
+            isTrustedAuthorForAutoStatusCheck,
+          )
+        ) {
+          continue;
+        }
         const liveIssue = await this.isSnapshotStatusStillCurrent(
           project,
           issue,
@@ -248,18 +267,23 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           if (!issue.assignees.includes(params.manager)) {
             continue;
           }
+          const comments =
+            await this.issueCommentRepository.getCommentsFromIssue(issue);
+          if (
+            issueHasUnansweredOwnerConfirmationRequest(
+              comments,
+              isTrustedAuthorForAutoStatusCheck,
+              issue.agent,
+            )
+          ) {
+            continue;
+          }
           if (params.thresholdForAutoReject !== undefined) {
-            const comments =
-              await this.issueCommentRepository.getCommentsFromIssue(issue);
             const latestReopenedAt =
               await this.issueRepository.getLatestReopenedEventAt(issue);
             const nextStepAgent = extractNextStepAgentFromComments(
               comments,
-              (author) =>
-                isAuthorAuthorizedForAutoStatusCheck(
-                  author,
-                  allowedIssueAuthors,
-                ),
+              isTrustedAuthorForAutoStatusCheck,
               issue.agent,
             );
             if (nextStepAgent !== null) {
@@ -268,11 +292,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 nextStepAgent,
                 currentDispatchHasNoReportRejection: false,
                 comments,
-                isTrustedAuthor: (author) =>
-                  isAuthorAuthorizedForAutoStatusCheck(
-                    author,
-                    allowedIssueAuthors,
-                  ),
+                isTrustedAuthor: isTrustedAuthorForAutoStatusCheck,
                 thresholdForAutoReject: params.thresholdForAutoReject,
                 thresholdForDispatchLoop:
                   params.thresholdForDispatchLoop ??
@@ -377,6 +397,19 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         throw error;
       }
     }
+  };
+
+  private shouldSkipForUnansweredOwnerConfirmation = async (
+    issue: Issue,
+    isTrustedAuthor: (author: string) => boolean,
+  ): Promise<boolean> => {
+    const comments =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    return issueHasUnansweredOwnerConfirmationRequest(
+      comments,
+      isTrustedAuthor,
+      issue.agent,
+    );
   };
 
   private isSnapshotStatusStillCurrent = async (
