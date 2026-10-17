@@ -1,3 +1,10 @@
+## [2.171.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.7...v2.171.8) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository,HandleScheduledEventUseCase,NotifyFinishedIssuePreparationUseCase:** route updateStoryByProjectItemId through stale-project-item helper ([#3461](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3461)) ([3c8f199](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c8f1990dfaed41e41dff805ae60a9e6ea38c392))
+
 ## [2.171.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.6...v2.171.7) (2026-10-17)
 
 
