@@ -4500,16 +4500,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when it does not retry a genuine permission 403', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              message: 'Resource not accessible by integration',
-            }),
-            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-          ),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.closeIssueByUrl(
@@ -4610,16 +4608,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited 403', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              message: 'Resource not accessible by integration',
-            }),
-            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-          ),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.reopenIssueByUrl(
