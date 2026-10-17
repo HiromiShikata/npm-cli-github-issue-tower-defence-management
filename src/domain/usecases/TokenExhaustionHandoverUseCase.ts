@@ -13,14 +13,12 @@ import {
   TokenRateLimitSnapshotRepository,
 } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
 import { TokenExhaustionHandoverStateRepository } from './adapter-interfaces/TokenExhaustionHandoverStateRepository';
-import { Sleep, realSleep } from '../services/commentCreateWithDedupRetry';
 
 export const TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS = 900;
 export const TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS = 3600;
 export const TOKEN_EXHAUSTION_FIVE_HOUR_WARNING_FREE_THRESHOLD = 0.25;
 export const TOKEN_EXHAUSTION_SEVEN_DAY_WARNING_FREE_THRESHOLD = 0.15;
 export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS = 180;
-export const DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS = 20;
 
 type SnapshotVerdict = {
   stale: boolean;
@@ -37,13 +35,11 @@ export type TokenExhaustionHandoverInput = {
   state: TokenExhaustionHandoverState;
   now: Date;
   handoverActionCooldownSeconds: number;
-  relaunchStaggerSeconds: number;
 };
 
 export type TokenExhaustionHandoverResult = {
   killedSessionNames: string[];
   terminatedPids: number[];
-  relaunchedLeaderNames: string[];
   leftAliveSessionNames: string[];
   skippedWorkspacePreparationSessionNames: string[];
   state: TokenExhaustionHandoverState;
@@ -61,10 +57,7 @@ export class TokenExhaustionHandoverUseCase {
     >,
     private readonly tmuxSessionRepository: Pick<
       TmuxSessionRepository,
-      | 'sendKeys'
-      | 'killSession'
-      | 'listLiveSessionNames'
-      | 'launchBareNameLeaderSession'
+      'sendKeys' | 'listLiveSessionNames'
     >,
     private readonly processSignalRepository: ProcessSignalRepository,
     private readonly issueCheckpointRepository: Pick<
@@ -75,7 +68,6 @@ export class TokenExhaustionHandoverUseCase {
       TokenExhaustionHandoverStateRepository,
       'save'
     >,
-    private readonly sleep: Sleep = realSleep,
   ) {}
 
   run = async (
@@ -93,7 +85,6 @@ export class TokenExhaustionHandoverUseCase {
     };
     const killedSessionNames: string[] = [];
     const terminatedPids: number[] = [];
-    const relaunchedLeaderNames: string[] = [];
     const leftAliveSessionNames: string[] = [];
     const skippedWorkspacePreparationSessionNames: string[] = [];
 
@@ -140,7 +131,7 @@ export class TokenExhaustionHandoverUseCase {
 
         if (!input.enabled) {
           console.log(
-            `Token exhaustion handover: would kill${this.needsRelaunch(session) ? ' and relaunch' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
+            `Token exhaustion handover: would kill ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
           );
           continue;
         }
@@ -161,19 +152,13 @@ export class TokenExhaustionHandoverUseCase {
           signaledAtEpoch: nowEpochSeconds,
           pid: session.pid,
         });
-        if (this.needsRelaunch(session)) {
-          if (relaunchedLeaderNames.length > 0) {
-            await this.sleep(input.relaunchStaggerSeconds * 1000);
-          }
-          await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
-        }
         if (hasTmux) {
           killedSessionNames.push(this.displayName(session));
         } else {
           terminatedPids.push(session.pid);
         }
         console.log(
-          `Token exhaustion handover: killed${this.needsRelaunch(session) ? ' and relaunched' : ''} ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
+          `Token exhaustion handover: killed ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
         );
         nextEntries[stateKey] = {
           signaledAtEpoch: nowEpochSeconds,
@@ -190,31 +175,16 @@ export class TokenExhaustionHandoverUseCase {
     }
 
     console.log(
-      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`,
+      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`,
     );
 
     return {
       killedSessionNames,
       terminatedPids,
-      relaunchedLeaderNames,
       leftAliveSessionNames,
       skippedWorkspacePreparationSessionNames,
       state: { entries: nextEntries },
     };
-  };
-
-  private needsRelaunch = (session: ClaudeHandoverSession): boolean =>
-    session.kind === 'bareNameLeader' && session.name !== null;
-
-  private relaunchBareNameLeader = async (
-    session: ClaudeHandoverSession,
-    relaunchedLeaderNames: string[],
-  ): Promise<void> => {
-    if (session.name === null) {
-      return;
-    }
-    await this.tmuxSessionRepository.launchBareNameLeaderSession(session.name);
-    relaunchedLeaderNames.push(session.name);
   };
 
   private forceKill = async (
@@ -225,17 +195,6 @@ export class TokenExhaustionHandoverUseCase {
       this.processSignalRepository.terminateProcess(entry.pid);
       this.processSignalRepository.killProcess(entry.pid);
       return;
-    }
-    if (session.sessionName !== null) {
-      try {
-        await this.tmuxSessionRepository.killSession(session.sessionName);
-      } catch (error) {
-        console.error(
-          `Token exhaustion handover: killSession failed for ${session.sessionName}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
     }
     this.processSignalRepository.killProcess(entry.pid);
   };

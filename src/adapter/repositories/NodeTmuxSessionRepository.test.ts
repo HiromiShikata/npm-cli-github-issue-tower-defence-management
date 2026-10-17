@@ -465,62 +465,6 @@ describe('NodeTmuxSessionRepository', () => {
     });
   });
 
-  describe('launchBareNameLeaderSession', () => {
-    it('creates a detached tmux session running cl for the bare name', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      const repository = new NodeTmuxSessionRepository(runner);
-
-      await repository.launchBareNameLeaderSession('app');
-
-      expect(runner.runCommand.mock.calls[0][0]).toBe('tmux');
-      expect(runner.runCommand.mock.calls[0][1]).toEqual([
-        'new-session',
-        '-d',
-        '-s',
-        'app',
-        'bash',
-        '-lc',
-        "cl 'app'; exec /bin/bash",
-      ]);
-    });
-
-    it('normalizes dots and colons in the session name', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      const repository = new NodeTmuxSessionRepository(runner);
-
-      await repository.launchBareNameLeaderSession('tdpm-cli.v2');
-
-      expect(runner.runCommand.mock.calls[0][1][3]).toBe('tdpm-cli_v2');
-      expect(runner.runCommand.mock.calls[0][1][6]).toBe(
-        "cl 'tdpm-cli.v2'; exec /bin/bash",
-      );
-    });
-
-    it('throws when tmux fails to create the session', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: 'duplicate session',
-        exitCode: 1,
-      });
-      const repository = new NodeTmuxSessionRepository(runner);
-
-      await expect(
-        repository.launchBareNameLeaderSession('app'),
-      ).rejects.toThrow('Failed to relaunch bare-name leader session "app"');
-    });
-  });
-
   describe('attachOrCreateInteractiveSession', () => {
     const issueUrl = 'https://github.com/owner/repo/issues/9';
 

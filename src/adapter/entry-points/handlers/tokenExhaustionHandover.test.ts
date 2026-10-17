@@ -82,7 +82,6 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 999,
-      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -105,7 +104,6 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 45,
-      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -126,7 +124,6 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 180,
-      relaunchStaggerSeconds: 20,
     });
   });
 
@@ -149,74 +146,6 @@ describe('handleTokenExhaustionHandover', () => {
       state: { entries: {} },
       now,
       handoverActionCooldownSeconds: 180,
-      relaunchStaggerSeconds: 20,
-    });
-  });
-
-  it('forwards an explicit relaunchStaggerSeconds value to the use case run call', async () => {
-    const now = new Date('2026-09-26T00:00:00.000Z');
-    const localCommandRunner = createMockRunner();
-    const params = {
-      enabled: true,
-      tokenListJsonPath: '/tokens.json',
-      relaunchStaggerSeconds: 30,
-      localCommandRunner,
-      now,
-    };
-
-    await handleTokenExhaustionHandover(params);
-
-    expect(mockRun).toHaveBeenCalledTimes(1);
-    expect(mockRun).toHaveBeenCalledWith({
-      enabled: true,
-      state: { entries: {} },
-      now,
-      handoverActionCooldownSeconds: 180,
-      relaunchStaggerSeconds: 30,
-    });
-  });
-
-  it('forwards the default relaunch stagger constant to the use case run call when relaunchStaggerSeconds is unset', async () => {
-    const now = new Date('2026-09-26T00:00:00.000Z');
-    const localCommandRunner = createMockRunner();
-
-    await handleTokenExhaustionHandover({
-      enabled: true,
-      tokenListJsonPath: '/tokens.json',
-      localCommandRunner,
-      now,
-    });
-
-    expect(mockRun).toHaveBeenCalledTimes(1);
-    expect(mockRun).toHaveBeenCalledWith({
-      enabled: true,
-      state: { entries: {} },
-      now,
-      handoverActionCooldownSeconds: 180,
-      relaunchStaggerSeconds: 20,
-    });
-  });
-
-  it('forwards the default relaunch stagger constant to the use case run call when relaunchStaggerSeconds is null', async () => {
-    const now = new Date('2026-09-26T00:00:00.000Z');
-    const localCommandRunner = createMockRunner();
-    const params = {
-      enabled: true,
-      tokenListJsonPath: '/tokens.json',
-      relaunchStaggerSeconds: null,
-      localCommandRunner,
-      now,
-    };
-
-    await handleTokenExhaustionHandover(params);
-
-    expect(mockRun).toHaveBeenCalledTimes(1);
-    expect(mockRun).toHaveBeenCalledWith({
-      enabled: true,
-      state: { entries: {} },
-      now,
-      handoverActionCooldownSeconds: 180,
-      relaunchStaggerSeconds: 20,
     });
   });
 

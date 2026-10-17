@@ -10,9 +10,6 @@ const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
 const BRACKETED_PASTE_START = '\x1b[200~';
 const BRACKETED_PASTE_END = '\x1b[201~';
 
-const shellSingleQuote = (value: string): string =>
-  `'${value.replace(/'/g, `'\\''`)}'`;
-
 export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
@@ -311,22 +308,6 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       }
     }
     return null;
-  };
-
-  launchBareNameLeaderSession = async (name: string): Promise<void> => {
-    const sessionName = name.replace(/[.:]/g, '_');
-    const leaderCommand = `cl ${shellSingleQuote(name)}; exec /bin/bash`;
-    const { stderr, exitCode } = await this.localCommandRunner.runCommand(
-      'tmux',
-      ['new-session', '-d', '-s', sessionName, 'bash', '-lc', leaderCommand],
-    );
-    if (exitCode !== 0) {
-      throw new Error(
-        `Failed to relaunch bare-name leader session "${sessionName}": exit code ${exitCode}${
-          stderr ? `: ${stderr}` : ''
-        }`,
-      );
-    }
   };
 
   private sendEnter = async (sessionName: string): Promise<void> => {

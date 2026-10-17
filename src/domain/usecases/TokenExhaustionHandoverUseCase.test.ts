@@ -2,7 +2,6 @@ import {
   TokenExhaustionHandoverUseCase,
   TOKEN_EXHAUSTION_SNAPSHOT_STALE_THRESHOLD_SECONDS,
   TOKEN_EXHAUSTION_SNAPSHOT_HARD_STALE_THRESHOLD_SECONDS,
-  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
 } from './TokenExhaustionHandoverUseCase';
 import {
   ClaudeHandoverSession,
@@ -92,7 +91,6 @@ const defaultInput = (
     state: TokenExhaustionHandoverState;
     now: Date;
     handoverActionCooldownSeconds: number;
-    relaunchStaggerSeconds: number;
   }> = {},
 ) => ({
   enabled: true,
@@ -100,7 +98,6 @@ const defaultInput = (
   bareNameLeaderMessage: '',
   gracePeriodSeconds: 0,
   handoverActionCooldownSeconds: 180,
-  relaunchStaggerSeconds: 20,
   state: { entries: {} },
   now,
   ...overrides,
@@ -117,10 +114,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
   let tmuxSessionRepository: Mocked<
     Pick<
       TmuxSessionRepository,
-      | 'sendKeys'
-      | 'killSession'
-      | 'listLiveSessionNames'
-      | 'launchBareNameLeaderSession'
+      'sendKeys' | 'killSession' | 'listLiveSessionNames'
     >
   >;
   let processSignalRepository: Mocked<ProcessSignalRepository>;
@@ -146,7 +140,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
       sendKeys: jest.fn().mockResolvedValue(undefined),
       killSession: jest.fn().mockResolvedValue(undefined),
       listLiveSessionNames: jest.fn().mockResolvedValue([]),
-      launchBareNameLeaderSession: jest.fn().mockResolvedValue(undefined),
     };
     processSignalRepository = {
       isProcessAlive: jest.fn().mockReturnValue(true),
@@ -179,13 +172,13 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
   });
 
-  it('logs a cycle summary every run using the new format with no signaled count', async () => {
+  it('logs a cycle summary every run using the new format with no relaunch count', async () => {
     const logSpy = jest.spyOn(console, 'log');
 
     await useCase.run(defaultInput({ enabled: false }));
 
     expect(logSpy).toHaveBeenCalledWith(
-      'Token exhaustion handover: cycle summary evaluated=0 enabled=false killed=0 terminatedPids=0 relaunched=0 leftAlive=0 skippedWorkspacePreparation=0',
+      'Token exhaustion handover: cycle summary evaluated=0 enabled=false killed=0 terminatedPids=0 leftAlive=0 skippedWorkspacePreparation=0',
     );
   });
 
@@ -383,102 +376,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
   });
 
-  it('kills and relaunches a bare-name leader immediately in the same cycle when rejected, without sending a message (criterion 3)', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      bareNameLeaderSession(),
-    ]);
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
-      snapshot(TOKEN_FRESH),
-    ]);
-
-    const result = await useCase.run(defaultInput());
-
-    const killSessionOrder =
-      tmuxSessionRepository.killSession.mock.invocationCallOrder[0];
-    const killProcessOrder =
-      processSignalRepository.killProcess.mock.invocationCallOrder[0];
-    expect(killSessionOrder).toBeLessThan(killProcessOrder);
-    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
-    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
-      LEADER_PID,
-    );
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).toHaveBeenCalledWith(BARE_NAME);
-    expect(result.killedSessionNames).toEqual([BARE_NAME]);
-    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-  });
-
-  it('detects exhaustion via a rejected window status and kills the issue-url leader without messaging or relaunching it (criterion 4)', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      issueUrlLeaderSession(),
-    ]);
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
-      snapshot(TOKEN_FRESH),
-    ]);
-
-    const result = await useCase.run(defaultInput());
-
-    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(
-      ISSUE_URL_SESSION,
-    );
-    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
-      LEADER_PID,
-    );
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).not.toHaveBeenCalled();
-    expect(result.killedSessionNames).toEqual([ISSUE_URL_SESSION]);
-    expect(result.relaunchedLeaderNames).toEqual([]);
-  });
-
-  it('kills and relaunches a bare-name leader immediately when a rejected weekly hard cap has a future reset (criterion 6)', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      bareNameLeaderSession(),
-    ]);
-    const weeklyCap: TokenModelWeeklyLimit[] = [
-      { rejected: true, resetsAt: nowEpochSeconds + 3600 },
-    ];
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { modelWeeklyLimits: weeklyCap }),
-      snapshot(TOKEN_FRESH),
-    ]);
-
-    const result = await useCase.run(defaultInput());
-
-    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).toHaveBeenCalledWith(BARE_NAME);
-    expect(result.killedSessionNames).toEqual([BARE_NAME]);
-    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-  });
-
-  it('kills and relaunches a bare-name leader immediately when blockedUntilEpoch is in the future (criterion 6)', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      bareNameLeaderSession(),
-    ]);
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { blockedUntilEpoch: nowEpochSeconds + 3600 }),
-      snapshot(TOKEN_FRESH),
-    ]);
-
-    const result = await useCase.run(defaultInput());
-
-    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).toHaveBeenCalledWith(BARE_NAME);
-    expect(result.killedSessionNames).toEqual([BARE_NAME]);
-    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-  });
-
   it('kills an issue-url leader when a rejected weekly hard cap has a future reset', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
@@ -537,67 +434,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
     expect(result.terminatedPids).toEqual([IMPL_PID]);
     expect(result.killedSessionNames).toEqual([]);
-    expect(result.relaunchedLeaderNames).toEqual([]);
     expect(issueCheckpointRepository.postCheckpoint).not.toHaveBeenCalled();
     expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
-  });
-
-  it('relaunches a bare-name leader immediately even when killSession throws because the session already exited', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      bareNameLeaderSession(),
-    ]);
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
-      snapshot(TOKEN_FRESH),
-    ]);
-    tmuxSessionRepository.killSession.mockRejectedValue(
-      new Error('no session with name app'),
-    );
-
-    const result = await useCase.run(defaultInput());
-
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).toHaveBeenCalledWith(BARE_NAME);
-    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-    expect(result.state.entries[BARE_NAME]).toEqual({
-      signaledAtEpoch: nowEpochSeconds,
-      pid: LEADER_PID,
-    });
-  });
-
-  it('kills and relaunches a bare-name leader immediately even when a pre-existing state entry exists', async () => {
-    handoverSessionRepository.listHandoverSessions.mockReturnValue([
-      bareNameLeaderSession(),
-    ]);
-    snapshotRepository.listSnapshots.mockReturnValue([
-      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
-      snapshot(TOKEN_FRESH),
-    ]);
-
-    const result = await useCase.run(
-      defaultInput({
-        state: {
-          entries: {
-            [BARE_NAME]: {
-              signaledAtEpoch: nowEpochSeconds - 100000,
-              pid: LEADER_PID,
-            },
-          },
-        },
-      }),
-    );
-
-    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).toHaveBeenCalledWith(BARE_NAME);
-    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
-    expect(result.killedSessionNames).toEqual([BARE_NAME]);
-    expect(result.state.entries[BARE_NAME]).toEqual({
-      signaledAtEpoch: nowEpochSeconds,
-      pid: LEADER_PID,
-    });
   });
 
   it('leaves a session launched by the workspace preparation script untouched instead of terminating it', async () => {
@@ -684,12 +522,8 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
     expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
     expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    expect(
-      tmuxSessionRepository.launchBareNameLeaderSession,
-    ).not.toHaveBeenCalled();
     expect(processSignalRepository.killProcess).not.toHaveBeenCalled();
     expect(result.killedSessionNames).toEqual([]);
-    expect(result.relaunchedLeaderNames).toEqual([]);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(BARE_NAME));
   });
 
@@ -714,14 +548,13 @@ describe('TokenExhaustionHandoverUseCase', () => {
       exhausted: boolean;
       expectedKilledSessionNames: string[];
       expectedTerminatedPids: number[];
-      expectedRelaunchedLeaderNames: string[];
       expectedStateEntry: 'now' | 'unchanged' | 'absent';
     };
 
     const cases: CooldownGatingCase[] = [
       {
         description:
-          '#1 bareNameLeader, no existing entry, cooldown=180, enabled=true -> kill+relaunch',
+          '#1 bareNameLeader, no existing entry, cooldown=180, enabled=true -> kill',
         sessionFactory: bareNameLeaderSession,
         existingEntryElapsedSeconds: null,
         handoverActionCooldownSeconds: 180,
@@ -729,7 +562,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [BARE_NAME],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [BARE_NAME],
         expectedStateEntry: 'now',
       },
       {
@@ -742,12 +574,11 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'unchanged',
       },
       {
         description:
-          '#3 bareNameLeader, entry exactly 180s old (boundary), cooldown=180, enabled=true -> kill+relaunch again',
+          '#3 bareNameLeader, entry exactly 180s old (boundary), cooldown=180, enabled=true -> kill again',
         sessionFactory: bareNameLeaderSession,
         existingEntryElapsedSeconds: 180,
         handoverActionCooldownSeconds: 180,
@@ -755,12 +586,11 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [BARE_NAME],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [BARE_NAME],
         expectedStateEntry: 'now',
       },
       {
         description:
-          '#4 issueUrlLeader, no existing entry, cooldown=180, enabled=true -> kill only, no relaunch',
+          '#4 issueUrlLeader, no existing entry, cooldown=180, enabled=true -> kill only',
         sessionFactory: issueUrlLeaderSession,
         existingEntryElapsedSeconds: null,
         handoverActionCooldownSeconds: 180,
@@ -768,7 +598,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [ISSUE_URL_SESSION],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'now',
       },
       {
@@ -781,7 +610,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'unchanged',
       },
       {
@@ -794,7 +622,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [IMPL_PID],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'now',
       },
       {
@@ -807,7 +634,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'unchanged',
       },
       {
@@ -820,12 +646,11 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'absent',
       },
       {
         description:
-          '#9 bareNameLeader, entry 30s old, cooldown=0 (operator opt-out), enabled=true -> kill+relaunch (cooldown disabled)',
+          '#9 bareNameLeader, entry 30s old, cooldown=0 (operator opt-out), enabled=true -> kill (cooldown disabled)',
         sessionFactory: bareNameLeaderSession,
         existingEntryElapsedSeconds: 30,
         handoverActionCooldownSeconds: 0,
@@ -833,7 +658,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: true,
         expectedKilledSessionNames: [BARE_NAME],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [BARE_NAME],
         expectedStateEntry: 'now',
       },
       {
@@ -846,7 +670,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted: false,
         expectedKilledSessionNames: [],
         expectedTerminatedPids: [],
-        expectedRelaunchedLeaderNames: [],
         expectedStateEntry: 'absent',
       },
     ];
@@ -861,7 +684,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
         exhausted,
         expectedKilledSessionNames,
         expectedTerminatedPids,
-        expectedRelaunchedLeaderNames,
         expectedStateEntry,
       }) => {
         const session = sessionFactory();
@@ -897,9 +719,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
         expect(result.killedSessionNames).toEqual(expectedKilledSessionNames);
         expect(result.terminatedPids).toEqual(expectedTerminatedPids);
-        expect(result.relaunchedLeaderNames).toEqual(
-          expectedRelaunchedLeaderNames,
-        );
 
         if (expectedStateEntry === 'now') {
           expect(result.state.entries[stateKey]).toEqual({
@@ -957,176 +776,65 @@ describe('TokenExhaustionHandoverUseCase', () => {
     });
   });
 
-  describe('relaunchStaggerSeconds pacing', () => {
-    type RelaunchStaggerSessionSpec = {
-      id: string;
-      needsRelaunch: boolean;
-    };
+  it('does not call killSession and does not launch a new session when force-killing a bare-name leader whose token is exhausted', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      bareNameLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
+      snapshot(TOKEN_FRESH),
+    ]);
 
-    const buildRelaunchStaggerSession = (
-      spec: RelaunchStaggerSessionSpec,
-      index: number,
-    ): ClaudeHandoverSession =>
-      spec.needsRelaunch
-        ? {
-            ...bareNameLeaderSession(),
-            pid: 6000 + index,
-            sessionName: `stagger-${spec.id}`,
-            name: `stagger-${spec.id}`,
-          }
-        : {
-            ...issueUrlLeaderSession(),
-            pid: 6000 + index,
-            sessionName: `stagger-${spec.id}`,
-            name: `stagger-${spec.id}`,
-            issueUrl: `https://github.com/owner/repo/issues/${6000 + index}`,
-          };
+    const result = await useCase.run(defaultInput());
 
-    type RelaunchStaggerPacingCase = {
-      description: string;
-      sessionSpecs: RelaunchStaggerSessionSpec[];
-      relaunchStaggerSeconds: number;
-      expectedSleepCallCount: number;
-    };
-
-    const cases: RelaunchStaggerPacingCase[] = [
-      {
-        description:
-          '0 sessions needing relaunch (one kill-only session) -> no sleep call',
-        sessionSpecs: [{ id: 'kill-only-a', needsRelaunch: false }],
-        relaunchStaggerSeconds:
-          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
-        expectedSleepCallCount: 0,
-      },
-      {
-        description: '1 session needing relaunch -> no sleep call',
-        sessionSpecs: [{ id: 'relaunch-a', needsRelaunch: true }],
-        relaunchStaggerSeconds:
-          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
-        expectedSleepCallCount: 0,
-      },
-      {
-        description:
-          '2 sessions needing relaunch -> one sleep call, ordered kill1-relaunch1-kill2-sleep-relaunch2',
-        sessionSpecs: [
-          { id: 'relaunch-a', needsRelaunch: true },
-          { id: 'relaunch-b', needsRelaunch: true },
-        ],
-        relaunchStaggerSeconds:
-          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
-        expectedSleepCallCount: 1,
-      },
-      {
-        description:
-          '3 sessions needing relaunch -> two sleep calls, ordering extended to a third session',
-        sessionSpecs: [
-          { id: 'relaunch-a', needsRelaunch: true },
-          { id: 'relaunch-b', needsRelaunch: true },
-          { id: 'relaunch-c', needsRelaunch: true },
-        ],
-        relaunchStaggerSeconds:
-          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
-        expectedSleepCallCount: 2,
-      },
-      {
-        description:
-          '2 sessions needing relaunch with a kill-only session interleaved -> one sleep call, ordering preserved across it',
-        sessionSpecs: [
-          { id: 'relaunch-a', needsRelaunch: true },
-          { id: 'kill-only-b', needsRelaunch: false },
-          { id: 'relaunch-c', needsRelaunch: true },
-        ],
-        relaunchStaggerSeconds:
-          DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
-        expectedSleepCallCount: 1,
-      },
-      {
-        description:
-          'non-default stagger duration is forwarded to sleep in milliseconds',
-        sessionSpecs: [
-          { id: 'relaunch-a', needsRelaunch: true },
-          { id: 'relaunch-b', needsRelaunch: true },
-        ],
-        relaunchStaggerSeconds: 45,
-        expectedSleepCallCount: 1,
-      },
-    ];
-
-    it.each(cases)(
-      '$description',
-      async ({
-        sessionSpecs,
-        relaunchStaggerSeconds,
-        expectedSleepCallCount,
-      }) => {
-        const sleep = jest
-          .fn<Promise<void>, [number]>()
-          .mockResolvedValue(undefined);
-        const staggeredUseCase = new TokenExhaustionHandoverUseCase(
-          handoverSessionRepository,
-          snapshotRepository,
-          tmuxSessionRepository,
-          processSignalRepository,
-          issueCheckpointRepository,
-          stateRepository,
-          sleep,
-        );
-        const sessions = sessionSpecs.map(buildRelaunchStaggerSession);
-        handoverSessionRepository.listHandoverSessions.mockReturnValue(
-          sessions,
-        );
-        snapshotRepository.listSnapshots.mockReturnValue([
-          snapshot(TOKEN_EXHAUSTED, { rejected: true }),
-          snapshot(TOKEN_FRESH),
-        ]);
-
-        await staggeredUseCase.run(defaultInput({ relaunchStaggerSeconds }));
-
-        expect(sleep).toHaveBeenCalledTimes(expectedSleepCallCount);
-        for (const call of sleep.mock.calls) {
-          expect(call[0]).toBe(relaunchStaggerSeconds * 1000);
-        }
-
-        const orderMarkers: number[] = [];
-        let relaunchesSoFar = 0;
-        let nextSleepCallIndex = 0;
-        sessionSpecs.forEach((spec, index) => {
-          const session = sessions[index];
-          const killCallIndex =
-            tmuxSessionRepository.killSession.mock.calls.findIndex(
-              (args) => args[0] === session.sessionName,
-            );
-          expect(killCallIndex).toBeGreaterThanOrEqual(0);
-          orderMarkers.push(
-            tmuxSessionRepository.killSession.mock.invocationCallOrder[
-              killCallIndex
-            ],
-          );
-
-          if (spec.needsRelaunch) {
-            relaunchesSoFar += 1;
-            if (relaunchesSoFar > 1) {
-              orderMarkers.push(
-                sleep.mock.invocationCallOrder[nextSleepCallIndex],
-              );
-              nextSleepCallIndex += 1;
-            }
-            const relaunchCallIndex =
-              tmuxSessionRepository.launchBareNameLeaderSession.mock.calls.findIndex(
-                (args) => args[0] === session.name,
-              );
-            expect(relaunchCallIndex).toBeGreaterThanOrEqual(0);
-            orderMarkers.push(
-              tmuxSessionRepository.launchBareNameLeaderSession.mock
-                .invocationCallOrder[relaunchCallIndex],
-            );
-          }
-        });
-
-        for (let i = 1; i < orderMarkers.length; i += 1) {
-          expect(orderMarkers[i]).toBeGreaterThan(orderMarkers[i - 1]);
-        }
-      },
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
+      LEADER_PID,
     );
+    expect(result.killedSessionNames).toEqual([BARE_NAME]);
+    expect(result.terminatedPids).toEqual([]);
+  });
+
+  it('does not call killSession when force-killing an issue-URL leader whose token is exhausted', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      issueUrlLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
+      LEADER_PID,
+    );
+    expect(result.killedSessionNames).toEqual([ISSUE_URL_SESSION]);
+    expect(result.terminatedPids).toEqual([]);
+  });
+
+  it('sends a graceful termination request before force-killing a resident sub-agent, unchanged from existing behavior', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { rejected: true }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    const terminateOrder =
+      processSignalRepository.terminateProcess.mock.invocationCallOrder[0];
+    const killOrder =
+      processSignalRepository.killProcess.mock.invocationCallOrder[0];
+    expect(terminateOrder).toBeLessThan(killOrder);
+    expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
+      IMPL_PID,
+    );
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
+    expect(result.terminatedPids).toEqual([IMPL_PID]);
+    expect(result.killedSessionNames).toEqual([]);
   });
 });

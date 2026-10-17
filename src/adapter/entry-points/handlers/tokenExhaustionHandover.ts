@@ -2,7 +2,6 @@ import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/
 import {
   TokenExhaustionHandoverUseCase,
   DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS,
-  DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
 } from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
 import { GitHubIssueCheckpointRepository } from '../../repositories/GitHubIssueCheckpointRepository';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
@@ -21,7 +20,6 @@ export type TokenExhaustionHandoverParams = {
   bareNameLeaderHandoverMessage?: string | null;
   tokenRateLimitSnapshotBaseDir?: string | null;
   handoverActionCooldownSeconds?: number | null;
-  relaunchStaggerSeconds?: number | null;
   stateFilePath?: string | null;
   localCommandRunner: LocalCommandRunner;
   now: Date;
@@ -35,7 +33,6 @@ export const handleTokenExhaustionHandover = async (
     tokenListJsonPath,
     tokenRateLimitSnapshotBaseDir,
     handoverActionCooldownSeconds,
-    relaunchStaggerSeconds,
     stateFilePath,
     localCommandRunner,
     now,
@@ -71,9 +68,6 @@ export const handleTokenExhaustionHandover = async (
     handoverActionCooldownSeconds:
       handoverActionCooldownSeconds ??
       DEFAULT_TOKEN_EXHAUSTION_HANDOVER_ACTION_COOLDOWN_SECONDS,
-    relaunchStaggerSeconds:
-      relaunchStaggerSeconds ??
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_RELAUNCH_STAGGER_SECONDS,
   });
 
   stateRepository.save(result.state);
