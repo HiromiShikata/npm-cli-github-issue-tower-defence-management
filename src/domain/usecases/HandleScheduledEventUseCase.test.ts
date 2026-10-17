@@ -31,7 +31,10 @@ import { ClosedAwaitingOwnerIssueRevertUseCase } from './ClosedAwaitingOwnerIssu
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
-import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import {
+  SetupTowerDefenceProjectUseCase,
+  StaleProjectItemError,
+} from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
@@ -2294,6 +2297,28 @@ describe('HandleScheduledEventUseCase', () => {
           expect(result?.storyOptionWriteFailures[0]).toEqual(
             expect.stringContaining('distinctive-story-write-failure-8f3c1a'),
           );
+        });
+
+        it('resolves run() without throwing, logs via console.warn, and records no failure entry when the Story field write rejects with StaleProjectItemError', async () => {
+          const warnSpy = jest
+            .spyOn(console, 'warn')
+            .mockImplementation(() => {});
+          try {
+            mockIssueRepository.updateStoryByProjectItemId.mockRejectedValueOnce(
+              new StaleProjectItemError('item-abc'),
+            );
+
+            const runPromise = useCase.run(storyInput);
+            await jest.runAllTimersAsync();
+
+            await expect(runPromise).resolves.not.toBeNull();
+            const result = await runPromise;
+
+            expect(result?.storyOptionWriteFailures).toHaveLength(0);
+            expect(warnSpy).toHaveBeenCalled();
+          } finally {
+            warnSpy.mockRestore();
+          }
         });
       });
     });
