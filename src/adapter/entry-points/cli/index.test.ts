@@ -35,6 +35,7 @@ import {
   PullRequestProjectItemBackupRecord,
 } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
 import { ScheduledEventHandlerInputValidationError } from '../handlers/HandleScheduledEventUseCaseHandler';
+import { FileSystemAgentDefinitionRepository } from '../../repositories/FileSystemAgentDefinitionRepository';
 
 jest.mock('../../../domain/usecases/StartPreparationUseCase');
 jest.mock('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
@@ -42,6 +43,7 @@ jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedWaitConditionUseCase');
 jest.mock('../../../domain/usecases/PullRequestProjectItemRemoveUseCase');
+jest.mock('../../repositories/FileSystemAgentDefinitionRepository');
 const mockLocalStorageRepositoryWrite = jest.fn<void, [string, string]>();
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({
@@ -1125,6 +1127,32 @@ mysteryKey: 'value'
         maxConcurrentWorkers: 40,
         graphqlRateLimitFloor: 500,
       });
+    });
+
+    it('should construct FileSystemAgentDefinitionRepository with the default agent definitions directory path when agentDefinitionsDirectoryPath is not configured', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(
+        jest.mocked(FileSystemAgentDefinitionRepository).mock.calls[0][0],
+      ).toBe(path.join(os.homedir(), '.claude', 'agents'));
     });
 
     it('should pass the configured agent definitions to start preparation', async () => {
