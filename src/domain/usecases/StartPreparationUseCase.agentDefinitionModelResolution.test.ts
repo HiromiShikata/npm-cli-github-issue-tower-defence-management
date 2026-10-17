@@ -464,4 +464,73 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
     );
     consoleErrorSpy.mockRestore();
   });
+
+  it('uses the model resolved for the reassigned agent, not the stale pre-reassignment agent, when the staleness recheck changes the agent after the early-exit guard already resolved agentDefinitionModelName', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        agent: 'triager',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
+      [],
+    );
+    mockIssueRepository.get.mockResolvedValue(
+      buildMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        agent: 'spec-creator',
+        dependedIssueUrls: [],
+        isClosed: false,
+      }),
+    );
+    mockAgentDefinitionRepository.getLlmModelName.mockImplementation(
+      (agentName: string) => {
+        if (agentName === 'triager') {
+          return Promise.resolve('initial-agent-model');
+        }
+        if (agentName === 'spec-creator') {
+          return Promise.resolve('reassigned-agent-model');
+        }
+        return Promise.resolve(null);
+      },
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'triager',
+      defaultLlmModelName: null,
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+      'spec-creator',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+      'reassigned-agent-model',
+    );
+  });
 });
