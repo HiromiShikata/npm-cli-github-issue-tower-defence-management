@@ -19,7 +19,12 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository');
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository');
 jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
-jest.mock('../../repositories/FileSystemAgentDefinitionRepository');
+jest.mock('../../repositories/FileSystemAgentDefinitionRepository', () => ({
+  ...jest.requireActual<
+    typeof import('../../repositories/FileSystemAgentDefinitionRepository')
+  >('../../repositories/FileSystemAgentDefinitionRepository'),
+  FileSystemAgentDefinitionRepository: jest.fn(),
+}));
 
 type RunFn = HandleScheduledEventUseCase['run'];
 const capturedRunInputs: Parameters<RunFn>[] = [];

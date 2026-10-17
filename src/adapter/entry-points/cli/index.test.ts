@@ -43,7 +43,12 @@ jest.mock('../../../domain/usecases/CheckIssueReviewReadinessUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedPreparationUseCase');
 jest.mock('../../../domain/usecases/RevertOrphanedWaitConditionUseCase');
 jest.mock('../../../domain/usecases/PullRequestProjectItemRemoveUseCase');
-jest.mock('../../repositories/FileSystemAgentDefinitionRepository');
+jest.mock('../../repositories/FileSystemAgentDefinitionRepository', () => ({
+  ...jest.requireActual<
+    typeof import('../../repositories/FileSystemAgentDefinitionRepository')
+  >('../../repositories/FileSystemAgentDefinitionRepository'),
+  FileSystemAgentDefinitionRepository: jest.fn(),
+}));
 const mockLocalStorageRepositoryWrite = jest.fn<void, [string, string]>();
 jest.mock('../../repositories/LocalStorageRepository', () => ({
   LocalStorageRepository: jest.fn().mockImplementation(() => ({

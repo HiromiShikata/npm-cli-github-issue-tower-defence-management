@@ -1,7 +1,5 @@
 import YAML from 'yaml';
 import fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { writeSituationFile } from './situationFileWriter';
 import {
   formatConsoleGeneratedAt,
@@ -65,7 +63,10 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
-import { FileSystemAgentDefinitionRepository } from '../../repositories/FileSystemAgentDefinitionRepository';
+import {
+  FileSystemAgentDefinitionRepository,
+  resolveAgentDefinitionsDirectoryPath,
+} from '../../repositories/FileSystemAgentDefinitionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
@@ -593,10 +594,9 @@ export class HandleScheduledEventUseCaseHandler {
       ),
       undefined,
       new FileSystemAgentDefinitionRepository(
-        mergedInput.startPreparation?.agentDefinitionsDirectoryPath &&
-          mergedInput.startPreparation.agentDefinitionsDirectoryPath.length > 0
-          ? mergedInput.startPreparation.agentDefinitionsDirectoryPath
-          : path.join(os.homedir(), '.claude', 'agents'),
+        resolveAgentDefinitionsDirectoryPath(
+          mergedInput.startPreparation?.agentDefinitionsDirectoryPath,
+        ),
       ),
     );
     const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(
