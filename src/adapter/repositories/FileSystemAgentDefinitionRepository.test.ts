@@ -62,10 +62,46 @@ describe('FileSystemAgentDefinitionRepository', () => {
 
     it('resolves null without throwing when the agent definition file does not exist', async () => {
       const repository = new FileSystemAgentDefinitionRepository(dir);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
       const model = await repository.getLlmModelName('nonexistent-agent');
 
       expect(model).toBeNull();
+      expect(
+        consoleWarnSpy.mock.calls.some(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].startsWith('FileSystemAgentDefinitionRepository:'),
+        ),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('resolves null without throwing and logs a prefixed console.warn when reading the agent definition file fails with a non-ENOENT error', async () => {
+      const repository = new FileSystemAgentDefinitionRepository(dir);
+      const readFileSpy = jest
+        .spyOn(fs.promises, 'readFile')
+        .mockRejectedValueOnce(
+          Object.assign(new Error('permission denied'), { code: 'EACCES' }),
+        );
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const model = await repository.getLlmModelName('triager');
+
+      expect(model).toBeNull();
+      expect(
+        consoleWarnSpy.mock.calls.some(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].startsWith('FileSystemAgentDefinitionRepository:'),
+        ),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+      readFileSpy.mockRestore();
     });
 
     it('resolves null without throwing and logs a prefixed console.warn when the frontmatter YAML is malformed', async () => {
