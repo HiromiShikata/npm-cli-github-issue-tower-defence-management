@@ -1041,10 +1041,10 @@ describe('GitHubIssueCommentRepository', () => {
         }
 
         expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
-        expect(
-          (caughtError as InstanceType<typeof GitHubRateLimitError>)
-            .rateLimitResetAt,
-        ).toBe(expectedResetIso);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
       });
     });
   });
@@ -1287,19 +1287,16 @@ describe('GitHubIssueCommentRepository', () => {
 
         let caughtError: unknown;
         try {
-          await repository.createComment(
-            issue,
-            'will hit primary rate limit',
-          );
+          await repository.createComment(issue, 'will hit primary rate limit');
         } catch (error) {
           caughtError = error;
         }
 
         expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
-        expect(
-          (caughtError as InstanceType<typeof GitHubRateLimitError>)
-            .rateLimitResetAt,
-        ).toBe(expectedResetIso);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
       });
     });
   });
@@ -1564,10 +1561,10 @@ describe('GitHubIssueCommentRepository', () => {
         }
 
         expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
-        expect(
-          (caughtError as InstanceType<typeof GitHubRateLimitError>)
-            .rateLimitResetAt,
-        ).toBe(expectedResetIso);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
         expect(fetchSpy).toHaveBeenCalledTimes(1);
       });
     });
