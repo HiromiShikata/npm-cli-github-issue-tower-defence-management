@@ -6,6 +6,7 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
+import { GitHubRateLimitError } from '../../adapter/repositories/issue/githubRateLimitRetry';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -2357,6 +2358,71 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
+  it('should still advance closed orphaned issue to Awaiting Owner when getCommentsFromIssue fails with a GitHubRateLimitError', async () => {
+    const closedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [closedIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      new GitHubRateLimitError(
+        'HTTP 403 GitHub API primary rate limit exceeded',
+        '2026-10-17T17:00:00Z',
+      ),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should still advance closed orphaned issue to Awaiting Owner when getCommentsFromIssue fails with an unrelated generic error', async () => {
+    const closedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [closedIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      new Error('Failed to fetch comments from GitHub REST API: 404 Not Found'),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
   it('should transition orphaned issue to Failed Preparation when rejection threshold is met', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
@@ -3378,6 +3444,70 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
     mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
       buildGitHubCommentFetchHttpError(403),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('should skip an orphaned issue without posting a comment or changing its status when getCommentsFromIssue fails with a primary-rate-limit-caused GitHubRateLimitError', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      new GitHubRateLimitError(
+        'HTTP 403 GitHub API primary rate limit exceeded',
+        '2026-10-17T17:00:00Z',
+      ),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('should skip an orphaned issue without posting a comment or changing its status when getCommentsFromIssue fails with a secondary-rate-limit-caused GitHubRateLimitError', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      new GitHubRateLimitError(
+        'HTTP 403 GitHub API secondary rate limit exceeded',
+        '2026-10-17T17:00:00Z',
+      ),
     );
 
     await useCase.run({
