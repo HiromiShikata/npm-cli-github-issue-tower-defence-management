@@ -4065,9 +4065,7 @@ describe('GraphqlProjectItemRepository', () => {
         | { date: string }
         | { singleSelectOptionId: string };
       fieldValueNode:
-        | Record<string, unknown>
-        | Record<string, unknown>[]
-        | null;
+        Record<string, unknown> | Record<string, unknown>[] | null;
       intendedValueString: string;
       expected: 'resolves' | 'mismatch' | 'noMatch';
       actualValueString?: string;
