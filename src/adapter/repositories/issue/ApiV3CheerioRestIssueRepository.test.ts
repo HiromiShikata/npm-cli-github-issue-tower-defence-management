@@ -15736,6 +15736,339 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+
+  describe('updateStatus stale project item handling for "item does not exist" message', () => {
+    it('removes the stale item from the cache and clears the memo when updateProjectField fails with "The item does not exist in the project"', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-item-does-not-exist');
+      const staleIssue = buildStaleItemTestIssue(
+        'PVTI_item_does_not_exist_1',
+        'https://github.com/o/r/issues/61',
+      );
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error('The item does not exist in the project'),
+      );
+      await repository.getAllIssues('proj-item-does-not-exist');
+
+      await expect(
+        repository.updateStatus(project, staleIssue, 'awaiting-status-id'),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+
+    it('removes the stale item from the cache and clears the memo when updateProjectField fails with the realistic wrapped "item does not exist" message', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-item-does-not-exist-wrapped');
+      const staleIssue = buildStaleItemTestIssue(
+        'PVTI_item_does_not_exist_wrapped_1',
+        'https://github.com/o/r/issues/62',
+      );
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          'updateProjectField failed: projectId=proj-x, fieldId=field-x, itemId=item-x, value={}\nThe item does not exist in the project',
+        ),
+      );
+      await repository.getAllIssues('proj-item-does-not-exist-wrapped');
+
+      await expect(
+        repository.updateStatus(project, staleIssue, 'awaiting-status-id'),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+  });
+
+  describe('updateNextActionHour stale project item handling', () => {
+    const buildNextActionHourProject = (
+      id: string,
+    ): Project & {
+      nextActionHour: NonNullable<Project['nextActionHour']>;
+    } => ({
+      ...buildTestProject(id),
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'f-next-action-hour',
+        options: [],
+      },
+    });
+
+    it.each([
+      [
+        'a "Could not resolve to a node" message',
+        new Error(
+          `Could not resolve to a node with the global id of 'PVTI_hour_1'.`,
+        ),
+      ],
+      [
+        'a "The item does not exist in the project" message',
+        new Error('The item does not exist in the project'),
+      ],
+    ])(
+      'throws StaleProjectItemError when the internal updateProjectField call fails with %s',
+      async (_label, thrown) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        const project = buildNextActionHourProject('proj-hour-stale');
+        const issue = buildStaleItemTestIssue(
+          'PVTI_hour_1',
+          'https://github.com/o/r/issues/71',
+        );
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.updateNextActionHour(project, issue, 9),
+        ).rejects.toThrow(StaleProjectItemError);
+      },
+    );
+
+    it('rethrows unchanged when the internal updateProjectField call fails with an unrelated error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildNextActionHourProject('proj-hour-other');
+      const issue = buildStaleItemTestIssue(
+        'item-hour-other',
+        'https://github.com/o/r/issues/72',
+      );
+      const thrown = new Error('Network timeout');
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(thrown);
+
+      await expect(
+        repository.updateNextActionHour(project, issue, 9),
+      ).rejects.toBe(thrown);
+    });
+
+    it('throws StaleProjectItemError when the internal updateProjectField call fails with the realistic wrapped "item does not exist" message', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildNextActionHourProject('proj-hour-wrapped');
+      const issue = buildStaleItemTestIssue(
+        'item-hour-wrapped',
+        'https://github.com/o/r/issues/73',
+      );
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          'updateProjectField failed: projectId=proj-x, fieldId=field-x, itemId=item-x, value={}\nThe item does not exist in the project',
+        ),
+      );
+
+      await expect(
+        repository.updateNextActionHour(project, issue, 9),
+      ).rejects.toThrow(StaleProjectItemError);
+    });
+  });
+
+  describe('updateNextActionDate stale project item handling', () => {
+    const buildNextActionDateProject = (id: string): Project => ({
+      ...buildTestProject(id),
+      nextActionDate: {
+        name: 'Next Action Date',
+        fieldId: 'f-next-action-date',
+      },
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'f-next-action-hour',
+        options: [],
+      },
+    });
+
+    it.each([
+      [
+        'a "Could not resolve to a node" message',
+        new Error(
+          `Could not resolve to a node with the global id of 'PVTI_date_1'.`,
+        ),
+      ],
+      [
+        'a "The item does not exist in the project" message',
+        new Error('The item does not exist in the project'),
+      ],
+    ])(
+      'throws StaleProjectItemError when the internal updateProjectField call fails with %s',
+      async (_label, thrown) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        const project = buildNextActionDateProject('proj-date-stale');
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.updateNextActionDate(
+            'https://github.com/o/r/issues/81',
+            project,
+            new Date('2026-02-01'),
+            'PVTI_date_1',
+          ),
+        ).rejects.toThrow(StaleProjectItemError);
+      },
+    );
+
+    it('rethrows unchanged when the internal updateProjectField call fails with an unrelated error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildNextActionDateProject('proj-date-other');
+      const thrown = new Error('Network timeout');
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(thrown);
+
+      await expect(
+        repository.updateNextActionDate(
+          'https://github.com/o/r/issues/82',
+          project,
+          new Date('2026-02-01'),
+          'item-date-other',
+        ),
+      ).rejects.toBe(thrown);
+    });
+
+    it('throws StaleProjectItemError when the internal updateProjectField call fails with the realistic wrapped "item does not exist" message', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildNextActionDateProject('proj-date-wrapped');
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          'updateProjectField failed: projectId=proj-x, fieldId=field-x, itemId=item-x, value={}\nThe item does not exist in the project',
+        ),
+      );
+
+      await expect(
+        repository.updateNextActionDate(
+          'https://github.com/o/r/issues/83',
+          project,
+          new Date('2026-02-01'),
+          'item-date-wrapped',
+        ),
+      ).rejects.toThrow(StaleProjectItemError);
+    });
+  });
+
+  describe('setIssueAgentField stale project item handling', () => {
+    const buildAgentProject = (id: string): Project => ({
+      ...buildTestProject(id),
+      agent: { name: 'Agent', fieldId: 'f-agent', options: [] },
+    });
+
+    it.each([
+      [
+        'a "Could not resolve to a node" message',
+        new Error(
+          `Could not resolve to a node with the global id of 'item-agent-1'.`,
+        ),
+      ],
+      [
+        'a "The item does not exist in the project" message',
+        new Error('The item does not exist in the project'),
+      ],
+    ])(
+      'throws StaleProjectItemError when the internal updateProjectField call fails with %s',
+      async (_label, thrown) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        const project = buildAgentProject('proj-agent-stale');
+        const issueUrl = 'https://github.com/o/r/issues/91';
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+          buildProjectItem(issueUrl, 'issue-91'),
+        );
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+          thrown,
+        );
+
+        await expect(
+          repository.setIssueAgentField(issueUrl, project, 'agent-opt-1'),
+        ).rejects.toThrow(StaleProjectItemError);
+      },
+    );
+
+    it('rethrows unchanged when the internal updateProjectField call fails with an unrelated error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildAgentProject('proj-agent-other');
+      const issueUrl = 'https://github.com/o/r/issues/92';
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'issue-92'),
+      );
+      const thrown = new Error('Network timeout');
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(thrown);
+
+      await expect(
+        repository.setIssueAgentField(issueUrl, project, 'agent-opt-1'),
+      ).rejects.toBe(thrown);
+    });
+
+    it('throws StaleProjectItemError when the internal updateProjectField call fails with the realistic wrapped "item does not exist" message', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildAgentProject('proj-agent-wrapped');
+      const issueUrl = 'https://github.com/o/r/issues/93';
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'issue-93'),
+      );
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          'updateProjectField failed: projectId=proj-x, fieldId=field-x, itemId=item-x, value={}\nThe item does not exist in the project',
+        ),
+      );
+
+      await expect(
+        repository.setIssueAgentField(issueUrl, project, 'agent-opt-1'),
+      ).rejects.toThrow(StaleProjectItemError);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

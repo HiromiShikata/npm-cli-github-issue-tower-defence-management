@@ -1906,6 +1906,157 @@ describe('consoleOperationApi', () => {
     });
   });
 
+  describe('handleTriage stale project item handling for snooze and set_agent branches', () => {
+    const contextWithNextActionHour = (): ConsoleOperationContext =>
+      contextForProject({
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      });
+
+    const contextWithAgentField = (): ConsoleOperationContext =>
+      contextForProject({
+        ...project,
+        agent: {
+          name: 'Agent',
+          fieldId: 'agentField',
+          options: [
+            {
+              id: 'agent_opt_1',
+              name: 'developer',
+              color: 'GRAY' as const,
+              description: '',
+            },
+          ],
+        },
+      });
+
+    it('resolves with a 4xx response when updateNextActionHour fails because the project item no longer exists on GitHub (snooze_1hour branch)', async () => {
+      issueRepository.updateNextActionHour.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_hour_stale'),
+      );
+
+      const response = await handleTriage(contextWithNextActionHour(), {
+        pjcode: 'acme',
+        action: 'snooze_1hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_hour_stale',
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBeLessThan(500);
+    });
+
+    it('re-throws from snooze_1hour when updateNextActionHour fails for a reason other than a stale project item', async () => {
+      const otherError = new Error('some other failure');
+      issueRepository.updateNextActionHour.mockRejectedValueOnce(otherError);
+
+      await expect(
+        handleTriage(contextWithNextActionHour(), {
+          pjcode: 'acme',
+          action: 'snooze_1hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_hour_other',
+        }),
+      ).rejects.toThrow('some other failure');
+    });
+
+    it('resolves with a 4xx response when updateNextActionDate fails because the project item no longer exists on GitHub (snooze_1day branch)', async () => {
+      issueRepository.updateNextActionDate.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_day_stale'),
+      );
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_1day',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_day_stale',
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBeLessThan(500);
+    });
+
+    it('re-throws from snooze_1day when updateNextActionDate fails for a reason other than a stale project item', async () => {
+      const otherError = new Error('some other failure');
+      issueRepository.updateNextActionDate.mockRejectedValueOnce(otherError);
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_1day',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_day_other',
+        }),
+      ).rejects.toThrow('some other failure');
+    });
+
+    it('resolves with a 4xx response when updateNextActionDate fails because the project item no longer exists on GitHub (snooze_1month branch)', async () => {
+      issueRepository.updateNextActionDate.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_month_stale'),
+      );
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_1month',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_month_stale',
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBeLessThan(500);
+    });
+
+    it('re-throws from snooze_1month when updateNextActionDate fails for a reason other than a stale project item', async () => {
+      const otherError = new Error('some other failure');
+      issueRepository.updateNextActionDate.mockRejectedValueOnce(otherError);
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_1month',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_month_other',
+        }),
+      ).rejects.toThrow('some other failure');
+    });
+
+    it('resolves with a 4xx response when setIssueAgentField fails because the project item no longer exists on GitHub (set_agent branch)', async () => {
+      issueRepository.setIssueAgentField.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_agent_stale'),
+      );
+
+      const response = await handleTriage(contextWithAgentField(), {
+        pjcode: 'acme',
+        action: 'set_agent',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_agent_stale',
+        agentOptionId: 'agent_opt_1',
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBeLessThan(500);
+    });
+
+    it('re-throws from set_agent when setIssueAgentField fails for a reason other than a stale project item', async () => {
+      const otherError = new Error('some other failure');
+      issueRepository.setIssueAgentField.mockRejectedValueOnce(otherError);
+
+      await expect(
+        handleTriage(contextWithAgentField(), {
+          pjcode: 'acme',
+          action: 'set_agent',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_agent_other',
+          agentOptionId: 'agent_opt_1',
+        }),
+      ).rejects.toThrow('some other failure');
+    });
+  });
+
   describe('close operations avoid loading the project via GraphQL', () => {
     let resolveProjectSpy: jest.Mock<
       Promise<ConsoleProjectBinding | null>,
