@@ -3891,6 +3891,20 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow('404');
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getPullRequestChangedFilePaths(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it('throws GitHubRateLimitError, not a generic Error, when rate-limited with a future reset', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
@@ -4010,6 +4024,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow('422');
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Unprocessable Entity', {
+          status: 422,
+          statusText: 'Unprocessable Entity',
+        }),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.approvePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it("should surface GitHub's reason together with the status when the API rejects the approval", async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(
@@ -4075,6 +4104,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow(
         'Failed to close PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 404 Not Found',
       );
+    });
+
+    it('throws a plain Error, not GitHubRateLimitError, when the close fails with a non-rate-limited status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.closePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('should fall back to the status alone when the error body is not JSON', async () => {
@@ -4266,6 +4310,21 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when the merge API responds with a non-405 non-rate-limited error', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.mergePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it('throws GitHubRateLimitError, not a generic Error, when the initial merge attempt is rate-limited with a future reset', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
@@ -4440,6 +4499,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(sleep).not.toHaveBeenCalled();
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when it does not retry a genuine permission 403', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.closeIssueByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+          'completed',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it('surfaces a clear rate-limit message including the reset time after the bounded retries are exhausted', async () => {
       const resetEpochSeconds = 1700000000;
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
@@ -4528,6 +4605,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ).rejects.toThrow(
         'Failed to reopen issue https://github.com/HiromiShikata/test-repository/issues/42:',
       );
+    });
+
+    it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited 403', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Resource not accessible by integration',
+          }),
+          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+        ),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.reopenIssueByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('reopenIssueByUrl throws GitHubRateLimitError, not a generic Error, when rate-limited with a future reset', async () => {
@@ -5374,6 +5468,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         await expect(latestReopenedEventAt).rejects.toThrow(
           reopenedEventTestIssueUrl,
         );
+        await expect(latestReopenedEventAt).rejects.not.toBeInstanceOf(
+          GitHubRateLimitError,
+        );
         expect(summarizeRecordedRequests(recordedRequests)).toEqual({
           issueEventListingPages: [1, 2, 3, 4],
           repositoryIssueEventFeedRequestUrls: [],
@@ -6059,6 +6156,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         await expect(latestReopenedEventAt).rejects.toThrow(
           reopenedEventTestIssueUrl,
         );
+        await expect(latestReopenedEventAt).rejects.not.toBeInstanceOf(
+          GitHubRateLimitError,
+        );
         expect(
           summarizeRecordedRequestsWithRepositoryIssueEventFeedPages(
             recordedRequests,
@@ -6452,6 +6552,26 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when the review POST fails with a non-rate-limited status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: 'Validation Failed',
+            errors: [{ message: 'path must be part of the diff' }],
+          }),
+          { status: 422, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.requestChangesWithInlineComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          'Please address this.',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it('should surface string entries in the GitHub errors array', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(
@@ -6588,6 +6708,36 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
+    it('throws a plain Error, not GitHubRateLimitError, when the comment POST fails with a non-rate-limited status', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ head: { sha: 'abc123' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Validation Failed',
+              errors: [{ message: 'line must be part of the diff' }],
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.createPullRequestReviewComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          17,
+          'RIGHT',
+          'Please rename this variable.',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
+    });
+
     it('should throw when the head commit cannot be fetched', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response('Not Found', {
@@ -6606,6 +6756,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'Please rename this variable.',
         ),
       ).rejects.toThrow('404');
+    });
+
+    it('throws a plain Error, not GitHubRateLimitError, when the head commit cannot be fetched with a non-rate-limited status', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.createPullRequestReviewComment(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+          'src/index.ts',
+          17,
+          'RIGHT',
+          'Please rename this variable.',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('throws GitHubRateLimitError, not a generic Error, when fetching the head commit is rate-limited with a future reset', async () => {
@@ -6720,6 +6888,20 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/issues/42',
         ),
       ).rejects.toThrow('404');
+    });
+
+    it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getIssueOrPullRequestBody(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('populates GitHubRateLimitError.rateLimitResetAt from the x-ratelimit-reset header when present', async () => {
@@ -7708,6 +7890,20 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/pull/42',
         ),
       ).rejects.toThrow('404');
+    });
+
+    it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getPullRequestSummary(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('throws GitHubRateLimitError, not a generic Error, when rate-limited with a future reset', async () => {
@@ -9099,6 +9295,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/pull/31',
         ),
       ).rejects.toThrow(/Failed to fetch branch rules/);
+    });
+
+    it('still throws a plain Error, not GitHubRateLimitError, when branch rules fetch fails with a non-403 non-404 status', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () =>
+          new Response(JSON.stringify({ message: 'Server Error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getOpenPullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/31',
+        ),
+      ).rejects.not.toBeInstanceOf(GitHubRateLimitError);
     });
 
     it('still throws a plain Error, not GitHubRateLimitError, when branch detail fetch fails with a non-403 non-404 status', async () => {
