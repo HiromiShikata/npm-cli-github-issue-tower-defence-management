@@ -1,3 +1,10 @@
+## [2.171.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.8...v2.171.9) (2026-10-17)
+
+
+### Bug Fixes
+
+* **CliGitHubGraphqlRateLimitRepository:** add --cache 60s to gh api rate_limit call ([#3462](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3462)) ([b1bb266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b1bb2662fe6e753f2c25c5e5fb601ebef7bace82))
+
 ## [2.171.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.7...v2.171.8) (2026-10-17)
 
 
