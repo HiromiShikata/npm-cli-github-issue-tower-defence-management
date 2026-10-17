@@ -1,3 +1,10 @@
+## [2.171.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.5...v2.171.6) (2026-10-17)
+
+
+### Bug Fixes
+
+* **TokenExhaustionHandoverUseCase:** remove broken kill-by-name call and redundant bare-name-leader relaunch ([#3447](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3447)) ([3ebc8ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3ebc8ce5b25cf3c341a156a08c92dc282f694ba0))
+
 ## [2.171.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.4...v2.171.5) (2026-10-16)
 
 
