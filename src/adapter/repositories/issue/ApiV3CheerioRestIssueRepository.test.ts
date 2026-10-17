@@ -15736,7 +15736,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
-
   describe('updateStatus stale project item handling for "item does not exist" message', () => {
     it('removes the stale item from the cache and clears the memo when updateProjectField fails with "The item does not exist in the project"', async () => {
       const {
