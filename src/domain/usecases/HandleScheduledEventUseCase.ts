@@ -190,6 +190,7 @@ export class HandleScheduledEventUseCase {
       preparationProcessCheckCommand?: string;
       codexHomeCandidates?: string[] | null;
       awLogDirectoryPath?: string;
+      agentDefinitionsDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingOwnerStatus?: string | null;
       autoAdvanceQualityCheckEnabled?: boolean;

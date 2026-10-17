@@ -24,6 +24,7 @@ export type ConfigFile = {
   codexHomeCandidates?: string[];
   claudeCodeOauthTokenListJsonPath?: string;
   awLogDirectoryPath?: string;
+  agentDefinitionsDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
   labelsNotRequiringPullRequest?: string[];
@@ -155,6 +156,7 @@ const knownProjectReadmeConfigKeys = [
   'codexHomeCandidates',
   'claudeCodeOauthTokenListJsonPath',
   'awLogDirectoryPath',
+  'agentDefinitionsDirectoryPath',
   'awLogStaleThresholdMinutes',
   'labelsAsLlmAgentName',
   'labelsNotRequiringPullRequest',
@@ -213,6 +215,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'claudeCodeOauthTokenListJsonPath',
       ),
       awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+      agentDefinitionsDirectoryPath: getStringValue(
+        parsed,
+        'agentDefinitionsDirectoryPath',
+      ),
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
@@ -324,6 +330,10 @@ export const parseProjectReadmeConfig = (
         'claudeCodeOauthTokenListJsonPath',
       ),
       awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+      agentDefinitionsDirectoryPath: getStringValue(
+        parsed,
+        'agentDefinitionsDirectoryPath',
+      ),
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
@@ -421,6 +431,10 @@ export const mergeConfigs = (
     readmeOverrides.awLogDirectoryPath ??
     cliOverrides.awLogDirectoryPath ??
     configFile.awLogDirectoryPath,
+  agentDefinitionsDirectoryPath:
+    readmeOverrides.agentDefinitionsDirectoryPath ??
+    cliOverrides.agentDefinitionsDirectoryPath ??
+    configFile.agentDefinitionsDirectoryPath,
   awLogStaleThresholdMinutes:
     readmeOverrides.awLogStaleThresholdMinutes ??
     cliOverrides.awLogStaleThresholdMinutes ??

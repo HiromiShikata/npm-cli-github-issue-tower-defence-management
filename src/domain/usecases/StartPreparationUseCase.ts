@@ -15,6 +15,7 @@ import {
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { DISABLED_STORY_OPTION_COLOR } from './storyGate/storyValueClassify';
+import type { AgentDefinitionRepository } from './adapter-interfaces/AgentDefinitionRepository';
 import type { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import type { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import type { IssueLatestSessionBranchRepository } from './adapter-interfaces/IssueLatestSessionBranchRepository';
@@ -111,6 +112,9 @@ export class StartPreparationUseCase {
     private readonly gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository,
     private readonly issueLatestSessionBranchRepository: IssueLatestSessionBranchRepository,
     private readonly sleep: Sleep = realSleep,
+    private readonly agentDefinitionRepository: AgentDefinitionRepository = {
+      getLlmModelName: async () => null,
+    },
   ) {}
 
   private createCommentByUrlWithDedup = async (
@@ -885,15 +889,20 @@ export class StartPreparationUseCase {
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
         .trim();
+      let agentDefinitionModelName: string | null = null;
       if (
         !labelModelName &&
         !params.defaultLlmModelName &&
         rotationTokens === null
       ) {
-        console.error(
-          `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
-        );
-        continue;
+        agentDefinitionModelName =
+          await this.agentDefinitionRepository.getLlmModelName(agent);
+        if (!agentDefinitionModelName) {
+          console.error(
+            `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
+          );
+          continue;
+        }
       }
       let branchName: string;
       const relatedPRs = branchSource.relatedOpenPullRequests;
@@ -1150,8 +1159,19 @@ export class StartPreparationUseCase {
           ANTHROPIC_BASE_URL: proxyBaseUrl,
         };
       }
+      if (
+        agentDefinitionModelName === null &&
+        !labelModelName &&
+        !routedModelName
+      ) {
+        agentDefinitionModelName =
+          await this.agentDefinitionRepository.getLlmModelName(agent);
+      }
       const model =
-        labelModelName || routedModelName || params.defaultLlmModelName;
+        labelModelName ||
+        routedModelName ||
+        agentDefinitionModelName ||
+        params.defaultLlmModelName;
       if (!model) {
         console.error(
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,

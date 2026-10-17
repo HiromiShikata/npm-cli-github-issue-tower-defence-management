@@ -11,6 +11,7 @@ export {
 } from './projectConfig';
 
 import * as path from 'path';
+import * as os from 'os';
 import { workerRequestTextOf } from '../../../domain/entities/WorkerRequestText';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
@@ -45,6 +46,7 @@ import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCa
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
+import { FileSystemAgentDefinitionRepository } from '../../repositories/FileSystemAgentDefinitionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { secretaryScopeLibPath } from '../../repositories/secretaryScopeLibPath';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
@@ -738,6 +740,13 @@ program
       new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
       new AwLogIssueLatestSessionBranchRepository(
         config.awLogDirectoryPath ?? null,
+      ),
+      undefined,
+      new FileSystemAgentDefinitionRepository(
+        config.agentDefinitionsDirectoryPath &&
+          config.agentDefinitionsDirectoryPath.length > 0
+          ? config.agentDefinitionsDirectoryPath
+          : path.join(os.homedir(), '.claude', 'agents'),
       ),
     );
 
