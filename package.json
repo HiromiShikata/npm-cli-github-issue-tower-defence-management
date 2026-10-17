@@ -1,6 +1,6 @@
 {
   "name": "github-issue-tower-defence-management",
-  "version": "2.171.10",
+  "version": "2.171.11",
   "description": "",
   "main": "bin/index.js",
   "scripts": {

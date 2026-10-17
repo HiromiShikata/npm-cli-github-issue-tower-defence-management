@@ -1,3 +1,10 @@
+## [2.171.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.10...v2.171.11) (2026-10-17)
+
+
+### Bug Fixes
+
+* **GitHubIssueCommentRepository:** classify primary rate limit responses as GitHubRateLimitError ([#3467](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3467)) ([f255461](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f255461481571eb969689930fc660406baeca0d6))
+
 ## [2.171.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.9...v2.171.10) (2026-10-17)
 
 
