@@ -63,6 +63,10 @@ import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparati
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
+import {
+  FileSystemAgentDefinitionRepository,
+  resolveAgentDefinitionsDirectoryPath,
+} from '../../repositories/FileSystemAgentDefinitionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
@@ -587,6 +591,12 @@ export class HandleScheduledEventUseCaseHandler {
       new CliGitHubGraphqlRateLimitRepository(nodeLocalCommandRunner),
       new AwLogIssueLatestSessionBranchRepository(
         mergedInput.startPreparation?.awLogDirectoryPath ?? null,
+      ),
+      undefined,
+      new FileSystemAgentDefinitionRepository(
+        resolveAgentDefinitionsDirectoryPath(
+          mergedInput.startPreparation?.agentDefinitionsDirectoryPath,
+        ),
       ),
     );
     const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository(

@@ -1,4 +1,6 @@
 import fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import YAML from 'yaml';
 import { mock } from 'jest-mock-extended';
 import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
@@ -17,6 +19,12 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository');
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository');
 jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
+jest.mock('../../repositories/FileSystemAgentDefinitionRepository', () => ({
+  ...jest.requireActual<
+    typeof import('../../repositories/FileSystemAgentDefinitionRepository')
+  >('../../repositories/FileSystemAgentDefinitionRepository'),
+  FileSystemAgentDefinitionRepository: jest.fn(),
+}));
 
 type RunFn = HandleScheduledEventUseCase['run'];
 const capturedRunInputs: Parameters<RunFn>[] = [];
@@ -160,6 +168,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { FileSystemAgentDefinitionRepository } from '../../repositories/FileSystemAgentDefinitionRepository';
 import { resetProjectReadmeInMemoryCacheForTesting } from '../cli/projectConfig';
 import {
   loadSilentNotificationEnabled,
@@ -440,6 +449,15 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.config.utilizationPercentageThreshold).toBe(90);
     expect(firstCallArg.config.thresholdForAutoReject).toBe(3);
     expect(firstCallArg.config.maximumPreparingIssuesCount).toBeNull();
+  });
+
+  it('should construct FileSystemAgentDefinitionRepository with the default agent definitions directory path when agentDefinitionsDirectoryPath is not configured', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(
+      jest.mocked(FileSystemAgentDefinitionRepository).mock.calls[0][0],
+    ).toBe(path.join(os.homedir(), '.claude', 'agents'));
   });
 
   it('should not write situation file when run returns null', async () => {

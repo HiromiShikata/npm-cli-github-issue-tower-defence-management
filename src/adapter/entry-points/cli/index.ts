@@ -45,6 +45,10 @@ import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCa
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { AwLogIssueLatestSessionBranchRepository } from '../../repositories/AwLogIssueLatestSessionBranchRepository';
+import {
+  FileSystemAgentDefinitionRepository,
+  resolveAgentDefinitionsDirectoryPath,
+} from '../../repositories/FileSystemAgentDefinitionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { secretaryScopeLibPath } from '../../repositories/secretaryScopeLibPath';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
@@ -738,6 +742,12 @@ program
       new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
       new AwLogIssueLatestSessionBranchRepository(
         config.awLogDirectoryPath ?? null,
+      ),
+      undefined,
+      new FileSystemAgentDefinitionRepository(
+        resolveAgentDefinitionsDirectoryPath(
+          config.agentDefinitionsDirectoryPath,
+        ),
       ),
     );
 
