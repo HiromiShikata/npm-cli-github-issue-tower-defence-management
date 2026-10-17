@@ -4064,7 +4064,10 @@ describe('GraphqlProjectItemRepository', () => {
         | { number: number }
         | { date: string }
         | { singleSelectOptionId: string };
-      fieldValueNode: Record<string, unknown> | null;
+      fieldValueNode:
+        | Record<string, unknown>
+        | Record<string, unknown>[]
+        | null;
       intendedValueString: string;
       expected: 'resolves' | 'mismatch' | 'noMatch';
       actualValueString?: string;
@@ -4165,6 +4168,29 @@ describe('GraphqlProjectItemRepository', () => {
           expected: 'mismatch',
           actualValueString: '2026-10-18',
         },
+        {
+          caseName:
+            'text: matches the correct node when a non-matching node precedes it with a different value',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { text: 'WRONG', field: { id: 'other-field-id', name: 'Other' } },
+            { text: 'foo', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'resolves',
+        },
+        {
+          caseName:
+            'text: detects mismatch on the matching node even though a preceding non-matching node holds the intended value',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { text: 'foo', field: { id: 'other-field-id', name: 'Other' } },
+            { text: 'bar', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'mismatch',
+          actualValueString: 'bar',
+        },
       ];
 
     it.each(projectFieldWriteVerificationCases)(
@@ -4189,7 +4215,12 @@ describe('GraphqlProjectItemRepository', () => {
                 clientMutationId: null,
                 projectV2Item: {
                   fieldValues: {
-                    nodes: fieldValueNode === null ? [] : [fieldValueNode],
+                    nodes:
+                      fieldValueNode === null
+                        ? []
+                        : Array.isArray(fieldValueNode)
+                          ? fieldValueNode
+                          : [fieldValueNode],
                   },
                 },
               },
