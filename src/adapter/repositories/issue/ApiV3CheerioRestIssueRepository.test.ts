@@ -3892,9 +3892,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.getPullRequestChangedFilePaths(
@@ -4498,12 +4500,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when it does not retry a genuine permission 403', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({ message: 'Resource not accessible by integration' }),
-          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-        ),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              message: 'Resource not accessible by integration',
+            }),
+            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+          ),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.closeIssueByUrl(
@@ -4604,12 +4610,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-rate-limited 403', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'Resource not accessible by integration' }),
-          { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
-        ),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Resource not accessible by integration',
+            }),
+            { status: 403, headers: { 'x-ratelimit-remaining': '4999' } },
+          ),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.reopenIssueByUrl(
@@ -6753,9 +6763,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the head commit cannot be fetched with a non-rate-limited status', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.createPullRequestReviewComment(
@@ -6883,9 +6895,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.getIssueOrPullRequestBody(
@@ -7883,9 +7897,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws a plain Error, not GitHubRateLimitError, when the API responds with a non-2xx non-rate-limited status', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
         repository.getPullRequestSummary(
