@@ -1,3 +1,10 @@
+## [2.171.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.6...v2.171.7) (2026-10-17)
+
+
+### Bug Fixes
+
+* **RevertNotReadyReviewQueueIssueUseCase:** gate three Status-revert branches on unanswered owner-confirmation flag ([#3453](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3453)) ([77c6407](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/77c6407d9d20b4068c33f8e0d4c4681310eb154e))
+
 ## [2.171.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.5...v2.171.6) (2026-10-17)
 
 
