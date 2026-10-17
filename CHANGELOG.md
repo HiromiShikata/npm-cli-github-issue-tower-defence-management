@@ -1,3 +1,10 @@
+## [2.171.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.9...v2.171.10) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository, consoleOperationApi:** recognize "item does not exist in the project" as a stale project item ([#3460](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3460)) ([14fc401](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/14fc401295f0096fcd6b4a5e85154e98956406be))
+
 ## [2.171.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.8...v2.171.9) (2026-10-17)
 
 
