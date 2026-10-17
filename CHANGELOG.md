@@ -1,3 +1,10 @@
+# [2.172.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.12...v2.172.0) (2026-10-17)
+
+
+### Features
+
+* **StartPreparationUseCase:** resolve fallback model from agent definition file ([#3472](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3472)) ([e24e571](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e24e5716c161833e69d21720876178ea5f4f07f6))
+
 ## [2.171.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.11...v2.171.12) (2026-10-17)
 
 
