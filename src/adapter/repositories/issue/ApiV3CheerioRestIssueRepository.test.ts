@@ -24,6 +24,7 @@ import type {
   ProjectItem,
   ProjectItemLight,
 } from './GraphqlProjectItemRepository';
+import { ProjectFieldWriteVerificationError } from './GraphqlProjectItemRepository';
 import { RestIssueRepository } from './RestIssueRepository';
 
 dotenv.config();
@@ -3222,6 +3223,71 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(
         graphqlProjectItemRepository.fetchProjectItems,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates a ProjectFieldWriteVerificationError thrown by updateProjectField unchanged', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new ProjectFieldWriteVerificationError(
+          'item-id',
+          'field-id',
+          'A',
+          'B',
+        ),
+      );
+
+      const project = {
+        id: 'test-project-id',
+        url: 'https://github.com/users/test/projects/1',
+        databaseId: 1,
+        name: 'test-project',
+        status: {
+          name: 'Status',
+          fieldId: 'test-status-field-id',
+          statuses: [],
+        },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: null,
+        remainingEstimationMinutes: null,
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+        agent: null,
+      };
+      const issue = {
+        nameWithOwner: 'HiromiShikata/test-repository',
+        number: 38,
+        title: 'test-title',
+        state: 'OPEN' as const,
+        status: 'test-status',
+        story: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        url: 'https://github.com/HiromiShikata/test-repository/issues/38',
+        assignees: [],
+        labels: [],
+        org: 'HiromiShikata',
+        repo: 'test-repository',
+        body: 'test-body',
+        itemId: 'test-item-id',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2024-01-01'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        plainCrossRepoIssueReferenceUrls: [],
+        agent: null,
+        stateReason: null,
+      };
+
+      await expect(
+        repository.updateStatus(project, issue, 'new-status-id'),
+      ).rejects.toThrow(ProjectFieldWriteVerificationError);
     });
   });
 
@@ -12217,6 +12283,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'regular / workflow improvement': titleMatchIssueUrl,
         },
       });
+    });
+
+    it('propagates a ProjectFieldWriteVerificationError thrown by updateProjectField unchanged', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new ProjectFieldWriteVerificationError(
+          'item-id',
+          'field-id',
+          'A',
+          'B',
+        ),
+      );
+
+      await expect(
+        repository.updateStory(storyProject, testIssue, 'story-opt-a'),
+      ).rejects.toThrow(ProjectFieldWriteVerificationError);
     });
   });
 
