@@ -3387,7 +3387,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('does not revert and does not comment when the related PR has failing CI and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC1, row 1)', async () => {
       const issue = createMockIssue({ status: 'Awaiting Owner' });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
@@ -3411,7 +3415,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         agent: 'developer',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReportWithNextStepAgent(
@@ -3473,7 +3481,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('reverts to Awaiting Workspace and posts the CI-failure rejection comment unchanged when a trusted-author reply was posted after the unanswered owner confirmation flag report (AC4, row 4, regression pin)', async () => {
       const issue = createMockIssue({ status: 'Awaiting Owner' });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
@@ -3501,7 +3513,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('does not revert and does not comment when a trusted-author reply exists only before the unanswered owner confirmation flag report, not after it (AC5, row 5)', async () => {
       const issue = createMockIssue({ status: 'Awaiting Owner' });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         trustedHumanReply(new Date('2026-01-01T00:00:00Z')),
@@ -3522,7 +3538,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('reverts to Awaiting Workspace and posts the CI-failure rejection comment unchanged when no owner confirmation flag exists at all (AC6, row 6, regression pin)', async () => {
       const issue = createMockIssue({ status: 'Awaiting Owner' });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
 
       await useCase.run({
@@ -3549,7 +3569,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         assignees: ['other-user'],
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
@@ -3572,7 +3596,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         agent: 'developer',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+        {
+          ...createReadyPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
