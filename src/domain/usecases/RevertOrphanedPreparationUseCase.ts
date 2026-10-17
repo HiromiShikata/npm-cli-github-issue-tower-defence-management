@@ -55,9 +55,10 @@ type OrphanedPreparationOutcome =
 
 const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
   error instanceof Error &&
-  error.name === 'GitHubCommentFetchHttpError' &&
-  'statusCode' in error &&
-  error.statusCode === 403;
+  ((error.name === 'GitHubCommentFetchHttpError' &&
+    'statusCode' in error &&
+    error.statusCode === 403) ||
+    error.name === 'GitHubRateLimitError');
 
 export class RevertOrphanedPreparationUseCase {
   private readonly closeIssueAsRequestApplier: CloseIssueAsRequestApplier;
