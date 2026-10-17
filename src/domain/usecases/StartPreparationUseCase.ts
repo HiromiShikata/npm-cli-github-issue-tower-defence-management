@@ -890,6 +890,7 @@ export class StartPreparationUseCase {
         ?.replace('llm-model:', '')
         .trim();
       let agentDefinitionModelName: string | null = null;
+      let agentDefinitionModelNameResolvedForAgent: string | null = null;
       if (
         !labelModelName &&
         !params.defaultLlmModelName &&
@@ -897,6 +898,7 @@ export class StartPreparationUseCase {
       ) {
         agentDefinitionModelName =
           await this.agentDefinitionRepository.getLlmModelName(agent);
+        agentDefinitionModelNameResolvedForAgent = agent;
         if (!agentDefinitionModelName) {
           console.error(
             `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
@@ -1160,7 +1162,8 @@ export class StartPreparationUseCase {
         };
       }
       if (
-        agentDefinitionModelName === null &&
+        (agentDefinitionModelName === null ||
+          agentDefinitionModelNameResolvedForAgent !== agent) &&
         !labelModelName &&
         !routedModelName
       ) {
