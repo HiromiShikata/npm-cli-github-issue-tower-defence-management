@@ -1046,6 +1046,38 @@ describe('GitHubIssueCommentRepository', () => {
         }
         expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
       });
+
+      it('throws GitHubRateLimitError with the reset time from x-ratelimit-reset when the GET returns a primary rate limit response with a 429 status', async () => {
+        const resetEpochSeconds = Math.floor(Date.now() / 1000) + 3600;
+        const expectedResetIso = new Date(
+          resetEpochSeconds * 1000,
+        ).toISOString();
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response('', {
+            status: 429,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(resetEpochSeconds),
+            },
+          }),
+        );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+
+        let caughtError: unknown;
+        try {
+          await repository.getCommentsFromIssue(buildIssue(TEST_URL));
+        } catch (error) {
+          caughtError = error;
+        }
+
+        expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
+      });
     });
   });
 
@@ -1272,6 +1304,41 @@ describe('GitHubIssueCommentRepository', () => {
         jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           new Response('', {
             status: 403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(resetEpochSeconds),
+            },
+          }),
+        );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/203',
+        );
+
+        let caughtError: unknown;
+        try {
+          await repository.createComment(issue, 'will hit primary rate limit');
+        } catch (error) {
+          caughtError = error;
+        }
+
+        expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
+      });
+
+      it('throws GitHubRateLimitError with the reset time from x-ratelimit-reset when the POST returns a primary rate limit response with a 429 status', async () => {
+        const resetEpochSeconds = Math.floor(Date.now() / 1000) + 3600;
+        const expectedResetIso = new Date(
+          resetEpochSeconds * 1000,
+        ).toISOString();
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response('', {
+            status: 429,
             headers: {
               'x-ratelimit-remaining': '0',
               'x-ratelimit-reset': String(resetEpochSeconds),
@@ -1536,6 +1603,46 @@ describe('GitHubIssueCommentRepository', () => {
         const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
           new Response('', {
             status: 403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(resetEpochSeconds),
+            },
+          }),
+        );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/306',
+        );
+
+        let caughtError: unknown;
+        try {
+          await repository.updateComment(
+            issue,
+            '9007',
+            'will hit primary rate limit',
+          );
+        } catch (error) {
+          caughtError = error;
+        }
+
+        expect(caughtError).toBeInstanceOf(GitHubRateLimitError);
+        if (!(caughtError instanceof GitHubRateLimitError)) {
+          throw new Error('expected a GitHubRateLimitError');
+        }
+        expect(caughtError.rateLimitResetAt).toBe(expectedResetIso);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('throws GitHubRateLimitError with the reset time from x-ratelimit-reset when the PATCH returns a primary rate limit response with a 429 status, without entering the bounded retry loop', async () => {
+        const resetEpochSeconds = Math.floor(Date.now() / 1000) + 3600;
+        const expectedResetIso = new Date(
+          resetEpochSeconds * 1000,
+        ).toISOString();
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response('', {
+            status: 429,
             headers: {
               'x-ratelimit-remaining': '0',
               'x-ratelimit-reset': String(resetEpochSeconds),
