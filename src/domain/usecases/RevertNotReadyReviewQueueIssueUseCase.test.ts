@@ -3408,7 +3408,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when the dispatch-loop escalation threshold is configured and its own condition is independently evaluated, while the last matching report also carries an unanswered owner confirmation flag with no reply after it (AC2, row 2)', async () => {
+    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when the dispatch-loop escalation threshold is configured and its own condition is independently satisfied by a non-self-referencing next-step agent, while the last matching report also carries an unanswered owner confirmation flag with no reply after it (AC2, row 2)', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Owner',
         assignees: ['manager-user'],
@@ -3424,15 +3424,15 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         ownerConfirmationReportWithNextStepAgent(
           new Date('2026-01-01T00:00:00Z'),
-          'developer',
+          'triager',
         ),
         ownerConfirmationReportWithNextStepAgent(
           new Date('2026-01-02T00:00:00Z'),
-          'developer',
+          'triager',
         ),
         ownerConfirmationReportWithNextStepAgent(
           new Date('2026-01-03T00:00:00Z'),
-          'developer',
+          'triager',
         ),
       ]);
 
