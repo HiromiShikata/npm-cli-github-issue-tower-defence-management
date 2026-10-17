@@ -754,9 +754,16 @@ export const handleTriage = async (
     if (project.agent === null) {
       return badRequest('project does not have an agent field');
     }
-    await context
-      .resolveIssueRepository(issueUrl)
-      .setIssueAgentField(issueUrl, project, agentOptionId);
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .setIssueAgentField(issueUrl, project, agentOptionId);
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
@@ -776,20 +783,27 @@ export const handleTriage = async (
     const crossesMidnight = rawHour >= 24;
     const targetHour = rawHour % 24;
     const issueRepo = context.resolveIssueRepository(issueUrl);
-    await issueRepo.updateNextActionHour(
-      { ...project, nextActionHour: project.nextActionHour },
-      projectItemReference(issueUrl, projectItemId),
-      targetHour,
-    );
-    if (crossesMidnight) {
-      const tomorrow = new Date(now);
-      tomorrow.setUTCHours(0, 0, 0, 0);
-      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-      await issueRepo.updateNextActionDate(
-        issueUrl,
-        project,
-        tomorrow,
-        projectItemId,
+    try {
+      await issueRepo.updateNextActionHour(
+        { ...project, nextActionHour: project.nextActionHour },
+        projectItemReference(issueUrl, projectItemId),
+        targetHour,
+      );
+      if (crossesMidnight) {
+        const tomorrow = new Date(now);
+        tomorrow.setUTCHours(0, 0, 0, 0);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        await issueRepo.updateNextActionDate(
+          issueUrl,
+          project,
+          tomorrow,
+          projectItemId,
+        );
+      }
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
       );
     }
     recordDone(context, pjcode, projectItemId);
@@ -814,9 +828,16 @@ export const handleTriage = async (
               ? 5
               : 7;
     const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    await context
-      .resolveIssueRepository(issueUrl)
-      .updateNextActionDate(issueUrl, project, target, projectItemId);
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionDate(issueUrl, project, target, projectItemId);
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
     recordDone(context, pjcode, projectItemId);
     return ok();
   }
@@ -831,9 +852,16 @@ export const handleTriage = async (
     ).getUTCDate();
     const targetDay = Math.min(sourceDay, lastDayOfTargetMonth);
     const target = new Date(Date.UTC(targetYear, targetMonth, targetDay));
-    await context
-      .resolveIssueRepository(issueUrl)
-      .updateNextActionDate(issueUrl, project, target, projectItemId);
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionDate(issueUrl, project, target, projectItemId);
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
     recordDone(context, pjcode, projectItemId);
     return ok();
   }

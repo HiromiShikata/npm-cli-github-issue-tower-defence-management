@@ -1782,12 +1782,20 @@ export class ApiV3CheerioRestIssueRepository
         project.id,
         issueUrl,
       ));
-    await this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.agent.fieldId,
-      projectItemId,
-      { singleSelectOptionId: agentOptionId },
-    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.agent.fieldId,
+        projectItemId,
+        { singleSelectOptionId: agentOptionId },
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        projectItemId,
+      );
+    }
   };
 
   removeIssueFromProject = async (
@@ -1828,12 +1836,20 @@ export class ApiV3CheerioRestIssueRepository
     if (!itemId) {
       return;
     }
-    return this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.nextActionDate.fieldId,
-      itemId,
-      { date: date.toISOString().split('T')[0] },
-    );
+    try {
+      return await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.nextActionDate.fieldId,
+        itemId,
+        { date: date.toISOString().split('T')[0] },
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        itemId,
+      );
+    }
   };
   updateNextActionHour = async (
     project: Project & {
@@ -1848,12 +1864,20 @@ export class ApiV3CheerioRestIssueRepository
     const value = option
       ? { singleSelectOptionId: option.id }
       : { number: hour };
-    return this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.nextActionHour.fieldId,
-      issue.itemId,
-      value,
-    );
+    try {
+      return await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.nextActionHour.fieldId,
+        issue.itemId,
+        value,
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue.itemId,
+      );
+    }
   };
   updateStory = async (
     project: Project & { story: NonNullable<Project['story']> },
