@@ -13,8 +13,10 @@ import {
 } from './issue/githubSecondaryRateLimitBreaker';
 import {
   computeBoundedBackoffMs,
+  computeRateLimitResetIso,
   computeSecondaryRateLimitBackoffMs,
   GitHubRateLimitError,
+  hasRateLimitSignals,
   isSecondaryRateLimit,
   isTransientServerErrorStatus,
   RATE_LIMIT_MAX_RETRIES,
@@ -271,6 +273,12 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             new Date(nowMs + backoffMs).toISOString(),
           );
         }
+        if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+          throw new GitHubRateLimitError(
+            `HTTP ${response.status} GitHub API primary rate limit exceeded`,
+            computeRateLimitResetIso(response.headers),
+          );
+        }
         throw new GitHubCommentFetchHttpError(
           response.status,
           `Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`,
@@ -367,6 +375,12 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
           new Date(nowMs + backoffMs).toISOString(),
         );
       }
+      if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+        throw new GitHubRateLimitError(
+          `HTTP ${response.status} GitHub API primary rate limit exceeded`,
+          computeRateLimitResetIso(response.headers),
+        );
+      }
       throw new GitHubCommentCreateHttpError(
         response.status,
         `Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`,
@@ -436,6 +450,13 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         throw new GitHubRateLimitError(
           `HTTP ${response.status} GitHub API secondary rate limit exceeded`,
           new Date(nowMs + backoffMs).toISOString(),
+        );
+      }
+
+      if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+        throw new GitHubRateLimitError(
+          `HTTP ${response.status} GitHub API primary rate limit exceeded`,
+          computeRateLimitResetIso(response.headers),
         );
       }
 
