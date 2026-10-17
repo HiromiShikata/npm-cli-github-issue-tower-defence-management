@@ -3229,12 +3229,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
       graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
-        new ProjectFieldWriteVerificationError(
-          'item-id',
-          'field-id',
-          'A',
-          'B',
-        ),
+        new ProjectFieldWriteVerificationError('item-id', 'field-id', 'A', 'B'),
       );
 
       const project = {
@@ -12290,12 +12285,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
-        new ProjectFieldWriteVerificationError(
-          'item-id',
-          'field-id',
-          'A',
-          'B',
-        ),
+        new ProjectFieldWriteVerificationError('item-id', 'field-id', 'A', 'B'),
       );
 
       await expect(
