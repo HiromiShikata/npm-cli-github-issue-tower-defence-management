@@ -24,6 +24,7 @@ import {
   PAGINATION_DELAY_MS,
   PROJECT_ITEM_ASSIGNEES_FIRST,
   PROJECT_ITEM_LABELS_FIRST,
+  ProjectFieldWriteVerificationError,
   RATE_LIMIT_DEFAULT_BACKOFF_MS,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
@@ -3740,7 +3741,20 @@ describe('GraphqlProjectItemRepository', () => {
       mockPost.mockReturnValue(
         mockJsonResponse({
           data: {
-            updateProjectV2ItemFieldValue: { clientMutationId: null },
+            updateProjectV2ItemFieldValue: {
+              clientMutationId: null,
+              projectV2Item: {
+                fieldValues: {
+                  nodes: [
+                    {
+                      name: 'OptionName',
+                      optionId: 'opt-id',
+                      field: { id: 'field-id', name: 'Status' },
+                    },
+                  ],
+                },
+              },
+            },
           },
         }),
       );
@@ -3797,7 +3811,19 @@ describe('GraphqlProjectItemRepository', () => {
         .mockReturnValueOnce(
           mockJsonResponse({
             data: {
-              updateProjectV2ItemFieldValue: { clientMutationId: null },
+              updateProjectV2ItemFieldValue: {
+                clientMutationId: null,
+                projectV2Item: {
+                  fieldValues: {
+                    nodes: [
+                      {
+                        text: 'value',
+                        field: { id: 'field-id', name: 'Status' },
+                      },
+                    ],
+                  },
+                },
+              },
             },
           }),
         );
@@ -3994,6 +4020,292 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws the original error unchanged, not wrapped as ProjectFieldWriteVerificationError, when the error message contains "Could not resolve to a node with the global id"', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message:
+                "Could not resolve to a node with the global id of 'item-id'.",
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .updateProjectField('proj-id', 'field-id', 'item-id', {
+          text: 'value',
+        })
+        .catch((e: unknown) => e);
+      await jest.runAllTimersAsync();
+
+      const caught = await resultPromise;
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught).not.toBeInstanceOf(ProjectFieldWriteVerificationError);
+      expect(extractErrorMessage(caught)).toContain(
+        'Could not resolve to a node with the global id',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    type ProjectFieldWriteVerificationCase = {
+      caseName: string;
+      value:
+        | { text: string }
+        | { number: number }
+        | { date: string }
+        | { singleSelectOptionId: string };
+      fieldValueNode:
+        Record<string, unknown> | Record<string, unknown>[] | null;
+      intendedValueString: string;
+      expected: 'resolves' | 'mismatch' | 'noMatch';
+      actualValueString?: string;
+    };
+
+    const projectFieldWriteVerificationCases: ProjectFieldWriteVerificationCase[] =
+      [
+        {
+          caseName: 'singleSelectOptionId: actual value matches intended',
+          value: { singleSelectOptionId: 'A' },
+          fieldValueNode: {
+            name: 'Option A',
+            optionId: 'A',
+            field: { id: 'field-id', name: 'Status' },
+          },
+          intendedValueString: 'A',
+          expected: 'resolves',
+        },
+        {
+          caseName: 'singleSelectOptionId: actual value differs from intended',
+          value: { singleSelectOptionId: 'A' },
+          fieldValueNode: {
+            name: 'Option B',
+            optionId: 'B',
+            field: { id: 'field-id', name: 'Status' },
+          },
+          intendedValueString: 'A',
+          expected: 'mismatch',
+          actualValueString: 'B',
+        },
+        {
+          caseName: 'singleSelectOptionId: no node matches the written fieldId',
+          value: { singleSelectOptionId: 'A' },
+          fieldValueNode: null,
+          intendedValueString: 'A',
+          expected: 'noMatch',
+        },
+        {
+          caseName: 'text: actual value matches intended',
+          value: { text: 'foo' },
+          fieldValueNode: {
+            text: 'foo',
+            field: { id: 'field-id', name: 'Notes' },
+          },
+          intendedValueString: 'foo',
+          expected: 'resolves',
+        },
+        {
+          caseName: 'text: actual value differs from intended',
+          value: { text: 'foo' },
+          fieldValueNode: {
+            text: 'bar',
+            field: { id: 'field-id', name: 'Notes' },
+          },
+          intendedValueString: 'foo',
+          expected: 'mismatch',
+          actualValueString: 'bar',
+        },
+        {
+          caseName: 'number: actual value matches intended',
+          value: { number: 5 },
+          fieldValueNode: {
+            number: 5,
+            field: { id: 'field-id', name: 'Estimate' },
+          },
+          intendedValueString: '5',
+          expected: 'resolves',
+        },
+        {
+          caseName: 'number: actual value differs from intended',
+          value: { number: 5 },
+          fieldValueNode: {
+            number: 6,
+            field: { id: 'field-id', name: 'Estimate' },
+          },
+          intendedValueString: '5',
+          expected: 'mismatch',
+          actualValueString: '6',
+        },
+        {
+          caseName: 'date: actual value matches intended',
+          value: { date: '2026-10-17' },
+          fieldValueNode: {
+            date: '2026-10-17',
+            field: { id: 'field-id', name: 'Next Action Date' },
+          },
+          intendedValueString: '2026-10-17',
+          expected: 'resolves',
+        },
+        {
+          caseName: 'date: actual value differs from intended',
+          value: { date: '2026-10-17' },
+          fieldValueNode: {
+            date: '2026-10-18',
+            field: { id: 'field-id', name: 'Next Action Date' },
+          },
+          intendedValueString: '2026-10-17',
+          expected: 'mismatch',
+          actualValueString: '2026-10-18',
+        },
+        {
+          caseName:
+            'text: matches the correct node when a non-matching node precedes it with a different value',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { text: 'WRONG', field: { id: 'other-field-id', name: 'Other' } },
+            { text: 'foo', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'resolves',
+        },
+        {
+          caseName:
+            'text: detects mismatch on the matching node even though a preceding non-matching node holds the intended value',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { text: 'foo', field: { id: 'other-field-id', name: 'Other' } },
+            { text: 'bar', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'mismatch',
+          actualValueString: 'bar',
+        },
+        {
+          caseName:
+            'text: matches the correct node when a preceding node carries no field value (e.g. Assignees)',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { assignees: { nodes: [] } },
+            { text: 'foo', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'resolves',
+        },
+      ];
+
+    it.each(projectFieldWriteVerificationCases)(
+      'verifies the written value against the mutation response ($caseName)',
+      async ({
+        value,
+        fieldValueNode,
+        intendedValueString,
+        expected,
+        actualValueString,
+      }) => {
+        const localStorageRepository = new LocalStorageRepository();
+        const repository = new GraphqlProjectItemRepository(
+          localStorageRepository,
+          'dummy-token',
+        );
+
+        mockPost.mockReturnValue(
+          mockJsonResponse({
+            data: {
+              updateProjectV2ItemFieldValue: {
+                clientMutationId: null,
+                projectV2Item: {
+                  fieldValues: {
+                    nodes:
+                      fieldValueNode === null
+                        ? []
+                        : Array.isArray(fieldValueNode)
+                          ? fieldValueNode
+                          : [fieldValueNode],
+                  },
+                },
+              },
+            },
+          }),
+        );
+
+        let result: unknown;
+        try {
+          result = await repository.updateProjectField(
+            'write-verification-project-id',
+            'field-id',
+            'write-verification-item-id',
+            value,
+          );
+        } catch (e: unknown) {
+          result = e;
+        }
+
+        if (expected === 'resolves') {
+          expect(result).toBeUndefined();
+          return;
+        }
+
+        expect(result).toBeInstanceOf(ProjectFieldWriteVerificationError);
+        expect(extractErrorMessage(result)).toContain(
+          'write-verification-item-id',
+        );
+        expect(extractErrorMessage(result)).toContain('field-id');
+        expect(extractErrorMessage(result)).toContain(intendedValueString);
+        if (expected === 'mismatch') {
+          expect(extractErrorMessage(result)).toContain(actualValueString);
+        } else {
+          expect(extractErrorMessage(result)).toContain(
+            'no matching field value was found',
+          );
+        }
+      },
+    );
+
+    it('requests fieldValues(first: 50) in the write-verification query', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            updateProjectV2ItemFieldValue: {
+              clientMutationId: null,
+              projectV2Item: {
+                fieldValues: {
+                  nodes: [
+                    {
+                      name: 'Option A',
+                      optionId: 'A',
+                      field: { id: 'field-id', name: 'Status' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      await repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+        singleSelectOptionId: 'A',
+      });
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('fieldValues(first: 50)');
     });
   });
 

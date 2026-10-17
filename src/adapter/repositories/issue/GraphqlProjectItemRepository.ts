@@ -49,6 +49,7 @@ type ProjectV2ItemFieldValueNode = {
   optionId?: string;
   field: {
     name: string;
+    id?: string;
   };
 };
 type ProjectV2ItemContentNode = {
@@ -73,6 +74,12 @@ type ProjectV2ItemNode = {
   };
   content: ProjectV2ItemContentNode | null;
 };
+type ProjectV2ItemFieldValuesOnlyNode = {
+  id: string;
+  fieldValues: {
+    nodes: ProjectV2ItemFieldValueNode[];
+  };
+};
 // Rate-limit cost of a GraphQL query grows with the number of requested
 // nodes (roughly totalNodes / 100, see
 // https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api).
@@ -84,14 +91,15 @@ type ProjectV2ItemNode = {
 export const PROJECT_ITEM_LABELS_FIRST = 20;
 export const PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 
-const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
-          fieldValues(first: 10) {
-            nodes {
+const PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT = `
               ... on ProjectV2ItemFieldTextValue {
                 text
                 field {
                   ... on ProjectV2Field{
                     name
+                  }
+                  ... on ProjectV2FieldCommon {
+                    id
                   }
                 }
               }
@@ -102,6 +110,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   ... on ProjectV2Field{
                     name
                   }
+                  ... on ProjectV2FieldCommon {
+                    id
+                  }
                 }
               }
               ... on ProjectV2ItemFieldDateValue {
@@ -109,6 +120,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                 field {
                   ... on ProjectV2Field{
                     name
+                  }
+                  ... on ProjectV2FieldCommon {
+                    id
                   }
                 }
               }
@@ -119,6 +133,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   ... on ProjectV2SingleSelectField {
                     name
                   }
+                  ... on ProjectV2FieldCommon {
+                    id
+                  }
                 }
               }
               ... on ProjectV2ItemFieldIterationValue {
@@ -128,7 +145,11 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                     name
                   }
                 }
-              }
+              }`;
+const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
+          fieldValues(first: 10) {
+            nodes {
+${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
             }
           }
           content {
@@ -188,6 +209,13 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   url
                 }
               }
+            }
+          }`;
+export const PROJECT_V2_ITEM_FIELD_VALUES_WRITE_VERIFICATION_FIRST = 50;
+const PROJECT_V2_ITEM_FIELD_VALUES_FOR_WRITE_VERIFICATION_SELECTION = `
+          fieldValues(first: ${PROJECT_V2_ITEM_FIELD_VALUES_WRITE_VERIFICATION_FIRST}) {
+            nodes {
+${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
             }
           }`;
 export const PAGINATION_DELAY_MS = 5000;
@@ -273,6 +301,22 @@ export class GraphqlRateLimitError extends Error {
   }
 }
 
+export class ProjectFieldWriteVerificationError extends Error {
+  constructor(
+    public readonly itemId: string,
+    public readonly fieldId: string,
+    public readonly intendedValue: string,
+    public readonly actualValue: string | null,
+  ) {
+    super(
+      actualValue === null
+        ? `ProjectFieldWriteVerificationError: no matching field value was found for itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}`
+        : `ProjectFieldWriteVerificationError: itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}, actualValue=${actualValue}`,
+    );
+    this.name = 'ProjectFieldWriteVerificationError';
+  }
+}
+
 const isRateLimitGraphqlError = (error: GraphqlError): boolean =>
   error.type === 'RATE_LIMIT';
 
@@ -347,6 +391,43 @@ const isNotFoundNodesBatchError = (error: GraphqlError): boolean =>
   error.path.length === 2 &&
   error.path[0] === 'nodes' &&
   typeof error.path[1] === 'number';
+
+const projectFieldValueToIntendedValueString = (
+  value:
+    | { text: string }
+    | { number: number }
+    | { date: string }
+    | { singleSelectOptionId: string },
+): string => {
+  if ('text' in value) {
+    return value.text;
+  }
+  if ('number' in value) {
+    return String(value.number);
+  }
+  if ('date' in value) {
+    return value.date;
+  }
+  return value.singleSelectOptionId;
+};
+
+const projectFieldValueNodeToActualValueString = (
+  node: ProjectV2ItemFieldValueNode,
+): string | null => {
+  if (node.text !== undefined) {
+    return node.text;
+  }
+  if (node.number !== undefined) {
+    return String(node.number);
+  }
+  if (node.date !== undefined) {
+    return node.date;
+  }
+  if (node.optionId !== undefined) {
+    return node.optionId;
+  }
+  return null;
+};
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
@@ -1561,6 +1642,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         value: ${JSON.stringify(value).replace(/"([^"]+)":/g, '$1:')},
       }) {
         clientMutationId
+        projectV2Item {
+          id${PROJECT_V2_ITEM_FIELD_VALUES_FOR_WRITE_VERIFICATION_SELECTION}
+        }
       }
     }`,
     };
@@ -1569,6 +1653,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       data: {
         updateProjectV2ItemFieldValue: {
           clientMutationId: string;
+          projectV2Item: ProjectV2ItemFieldValuesOnlyNode | null;
         };
       };
       errors: GraphqlError[];
@@ -1595,6 +1680,31 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       throw new Error(
         `updateProjectField failed: projectId=${projectId}, fieldId=${fieldId}, itemId=${itemId}, value=${JSON.stringify(value)}\n${res.errors.map((e) => e.message).join('\n')}`,
+      );
+    }
+    const intendedValueString = projectFieldValueToIntendedValueString(value);
+    const matchedFieldValueNode =
+      res.data.updateProjectV2ItemFieldValue.projectV2Item?.fieldValues.nodes
+        .filter((node) => !!node.field)
+        .find((node) => node.field.id === fieldId);
+    const actualValueString =
+      matchedFieldValueNode === undefined
+        ? null
+        : projectFieldValueNodeToActualValueString(matchedFieldValueNode);
+    if (actualValueString === null) {
+      throw new ProjectFieldWriteVerificationError(
+        itemId,
+        fieldId,
+        intendedValueString,
+        null,
+      );
+    }
+    if (actualValueString !== intendedValueString) {
+      throw new ProjectFieldWriteVerificationError(
+        itemId,
+        fieldId,
+        intendedValueString,
+        actualValueString,
       );
     }
   };
