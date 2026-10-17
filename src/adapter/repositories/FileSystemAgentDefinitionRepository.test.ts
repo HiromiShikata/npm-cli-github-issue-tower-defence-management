@@ -97,6 +97,56 @@ describe('FileSystemAgentDefinitionRepository', () => {
       ).toBe(true);
       consoleWarnSpy.mockRestore();
     });
+
+    it('resolves null without throwing and logs a prefixed console.warn when the file has no frontmatter delimiter at all', async () => {
+      writeAgentDefinitionFile(
+        'triager',
+        ['# Triager', '', 'Body content with no frontmatter block.', ''].join(
+          '\n',
+        ),
+      );
+      const repository = new FileSystemAgentDefinitionRepository(dir);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const model = await repository.getLlmModelName('triager');
+
+      expect(model).toBeNull();
+      expect(
+        consoleWarnSpy.mock.calls.some(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].startsWith('FileSystemAgentDefinitionRepository:'),
+        ),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('resolves null without throwing and logs a prefixed console.warn when the frontmatter block has no closing delimiter', async () => {
+      writeAgentDefinitionFile(
+        'triager',
+        ['---', 'name: triager', 'model: some-model', '', '# Triager', ''].join(
+          '\n',
+        ),
+      );
+      const repository = new FileSystemAgentDefinitionRepository(dir);
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const model = await repository.getLlmModelName('triager');
+
+      expect(model).toBeNull();
+      expect(
+        consoleWarnSpy.mock.calls.some(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].startsWith('FileSystemAgentDefinitionRepository:'),
+        ),
+      ).toBe(true);
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe('resolveAgentDefinitionsDirectoryPath', () => {
