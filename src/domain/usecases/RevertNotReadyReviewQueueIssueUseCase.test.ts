@@ -3356,4 +3356,414 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
   });
+
+  describe('owner confirmation request gating', () => {
+    const trustedAuthor = 'owner';
+
+    const ownerConfirmationReport = (at: Date) => ({
+      author: trustedAuthor,
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true }\n\`\`\``,
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    const ownerConfirmationReportWithNextStepAgent = (
+      at: Date,
+      nextStepAgent: string,
+    ) => ({
+      author: trustedAuthor,
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true, "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    const trustedHumanReply = (at: Date) => ({
+      author: trustedAuthor,
+      content: 'Please proceed with the merge.',
+      createdAt: at,
+      updatedAt: at,
+    });
+
+    it('does not revert and does not comment when the related PR has failing CI and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC1, row 1)', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when the dispatch-loop escalation threshold is configured and its own condition is independently evaluated, while the last matching report also carries an unanswered owner confirmation flag with no reply after it (AC2, row 2)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-01T00:00:00Z'),
+          'developer',
+        ),
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-02T00:00:00Z'),
+          'developer',
+        ),
+        ownerConfirmationReportWithNextStepAgent(
+          new Date('2026-01-03T00:00:00Z'),
+          'developer',
+        ),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('does not revert and does not comment when the related PR is conflicted and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC3, row 3)', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isConflicted: true },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts to Awaiting Workspace and posts the CI-failure rejection comment unchanged when a trusted-author reply was posted after the unanswered owner confirmation flag report (AC4, row 4, regression pin)', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+        trustedHumanReply(new Date('2026-01-02T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('does not revert and does not comment when a trusted-author reply exists only before the unanswered owner confirmation flag report, not after it (AC5, row 5)', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        trustedHumanReply(new Date('2026-01-01T00:00:00Z')),
+        ownerConfirmationReport(new Date('2026-01-02T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts to Awaiting Workspace and posts the CI-failure rejection comment unchanged when no owner confirmation flag exists at all (AC6, row 6, regression pin)', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('does not revert and does not comment when the issue is not assigned to the operations manager, even though an unanswered owner confirmation flag exists (AC7, row 7, regression pin)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        assignees: ['other-user'],
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('still treats the owner confirmation flag as unanswered when a later report from a non-matching agent identity carrying no flag is posted after it (AC8, row 8)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        agent: 'developer',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isPassedAllCiJob: false, isCiStateSuccess: false },
+      ]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+        {
+          author: trustedAuthor,
+          content:
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+          updatedAt: new Date('2026-01-02T00:00:00Z'),
+        },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('escalates to Failed Preparation and posts the escalation comment unchanged when no owner confirmation flag exists and the dispatch-loop escalation threshold is configured and met (AC9, row 9, regression pin)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const selfReferenceAgentReport = (at: Date) => ({
+        author: trustedAuthor,
+        content:
+          'From: :robot: developer (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
+        createdAt: at,
+        updatedAt: at,
+      });
+      const silentRedispatchComment = (count: number, at: Date) => ({
+        author: trustedAuthor,
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        createdAt: at,
+        updatedAt: at,
+      });
+      const humanComment = {
+        author: trustedAuthor,
+        content: 'please continue',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        selfReferenceAgentReport(new Date('2026-01-02T00:00:00Z')),
+        humanComment,
+        silentRedispatchComment(1, new Date('2026-01-03T00:00:00Z')),
+        silentRedispatchComment(2, new Date('2026-01-04T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Failed to receive a report'),
+      );
+    });
+
+    it('does not revert and does not comment when the issue has unresolved dependent issue URLs and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC10, row 10)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts to Awaiting Workspace and posts the dependent-issue-URL rejection comment unchanged when no owner confirmation flag exists (AC11, row 11, regression pin)', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('https://github.com/user/repo/issues/99'),
+      );
+    });
+
+    it('does not revert and does not comment when the reactivation trigger has not yet been reached and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC12, row 12)', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts to Awaiting Workspace and posts the reactivation-trigger-not-reached rejection comment unchanged when no owner confirmation flag exists (AC13, row 13, regression pin)', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Reactivation trigger not yet reached'),
+      );
+    });
+  });
 });
