@@ -49,6 +49,7 @@ type ProjectV2ItemFieldValueNode = {
   optionId?: string;
   field: {
     name: string;
+    id?: string;
   };
 };
 type ProjectV2ItemContentNode = {
@@ -93,6 +94,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   ... on ProjectV2Field{
                     name
                   }
+                  ... on ProjectV2FieldCommon {
+                    id
+                  }
                 }
               }
               ... on ProjectV2ItemFieldNumberValue {
@@ -102,6 +106,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   ... on ProjectV2Field{
                     name
                   }
+                  ... on ProjectV2FieldCommon {
+                    id
+                  }
                 }
               }
               ... on ProjectV2ItemFieldDateValue {
@@ -109,6 +116,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                 field {
                   ... on ProjectV2Field{
                     name
+                  }
+                  ... on ProjectV2FieldCommon {
+                    id
                   }
                 }
               }
@@ -118,6 +128,9 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                 field {
                   ... on ProjectV2SingleSelectField {
                     name
+                  }
+                  ... on ProjectV2FieldCommon {
+                    id
                   }
                 }
               }
@@ -273,6 +286,22 @@ export class GraphqlRateLimitError extends Error {
   }
 }
 
+export class ProjectFieldWriteVerificationError extends Error {
+  constructor(
+    public readonly itemId: string,
+    public readonly fieldId: string,
+    public readonly intendedValue: string,
+    public readonly actualValue: string | null,
+  ) {
+    super(
+      actualValue === null
+        ? `ProjectFieldWriteVerificationError: no matching field value was found for itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}`
+        : `ProjectFieldWriteVerificationError: itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}, actualValue=${actualValue}`,
+    );
+    this.name = 'ProjectFieldWriteVerificationError';
+  }
+}
+
 const isRateLimitGraphqlError = (error: GraphqlError): boolean =>
   error.type === 'RATE_LIMIT';
 
@@ -347,6 +376,43 @@ const isNotFoundNodesBatchError = (error: GraphqlError): boolean =>
   error.path.length === 2 &&
   error.path[0] === 'nodes' &&
   typeof error.path[1] === 'number';
+
+const projectFieldValueToIntendedValueString = (
+  value:
+    | { text: string }
+    | { number: number }
+    | { date: string }
+    | { singleSelectOptionId: string },
+): string => {
+  if ('text' in value) {
+    return value.text;
+  }
+  if ('number' in value) {
+    return String(value.number);
+  }
+  if ('date' in value) {
+    return value.date;
+  }
+  return value.singleSelectOptionId;
+};
+
+const projectFieldValueNodeToActualValueString = (
+  node: ProjectV2ItemFieldValueNode,
+): string | null => {
+  if (node.text !== undefined) {
+    return node.text;
+  }
+  if (node.number !== undefined) {
+    return String(node.number);
+  }
+  if (node.date !== undefined) {
+    return node.date;
+  }
+  if (node.optionId !== undefined) {
+    return node.optionId;
+  }
+  return null;
+};
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
@@ -1561,6 +1627,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         value: ${JSON.stringify(value).replace(/"([^"]+)":/g, '$1:')},
       }) {
         clientMutationId
+        projectV2Item {
+          id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+        }
       }
     }`,
     };
@@ -1569,6 +1638,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       data: {
         updateProjectV2ItemFieldValue: {
           clientMutationId: string;
+          projectV2Item: ProjectV2ItemNode | null;
         };
       };
       errors: GraphqlError[];
@@ -1595,6 +1665,31 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       throw new Error(
         `updateProjectField failed: projectId=${projectId}, fieldId=${fieldId}, itemId=${itemId}, value=${JSON.stringify(value)}\n${res.errors.map((e) => e.message).join('\n')}`,
+      );
+    }
+    const intendedValueString = projectFieldValueToIntendedValueString(value);
+    const matchedFieldValueNode =
+      res.data.updateProjectV2ItemFieldValue.projectV2Item?.fieldValues.nodes.find(
+        (node) => node.field.id === fieldId,
+      );
+    const actualValueString =
+      matchedFieldValueNode === undefined
+        ? null
+        : projectFieldValueNodeToActualValueString(matchedFieldValueNode);
+    if (actualValueString === null) {
+      throw new ProjectFieldWriteVerificationError(
+        itemId,
+        fieldId,
+        intendedValueString,
+        null,
+      );
+    }
+    if (actualValueString !== intendedValueString) {
+      throw new ProjectFieldWriteVerificationError(
+        itemId,
+        fieldId,
+        intendedValueString,
+        actualValueString,
       );
     }
   };
