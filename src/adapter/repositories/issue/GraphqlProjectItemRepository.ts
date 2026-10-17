@@ -1684,9 +1684,9 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     }
     const intendedValueString = projectFieldValueToIntendedValueString(value);
     const matchedFieldValueNode =
-      res.data.updateProjectV2ItemFieldValue.projectV2Item?.fieldValues.nodes.find(
-        (node) => node.field.id === fieldId,
-      );
+      res.data.updateProjectV2ItemFieldValue.projectV2Item?.fieldValues.nodes
+        .filter((node) => !!node.field)
+        .find((node) => node.field.id === fieldId);
     const actualValueString =
       matchedFieldValueNode === undefined
         ? null
