@@ -1,3 +1,10 @@
+## [2.172.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.0...v2.172.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** recognize GitHubRateLimitError as benign comment-fetch failure ([#3479](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3479)) ([f825c14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f825c144c791ae9cef86816119e65c349b611bb2))
+
 # [2.172.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.12...v2.172.0) (2026-10-17)
 
 
