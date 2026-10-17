@@ -4189,6 +4189,17 @@ describe('GraphqlProjectItemRepository', () => {
           expected: 'mismatch',
           actualValueString: 'bar',
         },
+        {
+          caseName:
+            'text: matches the correct node when a preceding node carries no field value (e.g. Assignees)',
+          value: { text: 'foo' },
+          fieldValueNode: [
+            { assignees: { nodes: [] } },
+            { text: 'foo', field: { id: 'field-id', name: 'Notes' } },
+          ],
+          intendedValueString: 'foo',
+          expected: 'resolves',
+        },
       ];
 
     it.each(projectFieldWriteVerificationCases)(
@@ -4258,6 +4269,44 @@ describe('GraphqlProjectItemRepository', () => {
         }
       },
     );
+
+    it('requests fieldValues(first: 50) in the write-verification query', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            updateProjectV2ItemFieldValue: {
+              clientMutationId: null,
+              projectV2Item: {
+                fieldValues: {
+                  nodes: [
+                    {
+                      name: 'Option A',
+                      optionId: 'A',
+                      field: { id: 'field-id', name: 'Status' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      await repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+        singleSelectOptionId: 'A',
+      });
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('fieldValues(first: 50)');
+    });
   });
 
   describe('clearProjectField', () => {
