@@ -114,9 +114,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
   let tmuxSessionRepository: Mocked<
     Pick<
       TmuxSessionRepository,
-      | 'sendKeys'
-      | 'killSession'
-      | 'listLiveSessionNames'
+      'sendKeys' | 'killSession' | 'listLiveSessionNames'
     >
   >;
   let processSignalRepository: Mocked<ProcessSignalRepository>;
@@ -835,9 +833,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
       IMPL_PID,
     );
-    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(
-      IMPL_PID,
-    );
+    expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
     expect(result.terminatedPids).toEqual([IMPL_PID]);
     expect(result.killedSessionNames).toEqual([]);
   });
