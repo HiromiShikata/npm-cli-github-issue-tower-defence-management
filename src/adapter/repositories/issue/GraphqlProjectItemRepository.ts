@@ -74,6 +74,12 @@ type ProjectV2ItemNode = {
   };
   content: ProjectV2ItemContentNode | null;
 };
+type ProjectV2ItemFieldValuesOnlyNode = {
+  id: string;
+  fieldValues: {
+    nodes: ProjectV2ItemFieldValueNode[];
+  };
+};
 // Rate-limit cost of a GraphQL query grows with the number of requested
 // nodes (roughly totalNodes / 100, see
 // https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api).
@@ -85,9 +91,7 @@ type ProjectV2ItemNode = {
 export const PROJECT_ITEM_LABELS_FIRST = 20;
 export const PROJECT_ITEM_ASSIGNEES_FIRST = 10;
 
-const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
-          fieldValues(first: 10) {
-            nodes {
+const PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT = `
               ... on ProjectV2ItemFieldTextValue {
                 text
                 field {
@@ -141,7 +145,11 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                     name
                   }
                 }
-              }
+              }`;
+const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
+          fieldValues(first: 10) {
+            nodes {
+${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
             }
           }
           content {
@@ -201,6 +209,13 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
                   url
                 }
               }
+            }
+          }`;
+export const PROJECT_V2_ITEM_FIELD_VALUES_WRITE_VERIFICATION_FIRST = 50;
+const PROJECT_V2_ITEM_FIELD_VALUES_FOR_WRITE_VERIFICATION_SELECTION = `
+          fieldValues(first: ${PROJECT_V2_ITEM_FIELD_VALUES_WRITE_VERIFICATION_FIRST}) {
+            nodes {
+${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
             }
           }`;
 export const PAGINATION_DELAY_MS = 5000;
@@ -1628,7 +1643,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }) {
         clientMutationId
         projectV2Item {
-          id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+          id${PROJECT_V2_ITEM_FIELD_VALUES_FOR_WRITE_VERIFICATION_SELECTION}
         }
       }
     }`,
@@ -1638,7 +1653,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       data: {
         updateProjectV2ItemFieldValue: {
           clientMutationId: string;
-          projectV2Item: ProjectV2ItemNode | null;
+          projectV2Item: ProjectV2ItemFieldValuesOnlyNode | null;
         };
       };
       errors: GraphqlError[];
