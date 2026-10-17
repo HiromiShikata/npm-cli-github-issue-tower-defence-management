@@ -1,3 +1,10 @@
+## [2.171.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.11...v2.171.12) (2026-10-17)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** verify project field write against mutation response ([#3474](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3474)) ([e12d72e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e12d72e819fbd4cc9cea00aeaa45259569a6d8aa))
+
 ## [2.171.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.171.10...v2.171.11) (2026-10-17)
 
 
