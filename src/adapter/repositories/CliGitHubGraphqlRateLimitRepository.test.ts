@@ -29,7 +29,17 @@ describe('CliGitHubGraphqlRateLimitRepository', () => {
 
     expect(result).toBe(4873);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
-      ['gh', ['api', 'rate_limit', '--jq', '.resources.graphql.remaining']],
+      [
+        'gh',
+        [
+          'api',
+          'rate_limit',
+          '--cache',
+          '60s',
+          '--jq',
+          '.resources.graphql.remaining',
+        ],
+      ],
     ]);
   });
 

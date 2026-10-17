@@ -8,6 +8,8 @@ export class CliGitHubGraphqlRateLimitRepository implements GitHubGraphqlRateLim
     const result = await this.localCommandRunner.runCommand('gh', [
       'api',
       'rate_limit',
+      '--cache',
+      '60s',
       '--jq',
       '.resources.graphql.remaining',
     ]);
