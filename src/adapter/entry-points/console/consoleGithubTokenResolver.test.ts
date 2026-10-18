@@ -2,6 +2,7 @@ import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
   createConsoleIssueRepositoryResolver,
+  createConsoleProjectNameResolver,
   createConsoleProjectRepositoryResolver,
   extractProjectOwner,
   extractRepositoryOwner,
@@ -223,5 +224,122 @@ describe('createConsoleGithubTokenResolver', () => {
     );
 
     expect(resolve('acme-labs')).toBe('fine-grained-token');
+  });
+
+  it('keeps resolving the own token of a repository owner from the console project urls', () => {
+    const ownTokenCases: {
+      name: string;
+      consoleProjectUrls: Record<string, string>;
+      consoleGithubTokens: Record<string, string>;
+      repositoryOwner: string;
+      expectedToken: string;
+    }[] = [
+      {
+        name: 'the first console project wins when two projects share the owner',
+        consoleProjectUrls: {
+          acme: 'https://github.com/orgs/acme-labs/projects/1',
+          acmeSecond: 'https://github.com/orgs/acme-labs/projects/2',
+        },
+        consoleGithubTokens: {
+          acme: 'acme-token',
+          acmeSecond: 'acme-second-token',
+        },
+        repositoryOwner: 'acme-labs',
+        expectedToken: 'acme-token',
+      },
+      {
+        name: 'the configured token is trimmed',
+        consoleProjectUrls: {
+          acme: 'https://github.com/orgs/acme-labs/projects/1',
+        },
+        consoleGithubTokens: { acme: '  acme-token\n' },
+        repositoryOwner: 'acme-labs',
+        expectedToken: 'acme-token',
+      },
+      {
+        name: 'a user project url matches its user login',
+        consoleProjectUrls: {
+          umino: 'https://github.com/users/HiromiShikata/projects/1',
+        },
+        consoleGithubTokens: { umino: 'umino-token' },
+        repositoryOwner: 'HiromiShikata',
+        expectedToken: 'umino-token',
+      },
+      {
+        name: 'an uppercase repository owner matches a lowercase project url',
+        consoleProjectUrls: {
+          acme: 'https://github.com/orgs/acme-labs/projects/1',
+        },
+        consoleGithubTokens: { acme: 'acme-token' },
+        repositoryOwner: 'ACME-LABS',
+        expectedToken: 'acme-token',
+      },
+      {
+        name: 'a project url whose owner cannot be read gives the default token',
+        consoleProjectUrls: { broken: 'https://github.com/broken-owner' },
+        consoleGithubTokens: { broken: 'broken-token' },
+        repositoryOwner: 'broken-owner',
+        expectedToken: 'default-token',
+      },
+    ];
+
+    const observed = ownTokenCases.map((ownTokenCase) => ({
+      name: ownTokenCase.name,
+      token: createConsoleGithubTokenResolver(
+        'default-token',
+        ownTokenCase.consoleProjectUrls,
+        ownTokenCase.consoleGithubTokens,
+      )(ownTokenCase.repositoryOwner),
+    }));
+
+    expect(observed).toEqual(
+      ownTokenCases.map((ownTokenCase) => ({
+        name: ownTokenCase.name,
+        token: ownTokenCase.expectedToken,
+      })),
+    );
+  });
+});
+
+describe('createConsoleProjectNameResolver', () => {
+  it('returns the first console project name whose project url owner matches the repository owner case-insensitively, or null when none matches', () => {
+    const resolveProjectName = createConsoleProjectNameResolver({
+      umino: 'https://github.com/users/HiromiShikata/projects/1',
+      acme: 'https://github.com/orgs/acme-labs/projects/2',
+      acmeSecond: 'https://github.com/orgs/acme-labs/projects/3',
+      broken: 'https://github.com/broken-owner',
+    });
+    const projectNameCases: {
+      repositoryOwner: string;
+      expectedProjectName: string | null;
+    }[] = [
+      { repositoryOwner: 'HiromiShikata', expectedProjectName: 'umino' },
+      { repositoryOwner: 'hiromishikata', expectedProjectName: 'umino' },
+      { repositoryOwner: 'ACME-LABS', expectedProjectName: 'acme' },
+      { repositoryOwner: 'globex', expectedProjectName: null },
+      { repositoryOwner: 'broken-owner', expectedProjectName: null },
+    ];
+
+    const observed = projectNameCases.map((projectNameCase) => ({
+      repositoryOwner: projectNameCase.repositoryOwner,
+      projectName: resolveProjectName(projectNameCase.repositoryOwner),
+    }));
+
+    expect(observed).toEqual(
+      projectNameCases.map((projectNameCase) => ({
+        repositoryOwner: projectNameCase.repositoryOwner,
+        projectName: projectNameCase.expectedProjectName,
+      })),
+    );
+  });
+
+  it('returns null for every repository owner when the console project urls are not configured', () => {
+    const resolveProjectName = createConsoleProjectNameResolver(null);
+
+    expect(
+      ['HiromiShikata', 'acme-labs'].map((repositoryOwner) =>
+        resolveProjectName(repositoryOwner),
+      ),
+    ).toEqual([null, null]);
   });
 });

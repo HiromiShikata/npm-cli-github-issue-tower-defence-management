@@ -354,6 +354,112 @@ describe('loadConfigFile consoleGithubTokens', () => {
     const filePath = writeConfig("projectName: 'demo'\n");
     expect(loadConfigFile(filePath).consoleGithubTokens).toBeUndefined();
   });
+
+  it('yields undefined consoleGithubTokens when an entry is not a string or the value is a list', () => {
+    const invalidTokenCases: { name: string; content: string }[] = [
+      {
+        name: 'an entry that is not a string',
+        content: [
+          'consoleGithubTokens:',
+          "  acme: 'token-abc'",
+          '  other: 123',
+        ].join('\n'),
+      },
+      {
+        name: 'a list',
+        content: ['consoleGithubTokens:', "  - 'token-abc'"].join('\n'),
+      },
+    ];
+
+    const observed = invalidTokenCases.map((invalidTokenCase) => ({
+      name: invalidTokenCase.name,
+      consoleGithubTokens: loadConfigFile(writeConfig(invalidTokenCase.content))
+        .consoleGithubTokens,
+    }));
+
+    expect(observed).toEqual(
+      invalidTokenCases.map((invalidTokenCase) => ({
+        name: invalidTokenCase.name,
+        consoleGithubTokens: undefined,
+      })),
+    );
+  });
+});
+
+describe('loadConfigFile consoleProjects', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-projects-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses the consoleProjects map and yields undefined when it is absent, a list, or holds an entry that is not a string', () => {
+    const consoleProjectsCases: {
+      name: string;
+      content: string;
+      expectedConsoleProjects: Record<string, string> | undefined;
+    }[] = [
+      {
+        name: 'a map of project urls',
+        content: [
+          'consoleProjects:',
+          "  umino: 'https://github.com/users/HiromiShikata/projects/1'",
+          "  acme: 'https://github.com/orgs/acme-labs/projects/2'",
+        ].join('\n'),
+        expectedConsoleProjects: {
+          umino: 'https://github.com/users/HiromiShikata/projects/1',
+          acme: 'https://github.com/orgs/acme-labs/projects/2',
+        },
+      },
+      {
+        name: 'absent',
+        content: "projectName: 'demo'\n",
+        expectedConsoleProjects: undefined,
+      },
+      {
+        name: 'a list',
+        content: [
+          'consoleProjects:',
+          "  - 'https://github.com/users/HiromiShikata/projects/1'",
+        ].join('\n'),
+        expectedConsoleProjects: undefined,
+      },
+      {
+        name: 'an entry that is not a string',
+        content: [
+          'consoleProjects:',
+          "  umino: 'https://github.com/users/HiromiShikata/projects/1'",
+          '  acme: 2',
+        ].join('\n'),
+        expectedConsoleProjects: undefined,
+      },
+    ];
+
+    const observed = consoleProjectsCases.map((consoleProjectsCase) => ({
+      name: consoleProjectsCase.name,
+      consoleProjects: loadConfigFile(writeConfig(consoleProjectsCase.content))
+        .consoleProjects,
+    }));
+
+    expect(observed).toEqual(
+      consoleProjectsCases.map((consoleProjectsCase) => ({
+        name: consoleProjectsCase.name,
+        consoleProjects: consoleProjectsCase.expectedConsoleProjects,
+      })),
+    );
+  });
 });
 
 describe('mergeConfigs consoleGithubTokens', () => {
@@ -547,6 +653,212 @@ describe('loadConfigFile githubAppPrivateKeyPaths', () => {
       ['githubAppPrivateKeyPaths:', '  - 123'].join('\n'),
     );
     expect(loadConfigFile(filePath).githubAppPrivateKeyPaths).toBeUndefined();
+  });
+
+  it('yields undefined when githubAppPrivateKeyPaths is a map of project key paths', () => {
+    const filePath = writeConfig(
+      [
+        'githubAppPrivateKeyPaths:',
+        '  umino:',
+        "    - '/keys/umino-private-key.pem'",
+      ].join('\n'),
+    );
+    expect(loadConfigFile(filePath).githubAppPrivateKeyPaths).toBeUndefined();
+  });
+});
+
+describe('loadConfigFile consoleGithubAppPrivateKeyPaths', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-github-app-keys-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses the per console project key path lists, omitting every entry that is not a list of strings, and yields undefined when nothing usable remains', () => {
+    const keyPathsCases: {
+      name: string;
+      content: string;
+      expectedConsoleGithubAppPrivateKeyPaths:
+        Record<string, string[]> | undefined;
+    }[] = [
+      {
+        name: 'a map of key path lists',
+        content: [
+          'consoleGithubAppPrivateKeyPaths:',
+          '  umino:',
+          "    - '/keys/umino-private-key.pem'",
+          '  other:',
+          "    - '/keys/other-first-private-key.pem'",
+          "    - '/keys/other-second-private-key.pem'",
+        ].join('\n'),
+        expectedConsoleGithubAppPrivateKeyPaths: {
+          umino: ['/keys/umino-private-key.pem'],
+          other: [
+            '/keys/other-first-private-key.pem',
+            '/keys/other-second-private-key.pem',
+          ],
+        },
+      },
+      {
+        name: 'entries that are not a list of strings are omitted',
+        content: [
+          'consoleGithubAppPrivateKeyPaths:',
+          '  umino:',
+          "    - '/keys/umino-private-key.pem'",
+          '  numbers:',
+          '    - 1',
+          '    - 2',
+          "  scalar: '/keys/scalar-private-key.pem'",
+          '  mixed:',
+          "    - '/keys/mixed-private-key.pem'",
+          '    - 3',
+          '  nested:',
+          '    inner:',
+          "      - '/keys/nested-private-key.pem'",
+        ].join('\n'),
+        expectedConsoleGithubAppPrivateKeyPaths: {
+          umino: ['/keys/umino-private-key.pem'],
+        },
+      },
+      {
+        name: 'a list',
+        content: [
+          'consoleGithubAppPrivateKeyPaths:',
+          "  - '/keys/umino-private-key.pem'",
+        ].join('\n'),
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'a string',
+        content:
+          "consoleGithubAppPrivateKeyPaths: '/keys/umino-private-key.pem'",
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'a number',
+        content: 'consoleGithubAppPrivateKeyPaths: 42',
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'null',
+        content: 'consoleGithubAppPrivateKeyPaths:',
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'every entry is invalid',
+        content: [
+          'consoleGithubAppPrivateKeyPaths:',
+          '  umino: 1',
+          '  other:',
+          '    - 2',
+        ].join('\n'),
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'an empty map',
+        content: 'consoleGithubAppPrivateKeyPaths: {}',
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+      {
+        name: 'absent',
+        content: "projectName: 'demo'\n",
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+    ];
+
+    const observed = keyPathsCases.map((keyPathsCase) => ({
+      name: keyPathsCase.name,
+      consoleGithubAppPrivateKeyPaths: loadConfigFile(
+        writeConfig(keyPathsCase.content),
+      ).consoleGithubAppPrivateKeyPaths,
+    }));
+
+    expect(observed).toEqual(
+      keyPathsCases.map((keyPathsCase) => ({
+        name: keyPathsCase.name,
+        consoleGithubAppPrivateKeyPaths:
+          keyPathsCase.expectedConsoleGithubAppPrivateKeyPaths,
+      })),
+    );
+  });
+
+  it('leaves the top-level githubAppPrivateKeyPaths as written while parsing consoleGithubAppPrivateKeyPaths', () => {
+    const coexistenceCases: {
+      name: string;
+      content: string;
+      expectedGithubAppPrivateKeyPaths: string[] | undefined;
+      expectedConsoleGithubAppPrivateKeyPaths:
+        Record<string, string[]> | undefined;
+    }[] = [
+      {
+        name: 'both keys are set',
+        content: [
+          'githubAppPrivateKeyPaths:',
+          "  - '/keys/top-level-private-key.pem'",
+          'consoleGithubAppPrivateKeyPaths:',
+          '  umino:',
+          "    - '/keys/umino-private-key.pem'",
+        ].join('\n'),
+        expectedGithubAppPrivateKeyPaths: ['/keys/top-level-private-key.pem'],
+        expectedConsoleGithubAppPrivateKeyPaths: {
+          umino: ['/keys/umino-private-key.pem'],
+        },
+      },
+      {
+        name: 'only the console map is set',
+        content: [
+          'consoleGithubAppPrivateKeyPaths:',
+          '  umino:',
+          "    - '/keys/umino-private-key.pem'",
+        ].join('\n'),
+        expectedGithubAppPrivateKeyPaths: undefined,
+        expectedConsoleGithubAppPrivateKeyPaths: {
+          umino: ['/keys/umino-private-key.pem'],
+        },
+      },
+      {
+        name: 'the console value is a list',
+        content: [
+          'githubAppPrivateKeyPaths:',
+          "  - '/keys/top-level-private-key.pem'",
+          'consoleGithubAppPrivateKeyPaths:',
+          "  - '/keys/umino-private-key.pem'",
+        ].join('\n'),
+        expectedGithubAppPrivateKeyPaths: ['/keys/top-level-private-key.pem'],
+        expectedConsoleGithubAppPrivateKeyPaths: undefined,
+      },
+    ];
+
+    const observed = coexistenceCases.map((coexistenceCase) => {
+      const loaded = loadConfigFile(writeConfig(coexistenceCase.content));
+      return {
+        name: coexistenceCase.name,
+        githubAppPrivateKeyPaths: loaded.githubAppPrivateKeyPaths,
+        consoleGithubAppPrivateKeyPaths: loaded.consoleGithubAppPrivateKeyPaths,
+      };
+    });
+
+    expect(observed).toEqual(
+      coexistenceCases.map((coexistenceCase) => ({
+        name: coexistenceCase.name,
+        githubAppPrivateKeyPaths:
+          coexistenceCase.expectedGithubAppPrivateKeyPaths,
+        consoleGithubAppPrivateKeyPaths:
+          coexistenceCase.expectedConsoleGithubAppPrivateKeyPaths,
+      })),
+    );
   });
 });
 
