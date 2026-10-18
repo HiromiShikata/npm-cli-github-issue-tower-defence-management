@@ -9,7 +9,10 @@ import {
   type ConsoleOperationsApi,
   TRIAGE_OPERATION_PATH,
 } from '../hooks/useConsoleOperations';
-import { COMMENT_OPERATION_PATH } from '../lib/consoleApi';
+import {
+  COMMENT_OPERATION_PATH,
+  SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
+} from '../lib/consoleApi';
 import { ResourceCache } from '../lib/resourceCache';
 import { colorFromEnum } from '../logic/colors';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
@@ -3932,5 +3935,335 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
     expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(onCommentError).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaiting Workspace status', () => {
+  const renderIssueDetailForDependedIssueUrl = (
+    overrides: Partial<ConsoleItemDetailContainerProps> = {},
+  ) =>
+    render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+        {...overrides}
+      />,
+    );
+
+  const findAwaitingWorkspaceOption = () => {
+    const option = consoleStatusOptionsFixture.find(
+      (o) => o.name === AWAITING_WORKSPACE_NAME,
+    );
+    if (option === undefined) {
+      throw new Error(
+        'consoleStatusOptionsFixture is missing an Awaiting Workspace option',
+      );
+    }
+    return option;
+  };
+  const awaitingWorkspaceOption = findAwaitingWorkspaceOption();
+
+  const dependedIssueUrlToSubmit =
+    'https://github.com/owner/repo/issues/99';
+
+  const submitDependedIssueUrl = (
+    getByTitle: (text: string) => HTMLElement,
+    getByPlaceholderText: (text: string) => HTMLElement,
+    getByText: (text: string) => HTMLElement,
+    url: string = dependedIssueUrlToSubmit,
+  ): void => {
+    fireEvent.click(getByTitle('Rare actions'));
+    fireEvent.change(getByPlaceholderText('Depended issue URL'), {
+      target: { value: url },
+    });
+    fireEvent.click(getByText('Set Depended Issue'));
+  };
+
+  it('queues exactly one set_status action for Awaiting Workspace, with the overlayPatch matching the Status badge, when submitting a Depended Issue URL', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.kind).toEqual({
+      type: 'set_status',
+      optionName: AWAITING_WORKSPACE_NAME,
+    });
+    expect(input.item).toBe(issueItem);
+    expect(input.overlayPatch).toEqual({
+      done: true,
+      status: { name: 'Awaiting Workspace', color: 'BLUE' },
+    });
+  });
+
+  it('bundles the same Awaiting Workspace transition again on a second submission after the panel reopens with an empty field', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText, queryByPlaceholderText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/99',
+    );
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/100',
+    );
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(2);
+    });
+
+    for (const call of onQueueAction.mock.calls) {
+      expect(call[0].kind).toEqual({
+        type: 'set_status',
+        optionName: AWAITING_WORKSPACE_NAME,
+      });
+    }
+    expect(onQueueAction.mock.calls[1][0].offline[0].requestBody).toEqual({
+      pjcode: 'acme',
+      issueUrl: issueItem.url,
+      dependedIssueUrl: 'https://github.com/owner/repo/issues/100',
+    });
+  });
+
+  it('runs the bundled commit by writing the depended issue URL and then the Awaiting Workspace status, in that order, without ever calling operations.addComment', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(operations.setDependedIssueUrl).not.toHaveBeenCalled();
+    expect(operations.setStatus).not.toHaveBeenCalled();
+
+    await input.commit(0);
+
+    const setDependedIssueUrlMock = operations.setDependedIssueUrl as jest.Mock;
+    const setStatusMock = operations.setStatus as jest.Mock;
+    expect(setDependedIssueUrlMock.mock.calls).toEqual([
+      [issueItem, dependedIssueUrlToSubmit],
+    ]);
+    expect(setStatusMock.mock.calls).toEqual([
+      [issueItem, awaitingWorkspaceOption],
+    ]);
+    expect(setDependedIssueUrlMock.mock.invocationCallOrder[0]).toBeLessThan(
+      setStatusMock.mock.invocationCallOrder[0],
+    );
+    expect(operations.addComment).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      sentStepCount: 0,
+      expectedSetDependedIssueUrlCalls: [
+        [issueItem, dependedIssueUrlToSubmit],
+      ],
+      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+    },
+    {
+      sentStepCount: 1,
+      expectedSetDependedIssueUrlCalls: [],
+      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+    },
+  ])(
+    'commit told sentStepCount $sentStepCount re-runs only the steps not yet sent',
+    async ({
+      sentStepCount,
+      expectedSetDependedIssueUrlCalls,
+      expectedSetStatusCalls,
+    }) => {
+      const operations = buildOperations();
+      const onQueueAction = jest.fn();
+      const { getByTitle, getByPlaceholderText, getByText } =
+        renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+      submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+      await waitFor(() => {
+        expect(onQueueAction).toHaveBeenCalledTimes(1);
+      });
+      const input = onQueueAction.mock.calls[0][0];
+
+      await input.commit(sentStepCount);
+
+      expect(
+        (operations.setDependedIssueUrl as jest.Mock).mock.calls,
+      ).toEqual(expectedSetDependedIssueUrlCalls);
+      expect((operations.setStatus as jest.Mock).mock.calls).toEqual(
+        expectedSetStatusCalls,
+      );
+    },
+  );
+
+  it('rejects the commit with a partially sent error counting the depended issue URL write when the status write fails', async () => {
+    const operations = buildOperations();
+    const statusFailure = new Error('status write failed');
+    operations.setStatus = jest.fn(async () => {
+      throw statusFailure;
+    });
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+
+    const rejection = await input.commit(0).then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
+    expect(rejection).toMatchObject({ sentStepCount: 1 });
+    expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
+      statusFailure,
+    );
+    expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+      issueItem,
+      dependedIssueUrlToSubmit,
+    );
+  });
+
+  it('collapses the Rare actions panel as soon as onQueueAction is called, without waiting for operations.setDependedIssueUrl to resolve', async () => {
+    const operations = buildOperations();
+    operations.setDependedIssueUrl = jest.fn(() => new Promise(() => {}));
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText, queryByPlaceholderText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+  });
+
+  it('builds a two-entry offline payload array for the depended issue URL write and then the Awaiting Workspace status write', async () => {
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    const expectedBase = {
+      itemUrl: issueItem.url,
+      projectItemId: issueItem.projectItemId,
+      itemNumber: issueItem.number,
+      repo: issueItem.repo,
+      nameWithOwner: issueItem.nameWithOwner,
+      isPr: issueItem.isPr,
+    };
+
+    expect(input.offline).toEqual([
+      {
+        ...expectedBase,
+        apiPath: SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
+        requestBody: {
+          pjcode: 'acme',
+          issueUrl: issueItem.url,
+          dependedIssueUrl: dependedIssueUrlToSubmit,
+        },
+      },
+      {
+        ...expectedBase,
+        apiPath: TRIAGE_OPERATION_PATH,
+        requestBody: buildTriageRequest('acme', issueItem, 'set_status', {
+          statusName: AWAITING_WORKSPACE_NAME,
+        }),
+      },
+    ]);
+  });
+
+  it('never produces a comment offline payload or calls operations.addComment for the bundled Set Depended Issue action', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+
+    expect(
+      (input.offline ?? []).some(
+        (payload: ConsoleOfflinePayload) =>
+          payload.apiPath === COMMENT_OPERATION_PATH,
+      ),
+    ).toBe(false);
+
+    await input.commit(0);
+    expect(operations.addComment).not.toHaveBeenCalled();
+  });
+
+  it('calls only operations.setDependedIssueUrl, with no onQueueAction call and no Status write, when no status option named Awaiting Workspace exists', async () => {
+    const statusOptionsWithoutAwaitingWorkspace =
+      consoleStatusOptionsFixture.filter(
+        (o) => o.name !== AWAITING_WORKSPACE_NAME,
+      );
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({
+        operations,
+        onQueueAction,
+        statusOptions: statusOptionsWithoutAwaitingWorkspace,
+      });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+        issueItem,
+        dependedIssueUrlToSubmit,
+      );
+    });
+    expect(onQueueAction).not.toHaveBeenCalled();
+    expect(operations.setStatus).not.toHaveBeenCalled();
   });
 });
