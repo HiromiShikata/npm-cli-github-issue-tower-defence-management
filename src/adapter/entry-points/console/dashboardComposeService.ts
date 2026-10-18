@@ -71,6 +71,10 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   const ws = asFiniteNumber(value.ws);
   const dep = asFiniteNumber(value.dep);
   const blocker = asFiniteNumber(value.blocker);
+  const consoleTodoByHumanCount = asFiniteNumber(value.consoleTodoByHumanCount);
+  const consoleAwaitingOwnerCount = asFiniteNumber(
+    value.consoleAwaitingOwnerCount,
+  );
   if (
     todo === null ||
     qc === null ||
@@ -78,7 +82,9 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
     pr === null ||
     ws === null ||
     dep === null ||
-    blocker === null
+    blocker === null ||
+    consoleTodoByHumanCount === null ||
+    consoleAwaitingOwnerCount === null
   ) {
     return null;
   }
@@ -93,10 +99,12 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
     humanPendingRed: asFiniteNumber(value.humanPendingRed) ?? 0,
     humanPendingYellow: asFiniteNumber(value.humanPendingYellow) ?? 0,
     humanPendingBlue: asFiniteNumber(value.humanPendingBlue) ?? 0,
+    consoleTodoByHumanCount,
+    consoleAwaitingOwnerCount,
   };
 };
 
-type ProjectRowData = {
+export type ProjectRowData = {
   row: DashboardRow | null;
   capturedAt: string | null;
   isFallback: boolean;
@@ -139,7 +147,7 @@ const parseTdpmCacheData = (raw: unknown): TdpmCacheData | null => {
   return { lastFetchedAt, issues: raw.issues, storyColorMap };
 };
 
-const readProjectRowWithFreshness = (
+export const readProjectRowWithFreshness = (
   dashboardDataDir: string,
   projectName: string,
 ): ProjectRowData => {

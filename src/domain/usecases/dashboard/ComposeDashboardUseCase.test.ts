@@ -36,6 +36,8 @@ const projectRow = (overrides: Partial<DashboardRow>): DashboardRow => ({
   humanPendingRed: 0,
   humanPendingYellow: 0,
   humanPendingBlue: 0,
+  consoleTodoByHumanCount: 0,
+  consoleAwaitingOwnerCount: 0,
   ...overrides,
 });
 

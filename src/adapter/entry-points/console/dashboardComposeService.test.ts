@@ -29,6 +29,8 @@ describe('buildComposeDashboardInput', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
@@ -48,6 +50,8 @@ describe('buildComposeDashboardInput', () => {
             humanPendingRed: 0,
             humanPendingYellow: 0,
             humanPendingBlue: 0,
+            consoleTodoByHumanCount: 0,
+            consoleAwaitingOwnerCount: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
           rowCapturedAt: null,
@@ -94,6 +98,67 @@ describe('buildComposeDashboardInput', () => {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
+
+  it('reads consoleTodoByHumanCount and consoleAwaitingOwnerCount from a project file', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: 'x',
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 4,
+        dep: 1,
+        blocker: 0,
+        consoleTodoByHumanCount: 7,
+        consoleAwaitingOwnerCount: 3,
+      });
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].row?.consoleTodoByHumanCount).toBe(7);
+      expect(input.projects[0].row?.consoleAwaitingOwnerCount).toBe(3);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { fieldName: 'consoleTodoByHumanCount' as const },
+    { fieldName: 'consoleAwaitingOwnerCount' as const },
+  ])(
+    'treats a project file missing $fieldName as an absent row',
+    ({ fieldName }) => {
+      const dataDir = makeDataDir();
+      try {
+        const body: Record<string, unknown> = {
+          pjcode: 'acme',
+          capturedAt: 'x',
+          todo: 1,
+          qc: 2,
+          fail: 0,
+          pr: 0,
+          ws: 4,
+          dep: 1,
+          blocker: 0,
+          consoleTodoByHumanCount: 7,
+          consoleAwaitingOwnerCount: 3,
+        };
+        delete body[fieldName];
+        writeProject(dataDir, 'acme', body);
+        const input = buildComposeDashboardInput({
+          dashboardDataDir: dataDir,
+          projectNames: ['acme'],
+        });
+        expect(input.projects[0].row).toBeNull();
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('reads machine status from machine-status.json', () => {
     const dataDir = makeDataDir();
@@ -409,6 +474,8 @@ describe('buildComposeDashboardInput', () => {
         ws: 0,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
@@ -438,6 +505,8 @@ describe('buildComposeDashboardInput', () => {
         ws: 0,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       const nowMs = 1_000_000_000_000;
       fs.mkdirSync(path.join(consoleDir, 'acme'), { recursive: true });
@@ -481,6 +550,8 @@ describe('buildComposeDashboardInput', () => {
         humanPendingRed: 0,
         humanPendingYellow: 0,
         humanPendingBlue: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       fs.writeFileSync(
         path.join(cacheDir, 'latest.json'),
@@ -549,6 +620,8 @@ describe('buildComposeDashboardInput', () => {
         humanPendingRed: 0,
         humanPendingYellow: 0,
         humanPendingBlue: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
@@ -581,6 +654,8 @@ describe('buildComposeDashboardInput', () => {
         humanPendingRed: 0,
         humanPendingYellow: 0,
         humanPendingBlue: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       fs.writeFileSync(
         path.join(cacheDir, 'latest.json'),
@@ -669,6 +744,8 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
         humanPendingRed: 9,
         humanPendingYellow: 9,
         humanPendingBlue: 9,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       });
       fs.writeFileSync(
         path.join(cacheDir, 'latest.json'),

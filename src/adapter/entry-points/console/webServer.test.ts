@@ -2150,6 +2150,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2164,6 +2166,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 2,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2279,6 +2283,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2334,6 +2340,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
             humanPendingRed: 0,
             humanPendingYellow: 0,
             humanPendingBlue: 0,
+            consoleTodoByHumanCount: 0,
+            consoleAwaitingOwnerCount: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
         }).replace(/ /g, '&nbsp;') +
@@ -2374,6 +2382,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2388,6 +2398,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 2,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -3470,6 +3482,7 @@ describe('webServer GET /api/projects', () => {
         disabledPjcodes: [],
         workflowStoryEntries: null,
         workflowAgentOptions: null,
+        actionableCounts: null,
       });
     } finally {
       await closeServer(server);
@@ -3505,6 +3518,7 @@ describe('webServer GET /api/projects', () => {
         disabledPjcodes: [],
         workflowStoryEntries: null,
         workflowAgentOptions: null,
+        actionableCounts: null,
       });
     } finally {
       await closeServer(server);
@@ -3546,6 +3560,7 @@ describe('webServer GET /api/projects', () => {
         disabledPjcodes: [],
         workflowStoryEntries: null,
         workflowAgentOptions: null,
+        actionableCounts: null,
       });
     } finally {
       await closeServer(server);
@@ -3596,6 +3611,7 @@ describe('webServer GET /api/projects', () => {
         disabledPjcodes: [],
         workflowStoryEntries: null,
         workflowAgentOptions: null,
+        actionableCounts: null,
       });
     } finally {
       await closeServer(server);
@@ -3706,6 +3722,7 @@ describe('webServer GET /api/projects', () => {
           workflowAgentOptions: [
             { id: 'agent_opt_developer', name: 'developer', color: 'BLUE' },
           ],
+          actionableCounts: null,
         });
       } finally {
         await closeServer(server);
@@ -3784,6 +3801,116 @@ describe('webServer GET /api/projects', () => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     });
+  });
+
+  it("returns actionableCounts computed from a configured pjcode's own dashboard row file", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const projectsDir = path.join(dataDir, 'projects');
+    fs.mkdirSync(projectsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectsDir, 'alpha.json'),
+      JSON.stringify({
+        pjcode: 'alpha',
+        capturedAt: 'x',
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+        consoleTodoByHumanCount: 5,
+        consoleAwaitingOwnerCount: 3,
+      }),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: dataDir,
+      dashboardProjectNames: ['alpha'],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toMatchObject({
+        actionableCounts: {
+          todoByHumanCounts: { alpha: 5 },
+          awaitingOwnerCounts: { alpha: 3 },
+        },
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns zero actionableCounts for a configured pjcode with no dashboard row file', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: dataDir,
+      dashboardProjectNames: ['alpha'],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toMatchObject({
+        actionableCounts: {
+          todoByHumanCounts: { alpha: 0 },
+          awaitingOwnerCounts: { alpha: 0 },
+        },
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns actionableCounts as null when dashboardDataDir is not configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha'],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toMatchObject({
+        actionableCounts: null,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   const disabledPjcodesTestCases: {
