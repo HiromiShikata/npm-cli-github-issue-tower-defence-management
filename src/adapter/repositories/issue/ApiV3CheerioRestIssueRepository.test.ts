@@ -7638,6 +7638,85 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(firstResult).toEqual([firstIssueComment]);
       expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
     });
+
+    const buildCommentTargetIssue = (
+      targetIssueUrl: string,
+      targetIssueNumber: number,
+    ): Issue => ({
+      ...buildStaleItemTestIssue(`item-${targetIssueNumber}`, targetIssueUrl),
+      nameWithOwner: 'HiromiShikata/test-repository',
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      number: targetIssueNumber,
+    });
+
+    const commentPostedAfterFirstReadTestCases: {
+      name: string;
+      commentedIssueUrl: string;
+      commentedIssueNumber: number;
+      expectedRequestedUrls: string[];
+      expectedSecondResult: (typeof firstIssueComment)[];
+    }[] = [
+      {
+        name: 'requests the comment list again and returns the new list when createComment posted on the same issue after the stored list, even with the same issueUpdatedAt',
+        commentedIssueUrl: issueUrl,
+        commentedIssueNumber: 42,
+        expectedRequestedUrls: [firstPageUrl, firstPageUrl],
+        expectedSecondResult: [firstIssueComment, secondIssueComment],
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when createComment posted on a different issue and issueUpdatedAt is the same',
+        commentedIssueUrl:
+          'https://github.com/HiromiShikata/test-repository/issues/43',
+        commentedIssueNumber: 43,
+        expectedRequestedUrls: [firstPageUrl],
+        expectedSecondResult: [firstIssueComment],
+      },
+    ];
+
+    test.each(commentPostedAfterFirstReadTestCases)('$name', async (tc) => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e2"',
+        ),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.createComment.mockResolvedValue({
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${tc.commentedIssueUrl}#issuecomment-81002`,
+      });
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+      await repository.createComment(
+        buildCommentTargetIssue(tc.commentedIssueUrl, tc.commentedIssueNumber),
+        'second comment',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        tc.commentedIssueUrl,
+        'second comment',
+      );
+      expect(firstResult).toEqual([firstIssueComment]);
+      expect(recordedRequests.map((request) => request.url)).toEqual(
+        tc.expectedRequestedUrls,
+      );
+      expect(secondResult).toEqual(tc.expectedSecondResult);
+    });
   });
 
   describe('getAllIssues issue updatedAt', () => {
