@@ -85,6 +85,7 @@ export type ConsoleStoryEntry = {
 export type ConsoleStoriesTab = {
   pjcode: string;
   generatedAt: string;
+  statusOptions: ConsoleFieldOption[];
   stories: ConsoleStoryEntry[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
@@ -296,6 +297,7 @@ export class GenerateConsoleListsUseCase {
       stories: {
         pjcode,
         generatedAt,
+        statusOptions: this.buildFieldOptions(statusOptions, []),
         stories: storyEntries,
         storyOrder,
         storyColors: this.buildStoryColorsObject(storyOptions),
