@@ -1,4 +1,7 @@
-import { computeListContinuation } from './listContinuation';
+import {
+  computeListContinuation,
+  resolveListContinuationOnKeyDown,
+} from './listContinuation';
 
 describe('computeListContinuation', () => {
   it.each([
@@ -335,4 +338,70 @@ describe('computeListContinuation', () => {
       cursorPosition: '- [ ] priority item\n- [ ] '.length,
     });
   });
+});
+
+describe('resolveListContinuationOnKeyDown', () => {
+  it.each([
+    {
+      description:
+        'FR-007: does not apply list continuation when keyCode is 229, even though the line matches a list pattern',
+      keyInfo: { key: 'Enter', isComposing: false, keyCode: 229, which: 0 },
+      value: '- first item',
+      selectionStart: '- first item'.length,
+      selectionEnd: '- first item'.length,
+      expected: { shouldApply: false },
+    },
+    {
+      description:
+        'FR-007: does not apply list continuation when which is 229, even though the line matches a list pattern',
+      keyInfo: { key: 'Enter', isComposing: false, keyCode: 0, which: 229 },
+      value: '- first item',
+      selectionStart: '- first item'.length,
+      selectionEnd: '- first item'.length,
+      expected: { shouldApply: false },
+    },
+    {
+      description:
+        'FR-007: does not apply list continuation when isComposing is true, even though the line matches a list pattern',
+      keyInfo: { key: 'Enter', isComposing: true, keyCode: 13, which: 13 },
+      value: '- first item',
+      selectionStart: '- first item'.length,
+      selectionEnd: '- first item'.length,
+      expected: { shouldApply: false },
+    },
+    {
+      description:
+        'does not apply list continuation when the key is not Enter at all',
+      keyInfo: { key: 'a', isComposing: false, keyCode: 65, which: 65 },
+      value: '- first item',
+      selectionStart: '- first item'.length,
+      selectionEnd: '- first item'.length,
+      expected: { shouldApply: false },
+    },
+    {
+      description:
+        'applies list continuation for an ordinary unmodified Enter keystroke on a matching list line',
+      keyInfo: { key: 'Enter', isComposing: false, keyCode: 13, which: 13 },
+      value: '- first item',
+      selectionStart: '- first item'.length,
+      selectionEnd: '- first item'.length,
+      expected: {
+        shouldApply: true,
+        value: '- first item\n- ',
+        cursorPosition: '- first item\n- '.length,
+      },
+    },
+  ])(
+    '$description',
+    ({ keyInfo, value, selectionStart, selectionEnd, expected }) => {
+      expect(
+        resolveListContinuationOnKeyDown(
+          keyInfo,
+          value,
+          selectionStart,
+          selectionEnd,
+        ),
+      ).toEqual(expected);
+    },
+  );
 });
