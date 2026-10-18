@@ -1895,6 +1895,26 @@ test('in timer mode, automatically navigates away from a project with zero prs a
   await page.addInitScript((settings) => {
     localStorage.setItem('tdpm-timer-settings', settings);
   }, timerSettings);
+  await page.route('**/api/projects', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      status: response.status(),
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...(await response.json()),
+        actionableCounts: {
+          todoByHumanCounts: {
+            [CONSOLE_E2E_PJCODE]: 1,
+            [CONSOLE_E2E_SECOND_PJCODE]: 0,
+          },
+          awaitingOwnerCounts: {
+            [CONSOLE_E2E_PJCODE]: 0,
+            [CONSOLE_E2E_SECOND_PJCODE]: 0,
+          },
+        },
+      }),
+    });
+  });
 
   await page.goto(
     `${harness.baseUrl}/projects/${CONSOLE_E2E_SECOND_PJCODE}?k=${CONSOLE_E2E_TOKEN}`,
