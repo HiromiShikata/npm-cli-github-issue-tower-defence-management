@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { resolveListContinuationOnKeyDown } from '../../lib/listContinuation';
 import type { ConsoleComment } from '../../logic/types';
 
 export type ConsoleCommentSubmitResult = ConsoleComment | 'held_offline';
@@ -206,6 +207,29 @@ export const ConsoleCommentComposer = ({
             placeholder="Leave a comment…"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              const textarea = event.currentTarget;
+              const outcome = resolveListContinuationOnKeyDown(
+                {
+                  key: event.key,
+                  isComposing: event.nativeEvent.isComposing,
+                  keyCode: event.keyCode,
+                  which: event.which,
+                },
+                textarea.value,
+                textarea.selectionStart,
+                textarea.selectionEnd,
+              );
+              if (!outcome.shouldApply) {
+                return;
+              }
+              event.preventDefault();
+              cursorToRestoreRef.current = {
+                start: outcome.cursorPosition,
+                end: outcome.cursorPosition,
+              };
+              setDraft(outcome.value);
+            }}
             onDragOver={(event) => {
               if (onUploadFile === undefined) {
                 return;

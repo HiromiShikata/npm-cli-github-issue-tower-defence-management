@@ -1,6 +1,7 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import type { ConsoleReviewCommentSide } from '../../lib/consoleApi';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
+import { resolveListContinuationOnKeyDown } from '../../lib/listContinuation';
 import { type ConsoleDiffLine, parseUnifiedDiff } from '../../logic/diff';
 import { isImageFilePath } from '../../logic/imageFile';
 
@@ -65,6 +66,20 @@ const ConsoleInlineCommentComposer = ({
 }: ConsoleInlineCommentComposerProps) => {
   const [draft, setDraft] = useState<string>('');
   const [status, setStatus] = useState<ComposerStatus>({ kind: 'idle' });
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const cursorToRestoreRef = useRef<{ start: number; end: number } | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    if (cursorToRestoreRef.current !== null && textareaRef.current !== null) {
+      textareaRef.current.setSelectionRange(
+        cursorToRestoreRef.current.start,
+        cursorToRestoreRef.current.end,
+      );
+      cursorToRestoreRef.current = null;
+    }
+  });
 
   const submit = async (): Promise<void> => {
     const body = draft.trim();
@@ -94,11 +109,35 @@ const ConsoleInlineCommentComposer = ({
       ) : (
         <>
           <textarea
+            ref={textareaRef}
             className="console-diff-composer-input"
             rows={3}
             placeholder="Leave a review comment on this line…"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              const textarea = event.currentTarget;
+              const outcome = resolveListContinuationOnKeyDown(
+                {
+                  key: event.key,
+                  isComposing: event.nativeEvent.isComposing,
+                  keyCode: event.keyCode,
+                  which: event.which,
+                },
+                textarea.value,
+                textarea.selectionStart,
+                textarea.selectionEnd,
+              );
+              if (!outcome.shouldApply) {
+                return;
+              }
+              event.preventDefault();
+              cursorToRestoreRef.current = {
+                start: outcome.cursorPosition,
+                end: outcome.cursorPosition,
+              };
+              setDraft(outcome.value);
+            }}
           />
           <div className="console-diff-composer-controls">
             <button

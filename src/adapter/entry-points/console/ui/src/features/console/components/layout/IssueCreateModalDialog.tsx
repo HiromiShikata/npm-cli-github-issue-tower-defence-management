@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveListContinuationOnKeyDown } from '../../lib/listContinuation';
 import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
@@ -88,10 +89,24 @@ export const IssueCreateModalDialog = ({
     initialSubmitError ?? null,
   );
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const bodyCursorToRestoreRef = useRef<{ start: number; end: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  useLayoutEffect(() => {
+    if (bodyCursorToRestoreRef.current !== null && bodyRef.current !== null) {
+      bodyRef.current.setSelectionRange(
+        bodyCursorToRestoreRef.current.start,
+        bodyCursorToRestoreRef.current.end,
+      );
+      bodyCursorToRestoreRef.current = null;
+    }
+  });
 
   const previousStoryEntriesForResetRef = useRef(storyEntries);
   useEffect(() => {
@@ -332,9 +347,39 @@ export const IssueCreateModalDialog = ({
 
           <span className="console-task-create-dialog-section-label">Body</span>
           <textarea
+            ref={bodyRef}
             className="console-task-create-dialog-textarea"
             aria-label="Body"
             value={bodyValue}
+            onKeyDown={(event) => {
+              const textarea = event.currentTarget;
+              const outcome = resolveListContinuationOnKeyDown(
+                {
+                  key: event.key,
+                  isComposing: event.nativeEvent.isComposing,
+                  keyCode: event.keyCode,
+                  which: event.which,
+                },
+                textarea.value,
+                textarea.selectionStart,
+                textarea.selectionEnd,
+              );
+              if (!outcome.shouldApply) {
+                return;
+              }
+              event.preventDefault();
+              bodyCursorToRestoreRef.current = {
+                start: outcome.cursorPosition,
+                end: outcome.cursorPosition,
+              };
+              setBodyValue(outcome.value);
+              onDraftChange?.({
+                title: titleValue,
+                body: outcome.value.trim().length > 0 ? outcome.value : null,
+                storyName: resolvedStoryName(),
+                agentOptionId: selectedAgentOptionId,
+              });
+            }}
             onChange={(e) => {
               setBodyValue(e.target.value);
               onDraftChange?.({
