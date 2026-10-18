@@ -17,6 +17,7 @@ describe('useConsoleProjectList', () => {
     expect(result.current.pjcodes).toEqual([]);
     expect(result.current.fleetTaskCreateUrl).toBeNull();
     expect(result.current.error).toBeNull();
+    expect(result.current.actionableCounts).toBeNull();
   });
 
   it('populates pjcodes and clears loading state when fetchProjectList resolves', async () => {

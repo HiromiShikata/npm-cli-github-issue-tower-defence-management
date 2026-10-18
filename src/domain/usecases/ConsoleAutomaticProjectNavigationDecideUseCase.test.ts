@@ -13,32 +13,44 @@ describe('DEFAULT_TIMER_MINUTES and findNextPjcodeWithMinutes exported from the 
 
   it('finds the next pjcode after the current one with minutes greater than zero', () => {
     expect(
-      findNextPjcodeWithMinutes(['acme', 'beta', 'gamma'], 'acme', {
-        acme: 30,
-        beta: 30,
-        gamma: 30,
-      }),
+      findNextPjcodeWithMinutes(
+        ['acme', 'beta', 'gamma'],
+        'acme',
+        {
+          acme: 30,
+          beta: 30,
+          gamma: 30,
+        },
+        {},
+        {},
+      ),
     ).toBe('beta');
   });
 
   it('wraps around to the first pjcode after the last one', () => {
     expect(
-      findNextPjcodeWithMinutes(['acme', 'beta', 'gamma'], 'gamma', {
-        acme: 30,
-        beta: 30,
-        gamma: 30,
-      }),
+      findNextPjcodeWithMinutes(
+        ['acme', 'beta', 'gamma'],
+        'gamma',
+        {
+          acme: 30,
+          beta: 30,
+          gamma: 30,
+        },
+        {},
+        {},
+      ),
     ).toBe('acme');
   });
 
   it('falls back to DEFAULT_TIMER_MINUTES for a project missing from projectMinutes', () => {
-    expect(findNextPjcodeWithMinutes(['acme', 'beta'], 'acme', {})).toBe(
-      'beta',
-    );
+    expect(
+      findNextPjcodeWithMinutes(['acme', 'beta'], 'acme', {}, {}, {}),
+    ).toBe('beta');
   });
 
   it('returns null when the pjcodes list is empty', () => {
-    expect(findNextPjcodeWithMinutes([], null, {})).toBeNull();
+    expect(findNextPjcodeWithMinutes([], null, {}, {}, {})).toBeNull();
   });
 });
 
@@ -54,6 +66,8 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
+    projectTodoByHumanCounts: {},
+    projectAwaitingOwnerCounts: {},
   };
 
   type TableCase = {
@@ -748,6 +762,8 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
+    projectTodoByHumanCounts: {},
+    projectAwaitingOwnerCounts: {},
   };
 
   type TaskOpenTableCase = {
@@ -880,6 +896,8 @@ describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerE
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
+    projectTodoByHumanCounts: {},
+    projectAwaitingOwnerCounts: {},
   };
 
   type CombinationTableCase = {

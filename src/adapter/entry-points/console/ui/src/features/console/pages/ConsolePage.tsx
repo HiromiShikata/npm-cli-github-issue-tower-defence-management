@@ -646,6 +646,8 @@ export const ConsolePage = () => {
         pjcodes,
         null,
         projectMinutes,
+        {},
+        {},
       );
       if (firstPjcode !== null) {
         navigateReplaceState(`/projects/${firstPjcode}/todo-by-human`);

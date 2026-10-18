@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchProjectList, type ProjectListResponse } from '../lib/consoleApi';
+import {
+  fetchProjectList,
+  type ProjectActionableCounts,
+  type ProjectListResponse,
+} from '../lib/consoleApi';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../logic/types';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from './useConsoleTabData';
 
@@ -11,6 +15,7 @@ export type ConsoleProjectListState = {
   disabledPjcodes: string[];
   workflowStoryEntries: ConsoleStoryEntry[] | null;
   workflowAgentOptions: ConsoleFieldOption[] | null;
+  actionableCounts: ProjectActionableCounts | null;
   isLoading: boolean;
   error: Error | null;
 };
@@ -45,6 +50,7 @@ export const useConsoleProjectList = (
   const [workflowAgentOptions, setWorkflowAgentOptions] = useState<
     ConsoleFieldOption[] | null
   >(null);
+  const [actionableCounts] = useState<ProjectActionableCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -56,6 +62,7 @@ export const useConsoleProjectList = (
     disabledPjcodes,
     workflowStoryEntries,
     workflowAgentOptions,
+    actionableCounts,
   });
 
   useEffect(() => {
@@ -74,6 +81,7 @@ export const useConsoleProjectList = (
             disabledPjcodes: result.disabledPjcodes,
             workflowStoryEntries: result.workflowStoryEntries,
             workflowAgentOptions: result.workflowAgentOptions,
+            actionableCounts: result.actionableCounts,
           };
           setPjcodes(result.pjcodes);
           setProjectUrls(result.projectUrls);
@@ -197,6 +205,7 @@ export const useConsoleProjectList = (
     disabledPjcodes,
     workflowStoryEntries,
     workflowAgentOptions,
+    actionableCounts,
     isLoading,
     error,
   };
