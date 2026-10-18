@@ -71,9 +71,9 @@ describe('findNextPjcodeWithMinutes', () => {
     expect(
       findNextPjcodeWithMinutes(pjcodes, 'alpha', {}, { beta: 1 }, {}),
     ).toBe('beta');
-    expect(
-      findNextPjcodeWithMinutes(pjcodes, null, {}, { alpha: 1 }, {}),
-    ).toBe('alpha');
+    expect(findNextPjcodeWithMinutes(pjcodes, null, {}, { alpha: 1 }, {})).toBe(
+      'alpha',
+    );
   });
 
   it('skips only explicitly zero projects when some entries are missing', () => {
