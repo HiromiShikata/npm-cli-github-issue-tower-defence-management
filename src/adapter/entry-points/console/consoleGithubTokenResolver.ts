@@ -62,12 +62,31 @@ export const createConsoleGithubTokenResolverByItemUrl = (
   };
 };
 
+export const createConsoleProjectNameResolver = (
+  consoleProjectUrls: Record<string, string> | null,
+): ((repositoryOwner: string) => string | null) => {
+  return (repositoryOwner: string): string | null => {
+    if (consoleProjectUrls === null) {
+      return null;
+    }
+    const normalizedOwner = repositoryOwner.toLowerCase();
+    return (
+      Object.entries(consoleProjectUrls).find(
+        ([, projectUrl]) =>
+          extractProjectOwner(projectUrl)?.toLowerCase() === normalizedOwner,
+      )?.[0] ?? null
+    );
+  };
+};
+
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   consoleProjectUrls: Record<string, string> | null,
   consoleGithubTokens: Record<string, string> | null,
 ): ConsoleGithubTokenResolver => {
   const resolvedTokenByRepositoryOwner = new Map<string, string>();
+  const resolveProjectName =
+    createConsoleProjectNameResolver(consoleProjectUrls);
   return (repositoryOwner: string): string => {
     const alreadyResolved = resolvedTokenByRepositoryOwner.get(repositoryOwner);
     if (alreadyResolved !== undefined) {
@@ -76,12 +95,8 @@ export const createConsoleGithubTokenResolver = (
     if (consoleProjectUrls === null || consoleGithubTokens === null) {
       return defaultToken;
     }
-    const normalizedOwner = repositoryOwner.toLowerCase();
-    const matchedPjcode = Object.entries(consoleProjectUrls).find(
-      ([, projectUrl]) =>
-        extractProjectOwner(projectUrl)?.toLowerCase() === normalizedOwner,
-    )?.[0];
-    if (matchedPjcode === undefined) {
+    const matchedPjcode = resolveProjectName(repositoryOwner);
+    if (matchedPjcode === null) {
       return defaultToken;
     }
     const token = consoleGithubTokens[matchedPjcode];

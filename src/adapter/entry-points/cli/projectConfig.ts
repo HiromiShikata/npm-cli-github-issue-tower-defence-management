@@ -35,6 +35,7 @@ export type ConfigFile = {
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
   consoleGithubTokens?: Record<string, string>;
+  consoleGithubAppPrivateKeyPaths?: Record<string, string[]>;
   consoleGithubTokenFileDir?: string;
   consoleProjectConfigDirectory?: string;
   githubAppPrivateKeyPaths?: string[];
@@ -97,6 +98,24 @@ const getStringArrayValue = (
     strings.push(item);
   }
   return strings;
+};
+
+const getStringArrayRecordValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): Record<string, string[]> | undefined => {
+  const value = obj[key];
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const result: Record<string, string[]> = {};
+  for (const entryKey of Object.keys(value)) {
+    const strings = getStringArrayValue(value, entryKey);
+    if (strings !== undefined) {
+      result[entryKey] = strings;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 };
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -241,6 +260,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
       consoleGithubTokens: getStringRecordValue(parsed, 'consoleGithubTokens'),
+      consoleGithubAppPrivateKeyPaths: getStringArrayRecordValue(
+        parsed,
+        'consoleGithubAppPrivateKeyPaths',
+      ),
       consoleGithubTokenFileDir: getStringValue(
         parsed,
         'consoleGithubTokenFileDir',

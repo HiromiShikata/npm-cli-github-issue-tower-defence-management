@@ -1,3 +1,4 @@
+import { HTTPError } from 'ky';
 import type { FieldOption, Project } from '../../../domain/entities/Project';
 import type { Issue, Label } from '../../../domain/entities/Issue';
 import type { Member } from '../../../domain/entities/Member';
@@ -6,25 +7,44 @@ import type {
   PullRequestReviewCommentSide,
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { GitHubConfirmedNotFoundError } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import type { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
-import { createConsoleIssueRepositoryResolver } from './consoleGithubTokenResolver';
+import {
+  createConsoleIssueRepositoryResolver,
+  extractRepositoryOwner,
+} from './consoleGithubTokenResolver';
 
-const withReadOnlyTokenRotation = async <T>(
-  repositories: IssueRepository[],
+const isForbiddenOrNotFoundError = (error: unknown): boolean =>
+  (error instanceof HTTPError &&
+    (error.response.status === 403 || error.response.status === 404)) ||
+  error instanceof GitHubConfirmedNotFoundError ||
+  (error instanceof Error && /\bHTTP 40[34]\b/.test(error.message));
+
+const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
+  readRepositories: IssueRepository[],
+  writeRepository: IssueRepository,
   fn: (repo: IssueRepository) => Promise<T>,
 ): Promise<T> => {
   let lastError: Error | undefined;
-  for (const repo of repositories) {
+  for (const readRepository of readRepositories) {
+    let result: T;
     try {
-      return await fn(repo);
+      result = await fn(readRepository);
     } catch (error) {
       if (error instanceof GitHubRateLimitError) {
         lastError = error;
         continue;
       }
+      if (isForbiddenOrNotFoundError(error)) {
+        return fn(writeRepository);
+      }
       throw error;
     }
+    if (result === null) {
+      return fn(writeRepository);
+    }
+    return result;
   }
   throw (
     lastError ?? new Error('readOnlyTokenRotator: no repositories provided')
@@ -36,7 +56,11 @@ export const createReadOnlyTokenRotatingIssueRepository = (
   writeRepository: IssueRepository,
 ): IssueRepository => {
   const rotate = <T>(fn: (repo: IssueRepository) => Promise<T>): Promise<T> =>
-    withReadOnlyTokenRotation(readRepositories, fn);
+    withReadOnlyTokenRotationFallingBackToWriteRepository(
+      readRepositories,
+      writeRepository,
+      fn,
+    );
 
   return {
     getAllIssues: (projectId: Project['id']) =>
@@ -57,7 +81,7 @@ export const createReadOnlyTokenRotatingIssueRepository = (
     getStoryObjectMap: (project: Project) =>
       rotate((r) => r.getStoryObjectMap(project)),
     getAuthenticatedUserLogin: () =>
-      rotate((r) => r.getAuthenticatedUserLogin()),
+      writeRepository.getAuthenticatedUserLogin(),
     findRelatedOpenPRs: (
       issueUrl: string,
       options?: { bypassCache?: boolean },
@@ -79,8 +103,9 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       rotate((r) => r.getPullRequestChangedFilePaths(prUrl)),
     getIssueOrPullRequestBody: (url: string) =>
       rotate((r) => r.getIssueOrPullRequestBody(url)),
-    getIssueOrPullRequestComments: (url: string) =>
-      rotate((r) => r.getIssueOrPullRequestComments(url)),
+    getIssueOrPullRequestComments: (
+      ...args: Parameters<IssueRepository['getIssueOrPullRequestComments']>
+    ) => rotate((r) => r.getIssueOrPullRequestComments(...args)),
     getPullRequestDetail: (prUrl: string) =>
       rotate((r) => r.getPullRequestDetail(prUrl)),
     getPullRequestCommits: (prUrl: string) =>
@@ -234,31 +259,53 @@ export const createReadOnlyTokenRotatingIssueRepository = (
 };
 
 export const buildReadIssueRepositoryResolver = async (
-  githubAppPrivateKeyPaths: string[] | undefined,
+  githubAppPrivateKeyPathsByProject: Record<string, string[]> | undefined,
   mintTokens: (paths: string[]) => Promise<string[]>,
   buildIssueRepositoryForToken: (token: string) => IssueRepository,
   resolveGithubToken: ConsoleGithubTokenResolver,
+  resolveProjectName: (repositoryOwner: string) => string | null,
 ): Promise<(url: string) => IssueRepository> => {
-  if (githubAppPrivateKeyPaths && githubAppPrivateKeyPaths.length > 0) {
-    const tokens = await mintTokens(githubAppPrivateKeyPaths);
+  const ownTokenIssueRepositoryResolver =
+    createConsoleIssueRepositoryResolver<IssueRepository>(
+      resolveGithubToken,
+      buildIssueRepositoryForToken,
+    );
+  const appTokenReadRepositoriesByProject = new Map<
+    string,
+    IssueRepository[]
+  >();
+  for (const [projectName, keyPaths] of Object.entries(
+    githubAppPrivateKeyPathsByProject ?? {},
+  )) {
+    if (keyPaths.length === 0) {
+      continue;
+    }
+    const tokens = await mintTokens(keyPaths);
     if (tokens.length > 0) {
-      const readRepositories = tokens.map((token) =>
-        buildIssueRepositoryForToken(token),
+      appTokenReadRepositoriesByProject.set(
+        projectName,
+        tokens.map((token) => buildIssueRepositoryForToken(token)),
       );
-      const writeResolver =
-        createConsoleIssueRepositoryResolver<IssueRepository>(
-          resolveGithubToken,
-          buildIssueRepositoryForToken,
-        );
-      return (url: string) =>
-        createReadOnlyTokenRotatingIssueRepository(
-          readRepositories,
-          writeResolver(url),
-        );
     }
   }
-  return createConsoleIssueRepositoryResolver<IssueRepository>(
-    resolveGithubToken,
-    buildIssueRepositoryForToken,
-  );
+  if (appTokenReadRepositoriesByProject.size === 0) {
+    return ownTokenIssueRepositoryResolver;
+  }
+  return (url: string): IssueRepository => {
+    const ownTokenIssueRepository = ownTokenIssueRepositoryResolver(url);
+    const repositoryOwner = extractRepositoryOwner(url);
+    const projectName =
+      repositoryOwner === null ? null : resolveProjectName(repositoryOwner);
+    const appTokenReadRepositories =
+      projectName === null
+        ? undefined
+        : appTokenReadRepositoriesByProject.get(projectName);
+    if (appTokenReadRepositories === undefined) {
+      return ownTokenIssueRepository;
+    }
+    return createReadOnlyTokenRotatingIssueRepository(
+      appTokenReadRepositories,
+      ownTokenIssueRepository,
+    );
+  };
 };
