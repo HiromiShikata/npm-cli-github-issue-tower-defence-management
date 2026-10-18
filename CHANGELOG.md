@@ -1,3 +1,10 @@
+## [2.177.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.1...v2.177.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **console-ui:** Wire GitHub issue close reason through to TDPM console icon color for not-planned closures ([#3508](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3508)) ([16a7e23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/16a7e23643105a9ec759e5dbd4b8375de3a1748c))
+
 ## [2.177.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.0...v2.177.1) (2026-10-18)
 
 
