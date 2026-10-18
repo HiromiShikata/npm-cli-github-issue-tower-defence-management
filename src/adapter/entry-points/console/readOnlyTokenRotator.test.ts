@@ -100,6 +100,75 @@ type ObservedRoutedRead = ObservedOwnTokenRead & {
   appTokenCalls: unknown[][];
 };
 
+type AppTokenShape = {
+  name: string;
+  arrangeAppToken: (appTokenRepository: MockProxy<IssueRepository>) => void;
+};
+
+type ProjectsV2ReadCase = RoutedReadCase & {
+  resolvedAppTokenShapes: AppTokenShape[];
+};
+
+type ProjectsV2AppTokenShapeCase = {
+  name: string;
+  projectsV2ReadCase: ProjectsV2ReadCase;
+  arrangeAppToken: (appTokenRepository: MockProxy<IssueRepository>) => void;
+};
+
+const projectsV2AppTokenRejections: {
+  name: string;
+  buildError: () => Error;
+}[] = [
+  {
+    name: 'a GraphQL FORBIDDEN error',
+    buildError: () => buildGraphqlErrorsError(forbiddenGraphqlErrors),
+  },
+  {
+    name: 'a Project not found error',
+    buildError: () =>
+      new Error('Project not found. projectId: PVT_kwHOAGJHa84AFWnr'),
+  },
+];
+
+const buildFieldlessProjectIssue = (issueUrl: string): Issue => {
+  const [, org = '', repo = '', issueNumber = '0'] =
+    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)$/.exec(issueUrl) ??
+    [];
+  const fieldlessProjectIssue: Issue = {
+    nameWithOwner: `${org}/${repo}`,
+    number: Number(issueNumber),
+    title: 'Restore the depended issue URL after the blocker closes',
+    state: 'OPEN',
+    status: null,
+    story: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: issueUrl,
+    assignees: ['HiromiShikata'],
+    labels: ['bug'],
+    org,
+    repo,
+    body: 'The depended issue URL stays cleared after the blocker closes.',
+    itemId: '',
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date('2026-10-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-10-18T06:00:00.000Z'),
+    author: 'HiromiShikata',
+    closingIssueReferenceUrls: [],
+    plainCrossRepoIssueReferenceUrls: [],
+    agent: null,
+    isRepoArchived: false,
+    stateReason: null,
+  };
+  Reflect.deleteProperty(fieldlessProjectIssue, 'itemId');
+  return fieldlessProjectIssue;
+};
+
 const projectsV2Project: Project = {
   id: 'projects-v2-project',
   url: 'https://github.com/users/o/projects/48',
@@ -115,7 +184,7 @@ const projectsV2Project: Project = {
   agent: null,
 };
 
-const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
+const buildProjectsV2ReadCases = (issueUrl: string): ProjectsV2ReadCase[] => [
   {
     name: 'getAllIssues',
     readMock: (repository) => repository.getAllIssues,
@@ -130,6 +199,7 @@ const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
     },
     read: (repository) => repository.getAllIssues(projectsV2Project.id),
     expectedCalls: [[projectsV2Project.id]],
+    resolvedAppTokenShapes: [],
   },
   {
     name: 'getAllOpened',
@@ -141,6 +211,7 @@ const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
     },
     read: (repository) => repository.getAllOpened(projectsV2Project),
     expectedCalls: [[projectsV2Project]],
+    resolvedAppTokenShapes: [],
   },
   {
     name: 'getStoryObjectMap',
@@ -154,6 +225,7 @@ const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
     },
     read: (repository) => repository.getStoryObjectMap(projectsV2Project),
     expectedCalls: [[projectsV2Project]],
+    resolvedAppTokenShapes: [],
   },
   {
     name: 'getIssueByUrl',
@@ -166,6 +238,16 @@ const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
     read: (repository) =>
       repository.getIssueByUrl(issueUrl, { bypassCache: true }),
     expectedCalls: [[issueUrl, { bypassCache: true }]],
+    resolvedAppTokenShapes: [
+      {
+        name: 'a field-less issue with status, story and agent null and no itemId',
+        arrangeAppToken: (appTokenRepository) => {
+          appTokenRepository.getIssueByUrl.mockResolvedValue(
+            buildFieldlessProjectIssue(issueUrl),
+          );
+        },
+      },
+    ],
   },
   {
     name: 'get',
@@ -177,8 +259,50 @@ const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
     },
     read: (repository) => repository.get(issueUrl, projectsV2Project),
     expectedCalls: [[issueUrl, projectsV2Project]],
+    resolvedAppTokenShapes: [
+      {
+        name: 'a field-less issue with status, story and agent null and no itemId',
+        arrangeAppToken: (appTokenRepository) => {
+          appTokenRepository.get.mockResolvedValue(
+            buildFieldlessProjectIssue(issueUrl),
+          );
+        },
+      },
+      {
+        name: 'a null result',
+        arrangeAppToken: (appTokenRepository) => {
+          appTokenRepository.get.mockResolvedValue(null);
+        },
+      },
+    ],
   },
 ];
+
+const buildProjectsV2AppTokenShapeCases = (
+  issueUrl: string,
+): ProjectsV2AppTokenShapeCase[] =>
+  buildProjectsV2ReadCases(issueUrl).flatMap(
+    (projectsV2ReadCase): ProjectsV2AppTokenShapeCase[] => [
+      ...projectsV2AppTokenRejections.map(
+        (rejection): ProjectsV2AppTokenShapeCase => ({
+          name: `${projectsV2ReadCase.name} with ${rejection.name}`,
+          projectsV2ReadCase,
+          arrangeAppToken: (appTokenRepository) => {
+            projectsV2ReadCase
+              .readMock(appTokenRepository)
+              .mockRejectedValue(rejection.buildError());
+          },
+        }),
+      ),
+      ...projectsV2ReadCase.resolvedAppTokenShapes.map(
+        (resolvedAppTokenShape): ProjectsV2AppTokenShapeCase => ({
+          name: `${projectsV2ReadCase.name} with ${resolvedAppTokenShape.name}`,
+          projectsV2ReadCase,
+          arrangeAppToken: resolvedAppTokenShape.arrangeAppToken,
+        }),
+      ),
+    ],
+  );
 
 describe('createReadOnlyTokenRotatingIssueRepository', () => {
   describe('single repository', () => {
@@ -589,16 +713,15 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
   describe('Projects V2 reads served only by the write repository holding the project own token', () => {
     const issueUrl = 'https://github.com/o/r/issues/1';
 
-    it('returns the write repository result for each Projects V2 read without asking a read repository whose App installation token GitHub refuses with a GraphQL FORBIDDEN error', async () => {
-      const projectsV2ReadCases = buildProjectsV2ReadCases(issueUrl);
+    it('returns the write repository result for each Projects V2 read without asking a read repository whose App installation token gets a GraphQL FORBIDDEN error, a Project not found error, a field-less issue or a null result', async () => {
+      const appTokenShapeCases = buildProjectsV2AppTokenShapeCases(issueUrl);
 
       const observed: ObservedRoutedRead[] = [];
-      for (const projectsV2ReadCase of projectsV2ReadCases) {
+      for (const appTokenShapeCase of appTokenShapeCases) {
+        const { projectsV2ReadCase } = appTokenShapeCase;
         const appTokenRepository = mock<IssueRepository>();
         const ownTokenRepository = mock<IssueRepository>();
-        projectsV2ReadCase
-          .readMock(appTokenRepository)
-          .mockRejectedValue(buildGraphqlErrorsError(forbiddenGraphqlErrors));
+        appTokenShapeCase.arrangeAppToken(appTokenRepository);
         const ownTokenResult =
           projectsV2ReadCase.arrangeOwnTokenResult(ownTokenRepository);
         const rotating = createReadOnlyTokenRotatingIssueRepository(
@@ -608,7 +731,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
 
         const settled = await settleRead(projectsV2ReadCase.read(rotating));
         observed.push({
-          name: projectsV2ReadCase.name,
+          name: appTokenShapeCase.name,
           status: settled.status,
           returnsOwnTokenResult:
             settled.status === 'resolved' && settled.value === ownTokenResult,
@@ -620,12 +743,12 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       }
 
       expect(observed).toEqual(
-        projectsV2ReadCases.map((projectsV2ReadCase) => ({
-          name: projectsV2ReadCase.name,
+        appTokenShapeCases.map((appTokenShapeCase) => ({
+          name: appTokenShapeCase.name,
           status: 'resolved',
           returnsOwnTokenResult: true,
           appTokenCalls: [],
-          ownTokenCalls: projectsV2ReadCase.expectedCalls,
+          ownTokenCalls: appTokenShapeCase.projectsV2ReadCase.expectedCalls,
         })),
       );
     });
@@ -1964,11 +2087,13 @@ describe('buildReadIssueRepositoryResolver', () => {
       });
     });
 
-    it('serves each Projects V2 read of the umino project with the umino own-token repository, never with the umino App installation token that GitHub refuses with a GraphQL FORBIDDEN error', async () => {
-      const projectsV2ReadCases = buildProjectsV2ReadCases(uminoIssueUrl);
+    it('serves each Projects V2 read of the umino project with the umino own-token repository, never with the umino App installation token that gets a GraphQL FORBIDDEN error, a Project not found error, a field-less issue or a null result', async () => {
+      const appTokenShapeCases =
+        buildProjectsV2AppTokenShapeCases(uminoIssueUrl);
 
       const observed: ObservedRoutedRead[] = [];
-      for (const projectsV2ReadCase of projectsV2ReadCases) {
+      for (const appTokenShapeCase of appTokenShapeCases) {
+        const { projectsV2ReadCase } = appTokenShapeCase;
         const fixture = buildResolverFixture(
           new Map([['/umino.pem', ['umino-app-token']]]),
         );
@@ -1977,9 +2102,7 @@ describe('buildReadIssueRepositoryResolver', () => {
         const uminoOwnRepository = fixture.repositoryForToken(
           'own-token-of-umino-owner',
         );
-        projectsV2ReadCase
-          .readMock(uminoAppRepository)
-          .mockRejectedValue(buildGraphqlErrorsError(forbiddenGraphqlErrors));
+        appTokenShapeCase.arrangeAppToken(uminoAppRepository);
         const ownTokenResult =
           projectsV2ReadCase.arrangeOwnTokenResult(uminoOwnRepository);
 
@@ -1994,7 +2117,7 @@ describe('buildReadIssueRepositoryResolver', () => {
           projectsV2ReadCase.read(resolver(uminoIssueUrl)),
         );
         observed.push({
-          name: projectsV2ReadCase.name,
+          name: appTokenShapeCase.name,
           status: settled.status,
           returnsOwnTokenResult:
             settled.status === 'resolved' && settled.value === ownTokenResult,
@@ -2006,12 +2129,12 @@ describe('buildReadIssueRepositoryResolver', () => {
       }
 
       expect(observed).toEqual(
-        projectsV2ReadCases.map((projectsV2ReadCase) => ({
-          name: projectsV2ReadCase.name,
+        appTokenShapeCases.map((appTokenShapeCase) => ({
+          name: appTokenShapeCase.name,
           status: 'resolved',
           returnsOwnTokenResult: true,
           appTokenCalls: [],
-          ownTokenCalls: projectsV2ReadCase.expectedCalls,
+          ownTokenCalls: appTokenShapeCase.projectsV2ReadCase.expectedCalls,
         })),
       );
     });
