@@ -47,9 +47,9 @@ describe('findNextPjcodeWithMinutes', () => {
     ).toBeNull();
 
     const minutes2 = { alpha: 0, beta: 5, gamma: 0 };
-    expect(
-      findNextPjcodeWithMinutes(pjcodes, 'gamma', minutes2, {}, {}),
-    ).toBe('beta');
+    expect(findNextPjcodeWithMinutes(pjcodes, 'gamma', minutes2, {}, {})).toBe(
+      'beta',
+    );
   });
 
   it('returns the first pjcode with minutes > 0 when currentPjcode is null', () => {
@@ -71,9 +71,7 @@ describe('findNextPjcodeWithMinutes', () => {
     expect(findNextPjcodeWithMinutes(pjcodes, 'alpha', {}, {}, {})).toBe(
       'beta',
     );
-    expect(findNextPjcodeWithMinutes(pjcodes, null, {}, {}, {})).toBe(
-      'alpha',
-    );
+    expect(findNextPjcodeWithMinutes(pjcodes, null, {}, {}, {})).toBe('alpha');
   });
 
   it('skips only explicitly zero projects when some entries are missing', () => {
@@ -89,8 +87,8 @@ describe('findNextPjcodeWithMinutes', () => {
 
   it('handles currentPjcode not found in the list like null-origin', () => {
     const minutes = { alpha: 5, beta: 5, gamma: 5 };
-    expect(
-      findNextPjcodeWithMinutes(pjcodes, 'unknown', minutes, {}, {}),
-    ).toBe('alpha');
+    expect(findNextPjcodeWithMinutes(pjcodes, 'unknown', minutes, {}, {})).toBe(
+      'alpha',
+    );
   });
 });
