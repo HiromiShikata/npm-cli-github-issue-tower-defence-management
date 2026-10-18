@@ -1,3 +1,10 @@
+## [2.172.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.1...v2.172.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **adapter:** add per-issue lock to GitHubIssueCommentRepository comment cache write ([#3495](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3495)) ([12668be](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/12668be0c35f1833d0666525ca2b432a184452c7))
+
 ## [2.172.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.0...v2.172.1) (2026-10-17)
 
 
