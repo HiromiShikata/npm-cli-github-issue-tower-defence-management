@@ -7,8 +7,6 @@ import YAML from 'yaml';
 
 const readmeText = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
 
-// A section boundary is the next heading of level `##` or `###` (not `####`
-// or deeper), matching how GitHub's own heading hierarchy scopes a section.
 const nextSectionHeadingPattern = /^#{2,3} /m;
 
 const extractExampleYamlBlockText = (
@@ -51,10 +49,7 @@ const extractExampleYamlBlockText = (
 const parseExampleYamlBlock = (
   sectionHeading: string,
 ): Record<string, unknown> => {
-  const yamlBlockText = extractExampleYamlBlockText(
-    readmeText,
-    sectionHeading,
-  );
+  const yamlBlockText = extractExampleYamlBlockText(readmeText, sectionHeading);
   return YAML.parse(yamlBlockText) as Record<string, unknown>;
 };
 
@@ -72,12 +67,9 @@ describe('README.md Example YAML blocks document agentDefinitionsDirectoryPath',
       const parsedExample = parseExampleYamlBlock(sectionHeading);
       const configRoot = isNested
         ? (parsedExample.startPreparation as
-            | Record<string, unknown>
-            | undefined)
+            Record<string, unknown> | undefined)
         : parsedExample;
 
-      // Sanity check: confirms the extraction/parsing logic itself works,
-      // since awLogDirectoryPath is already documented today in both blocks.
       expect(typeof configRoot?.awLogDirectoryPath).toBe('string');
       expect((configRoot?.awLogDirectoryPath as string).length).toBeGreaterThan(
         0,
