@@ -1,3 +1,10 @@
+## [2.178.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.178.0...v2.178.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **local-storage:** resolve tainted format string alerts in console.warn calls ([#3527](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3527)) ([e12079c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e12079ca6d53f17ea186b57c635765bd89c8c1e5))
+
 # [2.178.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.2...v2.178.0) (2026-10-18)
 
 
