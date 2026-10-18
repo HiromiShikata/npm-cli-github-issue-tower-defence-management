@@ -27,7 +27,13 @@ jest.mock(
 const makeMinimalItemSnapshot = (): AirplaneItemSnapshot => ({
   body: '',
   comments: [],
-  state: { state: 'open', merged: false, isPullRequest: false, title: '' },
+  state: {
+    state: 'open',
+    merged: false,
+    isPullRequest: false,
+    title: '',
+    stateReason: '',
+  },
   files: null,
   commits: null,
   prStatus: null,

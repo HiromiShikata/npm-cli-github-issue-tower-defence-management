@@ -43,6 +43,7 @@ describe('useConsoleCaches', () => {
             merged: false,
             isPullRequest: true,
             title: 'Offline PR',
+            stateReason: '',
           },
           files: [
             {

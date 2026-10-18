@@ -74,6 +74,7 @@ describe('referenceStateToIconInput', () => {
         merged: true,
         isPullRequest: true,
         title: 'merged pr',
+        stateReason: '',
       }),
     ).toEqual({
       isPr: true,
@@ -91,6 +92,7 @@ describe('referenceStateToIconInput', () => {
         merged: false,
         isPullRequest: false,
         title: 'open issue',
+        stateReason: '',
       }),
     ).toEqual({
       isPr: false,
