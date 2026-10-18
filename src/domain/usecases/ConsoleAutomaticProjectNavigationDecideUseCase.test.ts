@@ -21,7 +21,7 @@ describe('DEFAULT_TIMER_MINUTES and findNextPjcodeWithMinutes exported from the 
           beta: 30,
           gamma: 30,
         },
-        {},
+        { beta: 1 },
         {},
       ),
     ).toBe('beta');
@@ -37,7 +37,7 @@ describe('DEFAULT_TIMER_MINUTES and findNextPjcodeWithMinutes exported from the 
           beta: 30,
           gamma: 30,
         },
-        {},
+        { acme: 1 },
         {},
       ),
     ).toBe('acme');
@@ -45,7 +45,7 @@ describe('DEFAULT_TIMER_MINUTES and findNextPjcodeWithMinutes exported from the 
 
   it('falls back to DEFAULT_TIMER_MINUTES for a project missing from projectMinutes', () => {
     expect(
-      findNextPjcodeWithMinutes(['acme', 'beta'], 'acme', {}, {}, {}),
+      findNextPjcodeWithMinutes(['acme', 'beta'], 'acme', {}, { beta: 1 }, {}),
     ).toBe('beta');
   });
 
@@ -66,7 +66,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
-    projectTodoByHumanCounts: {},
+    projectTodoByHumanCounts: { beta: 1 },
     projectAwaitingOwnerCounts: {},
   };
 
@@ -397,6 +397,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
         pjcodes: ['acme', 'no-timer', 'beta'],
         projectMinutes: { acme: 30, beta: 30 },
         remainingCountIsZero: true,
+        projectTodoByHumanCounts: { 'no-timer': 1 },
       },
       expected: {
         targetPjcode: 'no-timer',
@@ -600,6 +601,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: atBetaWithItems.nextSkipCount,
       evaluatedPjcode: atBetaWithItems.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1 },
     });
     expect(atGamma).toEqual({
       targetPjcode: 'acme',
@@ -619,6 +621,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: 0,
       evaluatedPjcode: null,
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atAcme).toEqual({
       targetPjcode: 'no-timer',
@@ -634,6 +637,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: atAcme.nextSkipCount,
       evaluatedPjcode: atAcme.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atNoTimer).toEqual({
       targetPjcode: 'beta',
@@ -649,6 +653,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: atNoTimer.nextSkipCount,
       evaluatedPjcode: atNoTimer.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atBeta).toEqual({
       targetPjcode: null,
@@ -679,6 +684,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: beforeLoad.nextSkipCount,
       evaluatedPjcode: beforeLoad.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1 },
     });
     expect(afterLoad).toEqual({
       targetPjcode: 'acme',
@@ -762,7 +768,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while a tas
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
-    projectTodoByHumanCounts: {},
+    projectTodoByHumanCounts: { beta: 1 },
     projectAwaitingOwnerCounts: {},
   };
 
@@ -896,7 +902,7 @@ describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerE
     projectMinutes: { acme: 30, beta: 30 },
     skipCount: 0,
     evaluatedPjcode: null,
-    projectTodoByHumanCounts: {},
+    projectTodoByHumanCounts: { beta: 1 },
     projectAwaitingOwnerCounts: {},
   };
 
@@ -1025,7 +1031,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while the t
       projectMinutes: { acme: 30, beta: 30 },
       skipCount: 0,
       evaluatedPjcode: null,
-      projectTodoByHumanCounts: {},
+      projectTodoByHumanCounts: { beta: 1 },
       projectAwaitingOwnerCounts: {},
     };
 
@@ -1144,5 +1150,138 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while the t
       nextSkipCount: 2,
       nextEvaluatedPjcode: 'beta',
     });
+  });
+});
+
+describe('consoleAutomaticProjectNavigationDecide / findNextPjcodeWithMinutes — candidate actionable-item-count eligibility (#3498)', () => {
+  const eligibilityBaseInput: ConsoleAutomaticProjectNavigationDecideInput = {
+    actionNewlyEnqueued: false,
+    timerElapsed: false,
+    remainingCountIsZero: false,
+    snapshotsReady: true,
+    explicitlySelectedPjcodeMatchesCurrent: false,
+    pjcode: 'acme',
+    pjcodes: ['acme', 'beta'],
+    projectMinutes: { acme: 30, beta: 30 },
+    skipCount: 0,
+    evaluatedPjcode: null,
+    projectTodoByHumanCounts: {},
+    projectAwaitingOwnerCounts: {},
+  };
+
+  it('findNextPjcodeWithMinutes does not select a candidate with positive minutes but both actionable-item counts zero (FR-001/SC-002)', () => {
+    expect(
+      findNextPjcodeWithMinutes(
+        ['acme', 'beta'],
+        'acme',
+        { acme: 30, beta: 30 },
+        {},
+        {},
+      ),
+    ).toBeNull();
+  });
+
+  it('consoleAutomaticProjectNavigationDecide does not switch to a candidate with positive minutes but both actionable-item counts zero (FR-001/SC-002)', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...eligibilityBaseInput,
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+    });
+    expect(decision.targetPjcode).toBeNull();
+  });
+
+  type SingleActionableCountFieldCase = {
+    name: string;
+    projectTodoByHumanCounts: Record<string, number>;
+    projectAwaitingOwnerCounts: Record<string, number>;
+  };
+
+  const singleActionableCountFieldCases: SingleActionableCountFieldCase[] = [
+    {
+      name: 'todoByHuman (awaitingOwner zero)',
+      projectTodoByHumanCounts: { target: 1 },
+      projectAwaitingOwnerCounts: {},
+    },
+    {
+      name: 'awaitingOwner (todoByHuman zero)',
+      projectTodoByHumanCounts: {},
+      projectAwaitingOwnerCounts: { target: 1 },
+    },
+  ];
+
+  it.each(singleActionableCountFieldCases)(
+    'findNextPjcodeWithMinutes selects a candidate whose only positive actionable-item count is $name (FR-002)',
+    ({ projectTodoByHumanCounts, projectAwaitingOwnerCounts }) => {
+      expect(
+        findNextPjcodeWithMinutes(
+          ['acme', 'decoy', 'target'],
+          'acme',
+          { acme: 30, decoy: 30, target: 30 },
+          projectTodoByHumanCounts,
+          projectAwaitingOwnerCounts,
+        ),
+      ).toBe('target');
+    },
+  );
+
+  it.each(singleActionableCountFieldCases)(
+    'consoleAutomaticProjectNavigationDecide switches to a candidate whose only positive actionable-item count is $name (FR-002)',
+    ({ projectTodoByHumanCounts, projectAwaitingOwnerCounts }) => {
+      const decision = consoleAutomaticProjectNavigationDecide({
+        ...eligibilityBaseInput,
+        pjcodes: ['acme', 'decoy', 'target'],
+        projectMinutes: { acme: 30, decoy: 30, target: 30 },
+        projectTodoByHumanCounts,
+        projectAwaitingOwnerCounts,
+        actionNewlyEnqueued: true,
+        timerElapsed: true,
+      });
+      expect(decision.targetPjcode).toBe('target');
+    },
+  );
+
+  it('stays on the current project via the immediate-switch trigger when every other project fails the joint eligibility condition (FR-003/SC-003)', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...eligibilityBaseInput,
+      pjcodes: ['acme', 'zero-minutes', 'zero-counts'],
+      projectMinutes: { acme: 30, 'zero-minutes': 0, 'zero-counts': 30 },
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+    });
+    expect(decision.targetPjcode).toBeNull();
+  });
+
+  it('stays on the current project via the periodic-reevaluation trigger when every other project fails the joint eligibility condition (FR-003/SC-003)', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...eligibilityBaseInput,
+      pjcodes: ['acme', 'zero-minutes', 'zero-counts'],
+      projectMinutes: { acme: 30, 'zero-minutes': 0, 'zero-counts': 30 },
+      remainingCountIsZero: true,
+      snapshotsReady: true,
+    });
+    expect(decision.targetPjcode).toBeNull();
+  });
+
+  it('produces the same targetPjcode selection via the immediate-switch trigger and the periodic-reevaluation trigger for the same minutes and counts (FR-005)', () => {
+    const sharedOverrides = {
+      pjcodes: ['acme', 'decoy', 'target'],
+      projectMinutes: { acme: 30, decoy: 30, target: 30 },
+      projectTodoByHumanCounts: { target: 1 },
+    };
+    const immediateResult = consoleAutomaticProjectNavigationDecide({
+      ...eligibilityBaseInput,
+      ...sharedOverrides,
+      actionNewlyEnqueued: true,
+      timerElapsed: true,
+    });
+    const periodicResult = consoleAutomaticProjectNavigationDecide({
+      ...eligibilityBaseInput,
+      ...sharedOverrides,
+      remainingCountIsZero: true,
+      snapshotsReady: true,
+    });
+    expect(immediateResult.targetPjcode).toBe('target');
+    expect(periodicResult.targetPjcode).toBe('target');
+    expect(periodicResult.targetPjcode).toBe(immediateResult.targetPjcode);
   });
 });

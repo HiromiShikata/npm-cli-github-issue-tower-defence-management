@@ -646,11 +646,13 @@ export const ConsolePage = () => {
 
   useEffect(() => {
     if (pjcode === null && timerMode && pjcodes.length > 0) {
+      const everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired =
+        Object.fromEntries(pjcodes.map((code) => [code, 1]));
       const firstPjcode = findNextPjcodeWithMinutes(
         pjcodes,
         null,
         projectMinutes,
-        {},
+        everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired,
         {},
       );
       if (firstPjcode !== null) {
