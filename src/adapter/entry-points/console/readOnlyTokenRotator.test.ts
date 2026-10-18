@@ -2139,4 +2139,468 @@ describe('buildReadIssueRepositoryResolver', () => {
       );
     });
   });
+
+  describe('GitHub App installation read token lifetime — minted again from the same key paths when 50 minutes old and once on HTTP 401, after which the call is retried once', () => {
+    const issueUrl = 'https://github.com/umino-owner/umino-repository/issues/1';
+    const uminoKeyPath = '/umino-private-key.pem';
+    const ownTokenOfUminoOwner = 'own-token-of-umino-owner';
+    const remintFailureLogLine =
+      '[readOnlyTokenRotator] failed to re-mint the GitHub App read token for project umino';
+    const fiftyMinutesInMilliseconds = 50 * 60 * 1000;
+
+    const buildTokenLifetimeFixture = (tokensMintedInOrder: string[][]) => {
+      const readRepositoryByToken = new Map<
+        string,
+        MockProxy<IssueRepository>
+      >();
+      const clock = { epochMilliseconds: Date.UTC(2026, 9, 18, 0, 0, 0) };
+      const repositoryForToken = (
+        token: string,
+      ): MockProxy<IssueRepository> => {
+        const existingRepository = readRepositoryByToken.get(token);
+        if (existingRepository !== undefined) {
+          return existingRepository;
+        }
+        const createdRepository = mock<IssueRepository>();
+        readRepositoryByToken.set(token, createdRepository);
+        return createdRepository;
+      };
+      const remainingMintResults = [...tokensMintedInOrder];
+      const mintTokens = jest.fn((_keyPaths: string[]): Promise<string[]> =>
+        Promise.resolve(remainingMintResults.shift() ?? []),
+      );
+      const buildResolver = () =>
+        buildReadIssueRepositoryResolver(
+          { umino: [uminoKeyPath] },
+          mintTokens,
+          (token: string): IssueRepository => repositoryForToken(token),
+          (repositoryOwner: string): string =>
+            `own-token-of-${repositoryOwner}`,
+          (repositoryOwner: string): string | null =>
+            repositoryOwner === 'umino-owner' ? 'umino' : null,
+          () => clock.epochMilliseconds,
+        );
+      return {
+        clock,
+        repositoryForToken,
+        mintTokens,
+        buildResolver,
+        ownTokenRepository: repositoryForToken(ownTokenOfUminoOwner),
+        mintedKeyPaths: (): string[][] =>
+          mintTokens.mock.calls.map(([keyPaths]) => keyPaths),
+      };
+    };
+
+    it('reads with the held token up to 49 minutes 59.999 seconds and with a newly minted token from exactly 50 minutes on, minting once more from the same key path only', async () => {
+      const fixture = buildTokenLifetimeFixture([
+        ['token-minted-first'],
+        ['token-minted-after-50-minutes'],
+      ]);
+      fixture
+        .repositoryForToken('token-minted-first')
+        .getIssueBodyByUrl.mockResolvedValue('body read with first token');
+      fixture
+        .repositoryForToken('token-minted-after-50-minutes')
+        .getIssueBodyByUrl.mockResolvedValue('body read with second token');
+      const resolver = await fixture.buildResolver();
+
+      fixture.clock.epochMilliseconds += fiftyMinutesInMilliseconds - 1;
+      const bodyJustBeforeFiftyMinutes =
+        await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+      const mintCallCountJustBeforeFiftyMinutes =
+        fixture.mintTokens.mock.calls.length;
+      fixture.clock.epochMilliseconds += 1;
+      const bodyAtFiftyMinutes =
+        await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+      fixture.clock.epochMilliseconds += 1000;
+      const bodyOneSecondAfterRemint =
+        await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+
+      expect({
+        bodies: [
+          bodyJustBeforeFiftyMinutes,
+          bodyAtFiftyMinutes,
+          bodyOneSecondAfterRemint,
+        ],
+        mintCallCountJustBeforeFiftyMinutes,
+        mintedKeyPaths: fixture.mintedKeyPaths(),
+        firstTokenReads:
+          fixture.repositoryForToken('token-minted-first').getIssueBodyByUrl
+            .mock.calls,
+        secondTokenReads: fixture.repositoryForToken(
+          'token-minted-after-50-minutes',
+        ).getIssueBodyByUrl.mock.calls,
+        ownTokenReads: fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+      }).toEqual({
+        bodies: [
+          'body read with first token',
+          'body read with second token',
+          'body read with second token',
+        ],
+        mintCallCountJustBeforeFiftyMinutes: 1,
+        mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+        firstTokenReads: [[issueUrl]],
+        secondTokenReads: [[issueUrl], [issueUrl]],
+        ownTokenReads: [],
+      });
+    });
+
+    it('mints once for reads that start together while the held token is 50 minutes old', async () => {
+      const fixture = buildTokenLifetimeFixture([
+        ['token-minted-first'],
+        ['token-minted-after-50-minutes'],
+      ]);
+      fixture
+        .repositoryForToken('token-minted-after-50-minutes')
+        .getIssueBodyByUrl.mockResolvedValue('body read with second token');
+      const resolver = await fixture.buildResolver();
+
+      fixture.clock.epochMilliseconds += fiftyMinutesInMilliseconds;
+      const bodies = await Promise.all([
+        resolver(issueUrl).getIssueBodyByUrl(issueUrl),
+        resolver(issueUrl).getIssueBodyByUrl(issueUrl),
+      ]);
+
+      expect({
+        bodies,
+        mintedKeyPaths: fixture.mintedKeyPaths(),
+        firstTokenReads:
+          fixture.repositoryForToken('token-minted-first').getIssueBodyByUrl
+            .mock.calls,
+        secondTokenReads: fixture.repositoryForToken(
+          'token-minted-after-50-minutes',
+        ).getIssueBodyByUrl.mock.calls,
+      }).toEqual({
+        bodies: ['body read with second token', 'body read with second token'],
+        mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+        firstTokenReads: [],
+        secondTokenReads: [[issueUrl], [issueUrl]],
+      });
+    });
+
+    it('mints again on HTTP 401 and retries the read once with the new token, never asking the own-token repository', async () => {
+      const unauthorizedErrorCases: { name: string; error: Error }[] = [
+        { name: 'ky HTTPError with status 401', error: buildKyHttpError(401) },
+        {
+          name: 'plain Error whose message carries HTTP 401',
+          error: new Error(
+            'Failed to fetch issue o/r#1: HTTP 401 Bad credentials',
+          ),
+        },
+        {
+          name: 'plain Error whose message carries Bad credentials',
+          error: new Error('Bad credentials'),
+        },
+      ];
+
+      const observed: {
+        name: string;
+        body: string | null;
+        mintedKeyPaths: string[][];
+        expiredTokenReads: unknown[][];
+        newTokenReads: unknown[][];
+        ownTokenReads: unknown[][];
+      }[] = [];
+      for (const unauthorizedErrorCase of unauthorizedErrorCases) {
+        const fixture = buildTokenLifetimeFixture([
+          ['expired-token'],
+          ['re-minted-token'],
+        ]);
+        fixture
+          .repositoryForToken('expired-token')
+          .getIssueBodyByUrl.mockRejectedValue(unauthorizedErrorCase.error);
+        fixture
+          .repositoryForToken('re-minted-token')
+          .getIssueBodyByUrl.mockResolvedValue(
+            'body read with re-minted token',
+          );
+        const resolver = await fixture.buildResolver();
+
+        const body = await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+        observed.push({
+          name: unauthorizedErrorCase.name,
+          body,
+          mintedKeyPaths: fixture.mintedKeyPaths(),
+          expiredTokenReads:
+            fixture.repositoryForToken('expired-token').getIssueBodyByUrl.mock
+              .calls,
+          newTokenReads:
+            fixture.repositoryForToken('re-minted-token').getIssueBodyByUrl.mock
+              .calls,
+          ownTokenReads:
+            fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        unauthorizedErrorCases.map((unauthorizedErrorCase) => ({
+          name: unauthorizedErrorCase.name,
+          body: 'body read with re-minted token',
+          mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+          expiredTokenReads: [[issueUrl]],
+          newTokenReads: [[issueUrl]],
+          ownTokenReads: [],
+        })),
+      );
+    });
+
+    it('mints once for reads that are both refused with HTTP 401 and retries each of them with the new token', async () => {
+      const fixture = buildTokenLifetimeFixture([
+        ['expired-token'],
+        ['re-minted-token'],
+      ]);
+      fixture
+        .repositoryForToken('expired-token')
+        .getIssueBodyByUrl.mockRejectedValue(buildKyHttpError(401));
+      fixture
+        .repositoryForToken('re-minted-token')
+        .getIssueBodyByUrl.mockResolvedValue('body read with re-minted token');
+      const resolver = await fixture.buildResolver();
+
+      const bodies = await Promise.all([
+        resolver(issueUrl).getIssueBodyByUrl(issueUrl),
+        resolver(issueUrl).getIssueBodyByUrl(issueUrl),
+      ]);
+
+      expect({
+        bodies,
+        mintedKeyPaths: fixture.mintedKeyPaths(),
+        expiredTokenReads:
+          fixture.repositoryForToken('expired-token').getIssueBodyByUrl.mock
+            .calls,
+        newTokenReads:
+          fixture.repositoryForToken('re-minted-token').getIssueBodyByUrl.mock
+            .calls,
+        ownTokenReads: fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+      }).toEqual({
+        bodies: [
+          'body read with re-minted token',
+          'body read with re-minted token',
+        ],
+        mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+        expiredTokenReads: [[issueUrl], [issueUrl]],
+        newTokenReads: [[issueUrl], [issueUrl]],
+        ownTokenReads: [],
+      });
+    });
+
+    it('falls back to the own-token repository when the read retried with the re-minted token still fails with HTTP 401, 403 or 404', async () => {
+      const retriedErrorCases: { name: string; error: Error }[] = [
+        { name: 'HTTP 401', error: buildKyHttpError(401) },
+        { name: 'HTTP 403', error: buildKyHttpError(403) },
+        { name: 'HTTP 404', error: buildKyHttpError(404) },
+      ];
+
+      const observed: {
+        name: string;
+        body: string | null;
+        mintedKeyPaths: string[][];
+        expiredTokenReads: unknown[][];
+        newTokenReads: unknown[][];
+        ownTokenReads: unknown[][];
+      }[] = [];
+      for (const retriedErrorCase of retriedErrorCases) {
+        const fixture = buildTokenLifetimeFixture([
+          ['expired-token'],
+          ['re-minted-token'],
+        ]);
+        fixture
+          .repositoryForToken('expired-token')
+          .getIssueBodyByUrl.mockRejectedValue(buildKyHttpError(401));
+        fixture
+          .repositoryForToken('re-minted-token')
+          .getIssueBodyByUrl.mockRejectedValue(retriedErrorCase.error);
+        fixture.ownTokenRepository.getIssueBodyByUrl.mockResolvedValue(
+          'body read with own token',
+        );
+        const resolver = await fixture.buildResolver();
+
+        const body = await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+        observed.push({
+          name: retriedErrorCase.name,
+          body,
+          mintedKeyPaths: fixture.mintedKeyPaths(),
+          expiredTokenReads:
+            fixture.repositoryForToken('expired-token').getIssueBodyByUrl.mock
+              .calls,
+          newTokenReads:
+            fixture.repositoryForToken('re-minted-token').getIssueBodyByUrl.mock
+              .calls,
+          ownTokenReads:
+            fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        retriedErrorCases.map((retriedErrorCase) => ({
+          name: retriedErrorCase.name,
+          body: 'body read with own token',
+          mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+          expiredTokenReads: [[issueUrl]],
+          newTokenReads: [[issueUrl]],
+          ownTokenReads: [[issueUrl]],
+        })),
+      );
+    });
+
+    it('falls back to the own-token repository and logs only the project name when the mint after an HTTP 401 returns no token', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const fixture = buildTokenLifetimeFixture([['expired-token'], []]);
+        fixture
+          .repositoryForToken('expired-token')
+          .getIssueBodyByUrl.mockRejectedValue(buildKyHttpError(401));
+        fixture.ownTokenRepository.getIssueBodyByUrl.mockResolvedValue(
+          'body read with own token',
+        );
+        const resolver = await fixture.buildResolver();
+
+        const body = await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+
+        expect({
+          body,
+          mintedKeyPaths: fixture.mintedKeyPaths(),
+          expiredTokenReads:
+            fixture.repositoryForToken('expired-token').getIssueBodyByUrl.mock
+              .calls,
+          ownTokenReads:
+            fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+          loggedLines: consoleErrorSpy.mock.calls,
+        }).toEqual({
+          body: 'body read with own token',
+          mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+          expiredTokenReads: [[issueUrl]],
+          ownTokenReads: [[issueUrl]],
+          loggedLines: [[remintFailureLogLine]],
+        });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('falls back to the own-token repository without using the 50-minute-old token and logs only the project name when the mint at that age returns no token', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        const fixture = buildTokenLifetimeFixture([['token-minted-first'], []]);
+        fixture
+          .repositoryForToken('token-minted-first')
+          .getIssueBodyByUrl.mockResolvedValue('body read with first token');
+        fixture.ownTokenRepository.getIssueBodyByUrl.mockResolvedValue(
+          'body read with own token',
+        );
+        const resolver = await fixture.buildResolver();
+
+        fixture.clock.epochMilliseconds += fiftyMinutesInMilliseconds;
+        const body = await resolver(issueUrl).getIssueBodyByUrl(issueUrl);
+
+        expect({
+          body,
+          mintedKeyPaths: fixture.mintedKeyPaths(),
+          firstTokenReads:
+            fixture.repositoryForToken('token-minted-first').getIssueBodyByUrl
+              .mock.calls,
+          ownTokenReads:
+            fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+          loggedLines: consoleErrorSpy.mock.calls,
+        }).toEqual({
+          body: 'body read with own token',
+          mintedKeyPaths: [[uminoKeyPath], [uminoKeyPath]],
+          firstTokenReads: [],
+          ownTokenReads: [[issueUrl]],
+          loggedLines: [[remintFailureLogLine]],
+        });
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('re-throws an error that is not HTTP 401 without minting again, retrying or asking the own-token repository', async () => {
+      const rethrownErrorCases: { name: string; error: Error }[] = [
+        { name: 'plain Error HTTP 500', error: new Error('HTTP 500') },
+        { name: 'ky HTTPError with status 500', error: buildKyHttpError(500) },
+        { name: 'network Error', error: new Error('Connection refused') },
+      ];
+
+      const observed: {
+        name: string;
+        rejectsWithTheReadError: boolean;
+        mintedKeyPaths: string[][];
+        tokenReads: unknown[][];
+        ownTokenReads: unknown[][];
+      }[] = [];
+      for (const rethrownErrorCase of rethrownErrorCases) {
+        const fixture = buildTokenLifetimeFixture([
+          ['held-token'],
+          ['unexpected-second-token'],
+        ]);
+        fixture
+          .repositoryForToken('held-token')
+          .getIssueBodyByUrl.mockRejectedValue(rethrownErrorCase.error);
+        fixture.ownTokenRepository.getIssueBodyByUrl.mockResolvedValue(
+          'body read with own token',
+        );
+        const resolver = await fixture.buildResolver();
+
+        const settled = await settleRead(
+          resolver(issueUrl).getIssueBodyByUrl(issueUrl),
+        );
+        observed.push({
+          name: rethrownErrorCase.name,
+          rejectsWithTheReadError:
+            settled.status === 'rejected' &&
+            settled.reason === rethrownErrorCase.error,
+          mintedKeyPaths: fixture.mintedKeyPaths(),
+          tokenReads:
+            fixture.repositoryForToken('held-token').getIssueBodyByUrl.mock
+              .calls,
+          ownTokenReads:
+            fixture.ownTokenRepository.getIssueBodyByUrl.mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        rethrownErrorCases.map((rethrownErrorCase) => ({
+          name: rethrownErrorCase.name,
+          rejectsWithTheReadError: true,
+          mintedKeyPaths: [[uminoKeyPath]],
+          tokenReads: [[issueUrl]],
+          ownTokenReads: [],
+        })),
+      );
+    });
+
+    it('serves the methods that go straight to the own-token repository without minting, even when the held token is older than 50 minutes', async () => {
+      const fixture = buildTokenLifetimeFixture([['token-minted-first']]);
+      fixture.ownTokenRepository.getAuthenticatedUserLogin.mockResolvedValue(
+        'own-token-login',
+      );
+      fixture.ownTokenRepository.deleteAllCommentsByUrl.mockResolvedValue(
+        undefined,
+      );
+      const resolver = await fixture.buildResolver();
+
+      fixture.clock.epochMilliseconds += 2 * fiftyMinutesInMilliseconds;
+      const login = await resolver(issueUrl).getAuthenticatedUserLogin();
+      await resolver(issueUrl).deleteAllCommentsByUrl(issueUrl);
+
+      expect({
+        login,
+        mintedKeyPaths: fixture.mintedKeyPaths(),
+        deletedCommentUrls:
+          fixture.ownTokenRepository.deleteAllCommentsByUrl.mock.calls,
+        firstTokenRepositoryReads:
+          fixture.repositoryForToken('token-minted-first')
+            .getAuthenticatedUserLogin.mock.calls,
+      }).toEqual({
+        login: 'own-token-login',
+        mintedKeyPaths: [[uminoKeyPath]],
+        deletedCommentUrls: [[issueUrl]],
+        firstTokenRepositoryReads: [],
+      });
+    });
+  });
 });

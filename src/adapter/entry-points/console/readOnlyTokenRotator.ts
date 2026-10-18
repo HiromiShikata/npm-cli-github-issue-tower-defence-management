@@ -25,11 +25,38 @@ const isForbiddenOrNotFoundError = (error: unknown): boolean =>
   (error instanceof Error &&
     forbiddenOrNotFoundErrorMessagePattern.test(error.message));
 
-const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
+const unauthorizedErrorMessagePattern = /\bHTTP 401\b|Bad credentials/;
+
+const isUnauthorizedError = (error: unknown): boolean =>
+  (error instanceof HTTPError && error.response.status === 401) ||
+  (error instanceof Error &&
+    unauthorizedErrorMessagePattern.test(error.message));
+
+export type ReadRepositoriesSnapshot = {
+  readRepositories: IssueRepository[];
+  mintedAtEpochMilliseconds: number;
+};
+
+export type ReprovisionableReadRepositories = {
+  getCurrentReadRepositories: () => Promise<ReadRepositoriesSnapshot | null>;
+  remintAfterUnauthorized: (
+    rejectedSnapshot: ReadRepositoriesSnapshot,
+  ) => Promise<ReadRepositoriesSnapshot | null>;
+};
+
+type UnauthorizedHandling =
+  'rethrow' | 'reportUnauthorized' | 'fallBackToWriteRepository';
+
+type RotatedReadAttempt<T> =
+  | { kind: 'resolved'; value: T }
+  | { kind: 'fallBackToWriteRepository' }
+  | { kind: 'unauthorized' };
+
+const attemptReadAcrossReadRepositories = async <T>(
   readRepositories: IssueRepository[],
-  writeRepository: IssueRepository,
   fn: (repo: IssueRepository) => Promise<T>,
-): Promise<T> => {
+  unauthorizedHandling: UnauthorizedHandling,
+): Promise<RotatedReadAttempt<T>> => {
   let lastError: Error | undefined;
   for (const readRepository of readRepositories) {
     let result: T;
@@ -40,31 +67,94 @@ const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
         lastError = error;
         continue;
       }
+      if (unauthorizedHandling !== 'rethrow' && isUnauthorizedError(error)) {
+        return unauthorizedHandling === 'reportUnauthorized'
+          ? { kind: 'unauthorized' }
+          : { kind: 'fallBackToWriteRepository' };
+      }
       if (isForbiddenOrNotFoundError(error)) {
-        return fn(writeRepository);
+        return { kind: 'fallBackToWriteRepository' };
       }
       throw error;
     }
     if (result === null) {
-      return fn(writeRepository);
+      return { kind: 'fallBackToWriteRepository' };
     }
-    return result;
+    return { kind: 'resolved', value: result };
   }
   throw (
     lastError ?? new Error('readOnlyTokenRotator: no repositories provided')
   );
 };
 
-export const createReadOnlyTokenRotatingIssueRepository = (
+const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
   readRepositories: IssueRepository[],
+  writeRepository: IssueRepository,
+  fn: (repo: IssueRepository) => Promise<T>,
+): Promise<T> => {
+  const attempt = await attemptReadAcrossReadRepositories(
+    readRepositories,
+    fn,
+    'rethrow',
+  );
+  return attempt.kind === 'resolved' ? attempt.value : fn(writeRepository);
+};
+
+const withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository =
+  async <T>(
+    reprovisionableReadRepositories: ReprovisionableReadRepositories,
+    writeRepository: IssueRepository,
+    fn: (repo: IssueRepository) => Promise<T>,
+  ): Promise<T> => {
+    const currentSnapshot =
+      await reprovisionableReadRepositories.getCurrentReadRepositories();
+    if (currentSnapshot === null) {
+      return fn(writeRepository);
+    }
+    const firstAttempt = await attemptReadAcrossReadRepositories(
+      currentSnapshot.readRepositories,
+      fn,
+      'reportUnauthorized',
+    );
+    if (firstAttempt.kind === 'resolved') {
+      return firstAttempt.value;
+    }
+    if (firstAttempt.kind === 'fallBackToWriteRepository') {
+      return fn(writeRepository);
+    }
+    const remintedSnapshot =
+      await reprovisionableReadRepositories.remintAfterUnauthorized(
+        currentSnapshot,
+      );
+    if (remintedSnapshot === null) {
+      return fn(writeRepository);
+    }
+    const retriedAttempt = await attemptReadAcrossReadRepositories(
+      remintedSnapshot.readRepositories,
+      fn,
+      'fallBackToWriteRepository',
+    );
+    return retriedAttempt.kind === 'resolved'
+      ? retriedAttempt.value
+      : fn(writeRepository);
+  };
+
+export const createReadOnlyTokenRotatingIssueRepository = (
+  readRepositories: IssueRepository[] | ReprovisionableReadRepositories,
   writeRepository: IssueRepository,
 ): IssueRepository => {
   const rotate = <T>(fn: (repo: IssueRepository) => Promise<T>): Promise<T> =>
-    withReadOnlyTokenRotationFallingBackToWriteRepository(
-      readRepositories,
-      writeRepository,
-      fn,
-    );
+    Array.isArray(readRepositories)
+      ? withReadOnlyTokenRotationFallingBackToWriteRepository(
+          readRepositories,
+          writeRepository,
+          fn,
+        )
+      : withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository(
+          readRepositories,
+          writeRepository,
+          fn,
+        );
 
   return {
     getAllIssues: (projectId: Project['id']) =>
@@ -262,12 +352,80 @@ export const createReadOnlyTokenRotatingIssueRepository = (
   };
 };
 
+const APP_INSTALLATION_READ_TOKEN_REMINT_AGE_MILLISECONDS = 50 * 60 * 1000;
+
+const createReprovisionableReadRepositories = (
+  projectName: string,
+  keyPaths: string[],
+  initialSnapshot: ReadRepositoriesSnapshot,
+  mintTokens: (paths: string[]) => Promise<string[]>,
+  buildIssueRepositoryForToken: (token: string) => IssueRepository,
+  getCurrentEpochMilliseconds: () => number,
+): ReprovisionableReadRepositories => {
+  let heldSnapshot: ReadRepositoriesSnapshot = initialSnapshot;
+  let remintInFlight: Promise<ReadRepositoriesSnapshot | null> | null = null;
+
+  const mintTokensForProject = async (): Promise<string[]> => {
+    try {
+      return await mintTokens(keyPaths);
+    } catch {
+      return [];
+    }
+  };
+
+  const remint = (): Promise<ReadRepositoriesSnapshot | null> => {
+    if (remintInFlight !== null) {
+      return remintInFlight;
+    }
+    const mintStartedAtEpochMilliseconds = getCurrentEpochMilliseconds();
+    const inFlight = (async (): Promise<ReadRepositoriesSnapshot | null> => {
+      const tokens = await mintTokensForProject();
+      if (tokens.length === 0) {
+        console.error(
+          `[readOnlyTokenRotator] failed to re-mint the GitHub App read token for project ${projectName}`,
+        );
+        return null;
+      }
+      heldSnapshot = {
+        readRepositories: tokens.map((token) =>
+          buildIssueRepositoryForToken(token),
+        ),
+        mintedAtEpochMilliseconds: mintStartedAtEpochMilliseconds,
+      };
+      return heldSnapshot;
+    })().finally(() => {
+      remintInFlight = null;
+    });
+    remintInFlight = inFlight;
+    return inFlight;
+  };
+
+  return {
+    getCurrentReadRepositories: () => {
+      const heldAgeMilliseconds =
+        getCurrentEpochMilliseconds() - heldSnapshot.mintedAtEpochMilliseconds;
+      if (
+        heldAgeMilliseconds <
+        APP_INSTALLATION_READ_TOKEN_REMINT_AGE_MILLISECONDS
+      ) {
+        return Promise.resolve(heldSnapshot);
+      }
+      return remint();
+    },
+    remintAfterUnauthorized: (rejectedSnapshot) =>
+      heldSnapshot !== rejectedSnapshot
+        ? Promise.resolve(heldSnapshot)
+        : remint(),
+  };
+};
+
 export const buildReadIssueRepositoryResolver = async (
   githubAppPrivateKeyPathsByProject: Record<string, string[]> | undefined,
   mintTokens: (paths: string[]) => Promise<string[]>,
   buildIssueRepositoryForToken: (token: string) => IssueRepository,
   resolveGithubToken: ConsoleGithubTokenResolver,
   resolveProjectName: (repositoryOwner: string) => string | null,
+  getCurrentEpochMilliseconds: () => number = Date.now,
 ): Promise<(url: string) => IssueRepository> => {
   const ownTokenIssueRepositoryResolver =
     createConsoleIssueRepositoryResolver<IssueRepository>(
@@ -276,7 +434,7 @@ export const buildReadIssueRepositoryResolver = async (
     );
   const appTokenReadRepositoriesByProject = new Map<
     string,
-    IssueRepository[]
+    ReprovisionableReadRepositories
   >();
   for (const [projectName, keyPaths] of Object.entries(
     githubAppPrivateKeyPathsByProject ?? {},
@@ -284,11 +442,24 @@ export const buildReadIssueRepositoryResolver = async (
     if (keyPaths.length === 0) {
       continue;
     }
+    const mintStartedAtEpochMilliseconds = getCurrentEpochMilliseconds();
     const tokens = await mintTokens(keyPaths);
     if (tokens.length > 0) {
       appTokenReadRepositoriesByProject.set(
         projectName,
-        tokens.map((token) => buildIssueRepositoryForToken(token)),
+        createReprovisionableReadRepositories(
+          projectName,
+          keyPaths,
+          {
+            readRepositories: tokens.map((token) =>
+              buildIssueRepositoryForToken(token),
+            ),
+            mintedAtEpochMilliseconds: mintStartedAtEpochMilliseconds,
+          },
+          mintTokens,
+          buildIssueRepositoryForToken,
+          getCurrentEpochMilliseconds,
+        ),
       );
     }
   }
