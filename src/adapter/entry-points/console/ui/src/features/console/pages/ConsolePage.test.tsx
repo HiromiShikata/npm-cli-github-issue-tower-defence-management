@@ -2716,6 +2716,124 @@ describe('ConsolePage auto-advance tab', () => {
         })),
       );
     });
+
+    it('selects a candidate project when a background project-list re-fetch with unchanged project codes and minutes brings a positive todo-by-human or awaiting-owner count after an initial load that selected no project', async () => {
+      const projectMinutes = { acme: 30, beta: 30 };
+      const pjcodes = ['acme', 'beta'];
+      const scenarios: {
+        name: string;
+        refetchedProjectsPayload: ProjectsPayload;
+      }[] = [
+        {
+          name: 'the re-fetch gives the second candidate a positive todo-by-human count',
+          refetchedProjectsPayload: {
+            pjcodes,
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 2 },
+              awaitingOwnerCounts: { acme: 0, beta: 0 },
+            },
+          },
+        },
+        {
+          name: 'the re-fetch gives the second candidate a positive awaiting-owner count',
+          refetchedProjectsPayload: {
+            pjcodes,
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0 },
+              awaitingOwnerCounts: { acme: 0, beta: 3 },
+            },
+          },
+        },
+      ];
+      const projectsPayloadWithoutQualifyingCandidate: ProjectsPayload = {
+        pjcodes,
+        actionableCounts: {
+          todoByHumanCounts: { acme: 0, beta: 0 },
+          awaitingOwnerCounts: { acme: 0, beta: 0 },
+        },
+      };
+      const { navigateReplaceState } = jest.requireMock<{
+        navigateReplaceState: jest.Mock;
+      }>('../lib/navigation');
+
+      const observed: {
+        name: string;
+        pathsBeforeRefetch: string[];
+        pathsAfterRefetch: string[];
+      }[] = [];
+      for (const scenario of scenarios) {
+        localStorage.setItem(
+          'tdpm-timer-settings',
+          JSON.stringify({ timerMode: true, projectMinutes }),
+        );
+        window.history.replaceState({}, '', '/');
+        let projectListFetchCount = 0;
+        global.fetch = jest.fn(async (url: string) => {
+          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+          if (listMatch !== null) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => listPayload(listMatch[1]),
+            };
+          }
+          if (url === '/api/projects') {
+            projectListFetchCount += 1;
+            const servedPayload =
+              projectListFetchCount === 1
+                ? projectsPayloadWithoutQualifyingCandidate
+                : scenario.refetchedProjectsPayload;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => servedPayload,
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        }) as unknown as typeof fetch;
+        navigateReplaceState.mockClear();
+        jest.useFakeTimers();
+        try {
+          const { unmount } = render(<ConsolePage />);
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(0);
+          });
+          expect(projectListFetchCount).toBe(1);
+          const pathsBeforeRefetch = navigateReplaceState.mock.calls.map(
+            (call: [string]) => call[0],
+          );
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(
+              CONSOLE_TAB_REFRESH_INTERVAL_MS,
+            );
+          });
+          expect(projectListFetchCount).toBe(2);
+          const pathsAfterRefetch = navigateReplaceState.mock.calls.map(
+            (call: [string]) => call[0],
+          );
+          unmount();
+          observed.push({
+            name: scenario.name,
+            pathsBeforeRefetch,
+            pathsAfterRefetch: [...new Set(pathsAfterRefetch)],
+          });
+        } finally {
+          jest.useRealTimers();
+        }
+      }
+
+      expect(observed).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          pathsBeforeRefetch: [],
+          pathsAfterRefetch: ['/projects/beta/todo-by-human'],
+        })),
+      );
+    });
   });
 
   it('shows the stories tab badge count as the number of non-GRAY stories', async () => {

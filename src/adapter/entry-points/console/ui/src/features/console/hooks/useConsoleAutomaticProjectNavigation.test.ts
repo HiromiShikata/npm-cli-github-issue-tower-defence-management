@@ -1055,6 +1055,119 @@ describe('useConsoleAutomaticProjectNavigation', () => {
       rerender({ pjcode: 'beta' });
       expect(navigatePush).not.toHaveBeenCalled();
     });
+
+    it('navigates on a re-render of the same mounted hook that changes only the count records exactly when a candidate holds a positive todo-by-human or awaiting-owner count', () => {
+      type CountRecords = {
+        projectTodoByHumanCounts: Record<string, number>;
+        projectAwaitingOwnerCounts: Record<string, number>;
+      };
+      type CountRecordsRerenderScenario = {
+        name: string;
+        countRecordsOnMount: CountRecords;
+        countRecordsAfterRerender: CountRecords;
+        expectedNavigationsOnMount: string[];
+        expectedNavigationsAfterRerender: string[];
+      };
+
+      const unchangedPjcodes = ['acme', 'beta'];
+      const unchangedProjectMinutesWithCurrentProjectAtZero = {
+        acme: 0,
+        beta: 30,
+      };
+      const noActionableCounts: CountRecords = {
+        projectTodoByHumanCounts: {},
+        projectAwaitingOwnerCounts: {},
+      };
+
+      const scenarios: CountRecordsRerenderScenario[] = [
+        {
+          name: 'the candidate gains a positive todo-by-human count',
+          countRecordsOnMount: noActionableCounts,
+          countRecordsAfterRerender: {
+            projectTodoByHumanCounts: { beta: 2 },
+            projectAwaitingOwnerCounts: {},
+          },
+          expectedNavigationsOnMount: [],
+          expectedNavigationsAfterRerender: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'the candidate gains a positive awaiting-owner count',
+          countRecordsOnMount: noActionableCounts,
+          countRecordsAfterRerender: {
+            projectTodoByHumanCounts: {},
+            projectAwaitingOwnerCounts: { beta: 1 },
+          },
+          expectedNavigationsOnMount: [],
+          expectedNavigationsAfterRerender: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'the candidate holds explicit zero counts before and after the re-render',
+          countRecordsOnMount: {
+            projectTodoByHumanCounts: { beta: 0 },
+            projectAwaitingOwnerCounts: { beta: 0 },
+          },
+          countRecordsAfterRerender: {
+            projectTodoByHumanCounts: { beta: 0 },
+            projectAwaitingOwnerCounts: { beta: 0 },
+          },
+          expectedNavigationsOnMount: [],
+          expectedNavigationsAfterRerender: [],
+        },
+      ];
+
+      const navigatedUrls = (): string[] =>
+        (navigatePush as jest.Mock).mock.calls.map((call: unknown[]) =>
+          String(call[0]),
+        );
+
+      const observed = scenarios.map((scenario) => {
+        (navigatePush as jest.Mock).mockClear();
+        const { rerender, unmount } = renderHook(
+          ({
+            projectTodoByHumanCounts,
+            projectAwaitingOwnerCounts,
+          }: CountRecords) =>
+            useConsoleAutomaticProjectNavigation(
+              true,
+              isTimerNeverExpired,
+              0,
+              0,
+              'acme',
+              unchangedPjcodes,
+              unchangedProjectMinutesWithCurrentProjectAtZero,
+              true,
+              true,
+              false,
+              false,
+              null,
+              0,
+              null,
+              false,
+              projectTodoByHumanCounts,
+              projectAwaitingOwnerCounts,
+            ),
+          { initialProps: scenario.countRecordsOnMount },
+        );
+        const navigationsOnMount = navigatedUrls();
+        (navigatePush as jest.Mock).mockClear();
+        rerender(scenario.countRecordsAfterRerender);
+        const navigationsAfterRerender = navigatedUrls();
+        unmount();
+        return {
+          name: scenario.name,
+          navigationsOnMount,
+          navigationsAfterRerender,
+        };
+      });
+
+      expect(observed).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          navigationsOnMount: scenario.expectedNavigationsOnMount,
+          navigationsAfterRerender: scenario.expectedNavigationsAfterRerender,
+        })),
+      );
+    });
   });
 
   describe('enqueueSequence drives navigation evaluation with no write-confirmation wait', () => {
