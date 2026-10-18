@@ -57,7 +57,56 @@ const EXPECTED_REST_URL =
 const buildCommentCacheRepository = () => ({
   getSingle: jest.fn<Promise<unknown>, [string]>(),
   setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+  withLock: jest.fn(
+    (_key: string, fn: () => Promise<unknown>): Promise<unknown> => fn(),
+  ),
 });
+
+const buildLockFaithfulCommentCacheRepository = () => {
+  const store = new Map<string, unknown>();
+  const lockQueueEndings = new Map<string, Promise<void>>();
+
+  const getSingle = async (key: string): Promise<unknown> =>
+    store.has(key) ? store.get(key) : null;
+
+  const setSingle = async <T>(key: string, value: T): Promise<void> => {
+    store.set(key, value);
+  };
+
+  const withLock = <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+    const previousQueueEnding = lockQueueEndings.get(key) ?? Promise.resolve();
+    const result = previousQueueEnding.then(() => fn());
+    lockQueueEndings.set(
+      key,
+      result.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return result;
+  };
+
+  return { getSingle, setSingle, withLock, store };
+};
+
+const isCachedPageWithEtag = (value: unknown): value is { etag: string } => {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('etag' in value) || typeof value.etag !== 'string') return false;
+  return true;
+};
+
+const isCommentPageCacheWithEtags = (
+  value: unknown,
+): value is { pages: Record<string, { etag: string }> } => {
+  if (typeof value !== 'object' || value === null) return false;
+  if (
+    !('pages' in value) ||
+    typeof value.pages !== 'object' ||
+    value.pages === null
+  )
+    return false;
+  return Object.values(value.pages).every(isCachedPageWithEtag);
+};
 
 describe('GitHubIssueCommentRepository', () => {
   let repository: GitHubIssueCommentRepository;
@@ -953,6 +1002,143 @@ describe('GitHubIssueCommentRepository', () => {
         },
       });
       expect(result.map((c) => c.content)).toEqual(['Freshly fetched comment']);
+    });
+
+    it('preserves both pages when two concurrent getCommentsFromIssue calls each update a different page of the same issue', async () => {
+      const cacheKey = 'comments/HiromiShikata/test-repo/123';
+      const cache = buildLockFaithfulCommentCacheRepository();
+      cache.store.set(cacheKey, {
+        pages: {
+          '1': {
+            etag: '"etag-p1-orig"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Page 1 original comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: true,
+          },
+          '2': {
+            etag: '"etag-p2-orig"',
+            comments: [
+              {
+                author: 'user2',
+                content: 'Page 2 original comment',
+                createdAt: '2024-01-02T00:00:00.000Z',
+                updatedAt: '2024-01-02T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
+          },
+        },
+      });
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      const pendingFetchRequests: {
+        url: string;
+        resolve: (response: Response) => void;
+      }[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(
+        (url) =>
+          new Promise<Response>((resolve) => {
+            const urlString =
+              typeof url === 'string'
+                ? url
+                : url instanceof URL
+                  ? url.href
+                  : url.url;
+            pendingFetchRequests.push({ url: urlString, resolve });
+          }),
+      );
+
+      const flushMicrotasksUntil = async (
+        predicate: () => boolean,
+      ): Promise<void> => {
+        for (let attempt = 0; attempt < 50; attempt++) {
+          if (predicate()) return;
+          await Promise.resolve();
+        }
+        if (!predicate()) {
+          throw new Error(
+            'timed out flushing microtasks while waiting for a pending fetch request',
+          );
+        }
+      };
+
+      const callAPromise = repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+      await flushMicrotasksUntil(() => pendingFetchRequests.length === 1);
+      const callAPage1Request = pendingFetchRequests[0];
+
+      const callBPromise = repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+      await flushMicrotasksUntil(() => pendingFetchRequests.length === 2);
+      const callBPage1Request = pendingFetchRequests[1];
+
+      callAPage1Request.resolve(new Response(null, { status: 304 }));
+      await flushMicrotasksUntil(() => pendingFetchRequests.length === 3);
+      const callAPage2Request = pendingFetchRequests[2];
+
+      callBPage1Request.resolve(
+        new Response(
+          JSON.stringify([
+            {
+              id: 3001,
+              user: { login: 'user1-updated' },
+              body: 'Page 1 updated comment',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]),
+          {
+            status: 200,
+            headers: {
+              ETag: '"etag-p1-new"',
+              Link: '<https://api.github.com/repos/HiromiShikata/test-repo/issues/123/comments?per_page=100&page=2>; rel="next"',
+            },
+          },
+        ),
+      );
+      await flushMicrotasksUntil(() => pendingFetchRequests.length === 4);
+      const callBPage2Request = pendingFetchRequests[3];
+
+      callAPage2Request.resolve(
+        new Response(
+          JSON.stringify([
+            {
+              id: 3002,
+              user: { login: 'user2-updated' },
+              body: 'Page 2 updated comment',
+              created_at: '2024-01-02T00:00:00Z',
+              updated_at: '2024-01-02T00:00:00Z',
+            },
+          ]),
+          {
+            status: 200,
+            headers: { ETag: '"etag-p2-new"' },
+          },
+        ),
+      );
+      callBPage2Request.resolve(new Response(null, { status: 304 }));
+
+      await Promise.all([callAPromise, callBPromise]);
+
+      const finalCache = cache.store.get(cacheKey);
+      if (!isCommentPageCacheWithEtags(finalCache)) {
+        throw new Error(
+          'expected the cache to have been written with a pages record',
+        );
+      }
+      expect(finalCache.pages['1'].etag).toBe('"etag-p1-new"');
+      expect(finalCache.pages['2'].etag).toBe('"etag-p2-new"');
     });
 
     describe('circuit breaker', () => {
