@@ -4,6 +4,8 @@ export const findNextPjcodeWithMinutes = (
   pjcodes: string[],
   currentPjcode: string | null,
   projectMinutes: Record<string, number>,
+  _projectTodoByHumanCounts: Record<string, number>,
+  _projectAwaitingOwnerCounts: Record<string, number>,
 ): string | null => {
   if (pjcodes.length === 0) {
     return null;
@@ -36,6 +38,8 @@ export type ConsoleAutomaticProjectNavigationDecideInput = {
   projectMinutes: Record<string, number>;
   skipCount: number;
   evaluatedPjcode: string | null;
+  projectTodoByHumanCounts: Record<string, number>;
+  projectAwaitingOwnerCounts: Record<string, number>;
 };
 
 export type ConsoleAutomaticProjectNavigationDecideResult = {
@@ -53,6 +57,8 @@ export const consoleAutomaticProjectNavigationDecide = (
         input.pjcodes,
         input.pjcode,
         input.projectMinutes,
+        input.projectTodoByHumanCounts,
+        input.projectAwaitingOwnerCounts,
       ),
       nextSkipCount: input.skipCount,
       nextEvaluatedPjcode: input.evaluatedPjcode,
@@ -114,6 +120,8 @@ export const consoleAutomaticProjectNavigationDecide = (
     input.pjcodes,
     input.pjcode,
     input.projectMinutes,
+    input.projectTodoByHumanCounts,
+    input.projectAwaitingOwnerCounts,
   );
   if (nextPjcode !== null) {
     return {

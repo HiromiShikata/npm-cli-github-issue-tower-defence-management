@@ -613,6 +613,11 @@ export const postConsoleUpdateStoryDescription = async (
   }
 };
 
+export type ProjectActionableCounts = {
+  todoByHumanCounts: Record<string, number>;
+  awaitingOwnerCounts: Record<string, number>;
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
   projectUrls: Record<string, string> | null;
@@ -621,6 +626,7 @@ export type ProjectListResponse = {
   disabledPjcodes: string[];
   workflowStoryEntries: ConsoleStoryEntry[] | null;
   workflowAgentOptions: ConsoleFieldOption[] | null;
+  actionableCounts: ProjectActionableCounts | null;
 };
 
 const parseStringRecord = (value: unknown): Record<string, string> | null => {
@@ -667,6 +673,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       disabledPjcodes: [],
       workflowStoryEntries: null,
       workflowAgentOptions: null,
+      actionableCounts: null,
     };
   }
   const record = payload as Record<string, unknown>;
@@ -700,6 +707,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     disabledPjcodes,
     workflowStoryEntries,
     workflowAgentOptions,
+    actionableCounts: null,
   };
 };
 

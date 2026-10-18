@@ -81,6 +81,8 @@ export const useConsoleAutomaticProjectNavigation = (
       projectMinutes,
       skipCount: skipCountRef.current,
       evaluatedPjcode: evaluatedPjcodeRef.current,
+      projectTodoByHumanCounts: {},
+      projectAwaitingOwnerCounts: {},
     });
 
     skipCountRef.current = decision.nextSkipCount;
