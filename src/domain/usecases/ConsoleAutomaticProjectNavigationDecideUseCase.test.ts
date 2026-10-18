@@ -1011,3 +1011,138 @@ describe('consoleAutomaticProjectNavigationDecide — actionNewlyEnqueued/timerE
     expect(decision.nextEvaluatedPjcode).toBeNull();
   });
 });
+
+describe('consoleAutomaticProjectNavigationDecide — no auto-switch while the task-creation dialog is open (#3491)', () => {
+  const dialogOpenGuardBaseInput: ConsoleAutomaticProjectNavigationDecideInput =
+    {
+      actionNewlyEnqueued: false,
+      timerElapsed: false,
+      remainingCountIsZero: false,
+      snapshotsReady: true,
+      explicitlySelectedPjcodeMatchesCurrent: false,
+      pjcode: 'acme',
+      pjcodes: ['acme', 'beta'],
+      projectMinutes: { acme: 30, beta: 30 },
+      skipCount: 0,
+      evaluatedPjcode: null,
+      projectTodoByHumanCounts: {},
+      projectAwaitingOwnerCounts: {},
+    };
+
+  type DialogOpenTableCase = {
+    name: string;
+    input: ConsoleAutomaticProjectNavigationDecideInput;
+    expectedTargetPjcode: string | null;
+  };
+
+  const dialogOpenTableCases: DialogOpenTableCase[] = [
+    {
+      name: 'dialogOpen=false, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: false,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'dialogOpen=false, remainingCountIsZero=true, explicitMatch=false, elapsedTimeTriggerHolds=false -> switches to beta',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: false,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: 'beta',
+    },
+    {
+      name: 'dialogOpen=true, remainingCountIsZero=true, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch while the task-creation dialog is open',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: true,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'dialogOpen=true, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: true,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'dialogOpen=false, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> switches to beta (explicit-selection no longer blocks a live-eligible switch)',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: false,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: true,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: 'beta',
+    },
+    {
+      name: 'dialogOpen=true, remainingCountIsZero=true, explicitMatch=true, elapsedTimeTriggerHolds=false -> no switch',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: true,
+        remainingCountIsZero: true,
+        explicitlySelectedPjcodeMatchesCurrent: true,
+        actionNewlyEnqueued: false,
+        timerElapsed: false,
+      },
+      expectedTargetPjcode: null,
+    },
+    {
+      name: 'dialogOpen=true, remainingCountIsZero=false, explicitMatch=false, elapsedTimeTriggerHolds=true -> switches via the prior-action elapsed-time branch regardless of dialogOpen',
+      input: {
+        ...dialogOpenGuardBaseInput,
+        dialogOpen: true,
+        remainingCountIsZero: false,
+        explicitlySelectedPjcodeMatchesCurrent: false,
+        actionNewlyEnqueued: true,
+        timerElapsed: true,
+      },
+      expectedTargetPjcode: 'beta',
+    },
+  ];
+
+  it.each(dialogOpenTableCases)('$name', ({ input, expectedTargetPjcode }) => {
+    expect(consoleAutomaticProjectNavigationDecide(input).targetPjcode).toBe(
+      expectedTargetPjcode,
+    );
+  });
+
+  it('preserves skipCount and evaluatedPjcode exactly as they were before the task-creation dialog was opened, instead of resetting them', () => {
+    const decision = consoleAutomaticProjectNavigationDecide({
+      ...dialogOpenGuardBaseInput,
+      dialogOpen: true,
+      remainingCountIsZero: true,
+      explicitlySelectedPjcodeMatchesCurrent: false,
+      actionNewlyEnqueued: false,
+      timerElapsed: false,
+      skipCount: 2,
+      evaluatedPjcode: 'beta',
+    });
+    expect(decision).toEqual({
+      targetPjcode: null,
+      nextSkipCount: 2,
+      nextEvaluatedPjcode: 'beta',
+    });
+  });
+});

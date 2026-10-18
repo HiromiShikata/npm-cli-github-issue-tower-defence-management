@@ -25,6 +25,7 @@ const defaultArgs = {
   todoByHumanSnapshotFromCache: false,
   explicitlySelectedPjcode: null as string | null,
   enqueueSequence: 0,
+  dialogOpen: false,
 };
 
 describe('useConsoleAutomaticProjectNavigation', () => {
@@ -49,6 +50,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.explicitlySelectedPjcode,
         defaultArgs.enqueueSequence,
         null,
+        false,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -71,6 +73,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -93,6 +96,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -115,6 +119,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -137,6 +142,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -159,6 +165,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -181,6 +188,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -203,6 +211,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -225,6 +234,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -247,6 +257,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -269,6 +280,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     rerender();
@@ -293,6 +305,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -324,6 +337,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -363,6 +377,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -394,6 +409,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith(
@@ -419,6 +435,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -453,6 +470,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcodes: [] as string[] } },
     );
@@ -480,6 +498,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { prsCount: 1 } },
     );
@@ -507,6 +526,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { todoByHumanCount: 3 } },
     );
@@ -534,6 +554,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           0,
           null,
+          false,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -565,6 +586,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         'acme',
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -587,6 +609,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         'acme',
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -609,6 +632,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         null,
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -631,6 +655,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         'beta',
         0,
         null,
+        false,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -653,9 +678,56 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.explicitlySelectedPjcode,
         defaultArgs.enqueueSequence,
         'some-task-item-key',
+        false,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate when the task-creation dialog is open, even when prs and todo-by-human are both zero (#3491)', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        defaultArgs.timerMode,
+        defaultArgs.isTimerExpired,
+        defaultArgs.prsCount,
+        defaultArgs.todoByHumanCount,
+        defaultArgs.pjcode,
+        defaultArgs.pjcodes,
+        defaultArgs.projectMinutes,
+        defaultArgs.prsSnapshotLoaded,
+        defaultArgs.todoByHumanSnapshotLoaded,
+        defaultArgs.prsSnapshotFromCache,
+        defaultArgs.todoByHumanSnapshotFromCache,
+        defaultArgs.explicitlySelectedPjcode,
+        defaultArgs.enqueueSequence,
+        null,
+        true,
+      ),
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('navigates normally when the task-creation dialog is closed (dialogOpen=false), confirming the dialog guard does not suppress the default remaining-count-zero switch (#3491)', () => {
+    renderHook(() =>
+      useConsoleAutomaticProjectNavigation(
+        defaultArgs.timerMode,
+        defaultArgs.isTimerExpired,
+        defaultArgs.prsCount,
+        defaultArgs.todoByHumanCount,
+        defaultArgs.pjcode,
+        defaultArgs.pjcodes,
+        defaultArgs.projectMinutes,
+        defaultArgs.prsSnapshotLoaded,
+        defaultArgs.todoByHumanSnapshotLoaded,
+        defaultArgs.prsSnapshotFromCache,
+        defaultArgs.todoByHumanSnapshotFromCache,
+        defaultArgs.explicitlySelectedPjcode,
+        defaultArgs.enqueueSequence,
+        null,
+        defaultArgs.dialogOpen,
+      ),
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
   });
 
   describe('enqueueSequence drives navigation evaluation with no write-confirmation wait', () => {
@@ -676,6 +748,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           1,
           null,
+          false,
         ),
       );
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -699,6 +772,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             null,
             enqueueSequence,
             null,
+            false,
           ),
         { initialProps: { enqueueSequence: 0 } },
       );
@@ -726,6 +800,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             null,
             enqueueSequence,
             null,
+            false,
           ),
         { initialProps: { enqueueSequence: 1 } },
       );
@@ -754,6 +829,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             null,
             enqueueSequence,
             null,
+            false,
           ),
         { initialProps: { enqueueSequence: 1 } },
       );
@@ -783,9 +859,56 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           1,
           'some-task-item-key',
+          false,
         ),
       );
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+    });
+
+    it('navigates via the timer-elapsed path even while the task-creation dialog is open, because dialogOpen does not suppress this path (#3491)', () => {
+      renderHook(() =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          isTimerAlwaysExpired,
+          1,
+          1,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+          null,
+          1,
+          null,
+          true,
+        ),
+      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+    });
+
+    it('does not navigate via the remaining-count-zero rotation path when the task-creation dialog is open and no action was newly enqueued (#3491)', () => {
+      renderHook(() =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          isTimerNeverExpired,
+          0,
+          0,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+          null,
+          0,
+          null,
+          true,
+        ),
+      );
+      expect(navigatePush).not.toHaveBeenCalled();
     });
 
     it('navigates exactly once to the next project when both the timer-elapsed and remaining-count-zero conditions hold for the same newly enqueued action', () => {
@@ -805,6 +928,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           null,
           1,
           null,
+          false,
         ),
       );
       expect(navigatePush).toHaveBeenCalledTimes(1);
@@ -856,6 +980,7 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             null,
             actionQueue.enqueueSequence,
             null,
+            false,
           );
           return actionQueue;
         },

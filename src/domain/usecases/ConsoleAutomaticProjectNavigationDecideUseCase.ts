@@ -32,6 +32,7 @@ export type ConsoleAutomaticProjectNavigationDecideInput = {
   snapshotsReady: boolean;
   explicitlySelectedPjcodeMatchesCurrent: boolean;
   taskOpen?: boolean;
+  dialogOpen?: boolean;
   aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated?: boolean;
   pjcode: string;
   pjcodes: string[];
@@ -88,7 +89,7 @@ export const consoleAutomaticProjectNavigationDecide = (
   if (currentProjectHasPositiveMinutes && !input.remainingCountIsZero) {
     return { targetPjcode: null, nextSkipCount: 0, nextEvaluatedPjcode: null };
   }
-  if (input.taskOpen) {
+  if (input.taskOpen || input.dialogOpen) {
     return unchanged;
   }
   if (input.pjcodes.length === 0) {

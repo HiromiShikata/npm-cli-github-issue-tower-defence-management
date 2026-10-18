@@ -6474,6 +6474,494 @@ describe('ConsolePage workflow issue creation', () => {
   });
 });
 
+describe('ConsolePage task-creation failure toast after navigating away before the write confirms (#3491)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  const defaultNameWithOwnerByPjcode: Record<string, string> = {
+    acme: 'o/r',
+    beta: 'other-owner/other-repo',
+    gamma: 'third-owner/third-repo',
+  };
+
+  const installFetchForNavigatedAwayFailure = (
+    fleetTaskCreateUrl: string | null = null,
+    createIssueOk = false,
+  ): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/([^/]+)\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const pjcodeFromUrl = listMatch[1];
+        const tab = listMatch[2];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories'
+              ? {
+                  ...listPayload(tab),
+                  defaultNameWithOwner:
+                    defaultNameWithOwnerByPjcode[pjcodeFromUrl] ?? null,
+                }
+              : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            fleetTaskCreateUrl !== null
+              ? { pjcodes: ['acme', 'beta', 'gamma'], fleetTaskCreateUrl }
+              : { pjcodes: ['acme', 'beta', 'gamma'] },
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url === '/api/createissue') {
+        if (!createIssueOk) {
+          return {
+            ok: false,
+            status: 500,
+            text: async () => 'Internal Server Error',
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            issueUrl: 'https://github.com/o/r/issues/100',
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const createIssueCallsFrom = (
+    fetchMock: jest.Mock,
+  ): [string, RequestInit][] =>
+    fetchMock.mock.calls.filter(
+      ([callUrl]: [string]) => callUrl === '/api/createissue',
+    ) as [string, RequestInit][];
+
+  const navigateAwayTo = async (pjcode: string): Promise<void> => {
+    await act(async () => {
+      window.history.pushState({}, '', `/projects/${pjcode}/prs?k=token`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
+  it('shows the ConsoleErrorToast instead of reopening the Project-destination dialog when the operator navigated away before the write confirms, and keeps showing it through a further navigation to a third project', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchForNavigatedAwayFailure();
+      const { getByRole, queryByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Navigated-away project task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      expect(
+        container.querySelector('.console-error-toast-message')?.textContent,
+      ).toBe('Operation failed: Failed to create the task. Please try again.');
+      expect(container.querySelector('.console-error-toast-retry')).not.toBe(
+        null,
+      );
+      expect(container.querySelector('.console-error-toast-dismiss')).not.toBe(
+        null,
+      );
+      expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+
+      await navigateAwayTo('gamma');
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      expect(
+        container.querySelector('.console-error-toast-message')?.textContent,
+      ).toBe('Operation failed: Failed to create the task. Please try again.');
+      expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('retries the Project-destination create request to the originally captured project and repository, with every originally entered field intact, when Retry is clicked after navigating away', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchForNavigatedAwayFailure();
+      const { getByRole, queryByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Retried project task' },
+      });
+      fireEvent.change(within(openDialog).getByLabelText('Body'), {
+        target: { value: 'Body for the retried project task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', {
+          name: /TDPM Console port/,
+        }),
+      );
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: /^developer$/i }),
+      );
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+
+      await act(async () => {
+        fireEvent.click(retryButton);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createIssueCalls = createIssueCallsFrom(fetchMock);
+      expect(createIssueCalls.length).toBe(2);
+      const retriedRequestBody = JSON.parse(
+        createIssueCalls[1][1].body as string,
+      ) as Record<string, unknown>;
+      expect(retriedRequestBody.pjcode).toBe('acme');
+      expect(retriedRequestBody.nameWithOwner).toBe('o/r');
+      expect(retriedRequestBody.title).toBe('Retried project task');
+      expect(retriedRequestBody.body).toBe('Body for the retried project task');
+      expect(retriedRequestBody.storyName).toBe('TDPM Console port');
+      expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('re-shows the ConsoleErrorToast rather than reopening the Project-destination dialog when the Retry resubmission itself fails again', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchForNavigatedAwayFailure();
+      const { getByRole, queryByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Double-failing project task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+
+      await act(async () => {
+        fireEvent.click(retryButton);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(createIssueCallsFrom(fetchMock).length).toBe(2);
+      expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      expect(container.querySelector('.console-error-toast-retry')).not.toBe(
+        null,
+      );
+      expect(container.querySelector('.console-error-toast-dismiss')).not.toBe(
+        null,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('removes the ConsoleErrorToast without resubmitting when Dismiss is clicked after navigating away from a failed Project-destination creation', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchForNavigatedAwayFailure();
+      const { getByRole, queryByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      const openDialog = getByRole('dialog', { name: 'Create new task' });
+      fireEvent.change(within(openDialog).getByLabelText('Title'), {
+        target: { value: 'Dismissed project task' },
+      });
+      fireEvent.click(
+        within(openDialog).getByRole('button', { name: 'Create' }),
+      );
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+
+      const dismissButton = container.querySelector(
+        '.console-error-toast-dismiss',
+      ) as HTMLElement;
+      fireEvent.click(dismissButton);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).toBeNull();
+      });
+      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the ConsoleErrorToast instead of reopening the Workflow-destination dialog when the operator navigated away before the write confirms', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchForNavigatedAwayFailure(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const { getByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Navigated-away fleet task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(
+          document.body.querySelector(
+            '.console-fleet-task-create-dialog-container',
+          ),
+        ).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-message'),
+        ).not.toBeNull();
+      });
+      expect(
+        container.querySelector('.console-error-toast-message')?.textContent,
+      ).toBe('Operation failed: Failed to create the task. Please try again.');
+      expect(container.querySelector('.console-error-toast-retry')).not.toBe(
+        null,
+      );
+      expect(container.querySelector('.console-error-toast-dismiss')).not.toBe(
+        null,
+      );
+      expect(
+        document.body.querySelector(
+          '.console-fleet-task-create-dialog-container',
+        ),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('retries the Workflow-destination create request to the originally captured project and workflow repository, with every originally entered field intact, when Retry is clicked after navigating away', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchForNavigatedAwayFailure(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const { getByRole, container } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Retried fleet task' },
+      });
+      fireEvent.change(getByRole('textbox', { name: /body/i }), {
+        target: { value: 'Body for the retried fleet task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(
+          document.body.querySelector(
+            '.console-fleet-task-create-dialog-container',
+          ),
+        ).toBeNull();
+      });
+
+      await navigateAwayTo('beta');
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+
+      await act(async () => {
+        fireEvent.click(retryButton);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createIssueCalls = createIssueCallsFrom(fetchMock);
+      expect(createIssueCalls.length).toBe(2);
+      const retriedRequestBody = JSON.parse(
+        createIssueCalls[1][1].body as string,
+      ) as Record<string, unknown>;
+      expect(retriedRequestBody.pjcode).toBe('acme');
+      expect(retriedRequestBody.nameWithOwner).toBe('HiromiShikata/secretary');
+      expect(retriedRequestBody.title).toBe('Retried fleet task');
+      expect(retriedRequestBody.body).toBe('Body for the retried fleet task');
+      expect(
+        document.body.querySelector(
+          '.console-fleet-task-create-dialog-container',
+        ),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe('ConsolePage stale cache snapshot tab lock', () => {
   beforeEach(() => {
     localStorage.clear();
