@@ -1,3 +1,10 @@
+# [2.177.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.176.0...v2.177.0) (2026-10-18)
+
+
+### Features
+
+* **ConsoleAutomaticProjectNavigationDecideUseCase:** require positive actionable-item count for navigation eligibility ([#3512](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3512)) ([5c74bdc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c74bdccd156e50f38e43d78a051c39b8d533d31)), closes [#3491](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3491)
+
 # [2.176.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.175.1...v2.176.0) (2026-10-18)
 
 
