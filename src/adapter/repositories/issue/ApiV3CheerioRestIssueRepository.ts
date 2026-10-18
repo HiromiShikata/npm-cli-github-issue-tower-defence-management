@@ -728,6 +728,12 @@ const isStoredIssueCommentList = (
   Array.isArray(value.pages) &&
   value.pages.every(isStoredIssueCommentPage);
 
+const buildStoredIssueCommentListKey = (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): string => `issueOrPullRequestComments/${owner}/${repo}/${issueNumber}`;
+
 type IssueCommentIdResponseItem = {
   id: number;
 };
@@ -2062,6 +2068,42 @@ export class ApiV3CheerioRestIssueRepository
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
+    await this.markStoredIssueCommentListForRevalidation(issue.url);
+  };
+  private markStoredIssueCommentListForRevalidation = async (
+    url: string,
+  ): Promise<void> => {
+    try {
+      const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+      const storedIssueCommentListKey = buildStoredIssueCommentListKey(
+        owner,
+        repo,
+        issueNumber,
+      );
+      await this.localStorageCacheRepository.withLock(
+        storedIssueCommentListKey,
+        async () => {
+          const storedValue: unknown =
+            await this.localStorageCacheRepository.getSingle(
+              storedIssueCommentListKey,
+            );
+          if (
+            !isStoredIssueCommentList(storedValue) ||
+            storedValue.issueUpdatedAt === null
+          ) {
+            return;
+          }
+          await this.localStorageCacheRepository.setSingle(
+            storedIssueCommentListKey,
+            { ...storedValue, issueUpdatedAt: null },
+          );
+        },
+      );
+    } catch (error) {
+      console.warn(
+        `Stored comment list revalidation marking failed: issueUrl=${url} error=${String(error)}`,
+      );
+    }
   };
   updateProjectTextField = async (
     project: Project,
@@ -4692,7 +4734,11 @@ export class ApiV3CheerioRestIssueRepository
     options?: { issueUpdatedAt?: Date },
   ): Promise<IssueComment[]> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    const storedIssueCommentListKey = `issueOrPullRequestComments/${owner}/${repo}/${issueNumber}`;
+    const storedIssueCommentListKey = buildStoredIssueCommentListKey(
+      owner,
+      repo,
+      issueNumber,
+    );
     const issueUpdatedAt = options?.issueUpdatedAt?.toISOString() ?? null;
     const storedValue: unknown =
       await this.localStorageCacheRepository.getSingle(
