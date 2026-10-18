@@ -734,6 +734,13 @@ const buildStoredIssueCommentListKey = (
   issueNumber: number,
 ): string => `issueOrPullRequestComments/${owner}/${repo}/${issueNumber}`;
 
+const readStoredIssueCommentListRevalidationRevision = (
+  storedValue: unknown,
+): number =>
+  isRecord(storedValue) && typeof storedValue.revalidationRevision === 'number'
+    ? storedValue.revalidationRevision
+    : 0;
+
 type IssueCommentIdResponseItem = {
   id: number;
 };
@@ -2087,15 +2094,16 @@ export class ApiV3CheerioRestIssueRepository
             await this.localStorageCacheRepository.getSingle(
               storedIssueCommentListKey,
             );
-          if (
-            !isStoredIssueCommentList(storedValue) ||
-            storedValue.issueUpdatedAt === null
-          ) {
-            return;
-          }
           await this.localStorageCacheRepository.setSingle(
             storedIssueCommentListKey,
-            { ...storedValue, issueUpdatedAt: null },
+            {
+              issueUpdatedAt: null,
+              pages: isStoredIssueCommentList(storedValue)
+                ? storedValue.pages
+                : [],
+              revalidationRevision:
+                readStoredIssueCommentListRevalidationRevision(storedValue) + 1,
+            },
           );
         },
       );
@@ -4747,6 +4755,8 @@ export class ApiV3CheerioRestIssueRepository
     const storedIssueCommentList = isStoredIssueCommentList(storedValue)
       ? storedValue
       : null;
+    const revalidationRevisionAtReadStart =
+      readStoredIssueCommentListRevalidationRevision(storedValue);
     const reusableStoredComments =
       findStoredIssueCommentsReusableForIssueUpdatedAt(
         storedIssueCommentList,
@@ -4780,11 +4790,25 @@ export class ApiV3CheerioRestIssueRepository
     );
     await this.localStorageCacheRepository.withLock(
       storedIssueCommentListKey,
-      () =>
-        this.localStorageCacheRepository.setSingle(storedIssueCommentListKey, {
-          issueUpdatedAt,
-          pages: fetchedPages,
-        }),
+      async () => {
+        const currentRevalidationRevision =
+          readStoredIssueCommentListRevalidationRevision(
+            await this.localStorageCacheRepository.getSingle(
+              storedIssueCommentListKey,
+            ),
+          );
+        await this.localStorageCacheRepository.setSingle(
+          storedIssueCommentListKey,
+          {
+            issueUpdatedAt:
+              currentRevalidationRevision === revalidationRevisionAtReadStart
+                ? issueUpdatedAt
+                : null,
+            pages: fetchedPages,
+            revalidationRevision: currentRevalidationRevision,
+          },
+        );
+      },
     );
     return convertStoredIssueCommentPagesToIssueComments(fetchedPages);
   };
