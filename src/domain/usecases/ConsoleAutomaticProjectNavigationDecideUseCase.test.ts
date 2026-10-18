@@ -621,7 +621,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: 0,
       evaluatedPjcode: null,
-      projectTodoByHumanCounts: { 'no-timer': 1 },
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atAcme).toEqual({
       targetPjcode: 'no-timer',
@@ -637,6 +637,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: atAcme.nextSkipCount,
       evaluatedPjcode: atAcme.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atNoTimer).toEqual({
       targetPjcode: 'beta',
@@ -652,6 +653,7 @@ describe('consoleAutomaticProjectNavigationDecide', () => {
       remainingCountIsZero: true,
       skipCount: atNoTimer.nextSkipCount,
       evaluatedPjcode: atNoTimer.nextEvaluatedPjcode,
+      projectTodoByHumanCounts: { acme: 1, 'no-timer': 1, beta: 1 },
     });
     expect(atBeta).toEqual({
       targetPjcode: null,
