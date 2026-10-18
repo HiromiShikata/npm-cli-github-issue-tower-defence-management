@@ -275,8 +275,17 @@ export const ConsolePage = () => {
     disabledPjcodes,
     workflowStoryEntries,
     workflowAgentOptions,
+    actionableCounts,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList(timerMode && airplaneSnapshot === null, isLoading);
+  const projectTodoByHumanCounts = useMemo(
+    () => actionableCounts?.todoByHumanCounts ?? {},
+    [actionableCounts],
+  );
+  const projectAwaitingOwnerCounts = useMemo(
+    () => actionableCounts?.awaitingOwnerCounts ?? {},
+    [actionableCounts],
+  );
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
@@ -646,20 +655,25 @@ export const ConsolePage = () => {
 
   useEffect(() => {
     if (pjcode === null && timerMode && pjcodes.length > 0) {
-      const everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired =
-        Object.fromEntries(pjcodes.map((code) => [code, 1]));
       const firstPjcode = findNextPjcodeWithMinutes(
         pjcodes,
         null,
         projectMinutes,
-        everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired,
-        {},
+        projectTodoByHumanCounts,
+        projectAwaitingOwnerCounts,
       );
       if (firstPjcode !== null) {
         navigateReplaceState(`/projects/${firstPjcode}/todo-by-human`);
       }
     }
-  }, [pjcode, timerMode, pjcodes, projectMinutes]);
+  }, [
+    pjcode,
+    timerMode,
+    pjcodes,
+    projectMinutes,
+    projectTodoByHumanCounts,
+    projectAwaitingOwnerCounts,
+  ]);
 
   useConsoleAutomaticProjectNavigation(
     timerMode,
@@ -677,6 +691,8 @@ export const ConsolePage = () => {
     actionQueue.enqueueSequence,
     selectedItemKey,
     isDialogOpen || isFleetTaskCreateDialogOpen,
+    projectTodoByHumanCounts,
+    projectAwaitingOwnerCounts,
   );
 
   useConsoleTimerFirstItemAutoOpen(

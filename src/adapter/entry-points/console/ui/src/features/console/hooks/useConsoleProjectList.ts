@@ -50,7 +50,8 @@ export const useConsoleProjectList = (
   const [workflowAgentOptions, setWorkflowAgentOptions] = useState<
     ConsoleFieldOption[] | null
   >(null);
-  const [actionableCounts] = useState<ProjectActionableCounts | null>(null);
+  const [actionableCounts, setActionableCounts] =
+    useState<ProjectActionableCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -90,6 +91,7 @@ export const useConsoleProjectList = (
           setDisabledPjcodes(result.disabledPjcodes);
           setWorkflowStoryEntries(result.workflowStoryEntries);
           setWorkflowAgentOptions(result.workflowAgentOptions);
+          setActionableCounts(result.actionableCounts);
           setIsLoading(false);
         }
       })
@@ -172,6 +174,13 @@ export const useConsoleProjectList = (
           workflowAgentOptions: result.workflowAgentOptions,
         };
         setWorkflowAgentOptions(result.workflowAgentOptions);
+      }
+      if (!isSameJsonValue(held.actionableCounts, result.actionableCounts)) {
+        heldValuesRef.current = {
+          ...heldValuesRef.current,
+          actionableCounts: result.actionableCounts,
+        };
+        setActionableCounts(result.actionableCounts);
       }
     };
 

@@ -21,6 +21,8 @@ export const useConsoleAutomaticProjectNavigation = (
   enqueueSequence: number,
   selectedItemKey: string | null,
   dialogOpen: boolean,
+  projectTodoByHumanCounts: Record<string, number>,
+  projectAwaitingOwnerCounts: Record<string, number>,
 ): void => {
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
@@ -47,8 +49,6 @@ export const useConsoleAutomaticProjectNavigation = (
     const currentPjcodesWithMinutes = pjcodes.filter(
       (code) => (projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
     );
-    const everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired =
-      Object.fromEntries(pjcodes.map((code) => [code, 1]));
     const lastEvaluatedPjcodesWithMinutes =
       lastEvaluatedPjcodesWithMinutesRef.current;
     const aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated =
@@ -85,9 +85,8 @@ export const useConsoleAutomaticProjectNavigation = (
       projectMinutes,
       skipCount: skipCountRef.current,
       evaluatedPjcode: evaluatedPjcodeRef.current,
-      projectTodoByHumanCounts:
-        everyCandidatePjcodeTreatedAsActionableUntilRealCountsAreWired,
-      projectAwaitingOwnerCounts: {},
+      projectTodoByHumanCounts,
+      projectAwaitingOwnerCounts,
     });
 
     skipCountRef.current = decision.nextSkipCount;
@@ -111,5 +110,7 @@ export const useConsoleAutomaticProjectNavigation = (
     enqueueSequence,
     selectedItemKey,
     dialogOpen,
+    projectTodoByHumanCounts,
+    projectAwaitingOwnerCounts,
   ]);
 };

@@ -647,6 +647,31 @@ const parseStringRecord = (value: unknown): Record<string, string> | null => {
   );
 };
 
+const parseNumberRecord = (value: unknown): Record<string, number> | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, number] => typeof entry[1] === 'number',
+    ),
+  );
+};
+
+const parseProjectActionableCounts = (
+  value: unknown,
+): ProjectActionableCounts | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const todoByHumanCounts = parseNumberRecord(value.todoByHumanCounts);
+  const awaitingOwnerCounts = parseNumberRecord(value.awaitingOwnerCounts);
+  if (todoByHumanCounts === null || awaitingOwnerCounts === null) {
+    return null;
+  }
+  return { todoByHumanCounts, awaitingOwnerCounts };
+};
+
 const parseWorkflowStoryEntries = (
   value: unknown,
 ): ConsoleStoryEntry[] | null =>
@@ -706,6 +731,9 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   const workflowAgentOptions = parseWorkflowAgentOptions(
     record.workflowAgentOptions,
   );
+  const actionableCounts = parseProjectActionableCounts(
+    record.actionableCounts,
+  );
   return {
     pjcodes,
     projectUrls,
@@ -714,7 +742,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     disabledPjcodes,
     workflowStoryEntries,
     workflowAgentOptions,
-    actionableCounts: null,
+    actionableCounts,
   };
 };
 
