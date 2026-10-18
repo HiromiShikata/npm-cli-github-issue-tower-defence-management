@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor, within } from '@testing-library/react';
+import { CONSOLE_ITEM_ICONS } from '../../logic/itemIcons';
 import type { ConsoleIssueState, ConsoleListItem } from '../../logic/types';
 import {
   consoleChangedFilesFixture,
@@ -24,7 +25,13 @@ const baseProps = {
   storyColorEnum: 'BLUE' as const,
   overlayStatus: null,
   statusOptions: consoleStatusOptionsFixture,
-  state: { state: 'open', merged: false, isPullRequest: true, title: '' },
+  state: {
+    state: 'open',
+    merged: false,
+    isPullRequest: true,
+    title: '',
+    stateReason: '',
+  },
   body: '## Body heading',
   bodyIsLoading: false,
   bodyError: null,
@@ -126,6 +133,7 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: false,
         isPullRequest: false,
         title: 'Fix bug',
+        stateReason: '',
       },
     },
     expectedReferences: [
@@ -151,6 +159,7 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: false,
         isPullRequest: false,
         title: 'Old task',
+        stateReason: '',
       },
     },
     expectedReferences: [
@@ -176,6 +185,7 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: true,
         isPullRequest: true,
         title: 'Add feature',
+        stateReason: '',
       },
     },
     expectedReferences: [
@@ -201,6 +211,7 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: false,
         isPullRequest: false,
         title: '',
+        stateReason: '',
       },
     },
     expectedReferences: [
@@ -224,6 +235,7 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: false,
         isPullRequest: false,
         title: 'Fix bug',
+        stateReason: '',
       },
       [dependedIssueUrlResolvedMergedPr]: null,
     },
@@ -265,12 +277,14 @@ const dependedIssueUrlCases: DependedIssueUrlCase[] = [
         merged: false,
         isPullRequest: false,
         title: 'Fix bug',
+        stateReason: '',
       },
       [dependedIssueUrlResolvedClosed]: {
         state: 'closed',
         merged: false,
         isPullRequest: false,
         title: 'Old task',
+        stateReason: '',
       },
     },
     expectedReferences: [
@@ -442,6 +456,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
       />,
     );
@@ -571,6 +586,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
       />,
     );
@@ -585,6 +601,78 @@ describe('ConsoleItemDetail', () => {
     expect(title.children[2]).toHaveTextContent(`#${issueItem.number}`);
   });
 
+  it('renders the header icon in the not-planned color for a closed item whose state carries a not_planned stateReason', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'closed',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+          stateReason: 'not_planned',
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('title must render');
+    }
+    expect(title.children[0]).toHaveAttribute(
+      'fill',
+      CONSOLE_ITEM_ICONS.issueClosedNotPlanned.color,
+    );
+  });
+
+  it('renders the header icon in the completed closed color for a closed item whose state carries a completed stateReason', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'closed',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+          stateReason: 'completed',
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('title must render');
+    }
+    expect(title.children[0]).toHaveAttribute(
+      'fill',
+      CONSOLE_ITEM_ICONS.issueClosed.color,
+    );
+  });
+
+  it('renders the header icon in the open color for an open item regardless of a stale stateReason', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+          stateReason: 'not_planned',
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('title must render');
+    }
+    expect(title.children[0]).toHaveAttribute(
+      'fill',
+      CONSOLE_ITEM_ICONS.issueOpen.color,
+    );
+  });
+
   it('puts CI badges, related pull request groups and conflict chips in the row below the title for a task item with related pull requests', () => {
     const { container } = render(
       <ConsoleItemDetail
@@ -595,6 +683,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
         relatedPullRequests={consoleRelatedPullRequestsFixture.map(
           (pullRequest) => ({
@@ -701,6 +790,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
         relatedPullRequests={consoleRelatedPullRequestsFixture.map(
           (pullRequest) => ({
@@ -784,6 +874,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
         pullRequestStatus={null}
       />,
@@ -814,6 +905,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
         relatedPullRequests={[pr849, pr850].map((pullRequest) => ({
           pullRequest,
@@ -860,6 +952,7 @@ describe('ConsoleItemDetail', () => {
           merged: false,
           isPullRequest: false,
           title: '',
+          stateReason: '',
         }}
         relatedPullRequests={[
           {

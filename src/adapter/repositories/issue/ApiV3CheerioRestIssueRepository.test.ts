@@ -9053,6 +9053,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         merged: true,
         isPullRequest: true,
         title: 'PR title',
+        stateReason: '',
       });
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42',
@@ -9078,6 +9079,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         merged: false,
         isPullRequest: false,
         title: 'Issue title',
+        stateReason: '',
       });
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues/42',
@@ -9106,6 +9108,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         merged: false,
         isPullRequest: false,
         title: 'Issue title from REST',
+        stateReason: '',
       });
     });
 
@@ -9139,6 +9142,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         merged: false,
         isPullRequest: true,
         title: 'PR title from REST',
+        stateReason: '',
       });
     });
 
@@ -9215,6 +9219,69 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             GitHubConfirmedNotFoundError,
           );
         }
+      },
+    );
+
+    const issueStateReasonCases: {
+      name: string;
+      mockBody: Record<string, unknown>;
+      expectedStateReason: string;
+    }[] = [
+      {
+        name: 'a state_reason of not_planned',
+        mockBody: {
+          state: 'closed',
+          title: 'Issue title',
+          state_reason: 'not_planned',
+        },
+        expectedStateReason: 'not_planned',
+      },
+      {
+        name: 'a state_reason of completed',
+        mockBody: {
+          state: 'closed',
+          title: 'Issue title',
+          state_reason: 'completed',
+        },
+        expectedStateReason: 'completed',
+      },
+      {
+        name: 'a null state_reason',
+        mockBody: {
+          state: 'closed',
+          title: 'Issue title',
+          state_reason: null,
+        },
+        expectedStateReason: '',
+      },
+      {
+        name: 'a payload with no state_reason key at all',
+        mockBody: { state: 'closed', title: 'Issue title' },
+        expectedStateReason: '',
+      },
+    ];
+    it.each(issueStateReasonCases)(
+      'should map the issue REST payload state_reason field to stateReason for $name',
+      async ({ mockBody, expectedStateReason }) => {
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+          new Response(JSON.stringify(mockBody), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.getIssueOrPullRequestState(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        );
+
+        expect(result).toEqual({
+          state: 'closed',
+          merged: false,
+          isPullRequest: false,
+          title: 'Issue title',
+          stateReason: expectedStateReason,
+        });
       },
     );
   });
