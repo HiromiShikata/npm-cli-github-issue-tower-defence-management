@@ -1047,7 +1047,13 @@ describe('GitHubIssueCommentRepository', () => {
       jest.spyOn(global, 'fetch').mockImplementation(
         (url) =>
           new Promise<Response>((resolve) => {
-            pendingFetchRequests.push({ url: String(url), resolve });
+            const urlString =
+              typeof url === 'string'
+                ? url
+                : url instanceof URL
+                  ? url.href
+                  : url.url;
+            pendingFetchRequests.push({ url: urlString, resolve });
           }),
       );
 
