@@ -726,5 +726,90 @@ describe('DependedIssueURLRestoreUseCase', () => {
       );
       consoleWarnSpy.mockRestore();
     });
+
+    it('passes the depending issue updatedAt as issueUpdatedAt to the per-issue comment read and reads the comments for the restore-comment duplicate check with the URL as the only argument', async () => {
+      jest.clearAllMocks();
+      mockIssueRepository.updateProjectTextField.mockReset();
+      mockIssueRepository.createComment.mockReset();
+      const dependingIssueUpdatedAt = new Date('2026-01-05T00:00:00Z');
+      const dependedIssue = buildDependedIssue({ url: DEP_10_URL });
+      const dependingIssue = {
+        ...buildDependingIssue([]),
+        updatedAt: dependingIssueUpdatedAt,
+      };
+      mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+        async (url: string) =>
+          url === dependingIssue.url
+            ? [
+                buildComment(
+                  `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+                  T1,
+                  1,
+                ),
+              ]
+            : [],
+      );
+      const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+      await useCase.run({
+        project: basicProject,
+        issues: [dependedIssue, dependingIssue],
+        allowedIssueAuthors: ['hs-bot-gh-app[bot]'],
+      });
+
+      expect(mockIssueRepository.createComment).toHaveBeenCalledWith(
+        dependingIssue,
+        `${DEPENDED_ISSUE_URL_RESTORED_COMMENT_HEAD}\n- ${DEP_10_URL}`,
+      );
+      expect(
+        mockIssueRepository.getIssueOrPullRequestComments.mock.calls,
+      ).toStrictEqual([
+        [DEP_10_URL],
+        [DEPENDING_ISSUE_URL, { issueUpdatedAt: dependingIssueUpdatedAt }],
+        [DEPENDING_ISSUE_URL],
+      ]);
+    });
+
+    const commentReadCases: {
+      name: string;
+      project: Project;
+      issues: Issue[];
+      expectedCommentReadCalls: string[][];
+    }[] = [
+      {
+        name: 'reads the comments of an open issue without updatedAt with the URL as the only argument',
+        project: basicProject,
+        issues: [buildDependingIssue([])],
+        expectedCommentReadCalls: [[DEPENDING_ISSUE_URL]],
+      },
+      {
+        name: 'never reads the comments of a closed issue',
+        project: basicProject,
+        issues: [{ ...buildDependingIssue([]), isClosed: true }],
+        expectedCommentReadCalls: [],
+      },
+      {
+        name: 'reads no comments when the project has no depended issue URL field',
+        project: { ...basicProject, dependedIssueUrlSeparatedByComma: null },
+        issues: [buildDependingIssue([])],
+        expectedCommentReadCalls: [],
+      },
+    ];
+
+    it.each(commentReadCases)(
+      '$name',
+      async ({ project, issues, expectedCommentReadCalls }) => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockReset();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+        const useCase = new DependedIssueURLRestoreUseCase(mockIssueRepository);
+
+        await useCase.run({ project, issues });
+
+        expect(
+          mockIssueRepository.getIssueOrPullRequestComments.mock.calls,
+        ).toStrictEqual(expectedCommentReadCalls);
+      },
+    );
   });
 });

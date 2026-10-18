@@ -57,6 +57,9 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Issue } from '../../../domain/entities/Issue';
 
 const mockJsonResponse = <T>(data: T) => ({
+  ok: true,
+  status: 200,
+  headers: new Headers(),
   json: jest.fn().mockResolvedValue(data),
 });
 
@@ -1134,6 +1137,217 @@ describe('RestIssueRepository', () => {
           headers: { Authorization: 'token dummy-token' },
         }),
       );
+    });
+  });
+
+  describe('getIssueOrPullRequestComments reuse of the stored comment list', () => {
+    const issueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/40';
+    const firstPageUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/40/comments?per_page=100&page=1';
+    type CommentResponseItem = {
+      id: number;
+      user: { login: string } | null;
+      body: string | null;
+      created_at: string;
+    };
+    const firstCommentResponseItem: CommentResponseItem = {
+      id: 91001,
+      user: { login: 'alice' },
+      body: 'first comment',
+      created_at: '2026-07-01T00:00:00Z',
+    };
+    const secondCommentResponseItem: CommentResponseItem = {
+      id: 91002,
+      user: { login: 'bob' },
+      body: 'second comment',
+      created_at: '2026-07-02T00:00:00Z',
+    };
+    const firstIssueComment = {
+      id: 91001,
+      author: 'alice',
+      body: 'first comment',
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+    };
+    const secondIssueComment = {
+      id: 91002,
+      author: 'bob',
+      body: 'second comment',
+      createdAt: new Date('2026-07-02T00:00:00Z'),
+    };
+    const buildCommentsPageResponse = (
+      comments: CommentResponseItem[],
+      etag: string,
+    ): Response =>
+      new Response(JSON.stringify(comments), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ETag: etag },
+      });
+    const createRestIssueRepository = (): RestIssueRepository =>
+      new RestIssueRepository(new LocalStorageRepository(), 'dummy-token');
+
+    it('requests the comment list once for two calls carrying the same issueUpdatedAt on one instance and returns the stored list with createdAt as a Date on the second call', async () => {
+      mockGet.mockImplementation(() =>
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"rest-etag-1"',
+        ),
+      );
+      const repository = createRestIssueRepository();
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(firstResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    it('sends the stored ETag as If-None-Match when issueUpdatedAt changed, returns the stored list on 304, and stores the new list and ETag on 200', async () => {
+      mockGet
+        .mockReturnValueOnce(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem],
+            '"rest-etag-1"',
+          ),
+        )
+        .mockReturnValueOnce(new Response(null, { status: 304 }))
+        .mockReturnValueOnce(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem, secondCommentResponseItem],
+            '"rest-etag-2"',
+          ),
+        )
+        .mockReturnValueOnce(new Response(null, { status: 304 }));
+      const repository = createRestIssueRepository();
+
+      const resultOnFirstRequest =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        });
+      const resultOnNotModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T01:00:00.000Z'),
+        });
+      const resultOnModified = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T02:00:00.000Z') },
+      );
+      const resultAfterModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T03:00:00.000Z'),
+        });
+
+      expect(mockGet).toHaveBeenCalledTimes(4);
+      expect(mockGet).toHaveBeenNthCalledWith(
+        1,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: { Authorization: 'token dummy-token' },
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        2,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-1"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        3,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-1"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        4,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-2"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(resultOnFirstRequest).toEqual([firstIssueComment]);
+      expect(resultOnNotModified).toEqual([firstIssueComment]);
+      expect(resultOnModified).toEqual([firstIssueComment, secondIssueComment]);
+      expect(resultAfterModified).toEqual([
+        firstIssueComment,
+        secondIssueComment,
+      ]);
+    });
+
+    it('requests the comment list on every call made without issueUpdatedAt', async () => {
+      mockGet.mockImplementation(() =>
+        buildCommentsPageResponse([firstCommentResponseItem], '"rest-etag-1"'),
+      );
+      const repository = createRestIssueRepository();
+
+      await repository.getIssueOrPullRequestComments(issueUrl);
+      const secondResult =
+        await repository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('maps a comment whose user and body are null to an empty author and an empty body', async () => {
+      mockGet.mockReturnValueOnce(
+        buildCommentsPageResponse(
+          [
+            {
+              id: 91003,
+              user: null,
+              body: null,
+              created_at: '2026-07-03T00:00:00Z',
+            },
+          ],
+          '"rest-etag-null"',
+        ),
+      );
+      const repository = createRestIssueRepository();
+
+      const result = await repository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(result).toEqual([
+        {
+          id: 91003,
+          author: '',
+          body: '',
+          createdAt: new Date('2026-07-03T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('rejects when the comments endpoint answers with a non-2xx status other than 304', async () => {
+      mockGet.mockReturnValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const repository = createRestIssueRepository();
+
+      await expect(
+        repository.getIssueOrPullRequestComments(issueUrl),
+      ).rejects.toThrow();
     });
   });
 });

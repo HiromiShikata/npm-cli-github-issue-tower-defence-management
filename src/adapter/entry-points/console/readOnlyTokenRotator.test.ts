@@ -86,6 +86,65 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
+    it('forwards the issueUpdatedAt option of getIssueOrPullRequestComments to the underlying repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo.getIssueOrPullRequestComments.mockResolvedValue([]);
+      const issueUpdatedAt = new Date('2026-07-06T00:00:00.000Z');
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      await rotating.getIssueOrPullRequestComments(
+        'https://github.com/o/r/issues/1',
+        { issueUpdatedAt },
+      );
+
+      expect(repo.getIssueOrPullRequestComments.mock.calls).toStrictEqual([
+        ['https://github.com/o/r/issues/1', { issueUpdatedAt }],
+      ]);
+    });
+
+    it('forwards a getIssueOrPullRequestComments call with only a URL to the underlying repository with that URL as the only argument', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo.getIssueOrPullRequestComments.mockResolvedValue([]);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      await rotating.getIssueOrPullRequestComments(
+        'https://github.com/o/r/issues/1',
+      );
+
+      expect(repo.getIssueOrPullRequestComments.mock.calls).toStrictEqual([
+        ['https://github.com/o/r/issues/1'],
+      ]);
+    });
+
+    it('looks up the authenticated user login with the write repository and never asks a read repository whose App installation token cannot read the user', async () => {
+      const readRepo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      readRepo.getAuthenticatedUserLogin.mockRejectedValue(
+        new Error(
+          'Failed to fetch authenticated user: 403 Resource not accessible by integration',
+        ),
+      );
+      writeRepo.getAuthenticatedUserLogin.mockResolvedValue('primary-login');
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [readRepo],
+        writeRepo,
+      );
+
+      await expect(rotating.getAuthenticatedUserLogin()).resolves.toBe(
+        'primary-login',
+      );
+      expect(readRepo.getAuthenticatedUserLogin).not.toHaveBeenCalled();
+    });
+
     it('re-throws any error from the single repository without rotating', async () => {
       const repo = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
@@ -533,6 +592,40 @@ describe('buildReadIssueRepositoryResolver', () => {
       );
       expect(readRepo.deleteAllCommentsByUrl).not.toHaveBeenCalled();
       expect(resolveGithubToken).toHaveBeenCalledWith('owner-a');
+    });
+
+    it('looks up the authenticated user login with the primary-token write repository when the read pool holds only an App installation token', async () => {
+      const readRepo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      readRepo.getAuthenticatedUserLogin.mockRejectedValue(
+        new Error(
+          'Failed to fetch authenticated user: 403 Resource not accessible by integration',
+        ),
+      );
+      writeRepo.getAuthenticatedUserLogin.mockResolvedValue('primary-login');
+
+      const buildIssueRepositoryForToken = jest
+        .fn()
+        .mockImplementationOnce(() => readRepo)
+        .mockImplementation(() => writeRepo);
+      const resolveGithubToken = jest.fn().mockReturnValue('write-token');
+      const mintTokens = jest.fn().mockResolvedValue(['token-1']);
+
+      const resolver = await buildReadIssueRepositoryResolver(
+        ['/path/key1-private-key.pem'],
+        mintTokens,
+        buildIssueRepositoryForToken,
+        resolveGithubToken,
+      );
+
+      const repo = resolver('https://github.com/owner-a/repo/issues/1');
+
+      await expect(repo.getAuthenticatedUserLogin()).resolves.toBe(
+        'primary-login',
+      );
+      expect(readRepo.getAuthenticatedUserLogin).not.toHaveBeenCalled();
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a');
+      expect(buildIssueRepositoryForToken).toHaveBeenCalledWith('write-token');
     });
   });
 });
