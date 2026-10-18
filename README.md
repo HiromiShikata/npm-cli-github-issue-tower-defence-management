@@ -397,6 +397,7 @@ startPreparation:
   autoRevertReopenedDoneEnabled: false # set to true to auto-revert reopened Done issues to Awaiting Workspace
   awLogDirectoryPath: '/home/user/logs-aw'
   awLogStaleThresholdMinutes: 15
+  agentDefinitionsDirectoryPath: '/home/user/agent-definitions'
   labelsAsLlmAgentName:
     - story
     - story:body-condition
@@ -482,6 +483,7 @@ workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={M
 preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
 awLogDirectoryPath: '/home/user/logs-aw'
 awLogStaleThresholdMinutes: 15
+agentDefinitionsDirectoryPath: '/home/user/agent-definitions'
 codexHomeCandidates:
   - .codex-dev1
   - .codex-dev2
