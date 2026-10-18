@@ -1031,7 +1031,7 @@ describe('consoleAutomaticProjectNavigationDecide — no auto-switch while the t
       projectMinutes: { acme: 30, beta: 30 },
       skipCount: 0,
       evaluatedPjcode: null,
-      projectTodoByHumanCounts: {},
+      projectTodoByHumanCounts: { beta: 1 },
       projectAwaitingOwnerCounts: {},
     };
 
