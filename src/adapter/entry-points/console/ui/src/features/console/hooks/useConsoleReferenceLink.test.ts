@@ -8,6 +8,7 @@ const buildState = (title: string): ConsoleIssueState => ({
   merged: false,
   isPullRequest: true,
   title,
+  stateReason: '',
 });
 
 describe('useConsoleReferenceLink', () => {
