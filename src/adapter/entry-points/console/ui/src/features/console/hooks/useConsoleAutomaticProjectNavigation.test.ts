@@ -11,6 +11,14 @@ jest.mock('../lib/navigation', () => ({
 const isTimerNeverExpired = (): boolean => false;
 const isTimerAlwaysExpired = (): boolean => true;
 
+const everyCandidateHasTodoByHumanItems: Record<string, number> = {
+  acme: 1,
+  beta: 1,
+  gamma: 1,
+  'no-timer': 1,
+};
+const noCandidateHasAwaitingOwnerItems: Record<string, number> = {};
+
 const defaultArgs = {
   timerMode: true,
   isTimerExpired: isTimerNeverExpired,
@@ -26,6 +34,8 @@ const defaultArgs = {
   explicitlySelectedPjcode: null as string | null,
   enqueueSequence: 0,
   dialogOpen: false,
+  projectTodoByHumanCounts: everyCandidateHasTodoByHumanItems,
+  projectAwaitingOwnerCounts: noCandidateHasAwaitingOwnerItems,
 };
 
 describe('useConsoleAutomaticProjectNavigation', () => {
@@ -51,6 +61,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.enqueueSequence,
         null,
         false,
+        defaultArgs.projectTodoByHumanCounts,
+        defaultArgs.projectAwaitingOwnerCounts,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -74,6 +86,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -97,6 +111,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -120,6 +136,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -143,6 +161,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -166,6 +186,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -189,6 +211,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -212,6 +236,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -235,6 +261,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -258,6 +286,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -281,6 +311,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     rerender();
@@ -306,6 +338,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -338,6 +372,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -378,6 +414,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -410,6 +448,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith(
@@ -436,6 +476,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcode: 'acme' } },
     );
@@ -471,6 +513,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcodes: [] as string[] } },
     );
@@ -499,6 +543,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { prsCount: 1 } },
     );
@@ -527,6 +573,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { todoByHumanCount: 3 } },
     );
@@ -555,6 +603,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
@@ -587,6 +637,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -610,6 +662,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -633,6 +687,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -656,6 +712,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         0,
         null,
         false,
+        everyCandidateHasTodoByHumanItems,
+        noCandidateHasAwaitingOwnerItems,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -679,6 +737,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.enqueueSequence,
         'some-task-item-key',
         false,
+        defaultArgs.projectTodoByHumanCounts,
+        defaultArgs.projectAwaitingOwnerCounts,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -702,6 +762,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.enqueueSequence,
         null,
         true,
+        defaultArgs.projectTodoByHumanCounts,
+        defaultArgs.projectAwaitingOwnerCounts,
       ),
     );
     expect(navigatePush).not.toHaveBeenCalled();
@@ -725,9 +787,274 @@ describe('useConsoleAutomaticProjectNavigation', () => {
         defaultArgs.enqueueSequence,
         null,
         defaultArgs.dialogOpen,
+        defaultArgs.projectTodoByHumanCounts,
+        defaultArgs.projectAwaitingOwnerCounts,
       ),
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  describe('a candidate project is a navigation target only when it has an actionable item count', () => {
+    type ActionableCountsScenario = {
+      name: string;
+      isTimerExpired: (minutes: number) => boolean;
+      prsCount: number;
+      todoByHumanCount: number;
+      pjcode: string;
+      pjcodes: string[];
+      projectMinutes: Record<string, number>;
+      enqueueSequence: number;
+      projectTodoByHumanCounts: Record<string, number>;
+      projectAwaitingOwnerCounts: Record<string, number>;
+      expectedNavigations: string[];
+    };
+
+    const rotationScenario: ActionableCountsScenario = {
+      name: '',
+      isTimerExpired: isTimerNeverExpired,
+      prsCount: 0,
+      todoByHumanCount: 0,
+      pjcode: 'acme',
+      pjcodes: ['acme', 'beta'],
+      projectMinutes: { acme: 30, beta: 30 },
+      enqueueSequence: 0,
+      projectTodoByHumanCounts: {},
+      projectAwaitingOwnerCounts: {},
+      expectedNavigations: [],
+    };
+
+    const timerElapsedScenario: ActionableCountsScenario = {
+      ...rotationScenario,
+      isTimerExpired: isTimerAlwaysExpired,
+      prsCount: 1,
+      todoByHumanCount: 1,
+      enqueueSequence: 1,
+    };
+
+    const navigationsFor = (scenario: ActionableCountsScenario): string[] => {
+      (navigatePush as jest.Mock).mockClear();
+      const { unmount } = renderHook(() =>
+        useConsoleAutomaticProjectNavigation(
+          true,
+          scenario.isTimerExpired,
+          scenario.prsCount,
+          scenario.todoByHumanCount,
+          scenario.pjcode,
+          scenario.pjcodes,
+          scenario.projectMinutes,
+          true,
+          true,
+          false,
+          false,
+          null,
+          scenario.enqueueSequence,
+          null,
+          false,
+          scenario.projectTodoByHumanCounts,
+          scenario.projectAwaitingOwnerCounts,
+        ),
+      );
+      const navigations = (navigatePush as jest.Mock).mock.calls.map(
+        (call: unknown[]) => String(call[0]),
+      );
+      unmount();
+      return navigations;
+    };
+
+    const expectNavigationsToMatchScenarios = (
+      scenarios: ActionableCountsScenario[],
+    ): void => {
+      const actual = scenarios.map((scenario) => ({
+        name: scenario.name,
+        navigations: navigationsFor(scenario),
+      }));
+
+      expect(actual).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          navigations: scenario.expectedNavigations,
+        })),
+      );
+    };
+
+    it('navigates to a candidate that has a positive todo-by-human count, whether the switch comes from the remaining-count-zero rotation or from the elapsed timer', () => {
+      expectNavigationsToMatchScenarios([
+        {
+          ...rotationScenario,
+          name: 'rotation: candidate with only a positive todo-by-human count',
+          projectTodoByHumanCounts: { beta: 2 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: candidate with both counts positive',
+          projectTodoByHumanCounts: { beta: 3 },
+          projectAwaitingOwnerCounts: { beta: 4 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: first candidate has zero counts and the second has a positive count',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { beta: 0, gamma: 1 },
+          expectedNavigations: ['/projects/gamma/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: the only eligible candidate, holding a todo-by-human count, sits before the current project in the list',
+          pjcode: 'gamma',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { acme: 1 },
+          expectedNavigations: ['/projects/acme/todo-by-human'],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: candidate with only a positive todo-by-human count',
+          projectTodoByHumanCounts: { beta: 1 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: first candidate has zero counts and the second has a positive todo-by-human count',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { beta: 0, gamma: 1 },
+          expectedNavigations: ['/projects/gamma/todo-by-human'],
+        },
+      ]);
+    });
+
+    it('navigates to a candidate whose only positive count is the awaiting-owner count, whether the switch comes from the remaining-count-zero rotation or from the elapsed timer', () => {
+      expectNavigationsToMatchScenarios([
+        {
+          ...rotationScenario,
+          name: 'rotation: candidate with only a positive awaiting-owner count',
+          projectAwaitingOwnerCounts: { beta: 1 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: two eligible candidates, the first in rotation order wins whichever count kind it has',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { gamma: 2 },
+          projectAwaitingOwnerCounts: { beta: 1 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: the only eligible candidate, holding an awaiting-owner count, sits before the current project in the list',
+          pjcode: 'gamma',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectAwaitingOwnerCounts: { acme: 1 },
+          expectedNavigations: ['/projects/acme/todo-by-human'],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: first candidate has zero counts and the second has only a positive awaiting-owner count',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { beta: 0, gamma: 0 },
+          projectAwaitingOwnerCounts: { beta: 0, gamma: 1 },
+          expectedNavigations: ['/projects/gamma/todo-by-human'],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: candidate with only a positive awaiting-owner count',
+          projectAwaitingOwnerCounts: { beta: 3 },
+          expectedNavigations: ['/projects/beta/todo-by-human'],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: first candidate has zero counts and the second has only a positive awaiting-owner count',
+          pjcodes: ['acme', 'beta', 'gamma'],
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectTodoByHumanCounts: { beta: 0, gamma: 0 },
+          projectAwaitingOwnerCounts: { beta: 0, gamma: 2 },
+          expectedNavigations: ['/projects/gamma/todo-by-human'],
+        },
+      ]);
+    });
+
+    it('does not navigate when no candidate has a positive count or minutes, whether the switch would come from the remaining-count-zero rotation or from the elapsed timer', () => {
+      expectNavigationsToMatchScenarios([
+        {
+          ...rotationScenario,
+          name: 'rotation: candidate with both counts explicitly zero',
+          projectTodoByHumanCounts: { beta: 0 },
+          projectAwaitingOwnerCounts: { beta: 0 },
+          expectedNavigations: [],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: no counts supplied for any project',
+          expectedNavigations: [],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: only the current project has positive counts',
+          projectTodoByHumanCounts: { acme: 5 },
+          projectAwaitingOwnerCounts: { acme: 5 },
+          expectedNavigations: [],
+        },
+        {
+          ...rotationScenario,
+          name: 'rotation: candidate has positive counts but zero minutes',
+          projectMinutes: { acme: 30, beta: 0 },
+          projectTodoByHumanCounts: { beta: 2 },
+          projectAwaitingOwnerCounts: { beta: 2 },
+          expectedNavigations: [],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: candidate with both counts zero',
+          projectTodoByHumanCounts: { beta: 0 },
+          projectAwaitingOwnerCounts: { beta: 0 },
+          expectedNavigations: [],
+        },
+        {
+          ...timerElapsedScenario,
+          name: 'timer elapsed: no counts supplied for any project',
+          expectedNavigations: [],
+        },
+      ]);
+    });
+
+    it('does not rotate into a project without actionable items while cycling through the other projects', () => {
+      const { rerender } = renderHook(
+        ({ pjcode }: { pjcode: string }) =>
+          useConsoleAutomaticProjectNavigation(
+            true,
+            isTimerNeverExpired,
+            0,
+            0,
+            pjcode,
+            ['acme', 'beta', 'gamma'],
+            { acme: 30, beta: 30, gamma: 30 },
+            true,
+            true,
+            false,
+            false,
+            null,
+            0,
+            null,
+            false,
+            { beta: 1, gamma: 0 },
+            { gamma: 0 },
+          ),
+        { initialProps: { pjcode: 'acme' } },
+      );
+      expect((navigatePush as jest.Mock).mock.calls).toEqual([
+        ['/projects/beta/todo-by-human'],
+      ]);
+      (navigatePush as jest.Mock).mockClear();
+
+      rerender({ pjcode: 'beta' });
+      expect(navigatePush).not.toHaveBeenCalled();
+    });
   });
 
   describe('enqueueSequence drives navigation evaluation with no write-confirmation wait', () => {
@@ -749,6 +1076,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           1,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       );
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -773,6 +1102,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             enqueueSequence,
             null,
             false,
+            everyCandidateHasTodoByHumanItems,
+            noCandidateHasAwaitingOwnerItems,
           ),
         { initialProps: { enqueueSequence: 0 } },
       );
@@ -801,6 +1132,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             enqueueSequence,
             null,
             false,
+            everyCandidateHasTodoByHumanItems,
+            noCandidateHasAwaitingOwnerItems,
           ),
         { initialProps: { enqueueSequence: 1 } },
       );
@@ -830,6 +1163,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             enqueueSequence,
             null,
             false,
+            everyCandidateHasTodoByHumanItems,
+            noCandidateHasAwaitingOwnerItems,
           ),
         { initialProps: { enqueueSequence: 1 } },
       );
@@ -860,6 +1195,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           1,
           'some-task-item-key',
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       );
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -883,6 +1220,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           1,
           null,
           true,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       );
       expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
@@ -906,6 +1245,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           0,
           null,
           true,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       );
       expect(navigatePush).not.toHaveBeenCalled();
@@ -929,6 +1270,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
           1,
           null,
           false,
+          everyCandidateHasTodoByHumanItems,
+          noCandidateHasAwaitingOwnerItems,
         ),
       );
       expect(navigatePush).toHaveBeenCalledTimes(1);
@@ -981,6 +1324,8 @@ describe('useConsoleAutomaticProjectNavigation', () => {
             actionQueue.enqueueSequence,
             null,
             false,
+            everyCandidateHasTodoByHumanItems,
+            noCandidateHasAwaitingOwnerItems,
           );
           return actionQueue;
         },
