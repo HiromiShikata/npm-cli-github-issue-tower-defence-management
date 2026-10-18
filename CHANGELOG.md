@@ -1,3 +1,10 @@
+## [2.177.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.0...v2.177.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **scheduler:** reduce depended-issue restore REST calls and route console app reads per project ([#3518](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3518)) ([b001107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b00110794307e4edf65faf0c3ccf57c25c8026dd))
+
 # [2.177.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.176.0...v2.177.0) (2026-10-18)
 
 
