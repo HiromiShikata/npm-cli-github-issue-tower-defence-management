@@ -4686,7 +4686,12 @@ export class ApiV3CheerioRestIssueRepository
     issueOrPrUrl: string,
     commentBody: string,
   ): Promise<IssueComment> => {
-    return this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
+    const createdComment = await this.restIssueRepository.createComment(
+      issueOrPrUrl,
+      commentBody,
+    );
+    await this.markStoredIssueCommentListForRevalidation(issueOrPrUrl);
+    return createdComment;
   };
 
   private fetchIssueBodyResponse = (url: string): Promise<Response> => {
