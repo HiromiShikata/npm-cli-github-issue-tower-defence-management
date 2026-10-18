@@ -121,4 +121,26 @@ describe('ConsoleStoryDescriptionModalDialog', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('does not intercept Enter in the story description field, leaving a list-item line to ordinary native newline handling unchanged', () => {
+    const cases = [{ input: '- test' }, { input: '- ' }];
+    for (const { input } of cases) {
+      const { getByPlaceholderText, unmount } = render(
+        <ConsoleStoryDescriptionModalDialog {...defaultProps} />,
+      );
+      const textarea = getByPlaceholderText(
+        'Story description',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(textarea, { target: { value: input } });
+      textarea.setSelectionRange(input.length, input.length);
+      const notDefaultPrevented = fireEvent.keyDown(textarea, {
+        key: 'Enter',
+      });
+      expect(notDefaultPrevented).toBe(true);
+      expect(textarea.value).toBe(input);
+      expect(textarea.selectionStart).toBe(input.length);
+      expect(textarea.selectionEnd).toBe(input.length);
+      unmount();
+    }
+  });
 });
