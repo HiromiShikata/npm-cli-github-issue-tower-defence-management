@@ -63,6 +63,8 @@ describe('GenerateDashboardRowUseCase', () => {
       humanPendingRed: 0,
       humanPendingYellow: 0,
       humanPendingBlue: 0,
+      consoleTodoByHumanCount: 0,
+      consoleAwaitingOwnerCount: 0,
     });
   });
 
@@ -90,6 +92,8 @@ describe('GenerateDashboardRowUseCase', () => {
       humanPendingRed: 0,
       humanPendingYellow: 0,
       humanPendingBlue: 0,
+      consoleTodoByHumanCount: 1,
+      consoleAwaitingOwnerCount: 1,
     });
   });
 
@@ -120,6 +124,8 @@ describe('GenerateDashboardRowUseCase', () => {
       humanPendingRed: 0,
       humanPendingYellow: 0,
       humanPendingBlue: 0,
+      consoleTodoByHumanCount: 0,
+      consoleAwaitingOwnerCount: 0,
     });
   });
 
@@ -151,7 +157,70 @@ describe('GenerateDashboardRowUseCase', () => {
       humanPendingRed: 0,
       humanPendingYellow: 0,
       humanPendingBlue: 0,
+      consoleTodoByHumanCount: 0,
+      consoleAwaitingOwnerCount: 0,
     });
+  });
+
+  it('counts consoleTodoByHumanCount for a legacy Todo-status issue while todo stays 0', () => {
+    const issues = [makeIssue({ status: 'Todo' })];
+
+    const result = usecase.run({
+      issues,
+      assigneeLogin: ASSIGNEE,
+      storyColorMap: new Map(),
+    });
+
+    expect(result.todo).toBe(0);
+    expect(result.consoleTodoByHumanCount).toBe(1);
+  });
+
+  it.each([
+    {
+      scenario:
+        'an issue with nextActionDate set, which qc excludes via the actionable predicate',
+      issueOverrides: {
+        status: 'Awaiting Owner',
+        nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+      },
+    },
+    {
+      scenario:
+        'an issue with nextActionHour set, which qc excludes via the actionable predicate',
+      issueOverrides: { status: 'Awaiting Owner', nextActionHour: 10 },
+    },
+    {
+      scenario:
+        'an issue with a differently-cased Awaiting Owner status, which qc excludes via exact-case matching',
+      issueOverrides: { status: 'awaiting owner' },
+    },
+  ])(
+    'counts consoleAwaitingOwnerCount for $scenario while qc stays 0',
+    ({ issueOverrides }) => {
+      const issues = [makeIssue(issueOverrides)];
+
+      const result = usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMap: new Map(),
+      });
+
+      expect(result.qc).toBe(0);
+      expect(result.consoleAwaitingOwnerCount).toBe(1);
+    },
+  );
+
+  it('excludes an In Tmux by agent status issue from both new actionable count fields', () => {
+    const issues = [makeIssue({ status: 'In Tmux by agent' })];
+
+    const result = usecase.run({
+      issues,
+      assigneeLogin: ASSIGNEE,
+      storyColorMap: new Map(),
+    });
+
+    expect(result.consoleTodoByHumanCount).toBe(0);
+    expect(result.consoleAwaitingOwnerCount).toBe(0);
   });
 
   it('counts dep as Awaiting Workspace issues blocked by a dependency, and never as ws', () => {
