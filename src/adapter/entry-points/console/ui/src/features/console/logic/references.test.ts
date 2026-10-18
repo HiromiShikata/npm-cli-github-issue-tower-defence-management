@@ -102,4 +102,40 @@ describe('referenceStateToIconInput', () => {
       stateReason: '',
     });
   });
+
+  it('maps a not_planned closed issue to the not_planned icon input', () => {
+    expect(
+      referenceStateToIconInput({
+        state: 'CLOSED',
+        merged: false,
+        isPullRequest: false,
+        title: 'not planned issue',
+        stateReason: 'not_planned',
+      }),
+    ).toEqual({
+      isPr: false,
+      state: 'closed',
+      merged: false,
+      isDraft: false,
+      stateReason: 'not_planned',
+    });
+  });
+
+  it('maps a completed closed issue to the completed icon input', () => {
+    expect(
+      referenceStateToIconInput({
+        state: 'CLOSED',
+        merged: false,
+        isPullRequest: false,
+        title: 'completed issue',
+        stateReason: 'completed',
+      }),
+    ).toEqual({
+      isPr: false,
+      state: 'closed',
+      merged: false,
+      isDraft: false,
+      stateReason: 'completed',
+    });
+  });
 });
