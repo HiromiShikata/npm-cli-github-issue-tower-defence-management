@@ -3,6 +3,7 @@ import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
+  LEGACY_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
@@ -18,6 +19,8 @@ export type DashboardRow = {
   humanPendingRed: number;
   humanPendingYellow: number;
   humanPendingBlue: number;
+  consoleTodoByHumanCount: number;
+  consoleAwaitingOwnerCount: number;
 };
 
 export type GenerateDashboardRowInput = {
@@ -40,6 +43,17 @@ export class GenerateDashboardRowUseCase {
       issue.dependedIssueUrls.length === 0 &&
       issue.nextActionDate === null &&
       issue.nextActionHour === null;
+
+    const consoleTodoByHuman = (issue: Issue): boolean =>
+      actionable(issue) &&
+      (issue.status === TODO_STATUS_NAME ||
+        issue.status === LEGACY_TODO_STATUS_NAME);
+
+    const consoleAwaitingOwner = (issue: Issue): boolean =>
+      mine(issue) &&
+      issue.dependedIssueUrls.length === 0 &&
+      issue.status !== null &&
+      issue.status.toLowerCase() === AWAITING_OWNER_STATUS_NAME.toLowerCase();
 
     const countActionableWithStatus = (statusName: string): number =>
       issues.filter((issue) => issue.status === statusName && actionable(issue))
@@ -81,6 +95,8 @@ export class GenerateDashboardRowUseCase {
       humanPendingRed: countHumanPendingByStoryColor('RED'),
       humanPendingYellow: countHumanPendingByStoryColor('YELLOW'),
       humanPendingBlue: countHumanPendingByStoryColor('BLUE'),
+      consoleTodoByHumanCount: issues.filter(consoleTodoByHuman).length,
+      consoleAwaitingOwnerCount: issues.filter(consoleAwaitingOwner).length,
     };
   };
 }

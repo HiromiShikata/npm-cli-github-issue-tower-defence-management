@@ -61,7 +61,10 @@ import {
   ConsoleGithubTokenResolver,
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
-import { buildComposeDashboardInput } from './dashboardComposeService';
+import {
+  buildComposeDashboardInput,
+  readProjectRowWithFreshness,
+} from './dashboardComposeService';
 import {
   ComposeDashboardUseCase,
   dashboardComposeInputHasProjectData,
@@ -628,6 +631,28 @@ const resolveWorkflowStoryAndAgentOptions = async (
   };
 };
 
+type ProjectActionableCounts = {
+  todoByHumanCounts: Record<string, number>;
+  awaitingOwnerCounts: Record<string, number>;
+};
+
+const buildActionableCounts = (
+  options: WebServerOptions,
+): ProjectActionableCounts | null => {
+  const dashboardDataDir = options.dashboardDataDir;
+  if (dashboardDataDir === null) {
+    return null;
+  }
+  const todoByHumanCounts: Record<string, number> = {};
+  const awaitingOwnerCounts: Record<string, number> = {};
+  for (const pjcode of options.dashboardProjectNames) {
+    const { row } = readProjectRowWithFreshness(dashboardDataDir, pjcode);
+    todoByHumanCounts[pjcode] = row?.consoleTodoByHumanCount ?? 0;
+    awaitingOwnerCounts[pjcode] = row?.consoleAwaitingOwnerCount ?? 0;
+  }
+  return { todoByHumanCounts, awaitingOwnerCounts };
+};
+
 const handleReadApi = async (
   options: WebServerOptions,
   requestPath: string,
@@ -659,6 +684,7 @@ const handleReadApi = async (
     );
     const { workflowStoryEntries, workflowAgentOptions } =
       await resolveWorkflowStoryAndAgentOptions(options, workflowOwningPjcode);
+    const actionableCounts = buildActionableCounts(options);
     return {
       statusCode: 200,
       body: {
@@ -672,6 +698,7 @@ const handleReadApi = async (
         disabledPjcodes,
         workflowStoryEntries,
         workflowAgentOptions,
+        actionableCounts,
       },
     };
   }
