@@ -60,5 +60,5 @@ export const referenceStateToIconInput = (
   state: state.state.toLowerCase(),
   merged: state.merged,
   isDraft: false,
-  stateReason: '',
+  stateReason: state.stateReason,
 });

@@ -75,6 +75,7 @@ const buildCaches = (related: ConsoleRelatedPullRequest[]): ConsoleCaches => {
       merged: false,
       isPullRequest: true,
       title: 'Console item detail fixture title',
+      stateReason: '',
     }),
     fetchPullRequestStatus: async (): Promise<ConsolePullRequestStatus> => ({
       found: true,
@@ -252,5 +253,12 @@ describe('useConsoleItemDetailData', () => {
     const { result } = renderHook(() => useConsoleItemDetailData(caches, null));
     expect(result.current.body).toBe('');
     expect(result.current.relatedPullRequests).toEqual([]);
+    expect(result.current.state).toEqual({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: '',
+      stateReason: '',
+    });
   });
 });

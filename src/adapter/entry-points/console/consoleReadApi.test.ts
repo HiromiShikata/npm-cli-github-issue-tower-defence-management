@@ -404,6 +404,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
         title: 'Issue title from repository',
+        stateReason: '',
       });
       const cache = new IssueTitleStateCache(() => 0);
       const url = 'https://github.com/o/r/issues/1';
@@ -413,6 +414,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
         title: 'Issue title from repository',
+        stateReason: '',
       });
       const second = await handleIssueTitle(issueRepository, cache, url);
       expect(second.body).toEqual(first.body);
@@ -422,6 +424,27 @@ describe('consoleReadApi', () => {
       expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
     });
 
+    it('passes a non-empty stateReason from the repository through to the response body unchanged', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+        state: 'CLOSED',
+        merged: false,
+        isPullRequest: false,
+        title: 'Issue title from repository',
+        stateReason: 'not_planned',
+      });
+      const cache = new IssueTitleStateCache(() => 0);
+      const url = 'https://github.com/o/r/issues/5';
+      const response = await handleIssueTitle(issueRepository, cache, url);
+      expect(response.body).toEqual({
+        state: 'CLOSED',
+        merged: false,
+        isPullRequest: false,
+        title: 'Issue title from repository',
+        stateReason: 'not_planned',
+      });
+    });
+
     it('returns the pull request title for pull request urls', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestState.mockResolvedValue({
@@ -429,6 +452,7 @@ describe('consoleReadApi', () => {
         merged: true,
         isPullRequest: true,
         title: 'Pull request title from state',
+        stateReason: '',
       });
       const cache = new IssueTitleStateCache(() => 0);
       const url = 'https://github.com/o/r/pull/2';
@@ -438,6 +462,7 @@ describe('consoleReadApi', () => {
         merged: true,
         isPullRequest: true,
         title: 'Pull request title from state',
+        stateReason: '',
       });
       expect(issueRepository.getPullRequestSummary).not.toHaveBeenCalled();
       expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
@@ -450,6 +475,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
         title: 'Title of an issue outside the board',
+        stateReason: '',
       });
       issueRepository.getIssueByUrl.mockResolvedValue(null);
       const cache = new IssueTitleStateCache(() => 0);
@@ -463,6 +489,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
         title: 'Title of an issue outside the board',
+        stateReason: '',
       });
       expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
     });
@@ -474,6 +501,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: true,
         title: 'Open pull request title',
+        stateReason: '',
       });
       let now = 0;
       const cache = new IssueTitleStateCache(() => now);
@@ -498,6 +526,7 @@ describe('consoleReadApi', () => {
         merged: true,
         isPullRequest: true,
         title: 'Merged pull request title',
+        stateReason: '',
       });
       let now = 0;
       const cache = new IssueTitleStateCache(() => now);
@@ -534,6 +563,7 @@ describe('consoleReadApi', () => {
         merged: false,
         isPullRequest: false,
         title: 'Stale title',
+        stateReason: '',
       };
       const rateLimitMessage =
         'Failed to fetch state for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly';

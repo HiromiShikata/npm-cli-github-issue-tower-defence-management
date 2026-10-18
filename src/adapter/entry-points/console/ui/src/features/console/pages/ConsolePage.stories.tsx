@@ -76,6 +76,7 @@ const airplaneSnapshot: AirplaneSnapshot = {
         merged: false,
         isPullRequest: true,
         title: pullRequestItem.title,
+        stateReason: '',
       },
       files: [],
       commits: [],

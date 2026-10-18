@@ -325,7 +325,13 @@ const parseItemSnapshot = (item: unknown): AirplaneItemSnapshot => {
     return {
       body: '',
       comments: [],
-      state: { state: 'open', merged: false, isPullRequest: false, title: '' },
+      state: {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title: '',
+        stateReason: '',
+      },
       files: null,
       commits: null,
       prStatus: null,
@@ -338,6 +344,7 @@ const parseItemSnapshot = (item: unknown): AirplaneItemSnapshot => {
     merged: getBoolean(stateRaw.merged),
     isPullRequest: getBoolean(stateRaw.isPullRequest),
     title: getString(stateRaw.title),
+    stateReason: getString(stateRaw.stateReason),
   };
   const files =
     item.files === null

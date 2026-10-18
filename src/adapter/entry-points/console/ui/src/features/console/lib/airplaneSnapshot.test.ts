@@ -150,6 +150,7 @@ describe('airplaneSnapshot', () => {
               merged: false,
               isPullRequest: true,
               title: 'PR',
+              stateReason: '',
             },
             files: [
               {
@@ -212,6 +213,7 @@ describe('airplaneSnapshot', () => {
               merged: false,
               isPullRequest: false,
               title: 'Issue',
+              stateReason: '',
             },
             files: null,
             commits: null,
@@ -245,6 +247,36 @@ describe('airplaneSnapshot', () => {
       expect(item?.relatedPrs?.[0].url).toBe('https://github.com/o/r/pull/10');
     });
 
+    it('reads the stateReason field through from the raw state object when present', () => {
+      const url = 'https://github.com/o/r/issues/6';
+      const raw = {
+        capturedAt: '2026-01-01T00:00:00Z',
+        tabs: {},
+        failures: [],
+        items: {
+          [url]: {
+            body: 'Issue body',
+            comments: [],
+            state: {
+              state: 'closed',
+              merged: false,
+              isPullRequest: false,
+              title: 'Not planned issue',
+              stateReason: 'not_planned',
+            },
+            files: null,
+            commits: null,
+            prStatus: null,
+            relatedPrs: null,
+          },
+        },
+      };
+
+      const result = parseAirplaneSnapshot(raw);
+      const item = result?.items[url];
+      expect(item?.state.stateReason).toBe('not_planned');
+    });
+
     it('handles unknown mergeableStatus gracefully', () => {
       const url = 'https://github.com/o/r/pull/2';
       const raw = {
@@ -260,6 +292,7 @@ describe('airplaneSnapshot', () => {
               merged: false,
               isPullRequest: true,
               title: '',
+              stateReason: '',
             },
             files: [],
             commits: [],

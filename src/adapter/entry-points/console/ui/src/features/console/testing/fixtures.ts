@@ -220,6 +220,7 @@ export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
         merged: true,
         isPullRequest: true,
         title: 'Add serveConsole subcommand under entry-points',
+        stateReason: '',
       },
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845':
       {
@@ -228,6 +229,7 @@ export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
         isPullRequest: false,
         title:
           'Scaffold React console UI under entry-points with build bundling',
+        stateReason: '',
       },
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692':
       {
@@ -235,6 +237,7 @@ export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
         merged: false,
         isPullRequest: false,
         title: 'Publish the generated documentation site to GitHub Pages',
+        stateReason: '',
       },
   };
 
@@ -417,4 +420,5 @@ export const consoleIssueStateFixture: ConsoleIssueState = {
   merged: false,
   isPullRequest: true,
   title: 'Add serveConsole subcommand under entry-points',
+  stateReason: '',
 };

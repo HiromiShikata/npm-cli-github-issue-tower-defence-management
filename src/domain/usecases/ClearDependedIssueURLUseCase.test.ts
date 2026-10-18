@@ -873,6 +873,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                   merged: false,
                   isPullRequest: false,
                   title: 'x',
+                  stateReason: '',
                 }
               : Promise.reject(new Error('HTTP 404 Not Found')),
         );
@@ -945,6 +946,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                   merged: false,
                   isPullRequest: false,
                   title: 'x',
+                  stateReason: '',
                 }
               : Promise.reject(new Error('HTTP 404 Not Found')),
         );
@@ -1190,6 +1192,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                   merged: false,
                   isPullRequest: false,
                   title: 'x',
+                  stateReason: '',
                 }
               : Promise.reject(new Error('HTTP 404 Not Found')),
         );
@@ -1245,6 +1248,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                   merged: false,
                   isPullRequest: false,
                   title: 'x',
+                  stateReason: '',
                 }
               : Promise.reject(new Error('HTTP 404 Not Found')),
         );
@@ -1341,6 +1345,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                     merged: false,
                     isPullRequest: false,
                     title: 'x',
+                    stateReason: '',
                   }
                 : Promise.reject(
                     new GitHubConfirmedNotFoundError(
@@ -1530,6 +1535,7 @@ describe('ClearDependedIssueURLUseCase', () => {
                     merged: false,
                     isPullRequest: false,
                     title: 'x',
+                    stateReason: '',
                   }
                 : Promise.reject(
                     new GitHubConfirmedNotFoundError(

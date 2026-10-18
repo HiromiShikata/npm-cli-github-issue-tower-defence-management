@@ -176,6 +176,7 @@ describe('createConsoleApiClient', () => {
       merged: true,
       isPullRequest: true,
       title: 'Decorate PR links',
+      stateReason: '',
     });
   });
 
@@ -189,6 +190,27 @@ describe('createConsoleApiClient', () => {
       merged: false,
       isPullRequest: false,
       title: '',
+      stateReason: '',
+    });
+  });
+
+  it('reads the stateReason field through from the payload when present', async () => {
+    mockFetchOnce({
+      state: 'closed',
+      merged: false,
+      isPullRequest: false,
+      title: 'Not planned issue',
+      stateReason: 'not_planned',
+    });
+    const client = createConsoleApiClient();
+    expect(
+      await client.fetchIssueState('https://github.com/o/r/issues/2'),
+    ).toEqual({
+      state: 'closed',
+      merged: false,
+      isPullRequest: false,
+      title: 'Not planned issue',
+      stateReason: 'not_planned',
     });
   });
 

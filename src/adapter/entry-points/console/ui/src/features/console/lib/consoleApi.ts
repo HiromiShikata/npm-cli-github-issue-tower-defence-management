@@ -251,13 +251,20 @@ const parsePullRequestStatus = (payload: unknown): ConsolePullRequestStatus => {
 
 const parseState = (payload: unknown): ConsoleIssueState => {
   if (!isRecord(payload)) {
-    return { state: 'open', merged: false, isPullRequest: false, title: '' };
+    return {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: '',
+      stateReason: '',
+    };
   }
   return {
     state: getString(payload.state) || 'open',
     merged: getBoolean(payload.merged),
     isPullRequest: getBoolean(payload.isPullRequest),
     title: getString(payload.title),
+    stateReason: getString(payload.stateReason),
   };
 };
 

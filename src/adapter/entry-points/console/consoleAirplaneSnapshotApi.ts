@@ -51,6 +51,7 @@ export type AirplaneStateItem = {
   merged: boolean;
   isPullRequest: boolean;
   title: string;
+  stateReason: string;
 };
 
 export type AirplaneRelatedPrItem = {
@@ -252,13 +253,20 @@ const normalizeComments = (body: unknown): AirplaneCommentItem[] => {
 
 const normalizeState = (body: unknown): AirplaneStateItem => {
   if (!isRecord(body)) {
-    return { state: 'open', merged: false, isPullRequest: false, title: '' };
+    return {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: '',
+      stateReason: '',
+    };
   }
   return {
     state: getString(body.state) || 'open',
     merged: getBoolean(body.merged),
     isPullRequest: getBoolean(body.isPullRequest),
     title: getString(body.title),
+    stateReason: getString(body.stateReason),
   };
 };
 

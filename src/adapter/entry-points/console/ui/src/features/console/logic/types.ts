@@ -61,6 +61,7 @@ export type ConsoleIssueState = {
   merged: boolean;
   isPullRequest: boolean;
   title: string;
+  stateReason: string;
 };
 
 export type ConsoleMergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';

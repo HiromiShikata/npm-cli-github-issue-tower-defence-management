@@ -97,6 +97,7 @@ const createFakeIssueStateRepository = (
         merged: false,
         isPullRequest: false,
         title: `Title of ${url}`,
+        stateReason: '',
       };
     },
   };

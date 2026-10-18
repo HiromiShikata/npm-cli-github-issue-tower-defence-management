@@ -88,6 +88,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: false,
       title: 'Issue title',
+      stateReason: '',
     });
     issueRepository.getOpenPullRequestCiStatus.mockImplementation(
       async (url: string) => ({
@@ -164,6 +165,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: false,
       title: 'Issue title',
+      stateReason: '',
     });
     issueRepository.getOpenPullRequestCiStatus.mockImplementation(
       async (url: string) =>
@@ -224,6 +226,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: false,
       title: 'Issue title',
+      stateReason: '',
     });
 
     const response = buildResponseWriter();
@@ -257,6 +260,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: false,
       title: 'Title',
+      stateReason: '',
     });
 
     const response = buildResponseWriter();
@@ -294,6 +298,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: false,
       title: 'Issue',
+      stateReason: '',
     });
 
     const response = buildResponseWriter();
@@ -325,6 +330,7 @@ describe('handleAirplaneSync', () => {
       merged: false,
       isPullRequest: true,
       title: 'PR title',
+      stateReason: '',
     });
     issueRepository.getPullRequestDetail.mockResolvedValue(null);
     issueRepository.getPullRequestCommits.mockResolvedValue([]);
@@ -345,6 +351,78 @@ describe('handleAirplaneSync', () => {
     const doneEvent = events.find(isDoneEvent);
     expect(doneEvent?.snapshot.items[prUrl]).toBeDefined();
     expect(doneEvent?.snapshot.items[prUrl]?.prStatus).toBeDefined();
+  });
+
+  it('carries the repository state fields, including a non-empty stateReason, through to the snapshot item state', async () => {
+    const issueUrl = 'https://github.com/o/r/issues/6';
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
+      items: [{ url: issueUrl, isPr: false, relatedOpenPullRequestUrls: [] }],
+    });
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockResolvedValue('body');
+    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+      state: 'closed',
+      merged: true,
+      isPullRequest: true,
+      title: 'Closed PR title',
+      stateReason: 'not_planned',
+    });
+
+    const response = buildResponseWriter();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      () => issueRepository,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+    );
+
+    const events = captureEvents(response);
+    const doneEvent = events.find(isDoneEvent);
+    const itemData = doneEvent?.snapshot.items[issueUrl];
+    expect(itemData?.state).toEqual({
+      state: 'closed',
+      merged: true,
+      isPullRequest: true,
+      title: 'Closed PR title',
+      stateReason: 'not_planned',
+    });
+  });
+
+  it('defaults every state field, including stateReason, when the state fetch fails but the body fetch succeeds', async () => {
+    const issueUrl = 'https://github.com/o/r/issues/7';
+    writeListJson(tmpDir, 'pj1', 'todo-by-human', {
+      items: [{ url: issueUrl, isPr: false, relatedOpenPullRequestUrls: [] }],
+    });
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockResolvedValue('body');
+    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    issueRepository.getIssueOrPullRequestState.mockRejectedValue(
+      new Error('state fetch failed'),
+    );
+
+    const response = buildResponseWriter();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      () => issueRepository,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+    );
+
+    const events = captureEvents(response);
+    const doneEvent = events.find(isDoneEvent);
+    const itemData = doneEvent?.snapshot.items[issueUrl];
+    expect(itemData?.state).toEqual({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: '',
+      stateReason: '',
+    });
   });
 
   it('when targetUrls is provided and all URLs fail, snapshot has empty items and non-empty failures', async () => {
