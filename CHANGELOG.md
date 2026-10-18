@@ -1,3 +1,10 @@
+# [2.178.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.2...v2.178.0) (2026-10-18)
+
+
+### Features
+
+* **console:** wire actionableCounts through console frontend to both automatic-navigation call sites ([#3524](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3524)) ([b337524](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b3375247c49640fced80a1aadfa10ac8572e17df))
+
 ## [2.177.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.177.1...v2.177.2) (2026-10-18)
 
 
