@@ -1,3 +1,10 @@
+# [2.175.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.174.0...v2.175.0) (2026-10-18)
+
+
+### Features
+
+* **console:** add cross-project actionable-item-count interface contract for timer-mode navigation ([#3505](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3505)) ([44b1f8a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44b1f8af1481086b7f8e7c855abd80c7c95077eb))
+
 # [2.174.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.173.0...v2.174.0) (2026-10-18)
 
 
