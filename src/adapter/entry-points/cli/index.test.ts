@@ -168,6 +168,30 @@ jest.mock('../console/webServer', () => {
       mockStartWebServer(options),
   };
 });
+jest.mock('../console/readOnlyTokenRotator', () => {
+  const actual = jest.requireActual<
+    typeof import('../console/readOnlyTokenRotator')
+  >('../console/readOnlyTokenRotator');
+  return {
+    ...actual,
+    buildReadIssueRepositoryResolver: jest.fn(
+      actual.buildReadIssueRepositoryResolver,
+    ),
+  };
+});
+jest.mock('./githubAppTokenMinter', () => {
+  const actual = jest.requireActual<typeof import('./githubAppTokenMinter')>(
+    './githubAppTokenMinter',
+  );
+  return {
+    ...actual,
+    mintReadOnlyTokensFromKeyPaths: jest.fn(
+      actual.mintReadOnlyTokensFromKeyPaths,
+    ),
+  };
+});
+import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
+import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 
 describe('CLI', () => {
   const originalEnv = process.env;
@@ -5324,6 +5348,123 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('serveWeb console read issue repository resolver wiring', () => {
+    const actualMintReadOnlyTokensFromKeyPaths = jest.requireActual<
+      typeof import('./githubAppTokenMinter')
+    >('./githubAppTokenMinter').mintReadOnlyTokensFromKeyPaths;
+    const runServeWebWithConfig = async (
+      config: Record<string, unknown>,
+    ): Promise<void> => {
+      writeConfig({
+        ...defaultConfig,
+        consoleAccessToken: 'config-token',
+        ...config,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--dashboardProjectNames',
+        'acme,globex',
+      ]);
+    };
+
+    let consoleLogSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      jest
+        .mocked(mintReadOnlyTokensFromKeyPaths)
+        .mockResolvedValue(['app-token']);
+    });
+
+    afterEach(() => {
+      jest
+        .mocked(mintReadOnlyTokensFromKeyPaths)
+        .mockImplementation(actualMintReadOnlyTokensFromKeyPaths);
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should pass the per-project consoleGithubAppPrivateKeyPaths and a repository owner to project key resolver to the console read issue repository resolver', async () => {
+      await runServeWebWithConfig({
+        consoleProjects: {
+          acme: 'https://github.com/orgs/acme-org/projects/1',
+          globex: 'https://github.com/users/globex-user/projects/2',
+        },
+        consoleGithubTokens: {
+          acme: 'acme-project-token',
+          globex: 'globex-project-token',
+        },
+        consoleGithubAppPrivateKeyPaths: {
+          acme: ['/nonexistent/acme-app.pem'],
+        },
+      });
+
+      expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(buildReadIssueRepositoryResolver),
+      ).toHaveBeenCalledTimes(1);
+      const [
+        appPrivateKeyPathsByProject,
+        ,
+        ,
+        ,
+        resolveProjectKeyForRepositoryOwner,
+      ] = jest.mocked(buildReadIssueRepositoryResolver).mock.calls[0];
+      expect(appPrivateKeyPathsByProject).toEqual({
+        acme: ['/nonexistent/acme-app.pem'],
+      });
+      expect(resolveProjectKeyForRepositoryOwner).toEqual(expect.any(Function));
+      const repositoryOwnerToExpectedProjectKey: {
+        repositoryOwner: string;
+        expectedProjectKey: string | null;
+      }[] = [
+        { repositoryOwner: 'acme-org', expectedProjectKey: 'acme' },
+        { repositoryOwner: 'ACME-ORG', expectedProjectKey: 'acme' },
+        { repositoryOwner: 'globex-user', expectedProjectKey: 'globex' },
+        { repositoryOwner: 'someone-else', expectedProjectKey: null },
+      ];
+      expect(
+        repositoryOwnerToExpectedProjectKey.map(({ repositoryOwner }) => ({
+          repositoryOwner,
+          expectedProjectKey:
+            resolveProjectKeyForRepositoryOwner(repositoryOwner),
+        })),
+      ).toEqual(repositoryOwnerToExpectedProjectKey);
+    });
+
+    it('should pass no app private key paths to the console read issue repository resolver when only the top-level githubAppPrivateKeyPaths is set', async () => {
+      await runServeWebWithConfig({
+        githubAppPrivateKeyPaths: ['/nonexistent/app.pem'],
+      });
+
+      expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(buildReadIssueRepositoryResolver),
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(buildReadIssueRepositoryResolver).mock.calls[0][0],
+      ).toBeUndefined();
+    });
+
+    it('should pass no app private key paths to the console read issue repository resolver when consoleGithubAppPrivateKeyPaths is a list beside a top-level githubAppPrivateKeyPaths', async () => {
+      await runServeWebWithConfig({
+        githubAppPrivateKeyPaths: ['/nonexistent/app.pem'],
+        consoleGithubAppPrivateKeyPaths: ['/nonexistent/console-app.pem'],
+      });
+
+      expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(buildReadIssueRepositoryResolver),
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(buildReadIssueRepositoryResolver).mock.calls[0][0],
+      ).toBeUndefined();
     });
   });
 

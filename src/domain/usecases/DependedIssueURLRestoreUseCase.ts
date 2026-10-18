@@ -115,9 +115,15 @@ export class DependedIssueURLRestoreUseCase {
   }): Promise<void> => {
     const { project, fieldId, dependingIssue, issues, allowedIssueAuthors } =
       input;
-    const comments = await this.issueRepository.getIssueOrPullRequestComments(
-      dependingIssue.url,
-    );
+    const comments =
+      dependingIssue.updatedAt === undefined
+        ? await this.issueRepository.getIssueOrPullRequestComments(
+            dependingIssue.url,
+          )
+        : await this.issueRepository.getIssueOrPullRequestComments(
+            dependingIssue.url,
+            { issueUpdatedAt: dependingIssue.updatedAt },
+          );
     const relevantComments = this.parseRelevantComments(
       comments,
       allowedIssueAuthors,

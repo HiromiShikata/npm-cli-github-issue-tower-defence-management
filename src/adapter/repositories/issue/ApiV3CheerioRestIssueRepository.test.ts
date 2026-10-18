@@ -70,6 +70,7 @@ const buildCachedIssueRecord = (url: string, title: string) => ({
   isInProgress: false,
   isClosed: false,
   createdAt: '2026-07-01T00:00:00.000Z',
+  updatedAt: '2026-07-06T00:00:00.000Z',
   author: '',
   closingIssueReferenceUrls: [],
 });
@@ -211,6 +212,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isInProgress: false,
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           author: 'test-author',
           closingIssueReferenceUrls: [
             'https://github.com/HiromiShikata/test-repository/issues/7',
@@ -276,6 +278,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isInProgress: false,
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
           plainCrossRepoIssueReferenceUrls: [],
@@ -337,6 +340,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isInProgress: false,
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
           plainCrossRepoIssueReferenceUrls: [],
@@ -393,6 +397,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           isInProgress: false,
           isClosed: false,
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
           plainCrossRepoIssueReferenceUrls: [
@@ -462,6 +467,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isInProgress: false,
         isClosed: false,
         createdAt: new Date('2024-01-01T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
         author: '',
         closingIssueReferenceUrls: [],
         plainCrossRepoIssueReferenceUrls: [],
@@ -517,6 +523,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isInProgress: false,
         isClosed: false,
         createdAt: new Date('2024-01-01T00:00:00Z'),
+        updatedAt: new Date('2024-01-02T00:00:00Z'),
         author: '',
         closingIssueReferenceUrls: [],
         plainCrossRepoIssueReferenceUrls: [],
@@ -4040,6 +4047,109 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         GitHubRateLimitError,
       );
     });
+
+    const buildAuthenticatedUserResponse = (login: string): Response =>
+      new Response(JSON.stringify({ login }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    it('requests GET /user once and returns the same login when one instance is asked for the login twice', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(async () =>
+          buildAuthenticatedUserResponse('octocat'),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      const firstLogin = await repository.getAuthenticatedUserLogin();
+      const secondLogin = await repository.getAuthenticatedUserLogin();
+
+      expect(firstLogin).toBe('octocat');
+      expect(secondLogin).toBe('octocat');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/user',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('requests GET /user once when one instance is asked for the login by two concurrent callers', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(async () =>
+          buildAuthenticatedUserResponse('octocat'),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      const logins = await Promise.all([
+        repository.getAuthenticatedUserLogin(),
+        repository.getAuthenticatedUserLogin(),
+      ]);
+
+      expect(logins).toEqual(['octocat', 'octocat']);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('requests GET /user again after a failed call and returns the login of the later successful call', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'Bad credentials' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockImplementation(async () =>
+          buildAuthenticatedUserResponse('octocat'),
+        );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await expect(repository.getAuthenticatedUserLogin()).rejects.toThrow(
+        /Failed to fetch authenticated user/,
+      );
+      const loginAfterFailure = await repository.getAuthenticatedUserLogin();
+
+      expect(loginAfterFailure).toBe('octocat');
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('sends the instance token as a Bearer Authorization header and the GitHub JSON Accept header to GET /user', async () => {
+      const requestHeaders: Headers[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(async (_input, init) => {
+        requestHeaders.push(new Headers(init?.headers));
+        return buildAuthenticatedUserResponse('octocat');
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await repository.getAuthenticatedUserLogin();
+
+      expect(
+        requestHeaders.map((headers) => ({
+          authorization: headers.get('Authorization'),
+          accept: headers.get('Accept'),
+        })),
+      ).toEqual([
+        {
+          authorization: 'Bearer dummy',
+          accept: 'application/vnd.github+json',
+        },
+      ]);
+    });
+
+    it('rejects with the unexpected response shape error when GET /user answers without a login', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 1 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await expect(repository.getAuthenticatedUserLogin()).rejects.toThrow(
+        'Unexpected response shape when fetching authenticated user',
+      );
+    });
   });
 
   describe('approvePullRequest', () => {
@@ -6378,7 +6488,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('delegates to the underlying REST issue repository with the same comment target and body, the same way updateIssueBody delegates', async () => {
       const { repository, restIssueRepository } =
         createApiV3CheerioRestIssueRepository();
-      restIssueRepository.updateIssueCommentBody.mockResolvedValue(undefined);
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: 42,
+      });
       const commentTarget = {
         org: 'HiromiShikata',
         repo: 'test-repository',
@@ -7220,6 +7332,1231 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/issues/42',
         ),
       ).rejects.toThrow('404');
+    });
+
+    it('sends the instance token as a Bearer Authorization header and the GitHub JSON Accept header, without If-None-Match, when no comment list is stored', async () => {
+      const requestHeaders: Headers[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(async (_input, init) => {
+        requestHeaders.push(new Headers(init?.headers));
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await repository.getIssueOrPullRequestComments(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(
+        requestHeaders.map((headers) => ({
+          authorization: headers.get('Authorization'),
+          accept: headers.get('Accept'),
+          ifNoneMatch: headers.get('If-None-Match'),
+        })),
+      ).toEqual([
+        {
+          authorization: 'Bearer dummy',
+          accept: 'application/vnd.github+json',
+          ifNoneMatch: null,
+        },
+      ]);
+    });
+
+    it('rejects with the unexpected response shape error naming the URL when the comments endpoint answers with a non-array body', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'not a list' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      await expect(
+        repository.getIssueOrPullRequestComments(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.toThrow(
+        'Unexpected response shape when fetching comments for https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+    });
+
+    it('maps a comment whose user and body are null to an empty author and an empty body', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: 71003,
+              user: null,
+              body: null,
+              created_at: '2024-01-03T00:00:00Z',
+            },
+          ]),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+      const { repository } = createApiV3CheerioRestIssueRepository();
+
+      const result = await repository.getIssueOrPullRequestComments(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(result).toEqual([
+        {
+          id: 71003,
+          author: '',
+          body: '',
+          createdAt: new Date('2024-01-03T00:00:00Z'),
+        },
+      ]);
+    });
+  });
+
+  describe('getIssueOrPullRequestComments reuse of the stored comment list', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const issueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/42';
+    const firstPageUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/42/comments?per_page=100&page=1';
+    const secondPageUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/42/comments?per_page=100&page=2';
+    type CommentResponseItem = {
+      id: number;
+      user: { login: string } | null;
+      body: string | null;
+      created_at: string;
+    };
+    type RecordedCommentRequest = {
+      url: string;
+      ifNoneMatch: string | null;
+    };
+    const firstCommentResponseItem: CommentResponseItem = {
+      id: 81001,
+      user: { login: 'alice' },
+      body: 'first comment',
+      created_at: '2026-07-01T00:00:00Z',
+    };
+    const secondCommentResponseItem: CommentResponseItem = {
+      id: 81002,
+      user: { login: 'bob' },
+      body: 'second comment',
+      created_at: '2026-07-02T00:00:00Z',
+    };
+    const firstIssueComment = {
+      id: 81001,
+      author: 'alice',
+      body: 'first comment',
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+    };
+    const secondIssueComment = {
+      id: 81002,
+      author: 'bob',
+      body: 'second comment',
+      createdAt: new Date('2026-07-02T00:00:00Z'),
+    };
+    const buildCommentsPageResponse = (
+      comments: CommentResponseItem[],
+      etag: string,
+    ): Response =>
+      new Response(JSON.stringify(comments), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ETag: etag },
+      });
+    const spyOnFetchWithResponses = (responsesInRequestOrder: Response[]) => {
+      const recordedRequests: RecordedCommentRequest[] = [];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(async (input, init) => {
+          recordedRequests.push({
+            url: input instanceof Request ? input.url : input.toString(),
+            ifNoneMatch: new Headers(init?.headers).get('If-None-Match'),
+          });
+          return (
+            responsesInRequestOrder.shift() ??
+            new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          );
+        });
+      return { fetchSpy, recordedRequests };
+    };
+
+    it('requests the comment list once when two repository instances sharing the stored records read the same issue with the same issueUpdatedAt, and the later read returns the stored list with createdAt as a Date', async () => {
+      const storedRecordsByKey = new Map<string, string>();
+      const { fetchSpy } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"etag-1"',
+        ),
+      ]);
+      const earlierProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      const laterProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+
+      const earlierResult =
+        await earlierProcess.repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+        );
+      const laterResult =
+        await laterProcess.repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(earlierResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect(laterResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect([...storedRecordsByKey.keys()]).toContain(
+        'issueOrPullRequestComments/HiromiShikata/test-repository/42',
+      );
+    });
+
+    it('sends the stored ETag as If-None-Match when issueUpdatedAt changed, returns the stored list on 304, and stores the new list and ETag on 200', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"etag-1"'),
+        new Response(null, { status: 304 }),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"etag-2"',
+        ),
+        new Response(null, { status: 304 }),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      const resultOnFirstRequest =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        });
+      const resultOnNotModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T01:00:00.000Z'),
+        });
+      const resultOnModified = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T02:00:00.000Z') },
+      );
+      const resultAfterModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T03:00:00.000Z'),
+        });
+
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: '"etag-1"' },
+        { url: firstPageUrl, ifNoneMatch: '"etag-1"' },
+        { url: firstPageUrl, ifNoneMatch: '"etag-2"' },
+      ]);
+      expect(resultOnFirstRequest).toEqual([firstIssueComment]);
+      expect(resultOnNotModified).toEqual([firstIssueComment]);
+      expect(resultOnModified).toEqual([firstIssueComment, secondIssueComment]);
+      expect(resultAfterModified).toEqual([
+        firstIssueComment,
+        secondIssueComment,
+      ]);
+    });
+
+    it('sends each stored page its own ETag as If-None-Match and returns every stored page when both pages answer 304', async () => {
+      const fullFirstPage: CommentResponseItem[] = Array.from(
+        { length: 100 },
+        (_, index) => ({
+          id: index + 1,
+          user: { login: `user${index}` },
+          body: `comment ${index}`,
+          created_at: '2026-07-01T00:00:00Z',
+        }),
+      );
+      const secondPage: CommentResponseItem[] = [
+        {
+          id: 101,
+          user: { login: 'last' },
+          body: 'last comment',
+          created_at: '2026-07-02T00:00:00Z',
+        },
+      ];
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(fullFirstPage, '"page-1-etag"'),
+        buildCommentsPageResponse(secondPage, '"page-2-etag"'),
+        new Response(null, { status: 304 }),
+        new Response(null, { status: 304 }),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      const resultOnFirstRequest =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        });
+      const resultOnNotModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T01:00:00.000Z'),
+        });
+
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: secondPageUrl, ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: '"page-1-etag"' },
+        { url: secondPageUrl, ifNoneMatch: '"page-2-etag"' },
+      ]);
+      expect(resultOnFirstRequest.map((comment) => comment.id)).toEqual(
+        Array.from({ length: 101 }, (_, index) => index + 1),
+      );
+      expect(resultOnNotModified).toEqual(resultOnFirstRequest);
+    });
+
+    it('requests the comment list on every call made without issueUpdatedAt even when a comment list is stored', async () => {
+      const { fetchSpy } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"etag-1"'),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"etag-2"',
+        ),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      const firstResult =
+        await repository.getIssueOrPullRequestComments(issueUrl);
+      const secondResult =
+        await repository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(firstResult).toEqual([firstIssueComment]);
+      expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    const buildCommentTargetIssue = (
+      targetIssueUrl: string,
+      targetIssueNumber: number,
+    ): Issue => ({
+      ...buildStaleItemTestIssue(`item-${targetIssueNumber}`, targetIssueUrl),
+      nameWithOwner: 'HiromiShikata/test-repository',
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      number: targetIssueNumber,
+    });
+
+    const commentPostedAfterFirstReadTestCases: {
+      name: string;
+      commentedIssueUrl: string;
+      commentedIssueNumber: number;
+      expectedRequestedUrls: string[];
+      expectedSecondResult: (typeof firstIssueComment)[];
+    }[] = [
+      {
+        name: 'requests the comment list again and returns the new list when createComment posted on the same issue after the stored list, even with the same issueUpdatedAt',
+        commentedIssueUrl: issueUrl,
+        commentedIssueNumber: 42,
+        expectedRequestedUrls: [firstPageUrl, firstPageUrl],
+        expectedSecondResult: [firstIssueComment, secondIssueComment],
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when createComment posted on a different issue and issueUpdatedAt is the same',
+        commentedIssueUrl:
+          'https://github.com/HiromiShikata/test-repository/issues/43',
+        commentedIssueNumber: 43,
+        expectedRequestedUrls: [firstPageUrl],
+        expectedSecondResult: [firstIssueComment],
+      },
+    ];
+
+    test.each(commentPostedAfterFirstReadTestCases)('$name', async (tc) => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e2"',
+        ),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.createComment.mockResolvedValue({
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${tc.commentedIssueUrl}#issuecomment-81002`,
+      });
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+      await repository.createComment(
+        buildCommentTargetIssue(tc.commentedIssueUrl, tc.commentedIssueNumber),
+        'second comment',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        tc.commentedIssueUrl,
+        'second comment',
+      );
+      expect(firstResult).toEqual([firstIssueComment]);
+      expect(recordedRequests.map((request) => request.url)).toEqual(
+        tc.expectedRequestedUrls,
+      );
+      expect(secondResult).toEqual(tc.expectedSecondResult);
+    });
+
+    it('resolves createComment after posting the comment exactly once when updating the stored comment list record of the issue fails', async () => {
+      spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      jest.spyOn(console, 'warn').mockImplementation();
+      const storedRecordsByKey = new Map<string, string>();
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      const commentedIssueKeyFragment = 'HiromiShikata/test-repository/42';
+      let commentPostSucceeded = false;
+      const cacheOperationsRejectedAfterCommentPost: string[] = [];
+      const rejectWhenCommentedIssueKeyAfterCommentPost = (
+        operationName: string,
+        key: string,
+      ): void => {
+        if (commentPostSucceeded && key.includes(commentedIssueKeyFragment)) {
+          cacheOperationsRejectedAfterCommentPost.push(operationName);
+          throw new Error(`${operationName} failed for ${key}`);
+        }
+      };
+      localStorageCacheRepository.withLock.mockImplementation(
+        async (key, fn) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('withLock', key);
+          return fn();
+        },
+      );
+      localStorageCacheRepository.getSingle.mockImplementation(
+        async (key: string) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('getSingle', key);
+          const stored = storedRecordsByKey.get(key);
+          if (stored === undefined) {
+            return null;
+          }
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
+        },
+      );
+      localStorageCacheRepository.setSingle.mockImplementation(
+        async (key: string, value: unknown) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('setSingle', key);
+          storedRecordsByKey.set(key, JSON.stringify(value));
+        },
+      );
+      restIssueRepository.createComment.mockImplementation(
+        async (commentedIssueUrl: string, comment: string) => {
+          commentPostSucceeded = true;
+          return {
+            id: 81002,
+            author: 'bob',
+            body: comment,
+            createdAt: new Date('2026-07-02T00:00:00Z'),
+            url: `${commentedIssueUrl}#issuecomment-81002`,
+          };
+        },
+      );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+      });
+
+      await expect(
+        repository.createComment(
+          buildCommentTargetIssue(issueUrl, 42),
+          'second comment',
+        ),
+      ).resolves.toBeUndefined();
+      expect(restIssueRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        issueUrl,
+        'second comment',
+      );
+      expect(cacheOperationsRejectedAfterCommentPost.length).toBeGreaterThan(0);
+    });
+
+    it('requests the comment list again on the next read with the same issueUpdatedAt when createComment posted on the issue while an earlier read was waiting for its response', async () => {
+      let answerFirstCommentListRequest: (response: Response) => void = () =>
+        undefined;
+      const firstCommentListResponse = new Promise<Response>((resolve) => {
+        answerFirstCommentListRequest = resolve;
+      });
+      let markFirstCommentListRequestSent: () => void = () => undefined;
+      const firstCommentListRequestSent = new Promise<void>((resolve) => {
+        markFirstCommentListRequestSent = resolve;
+      });
+      const responsesInRequestOrder: Promise<Response>[] = [
+        firstCommentListResponse,
+        Promise.resolve(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem, secondCommentResponseItem],
+            '"e2"',
+          ),
+        ),
+      ];
+      const requestedUrls: string[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+        requestedUrls.push(
+          input instanceof Request ? input.url : input.toString(),
+        );
+        markFirstCommentListRequestSent();
+        return (
+          responsesInRequestOrder.shift() ??
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      });
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.createComment.mockResolvedValue({
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${issueUrl}#issuecomment-81002`,
+      });
+
+      const earlierRead = repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+      });
+      await firstCommentListRequestSent;
+      await repository.createComment(
+        buildCommentTargetIssue(issueUrl, 42),
+        'second comment',
+      );
+      answerFirstCommentListRequest(
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      );
+      const earlierResult = await earlierRead;
+      const laterResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(earlierResult).toEqual([firstIssueComment]);
+      expect(requestedUrls).toEqual([firstPageUrl, firstPageUrl]);
+      expect(laterResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    it('sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the new list when createCommentByUrl posted on the same issue after the stored list', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e2"',
+        ),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      const createdComment = {
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${issueUrl}#issuecomment-81002`,
+      };
+      restIssueRepository.createComment.mockResolvedValue(createdComment);
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+      const postedComment = await repository.createCommentByUrl(
+        issueUrl,
+        'second comment',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        issueUrl,
+        'second comment',
+      );
+      expect(postedComment).toEqual(createdComment);
+      expect(firstResult).toEqual([firstIssueComment]);
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: '"e1"' },
+      ]);
+      expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    const commentTargetOfStoredIssue = {
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      commentId: 81001,
+    };
+    const editedFirstCommentResponseItem: CommentResponseItem = {
+      ...firstCommentResponseItem,
+      body: 'edited first comment',
+    };
+    const editedFirstIssueComment = {
+      ...firstIssueComment,
+      body: 'edited first comment',
+    };
+    const sameIssueUpdatedAt = new Date('2026-07-06T00:00:00.000Z');
+
+    const updateIssueCommentBodyRevalidationTestCases: {
+      name: string;
+      commentedIssueNumber: number;
+      expectedRequests: RecordedCommentRequest[];
+      expectedSecondResult: (typeof firstIssueComment)[];
+    }[] = [
+      {
+        name: 'sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the edited list when updateIssueCommentBody edited a comment of the same issue after the stored list',
+        commentedIssueNumber: 42,
+        expectedRequests: [
+          { url: firstPageUrl, ifNoneMatch: null },
+          { url: firstPageUrl, ifNoneMatch: '"e1"' },
+        ],
+        expectedSecondResult: [editedFirstIssueComment],
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when updateIssueCommentBody edited a comment of a different issue and issueUpdatedAt is the same',
+        commentedIssueNumber: 43,
+        expectedRequests: [{ url: firstPageUrl, ifNoneMatch: null }],
+        expectedSecondResult: [firstIssueComment],
+      },
+    ];
+
+    test.each(updateIssueCommentBodyRevalidationTestCases)(
+      '$name',
+      async (tc) => {
+        const { recordedRequests } = spyOnFetchWithResponses([
+          buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+          buildCommentsPageResponse([editedFirstCommentResponseItem], '"e2"'),
+        ]);
+        const { repository, restIssueRepository } =
+          createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+            new Map<string, string>(),
+          );
+        restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+          commentedIssueNumber: tc.commentedIssueNumber,
+        });
+
+        const firstResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+        await repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        );
+        const secondResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+
+        expect(
+          restIssueRepository.updateIssueCommentBody,
+        ).toHaveBeenCalledTimes(1);
+        expect(restIssueRepository.updateIssueCommentBody).toHaveBeenCalledWith(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        );
+        expect(firstResult).toEqual([firstIssueComment]);
+        expect(recordedRequests).toEqual(tc.expectedRequests);
+        expect(secondResult).toEqual(tc.expectedSecondResult);
+      },
+    );
+
+    it('warns and keeps returning the stored comment list without a request when updateIssueCommentBody cannot tell which issue the edited comment belongs to', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: null,
+      });
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).resolves.toBeUndefined();
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Stored comment list revalidation marking skipped: the commented issue of comment 81001 in HiromiShikata/test-repository is unknown',
+      );
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('rejects with the error of the comment update and keeps returning the stored comment list without a request when updateIssueCommentBody fails', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      const updateError = new Error('HTTP 403 Forbidden');
+      restIssueRepository.updateIssueCommentBody.mockRejectedValue(updateError);
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).rejects.toBe(updateError);
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('resolves updateIssueCommentBody after editing the comment exactly once when updating the stored comment list record of the issue fails', async () => {
+      spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: 42,
+      });
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      localStorageCacheRepository.withLock.mockRejectedValue(
+        new Error('lock unavailable'),
+      );
+
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).resolves.toBeUndefined();
+      expect(restIssueRepository.updateIssueCommentBody).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Stored comment list revalidation marking failed: issueUrl=${issueUrl} error=Error: lock unavailable`,
+      );
+    });
+
+    const deleteCommentUrlOf = (commentId: number): string =>
+      `https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/${commentId}`;
+    const noContentResponse = (): Response =>
+      new Response(null, { status: 204 });
+
+    it('sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the server list when deleteAllCommentsByUrl deleted the comments of the same issue after the stored list', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e1"',
+        ),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"unused-listing-etag"',
+        ),
+        noContentResponse(),
+        noContentResponse(),
+        buildCommentsPageResponse([], '"e2"'),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+      await repository.deleteAllCommentsByUrl(issueUrl);
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(firstResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: deleteCommentUrlOf(81001), ifNoneMatch: null },
+        { url: deleteCommentUrlOf(81002), ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: '"e1"' },
+      ]);
+      expect(secondResult).toEqual([]);
+    });
+
+    it('keeps returning the stored comment list without a request when deleteAllCommentsByUrl deleted the comments of a different issue and issueUpdatedAt is the same', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse([firstCommentResponseItem], '"unused"'),
+        noContentResponse(),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await repository.deleteAllCommentsByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/43',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests.map((request) => request.url)).toEqual([
+        firstPageUrl,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/43/comments?per_page=100&page=1',
+        deleteCommentUrlOf(81001),
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('sends the stored ETag as If-None-Match on the next read and rejects with the delete error when deleteAllCommentsByUrl deleted one comment and failed on the next', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e1"',
+        ),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"unused-listing-etag"',
+        ),
+        noContentResponse(),
+        new Response('Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+        buildCommentsPageResponse([secondCommentResponseItem], '"e2"'),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(repository.deleteAllCommentsByUrl(issueUrl)).rejects.toThrow(
+        '500',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests.map((request) => request.ifNoneMatch)).toEqual([
+        null,
+        null,
+        null,
+        null,
+        '"e1"',
+      ]);
+      expect(secondResult).toEqual([secondIssueComment]);
+    });
+
+    const deleteAllWithoutAnyDeletedCommentTestCases: {
+      name: string;
+      responsesAfterStoredList: Response[];
+      expectedError: string | null;
+    }[] = [
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl found no comment to delete on the same issue',
+        responsesAfterStoredList: [buildCommentsPageResponse([], '"empty"')],
+        expectedError: null,
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl failed to list the comments of the same issue',
+        responsesAfterStoredList: [
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        ],
+        expectedError: '403',
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl failed on its first delete on the same issue',
+        responsesAfterStoredList: [
+          buildCommentsPageResponse([firstCommentResponseItem], '"listing"'),
+          new Response('Unauthorized', {
+            status: 401,
+            statusText: 'Unauthorized',
+          }),
+        ],
+        expectedError: '401',
+      },
+    ];
+
+    test.each(deleteAllWithoutAnyDeletedCommentTestCases)(
+      '$name',
+      async (tc) => {
+        const { fetchSpy } = spyOnFetchWithResponses([
+          buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+          ...tc.responsesAfterStoredList,
+        ]);
+        const { repository } =
+          createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+            new Map<string, string>(),
+          );
+
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: sameIssueUpdatedAt,
+        });
+        const deletion = repository.deleteAllCommentsByUrl(issueUrl);
+        if (tc.expectedError === null) {
+          await expect(deletion).resolves.toBeUndefined();
+        } else {
+          await expect(deletion).rejects.toThrow(tc.expectedError);
+        }
+        const callCountBeforeSecondRead = fetchSpy.mock.calls.length;
+        const secondResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+
+        expect(fetchSpy).toHaveBeenCalledTimes(callCountBeforeSecondRead);
+        expect(callCountBeforeSecondRead).toBe(
+          1 + tc.responsesAfterStoredList.length,
+        );
+        expect(secondResult).toEqual([firstIssueComment]);
+      },
+    );
+
+    it('resolves deleteAllCommentsByUrl after deleting the comments exactly once each when updating the stored comment list record of the issue fails', async () => {
+      const { fetchSpy } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse([firstCommentResponseItem], '"listing"'),
+        noContentResponse(),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      localStorageCacheRepository.withLock.mockRejectedValue(
+        new Error('lock unavailable'),
+      );
+
+      await expect(
+        repository.deleteAllCommentsByUrl(issueUrl),
+      ).resolves.toBeUndefined();
+      expect(
+        fetchSpy.mock.calls.filter(([, init]) => init?.method === 'DELETE'),
+      ).toHaveLength(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Stored comment list revalidation marking failed: issueUrl=${issueUrl} error=Error: lock unavailable`,
+      );
+    });
+
+    it('resolves createCommentByUrl with the posted comment after posting it exactly once when updating the stored comment list record of the issue fails', async () => {
+      spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      jest.spyOn(console, 'warn').mockImplementation();
+      const storedRecordsByKey = new Map<string, string>();
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      const commentedIssueKeyFragment = 'HiromiShikata/test-repository/42';
+      let commentPostSucceeded = false;
+      const cacheOperationsRejectedAfterCommentPost: string[] = [];
+      const rejectWhenCommentedIssueKeyAfterCommentPost = (
+        operationName: string,
+        key: string,
+      ): void => {
+        if (commentPostSucceeded && key.includes(commentedIssueKeyFragment)) {
+          cacheOperationsRejectedAfterCommentPost.push(operationName);
+          throw new Error(`${operationName} failed for ${key}`);
+        }
+      };
+      localStorageCacheRepository.withLock.mockImplementation(
+        async (key, fn) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('withLock', key);
+          return fn();
+        },
+      );
+      localStorageCacheRepository.getSingle.mockImplementation(
+        async (key: string) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('getSingle', key);
+          const stored = storedRecordsByKey.get(key);
+          if (stored === undefined) {
+            return null;
+          }
+          const parsed: unknown = JSON.parse(stored);
+          return parsed;
+        },
+      );
+      localStorageCacheRepository.setSingle.mockImplementation(
+        async (key: string, value: unknown) => {
+          rejectWhenCommentedIssueKeyAfterCommentPost('setSingle', key);
+          storedRecordsByKey.set(key, JSON.stringify(value));
+        },
+      );
+      restIssueRepository.createComment.mockImplementation(
+        async (commentedIssueUrl: string, comment: string) => {
+          commentPostSucceeded = true;
+          return {
+            id: 81002,
+            author: 'bob',
+            body: comment,
+            createdAt: new Date('2026-07-02T00:00:00Z'),
+            url: `${commentedIssueUrl}#issuecomment-81002`,
+          };
+        },
+      );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+      });
+
+      await expect(
+        repository.createCommentByUrl(issueUrl, 'second comment'),
+      ).resolves.toEqual({
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${issueUrl}#issuecomment-81002`,
+      });
+      expect(restIssueRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        issueUrl,
+        'second comment',
+      );
+      expect(cacheOperationsRejectedAfterCommentPost.length).toBeGreaterThan(0);
+    });
+
+    it('requests the comment list again on the next read with the same issueUpdatedAt when createCommentByUrl posted on the issue while an earlier read was waiting for its response', async () => {
+      let answerFirstCommentListRequest: (response: Response) => void = () =>
+        undefined;
+      const firstCommentListResponse = new Promise<Response>((resolve) => {
+        answerFirstCommentListRequest = resolve;
+      });
+      let markFirstCommentListRequestSent: () => void = () => undefined;
+      const firstCommentListRequestSent = new Promise<void>((resolve) => {
+        markFirstCommentListRequestSent = resolve;
+      });
+      const responsesInRequestOrder: Promise<Response>[] = [
+        firstCommentListResponse,
+        Promise.resolve(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem, secondCommentResponseItem],
+            '"e2"',
+          ),
+        ),
+      ];
+      const requestedUrls: string[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+        requestedUrls.push(
+          input instanceof Request ? input.url : input.toString(),
+        );
+        markFirstCommentListRequestSent();
+        return (
+          responsesInRequestOrder.shift() ??
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      });
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.createComment.mockResolvedValue({
+        id: 81002,
+        author: 'bob',
+        body: 'second comment',
+        createdAt: new Date('2026-07-02T00:00:00Z'),
+        url: `${issueUrl}#issuecomment-81002`,
+      });
+
+      const earlierRead = repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+      });
+      await firstCommentListRequestSent;
+      await repository.createCommentByUrl(issueUrl, 'second comment');
+      answerFirstCommentListRequest(
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      );
+      const earlierResult = await earlierRead;
+      const laterResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(earlierResult).toEqual([firstIssueComment]);
+      expect(requestedUrls).toEqual([firstPageUrl, firstPageUrl]);
+      expect(laterResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+  });
+
+  describe('getAllIssues issue updatedAt', () => {
+    it('carries the project item issue updatedAt as a Date on the issue a full fetch returns and on the same issue a later process reads back from the stored project cache', async () => {
+      const storedRecordsByKey = new Map<string, string>();
+      const project = buildTestProject('updated-at-project');
+      const issueUrl = 'https://github.com/o/r/issues/1';
+      const earlierProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      earlierProcess.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-10T00:00:00.000Z'),
+      );
+      earlierProcess.projectRepository.getProject.mockResolvedValue(project);
+      earlierProcess.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        {
+          issues: [buildProjectItem(issueUrl, 'Updated at issue')],
+          inconsistencyMessage: null,
+        },
+      );
+      const laterProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      laterProcess.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-10T00:15:00.000Z'),
+      );
+      laterProcess.projectRepository.getProject.mockResolvedValue(project);
+      laterProcess.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        {
+          lightItems: [],
+          inconsistencyMessage: null,
+        },
+      );
+
+      const fullFetchResult =
+        await earlierProcess.repository.getAllIssues('updated-at-project');
+      const cachedResult =
+        await laterProcess.repository.getAllIssues('updated-at-project');
+
+      expect(fullFetchResult.issues).toEqual([
+        expect.objectContaining({
+          url: issueUrl,
+          updatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        }),
+      ]);
+      expect(cachedResult.issues).toEqual([
+        expect.objectContaining({
+          url: issueUrl,
+          updatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        }),
+      ]);
+      expect(
+        laterProcess.graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+      expect(
+        laterProcess.graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).toHaveBeenCalled();
+    });
+
+    it('escalates to full fetch when a cached issue was stored without updatedAt', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const cachedProject = buildTestProject('cached-project');
+      const freshProject = buildTestProject('cached-project');
+      const issueStoredWithoutUpdatedAt: unknown = JSON.parse(
+        JSON.stringify({
+          ...buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'Issue stored before updatedAt was cached',
+          ),
+          updatedAt: undefined,
+        }),
+      );
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: cachedProject,
+        issues: [issueStoredWithoutUpdatedAt],
+      });
+      projectRepository.getProject.mockResolvedValue(freshProject);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
+        lightItems: [],
+        inconsistencyMessage: null,
+      });
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      const result = await repository.getAllIssues('cached-project');
+
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledWith('cached-project');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsLight,
+      ).not.toHaveBeenCalled();
+      expect(result.cacheUsed).toBe(false);
     });
   });
 
@@ -14750,6 +16087,95 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
     });
+
+    it('stores the creation time as the update time of the newly created cached issue so the next getAllIssues keeps the light fetch', async () => {
+      const storedRecordsByKey = new Map<string, string>();
+      const buildProjectWithNewStoryOption = (): Project => ({
+        ...buildTestProject('proj-create-updated-at'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-option-new-story',
+              name: 'feature / NewStory',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      });
+      const issueCreatedAt = new Date('2026-07-10T00:10:00.000Z');
+      const fetchingProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      fetchingProcess.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-10T00:00:00.000Z'),
+      );
+      fetchingProcess.projectRepository.getProject.mockResolvedValue(
+        buildProjectWithNewStoryOption(),
+      );
+      fetchingProcess.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        {
+          issues: [buildProjectItem(existingIssue.url, 'Existing Issue')],
+          inconsistencyMessage: null,
+        },
+      );
+      const creatingProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      creatingProcess.dateRepository.now.mockResolvedValue(issueCreatedAt);
+      creatingProcess.projectRepository.getProject.mockResolvedValue(
+        buildProjectWithNewStoryOption(),
+      );
+      creatingProcess.restIssueRepository.createNewIssue.mockResolvedValue(
+        newIssueNumber,
+      );
+      creatingProcess.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        {
+          issues: [],
+          inconsistencyMessage: null,
+        },
+      );
+      creatingProcess.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        {
+          lightItems: [],
+          inconsistencyMessage: null,
+        },
+      );
+
+      await fetchingProcess.repository.getAllIssues('proj-create-updated-at');
+      await creatingProcess.repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        'proj-create-updated-at',
+        'feature / NewStory',
+      );
+      const result = await creatingProcess.repository.getAllIssues(
+        'proj-create-updated-at',
+      );
+
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            url: newIssueUrl,
+            createdAt: issueCreatedAt,
+            updatedAt: issueCreatedAt,
+          }),
+        ]),
+      );
+      expect(
+        creatingProcess.graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   describe('getIssueByUrl', () => {
@@ -15399,7 +16825,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -15491,7 +16917,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -15569,7 +16995,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -15676,7 +17102,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project: storyProjectForStaleTest,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -15828,7 +17254,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -15873,7 +17299,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-09-14T16:15:00.000Z',
         lastFullFetchAt: '2026-09-14T16:00:00.000Z',
         project,
-        issues: [staleIssue],
+        issues: [{ ...staleIssue, updatedAt: '2026-01-01T00:00:00.000Z' }],
       };
       dateRepository.now.mockResolvedValue(
         new Date('2026-09-14T16:18:00.000Z'),
@@ -16185,6 +17611,28 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       dateRepository,
       sleep,
     };
+  };
+
+  const createApiV3CheerioRestIssueRepositoryWithStoredRecords = (
+    storedRecordsByKey: Map<string, string>,
+  ) => {
+    const created = createApiV3CheerioRestIssueRepository();
+    created.localStorageCacheRepository.getSingle.mockImplementation(
+      async (key: string) => {
+        const stored = storedRecordsByKey.get(key);
+        if (stored === undefined) {
+          return null;
+        }
+        const parsed: unknown = JSON.parse(stored);
+        return parsed;
+      },
+    );
+    created.localStorageCacheRepository.setSingle.mockImplementation(
+      async (key: string, value: unknown) => {
+        storedRecordsByKey.set(key, JSON.stringify(value));
+      },
+    );
+    return created;
   };
 });
 

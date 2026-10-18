@@ -60,6 +60,7 @@ import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSys
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
+  createConsoleProjectNameResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
@@ -1403,10 +1404,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     return built;
   };
   const resolveIssueRepository = await buildReadIssueRepositoryResolver(
-    config.githubAppPrivateKeyPaths,
+    config.consoleGithubAppPrivateKeyPaths,
     mintReadOnlyTokensFromKeyPaths,
     buildIssueRepositoryForToken,
     resolveGithubToken,
+    createConsoleProjectNameResolver(config.consoleProjects ?? null),
   );
   const resolveGithubTokenForItemUrl =
     createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);

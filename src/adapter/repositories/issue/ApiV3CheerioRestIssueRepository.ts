@@ -21,7 +21,18 @@ import {
 } from '../../../domain/entities/StoryObjectMap';
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { normalizeGitHubRawUrl } from './gitHubRawUrl';
-import { RestIssueRepository } from './RestIssueRepository';
+import {
+  collectIssueCommentPagesReusingStoredPages,
+  convertIssueCommentResponseItemsToStoredIssueCommentPage,
+  convertStoredIssueCommentPagesToIssueComments,
+  findStoredIssueCommentsReusableForIssueUpdatedAt,
+  ISSUE_COMMENTS_PER_PAGE,
+  IssueCommentResponseItem,
+  RestIssueRepository,
+  StoredIssueComment,
+  StoredIssueCommentList,
+  StoredIssueCommentPage,
+} from './RestIssueRepository';
 import {
   GraphqlProjectItemRepository,
   ProjectItem,
@@ -675,16 +686,9 @@ function isIssueOrPullRequestStateResponse(
   );
 }
 
-type IssueCommentsResponseItem = {
-  id: number;
-  user: { login: string } | null;
-  body: string | null;
-  created_at: string;
-};
-
 function isIssueCommentsResponseItem(
   value: unknown,
-): value is IssueCommentsResponseItem {
+): value is IssueCommentResponseItem {
   if (!isRecord(value)) return false;
   const userValid = value.user === null || isLoginContainer(value.user);
   return (
@@ -697,9 +701,45 @@ function isIssueCommentsResponseItem(
 
 function isIssueCommentsResponse(
   value: unknown,
-): value is IssueCommentsResponseItem[] {
+): value is IssueCommentResponseItem[] {
   return Array.isArray(value) && value.every(isIssueCommentsResponseItem);
 }
+
+const isStoredIssueComment = (value: unknown): value is StoredIssueComment =>
+  isRecord(value) &&
+  typeof value.id === 'number' &&
+  typeof value.author === 'string' &&
+  typeof value.body === 'string' &&
+  typeof value.createdAt === 'string';
+
+const isStoredIssueCommentPage = (
+  value: unknown,
+): value is StoredIssueCommentPage =>
+  isRecord(value) &&
+  isNullableString(value.etag) &&
+  Array.isArray(value.comments) &&
+  value.comments.every(isStoredIssueComment);
+
+const isStoredIssueCommentList = (
+  value: unknown,
+): value is StoredIssueCommentList =>
+  isRecord(value) &&
+  isNullableString(value.issueUpdatedAt) &&
+  Array.isArray(value.pages) &&
+  value.pages.every(isStoredIssueCommentPage);
+
+const buildStoredIssueCommentListKey = (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): string => `issueOrPullRequestComments/${owner}/${repo}/${issueNumber}`;
+
+const readStoredIssueCommentListRevalidationRevision = (
+  storedValue: unknown,
+): number =>
+  isRecord(storedValue) && typeof storedValue.revalidationRevision === 'number'
+    ? storedValue.revalidationRevision
+    : 0;
 
 type IssueCommentIdResponseItem = {
   id: number;
@@ -1050,6 +1090,7 @@ export class ApiV3CheerioRestIssueRepository
       isInProgress: normalizeFieldName(status || '').includes('progress'),
       isClosed: item.state !== 'OPEN',
       createdAt: new Date(item.createdAt || '2000-01-01'),
+      updatedAt: new Date(item.updatedAt),
       author: item.author,
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
       plainCrossRepoIssueReferenceUrls: item.plainCrossRepoIssueReferenceUrls,
@@ -1084,6 +1125,10 @@ export class ApiV3CheerioRestIssueRepository
           !('createdAt' in issue) || typeof issue.createdAt !== 'string'
             ? new Date()
             : new Date(issue.createdAt);
+        const updatedAt =
+          'updatedAt' in issue && typeof issue.updatedAt === 'string'
+            ? new Date(issue.updatedAt)
+            : undefined;
         const closingIssueReferenceUrls =
           'closingIssueReferenceUrls' in issue &&
           Array.isArray(issue.closingIssueReferenceUrls) &&
@@ -1113,6 +1158,7 @@ export class ApiV3CheerioRestIssueRepository
           nextActionDate: nextActionDate,
           completionDate50PercentConfidence: completionDate50PercentConfidence,
           createdAt: createdAt,
+          updatedAt: updatedAt,
           closingIssueReferenceUrls: closingIssueReferenceUrls,
           plainCrossRepoIssueReferenceUrls: plainCrossRepoIssueReferenceUrls,
           stateReason: stateReason,
@@ -1298,10 +1344,14 @@ export class ApiV3CheerioRestIssueRepository
       cache.issues.some(
         (issue) => issue.story !== null && issue.storyOptionId === undefined,
       );
+    const cacheHasIssuesMissingUpdatedAt =
+      cache !== null &&
+      cache.issues.some((issue) => issue.updatedAt === undefined);
     const effectiveIsFullFetch =
       isFullFetch ||
       storyOptionsChanged ||
-      cacheHasIssuesMissingStoryOptionIdSchema;
+      cacheHasIssuesMissingStoryOptionIdSchema ||
+      cacheHasIssuesMissingUpdatedAt;
 
     if (effectiveIsFullFetch) {
       const projectMetadataFellBackToCache =
@@ -1501,6 +1551,7 @@ export class ApiV3CheerioRestIssueRepository
         isInProgress: false,
         isClosed: false,
         createdAt: now,
+        updatedAt: now,
         author: '',
         closingIssueReferenceUrls: [],
         plainCrossRepoIssueReferenceUrls: [],
@@ -1541,7 +1592,17 @@ export class ApiV3CheerioRestIssueRepository
     comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
     body: string,
   ): Promise<void> => {
-    await this.restIssueRepository.updateIssueCommentBody(comment, body);
+    const { commentedIssueNumber } =
+      await this.restIssueRepository.updateIssueCommentBody(comment, body);
+    if (commentedIssueNumber === null) {
+      console.warn(
+        `Stored comment list revalidation marking skipped: the commented issue of comment ${comment.commentId} in ${comment.org}/${comment.repo} is unknown`,
+      );
+      return;
+    }
+    await this.markStoredIssueCommentListForRevalidation(
+      `https://github.com/${comment.org}/${comment.repo}/issues/${commentedIssueNumber}`,
+    );
   };
   private findIssueInAllIssuesCache = async (
     url: string,
@@ -2024,6 +2085,43 @@ export class ApiV3CheerioRestIssueRepository
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
+    await this.markStoredIssueCommentListForRevalidation(issue.url);
+  };
+  private markStoredIssueCommentListForRevalidation = async (
+    url: string,
+  ): Promise<void> => {
+    try {
+      const { owner, repo, issueNumber } = this.parseIssueUrl(url);
+      const storedIssueCommentListKey = buildStoredIssueCommentListKey(
+        owner,
+        repo,
+        issueNumber,
+      );
+      await this.localStorageCacheRepository.withLock(
+        storedIssueCommentListKey,
+        async () => {
+          const storedValue: unknown =
+            await this.localStorageCacheRepository.getSingle(
+              storedIssueCommentListKey,
+            );
+          await this.localStorageCacheRepository.setSingle(
+            storedIssueCommentListKey,
+            {
+              issueUpdatedAt: null,
+              pages: isStoredIssueCommentList(storedValue)
+                ? storedValue.pages
+                : [],
+              revalidationRevision:
+                readStoredIssueCommentListRevalidationRevision(storedValue) + 1,
+            },
+          );
+        },
+      );
+    } catch (error) {
+      console.warn(
+        `Stored comment list revalidation marking failed: issueUrl=${url} error=${String(error)}`,
+      );
+    }
   };
   updateProjectTextField = async (
     project: Project,
@@ -4182,7 +4280,25 @@ export class ApiV3CheerioRestIssueRepository
     return collectedPaths;
   };
 
+  private authenticatedUserLoginRequest: Promise<string> | null = null;
+
   getAuthenticatedUserLogin = async (): Promise<string> => {
+    const authenticatedUserLoginRequest =
+      this.authenticatedUserLoginRequest ?? this.fetchAuthenticatedUserLogin();
+    this.authenticatedUserLoginRequest = authenticatedUserLoginRequest;
+    try {
+      return await authenticatedUserLoginRequest;
+    } catch (error) {
+      if (
+        this.authenticatedUserLoginRequest === authenticatedUserLoginRequest
+      ) {
+        this.authenticatedUserLoginRequest = null;
+      }
+      throw error;
+    }
+  };
+
+  private fetchAuthenticatedUserLogin = async (): Promise<string> => {
     const response = await this.fetchWithRateLimitRetry(
       () =>
         fetch('https://api.github.com/user', {
@@ -4580,7 +4696,12 @@ export class ApiV3CheerioRestIssueRepository
     issueOrPrUrl: string,
     commentBody: string,
   ): Promise<IssueComment> => {
-    return this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
+    const createdComment = await this.restIssueRepository.createComment(
+      issueOrPrUrl,
+      commentBody,
+    );
+    await this.markStoredIssueCommentListForRevalidation(issueOrPrUrl);
+    return createdComment;
   };
 
   private fetchIssueBodyResponse = (url: string): Promise<Response> => {
@@ -4633,52 +4754,100 @@ export class ApiV3CheerioRestIssueRepository
 
   getIssueOrPullRequestComments = async (
     url: string,
+    options?: { issueUpdatedAt?: Date },
   ): Promise<IssueComment[]> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    const perPage = 100;
-    const collectedComments: IssueComment[] = [];
-    let page = 1;
-    let hasMore = true;
-    while (hasMore) {
-      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`;
-      const response = await this.fetchWithRateLimitRetry(
-        () =>
-          fetch(commentsUrl, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${this.ghToken}`,
-              Accept: 'application/vnd.github+json',
-            },
-          }),
-        { method: 'GET', path: sanitizeRestPath(commentsUrl) },
+    const storedIssueCommentListKey = buildStoredIssueCommentListKey(
+      owner,
+      repo,
+      issueNumber,
+    );
+    const issueUpdatedAt = options?.issueUpdatedAt?.toISOString() ?? null;
+    const storedValue: unknown =
+      await this.localStorageCacheRepository.getSingle(
+        storedIssueCommentListKey,
       );
-      if (!response.ok) {
-        await this.throwGitHubError(
-          `Failed to fetch comments for ${url}`,
-          response,
-        );
-      }
-      const body: unknown = await response.json();
-      if (!isIssueCommentsResponse(body)) {
-        throw new Error(
-          `Unexpected response shape when fetching comments for ${url}`,
-        );
-      }
-      for (const comment of body) {
-        collectedComments.push({
-          id: comment.id,
-          author: comment.user?.login ?? '',
-          body: comment.body ?? '',
-          createdAt: new Date(comment.created_at),
-        });
-      }
-      if (body.length < perPage) {
-        hasMore = false;
-      } else {
-        page += 1;
-      }
+    const storedIssueCommentList = isStoredIssueCommentList(storedValue)
+      ? storedValue
+      : null;
+    const revalidationRevisionAtReadStart =
+      readStoredIssueCommentListRevalidationRevision(storedValue);
+    const reusableStoredComments =
+      findStoredIssueCommentsReusableForIssueUpdatedAt(
+        storedIssueCommentList,
+        issueUpdatedAt,
+      );
+    if (reusableStoredComments !== null) {
+      return reusableStoredComments;
     }
-    return collectedComments;
+    const fetchedPages = await collectIssueCommentPagesReusingStoredPages(
+      storedIssueCommentList,
+      async (pageNumber, storedPage) => {
+        const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${pageNumber}`;
+        const response = await this.fetchWithRateLimitRetry(
+          () =>
+            fetch(commentsUrl, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${this.ghToken}`,
+                Accept: 'application/vnd.github+json',
+                ...(storedPage?.etag
+                  ? { 'If-None-Match': storedPage.etag }
+                  : {}),
+              },
+            }),
+          { method: 'GET', path: sanitizeRestPath(commentsUrl) },
+        );
+        return response.status === 304 && storedPage !== null
+          ? storedPage
+          : this.parseIssueCommentsPageResponse(url, response);
+      },
+    );
+    await this.localStorageCacheRepository.withLock(
+      storedIssueCommentListKey,
+      async () => {
+        const currentRevalidationRevision =
+          readStoredIssueCommentListRevalidationRevision(
+            await this.localStorageCacheRepository.getSingle(
+              storedIssueCommentListKey,
+            ),
+          );
+        await this.localStorageCacheRepository.setSingle(
+          storedIssueCommentListKey,
+          {
+            issueUpdatedAt:
+              currentRevalidationRevision === revalidationRevisionAtReadStart
+                ? issueUpdatedAt
+                : null,
+            pages: fetchedPages,
+            revalidationRevision: currentRevalidationRevision,
+          },
+        );
+      },
+    );
+    return convertStoredIssueCommentPagesToIssueComments(fetchedPages);
+  };
+
+  private parseIssueCommentsPageResponse = async (
+    url: string,
+    response: Response,
+  ): Promise<StoredIssueCommentPage> => {
+    if (!response.ok) {
+      await this.throwGitHubError(
+        `Failed to fetch comments for ${url}`,
+        response,
+      );
+    }
+    const body: unknown = await response.json();
+    if (!isIssueCommentsResponse(body)) {
+      throw new Error(
+        `Unexpected response shape when fetching comments for ${url}`,
+      );
+    }
+    return convertIssueCommentResponseItemsToStoredIssueCommentPage(
+      response.headers.get('ETag'),
+      body,
+    );
   };
 
   getPullRequestDetail = async (
@@ -4981,6 +5150,22 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   deleteAllCommentsByUrl = async (issueOrPrUrl: string): Promise<void> => {
+    let deletedCommentCount = 0;
+    try {
+      await this.deleteAllCommentsByUrlCountingDeletions(issueOrPrUrl, () => {
+        deletedCommentCount += 1;
+      });
+    } finally {
+      if (deletedCommentCount > 0) {
+        await this.markStoredIssueCommentListForRevalidation(issueOrPrUrl);
+      }
+    }
+  };
+
+  private deleteAllCommentsByUrlCountingDeletions = async (
+    issueOrPrUrl: string,
+    onCommentDeleted: () => void,
+  ): Promise<void> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
     const perPage = 100;
     while (true) {
@@ -5027,6 +5212,7 @@ export class ApiV3CheerioRestIssueRepository
             deleteResponse,
           );
         }
+        onCommentDeleted();
       }
       if (body.length < perPage) {
         break;

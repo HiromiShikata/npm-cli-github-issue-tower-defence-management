@@ -1,4 +1,4 @@
-import ky, { HTTPError } from 'ky';
+import ky, { HTTPError, KyResponse } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import {
@@ -33,6 +33,114 @@ type SearchIssuesResponseItem = {
 
 type SearchIssuesResponse = {
   items: SearchIssuesResponseItem[];
+};
+
+export type StoredIssueComment = {
+  id: number;
+  author: string;
+  body: string;
+  createdAt: string;
+};
+
+export type StoredIssueCommentPage = {
+  etag: string | null;
+  comments: StoredIssueComment[];
+};
+
+export type StoredIssueCommentList = {
+  issueUpdatedAt: string | null;
+  pages: StoredIssueCommentPage[];
+};
+
+export const ISSUE_COMMENTS_PER_PAGE = 100;
+
+const commentedIssueUrlPattern =
+  /^https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/;
+
+const readCommentedIssueNumberFromCommentResponse = async (
+  response: KyResponse,
+): Promise<number | null> => {
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('issue_url' in body) ||
+      typeof body.issue_url !== 'string'
+    ) {
+      return null;
+    }
+    const matched = body.issue_url.match(commentedIssueUrlPattern);
+    return matched === null ? null : parseInt(matched[1], 10);
+  } catch {
+    return null;
+  }
+};
+
+export type IssueCommentResponseItem = {
+  id: number;
+  user: { login: string } | null;
+  body: string | null;
+  created_at: string;
+};
+
+export const convertIssueCommentResponseItemsToStoredIssueCommentPage = (
+  etag: string | null,
+  issueCommentResponseItems: IssueCommentResponseItem[],
+): StoredIssueCommentPage => ({
+  etag,
+  comments: issueCommentResponseItems.map((comment) => ({
+    id: comment.id,
+    author: comment.user?.login ?? '',
+    body: comment.body ?? '',
+    createdAt: comment.created_at,
+  })),
+});
+
+export const convertStoredIssueCommentPagesToIssueComments = (
+  pages: StoredIssueCommentPage[],
+): IssueComment[] =>
+  pages.flatMap((page) =>
+    page.comments.map((comment) => ({
+      id: comment.id,
+      author: comment.author,
+      body: comment.body,
+      createdAt: new Date(comment.createdAt),
+    })),
+  );
+
+export const findStoredIssueCommentsReusableForIssueUpdatedAt = (
+  storedIssueCommentList: StoredIssueCommentList | null,
+  issueUpdatedAt: string | null,
+): IssueComment[] | null =>
+  storedIssueCommentList !== null &&
+  issueUpdatedAt !== null &&
+  storedIssueCommentList.issueUpdatedAt === issueUpdatedAt
+    ? convertStoredIssueCommentPagesToIssueComments(
+        storedIssueCommentList.pages,
+      )
+    : null;
+
+export const collectIssueCommentPagesReusingStoredPages = async (
+  storedIssueCommentList: StoredIssueCommentList | null,
+  fetchIssueCommentPage: (
+    pageNumber: number,
+    storedPage: StoredIssueCommentPage | null,
+  ) => Promise<StoredIssueCommentPage>,
+): Promise<StoredIssueCommentPage[]> => {
+  const collectedPages: StoredIssueCommentPage[] = [];
+  let hasMore = true;
+  while (hasMore) {
+    const storedPage =
+      storedIssueCommentList?.pages[collectedPages.length] ?? null;
+    const collectedPage = await fetchIssueCommentPage(
+      collectedPages.length + 1,
+      storedPage,
+    );
+    collectedPages.push(collectedPage);
+    hasMore = collectedPage.comments.length >= ISSUE_COMMENTS_PER_PAGE;
+  }
+  return collectedPages;
 };
 
 export class RestIssueRepository
@@ -154,6 +262,9 @@ export class RestIssueRepository
       }
       throw e;
     }
+    this.markStoredIssueCommentListsForRevalidation((storedIssueUrl) =>
+      this.isUrlOfIssue(storedIssueUrl, { owner, repo, issueNumber }),
+    );
     return {
       id: result.id,
       author: result.user?.login ?? '',
@@ -322,10 +433,11 @@ export class RestIssueRepository
   updateIssueCommentBody = async (
     comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
     body: string,
-  ): Promise<void> => {
+  ): Promise<{ commentedIssueNumber: number | null }> => {
     this.checkBreakerOrThrow();
+    let response: KyResponse;
     try {
-      await ky.patch(
+      response = await ky.patch(
         `https://api.github.com/repos/${comment.org}/${comment.repo}/issues/comments/${comment.commentId}`,
         {
           json: { body },
@@ -336,6 +448,17 @@ export class RestIssueRepository
       await this.detectAndRecordSecondaryRateLimit(e);
       throw e;
     }
+    this.markStoredIssueCommentListsForRevalidation((_storedIssueUrl, list) =>
+      list.pages.some((page) =>
+        page.comments.some(
+          (storedComment) => storedComment.id === comment.commentId,
+        ),
+      ),
+    );
+    return {
+      commentedIssueNumber:
+        await readCommentedIssueNumberFromCommentResponse(response),
+    };
   };
 
   updateLabels = async (
@@ -466,43 +589,102 @@ export class RestIssueRepository
     return searchedIssues;
   };
 
-  getIssueOrPullRequestComments = async (
+  private readonly storedIssueCommentListByIssueUrl = new Map<
+    string,
+    StoredIssueCommentList
+  >();
+
+  private storedIssueCommentListRevalidationCount = 0;
+
+  private readonly isUrlOfIssue = (
     url: string,
-  ): Promise<IssueComment[]> => {
-    const { owner, repo, issueNumber } = this.extractIssueFromUrl(url);
-    const perPage = 100;
-    const collected: IssueComment[] = [];
-    let page = 1;
-    let hasMore = true;
-    while (hasMore) {
-      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`;
-      const body = await ky
-        .get(commentsUrl, {
-          headers: { Authorization: `token ${this.ghToken}` },
-        })
-        .json<
-          Array<{
-            id: number;
-            user: { login: string } | null;
-            body: string | null;
-            created_at: string;
-          }>
-        >();
-      for (const comment of body) {
-        collected.push({
-          id: comment.id,
-          author: comment.user?.login ?? '',
-          body: comment.body ?? '',
-          createdAt: new Date(comment.created_at),
+    issue: { owner: string; repo: string; issueNumber: number },
+  ): boolean => {
+    const parsed = this.extractIssueFromUrl(url);
+    return (
+      parsed.owner === issue.owner &&
+      parsed.repo === issue.repo &&
+      parsed.issueNumber === issue.issueNumber
+    );
+  };
+
+  private readonly markStoredIssueCommentListsForRevalidation = (
+    isAffected: (
+      storedIssueUrl: string,
+      storedIssueCommentList: StoredIssueCommentList,
+    ) => boolean,
+  ): void => {
+    this.storedIssueCommentListRevalidationCount += 1;
+    for (const [storedIssueUrl, storedIssueCommentList] of this
+      .storedIssueCommentListByIssueUrl) {
+      if (isAffected(storedIssueUrl, storedIssueCommentList)) {
+        this.storedIssueCommentListByIssueUrl.set(storedIssueUrl, {
+          ...storedIssueCommentList,
+          issueUpdatedAt: null,
         });
       }
-      if (body.length < perPage) {
-        hasMore = false;
-      } else {
-        page += 1;
-      }
     }
-    return collected;
+  };
+
+  getIssueOrPullRequestComments = async (
+    url: string,
+    options?: { issueUpdatedAt?: Date },
+  ): Promise<IssueComment[]> => {
+    const issueUpdatedAt = options?.issueUpdatedAt?.toISOString() ?? null;
+    const revalidationCountAtReadStart =
+      this.storedIssueCommentListRevalidationCount;
+    const storedIssueCommentList =
+      this.storedIssueCommentListByIssueUrl.get(url) ?? null;
+    const reusableStoredComments =
+      findStoredIssueCommentsReusableForIssueUpdatedAt(
+        storedIssueCommentList,
+        issueUpdatedAt,
+      );
+    if (reusableStoredComments !== null) {
+      return reusableStoredComments;
+    }
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(url);
+    const fetchedPages = await collectIssueCommentPagesReusingStoredPages(
+      storedIssueCommentList,
+      async (pageNumber, storedPage) => {
+        const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${pageNumber}`;
+        const response = await ky.get(commentsUrl, {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            ...(storedPage?.etag ? { 'If-None-Match': storedPage.etag } : {}),
+          },
+          throwHttpErrors: false,
+        });
+        return response.status === 304 && storedPage !== null
+          ? storedPage
+          : this.parseIssueCommentsPageResponse(url, response);
+      },
+    );
+    this.storedIssueCommentListByIssueUrl.set(url, {
+      issueUpdatedAt:
+        this.storedIssueCommentListRevalidationCount ===
+        revalidationCountAtReadStart
+          ? issueUpdatedAt
+          : null,
+      pages: fetchedPages,
+    });
+    return convertStoredIssueCommentPagesToIssueComments(fetchedPages);
+  };
+
+  private parseIssueCommentsPageResponse = async (
+    url: string,
+    response: KyResponse,
+  ): Promise<StoredIssueCommentPage> => {
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch comments for ${url}: HTTP ${response.status}`,
+      );
+    }
+    const body = await response.json<IssueCommentResponseItem[]>();
+    return convertIssueCommentResponseItemsToStoredIssueCommentPage(
+      response.headers.get('ETag'),
+      body,
+    );
   };
 
   private parseSearchedIssue = (

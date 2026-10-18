@@ -57,6 +57,9 @@ import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Issue } from '../../../domain/entities/Issue';
 
 const mockJsonResponse = <T>(data: T) => ({
+  ok: true,
+  status: 200,
+  headers: new Headers(),
   json: jest.fn().mockResolvedValue(data),
 });
 
@@ -682,6 +685,78 @@ describe('RestIssueRepository', () => {
         },
       );
     });
+
+    const commentedIssueNumberTestCases: {
+      name: string;
+      patchResponse: unknown;
+      expectedCommentedIssueNumber: number | null;
+    }[] = [
+      {
+        name: 'returns the issue number read from the issue_url of the updated comment',
+        patchResponse: mockJsonResponse({
+          id: 999,
+          issue_url:
+            'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+        }),
+        expectedCommentedIssueNumber: 40,
+      },
+      {
+        name: 'returns null when the response carries no issue_url',
+        patchResponse: mockJsonResponse({ id: 999 }),
+        expectedCommentedIssueNumber: null,
+      },
+      {
+        name: 'returns null when issue_url is not a string',
+        patchResponse: mockJsonResponse({ id: 999, issue_url: 40 }),
+        expectedCommentedIssueNumber: null,
+      },
+      {
+        name: 'returns null when issue_url does not end with an issue number',
+        patchResponse: mockJsonResponse({
+          id: 999,
+          issue_url:
+            'https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/999',
+        }),
+        expectedCommentedIssueNumber: null,
+      },
+      {
+        name: 'returns null when the response body is null',
+        patchResponse: mockJsonResponse(null),
+        expectedCommentedIssueNumber: null,
+      },
+      {
+        name: 'returns null when the response body cannot be read as JSON',
+        patchResponse: {
+          json: jest.fn().mockRejectedValue(new SyntaxError('Unexpected end')),
+        },
+        expectedCommentedIssueNumber: null,
+      },
+    ];
+
+    test.each(commentedIssueNumberTestCases)('$name', async (tc) => {
+      mockPatch.mockResolvedValue(tc.patchResponse);
+
+      const result = await restIssueRepository.updateIssueCommentBody(
+        { org: 'HiromiShikata', repo: 'test-repository', commentId: 999 },
+        'rewritten comment body',
+      );
+
+      expect(result).toEqual({
+        commentedIssueNumber: tc.expectedCommentedIssueNumber,
+      });
+    });
+
+    it('rejects with the error of the comment update request', async () => {
+      const patchError = new Error('network down');
+      mockPatch.mockRejectedValue(patchError);
+
+      await expect(
+        restIssueRepository.updateIssueCommentBody(
+          { org: 'HiromiShikata', repo: 'test-repository', commentId: 999 },
+          'rewritten comment body',
+        ),
+      ).rejects.toBe(patchError);
+    });
   });
 
   describe('searchIssues', () => {
@@ -1134,6 +1209,435 @@ describe('RestIssueRepository', () => {
           headers: { Authorization: 'token dummy-token' },
         }),
       );
+    });
+  });
+
+  describe('getIssueOrPullRequestComments reuse of the stored comment list', () => {
+    const issueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/40';
+    const firstPageUrl =
+      'https://api.github.com/repos/HiromiShikata/test-repository/issues/40/comments?per_page=100&page=1';
+    type CommentResponseItem = {
+      id: number;
+      user: { login: string } | null;
+      body: string | null;
+      created_at: string;
+    };
+    const firstCommentResponseItem: CommentResponseItem = {
+      id: 91001,
+      user: { login: 'alice' },
+      body: 'first comment',
+      created_at: '2026-07-01T00:00:00Z',
+    };
+    const secondCommentResponseItem: CommentResponseItem = {
+      id: 91002,
+      user: { login: 'bob' },
+      body: 'second comment',
+      created_at: '2026-07-02T00:00:00Z',
+    };
+    const firstIssueComment = {
+      id: 91001,
+      author: 'alice',
+      body: 'first comment',
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+    };
+    const secondIssueComment = {
+      id: 91002,
+      author: 'bob',
+      body: 'second comment',
+      createdAt: new Date('2026-07-02T00:00:00Z'),
+    };
+    const buildCommentsPageResponse = (
+      comments: CommentResponseItem[],
+      etag: string,
+    ): Response =>
+      new Response(JSON.stringify(comments), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ETag: etag },
+      });
+    const createRestIssueRepository = (): RestIssueRepository =>
+      new RestIssueRepository(new LocalStorageRepository(), 'dummy-token');
+
+    it('requests the comment list once for two calls carrying the same issueUpdatedAt on one instance and returns the stored list with createdAt as a Date on the second call', async () => {
+      mockGet.mockImplementation(() =>
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"rest-etag-1"',
+        ),
+      );
+      const repository = createRestIssueRepository();
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z') },
+      );
+
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(firstResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    it('sends the stored ETag as If-None-Match when issueUpdatedAt changed, returns the stored list on 304, and stores the new list and ETag on 200', async () => {
+      mockGet
+        .mockReturnValueOnce(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem],
+            '"rest-etag-1"',
+          ),
+        )
+        .mockReturnValueOnce(new Response(null, { status: 304 }))
+        .mockReturnValueOnce(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem, secondCommentResponseItem],
+            '"rest-etag-2"',
+          ),
+        )
+        .mockReturnValueOnce(new Response(null, { status: 304 }));
+      const repository = createRestIssueRepository();
+
+      const resultOnFirstRequest =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T00:00:00.000Z'),
+        });
+      const resultOnNotModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T01:00:00.000Z'),
+        });
+      const resultOnModified = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: new Date('2026-07-06T02:00:00.000Z') },
+      );
+      const resultAfterModified =
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: new Date('2026-07-06T03:00:00.000Z'),
+        });
+
+      expect(mockGet).toHaveBeenCalledTimes(4);
+      expect(mockGet).toHaveBeenNthCalledWith(
+        1,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: { Authorization: 'token dummy-token' },
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        2,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-1"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        3,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-1"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        4,
+        firstPageUrl,
+        expect.objectContaining({
+          headers: {
+            Authorization: 'token dummy-token',
+            'If-None-Match': '"rest-etag-2"',
+          },
+          throwHttpErrors: false,
+        }),
+      );
+      expect(resultOnFirstRequest).toEqual([firstIssueComment]);
+      expect(resultOnNotModified).toEqual([firstIssueComment]);
+      expect(resultOnModified).toEqual([firstIssueComment, secondIssueComment]);
+      expect(resultAfterModified).toEqual([
+        firstIssueComment,
+        secondIssueComment,
+      ]);
+    });
+
+    it('requests the comment list on every call made without issueUpdatedAt', async () => {
+      mockGet.mockImplementation(() =>
+        buildCommentsPageResponse([firstCommentResponseItem], '"rest-etag-1"'),
+      );
+      const repository = createRestIssueRepository();
+
+      await repository.getIssueOrPullRequestComments(issueUrl);
+      const secondResult =
+        await repository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('maps a comment whose user and body are null to an empty author and an empty body', async () => {
+      mockGet.mockReturnValueOnce(
+        buildCommentsPageResponse(
+          [
+            {
+              id: 91003,
+              user: null,
+              body: null,
+              created_at: '2026-07-03T00:00:00Z',
+            },
+          ],
+          '"rest-etag-null"',
+        ),
+      );
+      const repository = createRestIssueRepository();
+
+      const result = await repository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(result).toEqual([
+        {
+          id: 91003,
+          author: '',
+          body: '',
+          createdAt: new Date('2026-07-03T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('rejects when the comments endpoint answers with a non-2xx status other than 304', async () => {
+      mockGet.mockReturnValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const repository = createRestIssueRepository();
+
+      await expect(
+        repository.getIssueOrPullRequestComments(issueUrl),
+      ).rejects.toThrow();
+    });
+
+    const sameIssueUpdatedAt = new Date('2026-07-06T00:00:00.000Z');
+    const editedFirstCommentResponseItem: CommentResponseItem = {
+      ...firstCommentResponseItem,
+      body: 'edited first comment',
+    };
+    const editedFirstIssueComment = {
+      ...firstIssueComment,
+      body: 'edited first comment',
+    };
+    const mockCommentPost = (): void => {
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          id: 91002,
+          user: { login: 'bob' },
+          body: 'second comment',
+          created_at: '2026-07-02T00:00:00Z',
+          html_url: `${issueUrl}#issuecomment-91002`,
+        }),
+      );
+    };
+
+    const storedListRevalidationAfterWriteTestCases: {
+      name: string;
+      writeToComments: (repository: RestIssueRepository) => Promise<unknown>;
+      expectedGetCallCount: number;
+      expectedSecondResult: unknown[];
+    }[] = [
+      {
+        name: 'sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the new list when createComment posted on the same issue',
+        writeToComments: (repository) => {
+          mockCommentPost();
+          return repository.createComment(issueUrl, 'second comment');
+        },
+        expectedGetCallCount: 2,
+        expectedSecondResult: [firstIssueComment, secondIssueComment],
+      },
+      {
+        name: 'sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the new list when createComment posted on the same pull request number under the pull path',
+        writeToComments: (repository) => {
+          mockCommentPost();
+          return repository.createComment(
+            'https://github.com/HiromiShikata/test-repository/pull/40',
+            'second comment',
+          );
+        },
+        expectedGetCallCount: 2,
+        expectedSecondResult: [firstIssueComment, secondIssueComment],
+      },
+      {
+        name: 'keeps returning the stored list without a request when createComment posted on a different issue number',
+        writeToComments: (repository) => {
+          mockCommentPost();
+          return repository.createComment(
+            'https://github.com/HiromiShikata/test-repository/issues/41',
+            'second comment',
+          );
+        },
+        expectedGetCallCount: 1,
+        expectedSecondResult: [firstIssueComment],
+      },
+      {
+        name: 'keeps returning the stored list without a request when createComment posted on the same issue number of a different repository',
+        writeToComments: (repository) => {
+          mockCommentPost();
+          return repository.createComment(
+            'https://github.com/HiromiShikata/other-repository/issues/40',
+            'second comment',
+          );
+        },
+        expectedGetCallCount: 1,
+        expectedSecondResult: [firstIssueComment],
+      },
+      {
+        name: 'sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the edited list when updateIssueCommentBody edited a comment of the stored list',
+        writeToComments: (repository) => {
+          mockPatch.mockReturnValue(
+            mockJsonResponse({
+              id: 91001,
+              issue_url:
+                'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+            }),
+          );
+          return repository.updateIssueCommentBody(
+            { org: 'HiromiShikata', repo: 'test-repository', commentId: 91001 },
+            'edited first comment',
+          );
+        },
+        expectedGetCallCount: 2,
+        expectedSecondResult: [editedFirstIssueComment],
+      },
+      {
+        name: 'keeps returning the stored list without a request when updateIssueCommentBody edited a comment that is in no stored list',
+        writeToComments: (repository) => {
+          mockPatch.mockReturnValue(
+            mockJsonResponse({
+              id: 99999,
+              issue_url:
+                'https://api.github.com/repos/HiromiShikata/test-repository/issues/41',
+            }),
+          );
+          return repository.updateIssueCommentBody(
+            { org: 'HiromiShikata', repo: 'test-repository', commentId: 99999 },
+            'edited other comment',
+          );
+        },
+        expectedGetCallCount: 1,
+        expectedSecondResult: [firstIssueComment],
+      },
+    ];
+
+    test.each(storedListRevalidationAfterWriteTestCases)(
+      '$name',
+      async (tc) => {
+        mockGet
+          .mockReturnValueOnce(
+            buildCommentsPageResponse(
+              [firstCommentResponseItem],
+              '"rest-etag-1"',
+            ),
+          )
+          .mockReturnValueOnce(
+            buildCommentsPageResponse(
+              tc.expectedSecondResult.length === 2
+                ? [firstCommentResponseItem, secondCommentResponseItem]
+                : [editedFirstCommentResponseItem],
+              '"rest-etag-2"',
+            ),
+          );
+        const repository = createRestIssueRepository();
+
+        const firstResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+        await tc.writeToComments(repository);
+        const secondResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+
+        expect(firstResult).toEqual([firstIssueComment]);
+        expect(mockGet).toHaveBeenCalledTimes(tc.expectedGetCallCount);
+        if (tc.expectedGetCallCount === 2) {
+          expect(mockGet).toHaveBeenNthCalledWith(
+            2,
+            firstPageUrl,
+            expect.objectContaining({
+              headers: {
+                Authorization: 'token dummy-token',
+                'If-None-Match': '"rest-etag-1"',
+              },
+            }),
+          );
+        }
+        expect(secondResult).toEqual(tc.expectedSecondResult);
+      },
+    );
+
+    it('requests the comment list again on the next read with the same issueUpdatedAt when createComment posted on the issue while an earlier read was waiting for its response', async () => {
+      let answerFirstCommentListRequest: (response: Response) => void = () =>
+        undefined;
+      const firstCommentListResponse = new Promise<Response>((resolve) => {
+        answerFirstCommentListRequest = resolve;
+      });
+      mockGet
+        .mockReturnValueOnce(firstCommentListResponse)
+        .mockReturnValueOnce(
+          buildCommentsPageResponse(
+            [firstCommentResponseItem, secondCommentResponseItem],
+            '"rest-etag-2"',
+          ),
+        );
+      mockCommentPost();
+      const repository = createRestIssueRepository();
+
+      const earlierRead = repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await repository.createComment(issueUrl, 'second comment');
+      answerFirstCommentListRequest(
+        buildCommentsPageResponse([firstCommentResponseItem], '"rest-etag-1"'),
+      );
+      const earlierResult = await earlierRead;
+      const laterResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(earlierResult).toEqual([firstIssueComment]);
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(laterResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    it('keeps the stored list reusable when createComment fails before posting the comment', async () => {
+      mockGet.mockReturnValueOnce(
+        buildCommentsPageResponse([firstCommentResponseItem], '"rest-etag-1"'),
+      );
+      const postError = new Error('network down');
+      mockPost.mockImplementation(() => ({
+        json: jest.fn().mockRejectedValue(postError),
+      }));
+      const repository = createRestIssueRepository();
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(
+        repository.createComment(issueUrl, 'second comment'),
+      ).rejects.toBe(postError);
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(secondResult).toEqual([firstIssueComment]);
     });
   });
 });
