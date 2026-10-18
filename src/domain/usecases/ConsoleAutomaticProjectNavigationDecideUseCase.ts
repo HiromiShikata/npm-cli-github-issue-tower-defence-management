@@ -4,8 +4,8 @@ export const findNextPjcodeWithMinutes = (
   pjcodes: string[],
   currentPjcode: string | null,
   projectMinutes: Record<string, number>,
-  _projectTodoByHumanCounts: Record<string, number>,
-  _projectAwaitingOwnerCounts: Record<string, number>,
+  projectTodoByHumanCounts: Record<string, number>,
+  projectAwaitingOwnerCounts: Record<string, number>,
 ): string | null => {
   if (pjcodes.length === 0) {
     return null;
@@ -18,7 +18,11 @@ export const findNextPjcodeWithMinutes = (
   for (let i = 0; i < count; i++) {
     const index = (startIndex + i) % pjcodes.length;
     const pjcode = pjcodes[index];
-    if ((projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) > 0) {
+    if (
+      (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) > 0 &&
+      ((projectTodoByHumanCounts[pjcode] ?? 0) > 0 ||
+        (projectAwaitingOwnerCounts[pjcode] ?? 0) > 0)
+    ) {
       return pjcode;
     }
   }
@@ -97,7 +101,10 @@ export const consoleAutomaticProjectNavigationDecide = (
   }
 
   const pjcodesWithMinutes = input.pjcodes.filter(
-    (code) => (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
+    (code) =>
+      (input.projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0 &&
+      ((input.projectTodoByHumanCounts[code] ?? 0) > 0 ||
+        (input.projectAwaitingOwnerCounts[code] ?? 0) > 0),
   );
   const otherPjcodesWithMinutesCount = pjcodesWithMinutes.filter(
     (code) => code !== input.pjcode,
