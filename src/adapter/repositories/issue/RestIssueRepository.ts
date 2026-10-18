@@ -1,4 +1,4 @@
-import ky, { HTTPError } from 'ky';
+import ky, { HTTPError, KyResponse } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import {
@@ -34,6 +34,69 @@ type SearchIssuesResponseItem = {
 type SearchIssuesResponse = {
   items: SearchIssuesResponseItem[];
 };
+
+export type StoredIssueComment = {
+  id: number;
+  author: string;
+  body: string;
+  createdAt: string;
+};
+
+export type StoredIssueCommentPage = {
+  etag: string | null;
+  comments: StoredIssueComment[];
+};
+
+export type StoredIssueCommentList = {
+  issueUpdatedAt: string | null;
+  pages: StoredIssueCommentPage[];
+};
+
+export const ISSUE_COMMENTS_PER_PAGE = 100;
+
+export type IssueCommentResponseItem = {
+  id: number;
+  user: { login: string } | null;
+  body: string | null;
+  created_at: string;
+};
+
+export const convertIssueCommentResponseItemsToStoredIssueCommentPage = (
+  etag: string | null,
+  issueCommentResponseItems: IssueCommentResponseItem[],
+): StoredIssueCommentPage => ({
+  etag,
+  comments: issueCommentResponseItems.map((comment) => ({
+    id: comment.id,
+    author: comment.user?.login ?? '',
+    body: comment.body ?? '',
+    createdAt: comment.created_at,
+  })),
+});
+
+export const convertStoredIssueCommentPagesToIssueComments = (
+  pages: StoredIssueCommentPage[],
+): IssueComment[] =>
+  pages.flatMap((page) =>
+    page.comments.map((comment) => ({
+      id: comment.id,
+      author: comment.author,
+      body: comment.body,
+      createdAt: new Date(comment.createdAt),
+    })),
+  );
+
+export const findStoredIssueCommentsReusableForIssueUpdatedAt = (
+  storedIssueCommentList: StoredIssueCommentList | null,
+  issueUpdatedAt: string | null,
+): IssueComment[] | null =>
+  storedIssueCommentList !== null &&
+  issueUpdatedAt !== null &&
+  storedIssueCommentList.issueUpdatedAt === issueUpdatedAt
+    ? convertStoredIssueCommentPagesToIssueComments(
+        storedIssueCommentList.pages,
+      )
+    : null;
 
 export class RestIssueRepository
   extends BaseGitHubRepository
@@ -466,43 +529,68 @@ export class RestIssueRepository
     return searchedIssues;
   };
 
+  private readonly storedIssueCommentListByIssueUrl = new Map<
+    string,
+    StoredIssueCommentList
+  >();
+
   getIssueOrPullRequestComments = async (
     url: string,
+    options?: { issueUpdatedAt?: Date },
   ): Promise<IssueComment[]> => {
+    const issueUpdatedAt = options?.issueUpdatedAt?.toISOString() ?? null;
+    const storedIssueCommentList =
+      this.storedIssueCommentListByIssueUrl.get(url) ?? null;
+    const reusableStoredComments =
+      findStoredIssueCommentsReusableForIssueUpdatedAt(
+        storedIssueCommentList,
+        issueUpdatedAt,
+      );
+    if (reusableStoredComments !== null) {
+      return reusableStoredComments;
+    }
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(url);
-    const perPage = 100;
-    const collected: IssueComment[] = [];
-    let page = 1;
+    const fetchedPages: StoredIssueCommentPage[] = [];
     let hasMore = true;
     while (hasMore) {
-      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`;
-      const body = await ky
-        .get(commentsUrl, {
-          headers: { Authorization: `token ${this.ghToken}` },
-        })
-        .json<
-          Array<{
-            id: number;
-            user: { login: string } | null;
-            body: string | null;
-            created_at: string;
-          }>
-        >();
-      for (const comment of body) {
-        collected.push({
-          id: comment.id,
-          author: comment.user?.login ?? '',
-          body: comment.body ?? '',
-          createdAt: new Date(comment.created_at),
-        });
-      }
-      if (body.length < perPage) {
-        hasMore = false;
-      } else {
-        page += 1;
-      }
+      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${fetchedPages.length + 1}`;
+      const storedPage: StoredIssueCommentPage | null =
+        storedIssueCommentList?.pages[fetchedPages.length] ?? null;
+      const response = await ky.get(commentsUrl, {
+        headers: {
+          Authorization: `token ${this.ghToken}`,
+          ...(storedPage?.etag ? { 'If-None-Match': storedPage.etag } : {}),
+        },
+        throwHttpErrors: false,
+      });
+      const fetchedPage =
+        response.status === 304 && storedPage !== null
+          ? storedPage
+          : await this.parseIssueCommentsPageResponse(url, response);
+      fetchedPages.push(fetchedPage);
+      hasMore = fetchedPage.comments.length >= ISSUE_COMMENTS_PER_PAGE;
     }
-    return collected;
+    this.storedIssueCommentListByIssueUrl.set(url, {
+      issueUpdatedAt,
+      pages: fetchedPages,
+    });
+    return convertStoredIssueCommentPagesToIssueComments(fetchedPages);
+  };
+
+  private parseIssueCommentsPageResponse = async (
+    url: string,
+    response: KyResponse,
+  ): Promise<StoredIssueCommentPage> => {
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch comments for ${url}: HTTP ${response.status}`,
+      );
+    }
+    const body = await response.json<IssueCommentResponseItem[]>();
+    return convertIssueCommentResponseItemsToStoredIssueCommentPage(
+      response.headers.get('ETag'),
+      body,
+    );
   };
 
   private parseSearchedIssue = (

@@ -24,6 +24,7 @@ export type Issue = {
   isInProgress: boolean;
   isClosed: boolean;
   createdAt: Date;
+  updatedAt?: Date;
   author: string;
   closingIssueReferenceUrls: string[];
   plainCrossRepoIssueReferenceUrls: string[];

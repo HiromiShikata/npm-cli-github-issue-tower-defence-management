@@ -245,7 +245,10 @@ export interface IssueRepository {
     agentOptionId: string,
   ) => Promise<void>;
   getIssueOrPullRequestBody: (url: string) => Promise<string>;
-  getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
+  getIssueOrPullRequestComments: (
+    url: string,
+    options?: { issueUpdatedAt?: Date },
+  ) => Promise<IssueComment[]>;
   getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;
   getPullRequestCommits: (prUrl: string) => Promise<PullRequestCommit[]>;
   getIssueOrPullRequestState: (url: string) => Promise<{
