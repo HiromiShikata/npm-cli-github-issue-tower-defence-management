@@ -490,7 +490,8 @@ export const ConsoleItemDetailContainer = ({
               commit: (sentStepCount) =>
                 consoleActionStepsRun(
                   [
-                    () => operations.setDependedIssueUrl(item, dependedIssueUrl),
+                    () =>
+                      operations.setDependedIssueUrl(item, dependedIssueUrl),
                     () => operations.setStatus(item, option),
                   ],
                   sentStepCount,

@@ -3976,8 +3976,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   };
   const awaitingWorkspaceOption = findAwaitingWorkspaceOption();
 
-  const dependedIssueUrlToSubmit =
-    'https://github.com/owner/repo/issues/99';
+  const dependedIssueUrlToSubmit = 'https://github.com/owner/repo/issues/99';
 
   const submitDependedIssueUrl = (
     getByTitle: (text: string) => HTMLElement,
@@ -4018,8 +4017,12 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   it('bundles the same Awaiting Workspace transition again on a second submission after the panel reopens with an empty field', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
-    const { getByTitle, getByPlaceholderText, getByText, queryByPlaceholderText } =
-      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+    const {
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      queryByPlaceholderText,
+    } = renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
 
     submitDependedIssueUrl(
       getByTitle,
@@ -4091,9 +4094,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   it.each([
     {
       sentStepCount: 0,
-      expectedSetDependedIssueUrlCalls: [
-        [issueItem, dependedIssueUrlToSubmit],
-      ],
+      expectedSetDependedIssueUrlCalls: [[issueItem, dependedIssueUrlToSubmit]],
       expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
     },
     {
@@ -4120,9 +4121,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
 
       await input.commit(sentStepCount);
 
-      expect(
-        (operations.setDependedIssueUrl as jest.Mock).mock.calls,
-      ).toEqual(expectedSetDependedIssueUrlCalls);
+      expect((operations.setDependedIssueUrl as jest.Mock).mock.calls).toEqual(
+        expectedSetDependedIssueUrlCalls,
+      );
       expect((operations.setStatus as jest.Mock).mock.calls).toEqual(
         expectedSetStatusCalls,
       );
@@ -4164,8 +4165,12 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     const operations = buildOperations();
     operations.setDependedIssueUrl = jest.fn(() => new Promise(() => {}));
     const onQueueAction = jest.fn();
-    const { getByTitle, getByPlaceholderText, getByText, queryByPlaceholderText } =
-      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+    const {
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      queryByPlaceholderText,
+    } = renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
 
     submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
 
