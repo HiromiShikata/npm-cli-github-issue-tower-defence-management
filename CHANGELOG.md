@@ -1,3 +1,10 @@
+## [2.175.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.175.0...v2.175.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **console:** skip dialog reopen after navigating away from a failed create ([#3510](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3510)) ([5c05df0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c05df0d7ef7fbfb352bd81e6aac05685f12214a))
+
 # [2.175.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.174.0...v2.175.0) (2026-10-18)
 
 
