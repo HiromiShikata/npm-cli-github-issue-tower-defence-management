@@ -99,10 +99,7 @@ export const IssueCreateModalDialog = ({
   }, []);
 
   useLayoutEffect(() => {
-    if (
-      bodyCursorToRestoreRef.current !== null &&
-      bodyRef.current !== null
-    ) {
+    if (bodyCursorToRestoreRef.current !== null && bodyRef.current !== null) {
       bodyRef.current.setSelectionRange(
         bodyCursorToRestoreRef.current.start,
         bodyCursorToRestoreRef.current.end,

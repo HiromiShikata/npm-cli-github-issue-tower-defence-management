@@ -171,9 +171,9 @@ describe('computeListContinuation', () => {
       expected: { handled: false },
     },
   ])('$description', ({ value, selectionStart, selectionEnd, expected }) => {
-    expect(computeListContinuation(value, selectionStart, selectionEnd)).toEqual(
-      expected,
-    );
+    expect(
+      computeListContinuation(value, selectionStart, selectionEnd),
+    ).toEqual(expected);
   });
 
   it.each([
@@ -290,14 +290,15 @@ describe('computeListContinuation', () => {
       expected: { handled: false },
     },
   ])('$description', ({ value, selectionStart, selectionEnd, expected }) => {
-    expect(computeListContinuation(value, selectionStart, selectionEnd)).toEqual(
-      expected,
-    );
+    expect(
+      computeListContinuation(value, selectionStart, selectionEnd),
+    ).toEqual(expected);
   });
 
   it.each([
     {
-      description: 'carries over the "*" unordered marker character to the new line',
+      description:
+        'carries over the "*" unordered marker character to the new line',
       value: '* item',
       selectionStart: '* item'.length,
       selectionEnd: '* item'.length,
@@ -308,7 +309,8 @@ describe('computeListContinuation', () => {
       },
     },
     {
-      description: 'carries over the "+" unordered marker character to the new line',
+      description:
+        'carries over the "+" unordered marker character to the new line',
       value: '+ item',
       selectionStart: '+ item'.length,
       selectionEnd: '+ item'.length,
@@ -319,9 +321,9 @@ describe('computeListContinuation', () => {
       },
     },
   ])('$description', ({ value, selectionStart, selectionEnd, expected }) => {
-    expect(computeListContinuation(value, selectionStart, selectionEnd)).toEqual(
-      expected,
-    );
+    expect(
+      computeListContinuation(value, selectionStart, selectionEnd),
+    ).toEqual(expected);
   });
 
   it('treats a line matching the task-list form as task-list, never as plain unordered, even though its start also matches the unordered form', () => {

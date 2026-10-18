@@ -1,6 +1,5 @@
 export type ListContinuationResult =
-  | { handled: false }
-  | { handled: true; value: string; cursorPosition: number };
+  { handled: false } | { handled: true; value: string; cursorPosition: number };
 
 const TASK_LIST_LINE_PATTERN = /^([ \t]*)([-*+]) \[([ xX])\] (?! )/;
 const UNORDERED_LIST_LINE_PATTERN = /^([ \t]*)([-*+]) (?! )/;
