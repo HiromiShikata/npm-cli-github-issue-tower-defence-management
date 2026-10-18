@@ -783,6 +783,7 @@ describe('fetchProjectList', () => {
       acme: 'https://github.com/users/owner/projects/1',
       beta: 'https://github.com/users/owner/projects/2',
     });
+    expect(result.actionableCounts).toBeNull();
   });
 
   it('returns null projectUrls when the field is null', async () => {
@@ -861,6 +862,7 @@ describe('fetchProjectList disabledPjcodes', () => {
     mockFetchOnce(null);
     const result = await fetchProjectList();
     expect(result.disabledPjcodes).toEqual([]);
+    expect(result.actionableCounts).toBeNull();
   });
 });
 
