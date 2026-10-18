@@ -20,6 +20,7 @@ export const useConsoleAutomaticProjectNavigation = (
   explicitlySelectedPjcode: string | null,
   enqueueSequence: number,
   selectedItemKey: string | null,
+  dialogOpen: boolean,
 ): void => {
   const skipCountRef = useRef(0);
   const evaluatedPjcodeRef = useRef<string | null>(null);
@@ -75,6 +76,7 @@ export const useConsoleAutomaticProjectNavigation = (
         explicitlySelectedPjcode !== null &&
         pjcode === explicitlySelectedPjcode,
       taskOpen: selectedItemKey !== null,
+      dialogOpen,
       aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated,
       pjcode,
       pjcodes,
@@ -105,5 +107,6 @@ export const useConsoleAutomaticProjectNavigation = (
     explicitlySelectedPjcode,
     enqueueSequence,
     selectedItemKey,
+    dialogOpen,
   ]);
 };

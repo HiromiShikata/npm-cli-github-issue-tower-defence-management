@@ -243,6 +243,10 @@ export const createIssueWithAttachments = async (
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
+  const pjcodeRef = useRef(pjcode);
+  useEffect(() => {
+    pjcodeRef.current = pjcode;
+  }, [pjcode]);
   const featuresConfig = useConsoleFeaturesConfig();
   const airplaneMode = useAirplaneMode();
   const airplaneSnapshot =
@@ -670,6 +674,7 @@ export const ConsolePage = () => {
     explicitlySelectedPjcode,
     actionQueue.enqueueSequence,
     selectedItemKey,
+    isDialogOpen || isFleetTaskCreateDialogOpen,
   );
 
   useConsoleTimerFirstItemAutoOpen(
@@ -881,12 +886,14 @@ export const ConsolePage = () => {
             capturedParams,
             progress,
           ).catch((cause: unknown) => {
-            setDialogSubmitFailure({
-              params: capturedParams,
-              reason: cause instanceof Error ? cause.message : String(cause),
-              progress,
-            });
-            setIsDialogOpen(true);
+            if (pjcodeRef.current === capturedPjcode) {
+              setDialogSubmitFailure({
+                params: capturedParams,
+                reason: cause instanceof Error ? cause.message : String(cause),
+                progress,
+              });
+              setIsDialogOpen(true);
+            }
             throw cause;
           }),
         advance: () => {},
@@ -938,12 +945,14 @@ export const ConsolePage = () => {
             capturedParams,
             progress,
           ).catch((cause: unknown) => {
-            setFleetDialogSubmitFailure({
-              params: capturedParams,
-              reason: cause instanceof Error ? cause.message : String(cause),
-              progress,
-            });
-            setIsFleetTaskCreateDialogOpen(true);
+            if (pjcodeRef.current === capturedPjcode) {
+              setFleetDialogSubmitFailure({
+                params: capturedParams,
+                reason: cause instanceof Error ? cause.message : String(cause),
+                progress,
+              });
+              setIsFleetTaskCreateDialogOpen(true);
+            }
             throw cause;
           }),
         advance: () => {},
