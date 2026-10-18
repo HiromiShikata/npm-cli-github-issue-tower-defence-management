@@ -966,6 +966,21 @@ describe('GenerateConsoleListsUseCase', () => {
         expect(entry.items).toEqual([]);
       }
     });
+
+    it('exposes statusOptions unconditionally, via the same no-exclusion call as the queued tab', () => {
+      const result = run([]);
+      expect(result.stories.statusOptions.map((o) => o.name)).toEqual([
+        'Awaiting Workspace',
+        'Preparation',
+        'Failed Preparation',
+        'Awaiting Owner',
+        'Todo by human',
+        'In Tmux by human',
+        'In Tmux by agent',
+        'Done',
+        'Icebox',
+      ]);
+    });
   });
 
   describe('agent field propagation', () => {
