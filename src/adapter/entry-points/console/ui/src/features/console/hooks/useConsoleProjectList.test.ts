@@ -174,6 +174,44 @@ describe('useConsoleProjectList', () => {
     expect(result.current.workflowAgentOptions).toBeNull();
   });
 
+  it('populates actionableCounts when the server returns them', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme', 'beta'],
+        actionableCounts: {
+          todoByHumanCounts: { acme: 0, beta: 2 },
+          awaitingOwnerCounts: { acme: 1 },
+        },
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList(false, false));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.actionableCounts).toEqual({
+      todoByHumanCounts: { acme: 0, beta: 2 },
+      awaitingOwnerCounts: { acme: 1 },
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('defaults actionableCounts to null when the server omits it', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ pjcodes: ['acme'] }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList(false, false));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.actionableCounts).toBeNull();
+  });
+
   it('starts with an empty disabledPjcodes array', () => {
     global.fetch = jest.fn(
       () => new Promise(() => undefined),
@@ -457,6 +495,118 @@ describe('useConsoleProjectList', () => {
         assert(result.current);
       },
     );
+
+    it.each([
+      {
+        name: 'counts change for a held project',
+        first: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 0 },
+            awaitingOwnerCounts: { acme: 0 },
+          },
+        },
+        firstExpected: {
+          todoByHumanCounts: { acme: 0 },
+          awaitingOwnerCounts: { acme: 0 },
+        },
+        second: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 4 },
+            awaitingOwnerCounts: { acme: 0 },
+          },
+        },
+        expected: {
+          todoByHumanCounts: { acme: 4 },
+          awaitingOwnerCounts: { acme: 0 },
+        },
+      },
+      {
+        name: 'counts appear after the first response omitted them',
+        first: { pjcodes: ['acme'] },
+        firstExpected: null,
+        second: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: {},
+            awaitingOwnerCounts: { acme: 2 },
+          },
+        },
+        expected: {
+          todoByHumanCounts: {},
+          awaitingOwnerCounts: { acme: 2 },
+        },
+      },
+      {
+        name: 'counts disappear after the first response carried them',
+        first: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 1 },
+            awaitingOwnerCounts: {},
+          },
+        },
+        firstExpected: {
+          todoByHumanCounts: { acme: 1 },
+          awaitingOwnerCounts: {},
+        },
+        second: { pjcodes: ['acme'] },
+        expected: null,
+      },
+    ])(
+      'replaces held actionableCounts on a background re-fetch when $name',
+      async ({ first, firstExpected, second, expected }) => {
+        const fetchMock = jest
+          .fn()
+          .mockResolvedValueOnce(jsonResponseOf(first))
+          .mockResolvedValue(jsonResponseOf(second));
+        global.fetch = fetchMock as unknown as typeof fetch;
+
+        const { result } = renderHook(() => useConsoleProjectList(true, false));
+        await waitFor(() => {
+          expect(result.current.isLoading).toBe(false);
+        });
+        expect(result.current.actionableCounts).toEqual(firstExpected);
+
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(result.current.actionableCounts).toEqual(expected);
+      },
+    );
+
+    it('keeps the held actionableCounts reference when a background re-fetch returns identical counts', async () => {
+      const fetchMock = jest.fn().mockResolvedValue(
+        jsonResponseOf({
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 3 },
+            awaitingOwnerCounts: { acme: 1 },
+          },
+        }),
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useConsoleProjectList(true, false));
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+      const countsBefore = result.current.actionableCounts;
+      expect(countsBefore).toEqual({
+        todoByHumanCounts: { acme: 3 },
+        awaitingOwnerCounts: { acme: 1 },
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(result.current.actionableCounts).toBe(countsBefore);
+    });
 
     it('stops issuing background re-fetches after unmount', async () => {
       const fetchMock = jest

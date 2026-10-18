@@ -108,7 +108,14 @@ const listPayload = (tab: string) => ({
         : [],
 });
 
-const installFetch = (): void => {
+const actionableCountsWithBetaTodoByHumanItem = {
+  todoByHumanCounts: { beta: 1 },
+  awaitingOwnerCounts: {},
+};
+
+const installFetch = (
+  projectsPayload: Record<string, unknown> = { pjcodes: ['acme'] },
+): void => {
   const fetchMock = jest.fn(async (url: string) => {
     const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
     if (listMatch !== null) {
@@ -122,7 +129,7 @@ const installFetch = (): void => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ pjcodes: ['acme'] }),
+        json: async () => projectsPayload,
       };
     }
     if (url.startsWith('/api/projectreadmeconfig')) {
@@ -2451,6 +2458,13 @@ describe('ConsolePage auto-advance tab', () => {
       'tdpm-timer-settings',
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
     );
+    installFetch({
+      pjcodes: ['acme'],
+      actionableCounts: {
+        todoByHumanCounts: { acme: 1 },
+        awaitingOwnerCounts: {},
+      },
+    });
     window.history.replaceState({}, '', '/');
     const { navigateReplaceState } = jest.requireMock<{
       navigateReplaceState: jest.Mock;
@@ -2460,6 +2474,364 @@ describe('ConsolePage auto-advance tab', () => {
     await waitFor(() => {
       expect(navigateReplaceState).toHaveBeenCalledWith(
         '/projects/acme/todo-by-human',
+      );
+    });
+  });
+
+  describe('initial project selection when timer mode is on and no project is selected', () => {
+    type ProjectsPayload = Record<string, unknown>;
+
+    const navigationPathsAfterProjectListLoads = async (
+      projectMinutes: Record<string, number>,
+      projectsPayload: ProjectsPayload,
+    ): Promise<string[]> => {
+      localStorage.setItem(
+        'tdpm-timer-settings',
+        JSON.stringify({ timerMode: true, projectMinutes }),
+      );
+      window.history.replaceState({}, '', '/');
+      let projectListServed = false;
+      global.fetch = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (url === '/api/projects') {
+          projectListServed = true;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => projectsPayload,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      }) as unknown as typeof fetch;
+      const { navigateReplaceState } = jest.requireMock<{
+        navigateReplaceState: jest.Mock;
+      }>('../lib/navigation');
+      navigateReplaceState.mockClear();
+      const { unmount } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(projectListServed).toBe(true);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      unmount();
+      const navigatedPaths = navigateReplaceState.mock.calls.map(
+        (call: [string]) => call[0],
+      );
+      return [...new Set(navigatedPaths)];
+    };
+
+    it('selects the first candidate project holding a positive todo-by-human or awaiting-owner count and skips candidates whose counts are zero or absent', async () => {
+      const scenarios: {
+        name: string;
+        projectMinutes: Record<string, number>;
+        projectsPayload: ProjectsPayload;
+        expectedPaths: string[];
+      }[] = [
+        {
+          name: 'the first candidate has zero counts and the second has a positive todo-by-human count',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 2 },
+              awaitingOwnerCounts: { acme: 0, beta: 0 },
+            },
+          },
+          expectedPaths: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'the first candidate has zero counts and the second has only a positive awaiting-owner count',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0 },
+              awaitingOwnerCounts: { acme: 0, beta: 3 },
+            },
+          },
+          expectedPaths: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'the first candidate is absent from both count records',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { beta: 1 },
+              awaitingOwnerCounts: {},
+            },
+          },
+          expectedPaths: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'the first candidate has a positive todo-by-human count and the second also qualifies',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 1, beta: 1 },
+              awaitingOwnerCounts: {},
+            },
+          },
+          expectedPaths: ['/projects/acme/todo-by-human'],
+        },
+        {
+          name: 'the first candidate has only a positive awaiting-owner count and the second has a positive todo-by-human count',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 1 },
+              awaitingOwnerCounts: { acme: 1, beta: 0 },
+            },
+          },
+          expectedPaths: ['/projects/acme/todo-by-human'],
+        },
+        {
+          name: 'the first candidate has a positive count but zero minutes',
+          projectMinutes: { acme: 0, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 1, beta: 1 },
+              awaitingOwnerCounts: {},
+            },
+          },
+          expectedPaths: ['/projects/beta/todo-by-human'],
+        },
+        {
+          name: 'only the third candidate has a positive count',
+          projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta', 'gamma'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0, gamma: 4 },
+              awaitingOwnerCounts: { acme: 0, beta: 0, gamma: 0 },
+            },
+          },
+          expectedPaths: ['/projects/gamma/todo-by-human'],
+        },
+      ];
+
+      const observed: { name: string; navigatedPaths: string[] }[] = [];
+      for (const scenario of scenarios) {
+        observed.push({
+          name: scenario.name,
+          navigatedPaths: await navigationPathsAfterProjectListLoads(
+            scenario.projectMinutes,
+            scenario.projectsPayload,
+          ),
+        });
+      }
+
+      expect(observed).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          navigatedPaths: scenario.expectedPaths,
+        })),
+      );
+    });
+
+    it('selects no project when no candidate has both positive minutes and a positive todo-by-human or awaiting-owner count', async () => {
+      const scenarios: {
+        name: string;
+        projectMinutes: Record<string, number>;
+        projectsPayload: ProjectsPayload;
+      }[] = [
+        {
+          name: 'every candidate has zero todo-by-human and zero awaiting-owner counts',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0 },
+              awaitingOwnerCounts: { acme: 0, beta: 0 },
+            },
+          },
+        },
+        {
+          name: 'both count records are empty',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: {},
+              awaitingOwnerCounts: {},
+            },
+          },
+        },
+        {
+          name: 'the response carries no actionableCounts',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: { pjcodes: ['acme', 'beta'] },
+        },
+        {
+          name: 'the response carries a null actionableCounts',
+          projectMinutes: { acme: 30, beta: 30 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: null,
+          },
+        },
+        {
+          name: 'every candidate has a positive count but zero minutes',
+          projectMinutes: { acme: 0, beta: 0 },
+          projectsPayload: {
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 1, beta: 1 },
+              awaitingOwnerCounts: { acme: 1, beta: 1 },
+            },
+          },
+        },
+      ];
+
+      const observed: { name: string; navigatedPaths: string[] }[] = [];
+      for (const scenario of scenarios) {
+        observed.push({
+          name: scenario.name,
+          navigatedPaths: await navigationPathsAfterProjectListLoads(
+            scenario.projectMinutes,
+            scenario.projectsPayload,
+          ),
+        });
+      }
+
+      expect(observed).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          navigatedPaths: [],
+        })),
+      );
+    });
+
+    it('selects a candidate project when a background project-list re-fetch with unchanged project codes and minutes brings a positive todo-by-human or awaiting-owner count after an initial load that selected no project', async () => {
+      const projectMinutes = { acme: 30, beta: 30 };
+      const pjcodes = ['acme', 'beta'];
+      const scenarios: {
+        name: string;
+        refetchedProjectsPayload: ProjectsPayload;
+      }[] = [
+        {
+          name: 'the re-fetch gives the second candidate a positive todo-by-human count',
+          refetchedProjectsPayload: {
+            pjcodes,
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 2 },
+              awaitingOwnerCounts: { acme: 0, beta: 0 },
+            },
+          },
+        },
+        {
+          name: 'the re-fetch gives the second candidate a positive awaiting-owner count',
+          refetchedProjectsPayload: {
+            pjcodes,
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0 },
+              awaitingOwnerCounts: { acme: 0, beta: 3 },
+            },
+          },
+        },
+      ];
+      const projectsPayloadWithoutQualifyingCandidate: ProjectsPayload = {
+        pjcodes,
+        actionableCounts: {
+          todoByHumanCounts: { acme: 0, beta: 0 },
+          awaitingOwnerCounts: { acme: 0, beta: 0 },
+        },
+      };
+      const { navigateReplaceState } = jest.requireMock<{
+        navigateReplaceState: jest.Mock;
+      }>('../lib/navigation');
+
+      const observed: {
+        name: string;
+        pathsBeforeRefetch: string[];
+        pathsAfterRefetch: string[];
+      }[] = [];
+      for (const scenario of scenarios) {
+        localStorage.setItem(
+          'tdpm-timer-settings',
+          JSON.stringify({ timerMode: true, projectMinutes }),
+        );
+        window.history.replaceState({}, '', '/');
+        let projectListFetchCount = 0;
+        global.fetch = jest.fn(async (url: string) => {
+          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+          if (listMatch !== null) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => listPayload(listMatch[1]),
+            };
+          }
+          if (url === '/api/projects') {
+            projectListFetchCount += 1;
+            const servedPayload =
+              projectListFetchCount === 1
+                ? projectsPayloadWithoutQualifyingCandidate
+                : scenario.refetchedProjectsPayload;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => servedPayload,
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        }) as unknown as typeof fetch;
+        navigateReplaceState.mockClear();
+        jest.useFakeTimers();
+        try {
+          const { unmount } = render(<ConsolePage />);
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(0);
+          });
+          expect(projectListFetchCount).toBe(1);
+          const pathsBeforeRefetch = navigateReplaceState.mock.calls.map(
+            (call: [string]) => call[0],
+          );
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(
+              CONSOLE_TAB_REFRESH_INTERVAL_MS,
+            );
+          });
+          expect(projectListFetchCount).toBe(2);
+          const pathsAfterRefetch = navigateReplaceState.mock.calls.map(
+            (call: [string]) => call[0],
+          );
+          unmount();
+          observed.push({
+            name: scenario.name,
+            pathsBeforeRefetch,
+            pathsAfterRefetch: [...new Set(pathsAfterRefetch)],
+          });
+        } finally {
+          jest.useRealTimers();
+        }
+      }
+
+      expect(observed).toEqual(
+        scenarios.map((scenario) => ({
+          name: scenario.name,
+          pathsBeforeRefetch: [],
+          pathsAfterRefetch: ['/projects/beta/todo-by-human'],
+        })),
       );
     });
   });
@@ -2962,7 +3334,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -3105,7 +3480,10 @@ describe('ConsolePage auto-advance tab', () => {
           json: async () =>
             projectsCallCount === 1
               ? { pjcodes: ['acme'] }
-              : { pjcodes: ['acme', 'beta'] },
+              : {
+                  pjcodes: ['acme', 'beta'],
+                  actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+                },
         };
       }
       if (url.startsWith('/api/projectreadmeconfig')) {
@@ -3231,7 +3609,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -3265,7 +3646,10 @@ describe('ConsolePage auto-advance tab', () => {
           return {
             ok: true,
             status: 200,
-            json: async () => ({ pjcodes: ['acme', 'beta'] }),
+            json: async () => ({
+              pjcodes: ['acme', 'beta'],
+              actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+            }),
           };
         }
         void init;
@@ -3329,7 +3713,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -3379,7 +3766,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       if (init?.method === 'POST') {
@@ -3441,7 +3831,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       if (init?.method === 'POST') {
@@ -3517,7 +3910,10 @@ describe('ConsolePage auto-advance tab', () => {
           return {
             ok: true,
             status: 200,
-            json: async () => ({ pjcodes: ['acme', 'beta'] }),
+            json: async () => ({
+              pjcodes: ['acme', 'beta'],
+              actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+            }),
           };
         }
         void init;
@@ -3589,7 +3985,10 @@ describe('ConsolePage auto-advance tab', () => {
           return {
             ok: true,
             status: 200,
-            json: async () => ({ pjcodes: ['acme', 'beta'] }),
+            json: async () => ({
+              pjcodes: ['acme', 'beta'],
+              actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+            }),
           };
         }
         void init;
@@ -3657,7 +4056,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -3713,7 +4115,10 @@ describe('ConsolePage auto-advance tab', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       if (init?.method === 'POST') {
@@ -6023,7 +6428,10 @@ describe('ConsolePage workflow issue creation', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+          json: async () => ({
+            pjcodes: ['acme', 'beta'],
+            actionableCounts: actionableCountsWithBetaTodoByHumanItem,
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };

@@ -888,6 +888,286 @@ describe('fetchProjectList disabledPjcodes', () => {
   });
 });
 
+describe('fetchProjectList actionableCounts', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const fetchActionableCountsFor = async (payload: unknown) => {
+    mockFetchOnce(payload);
+    const result = await fetchProjectList();
+    return result.actionableCounts;
+  };
+
+  it('parses a well-formed actionableCounts object from the response', async () => {
+    const actionableCounts = await fetchActionableCountsFor({
+      pjcodes: ['acme', 'beta'],
+      actionableCounts: {
+        todoByHumanCounts: { acme: 3, beta: 0 },
+        awaitingOwnerCounts: { acme: 1, beta: 7 },
+      },
+    });
+    expect(actionableCounts).toEqual({
+      todoByHumanCounts: { acme: 3, beta: 0 },
+      awaitingOwnerCounts: { acme: 1, beta: 7 },
+    });
+  });
+
+  it('keeps only the number entries of each count record and drops every other value type', async () => {
+    const cases = [
+      {
+        name: 'non-number values inside todoByHumanCounts',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: {
+              acme: 3,
+              zero: 0,
+              asString: '4',
+              asNull: null,
+              asBoolean: true,
+              asObject: { count: 1 },
+              asArray: [2],
+            },
+            awaitingOwnerCounts: { acme: 1 },
+          },
+        },
+        expected: {
+          todoByHumanCounts: { acme: 3, zero: 0 },
+          awaitingOwnerCounts: { acme: 1 },
+        },
+      },
+      {
+        name: 'non-number values inside awaitingOwnerCounts',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 3 },
+            awaitingOwnerCounts: {
+              acme: 1,
+              zero: 0,
+              asString: '4',
+              asNull: null,
+              asBoolean: false,
+              asObject: { count: 1 },
+              asArray: [2],
+            },
+          },
+        },
+        expected: {
+          todoByHumanCounts: { acme: 3 },
+          awaitingOwnerCounts: { acme: 1, zero: 0 },
+        },
+      },
+      {
+        name: 'non-number values inside both records at once',
+        payload: {
+          pjcodes: ['acme', 'beta'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 2, beta: 'two' },
+            awaitingOwnerCounts: { acme: null, beta: 5 },
+          },
+        },
+        expected: {
+          todoByHumanCounts: { acme: 2 },
+          awaitingOwnerCounts: { beta: 5 },
+        },
+      },
+      {
+        name: 'only non-number values in both records',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: '1' },
+            awaitingOwnerCounts: { acme: false },
+          },
+        },
+        expected: { todoByHumanCounts: {}, awaitingOwnerCounts: {} },
+      },
+      {
+        name: 'both records empty',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: { todoByHumanCounts: {}, awaitingOwnerCounts: {} },
+        },
+        expected: { todoByHumanCounts: {}, awaitingOwnerCounts: {} },
+      },
+    ];
+
+    const actual = [];
+    for (const testCase of cases) {
+      actual.push({
+        name: testCase.name,
+        actionableCounts: await fetchActionableCountsFor(testCase.payload),
+      });
+    }
+
+    expect(actual).toEqual(
+      cases.map((testCase) => ({
+        name: testCase.name,
+        actionableCounts: testCase.expected,
+      })),
+    );
+  });
+
+  it('returns null unless actionableCounts is an object carrying two object-shaped records', async () => {
+    const wellFormed = {
+      todoByHumanCounts: { acme: 2 },
+      awaitingOwnerCounts: { acme: 1 },
+    };
+    const cases = [
+      {
+        name: 'a well-formed object (control)',
+        payload: { pjcodes: ['acme'], actionableCounts: wellFormed },
+        expected: wellFormed,
+      },
+      {
+        name: 'the field is omitted',
+        payload: { pjcodes: ['acme'] },
+        expected: null,
+      },
+      {
+        name: 'the field is null',
+        payload: { pjcodes: ['acme'], actionableCounts: null },
+        expected: null,
+      },
+      {
+        name: 'the field is an array',
+        payload: { pjcodes: ['acme'], actionableCounts: [wellFormed] },
+        expected: null,
+      },
+      {
+        name: 'the field is a string',
+        payload: { pjcodes: ['acme'], actionableCounts: 'acme' },
+        expected: null,
+      },
+      {
+        name: 'the field is a number',
+        payload: { pjcodes: ['acme'], actionableCounts: 42 },
+        expected: null,
+      },
+      {
+        name: 'the field is a boolean',
+        payload: { pjcodes: ['acme'], actionableCounts: true },
+        expected: null,
+      },
+      {
+        name: 'the field is an empty object',
+        payload: { pjcodes: ['acme'], actionableCounts: {} },
+        expected: null,
+      },
+      {
+        name: 'todoByHumanCounts is absent',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: { awaitingOwnerCounts: { acme: 1 } },
+        },
+        expected: null,
+      },
+      {
+        name: 'awaitingOwnerCounts is absent',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: { todoByHumanCounts: { acme: 2 } },
+        },
+        expected: null,
+      },
+      {
+        name: 'todoByHumanCounts is an array',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: [2],
+            awaitingOwnerCounts: { acme: 1 },
+          },
+        },
+        expected: null,
+      },
+      {
+        name: 'todoByHumanCounts is null',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: null,
+            awaitingOwnerCounts: { acme: 1 },
+          },
+        },
+        expected: null,
+      },
+      {
+        name: 'todoByHumanCounts is a string',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: 'acme',
+            awaitingOwnerCounts: { acme: 1 },
+          },
+        },
+        expected: null,
+      },
+      {
+        name: 'awaitingOwnerCounts is an array',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 2 },
+            awaitingOwnerCounts: [1],
+          },
+        },
+        expected: null,
+      },
+      {
+        name: 'awaitingOwnerCounts is null',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 2 },
+            awaitingOwnerCounts: null,
+          },
+        },
+        expected: null,
+      },
+      {
+        name: 'awaitingOwnerCounts is a number',
+        payload: {
+          pjcodes: ['acme'],
+          actionableCounts: {
+            todoByHumanCounts: { acme: 2 },
+            awaitingOwnerCounts: 1,
+          },
+        },
+        expected: null,
+      },
+    ];
+
+    const actual = [];
+    for (const testCase of cases) {
+      actual.push({
+        name: testCase.name,
+        actionableCounts: await fetchActionableCountsFor(testCase.payload),
+      });
+    }
+
+    expect(actual).toEqual(
+      cases.map((testCase) => ({
+        name: testCase.name,
+        actionableCounts: testCase.expected,
+      })),
+    );
+  });
+
+  it('returns null actionableCounts when the top-level payload is not an object', async () => {
+    const payloads: unknown[] = [null, 'projects', 42, []];
+
+    const actual = [];
+    for (const payload of payloads) {
+      actual.push(await fetchActionableCountsFor(payload));
+    }
+
+    expect(actual).toEqual([null, null, null, null]);
+  });
+});
+
 describe('postConsoleIssueRename', () => {
   it('posts issueUrl and newTitle to the renameissue endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
