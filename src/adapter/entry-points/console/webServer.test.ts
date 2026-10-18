@@ -2150,6 +2150,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2164,6 +2166,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 2,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2279,6 +2283,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2334,6 +2340,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
             humanPendingRed: 0,
             humanPendingYellow: 0,
             humanPendingBlue: 0,
+            consoleTodoByHumanCount: 0,
+            consoleAwaitingOwnerCount: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
         }).replace(/ /g, '&nbsp;') +
@@ -2374,6 +2382,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 4,
         dep: 1,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(
@@ -2388,6 +2398,8 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
         ws: 2,
         dep: 0,
         blocker: 0,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
       }),
     );
     fs.writeFileSync(

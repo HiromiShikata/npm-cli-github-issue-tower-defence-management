@@ -83,6 +83,8 @@ describe('writeDashboardRow', () => {
       humanPendingRed: 0,
       humanPendingYellow: 0,
       humanPendingBlue: 0,
+      consoleTodoByHumanCount: 0,
+      consoleAwaitingOwnerCount: 1,
     };
     expect(written).toEqual(expected);
   });
