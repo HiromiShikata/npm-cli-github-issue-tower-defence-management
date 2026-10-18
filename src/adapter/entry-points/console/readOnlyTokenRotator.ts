@@ -15,11 +15,15 @@ import {
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
 
+const forbiddenOrNotFoundErrorMessagePattern =
+  /\bHTTP 40[34]\b|Resource not accessible by integration|"type":"(?:FORBIDDEN|NOT_FOUND)"/;
+
 const isForbiddenOrNotFoundError = (error: unknown): boolean =>
   (error instanceof HTTPError &&
     (error.response.status === 403 || error.response.status === 404)) ||
   error instanceof GitHubConfirmedNotFoundError ||
-  (error instanceof Error && /\bHTTP 40[34]\b/.test(error.message));
+  (error instanceof Error &&
+    forbiddenOrNotFoundErrorMessagePattern.test(error.message));
 
 const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
   readRepositories: IssueRepository[],
@@ -64,22 +68,22 @@ export const createReadOnlyTokenRotatingIssueRepository = (
 
   return {
     getAllIssues: (projectId: Project['id']) =>
-      rotate((r) => r.getAllIssues(projectId)),
+      writeRepository.getAllIssues(projectId),
     appendIssueToProjectCache: (projectId: Project['id'], issue: Issue) =>
       writeRepository.appendIssueToProjectCache(projectId, issue),
     removeIssueFromProjectCache: (projectId: Project['id'], issue: Issue) =>
       writeRepository.removeIssueFromProjectCache(projectId, issue),
     getIssueByUrl: (url: string, options?: { bypassCache?: boolean }) =>
-      rotate((r) => r.getIssueByUrl(url, options)),
+      writeRepository.getIssueByUrl(url, options),
     getIssueBodyByUrl: (url: string) => rotate((r) => r.getIssueBodyByUrl(url)),
     searchIssue: (query: Parameters<IssueRepository['searchIssue']>[0]) =>
       rotate((r) => r.searchIssue(query)),
     searchIssues: (query: string) => rotate((r) => r.searchIssues(query)),
     get: (issueUrl: string, project: Project) =>
-      rotate((r) => r.get(issueUrl, project)),
-    getAllOpened: (project: Project) => rotate((r) => r.getAllOpened(project)),
+      writeRepository.get(issueUrl, project),
+    getAllOpened: (project: Project) => writeRepository.getAllOpened(project),
     getStoryObjectMap: (project: Project) =>
-      rotate((r) => r.getStoryObjectMap(project)),
+      writeRepository.getStoryObjectMap(project),
     getAuthenticatedUserLogin: () =>
       writeRepository.getAuthenticatedUserLogin(),
     findRelatedOpenPRs: (
