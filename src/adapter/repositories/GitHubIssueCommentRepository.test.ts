@@ -62,16 +62,34 @@ const buildCommentCacheRepository = () => ({
   ),
 });
 
-const buildLockFaithfulCommentCacheRepository = () => {
+type PendingCacheRead = { key: string; resolve: () => void };
+type PendingCacheWrite = { key: string; value: unknown; resolve: () => void };
+
+const buildLockFaithfulControllableCommentCacheRepository = () => {
   const store = new Map<string, unknown>();
   const lockQueueEndings = new Map<string, Promise<void>>();
+  const pendingReads: PendingCacheRead[] = [];
+  const pendingWrites: PendingCacheWrite[] = [];
 
-  const getSingle = async (key: string): Promise<unknown> =>
-    store.has(key) ? store.get(key) : null;
+  const getSingle = (key: string): Promise<unknown> =>
+    new Promise<unknown>((resolve) => {
+      pendingReads.push({
+        key,
+        resolve: () => resolve(store.has(key) ? store.get(key) : null),
+      });
+    });
 
-  const setSingle = async <T>(key: string, value: T): Promise<void> => {
-    store.set(key, value);
-  };
+  const setSingle = <T>(key: string, value: T): Promise<void> =>
+    new Promise<void>((resolve) => {
+      pendingWrites.push({
+        key,
+        value,
+        resolve: () => {
+          store.set(key, value);
+          resolve();
+        },
+      });
+    });
 
   const withLock = <T>(key: string, fn: () => Promise<T>): Promise<T> => {
     const previousQueueEnding = lockQueueEndings.get(key) ?? Promise.resolve();
@@ -86,7 +104,7 @@ const buildLockFaithfulCommentCacheRepository = () => {
     return result;
   };
 
-  return { getSingle, setSingle, withLock, store };
+  return { getSingle, setSingle, withLock, store, pendingReads, pendingWrites };
 };
 
 const isCachedPageWithEtag = (value: unknown): value is { etag: string } => {
@@ -1004,9 +1022,9 @@ describe('GitHubIssueCommentRepository', () => {
       expect(result.map((c) => c.content)).toEqual(['Freshly fetched comment']);
     });
 
-    it('preserves both pages when two concurrent getCommentsFromIssue calls each update a different page of the same issue', async () => {
+    it('blocks the second concurrent call from reading the comment cache until the first call finishes writing it, preserving both pages', async () => {
       const cacheKey = 'comments/HiromiShikata/test-repo/123';
-      const cache = buildLockFaithfulCommentCacheRepository();
+      const cache = buildLockFaithfulControllableCommentCacheRepository();
       cache.store.set(cacheKey, {
         pages: {
           '1': {
@@ -1066,20 +1084,33 @@ describe('GitHubIssueCommentRepository', () => {
         }
         if (!predicate()) {
           throw new Error(
-            'timed out flushing microtasks while waiting for a pending fetch request',
+            'timed out flushing microtasks while waiting for a pending fetch or cache operation',
           );
+        }
+      };
+      const flushMicrotasksRepeatedly = async (
+        iterationCount: number,
+      ): Promise<void> => {
+        for (let i = 0; i < iterationCount; i++) {
+          await Promise.resolve();
         }
       };
 
       const callAPromise = repositoryWithCache.getCommentsFromIssue(
         buildIssue(TEST_URL),
       );
+      await flushMicrotasksUntil(() => cache.pendingReads.length === 1);
+      cache.pendingReads[0].resolve();
+
       await flushMicrotasksUntil(() => pendingFetchRequests.length === 1);
       const callAPage1Request = pendingFetchRequests[0];
 
       const callBPromise = repositoryWithCache.getCommentsFromIssue(
         buildIssue(TEST_URL),
       );
+      await flushMicrotasksUntil(() => cache.pendingReads.length === 2);
+      cache.pendingReads[1].resolve();
+
       await flushMicrotasksUntil(() => pendingFetchRequests.length === 2);
       const callBPage1Request = pendingFetchRequests[1];
 
@@ -1128,6 +1159,28 @@ describe('GitHubIssueCommentRepository', () => {
         ),
       );
       callBPage2Request.resolve(new Response(null, { status: 304 }));
+
+      await flushMicrotasksRepeatedly(50);
+      expect(cache.pendingReads.length).toBe(3);
+      expect(cache.pendingWrites.length).toBe(0);
+
+      const firstAdmittedCallRead = cache.pendingReads[2];
+      firstAdmittedCallRead.resolve();
+      await flushMicrotasksUntil(() => cache.pendingWrites.length === 1);
+
+      await flushMicrotasksRepeatedly(50);
+      expect(cache.pendingReads.length).toBe(3);
+
+      const firstAdmittedCallWrite = cache.pendingWrites[0];
+      firstAdmittedCallWrite.resolve();
+
+      await flushMicrotasksUntil(() => cache.pendingReads.length === 4);
+      const secondAdmittedCallRead = cache.pendingReads[3];
+      secondAdmittedCallRead.resolve();
+
+      await flushMicrotasksUntil(() => cache.pendingWrites.length === 2);
+      const secondAdmittedCallWrite = cache.pendingWrites[1];
+      secondAdmittedCallWrite.resolve();
 
       await Promise.all([callAPromise, callBPromise]);
 
