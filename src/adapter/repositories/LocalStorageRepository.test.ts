@@ -1,4 +1,5 @@
 import fs from 'fs';
+import util from 'util';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
 type WriteParams = Parameters<LocalStorageRepository['write']>;
@@ -7,6 +8,29 @@ type ReadReturn = ReturnType<LocalStorageRepository['read']>;
 type ListFilesParams = Parameters<LocalStorageRepository['listFiles']>;
 type ListFilesReturn = ReturnType<LocalStorageRepository['listFiles']>;
 type MkdirParams = Parameters<LocalStorageRepository['mkdir']>;
+
+const pathsWithFormatSpecifiers: string[] = [
+  '/path/%s/file',
+  '/path/%d/file',
+  '/path/%j/file',
+  '/path/%%/file',
+  '/path/%o-%O-%i-%f-%c/file',
+];
+
+const callAndCaptureRenderedWarnings = <T>(
+  action: () => T,
+): { result: T; renderedWarnings: string[] } => {
+  const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+  try {
+    const result = action();
+    const renderedWarnings = mockConsoleWarn.mock.calls.map((args: unknown[]) =>
+      util.format(...args),
+    );
+    return { result, renderedWarnings };
+  } finally {
+    mockConsoleWarn.mockRestore();
+  }
+};
 
 describe('LocalStorageRepository', () => {
   let repository: LocalStorageRepository;
@@ -287,6 +311,85 @@ describe('LocalStorageRepository', () => {
       mockConsoleWarn.mockRestore();
     });
 
+    test('renders one warning line with the plain path and the error message when any other stat error occurs', () => {
+      const errorMessage = 'permission denied while statting the path';
+      mockStatSync.mockImplementation(() => {
+        throw Object.assign(new Error(errorMessage), { code: 'EACCES' });
+      });
+      const path = '/path/to/file.txt';
+      const expectedLinePrefix = `LocalStorageRepository.statMtimeMs: failed to stat ${path}`;
+
+      const { result, renderedWarnings } = callAndCaptureRenderedWarnings(() =>
+        repository.statMtimeMs(path),
+      );
+
+      expect({
+        result,
+        renderedWarningCount: renderedWarnings.length,
+        renderedLinePrefix: (renderedWarnings[0] ?? '').slice(
+          0,
+          expectedLinePrefix.length,
+        ),
+        renderedLineContainsErrorMessage: (renderedWarnings[0] ?? '').includes(
+          errorMessage,
+        ),
+      }).toEqual({
+        result: null,
+        renderedWarningCount: 1,
+        renderedLinePrefix: expectedLinePrefix,
+        renderedLineContainsErrorMessage: true,
+      });
+    });
+
+    test('does not log a warning when the stat succeeds', () => {
+      mockStatSync.mockReturnValue({ mtimeMs: 1735689600000 });
+
+      const { result, renderedWarnings } = callAndCaptureRenderedWarnings(() =>
+        repository.statMtimeMs('/path/to/.write.lock'),
+      );
+
+      expect({ result, renderedWarnings }).toEqual({
+        result: 1735689600000,
+        renderedWarnings: [],
+      });
+    });
+
+    test('renders a path containing format specifiers literally and keeps the error message in the warning line when any other stat error occurs', () => {
+      const errorMessage = 'permission denied while statting the path';
+      mockStatSync.mockImplementation(() => {
+        throw Object.assign(new Error(errorMessage), { code: 'EACCES' });
+      });
+
+      const observations = pathsWithFormatSpecifiers.map((path) => {
+        const expectedLinePrefix = `LocalStorageRepository.statMtimeMs: failed to stat ${path}`;
+        const { result, renderedWarnings } = callAndCaptureRenderedWarnings(
+          () => repository.statMtimeMs(path),
+        );
+        return {
+          path,
+          result,
+          renderedWarningCount: renderedWarnings.length,
+          renderedLinePrefix: (renderedWarnings[0] ?? '').slice(
+            0,
+            expectedLinePrefix.length,
+          ),
+          renderedLineContainsErrorMessage: (
+            renderedWarnings[0] ?? ''
+          ).includes(errorMessage),
+        };
+      });
+
+      expect(observations).toEqual(
+        pathsWithFormatSpecifiers.map((path) => ({
+          path,
+          result: null,
+          renderedWarningCount: 1,
+          renderedLinePrefix: `LocalStorageRepository.statMtimeMs: failed to stat ${path}`,
+          renderedLineContainsErrorMessage: true,
+        })),
+      );
+    });
+
     test('does not log a warning when the path does not exist (ENOENT)', () => {
       const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
       const enoentError = Object.assign(new Error('no such file'), {
@@ -373,6 +476,85 @@ describe('LocalStorageRepository', () => {
       expect(mockConsoleWarn).toHaveBeenCalled();
 
       mockConsoleWarn.mockRestore();
+    });
+
+    test('renders one warning line with the plain path and the error message when any other read error occurs', () => {
+      const errorMessage = 'permission denied while reading the path';
+      mockReadFileSync.mockImplementation(() => {
+        throw Object.assign(new Error(errorMessage), { code: 'EACCES' });
+      });
+      const path = '/path/to/file.txt';
+      const expectedLinePrefix = `LocalStorageRepository.readOrNull: failed to read ${path}`;
+
+      const { result, renderedWarnings } = callAndCaptureRenderedWarnings(() =>
+        repository.readOrNull(path),
+      );
+
+      expect({
+        result,
+        renderedWarningCount: renderedWarnings.length,
+        renderedLinePrefix: (renderedWarnings[0] ?? '').slice(
+          0,
+          expectedLinePrefix.length,
+        ),
+        renderedLineContainsErrorMessage: (renderedWarnings[0] ?? '').includes(
+          errorMessage,
+        ),
+      }).toEqual({
+        result: null,
+        renderedWarningCount: 1,
+        renderedLinePrefix: expectedLinePrefix,
+        renderedLineContainsErrorMessage: true,
+      });
+    });
+
+    test('does not log a warning when the read succeeds', () => {
+      mockReadFileSync.mockReturnValue('file content');
+
+      const { result, renderedWarnings } = callAndCaptureRenderedWarnings(() =>
+        repository.readOrNull('/path/to/file.txt'),
+      );
+
+      expect({ result, renderedWarnings }).toEqual({
+        result: 'file content',
+        renderedWarnings: [],
+      });
+    });
+
+    test('renders a path containing format specifiers literally and keeps the error message in the warning line when any other read error occurs', () => {
+      const errorMessage = 'permission denied while reading the path';
+      mockReadFileSync.mockImplementation(() => {
+        throw Object.assign(new Error(errorMessage), { code: 'EACCES' });
+      });
+
+      const observations = pathsWithFormatSpecifiers.map((path) => {
+        const expectedLinePrefix = `LocalStorageRepository.readOrNull: failed to read ${path}`;
+        const { result, renderedWarnings } = callAndCaptureRenderedWarnings(
+          () => repository.readOrNull(path),
+        );
+        return {
+          path,
+          result,
+          renderedWarningCount: renderedWarnings.length,
+          renderedLinePrefix: (renderedWarnings[0] ?? '').slice(
+            0,
+            expectedLinePrefix.length,
+          ),
+          renderedLineContainsErrorMessage: (
+            renderedWarnings[0] ?? ''
+          ).includes(errorMessage),
+        };
+      });
+
+      expect(observations).toEqual(
+        pathsWithFormatSpecifiers.map((path) => ({
+          path,
+          result: null,
+          renderedWarningCount: 1,
+          renderedLinePrefix: `LocalStorageRepository.readOrNull: failed to read ${path}`,
+          renderedLineContainsErrorMessage: true,
+        })),
+      );
     });
   });
 });

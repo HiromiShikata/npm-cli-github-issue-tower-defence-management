@@ -63,7 +63,8 @@ export class LocalStorageRepository {
         return null;
       }
       console.warn(
-        `LocalStorageRepository.statMtimeMs: failed to stat ${path}`,
+        'LocalStorageRepository.statMtimeMs: failed to stat %s',
+        path,
         err,
       );
       return null;
@@ -77,7 +78,8 @@ export class LocalStorageRepository {
         return null;
       }
       console.warn(
-        `LocalStorageRepository.readOrNull: failed to read ${path}`,
+        'LocalStorageRepository.readOrNull: failed to read %s',
+        path,
         err,
       );
       return null;
