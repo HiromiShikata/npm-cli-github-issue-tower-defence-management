@@ -3627,6 +3627,125 @@ describe('ConsolePage auto-advance tab', () => {
     });
   });
 
+  it('switches within 120 seconds to the first candidate project with actionable items and never to a candidate without any, after the displayed project reaches zero actionable items in timer mode', async () => {
+    const automaticSwitchDeadlineMs = 120000;
+    const candidateWithoutActionableItems = 'beta';
+    const candidateWithActionableItems = 'gamma';
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          acme: 30,
+          [candidateWithoutActionableItems]: 30,
+          [candidateWithActionableItems]: 30,
+        },
+      }),
+    );
+    const displayedProjectFailedPreparationItem = {
+      number: 900,
+      title: 'Fix flaky CI step',
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_9',
+      itemId: 'PVTI_9',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Failed Preparation',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-18T00:00:00.000Z',
+    };
+    let displayedProjectTodoByHumanAndAwaitingOwnerAreEmpty = false;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'failed-preparation') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...listPayload(tab),
+              items: [displayedProjectFailedPreparationItem],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            displayedProjectTodoByHumanAndAwaitingOwnerAreEmpty
+              ? { ...listPayload(tab), items: [] }
+              : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        const displayedProjectActionableCount =
+          displayedProjectTodoByHumanAndAwaitingOwnerAreEmpty ? 0 : 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [
+              'acme',
+              candidateWithoutActionableItems,
+              candidateWithActionableItems,
+            ],
+            actionableCounts: {
+              todoByHumanCounts: {
+                acme: displayedProjectActionableCount,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 1,
+              },
+              awaitingOwnerCounts: {
+                acme: displayedProjectActionableCount,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      displayedProjectTodoByHumanAndAwaitingOwnerAreEmpty = true;
+      const refreshCount = Math.floor(
+        automaticSwitchDeadlineMs / CONSOLE_TAB_REFRESH_INTERVAL_MS,
+      );
+      for (let refresh = 0; refresh < refreshCount; refresh += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+      }
+
+      expect(navigatePush).toHaveBeenCalledWith(
+        `/projects/${candidateWithActionableItems}/todo-by-human`,
+      );
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithoutActionableItems}/todo-by-human`,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('navigates to the next project immediately when a completing action is queued after the project timer elapses, before the undo grace period ends or the write is sent', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
