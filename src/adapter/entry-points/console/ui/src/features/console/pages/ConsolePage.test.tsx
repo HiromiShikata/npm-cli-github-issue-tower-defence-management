@@ -8902,3 +8902,208 @@ describe('ConsolePage comment elapsed-time label live update', () => {
     }
   });
 });
+
+describe('ConsolePage operation bar status buttons', () => {
+  const taskTitle = 'Task opened to read the operation bar status buttons';
+  const inTmuxByHumanName = 'In Tmux by human';
+  const todoByHumanName = 'Todo by human';
+  const awaitingWorkspaceName = 'Awaiting Workspace';
+  const unreadName = 'Unread';
+  const allStatusButtonNames = [
+    inTmuxByHumanName,
+    todoByHumanName,
+    awaitingWorkspaceName,
+  ];
+
+  const statusOptionsNamed = (names: string[]) =>
+    names.map((name, index) => ({
+      id: `operation-bar-status-${index}`,
+      name,
+      color: 'BLUE',
+    }));
+
+  const taskItem = (status: string) => ({
+    number: 3490,
+    title: taskTitle,
+    url: 'https://github.com/o/r/issues/3490',
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: 'PVTI_OPERATION_BAR',
+    itemId: 'PVTI_OPERATION_BAR',
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-17T00:00:00.000Z',
+  });
+
+  const installFetchWithActiveTabPayload = (
+    activeTab: string,
+    activeTabPayload: object,
+  ): void => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const requestedTab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            requestedTab === activeTab
+              ? activeTabPayload
+              : {
+                  ...listPayload(requestedTab),
+                  statusOptions: statusOptionsNamed(allStatusButtonNames),
+                },
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.startsWith('/api/issuetitle')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            state: 'open',
+            merged: false,
+            isPullRequest: false,
+            title: taskTitle,
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders the In Tmux by human, Todo by human and Awaiting Workspace buttons in the operation bar of a non-closed task opened from a story of the stories tab', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetchWithActiveTabPayload('stories', {
+      ...listPayload('stories'),
+      statusOptions: statusOptionsNamed(allStatusButtonNames),
+      stories: [
+        {
+          storyName: 'TDPM Console port',
+          storyOptionId: 'st1',
+          color: 'BLUE',
+          description: '',
+          openItemCount: 1,
+          storyViewUrl: null,
+          items: [taskItem(todoByHumanName)],
+        },
+      ],
+    });
+
+    const { findByRole } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Show tasks' }));
+    fireEvent.click(await findByRole('button', { name: taskTitle }));
+
+    expect(
+      await findByRole('button', { name: inTmuxByHumanName }),
+    ).toBeInTheDocument();
+    expect(
+      await findByRole('button', { name: todoByHumanName }),
+    ).toBeInTheDocument();
+    expect(
+      await findByRole('button', { name: awaitingWorkspaceName }),
+    ).toBeInTheDocument();
+  });
+
+  type OperationBarStatusButtonCase = {
+    tab: string;
+    taskStatus: string;
+    statusOptionNames: string[];
+    expectedButtonNames: string[];
+    absentButtonNames: string[];
+  };
+
+  const operationBarStatusButtonCases: OperationBarStatusButtonCase[] = [
+    {
+      tab: 'workflow-blocker',
+      taskStatus: awaitingWorkspaceName,
+      statusOptionNames: [unreadName, ...allStatusButtonNames],
+      expectedButtonNames: allStatusButtonNames,
+      absentButtonNames: [unreadName],
+    },
+    {
+      tab: 'prs',
+      taskStatus: 'Awaiting Owner',
+      statusOptionNames: [unreadName, ...allStatusButtonNames],
+      expectedButtonNames: allStatusButtonNames,
+      absentButtonNames: [unreadName],
+    },
+    {
+      tab: 'failed-preparation',
+      taskStatus: 'Failed Preparation',
+      statusOptionNames: [unreadName, todoByHumanName, awaitingWorkspaceName],
+      expectedButtonNames: [todoByHumanName, awaitingWorkspaceName],
+      absentButtonNames: [inTmuxByHumanName, unreadName],
+    },
+    {
+      tab: 'todo-by-human',
+      taskStatus: todoByHumanName,
+      statusOptionNames: [unreadName, ...allStatusButtonNames],
+      expectedButtonNames: allStatusButtonNames,
+      absentButtonNames: [unreadName],
+    },
+    {
+      tab: 'queued',
+      taskStatus: awaitingWorkspaceName,
+      statusOptionNames: [unreadName, ...allStatusButtonNames],
+      expectedButtonNames: allStatusButtonNames,
+      absentButtonNames: [unreadName],
+    },
+  ];
+
+  it.each(operationBarStatusButtonCases)(
+    'renders exactly the status buttons of the $tab tab in the operation bar of a non-closed task opened from that tab',
+    async ({
+      tab,
+      taskStatus,
+      statusOptionNames,
+      expectedButtonNames,
+      absentButtonNames,
+    }) => {
+      window.history.replaceState({}, '', `/projects/acme/${tab}?k=token`);
+      installFetchWithActiveTabPayload(tab, {
+        ...listPayload(tab),
+        statusOptions: statusOptionsNamed(statusOptionNames),
+        items: [taskItem(taskStatus)],
+      });
+
+      const { findByRole, queryByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await findByRole('button', { name: new RegExp(taskTitle) }),
+      );
+
+      for (const expectedButtonName of expectedButtonNames) {
+        expect(
+          await findByRole('button', { name: expectedButtonName }),
+        ).toBeInTheDocument();
+      }
+      for (const absentButtonName of absentButtonNames) {
+        expect(queryByRole('button', { name: absentButtonName })).toBeNull();
+      }
+    },
+  );
+});
