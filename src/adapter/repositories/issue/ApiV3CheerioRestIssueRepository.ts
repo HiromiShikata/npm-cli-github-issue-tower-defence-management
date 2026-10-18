@@ -22,6 +22,7 @@ import {
 import { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import { normalizeGitHubRawUrl } from './gitHubRawUrl';
 import {
+  collectIssueCommentPagesReusingStoredPages,
   convertIssueCommentResponseItemsToStoredIssueCommentPage,
   convertStoredIssueCommentPagesToIssueComments,
   findStoredIssueCommentsReusableForIssueUpdatedAt,
@@ -4708,34 +4709,29 @@ export class ApiV3CheerioRestIssueRepository
     if (reusableStoredComments !== null) {
       return reusableStoredComments;
     }
-    const fetchedPages: StoredIssueCommentPage[] = [];
-    let hasMore = true;
-    while (hasMore) {
-      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${fetchedPages.length + 1}`;
-      const storedPage: StoredIssueCommentPage | null =
-        storedIssueCommentList?.pages[fetchedPages.length] ?? null;
-      const requestHeaders: Record<string, string> = {
-        Authorization: `Bearer ${this.ghToken}`,
-        Accept: 'application/vnd.github+json',
-      };
-      if (storedPage?.etag) {
-        requestHeaders['If-None-Match'] = storedPage.etag;
-      }
-      const response = await this.fetchWithRateLimitRetry(
-        () =>
-          fetch(commentsUrl, {
-            method: 'GET',
-            headers: requestHeaders,
-          }),
-        { method: 'GET', path: sanitizeRestPath(commentsUrl) },
-      );
-      const fetchedPage =
-        response.status === 304 && storedPage !== null
+    const fetchedPages = await collectIssueCommentPagesReusingStoredPages(
+      storedIssueCommentList,
+      async (pageNumber, storedPage) => {
+        const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${pageNumber}`;
+        const response = await this.fetchWithRateLimitRetry(
+          () =>
+            fetch(commentsUrl, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${this.ghToken}`,
+                Accept: 'application/vnd.github+json',
+                ...(storedPage?.etag
+                  ? { 'If-None-Match': storedPage.etag }
+                  : {}),
+              },
+            }),
+          { method: 'GET', path: sanitizeRestPath(commentsUrl) },
+        );
+        return response.status === 304 && storedPage !== null
           ? storedPage
-          : await this.parseIssueCommentsPageResponse(url, response);
-      fetchedPages.push(fetchedPage);
-      hasMore = fetchedPage.comments.length >= ISSUE_COMMENTS_PER_PAGE;
-    }
+          : this.parseIssueCommentsPageResponse(url, response);
+      },
+    );
     await this.localStorageCacheRepository.withLock(
       storedIssueCommentListKey,
       () =>

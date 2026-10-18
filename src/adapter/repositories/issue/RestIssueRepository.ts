@@ -98,6 +98,28 @@ export const findStoredIssueCommentsReusableForIssueUpdatedAt = (
       )
     : null;
 
+export const collectIssueCommentPagesReusingStoredPages = async (
+  storedIssueCommentList: StoredIssueCommentList | null,
+  fetchIssueCommentPage: (
+    pageNumber: number,
+    storedPage: StoredIssueCommentPage | null,
+  ) => Promise<StoredIssueCommentPage>,
+): Promise<StoredIssueCommentPage[]> => {
+  const collectedPages: StoredIssueCommentPage[] = [];
+  let hasMore = true;
+  while (hasMore) {
+    const storedPage =
+      storedIssueCommentList?.pages[collectedPages.length] ?? null;
+    const collectedPage = await fetchIssueCommentPage(
+      collectedPages.length + 1,
+      storedPage,
+    );
+    collectedPages.push(collectedPage);
+    hasMore = collectedPage.comments.length >= ISSUE_COMMENTS_PER_PAGE;
+  }
+  return collectedPages;
+};
+
 export class RestIssueRepository
   extends BaseGitHubRepository
   implements
@@ -550,26 +572,22 @@ export class RestIssueRepository
       return reusableStoredComments;
     }
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(url);
-    const fetchedPages: StoredIssueCommentPage[] = [];
-    let hasMore = true;
-    while (hasMore) {
-      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${fetchedPages.length + 1}`;
-      const storedPage: StoredIssueCommentPage | null =
-        storedIssueCommentList?.pages[fetchedPages.length] ?? null;
-      const response = await ky.get(commentsUrl, {
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          ...(storedPage?.etag ? { 'If-None-Match': storedPage.etag } : {}),
-        },
-        throwHttpErrors: false,
-      });
-      const fetchedPage =
-        response.status === 304 && storedPage !== null
+    const fetchedPages = await collectIssueCommentPagesReusingStoredPages(
+      storedIssueCommentList,
+      async (pageNumber, storedPage) => {
+        const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${ISSUE_COMMENTS_PER_PAGE}&page=${pageNumber}`;
+        const response = await ky.get(commentsUrl, {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            ...(storedPage?.etag ? { 'If-None-Match': storedPage.etag } : {}),
+          },
+          throwHttpErrors: false,
+        });
+        return response.status === 304 && storedPage !== null
           ? storedPage
-          : await this.parseIssueCommentsPageResponse(url, response);
-      fetchedPages.push(fetchedPage);
-      hasMore = fetchedPage.comments.length >= ISSUE_COMMENTS_PER_PAGE;
-    }
+          : this.parseIssueCommentsPageResponse(url, response);
+      },
+    );
     this.storedIssueCommentListByIssueUrl.set(url, {
       issueUpdatedAt,
       pages: fetchedPages,
