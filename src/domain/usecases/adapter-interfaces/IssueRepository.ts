@@ -256,6 +256,7 @@ export interface IssueRepository {
     merged: boolean;
     isPullRequest: boolean;
     title: string;
+    stateReason: string;
   }>;
   getPullRequestSummary: (prUrl: string) => Promise<{
     title: string;

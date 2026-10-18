@@ -133,6 +133,7 @@ export const ConsoleItemDetail = ({
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
+  const resolvedStateReason = state?.stateReason ?? '';
   const closedStateLabel =
     !item.isPr && resolvedState === 'closed' ? 'Closed' : null;
   const repoContext = parseNameWithOwner(item.nameWithOwner) ?? undefined;
@@ -223,7 +224,7 @@ export const ConsoleItemDetail = ({
             state={resolvedState}
             merged={merged}
             isDraft={false}
-            stateReason=""
+            stateReason={resolvedStateReason}
           />
           {onTitleRename != null ? (
             <ConsoleItemTitleEditor

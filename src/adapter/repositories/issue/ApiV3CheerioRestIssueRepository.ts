@@ -674,6 +674,7 @@ function isIssueOrPullRequestBodyResponse(
 type IssueOrPullRequestStateResponse = {
   state: string;
   title: string;
+  state_reason?: string | null;
 };
 
 function isIssueOrPullRequestStateResponse(
@@ -682,7 +683,8 @@ function isIssueOrPullRequestStateResponse(
   return (
     isRecord(value) &&
     typeof value.state === 'string' &&
-    typeof value.title === 'string'
+    typeof value.title === 'string' &&
+    (value.state_reason === undefined || isNullableString(value.state_reason))
   );
 }
 
@@ -5029,6 +5031,7 @@ export class ApiV3CheerioRestIssueRepository
     merged: boolean;
     isPullRequest: boolean;
     title: string;
+    stateReason: string;
   }> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
     if (isPr) {
@@ -5064,6 +5067,7 @@ export class ApiV3CheerioRestIssueRepository
         merged: body.merged,
         isPullRequest: true,
         title: body.title,
+        stateReason: '',
       };
     }
     const issueStateUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`;
@@ -5095,6 +5099,7 @@ export class ApiV3CheerioRestIssueRepository
       merged: false,
       isPullRequest: false,
       title: body.title,
+      stateReason: body.state_reason ?? '',
     };
   };
 

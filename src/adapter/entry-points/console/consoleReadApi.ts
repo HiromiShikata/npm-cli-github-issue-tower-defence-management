@@ -20,6 +20,7 @@ export type IssueOrPullRequestState = {
   merged: boolean;
   isPullRequest: boolean;
   title: string;
+  stateReason: string;
 };
 
 export type MergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';

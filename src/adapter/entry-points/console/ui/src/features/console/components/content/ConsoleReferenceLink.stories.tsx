@@ -20,6 +20,7 @@ export const OpenPullRequest: Story = {
       merged: false,
       isPullRequest: true,
       title: 'Rename serveConsole subcommand to serveWeb',
+      stateReason: '',
     },
   },
 };
@@ -34,6 +35,7 @@ export const MergedPullRequest: Story = {
       merged: true,
       isPullRequest: true,
       title: 'Add serveConsole subcommand under entry-points',
+      stateReason: '',
     },
   },
 };
@@ -48,6 +50,7 @@ export const OpenIssue: Story = {
       merged: false,
       isPullRequest: false,
       title: 'Scaffold React console UI under entry-points with build bundling',
+      stateReason: '',
     },
   },
 };
@@ -62,6 +65,22 @@ export const ClosedIssue: Story = {
       merged: false,
       isPullRequest: false,
       title: 'Publish the generated documentation site to GitHub Pages',
+      stateReason: 'completed',
+    },
+  },
+};
+
+export const ClosedNotPlannedIssue: Story = {
+  args: {
+    href: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/693',
+    fallbackText:
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/693',
+    state: {
+      state: 'closed',
+      merged: false,
+      isPullRequest: false,
+      title: 'Investigate flaky console e2e test on CI',
+      stateReason: 'not_planned',
     },
   },
 };

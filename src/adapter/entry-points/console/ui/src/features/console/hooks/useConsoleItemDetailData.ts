@@ -22,6 +22,7 @@ const DEFAULT_STATE: ConsoleIssueState = {
   merged: false,
   isPullRequest: false,
   title: '',
+  stateReason: '',
 };
 const DEFAULT_PR_STATUS: ConsolePullRequestStatus = {
   found: false,
