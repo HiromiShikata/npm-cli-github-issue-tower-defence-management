@@ -15275,6 +15275,95 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
       });
     });
+
+    it('stores the creation time as the update time of the newly created cached issue so the next getAllIssues keeps the light fetch', async () => {
+      const storedRecordsByKey = new Map<string, string>();
+      const buildProjectWithNewStoryOption = (): Project => ({
+        ...buildTestProject('proj-create-updated-at'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-option-new-story',
+              name: 'feature / NewStory',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      });
+      const issueCreatedAt = new Date('2026-07-10T00:10:00.000Z');
+      const fetchingProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      fetchingProcess.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-10T00:00:00.000Z'),
+      );
+      fetchingProcess.projectRepository.getProject.mockResolvedValue(
+        buildProjectWithNewStoryOption(),
+      );
+      fetchingProcess.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        {
+          issues: [buildProjectItem(existingIssue.url, 'Existing Issue')],
+          inconsistencyMessage: null,
+        },
+      );
+      const creatingProcess =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          storedRecordsByKey,
+        );
+      creatingProcess.dateRepository.now.mockResolvedValue(issueCreatedAt);
+      creatingProcess.projectRepository.getProject.mockResolvedValue(
+        buildProjectWithNewStoryOption(),
+      );
+      creatingProcess.restIssueRepository.createNewIssue.mockResolvedValue(
+        newIssueNumber,
+      );
+      creatingProcess.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        {
+          issues: [],
+          inconsistencyMessage: null,
+        },
+      );
+      creatingProcess.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        {
+          lightItems: [],
+          inconsistencyMessage: null,
+        },
+      );
+
+      await fetchingProcess.repository.getAllIssues('proj-create-updated-at');
+      await creatingProcess.repository.createNewIssue(
+        'o',
+        'r',
+        'feature / NewStory',
+        'desc',
+        [],
+        ['story'],
+        'proj-create-updated-at',
+        'feature / NewStory',
+      );
+      const result = await creatingProcess.repository.getAllIssues(
+        'proj-create-updated-at',
+      );
+
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            url: newIssueUrl,
+            createdAt: issueCreatedAt,
+            updatedAt: issueCreatedAt,
+          }),
+        ]),
+      );
+      expect(
+        creatingProcess.graphqlProjectItemRepository.fetchProjectItems,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   describe('getIssueByUrl', () => {
