@@ -1,3 +1,10 @@
+# [2.173.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.2...v2.173.0) (2026-10-18)
+
+
+### Features
+
+* **console:** Bundle Set Depended Issue action with Awaiting Workspace status transition in console item detail panel ([#3507](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3507)) ([6cd966e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6cd966e4abf84b06d67dc0a0f89772d6af220545))
+
 ## [2.172.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.1...v2.172.2) (2026-10-18)
 
 
