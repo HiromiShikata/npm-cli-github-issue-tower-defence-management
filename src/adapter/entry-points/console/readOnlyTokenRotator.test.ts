@@ -3,7 +3,9 @@ import { mock } from 'jest-mock-extended';
 import type { MockProxy } from 'jest-mock-extended';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
+import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type {
+  IssueComment,
   IssueRepository,
   OpenPullRequestCiStatus,
   RelatedPullRequest,
@@ -58,6 +60,126 @@ type ObservedOwnTokenRead = {
   ownTokenCalls: unknown[][];
 };
 
+const forbiddenGraphqlErrors = [
+  {
+    type: 'FORBIDDEN',
+    path: ['node'],
+    locations: [{ line: 1, column: 3 }],
+    message: 'Resource not accessible by integration',
+  },
+];
+
+const notFoundGraphqlErrors = [
+  {
+    type: 'NOT_FOUND',
+    path: ['user', 'projectV2'],
+    locations: [{ line: 1, column: 10 }],
+    message: 'Could not resolve to a ProjectV2 with the number 48.',
+  },
+];
+
+const buildGraphqlErrorsError = (graphqlErrors: unknown[]): Error =>
+  new Error('GitHub GraphQL errors: ' + JSON.stringify(graphqlErrors));
+
+type RoutedReadMock = {
+  mockRejectedValue: (reason: Error) => unknown;
+  mock: { calls: unknown[][] };
+};
+
+type RoutedReadCase = {
+  name: string;
+  readMock: (repository: MockProxy<IssueRepository>) => RoutedReadMock;
+  arrangeOwnTokenResult: (
+    ownTokenRepository: MockProxy<IssueRepository>,
+  ) => unknown;
+  read: (repository: IssueRepository) => Promise<unknown>;
+  expectedCalls: unknown[][];
+};
+
+type ObservedRoutedRead = ObservedOwnTokenRead & {
+  appTokenCalls: unknown[][];
+};
+
+const projectsV2Project: Project = {
+  id: 'projects-v2-project',
+  url: 'https://github.com/users/o/projects/48',
+  databaseId: 48,
+  name: 'projects-v2-project',
+  status: { name: 'Status', fieldId: 'status-field', statuses: [] },
+  nextActionDate: null,
+  nextActionHour: null,
+  story: null,
+  remainingEstimationMinutes: null,
+  dependedIssueUrlSeparatedByComma: null,
+  completionDate50PercentConfidence: null,
+  agent: null,
+};
+
+const buildProjectsV2ReadCases = (issueUrl: string): RoutedReadCase[] => [
+  {
+    name: 'getAllIssues',
+    readMock: (repository) => repository.getAllIssues,
+    arrangeOwnTokenResult: (ownTokenRepository) => {
+      const ownTokenAllIssues = {
+        issues: [mock<Issue>()],
+        project: projectsV2Project,
+        cacheUsed: false,
+      };
+      ownTokenRepository.getAllIssues.mockResolvedValue(ownTokenAllIssues);
+      return ownTokenAllIssues;
+    },
+    read: (repository) => repository.getAllIssues(projectsV2Project.id),
+    expectedCalls: [[projectsV2Project.id]],
+  },
+  {
+    name: 'getAllOpened',
+    readMock: (repository) => repository.getAllOpened,
+    arrangeOwnTokenResult: (ownTokenRepository) => {
+      const ownTokenOpenedIssues = [mock<Issue>()];
+      ownTokenRepository.getAllOpened.mockResolvedValue(ownTokenOpenedIssues);
+      return ownTokenOpenedIssues;
+    },
+    read: (repository) => repository.getAllOpened(projectsV2Project),
+    expectedCalls: [[projectsV2Project]],
+  },
+  {
+    name: 'getStoryObjectMap',
+    readMock: (repository) => repository.getStoryObjectMap,
+    arrangeOwnTokenResult: (ownTokenRepository) => {
+      const ownTokenStoryObjectMap: StoryObjectMap = new Map();
+      ownTokenRepository.getStoryObjectMap.mockResolvedValue(
+        ownTokenStoryObjectMap,
+      );
+      return ownTokenStoryObjectMap;
+    },
+    read: (repository) => repository.getStoryObjectMap(projectsV2Project),
+    expectedCalls: [[projectsV2Project]],
+  },
+  {
+    name: 'getIssueByUrl',
+    readMock: (repository) => repository.getIssueByUrl,
+    arrangeOwnTokenResult: (ownTokenRepository) => {
+      const ownTokenIssue = mock<Issue>();
+      ownTokenRepository.getIssueByUrl.mockResolvedValue(ownTokenIssue);
+      return ownTokenIssue;
+    },
+    read: (repository) =>
+      repository.getIssueByUrl(issueUrl, { bypassCache: true }),
+    expectedCalls: [[issueUrl, { bypassCache: true }]],
+  },
+  {
+    name: 'get',
+    readMock: (repository) => repository.get,
+    arrangeOwnTokenResult: (ownTokenRepository) => {
+      const ownTokenIssue = mock<Issue>();
+      ownTokenRepository.get.mockResolvedValue(ownTokenIssue);
+      return ownTokenIssue;
+    },
+    read: (repository) => repository.get(issueUrl, projectsV2Project),
+    expectedCalls: [[issueUrl, projectsV2Project]],
+  },
+];
+
 describe('createReadOnlyTokenRotatingIssueRepository', () => {
   describe('single repository', () => {
     it('returns the result from the only repository', async () => {
@@ -79,11 +201,11 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
-    it('forwards the bypassCache option to the underlying repository', async () => {
+    it('forwards the bypassCache option of getIssueByUrl to the write repository holding the project own token, not to the read repository', async () => {
       const repo = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
       const issue = mock<Issue>();
-      repo.getIssueByUrl.mockResolvedValue(issue);
+      writeRepo.getIssueByUrl.mockResolvedValue(issue);
 
       const rotating = createReadOnlyTokenRotatingIssueRepository(
         [repo],
@@ -93,10 +215,11 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
         bypassCache: true,
       });
 
-      expect(repo.getIssueByUrl).toHaveBeenCalledWith(
+      expect(writeRepo.getIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/issues/1',
         { bypassCache: true },
       );
+      expect(repo.getIssueByUrl).not.toHaveBeenCalled();
     });
 
     it('forwards the bypassCache option to findRelatedOpenPRs on the underlying repository', async () => {
@@ -460,6 +583,99 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       expect(repo1.removeIssueFromProjectCache).not.toHaveBeenCalled();
       expect(repo2.removeIssueFromProjectCache).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Projects V2 reads served only by the write repository holding the project own token', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+
+    it('returns the write repository result for each Projects V2 read without asking a read repository whose App installation token GitHub refuses with a GraphQL FORBIDDEN error', async () => {
+      const projectsV2ReadCases = buildProjectsV2ReadCases(issueUrl);
+
+      const observed: ObservedRoutedRead[] = [];
+      for (const projectsV2ReadCase of projectsV2ReadCases) {
+        const appTokenRepository = mock<IssueRepository>();
+        const ownTokenRepository = mock<IssueRepository>();
+        projectsV2ReadCase
+          .readMock(appTokenRepository)
+          .mockRejectedValue(buildGraphqlErrorsError(forbiddenGraphqlErrors));
+        const ownTokenResult =
+          projectsV2ReadCase.arrangeOwnTokenResult(ownTokenRepository);
+        const rotating = createReadOnlyTokenRotatingIssueRepository(
+          [appTokenRepository],
+          ownTokenRepository,
+        );
+
+        const settled = await settleRead(projectsV2ReadCase.read(rotating));
+        observed.push({
+          name: projectsV2ReadCase.name,
+          status: settled.status,
+          returnsOwnTokenResult:
+            settled.status === 'resolved' && settled.value === ownTokenResult,
+          appTokenCalls:
+            projectsV2ReadCase.readMock(appTokenRepository).mock.calls,
+          ownTokenCalls:
+            projectsV2ReadCase.readMock(ownTokenRepository).mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        projectsV2ReadCases.map((projectsV2ReadCase) => ({
+          name: projectsV2ReadCase.name,
+          status: 'resolved',
+          returnsOwnTokenResult: true,
+          appTokenCalls: [],
+          ownTokenCalls: projectsV2ReadCase.expectedCalls,
+        })),
+      );
+    });
+
+    it('rejects with the write repository error for each Projects V2 read refused with the project own token, without asking a read repository', async () => {
+      const projectsV2ReadCases = buildProjectsV2ReadCases(issueUrl);
+
+      const observed: {
+        name: string;
+        rejectsWithTheOwnTokenError: boolean;
+        appTokenCalls: unknown[][];
+        ownTokenCalls: unknown[][];
+      }[] = [];
+      for (const projectsV2ReadCase of projectsV2ReadCases) {
+        const appTokenRepository = mock<IssueRepository>();
+        const ownTokenRepository = mock<IssueRepository>();
+        const ownTokenError = new Error(
+          `Project not found. projectId: ${projectsV2Project.id}`,
+        );
+        projectsV2ReadCase
+          .readMock(appTokenRepository)
+          .mockRejectedValue(buildGraphqlErrorsError(forbiddenGraphqlErrors));
+        projectsV2ReadCase
+          .readMock(ownTokenRepository)
+          .mockRejectedValue(ownTokenError);
+        const rotating = createReadOnlyTokenRotatingIssueRepository(
+          [appTokenRepository],
+          ownTokenRepository,
+        );
+
+        const settled = await settleRead(projectsV2ReadCase.read(rotating));
+        observed.push({
+          name: projectsV2ReadCase.name,
+          rejectsWithTheOwnTokenError:
+            settled.status === 'rejected' && settled.reason === ownTokenError,
+          appTokenCalls:
+            projectsV2ReadCase.readMock(appTokenRepository).mock.calls,
+          ownTokenCalls:
+            projectsV2ReadCase.readMock(ownTokenRepository).mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        projectsV2ReadCases.map((projectsV2ReadCase) => ({
+          name: projectsV2ReadCase.name,
+          rejectsWithTheOwnTokenError: true,
+          appTokenCalls: [],
+          ownTokenCalls: projectsV2ReadCase.expectedCalls,
+        })),
+      );
     });
   });
 
@@ -897,6 +1113,243 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(observed).toEqual(
         rethrownErrorCases.map((rethrownErrorCase) => ({
           name: rethrownErrorCase.name,
+          rejectsWithTheReadError: true,
+          ownTokenCalls: [],
+        })),
+      );
+    });
+
+    const issueUpdatedAt = new Date('2026-10-18T07:00:00.000Z');
+    const findRelatedOpenPRsReadCase: RoutedReadCase = {
+      name: 'findRelatedOpenPRs',
+      readMock: (repository) => repository.findRelatedOpenPRs,
+      arrangeOwnTokenResult: (ownTokenRepository) => {
+        const ownTokenPullRequests = [ownTokenOpenPullRequest];
+        ownTokenRepository.findRelatedOpenPRs.mockResolvedValue(
+          ownTokenPullRequests,
+        );
+        return ownTokenPullRequests;
+      },
+      read: (repository) =>
+        repository.findRelatedOpenPRs(issueUrl, { bypassCache: true }),
+      expectedCalls: [[issueUrl, { bypassCache: true }]],
+    };
+    const getOpenPullRequestReadCase: RoutedReadCase = {
+      name: 'getOpenPullRequest',
+      readMock: (repository) => repository.getOpenPullRequest,
+      arrangeOwnTokenResult: (ownTokenRepository) => {
+        ownTokenRepository.getOpenPullRequest.mockResolvedValue(
+          ownTokenOpenPullRequest,
+        );
+        return ownTokenOpenPullRequest;
+      },
+      read: (repository) => repository.getOpenPullRequest(prUrl),
+      expectedCalls: [[prUrl]],
+    };
+    const getIssueOrPullRequestCommentsReadCase: RoutedReadCase = {
+      name: 'getIssueOrPullRequestComments',
+      readMock: (repository) => repository.getIssueOrPullRequestComments,
+      arrangeOwnTokenResult: (ownTokenRepository) => {
+        const ownTokenComments: IssueComment[] = [
+          {
+            id: 1,
+            author: 'own-token-reader',
+            body: 'comment read with the project own token',
+            createdAt: new Date('2026-10-18T06:00:00.000Z'),
+          },
+        ];
+        ownTokenRepository.getIssueOrPullRequestComments.mockResolvedValue(
+          ownTokenComments,
+        );
+        return ownTokenComments;
+      },
+      read: (repository) =>
+        repository.getIssueOrPullRequestComments(issueUrl, { issueUpdatedAt }),
+      expectedCalls: [[issueUrl, { issueUpdatedAt }]],
+    };
+    const rotatedReadCases: RoutedReadCase[] = [
+      findRelatedOpenPRsReadCase,
+      getOpenPullRequestReadCase,
+      getIssueOrPullRequestCommentsReadCase,
+    ];
+
+    const observeRotatedRead = async (
+      name: string,
+      rotatedReadCase: RoutedReadCase,
+      appTokenError: Error,
+    ): Promise<ObservedRoutedRead> => {
+      const appTokenRepository = mock<IssueRepository>();
+      const ownTokenRepository = mock<IssueRepository>();
+      rotatedReadCase
+        .readMock(appTokenRepository)
+        .mockRejectedValue(appTokenError);
+      const ownTokenResult =
+        rotatedReadCase.arrangeOwnTokenResult(ownTokenRepository);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [appTokenRepository],
+        ownTokenRepository,
+      );
+
+      const settled = await settleRead(rotatedReadCase.read(rotating));
+      return {
+        name,
+        status: settled.status,
+        returnsOwnTokenResult:
+          settled.status === 'resolved' && settled.value === ownTokenResult,
+        appTokenCalls: rotatedReadCase.readMock(appTokenRepository).mock.calls,
+        ownTokenCalls: rotatedReadCase.readMock(ownTokenRepository).mock.calls,
+      };
+    };
+
+    it('repeats a read that stays rotated, refused by GitHub GraphQL with FORBIDDEN, NOT_FOUND or Resource not accessible by integration, once on the write repository with the same arguments and returns its result', async () => {
+      const graphqlRefusedReadCases: {
+        name: string;
+        rotatedReadCase: RoutedReadCase;
+        appTokenError: Error;
+      }[] = [
+        ...rotatedReadCases.map((rotatedReadCase) => ({
+          name: `${rotatedReadCase.name} refused with a GraphQL FORBIDDEN error`,
+          rotatedReadCase,
+          appTokenError: buildGraphqlErrorsError(forbiddenGraphqlErrors),
+        })),
+        {
+          name: 'getOpenPullRequest refused with a GraphQL NOT_FOUND error',
+          rotatedReadCase: getOpenPullRequestReadCase,
+          appTokenError: buildGraphqlErrorsError(notFoundGraphqlErrors),
+        },
+        {
+          name: 'getIssueOrPullRequestComments refused with a plain Error carrying Resource not accessible by integration',
+          rotatedReadCase: getIssueOrPullRequestCommentsReadCase,
+          appTokenError: new Error('Resource not accessible by integration'),
+        },
+      ];
+
+      const observed: ObservedRoutedRead[] = [];
+      for (const graphqlRefusedReadCase of graphqlRefusedReadCases) {
+        observed.push(
+          await observeRotatedRead(
+            graphqlRefusedReadCase.name,
+            graphqlRefusedReadCase.rotatedReadCase,
+            graphqlRefusedReadCase.appTokenError,
+          ),
+        );
+      }
+
+      expect(observed).toEqual(
+        graphqlRefusedReadCases.map((graphqlRefusedReadCase) => ({
+          name: graphqlRefusedReadCase.name,
+          status: 'resolved',
+          returnsOwnTokenResult: true,
+          appTokenCalls: graphqlRefusedReadCase.rotatedReadCase.expectedCalls,
+          ownTokenCalls: graphqlRefusedReadCase.rotatedReadCase.expectedCalls,
+        })),
+      );
+    });
+
+    it('repeats a read that stays rotated, refused with HTTP 403 or HTTP 404, once on the write repository with the same arguments and returns its result', async () => {
+      const refusedErrorCases: { name: string; error: Error }[] = [
+        { name: 'ky HTTPError with status 403', error: buildKyHttpError(403) },
+        { name: 'ky HTTPError with status 404', error: buildKyHttpError(404) },
+        {
+          name: 'GitHubConfirmedNotFoundError',
+          error: new GitHubConfirmedNotFoundError(issueUrl),
+        },
+        {
+          name: 'plain Error whose message carries HTTP 403',
+          error: new Error(
+            'Failed to fetch related pull requests of o/r#1: HTTP 403 Forbidden',
+          ),
+        },
+        {
+          name: 'plain Error whose message carries HTTP 404',
+          error: new Error(
+            'Failed to fetch related pull requests of o/r#1: HTTP 404 Not Found',
+          ),
+        },
+      ];
+
+      const observed: ObservedRoutedRead[] = [];
+      for (const refusedErrorCase of refusedErrorCases) {
+        observed.push(
+          await observeRotatedRead(
+            refusedErrorCase.name,
+            findRelatedOpenPRsReadCase,
+            refusedErrorCase.error,
+          ),
+        );
+      }
+
+      expect(observed).toEqual(
+        refusedErrorCases.map((refusedErrorCase) => ({
+          name: refusedErrorCase.name,
+          status: 'resolved',
+          returnsOwnTokenResult: true,
+          appTokenCalls: findRelatedOpenPRsReadCase.expectedCalls,
+          ownTokenCalls: findRelatedOpenPRsReadCase.expectedCalls,
+        })),
+      );
+    });
+
+    it('re-throws an error of a read that stays rotated without asking the write repository when it is neither HTTP 403, HTTP 404 nor a GraphQL FORBIDDEN or NOT_FOUND refusal', async () => {
+      const rethrownErrorCases: { name: string; buildError: () => Error }[] = [
+        { name: 'plain Error boom', buildError: () => new Error('boom') },
+        {
+          name: 'GraphQL error of a type other than FORBIDDEN or NOT_FOUND',
+          buildError: () =>
+            buildGraphqlErrorsError([
+              {
+                type: 'INTERNAL',
+                path: ['node'],
+                locations: [{ line: 1, column: 3 }],
+                message: 'Something went wrong while executing your query.',
+              },
+            ]),
+        },
+      ];
+      const rethrownReadCases = rotatedReadCases.flatMap((rotatedReadCase) =>
+        rethrownErrorCases.map((rethrownErrorCase) => ({
+          name: `${rotatedReadCase.name} rejecting with ${rethrownErrorCase.name}`,
+          rotatedReadCase,
+          appTokenError: rethrownErrorCase.buildError(),
+        })),
+      );
+
+      const observed: {
+        name: string;
+        rejectsWithTheReadError: boolean;
+        ownTokenCalls: unknown[][];
+      }[] = [];
+      for (const rethrownReadCase of rethrownReadCases) {
+        const appTokenRepository = mock<IssueRepository>();
+        const ownTokenRepository = mock<IssueRepository>();
+        rethrownReadCase.rotatedReadCase
+          .readMock(appTokenRepository)
+          .mockRejectedValue(rethrownReadCase.appTokenError);
+        rethrownReadCase.rotatedReadCase.arrangeOwnTokenResult(
+          ownTokenRepository,
+        );
+        const rotating = createReadOnlyTokenRotatingIssueRepository(
+          [appTokenRepository],
+          ownTokenRepository,
+        );
+
+        const settled = await settleRead(
+          rethrownReadCase.rotatedReadCase.read(rotating),
+        );
+        observed.push({
+          name: rethrownReadCase.name,
+          rejectsWithTheReadError:
+            settled.status === 'rejected' &&
+            settled.reason === rethrownReadCase.appTokenError,
+          ownTokenCalls:
+            rethrownReadCase.rotatedReadCase.readMock(ownTokenRepository).mock
+              .calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        rethrownReadCases.map((rethrownReadCase) => ({
+          name: rethrownReadCase.name,
           rejectsWithTheReadError: true,
           ownTokenCalls: [],
         })),
@@ -1467,9 +1920,13 @@ describe('buildReadIssueRepositoryResolver', () => {
       const uminoOwnRepository = fixture.repositoryForToken(
         'own-token-of-umino-owner',
       );
-      const ownTokenIssue = mock<Issue>();
-      uminoAppRepository.getIssueByUrl.mockRejectedValue(buildKyHttpError(404));
-      uminoOwnRepository.getIssueByUrl.mockResolvedValue(ownTokenIssue);
+      const ownTokenPullRequests = [mock<RelatedPullRequest>()];
+      uminoAppRepository.findRelatedOpenPRs.mockRejectedValue(
+        buildKyHttpError(404),
+      );
+      uminoOwnRepository.findRelatedOpenPRs.mockResolvedValue(
+        ownTokenPullRequests,
+      );
       uminoAppRepository.getIssueBodyByUrl.mockResolvedValue(null);
       uminoOwnRepository.getIssueBodyByUrl.mockResolvedValue(
         'body read with own-token-of-umino-owner',
@@ -1483,26 +1940,80 @@ describe('buildReadIssueRepositoryResolver', () => {
         fixture.resolveProjectName,
       );
       const uminoRepository = resolver(uminoIssueUrl);
-      const issue = await uminoRepository.getIssueByUrl(uminoIssueUrl, {
-        bypassCache: true,
-      });
+      const pullRequests = await uminoRepository.findRelatedOpenPRs(
+        uminoIssueUrl,
+        { bypassCache: true },
+      );
       const body = await uminoRepository.getIssueBodyByUrl(uminoIssueUrl);
 
       expect({
-        returnsTheOwnTokenIssue: issue === ownTokenIssue,
+        returnsTheOwnTokenPullRequests: pullRequests === ownTokenPullRequests,
         body,
-        appIssueReads: uminoAppRepository.getIssueByUrl.mock.calls,
-        ownTokenIssueReads: uminoOwnRepository.getIssueByUrl.mock.calls,
+        appPullRequestReads: uminoAppRepository.findRelatedOpenPRs.mock.calls,
+        ownTokenPullRequestReads:
+          uminoOwnRepository.findRelatedOpenPRs.mock.calls,
         appBodyReads: uminoAppRepository.getIssueBodyByUrl.mock.calls,
         ownTokenBodyReads: uminoOwnRepository.getIssueBodyByUrl.mock.calls,
       }).toEqual({
-        returnsTheOwnTokenIssue: true,
+        returnsTheOwnTokenPullRequests: true,
         body: 'body read with own-token-of-umino-owner',
-        appIssueReads: [[uminoIssueUrl, { bypassCache: true }]],
-        ownTokenIssueReads: [[uminoIssueUrl, { bypassCache: true }]],
+        appPullRequestReads: [[uminoIssueUrl, { bypassCache: true }]],
+        ownTokenPullRequestReads: [[uminoIssueUrl, { bypassCache: true }]],
         appBodyReads: [[uminoIssueUrl]],
         ownTokenBodyReads: [[uminoIssueUrl]],
       });
+    });
+
+    it('serves each Projects V2 read of the umino project with the umino own-token repository, never with the umino App installation token that GitHub refuses with a GraphQL FORBIDDEN error', async () => {
+      const projectsV2ReadCases = buildProjectsV2ReadCases(uminoIssueUrl);
+
+      const observed: ObservedRoutedRead[] = [];
+      for (const projectsV2ReadCase of projectsV2ReadCases) {
+        const fixture = buildResolverFixture(
+          new Map([['/umino.pem', ['umino-app-token']]]),
+        );
+        const uminoAppRepository =
+          fixture.repositoryForToken('umino-app-token');
+        const uminoOwnRepository = fixture.repositoryForToken(
+          'own-token-of-umino-owner',
+        );
+        projectsV2ReadCase
+          .readMock(uminoAppRepository)
+          .mockRejectedValue(buildGraphqlErrorsError(forbiddenGraphqlErrors));
+        const ownTokenResult =
+          projectsV2ReadCase.arrangeOwnTokenResult(uminoOwnRepository);
+
+        const resolver = await buildReadIssueRepositoryResolver(
+          { umino: ['/umino.pem'] },
+          fixture.mintTokens,
+          fixture.buildIssueRepositoryForToken,
+          fixture.resolveGithubToken,
+          fixture.resolveProjectName,
+        );
+        const settled = await settleRead(
+          projectsV2ReadCase.read(resolver(uminoIssueUrl)),
+        );
+        observed.push({
+          name: projectsV2ReadCase.name,
+          status: settled.status,
+          returnsOwnTokenResult:
+            settled.status === 'resolved' && settled.value === ownTokenResult,
+          appTokenCalls:
+            projectsV2ReadCase.readMock(uminoAppRepository).mock.calls,
+          ownTokenCalls:
+            projectsV2ReadCase.readMock(uminoOwnRepository).mock.calls,
+        });
+      }
+
+      expect(observed).toEqual(
+        projectsV2ReadCases.map((projectsV2ReadCase) => ({
+          name: projectsV2ReadCase.name,
+          status: 'resolved',
+          returnsOwnTokenResult: true,
+          appTokenCalls: [],
+          ownTokenCalls: projectsV2ReadCase.expectedCalls,
+        })),
+      );
     });
   });
 });
