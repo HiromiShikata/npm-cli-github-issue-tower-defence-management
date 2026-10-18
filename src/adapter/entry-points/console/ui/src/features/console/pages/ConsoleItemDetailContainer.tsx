@@ -31,6 +31,7 @@ import {
 import {
   COMMENT_OPERATION_PATH,
   DELETE_ALL_COMMENTS_OPERATION_PATH,
+  SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
 } from '../lib/consoleApi';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import {
@@ -146,6 +147,16 @@ const commentOfflinePayloadBuild = (
   ...itemOfflineBase(item),
   apiPath: COMMENT_OPERATION_PATH,
   requestBody: commentRequestBuild(pjcode, item, body),
+});
+
+const dependedIssueUrlOfflinePayloadBuild = (
+  pjcode: string,
+  item: ConsoleListItem,
+  dependedIssueUrl: string,
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
+  requestBody: { pjcode, issueUrl: item.url, dependedIssueUrl },
 });
 
 const deleteAllCommentsOfflinePayloadBuild = (
@@ -465,7 +476,44 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
-            await operations.setDependedIssueUrl(item, dependedIssueUrl);
+            if (awaitingWorkspaceOption === null) {
+              await operations.setDependedIssueUrl(item, dependedIssueUrl);
+              return;
+            }
+            const option = awaitingWorkspaceOption;
+            onQueueAction({
+              kind: {
+                type: 'set_status',
+                optionName: option.name,
+              },
+              item,
+              commit: (sentStepCount) =>
+                consoleActionStepsRun(
+                  [
+                    () =>
+                      operations.setDependedIssueUrl(item, dependedIssueUrl),
+                    () => operations.setStatus(item, option),
+                  ],
+                  sentStepCount,
+                ),
+              offline: [
+                dependedIssueUrlOfflinePayloadBuild(
+                  pjcode,
+                  item,
+                  dependedIssueUrl,
+                ),
+                buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                  statusName: option.name,
+                }),
+              ],
+              overlayPatch: {
+                done: true,
+                status: {
+                  name: option.name,
+                  color: option.color,
+                },
+              },
+            });
           }
         : null,
   };
