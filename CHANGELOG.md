@@ -1,3 +1,10 @@
+# [2.176.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.175.1...v2.176.0) (2026-10-18)
+
+
+### Features
+
+* **console:** Expose cross-project Todo-by-human and Awaiting-Owner actionable-item counts from the console /api/projects endpoint ([#3517](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3517)) ([e0ae2a0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e0ae2a0c4ff472151aa27d71b94ba553dd3ea9e2))
+
 ## [2.175.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.175.0...v2.175.1) (2026-10-18)
 
 
