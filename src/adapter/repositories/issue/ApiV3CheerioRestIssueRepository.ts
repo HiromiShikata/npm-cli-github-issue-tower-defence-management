@@ -1592,7 +1592,17 @@ export class ApiV3CheerioRestIssueRepository
     comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
     body: string,
   ): Promise<void> => {
-    await this.restIssueRepository.updateIssueCommentBody(comment, body);
+    const { commentedIssueNumber } =
+      await this.restIssueRepository.updateIssueCommentBody(comment, body);
+    if (commentedIssueNumber === null) {
+      console.warn(
+        `Stored comment list revalidation marking skipped: the commented issue of comment ${comment.commentId} in ${comment.org}/${comment.repo} is unknown`,
+      );
+      return;
+    }
+    await this.markStoredIssueCommentListForRevalidation(
+      `https://github.com/${comment.org}/${comment.repo}/issues/${commentedIssueNumber}`,
+    );
   };
   private findIssueInAllIssuesCache = async (
     url: string,
@@ -5140,6 +5150,22 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   deleteAllCommentsByUrl = async (issueOrPrUrl: string): Promise<void> => {
+    let deletedCommentCount = 0;
+    try {
+      await this.deleteAllCommentsByUrlCountingDeletions(issueOrPrUrl, () => {
+        deletedCommentCount += 1;
+      });
+    } finally {
+      if (deletedCommentCount > 0) {
+        await this.markStoredIssueCommentListForRevalidation(issueOrPrUrl);
+      }
+    }
+  };
+
+  private deleteAllCommentsByUrlCountingDeletions = async (
+    issueOrPrUrl: string,
+    onCommentDeleted: () => void,
+  ): Promise<void> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
     const perPage = 100;
     while (true) {
@@ -5186,6 +5212,7 @@ export class ApiV3CheerioRestIssueRepository
             deleteResponse,
           );
         }
+        onCommentDeleted();
       }
       if (body.length < perPage) {
         break;

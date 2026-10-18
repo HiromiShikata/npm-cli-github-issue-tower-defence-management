@@ -54,6 +54,29 @@ export type StoredIssueCommentList = {
 
 export const ISSUE_COMMENTS_PER_PAGE = 100;
 
+const commentedIssueUrlPattern =
+  /^https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/;
+
+const readCommentedIssueNumberFromCommentResponse = async (
+  response: KyResponse,
+): Promise<number | null> => {
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('issue_url' in body) ||
+      typeof body.issue_url !== 'string'
+    ) {
+      return null;
+    }
+    const matched = body.issue_url.match(commentedIssueUrlPattern);
+    return matched === null ? null : parseInt(matched[1], 10);
+  } catch {
+    return null;
+  }
+};
+
 export type IssueCommentResponseItem = {
   id: number;
   user: { login: string } | null;
@@ -239,6 +262,9 @@ export class RestIssueRepository
       }
       throw e;
     }
+    this.markStoredIssueCommentListsForRevalidation((storedIssueUrl) =>
+      this.isUrlOfIssue(storedIssueUrl, { owner, repo, issueNumber }),
+    );
     return {
       id: result.id,
       author: result.user?.login ?? '',
@@ -407,10 +433,11 @@ export class RestIssueRepository
   updateIssueCommentBody = async (
     comment: Pick<Issue, 'org' | 'repo'> & { commentId: number },
     body: string,
-  ): Promise<void> => {
+  ): Promise<{ commentedIssueNumber: number | null }> => {
     this.checkBreakerOrThrow();
+    let response: KyResponse;
     try {
-      await ky.patch(
+      response = await ky.patch(
         `https://api.github.com/repos/${comment.org}/${comment.repo}/issues/comments/${comment.commentId}`,
         {
           json: { body },
@@ -421,6 +448,17 @@ export class RestIssueRepository
       await this.detectAndRecordSecondaryRateLimit(e);
       throw e;
     }
+    this.markStoredIssueCommentListsForRevalidation((_storedIssueUrl, list) =>
+      list.pages.some((page) =>
+        page.comments.some(
+          (storedComment) => storedComment.id === comment.commentId,
+        ),
+      ),
+    );
+    return {
+      commentedIssueNumber:
+        await readCommentedIssueNumberFromCommentResponse(response),
+    };
   };
 
   updateLabels = async (
@@ -556,11 +594,45 @@ export class RestIssueRepository
     StoredIssueCommentList
   >();
 
+  private storedIssueCommentListRevalidationCount = 0;
+
+  private readonly isUrlOfIssue = (
+    url: string,
+    issue: { owner: string; repo: string; issueNumber: number },
+  ): boolean => {
+    const parsed = this.extractIssueFromUrl(url);
+    return (
+      parsed.owner === issue.owner &&
+      parsed.repo === issue.repo &&
+      parsed.issueNumber === issue.issueNumber
+    );
+  };
+
+  private readonly markStoredIssueCommentListsForRevalidation = (
+    isAffected: (
+      storedIssueUrl: string,
+      storedIssueCommentList: StoredIssueCommentList,
+    ) => boolean,
+  ): void => {
+    this.storedIssueCommentListRevalidationCount += 1;
+    for (const [storedIssueUrl, storedIssueCommentList] of this
+      .storedIssueCommentListByIssueUrl) {
+      if (isAffected(storedIssueUrl, storedIssueCommentList)) {
+        this.storedIssueCommentListByIssueUrl.set(storedIssueUrl, {
+          ...storedIssueCommentList,
+          issueUpdatedAt: null,
+        });
+      }
+    }
+  };
+
   getIssueOrPullRequestComments = async (
     url: string,
     options?: { issueUpdatedAt?: Date },
   ): Promise<IssueComment[]> => {
     const issueUpdatedAt = options?.issueUpdatedAt?.toISOString() ?? null;
+    const revalidationCountAtReadStart =
+      this.storedIssueCommentListRevalidationCount;
     const storedIssueCommentList =
       this.storedIssueCommentListByIssueUrl.get(url) ?? null;
     const reusableStoredComments =
@@ -589,7 +661,11 @@ export class RestIssueRepository
       },
     );
     this.storedIssueCommentListByIssueUrl.set(url, {
-      issueUpdatedAt,
+      issueUpdatedAt:
+        this.storedIssueCommentListRevalidationCount ===
+        revalidationCountAtReadStart
+          ? issueUpdatedAt
+          : null,
       pages: fetchedPages,
     });
     return convertStoredIssueCommentPagesToIssueComments(fetchedPages);

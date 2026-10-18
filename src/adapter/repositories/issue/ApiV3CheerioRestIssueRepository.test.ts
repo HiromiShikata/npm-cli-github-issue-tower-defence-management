@@ -6488,7 +6488,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('delegates to the underlying REST issue repository with the same comment target and body, the same way updateIssueBody delegates', async () => {
       const { repository, restIssueRepository } =
         createApiV3CheerioRestIssueRepository();
-      restIssueRepository.updateIssueCommentBody.mockResolvedValue(undefined);
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: 42,
+      });
       const commentTarget = {
         org: 'HiromiShikata',
         repo: 'test-repository',
@@ -7907,6 +7909,402 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         { url: firstPageUrl, ifNoneMatch: '"e1"' },
       ]);
       expect(secondResult).toEqual([firstIssueComment, secondIssueComment]);
+    });
+
+    const commentTargetOfStoredIssue = {
+      org: 'HiromiShikata',
+      repo: 'test-repository',
+      commentId: 81001,
+    };
+    const editedFirstCommentResponseItem: CommentResponseItem = {
+      ...firstCommentResponseItem,
+      body: 'edited first comment',
+    };
+    const editedFirstIssueComment = {
+      ...firstIssueComment,
+      body: 'edited first comment',
+    };
+    const sameIssueUpdatedAt = new Date('2026-07-06T00:00:00.000Z');
+
+    const updateIssueCommentBodyRevalidationTestCases: {
+      name: string;
+      commentedIssueNumber: number;
+      expectedRequests: RecordedCommentRequest[];
+      expectedSecondResult: (typeof firstIssueComment)[];
+    }[] = [
+      {
+        name: 'sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the edited list when updateIssueCommentBody edited a comment of the same issue after the stored list',
+        commentedIssueNumber: 42,
+        expectedRequests: [
+          { url: firstPageUrl, ifNoneMatch: null },
+          { url: firstPageUrl, ifNoneMatch: '"e1"' },
+        ],
+        expectedSecondResult: [editedFirstIssueComment],
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when updateIssueCommentBody edited a comment of a different issue and issueUpdatedAt is the same',
+        commentedIssueNumber: 43,
+        expectedRequests: [{ url: firstPageUrl, ifNoneMatch: null }],
+        expectedSecondResult: [firstIssueComment],
+      },
+    ];
+
+    test.each(updateIssueCommentBodyRevalidationTestCases)(
+      '$name',
+      async (tc) => {
+        const { recordedRequests } = spyOnFetchWithResponses([
+          buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+          buildCommentsPageResponse([editedFirstCommentResponseItem], '"e2"'),
+        ]);
+        const { repository, restIssueRepository } =
+          createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+            new Map<string, string>(),
+          );
+        restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+          commentedIssueNumber: tc.commentedIssueNumber,
+        });
+
+        const firstResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+        await repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        );
+        const secondResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+
+        expect(
+          restIssueRepository.updateIssueCommentBody,
+        ).toHaveBeenCalledTimes(1);
+        expect(restIssueRepository.updateIssueCommentBody).toHaveBeenCalledWith(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        );
+        expect(firstResult).toEqual([firstIssueComment]);
+        expect(recordedRequests).toEqual(tc.expectedRequests);
+        expect(secondResult).toEqual(tc.expectedSecondResult);
+      },
+    );
+
+    it('warns and keeps returning the stored comment list without a request when updateIssueCommentBody cannot tell which issue the edited comment belongs to', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: null,
+      });
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).resolves.toBeUndefined();
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Stored comment list revalidation marking skipped: the commented issue of comment 81001 in HiromiShikata/test-repository is unknown',
+      );
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('rejects with the error of the comment update and keeps returning the stored comment list without a request when updateIssueCommentBody fails', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      const updateError = new Error('HTTP 403 Forbidden');
+      restIssueRepository.updateIssueCommentBody.mockRejectedValue(updateError);
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).rejects.toBe(updateError);
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('resolves updateIssueCommentBody after editing the comment exactly once when updating the stored comment list record of the issue fails', async () => {
+      spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { repository, restIssueRepository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+      restIssueRepository.updateIssueCommentBody.mockResolvedValue({
+        commentedIssueNumber: 42,
+      });
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      localStorageCacheRepository.withLock.mockRejectedValue(
+        new Error('lock unavailable'),
+      );
+
+      await expect(
+        repository.updateIssueCommentBody(
+          commentTargetOfStoredIssue,
+          'edited first comment',
+        ),
+      ).resolves.toBeUndefined();
+      expect(restIssueRepository.updateIssueCommentBody).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Stored comment list revalidation marking failed: issueUrl=${issueUrl} error=Error: lock unavailable`,
+      );
+    });
+
+    const deleteCommentUrlOf = (commentId: number): string =>
+      `https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/${commentId}`;
+    const noContentResponse = (): Response =>
+      new Response(null, { status: 204 });
+
+    it('sends the stored ETag as If-None-Match on the next read with the same issueUpdatedAt and returns the server list when deleteAllCommentsByUrl deleted the comments of the same issue after the stored list', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e1"',
+        ),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"unused-listing-etag"',
+        ),
+        noContentResponse(),
+        noContentResponse(),
+        buildCommentsPageResponse([], '"e2"'),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      const firstResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+      await repository.deleteAllCommentsByUrl(issueUrl);
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(firstResult).toEqual([firstIssueComment, secondIssueComment]);
+      expect(recordedRequests).toEqual([
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: null },
+        { url: deleteCommentUrlOf(81001), ifNoneMatch: null },
+        { url: deleteCommentUrlOf(81002), ifNoneMatch: null },
+        { url: firstPageUrl, ifNoneMatch: '"e1"' },
+      ]);
+      expect(secondResult).toEqual([]);
+    });
+
+    it('keeps returning the stored comment list without a request when deleteAllCommentsByUrl deleted the comments of a different issue and issueUpdatedAt is the same', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse([firstCommentResponseItem], '"unused"'),
+        noContentResponse(),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await repository.deleteAllCommentsByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/43',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests.map((request) => request.url)).toEqual([
+        firstPageUrl,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/43/comments?per_page=100&page=1',
+        deleteCommentUrlOf(81001),
+      ]);
+      expect(secondResult).toEqual([firstIssueComment]);
+    });
+
+    it('sends the stored ETag as If-None-Match on the next read and rejects with the delete error when deleteAllCommentsByUrl deleted one comment and failed on the next', async () => {
+      const { recordedRequests } = spyOnFetchWithResponses([
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"e1"',
+        ),
+        buildCommentsPageResponse(
+          [firstCommentResponseItem, secondCommentResponseItem],
+          '"unused-listing-etag"',
+        ),
+        noContentResponse(),
+        new Response('Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+        buildCommentsPageResponse([secondCommentResponseItem], '"e2"'),
+      ]);
+      const { repository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      await expect(repository.deleteAllCommentsByUrl(issueUrl)).rejects.toThrow(
+        '500',
+      );
+      const secondResult = await repository.getIssueOrPullRequestComments(
+        issueUrl,
+        { issueUpdatedAt: sameIssueUpdatedAt },
+      );
+
+      expect(recordedRequests.map((request) => request.ifNoneMatch)).toEqual([
+        null,
+        null,
+        null,
+        null,
+        '"e1"',
+      ]);
+      expect(secondResult).toEqual([secondIssueComment]);
+    });
+
+    const deleteAllWithoutAnyDeletedCommentTestCases: {
+      name: string;
+      responsesAfterStoredList: Response[];
+      expectedError: string | null;
+    }[] = [
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl found no comment to delete on the same issue',
+        responsesAfterStoredList: [buildCommentsPageResponse([], '"empty"')],
+        expectedError: null,
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl failed to list the comments of the same issue',
+        responsesAfterStoredList: [
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        ],
+        expectedError: '403',
+      },
+      {
+        name: 'keeps returning the stored comment list without a request when deleteAllCommentsByUrl failed on its first delete on the same issue',
+        responsesAfterStoredList: [
+          buildCommentsPageResponse([firstCommentResponseItem], '"listing"'),
+          new Response('Unauthorized', {
+            status: 401,
+            statusText: 'Unauthorized',
+          }),
+        ],
+        expectedError: '401',
+      },
+    ];
+
+    test.each(deleteAllWithoutAnyDeletedCommentTestCases)(
+      '$name',
+      async (tc) => {
+        const { fetchSpy } = spyOnFetchWithResponses([
+          buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+          ...tc.responsesAfterStoredList,
+        ]);
+        const { repository } =
+          createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+            new Map<string, string>(),
+          );
+
+        await repository.getIssueOrPullRequestComments(issueUrl, {
+          issueUpdatedAt: sameIssueUpdatedAt,
+        });
+        const deletion = repository.deleteAllCommentsByUrl(issueUrl);
+        if (tc.expectedError === null) {
+          await expect(deletion).resolves.toBeUndefined();
+        } else {
+          await expect(deletion).rejects.toThrow(tc.expectedError);
+        }
+        const callCountBeforeSecondRead = fetchSpy.mock.calls.length;
+        const secondResult = await repository.getIssueOrPullRequestComments(
+          issueUrl,
+          { issueUpdatedAt: sameIssueUpdatedAt },
+        );
+
+        expect(fetchSpy).toHaveBeenCalledTimes(callCountBeforeSecondRead);
+        expect(callCountBeforeSecondRead).toBe(
+          1 + tc.responsesAfterStoredList.length,
+        );
+        expect(secondResult).toEqual([firstIssueComment]);
+      },
+    );
+
+    it('resolves deleteAllCommentsByUrl after deleting the comments exactly once each when updating the stored comment list record of the issue fails', async () => {
+      const { fetchSpy } = spyOnFetchWithResponses([
+        buildCommentsPageResponse([firstCommentResponseItem], '"e1"'),
+        buildCommentsPageResponse([firstCommentResponseItem], '"listing"'),
+        noContentResponse(),
+      ]);
+      jest.spyOn(console, 'error').mockImplementation();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepositoryWithStoredRecords(
+          new Map<string, string>(),
+        );
+
+      await repository.getIssueOrPullRequestComments(issueUrl, {
+        issueUpdatedAt: sameIssueUpdatedAt,
+      });
+      localStorageCacheRepository.withLock.mockRejectedValue(
+        new Error('lock unavailable'),
+      );
+
+      await expect(
+        repository.deleteAllCommentsByUrl(issueUrl),
+      ).resolves.toBeUndefined();
+      expect(
+        fetchSpy.mock.calls.filter(([, init]) => init?.method === 'DELETE'),
+      ).toHaveLength(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Stored comment list revalidation marking failed: issueUrl=${issueUrl} error=Error: lock unavailable`,
+      );
     });
 
     it('resolves createCommentByUrl with the posted comment after posting it exactly once when updating the stored comment list record of the issue fails', async () => {
