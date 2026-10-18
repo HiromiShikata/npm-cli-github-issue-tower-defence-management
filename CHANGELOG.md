@@ -1,3 +1,11 @@
+# [2.174.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.173.0...v2.174.0) (2026-10-18)
+
+
+### Features
+
+* **console-ui:** add Enter-key list continuation and list-exit behavior to the three console markdown textareas ([#3506](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3506)) ([c0e9e5d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c0e9e5d6f73bfe742c7d6ef8f5e2fa91597d6a9c))
+* **GenerateConsoleListsUseCase:** add statusOptions to ConsoleStoriesTab so the stories tab shows status buttons ([#3504](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3504)) ([0b7a9d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b7a9d57ca3ed38b62c88f0dd59966c527d56ec4))
+
 # [2.173.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.172.2...v2.173.0) (2026-10-18)
 
 
