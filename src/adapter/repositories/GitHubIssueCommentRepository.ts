@@ -6,6 +6,7 @@ import {
 import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces/IssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
+import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import {
   checkSecondaryRateLimitBreaker,
   secondaryRateLimitStateFilePath,
@@ -73,9 +74,11 @@ type CommentPageCache = {
   pages: Record<string, PageCacheEntry>;
 };
 
-type CommentCacheRepository = {
-  getSingle(key: string): Promise<unknown>;
-  setSingle<T>(key: string, value: T): Promise<void>;
+type CommentCacheRepository = Pick<
+  LocalStorageCacheRepository,
+  'getSingle' | 'setSingle'
+> & {
+  withLock(key: string, fn: () => Promise<unknown>): Promise<unknown>;
 };
 
 function isRestCommentPayloadArray(
@@ -178,6 +181,17 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     );
   }
 
+  private async withCommentCacheLock(
+    key: string,
+    fn: () => Promise<void>,
+  ): Promise<void> {
+    if (this.commentCacheRepository) {
+      await this.commentCacheRepository.withLock(key, fn);
+      return;
+    }
+    await fn();
+  }
+
   private async fetchCommentsPage(
     url: string,
     headers: Record<string, string>,
@@ -223,8 +237,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
     const PER_PAGE = 100;
     const comments: Comment[] = [];
-    const updatedPages: Record<string, PageCacheEntry> = { ...cachedPages };
-    let cacheWasUpdated = false;
+    const newlyFetchedPages: Record<string, PageCacheEntry> = {};
     let page = 1;
     let hasNextPage = true;
 
@@ -309,7 +322,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
       const etag = response.headers.get('ETag');
       if (etag) {
-        updatedPages[pageKey] = {
+        newlyFetchedPages[pageKey] = {
           etag,
           comments: pageComments.map((c) => ({
             author: c.author,
@@ -320,14 +333,27 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
           })),
           hasNextPage,
         };
-        cacheWasUpdated = true;
       }
 
       page++;
     }
 
-    if (cacheWasUpdated) {
-      await this.writeCommentPageCache(owner, repo, issueNumber, updatedPages);
+    if (Object.keys(newlyFetchedPages).length > 0) {
+      await this.withCommentCacheLock(
+        this.commentCacheKey(owner, repo, issueNumber),
+        async () => {
+          const freshCache = await this.readCommentPageCache(
+            owner,
+            repo,
+            issueNumber,
+          );
+          const freshPages = freshCache ? freshCache.pages : {};
+          await this.writeCommentPageCache(owner, repo, issueNumber, {
+            ...freshPages,
+            ...newlyFetchedPages,
+          });
+        },
+      );
     }
 
     return comments;
