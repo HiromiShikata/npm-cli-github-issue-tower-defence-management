@@ -865,6 +865,7 @@ const createStubIssueRepository = (
     merged: boolean;
     isPullRequest: boolean;
     title: string;
+    stateReason: string;
   }> => ({
     state: 'open',
     merged: false,
@@ -873,6 +874,7 @@ const createStubIssueRepository = (
       url === CONSOLE_E2E_INLINE_COMMENT_PR_URL
         ? 'Add inline review comments on the related pull request diff'
         : buildIssueForUrl(url).title,
+    stateReason: '',
   }),
   getPullRequestSummary: async (
     url: string,
