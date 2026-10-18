@@ -148,4 +148,67 @@ describe('ConsoleFileDiff', () => {
       ),
     );
   });
+
+  it('continues an unordered list item in the inline review comment field when Enter is pressed at the end of a list line', () => {
+    const onAddInlineComment = jest.fn().mockResolvedValue(undefined);
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ConsoleFileDiff
+        patch={consoleChangedFilesFixture[0].patch}
+        path="src/adapter/entry-points/console/consoleServer.ts"
+        onAddInlineComment={onAddInlineComment}
+      />,
+    );
+    fireEvent.click(getByLabelText('Comment on line 57 (RIGHT)'));
+    const textarea = getByPlaceholderText(
+      'Leave a review comment on this line…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- first item' } });
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(textarea.value).toBe('- first item\n- ');
+    expect(textarea.selectionStart).toBe('- first item\n- '.length);
+    expect(textarea.selectionEnd).toBe('- first item\n- '.length);
+  });
+
+  it('exits the list in the inline review comment field by clearing the marker when Enter is pressed on an empty list item line', () => {
+    const onAddInlineComment = jest.fn().mockResolvedValue(undefined);
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ConsoleFileDiff
+        patch={consoleChangedFilesFixture[0].patch}
+        path="src/adapter/entry-points/console/consoleServer.ts"
+        onAddInlineComment={onAddInlineComment}
+      />,
+    );
+    fireEvent.click(getByLabelText('Comment on line 57 (RIGHT)'));
+    const textarea = getByPlaceholderText(
+      'Leave a review comment on this line…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- ' } });
+    textarea.setSelectionRange(2, 2);
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(textarea.value).toBe('');
+    expect(textarea.selectionStart).toBe(0);
+    expect(textarea.selectionEnd).toBe(0);
+  });
+
+  it('leaves the inline review comment field completely unchanged when Enter fires during IME composition', () => {
+    const onAddInlineComment = jest.fn().mockResolvedValue(undefined);
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ConsoleFileDiff
+        patch={consoleChangedFilesFixture[0].patch}
+        path="src/adapter/entry-points/console/consoleServer.ts"
+        onAddInlineComment={onAddInlineComment}
+      />,
+    );
+    fireEvent.click(getByLabelText('Comment on line 57 (RIGHT)'));
+    const textarea = getByPlaceholderText(
+      'Leave a review comment on this line…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- ' } });
+    textarea.setSelectionRange(2, 2);
+    fireEvent.keyDown(textarea, { key: 'Enter', isComposing: true });
+    expect(textarea.value).toBe('- ');
+    expect(textarea.selectionStart).toBe(2);
+    expect(textarea.selectionEnd).toBe(2);
+  });
 });

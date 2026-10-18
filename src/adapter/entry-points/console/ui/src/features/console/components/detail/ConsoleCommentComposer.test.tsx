@@ -909,6 +909,51 @@ describe('ConsoleCommentComposer', () => {
     });
     expect(getByText('ok & Awaiting Workspace')).not.toBeDisabled();
   });
+
+  it('continues an unordered list item with a new marker line when Enter is pressed at the end of a list line', () => {
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- first item' } });
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(textarea.value).toBe('- first item\n- ');
+    expect(textarea.selectionStart).toBe('- first item\n- '.length);
+    expect(textarea.selectionEnd).toBe('- first item\n- '.length);
+  });
+
+  it('exits the list by clearing the marker when Enter is pressed on an empty list item line', () => {
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- ' } });
+    textarea.setSelectionRange(2, 2);
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(textarea.value).toBe('');
+    expect(textarea.selectionStart).toBe(0);
+    expect(textarea.selectionEnd).toBe(0);
+  });
+
+  it('leaves the textarea completely unchanged when Enter fires during IME composition', () => {
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '- ' } });
+    textarea.setSelectionRange(2, 2);
+    fireEvent.keyDown(textarea, { key: 'Enter', isComposing: true });
+    expect(textarea.value).toBe('- ');
+    expect(textarea.selectionStart).toBe(2);
+    expect(textarea.selectionEnd).toBe(2);
+  });
 });
 
 describe('insertUploadPlaceholder', () => {
