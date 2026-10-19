@@ -101,6 +101,13 @@ export const FetchError: Story = {
   },
 };
 
+export const SingleActionOffline: Story = {
+  args: {
+    actions: [approveAction],
+    isOnline: false,
+  },
+};
+
 export const OfflineWithQueuedActions: Story = {
   args: {
     actions: [approveAction, rejectAction],
