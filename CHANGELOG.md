@@ -1,3 +1,10 @@
+# [2.180.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.179.1...v2.180.0) (2026-10-19)
+
+
+### Features
+
+* **scheduled-sweep:** find story issues through a conditional label list instead of search requests ([#3544](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3544)) ([be23249](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/be23249201ff4bedbc0a8ff12635a4a40453868a))
+
 ## [2.179.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.179.0...v2.179.1) (2026-10-19)
 
 
