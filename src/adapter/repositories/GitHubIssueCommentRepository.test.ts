@@ -57,9 +57,7 @@ const EXPECTED_REST_URL =
 const buildCommentCacheRepository = () => ({
   getSingle: jest.fn<Promise<unknown>, [string]>(),
   setSingle: jest.fn<Promise<void>, [string, unknown]>(),
-  withLock: jest.fn(
-    (_key: string, fn: () => Promise<unknown>): Promise<unknown> => fn(),
-  ),
+  withLock: <T>(_key: string, fn: () => Promise<T>): Promise<T> => fn(),
 });
 
 type PendingCacheRead = { key: string; resolve: () => void };
@@ -1192,6 +1190,164 @@ describe('GitHubIssueCommentRepository', () => {
       }
       expect(finalCache.pages['1'].etag).toBe('"etag-p1-new"');
       expect(finalCache.pages['2'].etag).toBe('"etag-p2-new"');
+    });
+
+    it('re-reads and writes the page cache inside withLock on the per-issue cache key, using a separate key for each issue', async () => {
+      type CacheEvent = {
+        operation: 'getSingle' | 'setSingle' | 'lock' | 'unlock';
+        key: string;
+        lockHeldOnKey: string | null;
+      };
+      const events: CacheEvent[] = [];
+      const store = new Map<string, unknown>();
+      let lockHeldOnKey: string | null = null;
+      const cache = {
+        getSingle: async (key: string): Promise<unknown> => {
+          events.push({ operation: 'getSingle', key, lockHeldOnKey });
+          return store.has(key) ? store.get(key) : null;
+        },
+        setSingle: async <T>(key: string, value: T): Promise<void> => {
+          events.push({ operation: 'setSingle', key, lockHeldOnKey });
+          store.set(key, value);
+        },
+        withLock: async <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+          events.push({ operation: 'lock', key, lockHeldOnKey });
+          lockHeldOnKey = key;
+          try {
+            return await fn();
+          } finally {
+            lockHeldOnKey = null;
+            events.push({ operation: 'unlock', key, lockHeldOnKey });
+          }
+        },
+      };
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+      const buildCommentPayloads = (id: number) => [
+        {
+          id,
+          user: { login: 'testuser' },
+          body: 'Comment body',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildCommentPayloads(4001)), {
+            status: 200,
+            headers: { ETag: '"etag-issue-123"' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(buildCommentPayloads(4002)), {
+            status: 200,
+            headers: { ETag: '"etag-issue-456"' },
+          }),
+        );
+      const firstIssueKey = 'comments/HiromiShikata/test-repo/123';
+      const secondIssueKey = 'comments/HiromiShikata/test-repo/456';
+
+      await repositoryWithCache.getCommentsFromIssue(buildIssue(TEST_URL));
+      await repositoryWithCache.getCommentsFromIssue(
+        buildIssue('https://github.com/HiromiShikata/test-repo/issues/456'),
+      );
+
+      expect(events).toEqual([
+        { operation: 'getSingle', key: firstIssueKey, lockHeldOnKey: null },
+        { operation: 'lock', key: firstIssueKey, lockHeldOnKey: null },
+        {
+          operation: 'getSingle',
+          key: firstIssueKey,
+          lockHeldOnKey: firstIssueKey,
+        },
+        {
+          operation: 'setSingle',
+          key: firstIssueKey,
+          lockHeldOnKey: firstIssueKey,
+        },
+        { operation: 'unlock', key: firstIssueKey, lockHeldOnKey: null },
+        { operation: 'getSingle', key: secondIssueKey, lockHeldOnKey: null },
+        { operation: 'lock', key: secondIssueKey, lockHeldOnKey: null },
+        {
+          operation: 'getSingle',
+          key: secondIssueKey,
+          lockHeldOnKey: secondIssueKey,
+        },
+        {
+          operation: 'setSingle',
+          key: secondIssueKey,
+          lockHeldOnKey: secondIssueKey,
+        },
+        { operation: 'unlock', key: secondIssueKey, lockHeldOnKey: null },
+      ]);
+      expect(store.has(firstIssueKey)).toBe(true);
+      expect(store.has(secondIssueKey)).toBe(true);
+    });
+
+    it('fetches directly with no lock and caches nothing when commentCacheRepository is null, even if the response carries an ETag', async () => {
+      const repositoryWithoutCache = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+      );
+      const commentPayloads = [
+        {
+          id: 4003,
+          user: { login: 'testuser' },
+          body: 'Comment body',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(commentPayloads), {
+            status: 200,
+            headers: { ETag: '"etag-no-cache"' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(commentPayloads), {
+            status: 200,
+            headers: { ETag: '"etag-no-cache"' },
+          }),
+        );
+      const expectedComments = [
+        {
+          author: 'testuser',
+          content: 'Comment body',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          updatedAt: new Date('2024-01-01T00:00:00Z'),
+          id: '4003',
+        },
+      ];
+
+      const firstResult = await repositoryWithoutCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+      const secondResult = await repositoryWithoutCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(firstResult).toEqual(expectedComments);
+      expect(secondResult).toEqual(expectedComments);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy).toHaveBeenNthCalledWith(1, EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
+      expect(fetchSpy).toHaveBeenNthCalledWith(2, EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
     });
 
     describe('circuit breaker', () => {
