@@ -74,6 +74,10 @@ import {
   previousPendingKeyBefore,
 } from '../logic/navigation';
 import {
+  type ActiveTabListState,
+  openTaskKeyResolve,
+} from '../logic/openTaskKeyResolve';
+import {
   computeEffectiveOverlay,
   countPendingItems,
   filterPendingItems,
@@ -668,6 +672,18 @@ export const ConsolePage = () => {
     return null;
   }, [selectedItemKey, activeSnapshot]);
 
+  const activeTabListState = ((): ActiveTabListState => {
+    if (activeSnapshot === null) {
+      return 'not-loaded';
+    }
+    return activeSnapshot.fromCache ? 'loaded-from-cache' : 'loaded-live';
+  })();
+  const openTaskItemKey = openTaskKeyResolve(
+    selectedItemKey,
+    activeTabListState,
+    selectedItem !== null,
+  );
+
   useConsoleDetailPrefetch(caches, selectedItem, pendingItems);
 
   useEffect(() => {
@@ -713,7 +729,7 @@ export const ConsolePage = () => {
     snapshots['todo-by-human']?.fromCache ?? false,
     explicitlySelectedPjcode,
     actionQueue.enqueueSequence,
-    selectedItemKey,
+    openTaskItemKey,
     isDialogOpen || isFleetTaskCreateDialogOpen,
     projectTodoByHumanCounts,
     projectAwaitingOwnerCounts,
