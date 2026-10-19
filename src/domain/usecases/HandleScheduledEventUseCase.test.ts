@@ -12,7 +12,7 @@ import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepositor
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
-import { FieldOption, Project } from '../entities/Project';
+import { FieldOption, Project, StoryOption } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
@@ -156,41 +156,46 @@ describe('HandleScheduledEventUseCase', () => {
     const mockProjectRepository = mock<ProjectRepository>();
     const mockIssueRepository = mock<IssueRepository>();
 
-    const useCase = new HandleScheduledEventUseCase(
-      mockProjectRequiredFieldCreateUseCase,
-      mockSetupTowerDefenceProjectUseCase,
-      mockActionAnnouncementUseCase,
-      mockSetWorkflowManagementIssueToStoryUseCase,
-      mockClearPastNextActionDateHourUseCase,
-      mockClearDependedIssueURLUseCase,
-      mockSetDependedIssueUrlForOpenTaskPRsUseCase,
-      mockStaleTaskPullRequestCloseUseCase,
-      mockCreateEstimationIssueUseCase,
-      mockChangeStatusByStoryColorUseCase,
-      mockDependedIssueURLRestoreUseCase,
-      mockSetNoStoryIssueToStoryUseCase,
-      mockCreateNewStoryByLabelUseCase,
-      mockAssignNoAssigneeIssueToManagerUseCase,
-      mockUpdateIssueStatusByLabelUseCase,
-      mockIssueNoStatusUpdateUseCase,
-      mockStartPreparationUseCase,
-      mockRevertOrphanedPreparationUseCase,
-      mockNonPreparationWorkerScopeStopUseCase,
-      mockConflictedIssueRevertUseCase,
-      mockOwnerRepliedIssueRevertUseCase,
-      mockClosedAwaitingOwnerIssueRevertUseCase,
-      mockRevertNotReadyReviewQueueIssueUseCase,
-      mockAgentDesignationLabelAdoptUseCase,
-      mockUpdateRateLimitCacheUseCase,
-      mockDailySecurityScanUseCase,
-      mockAdvanceQualityCheckUseCase,
-      mockReopenedDoneIssueRevertUseCase,
-      mockClosedStoryIssueReopenUseCase,
-      mockDateRepository,
-      mockSpreadsheetRepository,
-      mockProjectRepository,
-      mockIssueRepository,
-    );
+    const buildUseCase = (
+      closedStoryIssueReopenUseCase: ClosedStoryIssueReopenUseCase,
+    ): HandleScheduledEventUseCase =>
+      new HandleScheduledEventUseCase(
+        mockProjectRequiredFieldCreateUseCase,
+        mockSetupTowerDefenceProjectUseCase,
+        mockActionAnnouncementUseCase,
+        mockSetWorkflowManagementIssueToStoryUseCase,
+        mockClearPastNextActionDateHourUseCase,
+        mockClearDependedIssueURLUseCase,
+        mockSetDependedIssueUrlForOpenTaskPRsUseCase,
+        mockStaleTaskPullRequestCloseUseCase,
+        mockCreateEstimationIssueUseCase,
+        mockChangeStatusByStoryColorUseCase,
+        mockDependedIssueURLRestoreUseCase,
+        mockSetNoStoryIssueToStoryUseCase,
+        mockCreateNewStoryByLabelUseCase,
+        mockAssignNoAssigneeIssueToManagerUseCase,
+        mockUpdateIssueStatusByLabelUseCase,
+        mockIssueNoStatusUpdateUseCase,
+        mockStartPreparationUseCase,
+        mockRevertOrphanedPreparationUseCase,
+        mockNonPreparationWorkerScopeStopUseCase,
+        mockConflictedIssueRevertUseCase,
+        mockOwnerRepliedIssueRevertUseCase,
+        mockClosedAwaitingOwnerIssueRevertUseCase,
+        mockRevertNotReadyReviewQueueIssueUseCase,
+        mockAgentDesignationLabelAdoptUseCase,
+        mockUpdateRateLimitCacheUseCase,
+        mockDailySecurityScanUseCase,
+        mockAdvanceQualityCheckUseCase,
+        mockReopenedDoneIssueRevertUseCase,
+        closedStoryIssueReopenUseCase,
+        mockDateRepository,
+        mockSpreadsheetRepository,
+        mockProjectRepository,
+        mockIssueRepository,
+      );
+
+    const useCase = buildUseCase(mockClosedStoryIssueReopenUseCase);
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -205,6 +210,10 @@ describe('HandleScheduledEventUseCase', () => {
         cacheUsed: false,
       });
       mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      mockIssueRepository.getIssueSummariesByLabelAndState.mockReset();
+      mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+        [],
+      );
       mockSpreadsheetRepository.getSheet.mockResolvedValue([
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],
@@ -1794,17 +1803,16 @@ describe('HandleScheduledEventUseCase', () => {
         expect(storyIssueCalls).toHaveLength(0);
       });
 
-      it('skips story issue creation when searchIssue returns an open issue with the story name even when the project cache has no entry for it', async () => {
+      it('skips story issue creation when the open story issue list contains an issue with the story name even when the project cache has no entry for it', async () => {
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
           project: storyProject,
           cacheUsed: false,
         });
-        mockIssueRepository.searchIssue.mockResolvedValue([
+        mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue([
           {
             url: 'https://github.com/test-org/test-repo/issues/77',
             title: 'feature / StoryOne',
-            number: '77',
           },
         ]);
 
@@ -1817,28 +1825,28 @@ describe('HandleScheduledEventUseCase', () => {
             (call) => Array.isArray(call[5]) && call[5].includes('story'),
           );
         expect(storyIssueCalls).toHaveLength(0);
-        expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
-          expect.objectContaining({
-            owner: 'test-org',
-            repositoryName: 'test-repo',
-            type: 'issue',
-            state: 'open',
-            title: 'feature / StoryOne',
-          }),
-        );
+        expect(
+          mockIssueRepository.getIssueSummariesByLabelAndState,
+        ).toHaveBeenCalledWith({
+          owner: 'test-org',
+          repositoryName: 'test-repo',
+          label: 'story',
+          state: 'open',
+        });
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.searchIssues).not.toHaveBeenCalled();
       });
 
-      it('proceeds with story issue creation when searchIssue returns only issues with different titles (no exact-title match)', async () => {
+      it('proceeds with story issue creation when the open story issue list contains only issues with different titles (no exact-title match)', async () => {
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
           project: storyProject,
           cacheUsed: false,
         });
-        mockIssueRepository.searchIssue.mockResolvedValue([
+        mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue([
           {
             url: 'https://github.com/test-org/test-repo/issues/78',
             title: 'feature / StoryOne fix',
-            number: '78',
           },
         ]);
 
@@ -1852,6 +1860,7 @@ describe('HandleScheduledEventUseCase', () => {
           );
         expect(storyIssueCalls).toHaveLength(1);
         expect(storyIssueCalls[0][2]).toBe('feature / StoryOne');
+        expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
       });
 
       describe('stale Story option id at write time (issue #2781)', () => {
@@ -1965,13 +1974,14 @@ describe('HandleScheduledEventUseCase', () => {
           });
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/77';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '77',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const existingIssueWithStorySet = mock<Issue>();
           existingIssueWithStorySet.itemId = 'item-77';
           existingIssueWithStorySet.storyOptionId = 'story-already-set';
@@ -1991,15 +2001,18 @@ describe('HandleScheduledEventUseCase', () => {
               (call) => Array.isArray(call[5]) && call[5].includes('story'),
             );
           expect(storyIssueCalls).toHaveLength(0);
-          expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
-            expect.objectContaining({
-              owner: 'test-org',
-              repositoryName: 'test-repo',
-              type: 'issue',
-              state: 'open',
-              title: 'feature / StoryOne',
-            }),
+          expect(
+            mockIssueRepository.getIssueSummariesByLabelAndState,
+          ).toHaveBeenCalledWith({
+            owner: 'test-org',
+            repositoryName: 'test-repo',
+            label: 'story',
+            state: 'open',
+          });
+          expect(mockIssueRepository.getIssueByUrl).toHaveBeenCalledWith(
+            existingIssueUrl,
           );
+          expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
         });
 
         it('retries the write for the existing open issue when its Story field is unset (case 11, new behavior)', async () => {
@@ -2010,13 +2023,14 @@ describe('HandleScheduledEventUseCase', () => {
           });
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/77';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '77',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const existingIssueWithStoryUnset = mock<Issue>();
           existingIssueWithStoryUnset.itemId = 'item-77';
           existingIssueWithStoryUnset.storyOptionId = null;
@@ -2070,13 +2084,14 @@ describe('HandleScheduledEventUseCase', () => {
           });
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/77';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '77',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const existingIssueWithNoProjectItem = mock<Issue>();
           existingIssueWithNoProjectItem.itemId = '';
           existingIssueWithNoProjectItem.storyOptionId = null;
@@ -2098,13 +2113,14 @@ describe('HandleScheduledEventUseCase', () => {
         it('backfills matchedIssueState into issues and storyObject while the Story field write still runs for an unset option id', async () => {
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/77';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '77',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const matchedIssueState = mock<Issue>();
           matchedIssueState.url = existingIssueUrl;
           matchedIssueState.itemId = 'item-77';
@@ -2135,13 +2151,14 @@ describe('HandleScheduledEventUseCase', () => {
         it('backfills matchedIssueState into issues and storyObject without writing the Story field when the option id is already set', async () => {
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/78';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '78',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const matchedIssueState = mock<Issue>();
           matchedIssueState.url = existingIssueUrl;
           matchedIssueState.itemId = 'item-78';
@@ -2184,13 +2201,14 @@ describe('HandleScheduledEventUseCase', () => {
             project: storyProject,
             cacheUsed: false,
           });
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '79',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           const matchedIssueState = mock<Issue>();
           matchedIssueState.url = existingIssueUrl;
           matchedIssueState.itemId = 'item-79';
@@ -2217,13 +2235,14 @@ describe('HandleScheduledEventUseCase', () => {
         it('performs no backfill and does not throw when the live re-fetch returns no issue for the matched URL', async () => {
           const existingIssueUrl =
             'https://github.com/test-org/test-repo/issues/80';
-          mockIssueRepository.searchIssue.mockResolvedValue([
-            {
-              url: existingIssueUrl,
-              title: 'feature / StoryOne',
-              number: '80',
-            },
-          ]);
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+            [
+              {
+                url: existingIssueUrl,
+                title: 'feature / StoryOne',
+              },
+            ],
+          );
           mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
 
           const runPromise = useCase.run(storyInput);
@@ -2319,6 +2338,608 @@ describe('HandleScheduledEventUseCase', () => {
           } finally {
             warnSpy.mockRestore();
           }
+        });
+      });
+
+      describe('story issue lookup through the story issue list', () => {
+        type RunResult = Awaited<
+          ReturnType<HandleScheduledEventUseCase['run']>
+        >;
+        type StoryIssueWorld = {
+          remoteIssues: Issue[];
+          projectCache: Issue[];
+        };
+        type StoryIssueWorldCounts = {
+          searchCalls: number;
+          createdIssueCount: number;
+          reopenedIssueCount: number;
+        };
+
+        const storyOneName = 'feature / StoryOne';
+        const openStoryIssueListParams = {
+          owner: 'test-org',
+          repositoryName: 'test-repo',
+          label: 'story',
+          state: 'open',
+        };
+
+        const issueUrlOfNumber = (issueNumber: number): string =>
+          `https://github.com/test-org/test-repo/issues/${issueNumber}`;
+
+        const buildStoryIssue = (
+          overrides: Pick<Issue, 'number'> & Partial<Issue>,
+        ): Issue => ({
+          nameWithOwner: 'test-org/test-repo',
+          title: storyOneName,
+          state: 'OPEN',
+          status: 'Todo',
+          story: null,
+          storyOptionId: 'story-1',
+          nextActionDate: null,
+          nextActionHour: null,
+          estimationMinutes: null,
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          url: issueUrlOfNumber(overrides.number),
+          assignees: [],
+          labels: ['story'],
+          org: 'test-org',
+          repo: 'test-repo',
+          body: '',
+          itemId: `item-${overrides.number}`,
+          isPr: false,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          plainCrossRepoIssueReferenceUrls: [],
+          agent: null,
+          stateReason: null,
+          ...overrides,
+        });
+
+        const buildClosedStoryIssue = (
+          overrides: Pick<Issue, 'number'> & Partial<Issue>,
+        ): Issue =>
+          buildStoryIssue({
+            state: 'CLOSED',
+            isClosed: true,
+            stateReason: 'COMPLETED',
+            ...overrides,
+          });
+
+        const blueStoryOptions = (
+          storyNames: string[],
+        ): Pick<StoryOption, 'name' | 'color'>[] =>
+          storyNames.map((name) => ({ name, color: 'BLUE' }));
+
+        const buildProjectWithStories = (
+          storyOptions: Pick<StoryOption, 'name' | 'color'>[],
+        ): Project => ({
+          ...storyProject,
+          story: {
+            name: 'Story',
+            fieldId: 'f2',
+            databaseId: 2,
+            workflowManagementStory: { id: 'wm-1', name: 'workflow' },
+            stories: storyOptions.map((storyOption, index): StoryOption => ({
+              id: `story-${index + 1}`,
+              name: storyOption.name,
+              color: storyOption.color,
+              description: `${storyOption.name} description`,
+            })),
+          },
+        });
+
+        const installStoryIssueWorld = (
+          project: Project,
+          world: StoryIssueWorld,
+        ): {
+          reopenedIssueUrls: string[];
+          createdIssueTitles: string[];
+          takeCounts: () => StoryIssueWorldCounts;
+        } => {
+          const reopenedIssueUrls: string[] = [];
+          const createdIssueTitles: string[] = [];
+          let lastCreatedIssueNumber = 100;
+          mockProjectRepository.getProject.mockResolvedValue(project);
+          mockIssueRepository.getAllIssues.mockImplementation(async () => ({
+            issues: [...world.projectCache],
+            project,
+            cacheUsed: true,
+          }));
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockImplementation(
+            async ({ label, state }) =>
+              world.remoteIssues
+                .filter(
+                  (issue) =>
+                    issue.labels.includes(label) &&
+                    issue.isClosed === (state === 'closed'),
+                )
+                .map((issue) => ({ url: issue.url, title: issue.title })),
+          );
+          mockIssueRepository.getIssueByUrl.mockImplementation(
+            async (url) =>
+              world.remoteIssues.find((issue) => issue.url === url) ?? null,
+          );
+          mockIssueRepository.createNewIssue.mockImplementation(
+            async (_org, _repo, title) => {
+              lastCreatedIssueNumber += 1;
+              createdIssueTitles.push(title);
+              world.remoteIssues.unshift(
+                buildStoryIssue({ number: lastCreatedIssueNumber, title }),
+              );
+              return lastCreatedIssueNumber;
+            },
+          );
+          mockIssueRepository.appendIssueToProjectCache.mockImplementation(
+            async (_projectId, issue) => {
+              world.projectCache.push(issue);
+            },
+          );
+          mockIssueRepository.reopenIssueByUrl.mockImplementation(
+            async (url) => {
+              reopenedIssueUrls.push(url);
+            },
+          );
+          mockIssueRepository.searchIssue.mockResolvedValue([]);
+          mockIssueRepository.searchIssues.mockResolvedValue([]);
+          return {
+            reopenedIssueUrls,
+            createdIssueTitles,
+            takeCounts: () => ({
+              searchCalls:
+                mockIssueRepository.searchIssue.mock.calls.length +
+                mockIssueRepository.searchIssues.mock.calls.length,
+              createdIssueCount: createdIssueTitles.length,
+              reopenedIssueCount: reopenedIssueUrls.length,
+            }),
+          };
+        };
+
+        const buildUseCaseWithRealClosedStoryIssueReopen =
+          (): HandleScheduledEventUseCase =>
+            buildUseCase(
+              new ClosedStoryIssueReopenUseCase(mockIssueRepository),
+            );
+
+        const runCycle = async (
+          targetUseCase: HandleScheduledEventUseCase,
+          input: Parameters<HandleScheduledEventUseCase['run']>[0] = storyInput,
+        ): Promise<RunResult> => {
+          const runPromise = targetUseCase.run(input);
+          await jest.runAllTimersAsync();
+          return runPromise;
+        };
+
+        const runTwoConsecutiveCycles = async (
+          targetUseCase: HandleScheduledEventUseCase,
+          takeCounts: () => StoryIssueWorldCounts,
+        ): Promise<{
+          results: [RunResult, RunResult];
+          countsAfterEachCycle: [StoryIssueWorldCounts, StoryIssueWorldCounts];
+        }> => {
+          const firstResult = await runCycle(targetUseCase);
+          const countsAfterFirstCycle = takeCounts();
+          const secondResult = await runCycle(targetUseCase);
+          const countsAfterSecondCycle = takeCounts();
+          return {
+            results: [firstResult, secondResult],
+            countsAfterEachCycle: [
+              countsAfterFirstCycle,
+              countsAfterSecondCycle,
+            ],
+          };
+        };
+
+        const adoptedIssueUrlOf = (
+          result: RunResult,
+          storyId: string,
+        ): string | null =>
+          result?.storyIssues.get(storyId)?.storyIssue?.url ?? null;
+
+        const requestedOpenStoryIssueListCount = (): number =>
+          mockIssueRepository.getIssueSummariesByLabelAndState.mock.calls.filter(
+            ([params]) => params.state === 'open',
+          ).length;
+
+        afterEach(() => {
+          mockIssueRepository.reopenIssueByUrl.mockReset();
+          mockIssueRepository.searchIssues.mockReset();
+          mockIssueRepository.appendIssueToProjectCache.mockReset();
+          mockIssueRepository.createNewIssue.mockReset();
+          mockIssueRepository.getIssueByUrl.mockReset();
+        });
+
+        it('does not call search for a story missing from the project cache when an open story issue with the same name exists', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [buildStoryIssue({ number: 77 })],
+            projectCache: [],
+          };
+          const { takeCounts } = installStoryIssueWorld(
+            buildProjectWithStories(blueStoryOptions([storyOneName])),
+            world,
+          );
+
+          const { results, countsAfterEachCycle } =
+            await runTwoConsecutiveCycles(
+              buildUseCaseWithRealClosedStoryIssueReopen(),
+              takeCounts,
+            );
+
+          expect(countsAfterEachCycle).toEqual([
+            { searchCalls: 0, createdIssueCount: 0, reopenedIssueCount: 0 },
+            { searchCalls: 0, createdIssueCount: 0, reopenedIssueCount: 0 },
+          ]);
+          expect(
+            results.map((result) => adoptedIssueUrlOf(result, 'story-1')),
+          ).toEqual([issueUrlOfNumber(77), issueUrlOfNumber(77)]);
+        });
+
+        it('creates exactly one story issue when none exists and creates none in the following cycle', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [],
+            projectCache: [],
+          };
+          const { takeCounts, createdIssueTitles } = installStoryIssueWorld(
+            buildProjectWithStories(blueStoryOptions([storyOneName])),
+            world,
+          );
+
+          const { results, countsAfterEachCycle } =
+            await runTwoConsecutiveCycles(
+              buildUseCaseWithRealClosedStoryIssueReopen(),
+              takeCounts,
+            );
+
+          expect(countsAfterEachCycle).toEqual([
+            { searchCalls: 0, createdIssueCount: 1, reopenedIssueCount: 0 },
+            { searchCalls: 0, createdIssueCount: 1, reopenedIssueCount: 0 },
+          ]);
+          expect(createdIssueTitles).toEqual([storyOneName]);
+          expect(
+            world.remoteIssues.filter((issue) => issue.title === storyOneName),
+          ).toHaveLength(1);
+          expect(
+            results.map((result) => adoptedIssueUrlOf(result, 'story-1')),
+          ).toEqual([issueUrlOfNumber(101), issueUrlOfNumber(101)]);
+          expect(world.projectCache.map((issue) => issue.url)).toEqual([
+            issueUrlOfNumber(101),
+          ]);
+          expect(
+            mockIssueRepository.getIssueSummariesByLabelAndState,
+          ).toHaveBeenCalledWith(openStoryIssueListParams);
+        });
+
+        it('does not call search for a story whose open story issue is an archived project item and has a duplicate-titled sibling', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [
+              buildStoryIssue({ number: 77 }),
+              buildStoryIssue({ number: 60 }),
+              buildClosedStoryIssue({ number: 40 }),
+            ],
+            projectCache: [
+              buildStoryIssue({
+                number: 5,
+                title: 'unrelated task',
+                labels: [],
+              }),
+            ],
+          };
+          const { takeCounts } = installStoryIssueWorld(
+            buildProjectWithStories(blueStoryOptions([storyOneName])),
+            world,
+          );
+
+          const { results, countsAfterEachCycle } =
+            await runTwoConsecutiveCycles(
+              buildUseCaseWithRealClosedStoryIssueReopen(),
+              takeCounts,
+            );
+
+          expect(countsAfterEachCycle).toEqual([
+            { searchCalls: 0, createdIssueCount: 0, reopenedIssueCount: 0 },
+            { searchCalls: 0, createdIssueCount: 0, reopenedIssueCount: 0 },
+          ]);
+          expect(
+            results.map((result) => adoptedIssueUrlOf(result, 'story-1')),
+          ).toEqual([issueUrlOfNumber(77), issueUrlOfNumber(77)]);
+          const requestedIssueUrls =
+            mockIssueRepository.getIssueByUrl.mock.calls.map(([url]) => url);
+          expect(requestedIssueUrls).not.toContain(issueUrlOfNumber(60));
+          expect(requestedIssueUrls).not.toContain(issueUrlOfNumber(40));
+        });
+
+        it.each([1, 2, 5])(
+          'requests the open story issue list exactly once when %i stories each have an open story issue',
+          async (storyCount) => {
+            const storyNames = Array.from(
+              { length: storyCount },
+              (_, index) => `feature / StoryNumber${index + 1}`,
+            );
+            const world: StoryIssueWorld = {
+              remoteIssues: storyNames.map((title, index) =>
+                buildStoryIssue({ number: 200 + index, title }),
+              ),
+              projectCache: [],
+            };
+            const { takeCounts } = installStoryIssueWorld(
+              buildProjectWithStories(blueStoryOptions(storyNames)),
+              world,
+            );
+
+            const result = await runCycle(useCase);
+
+            expect(requestedOpenStoryIssueListCount()).toBe(1);
+            expect(
+              mockIssueRepository.getIssueSummariesByLabelAndState,
+            ).toHaveBeenCalledWith(openStoryIssueListParams);
+            expect(
+              storyNames.map((_, index) =>
+                adoptedIssueUrlOf(result, `story-${index + 1}`),
+              ),
+            ).toEqual(
+              storyNames.map((_, index) => issueUrlOfNumber(200 + index)),
+            );
+            expect(takeCounts()).toEqual({
+              searchCalls: 0,
+              createdIssueCount: 0,
+              reopenedIssueCount: 0,
+            });
+          },
+        );
+
+        it('requests the open story issue list exactly once when a story without an open story issue sits between two stories with one', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [
+              buildStoryIssue({ number: 77, title: 'feature / StoryOne' }),
+              buildStoryIssue({ number: 75, title: 'feature / StoryThree' }),
+            ],
+            projectCache: [],
+          };
+          const { takeCounts, createdIssueTitles } = installStoryIssueWorld(
+            buildProjectWithStories(
+              blueStoryOptions([
+                'feature / StoryOne',
+                'feature / StoryTwo',
+                'feature / StoryThree',
+              ]),
+            ),
+            world,
+          );
+
+          const result = await runCycle(useCase);
+
+          expect(requestedOpenStoryIssueListCount()).toBe(1);
+          expect(createdIssueTitles).toEqual(['feature / StoryTwo']);
+          expect(
+            ['story-1', 'story-2', 'story-3'].map((storyId) =>
+              adoptedIssueUrlOf(result, storyId),
+            ),
+          ).toEqual([
+            issueUrlOfNumber(77),
+            issueUrlOfNumber(101),
+            issueUrlOfNumber(75),
+          ]);
+          expect(takeCounts().searchCalls).toBe(0);
+        });
+
+        it.each([
+          {
+            description:
+              'the first of two issues that share the story name when it is also the newer issue',
+            listedIssues: [
+              { number: 77, title: storyOneName },
+              { number: 60, title: storyOneName },
+            ],
+            expectedAdoptedIssueNumber: 77,
+            expectedCreatedIssueTitles: [],
+          },
+          {
+            description:
+              'the first of two issues that share the story name when it is the older issue',
+            listedIssues: [
+              { number: 60, title: storyOneName },
+              { number: 77, title: storyOneName },
+            ],
+            expectedAdoptedIssueNumber: 60,
+            expectedCreatedIssueTitles: [],
+          },
+          {
+            description:
+              'the exact-title issue that follows an issue whose title extends the story name',
+            listedIssues: [
+              { number: 78, title: `${storyOneName} fix` },
+              { number: 77, title: storyOneName },
+            ],
+            expectedAdoptedIssueNumber: 77,
+            expectedCreatedIssueTitles: [],
+          },
+          {
+            description:
+              'the exact-title issue that follows an issue whose title is a prefix of the story name',
+            listedIssues: [
+              { number: 78, title: 'feature / Story' },
+              { number: 77, title: storyOneName },
+            ],
+            expectedAdoptedIssueNumber: 77,
+            expectedCreatedIssueTitles: [],
+          },
+          {
+            description:
+              'a newly created issue when the only listed title differs in letter case',
+            listedIssues: [{ number: 78, title: 'feature / storyone' }],
+            expectedAdoptedIssueNumber: 101,
+            expectedCreatedIssueTitles: [storyOneName],
+          },
+          {
+            description: 'a newly created issue when the list is empty',
+            listedIssues: [],
+            expectedAdoptedIssueNumber: 101,
+            expectedCreatedIssueTitles: [storyOneName],
+          },
+        ])(
+          'adopts $description',
+          async ({
+            listedIssues,
+            expectedAdoptedIssueNumber,
+            expectedCreatedIssueTitles,
+          }) => {
+            const world: StoryIssueWorld = {
+              remoteIssues: listedIssues.map((listedIssue) =>
+                buildStoryIssue(listedIssue),
+              ),
+              projectCache: [],
+            };
+            const { takeCounts, createdIssueTitles, reopenedIssueUrls } =
+              installStoryIssueWorld(
+                buildProjectWithStories(blueStoryOptions([storyOneName])),
+                world,
+              );
+
+            const result = await runCycle(useCase);
+
+            expect(adoptedIssueUrlOf(result, 'story-1')).toBe(
+              issueUrlOfNumber(expectedAdoptedIssueNumber),
+            );
+            expect(
+              mockIssueRepository.getIssueByUrl.mock.calls.map(([url]) => url),
+            ).toEqual([issueUrlOfNumber(expectedAdoptedIssueNumber)]);
+            expect(createdIssueTitles).toEqual(expectedCreatedIssueTitles);
+            expect(reopenedIssueUrls).toEqual([]);
+            expect(takeCounts().searchCalls).toBe(0);
+          },
+        );
+
+        it.each([
+          {
+            description:
+              'the story already has an open issue in the project cache',
+            storyOption: { name: storyOneName, color: 'BLUE' as const },
+            projectCache: [buildStoryIssue({ number: 50 })],
+            expectedAdoptedIssueUrl: issueUrlOfNumber(50),
+          },
+          {
+            description: 'the story name starts with the regular prefix',
+            storyOption: {
+              name: 'regular / Maintenance',
+              color: 'BLUE' as const,
+            },
+            projectCache: [],
+            expectedAdoptedIssueUrl: null,
+          },
+          {
+            description: 'the story color is GRAY',
+            storyOption: { name: storyOneName, color: 'GRAY' as const },
+            projectCache: [],
+            expectedAdoptedIssueUrl: null,
+          },
+          {
+            description:
+              'the project cache holds a closed story issue for the story',
+            storyOption: { name: storyOneName, color: 'BLUE' as const },
+            projectCache: [buildClosedStoryIssue({ number: 50 })],
+            expectedAdoptedIssueUrl: null,
+          },
+        ])(
+          'adopts no listed issue and creates no story issue when $description',
+          async ({ storyOption, projectCache, expectedAdoptedIssueUrl }) => {
+            const world: StoryIssueWorld = {
+              remoteIssues: [
+                buildStoryIssue({ number: 77, title: storyOption.name }),
+              ],
+              projectCache,
+            };
+            const { takeCounts, reopenedIssueUrls } = installStoryIssueWorld(
+              buildProjectWithStories([storyOption]),
+              world,
+            );
+
+            const result = await runCycle(useCase);
+
+            expect(adoptedIssueUrlOf(result, 'story-1')).toBe(
+              expectedAdoptedIssueUrl,
+            );
+            expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+            expect(reopenedIssueUrls).toEqual([]);
+            expect(takeCounts()).toEqual({
+              searchCalls: 0,
+              createdIssueCount: 0,
+              reopenedIssueCount: 0,
+            });
+          },
+        );
+
+        it('rejects without creating a story issue when the open story issue list lookup fails', async () => {
+          mockIssueRepository.getIssueSummariesByLabelAndState.mockRejectedValue(
+            new Error('open story issue list failure'),
+          );
+
+          const settledRun = useCase.run(storyInput).then(
+            () => null,
+            (error: unknown) => error,
+          );
+          await jest.runAllTimersAsync();
+          const failure = await settledRun;
+
+          expect(failure).toEqual(new Error('open story issue list failure'));
+          expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        });
+
+        it('adds a newly created story issue to the issues only after afterIssuesFetched has run', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [],
+            projectCache: [],
+          };
+          installStoryIssueWorld(
+            buildProjectWithStories(blueStoryOptions([storyOneName])),
+            world,
+          );
+          let issueUrlsSeenByAfterIssuesFetched: string[] | null = null;
+
+          const result = await runCycle(useCase, {
+            ...storyInput,
+            afterIssuesFetched: (_project, fetchedIssues) => {
+              issueUrlsSeenByAfterIssuesFetched = fetchedIssues.map(
+                (issue) => issue.url,
+              );
+            },
+          });
+
+          expect(issueUrlsSeenByAfterIssuesFetched).toEqual([]);
+          expect(result?.issues.map((issue) => issue.url)).toEqual([
+            issueUrlOfNumber(101),
+          ]);
+        });
+
+        it('adds an adopted open story issue to the issues only after afterIssuesFetched has run', async () => {
+          const world: StoryIssueWorld = {
+            remoteIssues: [buildStoryIssue({ number: 77 })],
+            projectCache: [],
+          };
+          installStoryIssueWorld(
+            buildProjectWithStories(blueStoryOptions([storyOneName])),
+            world,
+          );
+          let issueUrlsSeenByAfterIssuesFetched: string[] | null = null;
+
+          const result = await runCycle(useCase, {
+            ...storyInput,
+            afterIssuesFetched: (_project, fetchedIssues) => {
+              issueUrlsSeenByAfterIssuesFetched = fetchedIssues.map(
+                (issue) => issue.url,
+              );
+            },
+          });
+
+          expect(issueUrlsSeenByAfterIssuesFetched).toEqual([]);
+          expect(result?.issues.map((issue) => issue.url)).toEqual([
+            issueUrlOfNumber(77),
+          ]);
+          expect(
+            mockIssueRepository.appendIssueToProjectCache,
+          ).not.toHaveBeenCalled();
         });
       });
     });

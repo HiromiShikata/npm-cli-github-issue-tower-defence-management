@@ -2,6 +2,7 @@ import { HTTPError } from 'ky';
 import { mock } from 'jest-mock-extended';
 import type { MockProxy } from 'jest-mock-extended';
 import type { Issue } from '../../../domain/entities/Issue';
+import type { IssueSummary } from '../../../domain/entities/IssueSummary';
 import type { Project } from '../../../domain/entities/Project';
 import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type {
@@ -707,6 +708,203 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       expect(repo1.removeIssueFromProjectCache).not.toHaveBeenCalled();
       expect(repo2.removeIssueFromProjectCache).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getIssueSummariesByLabelAndState', () => {
+    const listParams: Parameters<
+      IssueRepository['getIssueSummariesByLabelAndState']
+    >[0] = {
+      owner: 'HiromiShikata',
+      repositoryName: 'test-repository',
+      label: 'story',
+      state: 'open',
+    };
+    const issueSummariesFromFirstRepository: IssueSummary[] = [
+      {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/3',
+        title: 'story three from token-1',
+      },
+    ];
+    const issueSummariesFromSecondRepository: IssueSummary[] = [
+      {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/9',
+        title: 'story nine from token-2',
+      },
+      {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/4',
+        title: 'story four from token-2',
+      },
+    ];
+
+    it('forwards the call to the only read repository with the identical params object and returns its result unchanged without asking the write repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromFirstRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      const result =
+        await rotating.getIssueSummariesByLabelAndState(listParams);
+
+      expect(result).toBe(issueSummariesFromFirstRepository);
+      expect(repo.getIssueSummariesByLabelAndState.mock.calls).toHaveLength(1);
+      expect(repo.getIssueSummariesByLabelAndState.mock.calls[0][0]).toBe(
+        listParams,
+      );
+      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('returns an empty list from the read repository as is without asking the write repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const emptyIssueSummaries: IssueSummary[] = [];
+      repo.getIssueSummariesByLabelAndState.mockResolvedValue(
+        emptyIssueSummaries,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      const result =
+        await rotating.getIssueSummariesByLabelAndState(listParams);
+
+      expect(result).toBe(emptyIssueSummaries);
+      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('tries the second read repository with the identical params object and returns its result when the first throws GitHubRateLimitError', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueSummariesByLabelAndState.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromSecondRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result =
+        await rotating.getIssueSummariesByLabelAndState(listParams);
+
+      expect(result).toBe(issueSummariesFromSecondRepository);
+      expect(repo1.getIssueSummariesByLabelAndState.mock.calls).toHaveLength(1);
+      expect(repo1.getIssueSummariesByLabelAndState.mock.calls[0][0]).toBe(
+        listParams,
+      );
+      expect(repo2.getIssueSummariesByLabelAndState.mock.calls).toHaveLength(1);
+      expect(repo2.getIssueSummariesByLabelAndState.mock.calls[0][0]).toBe(
+        listParams,
+      );
+      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('does not ask the second read repository when the first one succeeds', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromFirstRepository,
+      );
+      repo2.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromSecondRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result =
+        await rotating.getIssueSummariesByLabelAndState(listParams);
+
+      expect(result).toBe(issueSummariesFromFirstRepository);
+      expect(repo2.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('re-throws the last GitHubRateLimitError without asking the write repository when every read repository is rate-limited', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const error2 = new GitHubRateLimitError('rate limited token-2');
+      repo1.getIssueSummariesByLabelAndState.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueSummariesByLabelAndState.mockRejectedValue(error2);
+      writeRepo.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromSecondRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+
+      await expect(
+        rotating.getIssueSummariesByLabelAndState(listParams),
+      ).rejects.toBe(error2);
+      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('does not rotate when the first read repository fails with an error that is not a GitHubRateLimitError', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const networkError = new Error('Connection refused');
+      repo1.getIssueSummariesByLabelAndState.mockRejectedValue(networkError);
+      repo2.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromSecondRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+
+      await expect(
+        rotating.getIssueSummariesByLabelAndState(listParams),
+      ).rejects.toBe(networkError);
+      expect(repo2.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+    });
+
+    it('repeats the call on the write repository with the identical params object when the read repository is refused with HTTP 403', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueSummariesByLabelAndState.mockRejectedValue(
+        buildKyHttpError(403),
+      );
+      repo2.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromSecondRepository,
+      );
+      writeRepo.getIssueSummariesByLabelAndState.mockResolvedValue(
+        issueSummariesFromFirstRepository,
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result =
+        await rotating.getIssueSummariesByLabelAndState(listParams);
+
+      expect(result).toBe(issueSummariesFromFirstRepository);
+      expect(repo2.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+      expect(
+        writeRepo.getIssueSummariesByLabelAndState.mock.calls,
+      ).toHaveLength(1);
+      expect(writeRepo.getIssueSummariesByLabelAndState.mock.calls[0][0]).toBe(
+        listParams,
+      );
     });
   });
 

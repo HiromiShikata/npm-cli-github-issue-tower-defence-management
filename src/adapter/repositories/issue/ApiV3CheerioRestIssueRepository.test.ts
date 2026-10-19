@@ -6484,6 +6484,72 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getIssueSummariesByLabelAndState', () => {
+    const issueSummariesNewestFirst = [
+      {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/52',
+        title: 'story newest',
+      },
+      {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/41',
+        title: 'story oldest',
+      },
+    ];
+
+    it.each([
+      { label: 'story', state: 'open' as const },
+      { label: 'story', state: 'closed' as const },
+      { label: 'bug', state: 'open' as const },
+    ])(
+      'delegates to the underlying REST issue repository with the same owner, repository, label $label and state $state and returns its list in the same order',
+      async ({ label, state }) => {
+        const { repository, restIssueRepository } =
+          createApiV3CheerioRestIssueRepository();
+        restIssueRepository.getIssueSummariesByLabelAndState.mockResolvedValue(
+          issueSummariesNewestFirst,
+        );
+
+        const result = await repository.getIssueSummariesByLabelAndState({
+          owner: 'HiromiShikata',
+          repositoryName: 'test-repository',
+          label,
+          state,
+        });
+
+        expect(
+          restIssueRepository.getIssueSummariesByLabelAndState,
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          restIssueRepository.getIssueSummariesByLabelAndState,
+        ).toHaveBeenCalledWith({
+          owner: 'HiromiShikata',
+          repositoryName: 'test-repository',
+          label,
+          state,
+        });
+        expect(result).toEqual(issueSummariesNewestFirst);
+      },
+    );
+
+    it('rejects with the same error when the underlying REST issue repository rejects', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const listFailure = new Error('list request failed');
+      restIssueRepository.getIssueSummariesByLabelAndState.mockRejectedValue(
+        listFailure,
+      );
+
+      await expect(
+        repository.getIssueSummariesByLabelAndState({
+          owner: 'HiromiShikata',
+          repositoryName: 'test-repository',
+          label: 'story',
+          state: 'open',
+        }),
+      ).rejects.toBe(listFailure);
+    });
+  });
+
   describe('updateIssueCommentBody', () => {
     it('delegates to the underlying REST issue repository with the same comment target and body, the same way updateIssueBody delegates', async () => {
       const { repository, restIssueRepository } =

@@ -1,6 +1,9 @@
+import path from 'node:path';
 import ky, { HTTPError, KyResponse } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+import { tdpmCacheDirectory } from '../localStorageCacheDirectory';
 import { Issue } from '../../../domain/entities/Issue';
+import { IssueSummary } from '../../../domain/entities/IssueSummary';
 import {
   IssueComment,
   IssueRepository,
@@ -53,6 +56,74 @@ export type StoredIssueCommentList = {
 };
 
 export const ISSUE_COMMENTS_PER_PAGE = 100;
+
+type IssueListResponseItem = {
+  html_url: string;
+  title: string;
+  pull_request?: unknown;
+};
+
+type StoredIssueSummaryPage = {
+  etag: string | null;
+  rawItemCount: number;
+  issueSummaries: IssueSummary[];
+};
+
+type StoredIssueSummaryList = {
+  pages: StoredIssueSummaryPage[];
+};
+
+const ISSUE_SUMMARIES_PER_PAGE = 100;
+
+type IssueSummaryListParams = Parameters<
+  IssueRepository['getIssueSummariesByLabelAndState']
+>[0];
+
+const isIssueSummary = (value: unknown): value is IssueSummary =>
+  typeof value === 'object' &&
+  value !== null &&
+  'url' in value &&
+  typeof value.url === 'string' &&
+  'title' in value &&
+  typeof value.title === 'string';
+
+const isStoredIssueSummaryPage = (
+  value: unknown,
+): value is StoredIssueSummaryPage =>
+  typeof value === 'object' &&
+  value !== null &&
+  'etag' in value &&
+  (value.etag === null || typeof value.etag === 'string') &&
+  'rawItemCount' in value &&
+  typeof value.rawItemCount === 'number' &&
+  'issueSummaries' in value &&
+  Array.isArray(value.issueSummaries) &&
+  value.issueSummaries.every(isIssueSummary);
+
+const isStoredIssueSummaryList = (
+  value: unknown,
+): value is StoredIssueSummaryList =>
+  typeof value === 'object' &&
+  value !== null &&
+  'pages' in value &&
+  Array.isArray(value.pages) &&
+  value.pages.every(isStoredIssueSummaryPage);
+
+const convertIssueListResponseItemsToStoredIssueSummaryPage = (
+  etag: string | null,
+  issueListResponseItems: IssueListResponseItem[],
+): StoredIssueSummaryPage => ({
+  etag,
+  rawItemCount: issueListResponseItems.length,
+  issueSummaries: issueListResponseItems
+    .filter(
+      (issueListResponseItem) => !('pull_request' in issueListResponseItem),
+    )
+    .map((issueListResponseItem) => ({
+      url: issueListResponseItem.html_url,
+      title: issueListResponseItem.title,
+    })),
+});
 
 const commentedIssueUrlPattern =
   /^https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/;
@@ -151,6 +222,7 @@ export class RestIssueRepository
       | 'updateAssigneeList'
       | 'removeLabel'
       | 'searchIssues'
+      | 'getIssueSummariesByLabelAndState'
       | 'getIssueOrPullRequestComments'
     >
 {
@@ -587,6 +659,104 @@ export class RestIssueRepository
       }
     }
     return searchedIssues;
+  };
+
+  getIssueSummariesByLabelAndState = async (
+    params: IssueSummaryListParams,
+  ): Promise<IssueSummary[]> => {
+    const storedIssueSummaryListFilePath =
+      this.buildStoredIssueSummaryListFilePath(params);
+    const storedIssueSummaryList = this.readStoredIssueSummaryList(
+      storedIssueSummaryListFilePath,
+    );
+    const fetchedPages: StoredIssueSummaryPage[] = [];
+    let hasMore = true;
+    while (hasMore) {
+      const fetchedPage = await this.fetchIssueSummaryPage(
+        params,
+        fetchedPages.length + 1,
+        storedIssueSummaryList?.pages[fetchedPages.length] ?? null,
+      );
+      fetchedPages.push(fetchedPage);
+      hasMore = fetchedPage.rawItemCount >= ISSUE_SUMMARIES_PER_PAGE;
+    }
+    this.writeStoredIssueSummaryList(storedIssueSummaryListFilePath, {
+      pages: fetchedPages,
+    });
+    return fetchedPages.flatMap((page) => page.issueSummaries);
+  };
+
+  private readonly buildStoredIssueSummaryListFilePath = (
+    params: IssueSummaryListParams,
+  ): string =>
+    path.join(
+      tdpmCacheDirectory(),
+      'issue-summary-list',
+      `${[params.owner, params.repositoryName, params.label, params.state]
+        .map(encodeURIComponent)
+        .join(',')}.json`,
+    );
+
+  private readonly readStoredIssueSummaryList = (
+    storedIssueSummaryListFilePath: string,
+  ): StoredIssueSummaryList | null => {
+    const storedText = this.localStorageRepository.readOrNull(
+      storedIssueSummaryListFilePath,
+    );
+    if (storedText === null) {
+      return null;
+    }
+    try {
+      const storedValue: unknown = JSON.parse(storedText);
+      return isStoredIssueSummaryList(storedValue) ? storedValue : null;
+    } catch {
+      return null;
+    }
+  };
+
+  private readonly writeStoredIssueSummaryList = (
+    storedIssueSummaryListFilePath: string,
+    storedIssueSummaryList: StoredIssueSummaryList,
+  ): void => {
+    const temporaryFilePath = `${storedIssueSummaryListFilePath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+    this.localStorageRepository.write(
+      temporaryFilePath,
+      JSON.stringify(storedIssueSummaryList),
+    );
+    this.localStorageRepository.rename(
+      temporaryFilePath,
+      storedIssueSummaryListFilePath,
+    );
+  };
+
+  private readonly fetchIssueSummaryPage = async (
+    params: IssueSummaryListParams,
+    pageNumber: number,
+    storedPage: StoredIssueSummaryPage | null,
+  ): Promise<StoredIssueSummaryPage> => {
+    const response = await ky.get(
+      `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repositoryName)}/issues`,
+      {
+        searchParams: {
+          labels: params.label,
+          state: params.state,
+          per_page: ISSUE_SUMMARIES_PER_PAGE,
+          page: pageNumber,
+        },
+        headers: {
+          Authorization: `token ${this.selectReadToken()}`,
+          ...(storedPage?.etag ? { 'If-None-Match': storedPage.etag } : {}),
+        },
+        throwHttpErrors: (status) => status !== 304,
+      },
+    );
+    if (response.status === 304 && storedPage !== null) {
+      return storedPage;
+    }
+    return convertIssueListResponseItemsToStoredIssueSummaryPage(
+      response.headers.get('ETag'),
+      await response.json<IssueListResponseItem[]>(),
+    );
   };
 
   private readonly storedIssueCommentListByIssueUrl = new Map<

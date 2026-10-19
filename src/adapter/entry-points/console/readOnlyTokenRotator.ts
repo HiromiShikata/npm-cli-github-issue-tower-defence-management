@@ -169,6 +169,11 @@ export const createReadOnlyTokenRotatingIssueRepository = (
     searchIssue: (query: Parameters<IssueRepository['searchIssue']>[0]) =>
       rotate((r) => r.searchIssue(query)),
     searchIssues: (query: string) => rotate((r) => r.searchIssues(query)),
+    getIssueSummariesByLabelAndState: (
+      params: Parameters<
+        IssueRepository['getIssueSummariesByLabelAndState']
+      >[0],
+    ) => rotate((r) => r.getIssueSummariesByLabelAndState(params)),
     get: (issueUrl: string, project: Project) =>
       writeRepository.get(issueUrl, project),
     getAllOpened: (project: Project) => writeRepository.getAllOpened(project),

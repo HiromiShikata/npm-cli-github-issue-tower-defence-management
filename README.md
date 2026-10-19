@@ -552,6 +552,14 @@ ${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/projectLocation-{projec
 - A malformed or absent cache file falls back to a live GraphQL fetch and never crashes, and a read or write failure of either cache is logged rather than swallowed, because a silently failing write would send every later process back to the GraphQL path with no signal.
 - A recorded location can still go stale if the owner is renamed. When the REST read returns 404 the entry is discarded, the project is re-read over GraphQL, and the corrected location is written back, so a rename recovers by itself on the next read.
 
+## Story Issue List Cache
+
+The scheduled sweep finds the issue of each story by listing the repository issues that carry the `story` label (`GET /repos/{owner}/{repo}/issues` with `labels`, `state`, `per_page=100` and `page`) instead of the `search/issues` endpoint, whose rate-limit bucket is shared with the agents. Each page of a list is requested with its saved `ETag` as `If-None-Match`, so an unchanged page answers `304` and its saved items are reused. The `ETag` and parsed items of every page are kept on disk so they are shared across processes:
+
+```
+${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/issue-summary-list/{owner},{repositoryName},{label},{state}.json
+```
+
 ## Per-Project Situation Snapshot
 
 After each schedule cycle, TDPM writes a per-project situation snapshot to:
