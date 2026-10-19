@@ -4089,6 +4089,111 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('does not switch projects within 120 seconds in timer mode while the active tab list of the displayed project has not loaded yet and an item of it is selected from the address', async () => {
+    const automaticSwitchDeadlineMs = 120000;
+    const candidateWithoutActionableItems = 'beta';
+    const candidateWithActionableItems = 'gamma';
+    const activeTabName = 'failed-preparation';
+    window.history.replaceState(
+      {},
+      '',
+      `/projects/acme/${activeTabName}?k=token#item/PVTI_9`,
+    );
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          acme: 30,
+          [candidateWithoutActionableItems]: 30,
+          [candidateWithActionableItems]: 30,
+        },
+      }),
+    );
+    const listRequestCountByTab: Record<string, number> = {};
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        listRequestCountByTab[tab] = (listRequestCountByTab[tab] ?? 0) + 1;
+        if (tab === activeTabName) {
+          throw new Error('Network unavailable');
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ...listPayload(tab), items: [] }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [
+              'acme',
+              candidateWithoutActionableItems,
+              candidateWithActionableItems,
+            ],
+            actionableCounts: {
+              todoByHumanCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 1,
+              },
+              awaitingOwnerCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      render(<ConsolePage />);
+      await waitFor(() => {
+        expect(listRequestCountByTab[activeTabName]).toBeGreaterThanOrEqual(1);
+        expect(listRequestCountByTab.prs).toBeGreaterThanOrEqual(1);
+        expect(listRequestCountByTab['todo-by-human']).toBeGreaterThanOrEqual(
+          1,
+        );
+      });
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      const refreshCount = Math.floor(
+        automaticSwitchDeadlineMs / CONSOLE_TAB_REFRESH_INTERVAL_MS,
+      );
+      for (let refresh = 0; refresh < refreshCount; refresh += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+      }
+
+      expect(listRequestCountByTab[activeTabName]).toBeGreaterThan(
+        refreshCount,
+      );
+      expect(listRequestCountByTab.prs).toBeGreaterThan(refreshCount);
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithoutActionableItems}/todo-by-human`,
+      );
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithActionableItems}/todo-by-human`,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not navigate to another project within 150 seconds in timer mode while the displayed project has no todo-by-human items but a positive awaiting-owner count and another project is eligible', async () => {
     const displayedProjectCode = 'acme';
     const eligibleCandidateProjectCode = 'beta';
