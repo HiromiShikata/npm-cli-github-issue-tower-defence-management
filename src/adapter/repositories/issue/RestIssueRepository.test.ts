@@ -898,6 +898,600 @@ describe('RestIssueRepository', () => {
     });
   });
 
+  describe('getIssueSummariesByLabelAndState', () => {
+    type IssueListParams = {
+      owner: string;
+      repositoryName: string;
+      label: string;
+      state: 'open' | 'closed';
+    };
+    type RawListedItem = {
+      url: string;
+      html_url: string;
+      number: number;
+      title: string;
+      state: string;
+      labels: { name: string }[];
+      pull_request?: { url: string; html_url: string };
+    };
+    type KyListRequestOptions = {
+      headers?: Record<string, string> | Headers;
+      searchParams?:
+        Record<string, string | number | boolean> | URLSearchParams | string;
+      throwHttpErrors?: boolean | ((status: number) => boolean);
+    };
+    type ListRequest = {
+      origin: string;
+      pathname: string;
+      query: Record<string, string>;
+      headers: Headers;
+    };
+
+    const rawItemsPerPage = 100;
+    const storyOpenParams: IssueListParams = {
+      owner: 'HiromiShikata',
+      repositoryName: 'test-repository',
+      label: 'story',
+      state: 'open',
+    };
+
+    class InMemoryLocalStorageRepository extends LocalStorageRepository {
+      readonly savedTextByPath = new Map<string, string>();
+      readonly createdDirectoryPaths = new Set<string>();
+      private readonly buildMissingFileError = (path: string): Error =>
+        Object.assign(
+          new Error(`ENOENT: no such file or directory, open '${path}'`),
+          { code: 'ENOENT' },
+        );
+      write = (path: string, value: string): void => {
+        this.savedTextByPath.set(path, value);
+      };
+      read = (path: string): string | null => {
+        const savedText = this.savedTextByPath.get(path);
+        if (savedText === undefined) {
+          throw this.buildMissingFileError(path);
+        }
+        return savedText;
+      };
+      readOrNull = (path: string): string | null =>
+        this.savedTextByPath.get(path) ?? null;
+      rename = (oldPath: string, newPath: string): void => {
+        const savedText = this.savedTextByPath.get(oldPath);
+        if (savedText === undefined) {
+          throw this.buildMissingFileError(oldPath);
+        }
+        this.savedTextByPath.set(newPath, savedText);
+        this.savedTextByPath.delete(oldPath);
+      };
+      listFiles = (dirPath: string): string[] =>
+        Array.from(
+          new Set(
+            Array.from(this.savedTextByPath.keys())
+              .filter((path) => path.startsWith(`${dirPath}/`))
+              .map((path) => path.slice(dirPath.length + 1).split('/')[0]),
+          ),
+        );
+      mkdir = (dirPath: string): void => {
+        this.createdDirectoryPaths.add(dirPath);
+      };
+      remove = (path: string): void => {
+        for (const savedPath of Array.from(this.savedTextByPath.keys())) {
+          if (savedPath === path || savedPath.startsWith(`${path}/`)) {
+            this.savedTextByPath.delete(savedPath);
+          }
+        }
+      };
+      tryCreateExclusive = (path: string): boolean => {
+        if (this.savedTextByPath.has(path)) {
+          return false;
+        }
+        this.savedTextByPath.set(path, '');
+        return true;
+      };
+      statMtimeMs = (path: string): number | null =>
+        this.savedTextByPath.has(path) ? 0 : null;
+    }
+
+    const buildRawIssue = (number: number): RawListedItem => ({
+      url: `https://api.github.com/repos/HiromiShikata/test-repository/issues/${number}`,
+      html_url: `https://github.com/HiromiShikata/test-repository/issues/${number}`,
+      number,
+      title: `story ${number}`,
+      state: 'open',
+      labels: [{ name: 'story' }],
+    });
+    const buildRawPullRequest = (number: number): RawListedItem => ({
+      ...buildRawIssue(number),
+      html_url: `https://github.com/HiromiShikata/test-repository/pull/${number}`,
+      pull_request: {
+        url: `https://api.github.com/repos/HiromiShikata/test-repository/pulls/${number}`,
+        html_url: `https://github.com/HiromiShikata/test-repository/pull/${number}`,
+      },
+    });
+    const buildRawItemsNewestFirst = (
+      newestNumber: number,
+      count: number,
+      isPullRequestNumber: (number: number) => boolean = () => false,
+    ): RawListedItem[] =>
+      Array.from({ length: count }, (_unused, index) => {
+        const number = newestNumber - index;
+        return isPullRequestNumber(number)
+          ? buildRawPullRequest(number)
+          : buildRawIssue(number);
+      });
+    const toIssueSummaries = (
+      rawItems: RawListedItem[],
+    ): { url: string; title: string }[] =>
+      rawItems
+        .filter((rawItem) => rawItem.pull_request === undefined)
+        .map((rawItem) => ({ url: rawItem.html_url, title: rawItem.title }));
+
+    const toListRequest = (
+      requestedUrl: string | URL,
+      options: KyListRequestOptions | undefined,
+    ): ListRequest => {
+      const parsedUrl = new URL(String(requestedUrl));
+      const query = new URLSearchParams(parsedUrl.search);
+      const searchParams = options?.searchParams;
+      if (
+        typeof searchParams === 'string' ||
+        searchParams instanceof URLSearchParams
+      ) {
+        new URLSearchParams(searchParams).forEach((value, name) =>
+          query.set(name, value),
+        );
+      } else if (searchParams) {
+        Object.entries(searchParams).forEach(([name, value]) =>
+          query.set(name, String(value)),
+        );
+      }
+      return {
+        origin: parsedUrl.origin,
+        pathname: parsedUrl.pathname,
+        query: Object.fromEntries(query.entries()),
+        headers: new Headers(options?.headers),
+      };
+    };
+    const readListRequests = (): ListRequest[] =>
+      mockGet.mock.calls.map(
+        (call: [string | URL, KyListRequestOptions | undefined]) =>
+          toListRequest(call[0], call[1]),
+      );
+    const readRequestedPages = (): string[] =>
+      readListRequests().map((request) => request.query.page);
+
+    const createFakeIssueListServer = () => {
+      const publishedByListKey = new Map<
+        string,
+        { etagVersion: string; rawItems: RawListedItem[] }
+      >();
+      const failureStatusByPage = new Map<number, number>();
+      const respondedStatuses: number[] = [];
+      const buildListKey = (
+        pathname: string,
+        label: string,
+        state: string,
+      ): string => `${pathname}|${label}|${state}`;
+      const respondWithStatus = (response: Response): Response => {
+        respondedStatuses.push(response.status);
+        return response;
+      };
+      return {
+        respondedStatuses,
+        publish: (
+          params: IssueListParams,
+          etagVersion: string,
+          rawItems: RawListedItem[],
+        ): void => {
+          publishedByListKey.set(
+            buildListKey(
+              `/repos/${params.owner}/${params.repositoryName}/issues`,
+              params.label,
+              params.state,
+            ),
+            { etagVersion, rawItems },
+          );
+        },
+        failPage: (page: number, status: number): void => {
+          failureStatusByPage.set(page, status);
+        },
+        respond: (request: ListRequest): Response => {
+          const page = Number(request.query.page);
+          const failureStatus = failureStatusByPage.get(page);
+          if (failureStatus !== undefined) {
+            return respondWithStatus(
+              new Response('failure', { status: failureStatus }),
+            );
+          }
+          const published = publishedByListKey.get(
+            buildListKey(
+              request.pathname,
+              request.query.labels,
+              request.query.state,
+            ),
+          );
+          const pageEtag = `W/"${published?.etagVersion ?? 'unpublished'}-page-${page}"`;
+          if (request.headers.get('if-none-match') === pageEtag) {
+            return respondWithStatus(new Response(null, { status: 304 }));
+          }
+          const pageItems = (published?.rawItems ?? []).slice(
+            (page - 1) * rawItemsPerPage,
+            page * rawItemsPerPage,
+          );
+          return respondWithStatus(
+            new Response(JSON.stringify(pageItems), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json', ETag: pageEtag },
+            }),
+          );
+        },
+      };
+    };
+    type FakeIssueListServer = ReturnType<typeof createFakeIssueListServer>;
+
+    const connectFakeIssueListServer = (server: FakeIssueListServer): void => {
+      mockGet.mockImplementation(
+        async (
+          requestedUrl: string | URL,
+          options: KyListRequestOptions | undefined,
+        ) => {
+          const response = server.respond(toListRequest(requestedUrl, options));
+          const throwHttpErrors = options?.throwHttpErrors ?? true;
+          const mustThrow =
+            typeof throwHttpErrors === 'function'
+              ? throwHttpErrors(response.status)
+              : throwHttpErrors;
+          if (!response.ok && mustThrow) {
+            throw new MockHTTPError(response);
+          }
+          return response;
+        },
+      );
+    };
+
+    const createRepositoryOver = (
+      localStorage: LocalStorageRepository,
+    ): RestIssueRepository =>
+      new RestIssueRepository(localStorage, 'dummy-token');
+
+    it('sends If-None-Match and reuses the previous list on a 304 response', async () => {
+      const server = createFakeIssueListServer();
+      const publishedItems = buildRawItemsNewestFirst(52, 3);
+      server.publish(storyOpenParams, 'etag-1', publishedItems);
+      connectFakeIssueListServer(server);
+      const repository = createRepositoryOver(
+        new InMemoryLocalStorageRepository(),
+      );
+
+      const firstList =
+        await repository.getIssueSummariesByLabelAndState(storyOpenParams);
+      const secondList =
+        await repository.getIssueSummariesByLabelAndState(storyOpenParams);
+
+      const requests = readListRequests();
+      expect(requests).toHaveLength(2);
+      expect(requests[0].headers.get('if-none-match')).toBeNull();
+      expect(requests[1].headers.get('if-none-match')).toBe(
+        'W/"etag-1-page-1"',
+      );
+      expect(server.respondedStatuses).toEqual([200, 304]);
+      expect(firstList).toEqual(toIssueSummaries(publishedItems));
+      expect(secondList).toEqual(toIssueSummaries(publishedItems));
+    });
+
+    it.each([
+      { label: 'story', state: 'open' as const },
+      { label: 'story', state: 'closed' as const },
+      { label: 'bug', state: 'open' as const },
+    ])(
+      'requests the repository issues list endpoint with labels $label, state $state, per_page 100 and page 1 using the token authorization header',
+      async ({ label, state }) => {
+        const server = createFakeIssueListServer();
+        connectFakeIssueListServer(server);
+        const repository = createRepositoryOver(
+          new InMemoryLocalStorageRepository(),
+        );
+
+        await repository.getIssueSummariesByLabelAndState({
+          owner: 'HiromiShikata',
+          repositoryName: 'test-repository',
+          label,
+          state,
+        });
+
+        const requests = readListRequests();
+        expect(requests).toHaveLength(1);
+        expect(requests[0].origin).toBe('https://api.github.com');
+        expect(requests[0].pathname).toBe(
+          '/repos/HiromiShikata/test-repository/issues',
+        );
+        expect(requests[0].query).toMatchObject({
+          labels: label,
+          state,
+          per_page: '100',
+          page: '1',
+        });
+        expect(requests[0].headers.get('authorization')).toBe(
+          'token dummy-token',
+        );
+      },
+    );
+
+    it('excludes pull requests from the returned list and keeps the list order of the remaining issues', async () => {
+      const server = createFakeIssueListServer();
+      server.publish(storyOpenParams, 'etag-1', [
+        buildRawIssue(90),
+        buildRawPullRequest(89),
+        buildRawIssue(88),
+        buildRawPullRequest(87),
+        buildRawIssue(86),
+      ]);
+      connectFakeIssueListServer(server);
+      const repository = createRepositoryOver(
+        new InMemoryLocalStorageRepository(),
+      );
+
+      const issueSummaries =
+        await repository.getIssueSummariesByLabelAndState(storyOpenParams);
+
+      expect(issueSummaries).toEqual([
+        {
+          url: 'https://github.com/HiromiShikata/test-repository/issues/90',
+          title: 'story 90',
+        },
+        {
+          url: 'https://github.com/HiromiShikata/test-repository/issues/88',
+          title: 'story 88',
+        },
+        {
+          url: 'https://github.com/HiromiShikata/test-repository/issues/86',
+          title: 'story 86',
+        },
+      ]);
+    });
+
+    it.each([
+      { totalItemCount: 0, expectedRequestedPages: ['1'] },
+      { totalItemCount: 99, expectedRequestedPages: ['1'] },
+      { totalItemCount: 100, expectedRequestedPages: ['1', '2'] },
+      { totalItemCount: 137, expectedRequestedPages: ['1', '2'] },
+      { totalItemCount: 200, expectedRequestedPages: ['1', '2', '3'] },
+      { totalItemCount: 201, expectedRequestedPages: ['1', '2', '3'] },
+      { totalItemCount: 305, expectedRequestedPages: ['1', '2', '3', '4'] },
+    ])(
+      'requests the next page only while the previous page returned 100 raw items and returns every issue across pages in list order for $totalItemCount issues',
+      async ({ totalItemCount, expectedRequestedPages }) => {
+        const server = createFakeIssueListServer();
+        const publishedItems = buildRawItemsNewestFirst(1000, totalItemCount);
+        server.publish(storyOpenParams, 'etag-1', publishedItems);
+        connectFakeIssueListServer(server);
+        const repository = createRepositoryOver(
+          new InMemoryLocalStorageRepository(),
+        );
+
+        const issueSummaries =
+          await repository.getIssueSummariesByLabelAndState(storyOpenParams);
+
+        expect(readRequestedPages()).toEqual(expectedRequestedPages);
+        expect(issueSummaries).toHaveLength(totalItemCount);
+        expect(issueSummaries).toEqual(toIssueSummaries(publishedItems));
+      },
+    );
+
+    it('requests the next page when a page returned 100 raw items of which pull requests make the returned issues fewer than 100', async () => {
+      const server = createFakeIssueListServer();
+      const publishedItems = buildRawItemsNewestFirst(
+        150,
+        150,
+        (number) => number % 5 === 0,
+      );
+      server.publish(storyOpenParams, 'etag-1', publishedItems);
+      connectFakeIssueListServer(server);
+      const repository = createRepositoryOver(
+        new InMemoryLocalStorageRepository(),
+      );
+
+      const issueSummaries =
+        await repository.getIssueSummariesByLabelAndState(storyOpenParams);
+
+      expect(readRequestedPages()).toEqual(['1', '2']);
+      expect(issueSummaries).toHaveLength(120);
+      expect(issueSummaries).toEqual(toIssueSummaries(publishedItems));
+    });
+
+    it('persists each page ETag and its items through the local storage so that a later instance sends the saved ETag of each page and returns the saved list on 304', async () => {
+      const server = createFakeIssueListServer();
+      const publishedItems = buildRawItemsNewestFirst(
+        150,
+        150,
+        (number) => number % 5 === 0,
+      );
+      server.publish(storyOpenParams, 'etag-1', publishedItems);
+      connectFakeIssueListServer(server);
+      const sharedLocalStorage = new InMemoryLocalStorageRepository();
+
+      const listFromFirstInstance =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+      const listFromLaterInstance =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+      const requests = readListRequests();
+      expect(requests.map((request) => request.query.page)).toEqual([
+        '1',
+        '2',
+        '1',
+        '2',
+      ]);
+      expect(
+        requests.map((request) => request.headers.get('if-none-match')),
+      ).toEqual([null, null, 'W/"etag-1-page-1"', 'W/"etag-1-page-2"']);
+      expect(server.respondedStatuses).toEqual([200, 200, 304, 304]);
+      expect(listFromFirstInstance).toEqual(toIssueSummaries(publishedItems));
+      expect(listFromLaterInstance).toEqual(toIssueSummaries(publishedItems));
+    });
+
+    it('sends no If-None-Match from an instance whose local storage holds no saved list', async () => {
+      const server = createFakeIssueListServer();
+      server.publish(storyOpenParams, 'etag-1', buildRawItemsNewestFirst(5, 5));
+      connectFakeIssueListServer(server);
+      await createRepositoryOver(
+        new InMemoryLocalStorageRepository(),
+      ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+      await createRepositoryOver(
+        new InMemoryLocalStorageRepository(),
+      ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+      expect(
+        readListRequests().map((request) =>
+          request.headers.get('if-none-match'),
+        ),
+      ).toEqual([null, null]);
+      expect(server.respondedStatuses).toEqual([200, 200]);
+    });
+
+    it('replaces the saved ETag and items when a 200 arrives so that the next instance sends the new ETag and gets the new list on 304', async () => {
+      const server = createFakeIssueListServer();
+      const itemsBeforeChange = buildRawItemsNewestFirst(52, 2);
+      const itemsAfterChange = buildRawItemsNewestFirst(60, 4);
+      server.publish(storyOpenParams, 'etag-1', itemsBeforeChange);
+      connectFakeIssueListServer(server);
+      const sharedLocalStorage = new InMemoryLocalStorageRepository();
+      const listBeforeChange =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+      server.publish(storyOpenParams, 'etag-2', itemsAfterChange);
+
+      const listOnChange =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+      const listAfterChange =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+      expect(
+        readListRequests().map((request) =>
+          request.headers.get('if-none-match'),
+        ),
+      ).toEqual([null, 'W/"etag-1-page-1"', 'W/"etag-2-page-1"']);
+      expect(server.respondedStatuses).toEqual([200, 200, 304]);
+      expect(listBeforeChange).toEqual(toIssueSummaries(itemsBeforeChange));
+      expect(listOnChange).toEqual(toIssueSummaries(itemsAfterChange));
+      expect(listAfterChange).toEqual(toIssueSummaries(itemsAfterChange));
+    });
+
+    it('drops the saved second page when a 200 shows the list now fits on one page', async () => {
+      const server = createFakeIssueListServer();
+      const itemsBeforeChange = buildRawItemsNewestFirst(500, 150);
+      const itemsAfterChange = buildRawItemsNewestFirst(500, 40);
+      server.publish(storyOpenParams, 'etag-1', itemsBeforeChange);
+      connectFakeIssueListServer(server);
+      const sharedLocalStorage = new InMemoryLocalStorageRepository();
+      await createRepositoryOver(
+        sharedLocalStorage,
+      ).getIssueSummariesByLabelAndState(storyOpenParams);
+      server.publish(storyOpenParams, 'etag-2', itemsAfterChange);
+      mockGet.mockClear();
+
+      const listOnChange =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+      const listAfterChange =
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+      expect(readRequestedPages()).toEqual(['1', '1']);
+      expect(listOnChange).toHaveLength(40);
+      expect(listAfterChange).toEqual(toIssueSummaries(itemsAfterChange));
+    });
+
+    it.each([
+      {
+        differingField: 'state',
+        otherParams: { ...storyOpenParams, state: 'closed' as const },
+      },
+      {
+        differingField: 'label',
+        otherParams: { ...storyOpenParams, label: 'bug' },
+      },
+      {
+        differingField: 'repository name',
+        otherParams: { ...storyOpenParams, repositoryName: 'other-repository' },
+      },
+      {
+        differingField: 'owner',
+        otherParams: { ...storyOpenParams, owner: 'other-owner' },
+      },
+    ])(
+      'keeps the saved ETag and list of each list separate when only the $differingField differs',
+      async ({ otherParams }) => {
+        const server = createFakeIssueListServer();
+        const storyOpenItems = buildRawItemsNewestFirst(52, 3);
+        const otherItems = buildRawItemsNewestFirst(900, 2);
+        server.publish(storyOpenParams, 'etag-story-open', storyOpenItems);
+        server.publish(otherParams, 'etag-other', otherItems);
+        connectFakeIssueListServer(server);
+        const sharedLocalStorage = new InMemoryLocalStorageRepository();
+        await createRepositoryOver(
+          sharedLocalStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+        const otherList =
+          await createRepositoryOver(
+            sharedLocalStorage,
+          ).getIssueSummariesByLabelAndState(otherParams);
+        const storyOpenListAgain =
+          await createRepositoryOver(
+            sharedLocalStorage,
+          ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+        expect(
+          readListRequests().map((request) =>
+            request.headers.get('if-none-match'),
+          ),
+        ).toEqual([null, null, 'W/"etag-story-open-page-1"']);
+        expect(server.respondedStatuses).toEqual([200, 200, 304]);
+        expect(otherList).toEqual(toIssueSummaries(otherItems));
+        expect(storyOpenListAgain).toEqual(toIssueSummaries(storyOpenItems));
+      },
+    );
+
+    it.each([
+      { failingPage: 1, failingStatus: 500 },
+      { failingPage: 1, failingStatus: 403 },
+      { failingPage: 1, failingStatus: 404 },
+      { failingPage: 2, failingStatus: 502 },
+    ])(
+      'rejects instead of returning a partial list when page $failingPage responds with status $failingStatus',
+      async ({ failingPage, failingStatus }) => {
+        const server = createFakeIssueListServer();
+        server.publish(
+          storyOpenParams,
+          'etag-1',
+          buildRawItemsNewestFirst(500, 150),
+        );
+        server.failPage(failingPage, failingStatus);
+        connectFakeIssueListServer(server);
+        const repository = createRepositoryOver(
+          new InMemoryLocalStorageRepository(),
+        );
+
+        await expect(
+          repository.getIssueSummariesByLabelAndState(storyOpenParams),
+        ).rejects.toThrow();
+      },
+    );
+  });
+
   describe('updateIssue', () => {
     it('throws GitHubRateLimitError with reset time when ky returns 403 with primary rate-limit headers', async () => {
       const resetEpoch = 1725547200;
