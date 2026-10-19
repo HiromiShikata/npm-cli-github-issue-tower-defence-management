@@ -51,6 +51,7 @@ import {
   postConsoleStoryColor,
   postConsoleStoryRename,
   postConsoleUpdateStoryDescription,
+  SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
 } from '../lib/consoleApi';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
@@ -108,6 +109,29 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 };
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
+
+type ConsoleNavigationPosition = {
+  pjcode: string | null;
+  tab: ConsoleTabName;
+  itemKey: string | null;
+};
+
+type ConsoleDependedIssueSubmission = {
+  actedKey: string;
+  tabAtSubmission: ConsoleTabName;
+  positionAfterSwitch: ConsoleNavigationPosition;
+};
+
+const isSameNavigationPosition = (
+  left: ConsoleNavigationPosition,
+  right: ConsoleNavigationPosition,
+): boolean =>
+  left.pjcode === right.pjcode &&
+  left.tab === right.tab &&
+  left.itemKey === right.itemKey;
+
+const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
+  input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
 
 export type AttachmentSubmissionProgress = {
   issueUrl: string | null;
@@ -703,6 +727,18 @@ export const ConsolePage = () => {
     navigation.openItem,
   );
 
+  const navigationPosition: ConsoleNavigationPosition = {
+    pjcode,
+    tab: activeTab,
+    itemKey: selectedItemKey,
+  };
+  const committedNavigationPositionRef = useRef(navigationPosition);
+  committedNavigationPositionRef.current = navigationPosition;
+  const dependedIssueSubmissionsRef = useRef(
+    new Set<ConsoleDependedIssueSubmission>(),
+  );
+  const isUndoPressRunningRef = useRef(false);
+
   const activeCount = counts[activeTab];
   const previousActiveTabCountRef = useRef<{
     tab: ConsoleTabName;
@@ -717,6 +753,21 @@ export const ConsolePage = () => {
     if (previous.count > 0 && activeCount === 0) {
       const nextTab = findNextNonEmptyTabToRight(activeTab, counts);
       if (nextTab !== null) {
+        const positionBeforeSwitch = committedNavigationPositionRef.current;
+        for (const submission of dependedIssueSubmissionsRef.current) {
+          if (
+            isSameNavigationPosition(
+              submission.positionAfterSwitch,
+              positionBeforeSwitch,
+            )
+          ) {
+            submission.positionAfterSwitch = {
+              pjcode: positionBeforeSwitch.pjcode,
+              tab: nextTab,
+              itemKey: null,
+            };
+          }
+        }
         selectTab(nextTab);
         closeItem();
       }
@@ -753,27 +804,84 @@ export const ConsolePage = () => {
       : null;
 
   const advanceToNext = useCallback(
-    (actedKey: string): void => {
+    (actedKey: string): string | null => {
       const nextKey = nextPendingKeyAfter(orderedPendingKeys, actedKey);
       if (nextKey !== null) {
         openItem(nextKey);
       } else {
         closeItem();
       }
+      return nextKey;
     },
     [orderedPendingKeys, openItem, closeItem],
+  );
+
+  const returnToSubmittedTask = useCallback(
+    (submission: ConsoleDependedIssueSubmission): void => {
+      dependedIssueSubmissionsRef.current.delete(submission);
+      const currentPosition = committedNavigationPositionRef.current;
+      const ownerHasNotNavigated = isSameNavigationPosition(
+        submission.positionAfterSwitch,
+        currentPosition,
+      );
+      if (!isUndoPressRunningRef.current || !ownerHasNotNavigated) {
+        return;
+      }
+      if (currentPosition.tab !== submission.tabAtSubmission) {
+        selectTab(submission.tabAtSubmission);
+      }
+      openItem(submission.actedKey);
+    },
+    [selectTab, openItem],
+  );
+
+  const handleUndoPress = useCallback(
+    (id: string): void => {
+      isUndoPressRunningRef.current = true;
+      try {
+        actionQueue.undo(id);
+      } finally {
+        isUndoPressRunningRef.current = false;
+      }
+    },
+    [actionQueue],
   );
 
   const handleQueueAction = useCallback(
     (input: ConsoleQueueActionInput): void => {
       const actedKey = overlayKeyForItem(input.item);
       const overlayPatch = input.overlayPatch;
+      const dependedIssueSubmission: ConsoleDependedIssueSubmission | null =
+        isDependedIssueSubmission(input)
+          ? {
+              actedKey,
+              tabAtSubmission: activeTab,
+              positionAfterSwitch: committedNavigationPositionRef.current,
+            }
+          : null;
+      if (dependedIssueSubmission !== null) {
+        dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
+      }
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
-        commit: input.commit,
+        commit:
+          dependedIssueSubmission === null
+            ? input.commit
+            : (sentStepCount: number): Promise<void> => {
+                dependedIssueSubmissionsRef.current.delete(
+                  dependedIssueSubmission,
+                );
+                return input.commit(sentStepCount);
+              },
         offline: input.offline,
-        revertAdvance: input.revertAdvance,
+        revertAdvance:
+          dependedIssueSubmission === null
+            ? input.revertAdvance
+            : () => {
+                input.revertAdvance?.();
+                returnToSubmittedTask(dependedIssueSubmission);
+              },
         optimistic:
           overlayPatch !== undefined
             ? () => overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
@@ -785,12 +893,26 @@ export const ConsolePage = () => {
         advance: () => {
           input.onAdvance?.();
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
-            advanceToNext(actedKey);
+            const nextKey = advanceToNext(actedKey);
+            if (dependedIssueSubmission !== null) {
+              dependedIssueSubmission.positionAfterSwitch = {
+                pjcode,
+                tab: activeTab,
+                itemKey: nextKey,
+              };
+            }
           }
         },
       });
     },
-    [actionQueue, activeTab, advanceToNext, overlayState],
+    [
+      actionQueue,
+      activeTab,
+      advanceToNext,
+      overlayState,
+      pjcode,
+      returnToSubmittedTask,
+    ],
   );
 
   const handleSwipe = useCallback(
@@ -1207,7 +1329,7 @@ export const ConsolePage = () => {
         pendingEntries={actionQueue.pending}
         errorEntries={actionQueue.error}
         displayLimit={4}
-        onUndo={actionQueue.undo}
+        onUndo={handleUndoPress}
         onDismiss={actionQueue.dismiss}
         onDismissError={actionQueue.dismissError}
       />
