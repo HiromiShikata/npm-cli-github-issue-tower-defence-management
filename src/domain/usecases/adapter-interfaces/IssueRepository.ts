@@ -1,5 +1,6 @@
 import { Issue, Label } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
+import { IssueSummary } from '../../entities/IssueSummary';
 import { Member } from '../../entities/Member';
 import { SearchedIssue } from '../../entities/SearchedIssue';
 import { StoryObjectMap } from '../../entities/StoryObjectMap';
@@ -180,6 +181,12 @@ export interface IssueRepository {
     assigneeList: Member['name'][],
   ) => Promise<void>;
   searchIssues: (query: string) => Promise<SearchedIssue[]>;
+  getIssueSummariesByLabelAndState: (params: {
+    owner: string;
+    repositoryName: string;
+    label: string;
+    state: 'open' | 'closed';
+  }) => Promise<IssueSummary[]>;
   get: (issueUrl: string, project: Project) => Promise<Issue | null>;
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (

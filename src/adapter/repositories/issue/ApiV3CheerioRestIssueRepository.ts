@@ -876,6 +876,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'removeLabel'
       | 'updateAssigneeList'
       | 'searchIssues'
+      | 'getIssueSummariesByLabelAndState'
       | 'getOrCreateLabel'
     >,
     readonly graphqlProjectItemRepository: Pick<
@@ -2215,6 +2216,10 @@ export class ApiV3CheerioRestIssueRepository
   searchIssues = (query: string): Promise<SearchedIssue[]> => {
     return this.restIssueRepository.searchIssues(query);
   };
+  getIssueSummariesByLabelAndState: IssueRepository['getIssueSummariesByLabelAndState'] =
+    (params) => {
+      return this.restIssueRepository.getIssueSummariesByLabelAndState(params);
+    };
   get = async (issueUrl: string, project: Project): Promise<Issue | null> => {
     const projectItem =
       await this.graphqlProjectItemRepository.fetchProjectItemByUrl(

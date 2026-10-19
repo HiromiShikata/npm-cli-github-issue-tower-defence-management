@@ -1,4 +1,5 @@
 import { Issue } from '../entities/Issue';
+import { IssueSummary } from '../entities/IssueSummary';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 
@@ -6,7 +7,7 @@ export class ClosedStoryIssueReopenUseCase {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'reopenIssueByUrl' | 'searchIssues' | 'getIssueByUrl'
+      'reopenIssueByUrl' | 'getIssueByUrl' | 'getIssueSummariesByLabelAndState'
     >,
   ) {}
 
@@ -17,6 +18,17 @@ export class ClosedStoryIssueReopenUseCase {
   }): Promise<number> => {
     let reopenedCount = 0;
     const errors: unknown[] = [];
+    const [owner, repositoryName] = params.storyIssueOwnerRepo.split('/');
+    const loadOpenStoryIssueSummaries = this.createStoryIssueSummariesLoader({
+      owner,
+      repositoryName,
+      state: 'open',
+    });
+    const loadClosedStoryIssueSummaries = this.createStoryIssueSummariesLoader({
+      owner,
+      repositoryName,
+      state: 'closed',
+    });
 
     for (const storyObject of params.storyObjectMap.values()) {
       if (storyObject.storyIssue !== null) {
@@ -25,30 +37,18 @@ export class ClosedStoryIssueReopenUseCase {
       if (storyObject.story.name.startsWith('regular / ')) {
         continue;
       }
-      const closedStoryIssueInCache = params.issues.find(
-        (issue) =>
-          storyObject.story.name.startsWith(issue.title) &&
-          issue.isClosed &&
-          issue.labels.includes('story'),
-      );
-      let closedStoryIssue: Issue | null = closedStoryIssueInCache ?? null;
-      if (!closedStoryIssueInCache) {
-        const archivedClosedStoryIssue =
-          await this.findArchivedClosedStoryIssue(
-            storyObject.story.name,
-            params.storyIssueOwnerRepo,
-          );
-        if (archivedClosedStoryIssue) {
-          const openStoryIssueAlreadyExists = await this.hasOpenStoryIssue(
-            storyObject.story.name,
-            params.storyIssueOwnerRepo,
-          );
-          if (openStoryIssueAlreadyExists) {
-            continue;
-          }
-        }
-        closedStoryIssue = archivedClosedStoryIssue;
-      }
+      const closedStoryIssue =
+        params.issues.find(
+          (issue) =>
+            storyObject.story.name.startsWith(issue.title) &&
+            issue.isClosed &&
+            issue.labels.includes('story'),
+        ) ??
+        (await this.findArchivedClosedStoryIssue(
+          storyObject.story.name,
+          loadOpenStoryIssueSummaries,
+          loadClosedStoryIssueSummaries,
+        ));
       if (!closedStoryIssue) {
         continue;
       }
@@ -75,29 +75,46 @@ export class ClosedStoryIssueReopenUseCase {
     return reopenedCount;
   };
 
-  private hasOpenStoryIssue = async (
-    storyName: string,
-    ownerRepo: string,
-  ): Promise<boolean> => {
-    const query = `repo:${ownerRepo} is:open label:story "${storyName}" in:title`;
-    const results = await this.issueRepository.searchIssues(query);
-    if (results.length === 0) {
-      return false;
-    }
-    const issue = await this.issueRepository.getIssueByUrl(results[0].url);
-    return !!issue && !issue.isClosed && issue.labels.includes('story');
+  private readonly createStoryIssueSummariesLoader = (params: {
+    owner: string;
+    repositoryName: string;
+    state: 'open' | 'closed';
+  }): (() => Promise<IssueSummary[]>) => {
+    let storyIssueSummaries: Promise<IssueSummary[]> | null = null;
+    return () => {
+      if (storyIssueSummaries === null) {
+        storyIssueSummaries =
+          this.issueRepository.getIssueSummariesByLabelAndState({
+            ...params,
+            label: 'story',
+          });
+      }
+      return storyIssueSummaries;
+    };
   };
 
-  private findArchivedClosedStoryIssue = async (
+  private readonly findArchivedClosedStoryIssue = async (
     storyName: string,
-    ownerRepo: string,
+    loadOpenStoryIssueSummaries: () => Promise<IssueSummary[]>,
+    loadClosedStoryIssueSummaries: () => Promise<IssueSummary[]>,
   ): Promise<Issue | null> => {
-    const query = `repo:${ownerRepo} is:closed label:story "${storyName}" in:title`;
-    const results = await this.issueRepository.searchIssues(query);
-    if (results.length === 0) {
+    const openStoryIssueSummaries = await loadOpenStoryIssueSummaries();
+    if (
+      openStoryIssueSummaries.some(
+        (storyIssueSummary) => storyIssueSummary.title === storyName,
+      )
+    ) {
       return null;
     }
-    const issue = await this.issueRepository.getIssueByUrl(results[0].url);
+    const closedStoryIssueSummary = (
+      await loadClosedStoryIssueSummaries()
+    ).find((storyIssueSummary) => storyIssueSummary.title === storyName);
+    if (!closedStoryIssueSummary) {
+      return null;
+    }
+    const issue = await this.issueRepository.getIssueByUrl(
+      closedStoryIssueSummary.url,
+    );
     if (!issue || !issue.isClosed || !issue.labels.includes('story')) {
       return null;
     }

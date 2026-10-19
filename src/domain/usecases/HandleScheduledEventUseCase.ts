@@ -1,4 +1,5 @@
 import { Issue } from '../entities/Issue';
+import { IssueSummary } from '../entities/IssueSummary';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import {
@@ -312,6 +313,7 @@ export class HandleScheduledEventUseCase {
       await input.afterIssuesFetched(project, issues);
     }
     const storyOptionWriteFailures: string[] = [];
+    let openStoryIssueSummaries: IssueSummary[] | null = null;
     for (const storyObject of storyIssues.values()) {
       const projectStory = project.story;
       if (!projectStory) {
@@ -333,14 +335,16 @@ export class HandleScheduledEventUseCase {
       if (hasClosedStoryIssue) {
         continue;
       }
-      const existingOpenStoryIssues = await this.issueRepository.searchIssue({
-        owner: input.org,
-        repositoryName: input.workingReport.repo,
-        type: 'issue',
-        state: 'open',
-        title: storyObject.story.name,
-      });
-      const matchedOpenStoryIssue = existingOpenStoryIssues.find(
+      if (openStoryIssueSummaries === null) {
+        openStoryIssueSummaries =
+          await this.issueRepository.getIssueSummariesByLabelAndState({
+            owner: input.org,
+            repositoryName: input.workingReport.repo,
+            label: 'story',
+            state: 'open',
+          });
+      }
+      const matchedOpenStoryIssue = openStoryIssueSummaries.find(
         (issue) => issue.title === storyObject.story.name,
       );
       if (matchedOpenStoryIssue) {
