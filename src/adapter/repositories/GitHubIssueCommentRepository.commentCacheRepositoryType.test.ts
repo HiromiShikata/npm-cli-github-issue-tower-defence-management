@@ -31,10 +31,6 @@ const acceptedCacheAsLiteralPick = (
   cache: AcceptedCommentCacheRepository,
 ): LiteralCommentCacheRepository => cache;
 
-const literalPickAsAcceptedCache = (
-  cache: LiteralCommentCacheRepository,
-): AcceptedCommentCacheRepository => cache;
-
 const TEST_URL = 'https://github.com/HiromiShikata/test-repo/issues/123';
 const EXPECTED_REST_URL =
   'https://api.github.com/repos/HiromiShikata/test-repo/issues/123/comments?per_page=100&page=1';
@@ -145,21 +141,46 @@ describe('GitHubIssueCommentRepository commentCacheRepository parameter type', (
     mockWriteSecondaryRateLimitState.mockReset();
   });
 
-  it('is mutually assignable with Pick<LocalStorageCacheRepository, getSingle | setSingle | withLock>', () => {
+  it('caches the fetched page and answers the next 304 from the cache when given a plain generic passthrough withLock declared as the constructor accepted parameter type and re-typed as the literal Pick type', async () => {
     const store = new Map<string, unknown>();
-    const passthroughCache: LiteralCommentCacheRepository = {
+    const acceptedCache: AcceptedCommentCacheRepository = {
       getSingle: async (key) => (store.has(key) ? store.get(key) : null),
       setSingle: async (key, value) => {
         store.set(key, value);
       },
       withLock: <T>(_key: string, fn: () => Promise<T>): Promise<T> => fn(),
     };
+    const repository = new GitHubIssueCommentRepository(
+      'test-token',
+      acceptedCacheAsLiteralPick(acceptedCache),
+    );
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(buildCommentPayloads(5003)), {
+          status: 200,
+          headers: { ETag: '"etag-accepted-type"' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 304 }));
 
-    const roundTrippedCache = acceptedCacheAsLiteralPick(
-      literalPickAsAcceptedCache(passthroughCache),
+    const firstResult = await repository.getCommentsFromIssue(
+      buildIssue(TEST_URL),
+    );
+    const secondResult = await repository.getCommentsFromIssue(
+      buildIssue(TEST_URL),
     );
 
-    expect(roundTrippedCache).toBe(passthroughCache);
+    expect(firstResult).toEqual(buildExpectedComments(5003));
+    expect(secondResult).toEqual(buildExpectedComments(5003));
+    expect(fetchSpy).toHaveBeenNthCalledWith(2, EXPECTED_REST_URL, {
+      headers: {
+        Authorization: 'Bearer test-token',
+        Accept: 'application/vnd.github+json',
+        'If-None-Match': '"etag-accepted-type"',
+      },
+    });
+    expect(store.has('comments/HiromiShikata/test-repo/123')).toBe(true);
   });
 
   it('caches the fetched page and answers the next 304 from the cache when given a plain generic passthrough withLock declared as the literal Pick type', async () => {
