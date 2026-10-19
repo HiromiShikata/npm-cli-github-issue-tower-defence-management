@@ -1490,6 +1490,225 @@ describe('RestIssueRepository', () => {
         ).rejects.toThrow();
       },
     );
+
+    describe('saved list that cannot be used', () => {
+      const savedEtagOfPageOne = 'W/"etag-old-page-1"';
+      const savedEtagOfPageTwo = 'W/"etag-old-page-2"';
+      const savedIssueSummary = {
+        url: 'https://github.com/HiromiShikata/test-repository/issues/7',
+        title: 'story 7',
+      };
+      const buildSavedPage = (
+        overrides: Record<string, unknown> = {},
+      ): Record<string, unknown> => ({
+        etag: savedEtagOfPageOne,
+        rawItemCount: 1,
+        issueSummaries: [savedIssueSummary],
+        ...overrides,
+      });
+      const unusableSavedTexts: { name: string; savedText: string }[] = [
+        {
+          name: 'text that is not valid JSON',
+          savedText: 'issue summary list that is not JSON',
+        },
+        {
+          name: 'a JSON document cut off in the middle',
+          savedText: JSON.stringify({ pages: [buildSavedPage()] }).slice(0, -6),
+        },
+        { name: 'an empty file', savedText: '' },
+        { name: 'JSON null', savedText: 'null' },
+        { name: 'a JSON number', savedText: '42' },
+        { name: 'a JSON string', savedText: JSON.stringify('pages') },
+        {
+          name: 'a JSON array holding pages',
+          savedText: JSON.stringify([buildSavedPage()]),
+        },
+        {
+          name: 'an object without pages',
+          savedText: JSON.stringify({ lists: [buildSavedPage()] }),
+        },
+        {
+          name: 'an object whose pages is not an array',
+          savedText: JSON.stringify({ pages: buildSavedPage() }),
+        },
+        {
+          name: 'an object whose pages holds null',
+          savedText: JSON.stringify({ pages: [null] }),
+        },
+        {
+          name: 'a page without its saved items',
+          savedText: JSON.stringify({
+            pages: [
+              {
+                etag: savedEtagOfPageOne,
+                rawItemCount: 1,
+              },
+            ],
+          }),
+        },
+        {
+          name: 'a page whose saved items are not an array',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ issueSummaries: 'story 7' })],
+          }),
+        },
+        {
+          name: 'a saved item whose url is not a string',
+          savedText: JSON.stringify({
+            pages: [
+              buildSavedPage({
+                issueSummaries: [{ url: 7, title: savedIssueSummary.title }],
+              }),
+            ],
+          }),
+        },
+        {
+          name: 'a saved item without its url',
+          savedText: JSON.stringify({
+            pages: [
+              buildSavedPage({
+                issueSummaries: [{ title: savedIssueSummary.title }],
+              }),
+            ],
+          }),
+        },
+        {
+          name: 'a saved item whose title is not a string',
+          savedText: JSON.stringify({
+            pages: [
+              buildSavedPage({
+                issueSummaries: [{ url: savedIssueSummary.url, title: null }],
+              }),
+            ],
+          }),
+        },
+        {
+          name: 'a saved item without its title',
+          savedText: JSON.stringify({
+            pages: [
+              buildSavedPage({
+                issueSummaries: [{ url: savedIssueSummary.url }],
+              }),
+            ],
+          }),
+        },
+        {
+          name: 'a saved item that is not an object',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ issueSummaries: ['story 7'] })],
+          }),
+        },
+        {
+          name: 'a saved ETag that is a number',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ etag: 7 })],
+          }),
+        },
+        {
+          name: 'a saved ETag that is an object',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ etag: { value: savedEtagOfPageOne } })],
+          }),
+        },
+        {
+          name: 'a saved ETag that is true',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ etag: true })],
+          }),
+        },
+        {
+          name: 'a saved raw item count that is not a number',
+          savedText: JSON.stringify({
+            pages: [buildSavedPage({ rawItemCount: '1' })],
+          }),
+        },
+        {
+          name: 'a usable first page followed by a second page without its saved items',
+          savedText: JSON.stringify({
+            pages: [
+              buildSavedPage({ rawItemCount: rawItemsPerPage }),
+              { etag: savedEtagOfPageTwo, rawItemCount: 1 },
+            ],
+          }),
+        },
+      ];
+
+      const overwriteSavedListText = async (
+        localStorage: InMemoryLocalStorageRepository,
+        savedText: string,
+      ): Promise<void> => {
+        const seedServer = createFakeIssueListServer();
+        seedServer.publish(
+          storyOpenParams,
+          'etag-seed',
+          buildRawItemsNewestFirst(7, 1),
+        );
+        connectFakeIssueListServer(seedServer);
+        await createRepositoryOver(
+          localStorage,
+        ).getIssueSummariesByLabelAndState(storyOpenParams);
+        const savedListPaths = Array.from(localStorage.savedTextByPath.keys());
+        expect(savedListPaths).toHaveLength(1);
+        localStorage.savedTextByPath.set(savedListPaths[0], savedText);
+        mockGet.mockClear();
+      };
+
+      it.each(unusableSavedTexts)(
+        'sends no If-None-Match on any page and returns the freshly fetched items when the saved list is $name',
+        async ({ savedText }) => {
+          const sharedLocalStorage = new InMemoryLocalStorageRepository();
+          await overwriteSavedListText(sharedLocalStorage, savedText);
+          const server = createFakeIssueListServer();
+          const publishedItems = buildRawItemsNewestFirst(500, 150);
+          server.publish(storyOpenParams, 'etag-new', publishedItems);
+          connectFakeIssueListServer(server);
+
+          const issueSummaries =
+            await createRepositoryOver(
+              sharedLocalStorage,
+            ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+          expect(readRequestedPages()).toEqual(['1', '2']);
+          expect(
+            readListRequests().map((request) =>
+              request.headers.get('if-none-match'),
+            ),
+          ).toEqual([null, null]);
+          expect(server.respondedStatuses).toEqual([200, 200]);
+          expect(issueSummaries).toEqual(toIssueSummaries(publishedItems));
+        },
+      );
+
+      it.each(unusableSavedTexts)(
+        'replaces the saved list with the fetched one so that the next instance sends the new ETag of each page and gets the fetched items on 304 when the saved list is $name',
+        async ({ savedText }) => {
+          const sharedLocalStorage = new InMemoryLocalStorageRepository();
+          await overwriteSavedListText(sharedLocalStorage, savedText);
+          const server = createFakeIssueListServer();
+          const publishedItems = buildRawItemsNewestFirst(500, 150);
+          server.publish(storyOpenParams, 'etag-new', publishedItems);
+          connectFakeIssueListServer(server);
+          await createRepositoryOver(
+            sharedLocalStorage,
+          ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+          const issueSummariesFromNextInstance =
+            await createRepositoryOver(
+              sharedLocalStorage,
+            ).getIssueSummariesByLabelAndState(storyOpenParams);
+
+          expect(
+            readListRequests().map((request) =>
+              request.headers.get('if-none-match'),
+            ),
+          ).toEqual([null, null, 'W/"etag-new-page-1"', 'W/"etag-new-page-2"']);
+          expect(server.respondedStatuses).toEqual([200, 200, 304, 304]);
+          expect(issueSummariesFromNextInstance).toEqual(
+            toIssueSummaries(publishedItems),
+          );
+        },
+      );
+    });
   });
 
   describe('updateIssue', () => {
