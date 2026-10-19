@@ -3746,6 +3746,130 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('does not navigate to another project within 150 seconds in timer mode while the displayed project has no todo-by-human items but a positive awaiting-owner count and another project is eligible', async () => {
+    const displayedProjectCode = 'acme';
+    const eligibleCandidateProjectCode = 'beta';
+    const observationDurationMs = 150000;
+    const remainderAfterTwoRefreshesMs =
+      observationDurationMs - 2 * CONSOLE_TAB_REFRESH_INTERVAL_MS;
+    const todoByHumanPathPattern = /^\/projects\/([^/]+)\/todo-by-human/;
+    const displayedProjectAwaitingOwnerCount = 3;
+    const awaitingOwnerItemTemplate = listPayload('prs').items[0];
+    const displayedProjectAwaitingOwnerItems = Array.from(
+      { length: displayedProjectAwaitingOwnerCount },
+      (_, index) => ({
+        ...awaitingOwnerItemTemplate,
+        number: 1001 + index,
+        title: `Awaiting Owner item ${1001 + index}`,
+        url: `https://github.com/o/r/issues/${1001 + index}`,
+        isPr: false,
+        projectItemId: `PVTI_AWAITING_OWNER_${index}`,
+        itemId: `PVTI_AWAITING_OWNER_${index}`,
+      }),
+    );
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          [displayedProjectCode]: 30,
+          [eligibleCandidateProjectCode]: 30,
+        },
+      }),
+    );
+    let projectsFetchCount = 0;
+    const listFetchCountByTab: Record<string, number> = {};
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        listFetchCountByTab[tab] = (listFetchCountByTab[tab] ?? 0) + 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...listPayload(tab),
+            items: tab === 'prs' ? displayedProjectAwaitingOwnerItems : [],
+          }),
+        };
+      }
+      if (url === '/api/projects') {
+        projectsFetchCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [displayedProjectCode, eligibleCandidateProjectCode],
+            actionableCounts: {
+              todoByHumanCounts: {
+                [displayedProjectCode]: 0,
+                [eligibleCandidateProjectCode]: 1,
+              },
+              awaitingOwnerCounts: {
+                [displayedProjectCode]: displayedProjectAwaitingOwnerCount,
+                [eligibleCandidateProjectCode]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      render(<ConsolePage />);
+      await waitFor(() => {
+        expect(projectsFetchCount).toBeGreaterThanOrEqual(1);
+        expect(listFetchCountByTab.prs).toBeGreaterThanOrEqual(1);
+        expect(listFetchCountByTab['todo-by-human']).toBeGreaterThanOrEqual(1);
+        expect(
+          within(tabBar())
+            .getByText('Awaiting Owner')
+            .closest('a')
+            ?.querySelector('.console-tab-badge')?.textContent,
+        ).toBe(String(displayedProjectAwaitingOwnerCount));
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(0);
+      });
+
+      const projectsFetchCountAfterEachStep = [projectsFetchCount];
+      for (const stepDurationMs of [
+        CONSOLE_TAB_REFRESH_INTERVAL_MS,
+        CONSOLE_TAB_REFRESH_INTERVAL_MS,
+        remainderAfterTwoRefreshesMs,
+      ]) {
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(stepDurationMs);
+        });
+        projectsFetchCountAfterEachStep.push(projectsFetchCount);
+      }
+
+      expect(projectsFetchCountAfterEachStep[1]).toBeGreaterThan(
+        projectsFetchCountAfterEachStep[0],
+      );
+      expect(projectsFetchCountAfterEachStep[2]).toBeGreaterThan(
+        projectsFetchCountAfterEachStep[1],
+      );
+      expect(
+        within(tabBar()).getByRole('button', { name: displayedProjectCode }),
+      ).toBeInTheDocument();
+      const navigatedToOtherProjectTodoByHumanPaths = navigatePush.mock.calls
+        .map((call: [string]) => call[0])
+        .filter((path) => {
+          const match = path.match(todoByHumanPathPattern);
+          return match !== null && match[1] !== displayedProjectCode;
+        });
+      expect(navigatedToOtherProjectTodoByHumanPaths).toEqual([]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('navigates to the next project immediately when a completing action is queued after the project timer elapses, before the undo grace period ends or the write is sent', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
