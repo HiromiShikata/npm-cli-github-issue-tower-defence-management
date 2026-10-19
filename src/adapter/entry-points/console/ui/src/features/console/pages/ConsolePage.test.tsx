@@ -3961,6 +3961,127 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('switches to the first candidate project with actionable items as soon as the user closes the opened item of a displayed project that has zero actionable items in timer mode', async () => {
+    const candidateWithoutActionableItems = 'beta';
+    const candidateWithActionableItems = 'gamma';
+    const openedItemTitle = 'Fix flaky CI step';
+    const openedItemTabLabel = 'Failed Preparation';
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/acme/failed-preparation?k=token#item/PVTI_9',
+    );
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          acme: 30,
+          [candidateWithoutActionableItems]: 30,
+          [candidateWithActionableItems]: 30,
+        },
+      }),
+    );
+    const displayedProjectFailedPreparationItem = {
+      number: 900,
+      title: openedItemTitle,
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_9',
+      itemId: 'PVTI_9',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Failed Preparation',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-18T00:00:00.000Z',
+    };
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...listPayload(tab),
+            items:
+              tab === 'failed-preparation'
+                ? [displayedProjectFailedPreparationItem]
+                : [],
+          }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [
+              'acme',
+              candidateWithoutActionableItems,
+              candidateWithActionableItems,
+            ],
+            actionableCounts: {
+              todoByHumanCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 1,
+              },
+              awaitingOwnerCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getAllByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getAllByText(openedItemTitle).length).toBeGreaterThan(0);
+      });
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith('/api/projects');
+      });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.click(within(tabBar()).getByText(openedItemTabLabel));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+      expect(navigatePush).toHaveBeenCalledWith(
+        `/projects/${candidateWithActionableItems}/todo-by-human`,
+      );
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithoutActionableItems}/todo-by-human`,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not switch projects within 120 seconds in timer mode when the active tab list of the displayed project is restored from the local cache without the opened item while the Awaiting Owner and Todo by human lists are live and empty', async () => {
     const automaticSwitchDeadlineMs = 120000;
     const openedItemTitle = 'Fix flaky CI step';
