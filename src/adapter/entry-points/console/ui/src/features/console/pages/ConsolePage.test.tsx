@@ -3746,6 +3746,349 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
+  it('switches within 120 seconds to the first candidate project with actionable items after a live refresh removes the auto-opened item from every tab list in timer mode', async () => {
+    const automaticSwitchDeadlineMs = 120000;
+    const candidateWithoutActionableItems = 'beta';
+    const candidateWithActionableItems = 'gamma';
+    const autoOpenedItemTitle = 'Notify finished issue preparation';
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          acme: 30,
+          [candidateWithoutActionableItems]: 30,
+          [candidateWithActionableItems]: 30,
+        },
+      }),
+    );
+    let displayedProjectTabListsAreEmpty = false;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        const tabListServesAutoOpenedItem =
+          tab === 'todo-by-human' && !displayedProjectTabListsAreEmpty;
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tabListServesAutoOpenedItem
+              ? listPayload(tab)
+              : { ...listPayload(tab), items: [] },
+        };
+      }
+      if (url === '/api/projects') {
+        const displayedProjectActionableCount = displayedProjectTabListsAreEmpty
+          ? 0
+          : 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [
+              'acme',
+              candidateWithoutActionableItems,
+              candidateWithActionableItems,
+            ],
+            actionableCounts: {
+              todoByHumanCounts: {
+                acme: displayedProjectActionableCount,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 1,
+              },
+              awaitingOwnerCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getByText, queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText(autoOpenedItemTitle)).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      displayedProjectTabListsAreEmpty = true;
+      const refreshCount = Math.floor(
+        automaticSwitchDeadlineMs / CONSOLE_TAB_REFRESH_INTERVAL_MS,
+      );
+      for (let refresh = 0; refresh < refreshCount; refresh += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+      }
+
+      expect(queryByText(autoOpenedItemTitle)).not.toBeInTheDocument();
+      expect(navigatePush).toHaveBeenCalledWith(
+        `/projects/${candidateWithActionableItems}/todo-by-human`,
+      );
+      expect(navigatePush).toHaveBeenCalledTimes(1);
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithoutActionableItems}/todo-by-human`,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not switch projects within 120 seconds while the opened item is still shown in the displayed project, even when the displayed project has zero actionable items in timer mode', async () => {
+    const automaticSwitchDeadlineMs = 120000;
+    const candidateWithoutActionableItems = 'beta';
+    const candidateWithActionableItems = 'gamma';
+    const openedItemTitle = 'Fix flaky CI step';
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/acme/failed-preparation?k=token#item/PVTI_9',
+    );
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: {
+          acme: 30,
+          [candidateWithoutActionableItems]: 30,
+          [candidateWithActionableItems]: 30,
+        },
+      }),
+    );
+    const displayedProjectFailedPreparationItem = {
+      number: 900,
+      title: openedItemTitle,
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_9',
+      itemId: 'PVTI_9',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Failed Preparation',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-18T00:00:00.000Z',
+    };
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...listPayload(tab),
+            items:
+              tab === 'failed-preparation'
+                ? [displayedProjectFailedPreparationItem]
+                : [],
+          }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: [
+              'acme',
+              candidateWithoutActionableItems,
+              candidateWithActionableItems,
+            ],
+            actionableCounts: {
+              todoByHumanCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 1,
+              },
+              awaitingOwnerCounts: {
+                acme: 0,
+                [candidateWithoutActionableItems]: 0,
+                [candidateWithActionableItems]: 0,
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getAllByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getAllByText(openedItemTitle).length).toBeGreaterThan(0);
+      });
+
+      const refreshCount = Math.floor(
+        automaticSwitchDeadlineMs / CONSOLE_TAB_REFRESH_INTERVAL_MS,
+      );
+      for (let refresh = 0; refresh < refreshCount; refresh += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+      }
+
+      expect(getAllByText(openedItemTitle).length).toBeGreaterThan(0);
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithoutActionableItems}/todo-by-human`,
+      );
+      expect(navigatePush).not.toHaveBeenCalledWith(
+        `/projects/${candidateWithActionableItems}/todo-by-human`,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not switch projects within 120 seconds in timer mode when the active tab list of the displayed project is restored from the local cache without the opened item while the Awaiting Owner and Todo by human lists are live and empty', async () => {
+    const automaticSwitchDeadlineMs = 120000;
+    const openedItemTitle = 'Fix flaky CI step';
+    const activeTabName = 'failed-preparation';
+    window.history.replaceState(
+      {},
+      '',
+      `/projects/acme/${activeTabName}?k=token#item/PVTI_9`,
+    );
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30, gamma: 30 },
+      }),
+    );
+    const displayedProjectFailedPreparationItem = {
+      number: 900,
+      title: openedItemTitle,
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_9',
+      itemId: 'PVTI_9',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Failed Preparation',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-18T00:00:00.000Z',
+    };
+    let activeTabListIsServedOnlyFromCache = false;
+    const cacheServingEmptyActiveTabList = {
+      put: jest.fn(),
+      match: jest.fn(async (url: string) => {
+        if (
+          !activeTabListIsServedOnlyFromCache ||
+          !url.includes(`/${activeTabName}/`)
+        ) {
+          return undefined;
+        }
+        return new Response(
+          JSON.stringify({ ...listPayload(activeTabName), items: [] }),
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+      }),
+    };
+    const originalCachesDescriptor = Object.getOwnPropertyDescriptor(
+      global,
+      'caches',
+    );
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: { open: jest.fn(async () => cacheServingEmptyActiveTabList) },
+    });
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === activeTabName && activeTabListIsServedOnlyFromCache) {
+          throw new Error('Network unavailable');
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...listPayload(tab),
+            items:
+              tab === activeTabName
+                ? [displayedProjectFailedPreparationItem]
+                : [],
+          }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: ['acme', 'beta', 'gamma'],
+            actionableCounts: {
+              todoByHumanCounts: { acme: 0, beta: 0, gamma: 1 },
+              awaitingOwnerCounts: { acme: 0, beta: 0, gamma: 0 },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getAllByText, queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getAllByText(openedItemTitle).length).toBeGreaterThan(0);
+      });
+      expect(window.location.hash).toBe('#item/PVTI_9');
+      expect(navigatePush).not.toHaveBeenCalled();
+
+      activeTabListIsServedOnlyFromCache = true;
+      const refreshCount = Math.floor(
+        automaticSwitchDeadlineMs / CONSOLE_TAB_REFRESH_INTERVAL_MS,
+      );
+      for (let refresh = 0; refresh < refreshCount; refresh += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+      }
+
+      expect(queryByText(openedItemTitle)).not.toBeInTheDocument();
+      expect(navigatePush).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+      if (originalCachesDescriptor === undefined) {
+        delete (global as Record<string, unknown>).caches;
+      } else {
+        Object.defineProperty(global, 'caches', originalCachesDescriptor);
+      }
+    }
+  });
+
   it('does not navigate to another project within 150 seconds in timer mode while the displayed project has no todo-by-human items but a positive awaiting-owner count and another project is eligible', async () => {
     const displayedProjectCode = 'acme';
     const eligibleCandidateProjectCode = 'beta';
@@ -6637,7 +6980,7 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('does not auto-skip when user explicitly selects the current project via the project dropdown', async () => {
+  it('switches an explicitly selected current project to the first candidate project with actionable items once the live refresh leaves it with zero actionable items', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({
@@ -6716,9 +7059,8 @@ describe('ConsolePage workflow issue creation', () => {
           queryByText('Notify finished issue preparation'),
         ).not.toBeInTheDocument();
       });
-      expect(navigatePush).not.toHaveBeenCalledWith(
-        '/projects/beta/todo-by-human',
-      );
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+      expect(navigatePush).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }
