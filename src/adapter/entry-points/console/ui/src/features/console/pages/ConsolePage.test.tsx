@@ -9634,3 +9634,930 @@ describe('ConsolePage operation bar status buttons', () => {
     },
   );
 });
+
+describe('ConsolePage Set Depended Issue submission and Undo return to the submitted task', () => {
+  type ScenarioTabName =
+    'todo-by-human' | 'prs' | 'failed-preparation' | 'queued';
+
+  type ScenarioTask = {
+    number: number;
+    title: string;
+    status: string;
+  };
+
+  type ScenarioState = {
+    tabTasks: Partial<Record<ScenarioTabName, ScenarioTask[]>>;
+    generatedAt: string;
+    writeOutcome: 'succeeds' | 'rejects without an HTTP response';
+  };
+
+  type ScenarioView = ReturnType<typeof render>;
+
+  const DEPENDED_ISSUE_URL = 'https://github.com/o/dependency/issues/77';
+  const INITIAL_SNAPSHOT_GENERATED_AT = '2026-06-19T00:00:00.000Z';
+  const SUBMISSION_PRESS_TIME = '2026-06-19T00:00:10.000Z';
+  const UNDO_WINDOW_CEILING_MS = 1000;
+  const PANEL_RETURN_BUDGET_MS = 200;
+
+  const FIRST_AWAITING_OWNER_TASK: ScenarioTask = {
+    number: 101,
+    title: 'Prepare the rollout checklist',
+    status: 'Awaiting Owner',
+  };
+  const SECOND_AWAITING_OWNER_TASK: ScenarioTask = {
+    number: 102,
+    title: 'Review the migration plan',
+    status: 'Awaiting Owner',
+  };
+  const THIRD_AWAITING_OWNER_TASK: ScenarioTask = {
+    number: 103,
+    title: 'Confirm the release window',
+    status: 'Awaiting Owner',
+  };
+  const QUEUED_TASK: ScenarioTask = {
+    number: 201,
+    title: 'Archive the legacy dashboards',
+    status: 'Queued',
+  };
+  const TODO_BY_HUMAN_TASK: ScenarioTask = {
+    number: 301,
+    title: 'Rotate the signing key',
+    status: 'Todo by human',
+  };
+  const FAILED_PREPARATION_TASK: ScenarioTask = {
+    number: 401,
+    title: 'Restore the failed preparation',
+    status: 'Failed Preparation',
+  };
+
+  const projectItemIdOf = (task: ScenarioTask): string => `PVTI_${task.number}`;
+
+  const panelLabelOf = (task: ScenarioTask): string => `#${task.number}`;
+
+  const buildScenarioItem = (task: ScenarioTask) => ({
+    number: task.number,
+    title: task.title,
+    url: `https://github.com/o/r/issues/${task.number}`,
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: projectItemIdOf(task),
+    itemId: projectItemIdOf(task),
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: task.status,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: new Date(Date.UTC(2026, 5, 17, 0, 0, task.number)).toISOString(),
+  });
+
+  const buildScenarioTabPayload = (
+    tasks: ScenarioTask[],
+    generatedAt: string,
+  ) => ({
+    pjcode: 'acme',
+    generatedAt,
+    statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
+    storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
+    storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+    items: tasks.map(buildScenarioItem),
+  });
+
+  const buildScenario = (
+    tabTasks: ScenarioState['tabTasks'],
+  ): ScenarioState => ({
+    tabTasks,
+    generatedAt: INITIAL_SNAPSHOT_GENERATED_AT,
+    writeOutcome: 'succeeds',
+  });
+
+  const installScenarioFetch = (scenario: ScenarioState): void => {
+    global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tasks = scenario.tabTasks[listMatch[1] as ScenarioTabName] ?? [];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            buildScenarioTabPayload(tasks, scenario.generatedAt),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (init?.method === 'POST') {
+        if (scenario.writeOutcome === 'rejects without an HTTP response') {
+          throw new TypeError('Failed to fetch');
+        }
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  const renderScenario = (
+    scenario: ScenarioState,
+    activeTabPathSegment: string = 'prs',
+  ): ScenarioView => {
+    window.history.replaceState(
+      {},
+      '',
+      `/projects/acme/${activeTabPathSegment}?k=token`,
+    );
+    installScenarioFetch(scenario);
+    return render(<ConsolePage />);
+  };
+
+  const postedRequestPaths = (): string[] =>
+    (global.fetch as jest.Mock).mock.calls
+      .filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+      )
+      .map(([url]) => String(url));
+
+  const detailPanelTaskLabel = (container: HTMLElement): string | null => {
+    if (container.querySelector('.console-detail-screen') === null) {
+      return null;
+    }
+    return (
+      container.querySelector('.console-detail-number')?.textContent ?? null
+    );
+  };
+
+  const detailStatusBadgeText = (container: HTMLElement): string | null =>
+    container.querySelector('.console-detail-status-chip')?.textContent ?? null;
+
+  const activeTabLabel = (): string | null =>
+    tabBar().querySelector(
+      'a.console-tab[aria-current="page"] .console-tab-label',
+    )?.textContent ?? null;
+
+  const tabBadgeCount = (label: string): string | null =>
+    within(tabBar())
+      .queryByText(label)
+      ?.closest('a')
+      ?.querySelector('.console-tab-badge')?.textContent ?? null;
+
+  const offlinePanelHeaderText = (container: HTMLElement): string | null =>
+    container.querySelector('.console-offline-panel-header')?.textContent ??
+    null;
+
+  const readStoredOfflineApiPaths = (): string[] =>
+    (
+      JSON.parse(
+        localStorage.getItem('console-offline-action-queue') ?? '[]',
+      ) as { apiPath: string }[]
+    ).map((held) => held.apiPath);
+
+  const openTaskFromList = async (
+    view: ScenarioView,
+    task: ScenarioTask,
+  ): Promise<void> => {
+    await waitFor(() => {
+      expect(view.getByText(task.title)).toBeInTheDocument();
+    });
+    fireEvent.click(view.getByText(task.title));
+    await waitFor(() => {
+      expect(detailPanelTaskLabel(view.container)).toBe(panelLabelOf(task));
+    });
+  };
+
+  const submitDependedIssueUrl = async (view: ScenarioView): Promise<void> => {
+    fireEvent.click(view.getByTitle('Rare actions'));
+    fireEvent.change(view.getByPlaceholderText('Depended issue URL'), {
+      target: { value: DEPENDED_ISSUE_URL },
+    });
+    await act(async () => {
+      fireEvent.click(view.getByText('Set Depended Issue'));
+    });
+  };
+
+  const submitAwaitingWorkspaceFromStatusChooser = async (
+    view: ScenarioView,
+  ): Promise<void> => {
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', { name: 'Awaiting Workspace' }));
+    });
+  };
+
+  const pressUndo = (view: ScenarioView): void => {
+    fireEvent.click(view.getByRole('button', { name: 'Undo' }));
+  };
+
+  const advanceFakeTimersAndFlushPromises = async (
+    elapsedMs: number,
+  ): Promise<void> => {
+    await act(async () => {
+      jest.advanceTimersByTime(elapsedMs);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
+  const elapsedMsFromPressUntilPanelShowsTask = async (
+    container: HTMLElement,
+    press: () => void,
+    taskLabel: string,
+  ): Promise<number> => {
+    const pressedAt = performance.now();
+    press();
+    try {
+      const shownAt = await waitFor(
+        () => {
+          expect(detailPanelTaskLabel(container)).toBe(taskLabel);
+          return performance.now();
+        },
+        { timeout: UNDO_WINDOW_CEILING_MS },
+      );
+      return shownAt - pressedAt;
+    } catch {
+      return Number.POSITIVE_INFINITY;
+    }
+  };
+
+  const installAirplaneEnvironment = (tasks: ScenarioTask[]): void => {
+    localStorage.setItem('tdpm_airplane_mode_on', '1');
+    const airplaneSnapshot = {
+      capturedAt: INITIAL_SNAPSHOT_GENERATED_AT,
+      tabs: {
+        acme: {
+          prs: {
+            items: tasks.map(buildScenarioItem),
+            generatedAt: INITIAL_SNAPSHOT_GENERATED_AT,
+            statusOptions: [
+              { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+            ],
+            storyOptions: [
+              { id: 'st1', name: 'TDPM Console port', color: 'BLUE' },
+            ],
+            storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+            stories: [],
+            defaultNameWithOwner: 'o/r',
+            fromCache: false,
+            storyOrder: [],
+          },
+        },
+      },
+      items: {},
+      failures: [],
+    };
+    const mockCache = {
+      put: jest.fn(),
+      match: jest.fn().mockResolvedValue(
+        new Response(JSON.stringify(airplaneSnapshot), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+      delete: jest.fn(),
+    };
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: {
+        open: jest.fn().mockResolvedValue(mockCache),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+    global.fetch = jest.fn(async (url: string) => {
+      if (url === '/api/features') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ airplaneMode: true }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  it('Undo of a Set Depended Issue submission returns the Awaiting Owner tab with the submitted task in the panel after the submission moved the owner to the Queued tab', async () => {
+    const view = renderScenario(
+      buildScenario({
+        prs: [FIRST_AWAITING_OWNER_TASK],
+        queued: [QUEUED_TASK],
+      }),
+    );
+    await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+
+    await submitDependedIssueUrl(view);
+
+    await waitFor(() => {
+      expect(activeTabLabel()).toBe('Queued');
+    });
+    expect(view.container.querySelector('.console-detail-screen')).toBeNull();
+
+    pressUndo(view);
+
+    await waitFor(() => {
+      expect(activeTabLabel()).toBe('Awaiting Owner');
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(FIRST_AWAITING_OWNER_TASK),
+      );
+    });
+  });
+
+  it('Undo of a Status chooser action keeps the next task in the panel and restores the Awaiting Owner count', async () => {
+    const view = renderScenario(
+      buildScenario({
+        prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+      }),
+    );
+    await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+
+    await submitAwaitingWorkspaceFromStatusChooser(view);
+
+    await waitFor(() => {
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+      );
+    });
+    expect(tabBadgeCount('Awaiting Owner')).toBe('1');
+
+    pressUndo(view);
+
+    await waitFor(() => {
+      expect(tabBadgeCount('Awaiting Owner')).toBe('2');
+    });
+    expect(activeTabLabel()).toBe('Awaiting Owner');
+    expect(detailPanelTaskLabel(view.container)).toBe(
+      panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+    );
+  });
+
+  it('Undo of a Set Depended Issue submission shows the submitted task in the panel within 200 ms of the press', async () => {
+    const view = renderScenario(
+      buildScenario({
+        prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+      }),
+    );
+    await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+    await submitDependedIssueUrl(view);
+    await waitFor(() => {
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+      );
+    });
+
+    const elapsedMs = await elapsedMsFromPressUntilPanelShowsTask(
+      view.container,
+      () => pressUndo(view),
+      panelLabelOf(FIRST_AWAITING_OWNER_TASK),
+    );
+
+    expect(elapsedMs).toBeLessThan(PANEL_RETURN_BUDGET_MS);
+  });
+
+  type TabAtSubmissionCase = {
+    name: string;
+    tabPathSegment: string;
+    tabLabel: string;
+    tabTasks: ScenarioState['tabTasks'];
+    submittedTask: ScenarioTask;
+    tabLabelAfterSubmission: string;
+  };
+
+  const tabAtSubmissionCases: TabAtSubmissionCase[] = [
+    {
+      name: 'the Todo by human tab with the Awaiting Owner tab to its right',
+      tabPathSegment: 'todo-by-human',
+      tabLabel: 'Todo by human',
+      tabTasks: {
+        'todo-by-human': [TODO_BY_HUMAN_TASK],
+        prs: [FIRST_AWAITING_OWNER_TASK],
+      },
+      submittedTask: TODO_BY_HUMAN_TASK,
+      tabLabelAfterSubmission: 'Awaiting Owner',
+    },
+    {
+      name: 'the Failed Preparation tab with the Queued tab to its right',
+      tabPathSegment: 'failed-preparation',
+      tabLabel: 'Failed Preparation',
+      tabTasks: {
+        'failed-preparation': [FAILED_PREPARATION_TASK],
+        queued: [QUEUED_TASK],
+      },
+      submittedTask: FAILED_PREPARATION_TASK,
+      tabLabelAfterSubmission: 'Queued',
+    },
+    {
+      name: 'the Queued tab with no tab to its right',
+      tabPathSegment: 'queued',
+      tabLabel: 'Queued',
+      tabTasks: {
+        queued: [QUEUED_TASK],
+        prs: [FIRST_AWAITING_OWNER_TASK],
+      },
+      submittedTask: QUEUED_TASK,
+      tabLabelAfterSubmission: 'Queued',
+    },
+  ];
+
+  it.each(tabAtSubmissionCases)(
+    'Undo of a Set Depended Issue submission returns the tab active at the submission with the submitted task in the panel: $name',
+    async ({
+      tabPathSegment,
+      tabLabel,
+      tabTasks,
+      submittedTask,
+      tabLabelAfterSubmission,
+    }) => {
+      const view = renderScenario(buildScenario(tabTasks), tabPathSegment);
+      await openTaskFromList(view, submittedTask);
+
+      await submitDependedIssueUrl(view);
+
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe(tabLabelAfterSubmission);
+      });
+      expect(view.container.querySelector('.console-detail-screen')).toBeNull();
+
+      pressUndo(view);
+
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe(tabLabel);
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelLabelOf(submittedTask),
+        );
+      });
+    },
+  );
+
+  type SnapshotAfterPressCase = {
+    name: string;
+    pressesUndo: boolean;
+    refreshedSnapshotGeneratedAt: string;
+    expectedStatusBadge: string;
+  };
+
+  const snapshotAfterPressCases: SnapshotAfterPressCase[] = [
+    {
+      name: 'a snapshot generated after the submission press without Undo',
+      pressesUndo: false,
+      refreshedSnapshotGeneratedAt: '2026-06-19T00:01:00.000Z',
+      expectedStatusBadge: 'Todo by human',
+    },
+    {
+      name: 'a snapshot generated after the Undo press',
+      pressesUndo: true,
+      refreshedSnapshotGeneratedAt: '2026-06-19T00:01:00.000Z',
+      expectedStatusBadge: 'Todo by human',
+    },
+    {
+      name: 'a snapshot generated before the submission press without Undo',
+      pressesUndo: false,
+      refreshedSnapshotGeneratedAt: '2026-06-19T00:00:05.000Z',
+      expectedStatusBadge: 'Awaiting Workspace',
+    },
+  ];
+
+  it.each(snapshotAfterPressCases)(
+    'Status badge of the submitted task shows the Status of the loaded snapshot rather than the held Status once a newer snapshot loads: $name',
+    async ({
+      pressesUndo,
+      refreshedSnapshotGeneratedAt,
+      expectedStatusBadge,
+    }) => {
+      jest.useFakeTimers({ now: new Date(SUBMISSION_PRESS_TIME) });
+      try {
+        const scenario = buildScenario({
+          prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+        });
+        const view = renderScenario(scenario);
+        await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+        await submitDependedIssueUrl(view);
+        if (pressesUndo) {
+          pressUndo(view);
+        }
+
+        scenario.generatedAt = refreshedSnapshotGeneratedAt;
+        scenario.tabTasks = {
+          prs: [
+            { ...FIRST_AWAITING_OWNER_TASK, status: 'Todo by human' },
+            SECOND_AWAITING_OWNER_TASK,
+          ],
+        };
+        await advanceFakeTimersAndFlushPromises(
+          CONSOLE_TAB_REFRESH_INTERVAL_MS,
+        );
+
+        await act(async () => {
+          window.location.hash = `#item/${projectItemIdOf(FIRST_AWAITING_OWNER_TASK)}`;
+          window.dispatchEvent(new Event('hashchange'));
+        });
+
+        await waitFor(() => {
+          expect(detailPanelTaskLabel(view.container)).toBe(
+            panelLabelOf(FIRST_AWAITING_OWNER_TASK),
+          );
+          expect(detailStatusBadgeText(view.container)).toBe(
+            expectedStatusBadge,
+          );
+        });
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  type OwnNavigationCase = {
+    name: string;
+    tabTasks: ScenarioState['tabTasks'];
+    submittedTask: ScenarioTask;
+    tabLabelAfterSubmission: string;
+    panelTaskLabelAfterSubmission: string | null;
+    navigate: (view: ScenarioView) => Promise<void>;
+    tabLabelAfterNavigation: string;
+    panelTaskLabelAfterNavigation: string | null;
+  };
+
+  const ownNavigationCases: OwnNavigationCase[] = [
+    {
+      name: 'a tab button click',
+      tabTasks: {
+        'todo-by-human': [TODO_BY_HUMAN_TASK],
+        prs: [FIRST_AWAITING_OWNER_TASK],
+        queued: [QUEUED_TASK],
+      },
+      submittedTask: FIRST_AWAITING_OWNER_TASK,
+      tabLabelAfterSubmission: 'Queued',
+      panelTaskLabelAfterSubmission: null,
+      navigate: async () => {
+        fireEvent.click(within(tabBar()).getByText('Todo by human'));
+      },
+      tabLabelAfterNavigation: 'Todo by human',
+      panelTaskLabelAfterNavigation: null,
+    },
+    {
+      name: 'a row click',
+      tabTasks: {
+        prs: [FIRST_AWAITING_OWNER_TASK],
+        queued: [QUEUED_TASK],
+      },
+      submittedTask: FIRST_AWAITING_OWNER_TASK,
+      tabLabelAfterSubmission: 'Queued',
+      panelTaskLabelAfterSubmission: null,
+      navigate: async (view) => {
+        fireEvent.click(view.getByText(QUEUED_TASK.title));
+      },
+      tabLabelAfterNavigation: 'Queued',
+      panelTaskLabelAfterNavigation: panelLabelOf(QUEUED_TASK),
+    },
+    {
+      name: 'a swipe on the detail screen',
+      tabTasks: {
+        prs: [
+          FIRST_AWAITING_OWNER_TASK,
+          SECOND_AWAITING_OWNER_TASK,
+          THIRD_AWAITING_OWNER_TASK,
+        ],
+      },
+      submittedTask: FIRST_AWAITING_OWNER_TASK,
+      tabLabelAfterSubmission: 'Awaiting Owner',
+      panelTaskLabelAfterSubmission: panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+      navigate: async (view) => {
+        const detailScreen = view.container.querySelector(
+          '.console-detail-screen',
+        );
+        expect(detailScreen).not.toBeNull();
+        swipeDetailScreen(
+          detailScreen as HTMLElement,
+          { clientX: 240, clientY: 100 },
+          { clientX: 40, clientY: 110 },
+        );
+      },
+      tabLabelAfterNavigation: 'Awaiting Owner',
+      panelTaskLabelAfterNavigation: panelLabelOf(THIRD_AWAITING_OWNER_TASK),
+    },
+  ];
+
+  it.each(ownNavigationCases)(
+    'Undo of a Set Depended Issue submission does not override the owner navigation made after the submission: $name',
+    async ({
+      tabTasks,
+      submittedTask,
+      tabLabelAfterSubmission,
+      panelTaskLabelAfterSubmission,
+      navigate,
+      tabLabelAfterNavigation,
+      panelTaskLabelAfterNavigation,
+    }) => {
+      const view = renderScenario(buildScenario(tabTasks));
+      await openTaskFromList(view, submittedTask);
+      await submitDependedIssueUrl(view);
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe(tabLabelAfterSubmission);
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelTaskLabelAfterSubmission,
+        );
+      });
+
+      await navigate(view);
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe(tabLabelAfterNavigation);
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelTaskLabelAfterNavigation,
+        );
+      });
+
+      pressUndo(view);
+
+      await waitFor(() => {
+        expect(tabBadgeCount('Awaiting Owner')).not.toBeNull();
+      });
+      expect(activeTabLabel()).toBe(tabLabelAfterNavigation);
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelTaskLabelAfterNavigation,
+      );
+    },
+  );
+
+  type HeldWriteCase = {
+    name: string;
+    renderWithHeldWrites: () => Promise<ScenarioView>;
+    expectedSentWriteCount: number;
+  };
+
+  const heldWriteCases: HeldWriteCase[] = [
+    {
+      name: 'airplane mode is on at the countdown end',
+      renderWithHeldWrites: async () => {
+        installAirplaneEnvironment([
+          FIRST_AWAITING_OWNER_TASK,
+          SECOND_AWAITING_OWNER_TASK,
+        ]);
+        const view = render(<ConsolePage />);
+        await waitFor(() => {
+          expect(view.getByText('Turn off')).toBeInTheDocument();
+        });
+        return view;
+      },
+      expectedSentWriteCount: 0,
+    },
+    {
+      name: 'the write request rejects without an HTTP response',
+      renderWithHeldWrites: async () => {
+        const scenario = buildScenario({
+          prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+        });
+        scenario.writeOutcome = 'rejects without an HTTP response';
+        return renderScenario(scenario);
+      },
+      expectedSentWriteCount: 1,
+    },
+  ];
+
+  it.each(heldWriteCases)(
+    'Set Depended Issue holds both writes in the offline pending panel and keeps the panel switch in place when $name',
+    async ({ renderWithHeldWrites, expectedSentWriteCount }) => {
+      jest.useFakeTimers();
+      try {
+        const view = await renderWithHeldWrites();
+        await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+        await submitDependedIssueUrl(view);
+        await waitFor(() => {
+          expect(detailPanelTaskLabel(view.container)).toBe(
+            panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+          );
+        });
+
+        await advanceFakeTimersAndFlushPromises(ACTION_TOAST_DELAY_MS + 1000);
+
+        await waitFor(() => {
+          expect(offlinePanelHeaderText(view.container)).toMatch(
+            /^2 actions held/,
+          );
+        });
+        expect(readStoredOfflineApiPaths()).toEqual([
+          '/api/setdependedissueurl',
+          '/api/triage',
+        ]);
+        expect(postedRequestPaths()).toHaveLength(expectedSentWriteCount);
+        expect(activeTabLabel()).toBe('Awaiting Owner');
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it('Undo of a Set Depended Issue submission cancels both writes and restores the Awaiting Owner count', async () => {
+    jest.useFakeTimers();
+    try {
+      const view = renderScenario(
+        buildScenario({
+          prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+        }),
+      );
+      await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+      await submitDependedIssueUrl(view);
+      await waitFor(() => {
+        expect(tabBadgeCount('Awaiting Owner')).toBe('1');
+      });
+
+      pressUndo(view);
+      await advanceFakeTimersAndFlushPromises(ACTION_TOAST_DELAY_MS + 1000);
+
+      expect(postedRequestPaths()).toEqual([]);
+      await waitFor(() => {
+        expect(tabBadgeCount('Awaiting Owner')).toBe('2');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('Set Depended Issue sends the depended issue write and then the Status write when the countdown ends without Undo', async () => {
+    jest.useFakeTimers();
+    try {
+      const view = renderScenario(
+        buildScenario({
+          prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+        }),
+      );
+      await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+      await submitDependedIssueUrl(view);
+
+      await advanceFakeTimersAndFlushPromises(ACTION_TOAST_DELAY_MS + 1000);
+
+      await waitFor(() => {
+        expect(postedRequestPaths()).toEqual([
+          '/api/setdependedissueurl',
+          '/api/triage',
+        ]);
+      });
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  type AddressChangeCase = {
+    name: string;
+    tabTasks: ScenarioState['tabTasks'];
+    changeAddress: () => Promise<void>;
+    tabLabelAfterAddressChange: string;
+    panelTaskLabelAfterAddressChange: string | null;
+  };
+
+  const addressChangeCases: AddressChangeCase[] = [
+    {
+      name: 'the hash changes to another task',
+      tabTasks: {
+        prs: [
+          FIRST_AWAITING_OWNER_TASK,
+          SECOND_AWAITING_OWNER_TASK,
+          THIRD_AWAITING_OWNER_TASK,
+        ],
+      },
+      changeAddress: async () => {
+        await act(async () => {
+          window.location.hash = `#item/${projectItemIdOf(THIRD_AWAITING_OWNER_TASK)}`;
+          window.dispatchEvent(new Event('hashchange'));
+        });
+      },
+      tabLabelAfterAddressChange: 'Awaiting Owner',
+      panelTaskLabelAfterAddressChange: panelLabelOf(THIRD_AWAITING_OWNER_TASK),
+    },
+    {
+      name: 'the path changes to another tab and popstate fires',
+      tabTasks: {
+        prs: [FIRST_AWAITING_OWNER_TASK, SECOND_AWAITING_OWNER_TASK],
+        queued: [QUEUED_TASK],
+      },
+      changeAddress: async () => {
+        await act(async () => {
+          window.history.pushState({}, '', '/projects/acme/queued?k=token');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        });
+      },
+      tabLabelAfterAddressChange: 'Queued',
+      panelTaskLabelAfterAddressChange: null,
+    },
+  ];
+
+  it.each(addressChangeCases)(
+    'Undo of a Set Depended Issue submission does not override the page address changed after the submission: $name',
+    async ({
+      tabTasks,
+      changeAddress,
+      tabLabelAfterAddressChange,
+      panelTaskLabelAfterAddressChange,
+    }) => {
+      const view = renderScenario(buildScenario(tabTasks));
+      await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+      await submitDependedIssueUrl(view);
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe('Awaiting Owner');
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+        );
+      });
+
+      await changeAddress();
+      await waitFor(() => {
+        expect(activeTabLabel()).toBe(tabLabelAfterAddressChange);
+        expect(detailPanelTaskLabel(view.container)).toBe(
+          panelTaskLabelAfterAddressChange,
+        );
+      });
+
+      pressUndo(view);
+
+      await waitFor(() => {
+        expect(tabBadgeCount('Awaiting Owner')).not.toBeNull();
+      });
+      expect(activeTabLabel()).toBe(tabLabelAfterAddressChange);
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelTaskLabelAfterAddressChange,
+      );
+    },
+  );
+
+  const pressUndoOnToastNaming = (
+    view: ScenarioView,
+    task: ScenarioTask,
+  ): void => {
+    const undoButton = view
+      .getAllByRole('button', { name: 'Undo' })
+      .find((button) =>
+        button
+          .closest('.console-undo-toast')
+          ?.textContent?.includes(`o/r#${task.number}`),
+      );
+    if (undoButton === undefined) {
+      throw new Error(`No Undo toast names o/r#${task.number}`);
+    }
+    fireEvent.click(undoButton);
+  };
+
+  it('Undo of a Set Depended Issue submission does not override the panel switch made by another queued action', async () => {
+    const view = renderScenario(
+      buildScenario({
+        prs: [
+          FIRST_AWAITING_OWNER_TASK,
+          SECOND_AWAITING_OWNER_TASK,
+          THIRD_AWAITING_OWNER_TASK,
+        ],
+      }),
+    );
+    await openTaskFromList(view, FIRST_AWAITING_OWNER_TASK);
+    await submitDependedIssueUrl(view);
+    await waitFor(() => {
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(SECOND_AWAITING_OWNER_TASK),
+      );
+    });
+
+    await submitAwaitingWorkspaceFromStatusChooser(view);
+    await waitFor(() => {
+      expect(detailPanelTaskLabel(view.container)).toBe(
+        panelLabelOf(THIRD_AWAITING_OWNER_TASK),
+      );
+    });
+    expect(tabBadgeCount('Awaiting Owner')).toBe('1');
+    expect(view.getAllByRole('button', { name: 'Undo' })).toHaveLength(2);
+
+    pressUndoOnToastNaming(view, FIRST_AWAITING_OWNER_TASK);
+
+    await waitFor(() => {
+      expect(tabBadgeCount('Awaiting Owner')).toBe('2');
+    });
+    expect(activeTabLabel()).toBe('Awaiting Owner');
+    expect(detailPanelTaskLabel(view.container)).toBe(
+      panelLabelOf(THIRD_AWAITING_OWNER_TASK),
+    );
+  });
+});
