@@ -19,7 +19,7 @@ export const useConsoleAutomaticProjectNavigation = (
   todoByHumanSnapshotFromCache: boolean,
   explicitlySelectedPjcode: string | null,
   enqueueSequence: number,
-  selectedItemKey: string | null,
+  openTaskItemKey: string | null,
   dialogOpen: boolean,
   projectTodoByHumanCounts: Record<string, number>,
   projectAwaitingOwnerCounts: Record<string, number>,
@@ -77,7 +77,7 @@ export const useConsoleAutomaticProjectNavigation = (
       explicitlySelectedPjcodeMatchesCurrent:
         explicitlySelectedPjcode !== null &&
         pjcode === explicitlySelectedPjcode,
-      taskOpen: selectedItemKey !== null,
+      taskOpen: openTaskItemKey !== null,
       dialogOpen,
       aProjectGainedRemainingMinutesSinceTheCurrentProjectWasLastEvaluated,
       pjcode,
@@ -108,7 +108,7 @@ export const useConsoleAutomaticProjectNavigation = (
     todoByHumanSnapshotFromCache,
     explicitlySelectedPjcode,
     enqueueSequence,
-    selectedItemKey,
+    openTaskItemKey,
     dialogOpen,
     projectTodoByHumanCounts,
     projectAwaitingOwnerCounts,
