@@ -1,3 +1,10 @@
+# [2.179.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.178.1...v2.179.0) (2026-10-19)
+
+
+### Features
+
+* **console-ui:** return the detail panel to the submitted task when Undo follows Set Depended Issue ([#3539](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3539)) ([e94b23e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e94b23ee6c704889c9dd37177b91fe399613ecdc))
+
 ## [2.178.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.178.0...v2.178.1) (2026-10-18)
 
 
