@@ -1,3 +1,10 @@
+## [2.179.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.179.0...v2.179.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **console-ui:** treat an auto-opened item that is absent from the live active tab list as not open in console timer-mode project switching ([#3541](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3541)) ([ad60899](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ad6089949235af2704a620351b60004dffc89c4b))
+
 # [2.179.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.178.1...v2.179.0) (2026-10-19)
 
 
