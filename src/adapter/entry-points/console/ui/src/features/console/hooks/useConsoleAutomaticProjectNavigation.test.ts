@@ -744,6 +744,41 @@ describe('useConsoleAutomaticProjectNavigation', () => {
     expect(navigatePush).not.toHaveBeenCalled();
   });
 
+  it('navigates to the next candidate project as soon as only the open task item key changes to null while the displayed project has no actionable items in timer mode', () => {
+    const { rerender } = renderHook(
+      ({ openTaskItemKey }: { openTaskItemKey: string | null }) =>
+        useConsoleAutomaticProjectNavigation(
+          defaultArgs.timerMode,
+          defaultArgs.isTimerExpired,
+          defaultArgs.prsCount,
+          defaultArgs.todoByHumanCount,
+          defaultArgs.pjcode,
+          defaultArgs.pjcodes,
+          defaultArgs.projectMinutes,
+          defaultArgs.prsSnapshotLoaded,
+          defaultArgs.todoByHumanSnapshotLoaded,
+          defaultArgs.prsSnapshotFromCache,
+          defaultArgs.todoByHumanSnapshotFromCache,
+          defaultArgs.explicitlySelectedPjcode,
+          defaultArgs.enqueueSequence,
+          openTaskItemKey,
+          defaultArgs.dialogOpen,
+          defaultArgs.projectTodoByHumanCounts,
+          defaultArgs.projectAwaitingOwnerCounts,
+        ),
+      {
+        initialProps: {
+          openTaskItemKey: 'some-task-item-key' as string | null,
+        },
+      },
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+
+    rerender({ openTaskItemKey: null });
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
   it('does not navigate when the task-creation dialog is open, even when prs and todo-by-human are both zero (#3491)', () => {
     renderHook(() =>
       useConsoleAutomaticProjectNavigation(
