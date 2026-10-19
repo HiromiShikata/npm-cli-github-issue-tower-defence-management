@@ -76,10 +76,8 @@ type CommentPageCache = {
 
 type CommentCacheRepository = Pick<
   LocalStorageCacheRepository,
-  'getSingle' | 'setSingle'
-> & {
-  withLock(key: string, fn: () => Promise<unknown>): Promise<unknown>;
-};
+  'getSingle' | 'setSingle' | 'withLock'
+>;
 
 function isRestCommentPayloadArray(
   value: unknown,
