@@ -1,3 +1,10 @@
+## [2.180.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.0...v2.180.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **adapter:** widen CommentCacheRepository to the literal Pick type ([#3547](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3547)) ([0a542c6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0a542c64925545070c7157bf816b94912902b96b))
+
 # [2.180.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.179.1...v2.180.0) (2026-10-19)
 
 
