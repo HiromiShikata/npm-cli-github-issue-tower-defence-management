@@ -2144,6 +2144,62 @@ describe('DailySecurityScanUseCase', () => {
             stderr: 'osv-scanner crashed: out of memory',
           },
         },
+        {
+          name: 'exits 127 with a generic error',
+          scanExitCode: 127,
+          scanStdout: '',
+          scanStderr: 'osv-scanner: command not found',
+          expectedOutcome: {
+            type: 'scanFailed' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            exitCode: 127,
+            stderr: 'osv-scanner: command not found',
+          },
+        },
+        {
+          name: 'exits 129 because of an API failure',
+          scanExitCode: 129,
+          scanStdout: '',
+          scanStderr: 'osv-scanner: API query failed',
+          expectedOutcome: {
+            type: 'scanFailed' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            exitCode: 129,
+            stderr: 'osv-scanner: API query failed',
+          },
+        },
+        {
+          name: 'exits 130 because of an invalid config',
+          scanExitCode: 130,
+          scanStdout: '',
+          scanStderr: 'osv-scanner: invalid config file',
+          expectedOutcome: {
+            type: 'scanFailed' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+            exitCode: 130,
+            stderr: 'osv-scanner: invalid config file',
+          },
+        },
+        {
+          name: 'exits 128 because no package sources were found',
+          scanExitCode: 128,
+          scanStdout: '',
+          scanStderr: 'No package sources found, --help for usage information.',
+          expectedOutcome: {
+            type: 'scanNoPackageSourcesFound' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+          },
+        },
+        {
+          name: 'exits 128 with empty stderr',
+          scanExitCode: 128,
+          scanStdout: '',
+          scanStderr: '',
+          expectedOutcome: {
+            type: 'scanNoPackageSourcesFound' as const,
+            clonedCommitSha: SCANNED_COMMIT_SHA,
+          },
+        },
       ])(
         'logs a run log entry carrying the cloned commit SHA when osv-scanner $name',
         async ({ scanExitCode, scanStdout, scanStderr, expectedOutcome }) => {
@@ -2181,6 +2237,183 @@ describe('DailySecurityScanUseCase', () => {
           errorSpy.mockRestore();
         },
       );
+
+      describe('osv-scanner exit code classification', () => {
+        const NO_PACKAGE_SOURCES_STDERR =
+          'No package sources found, --help for usage information.';
+        const OSV_SCANNER_FAILURE_LOG_PREFIX =
+          'osv-scanner failed with exit code';
+
+        beforeEach(() => {
+          jest.restoreAllMocks();
+        });
+
+        afterEach(() => {
+          jest.restoreAllMocks();
+        });
+
+        it('neither logs an osv-scanner failure to console.error nor creates or updates a findings issue when osv-scanner exits 128', async () => {
+          const {
+            useCase,
+            mockLocalCommandRunner,
+            mockIssueRepository,
+            clock,
+          } = buildUseCase();
+          clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+          mockIssueRepository.searchIssue.mockResolvedValue([]);
+          const errorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+          mockLocalCommandRunner.runCommand.mockImplementation(
+            buildRunLogScanRunner({
+              app: {
+                scanExitCode: 128,
+                scanStderr: NO_PACKAGE_SOURCES_STDERR,
+              },
+            }),
+          );
+
+          await runDailySecurityScanOnce(useCase);
+
+          expect(errorSpy).not.toHaveBeenCalledWith(
+            expect.stringContaining(OSV_SCANNER_FAILURE_LOG_PREFIX),
+          );
+          expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+          expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+          expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        });
+
+        it('still scans the remaining repositories and logs a run log entry for each when an earlier repository exits 128', async () => {
+          const {
+            useCase,
+            mockLocalCommandRunner,
+            mockIssueRepository,
+            mockDailySecurityScanRunLogRepository,
+            clock,
+          } = buildUseCase();
+          clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+          mockIssueRepository.searchIssue.mockResolvedValue([]);
+          jest.spyOn(console, 'error').mockImplementation(() => undefined);
+          mockLocalCommandRunner.runCommand.mockImplementation(
+            buildRunLogScanRunner({
+              api: {
+                scanExitCode: 128,
+                scanStderr: NO_PACKAGE_SOURCES_STDERR,
+              },
+              app: { scanExitCode: 0 },
+            }),
+          );
+
+          await runDailySecurityScanOnce(useCase);
+
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenNthCalledWith(1, {
+            repositoryName: 'api',
+            executedAtIso: EXECUTED_AT_ISO,
+            outcome: {
+              type: 'scanNoPackageSourcesFound',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+            },
+          });
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenNthCalledWith(2, {
+            repositoryName: 'app',
+            executedAtIso: EXECUTED_AT_ISO,
+            outcome: {
+              type: 'scanCompletedClean',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+            },
+          });
+        });
+
+        it.each([
+          {
+            scanExitCode: 2,
+            scanStderr: 'osv-scanner crashed: out of memory',
+          },
+          {
+            scanExitCode: 129,
+            scanStderr: 'osv-scanner: API query failed',
+          },
+          {
+            scanExitCode: 130,
+            scanStderr: 'osv-scanner: invalid config file',
+          },
+        ])(
+          'logs an osv-scanner failure to console.error when osv-scanner exits $scanExitCode',
+          async ({ scanExitCode, scanStderr }) => {
+            const {
+              useCase,
+              mockLocalCommandRunner,
+              mockIssueRepository,
+              clock,
+            } = buildUseCase();
+            clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+            mockIssueRepository.searchIssue.mockResolvedValue([]);
+            const errorSpy = jest
+              .spyOn(console, 'error')
+              .mockImplementation(() => undefined);
+            mockLocalCommandRunner.runCommand.mockImplementation(
+              buildRunLogScanRunner({
+                app: { scanExitCode, scanStderr },
+              }),
+            );
+
+            await runDailySecurityScanOnce(useCase);
+
+            expect(errorSpy).toHaveBeenCalledWith(
+              expect.stringContaining(
+                `${OSV_SCANNER_FAILURE_LOG_PREFIX} ${scanExitCode}`,
+              ),
+            );
+            expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+          },
+        );
+
+        it.each([
+          {
+            name: 'exits 0 because no vulnerability was found',
+            scanExitCode: 0,
+            scanStdout: '',
+          },
+          {
+            name: 'exits 1 with one vulnerable package detected',
+            scanExitCode: 1,
+            scanStdout: osvScanOutputOf([exampleVulnerablePackage('one')]),
+          },
+        ])(
+          'does not log an osv-scanner failure to console.error when osv-scanner $name',
+          async ({ scanExitCode, scanStdout }) => {
+            const {
+              useCase,
+              mockLocalCommandRunner,
+              mockIssueRepository,
+              clock,
+            } = buildUseCase();
+            clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+            mockIssueRepository.searchIssue.mockResolvedValue([]);
+            const errorSpy = jest
+              .spyOn(console, 'error')
+              .mockImplementation(() => undefined);
+            mockLocalCommandRunner.runCommand.mockImplementation(
+              buildRunLogScanRunner({
+                app: { scanExitCode, scanStdout },
+              }),
+            );
+
+            await runDailySecurityScanOnce(useCase);
+
+            expect(errorSpy).not.toHaveBeenCalledWith(
+              expect.stringContaining(OSV_SCANNER_FAILURE_LOG_PREFIX),
+            );
+          },
+        );
+      });
 
       it('still appends a run log entry for every subsequent repository when append throws for an earlier one', async () => {
         const {

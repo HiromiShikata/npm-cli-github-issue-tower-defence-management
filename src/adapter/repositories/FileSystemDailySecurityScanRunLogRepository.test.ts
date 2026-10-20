@@ -162,6 +162,13 @@ describe('FileSystemDailySecurityScanRunLogRepository', () => {
         stderr: 'osv-scanner crashed',
       },
     },
+    {
+      description: 'scanNoPackageSourcesFound',
+      outcome: {
+        type: 'scanNoPackageSourcesFound' as const,
+        clonedCommitSha: 'deadbeef',
+      },
+    },
   ])(
     'writes a file whose contents are valid JSON matching the entity shape for the $description outcome',
     async ({ outcome }) => {
