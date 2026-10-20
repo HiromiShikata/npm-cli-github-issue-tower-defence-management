@@ -1,3 +1,10 @@
+## [2.180.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.1...v2.180.2) (2026-10-20)
+
+
+### Bug Fixes
+
+* **security-scan:** record daily scan repositories without package sources as a distinct non-failure outcome ([#3552](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3552)) ([537fda8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/537fda8088a48db172f3882f938ea9e6756e603e))
+
 ## [2.180.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.0...v2.180.1) (2026-10-19)
 
 
