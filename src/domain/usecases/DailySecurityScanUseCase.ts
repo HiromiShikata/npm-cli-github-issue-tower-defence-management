@@ -135,6 +135,8 @@ const renderScannerFindings = (
 const KEV_CATALOG_URL =
   'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
 
+const OSV_SCANNER_NO_PACKAGE_SOURCES_FOUND_EXIT_CODE = 128;
+
 const dayBeforeUtcYmd = (date: Date): string => {
   const dayBefore = new Date(date);
   dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
@@ -318,6 +320,14 @@ export class DailySecurityScanUseCase {
           repositoryName,
           executedAtIso,
           outcome: { type: 'scanCompletedClean', clonedCommitSha },
+        });
+        continue;
+      }
+      if (scanExitCode === OSV_SCANNER_NO_PACKAGE_SOURCES_FOUND_EXIT_CODE) {
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: { type: 'scanNoPackageSourcesFound', clonedCommitSha },
         });
         continue;
       }

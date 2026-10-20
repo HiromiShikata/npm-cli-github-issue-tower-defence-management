@@ -4,6 +4,7 @@ export type DailySecurityScanRunLogEntry = {
   outcome:
     | { type: 'checkoutFailed'; reason: string }
     | { type: 'scanCompletedClean'; clonedCommitSha: string }
+    | { type: 'scanNoPackageSourcesFound'; clonedCommitSha: string }
     | {
         type: 'scanCompletedWithVulnerabilities';
         clonedCommitSha: string;
