@@ -1,3 +1,10 @@
+## [2.180.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.2...v2.180.3) (2026-10-20)
+
+
+### Bug Fixes
+
+* **security:** override js-yaml argparse to drop sprintf-js from lockfiles ([#3557](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3557)) ([bfb1b3e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bfb1b3e625927c392c79c6d32e57b9227914b06b))
+
 ## [2.180.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.1...v2.180.2) (2026-10-20)
 
 
