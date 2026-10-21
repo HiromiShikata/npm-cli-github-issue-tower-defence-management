@@ -1,3 +1,11 @@
+## [2.180.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.5...v2.180.6) (2026-10-21)
+
+
+### Bug Fixes
+
+* **tmux:** keep sessions shared with unheld issues alive during stale cleanup ([#3571](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3571)) ([e083d78](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e083d78f32a565cb5c3229f2cc3dfcb208e7b78f))
+* **tmux:** revert per-issue live GraphQL lookup in stale tmux session cleanup ([#3574](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3574)) ([4aa0857](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4aa08579ac69474ecfdcc19df01bce1adc91b5ea)), closes [#3573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3573)
+
 ## [2.180.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.4...v2.180.5) (2026-10-21)
 
 
