@@ -1,3 +1,10 @@
+## [2.180.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.3...v2.180.4) (2026-10-21)
+
+
+### Bug Fixes
+
+* **scan:** classify scanner launch and signal failures ([#3558](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3558)) ([79cafca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/79cafcac7cb5dcf59f76f02dc1918be7488af9ed))
+
 ## [2.180.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.2...v2.180.3) (2026-10-20)
 
 
