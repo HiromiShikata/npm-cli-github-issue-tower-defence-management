@@ -326,16 +326,10 @@ export class DailySecurityScanUseCase {
         });
         continue;
       } finally {
-        try {
-          await this.localCommandRunner.runCommand('rm', [
-            '-rf',
-            checkoutDirectory,
-          ]);
-        } catch (error) {
-          console.error(
-            `Failed to clean up the checkout of ${repositoryName}: ${String(error)}`,
-          );
-        }
+        await this.localCommandRunner.runCommand('rm', [
+          '-rf',
+          checkoutDirectory,
+        ]);
       }
       const {
         stdout: scanOutput,
