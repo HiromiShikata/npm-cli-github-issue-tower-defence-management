@@ -69,8 +69,13 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 const createMockIssueRepository = (
   issues: Issue[],
-): Pick<IssueRepository, 'getAllOpened'> => ({
+): Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl'> => ({
   getAllOpened: jest.fn().mockResolvedValue(issues),
+  getIssueByUrl: jest
+    .fn()
+    .mockImplementation(
+      async (url) => issues.find((issue) => issue.url === url) ?? null,
+    ),
 });
 
 describe('cleanStaleTmuxSessions', () => {
@@ -199,5 +204,35 @@ describe('cleanStaleTmuxSessions', () => {
     );
     expect(killCalls).toHaveLength(1);
     expect(killCalls[0][1]).toEqual(['kill-session', '-t', '=idle_no_task']);
+  });
+  it('runs cleanup when launch is disabled', async () => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'tmux' && args[0] === 'list-sessions')
+        return {
+          stdout: `https_//github_com/demo/repo/issues/1 ${NOW_EPOCH_SECONDS}\n`,
+          stderr: '',
+          exitCode: 0,
+        };
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    await cleanStaleTmuxSessions({
+      project: makeProject(),
+      issueRepository: createMockIssueRepository([
+        makeIssue({ nextActionHour: 0 }),
+      ]),
+      localCommandRunner: runner,
+      now: NOW,
+    });
+    expect(
+      runner.runCommand.mock.calls.some(
+        ([program, args]) => program === 'tmux' && args[0] === 'kill-session',
+      ),
+    ).toBe(true);
+    expect(
+      runner.runCommand.mock.calls.some(
+        ([program, args]) => program === 'tmux' && args[0] === 'new-session',
+      ),
+    ).toBe(false);
   });
 });

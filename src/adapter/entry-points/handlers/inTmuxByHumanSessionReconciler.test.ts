@@ -46,7 +46,12 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 const createIssueStateRepository = (
   state = 'open',
-): Pick<IssueRepository, 'getIssueOrPullRequestState'> => ({
+): Pick<IssueRepository, 'getIssueOrPullRequestState' | 'getIssueByUrl'> => ({
+  getIssueByUrl: async () =>
+    makeIssue({
+      state: state === 'closed' ? 'CLOSED' : 'OPEN',
+      isClosed: state === 'closed',
+    }),
   getIssueOrPullRequestState: async () => ({
     state,
     merged: false,

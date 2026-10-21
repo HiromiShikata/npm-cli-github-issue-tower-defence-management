@@ -155,6 +155,11 @@ jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('./staleTmuxSessionCleaner', () => ({
+  cleanStaleTmuxSessions: jest.fn().mockResolvedValue(undefined),
+}));
+
+import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
@@ -955,6 +960,43 @@ defaultAgentName: readme-agent
 
       expect(getInTmuxProjectOrderArg()).toBeNull();
     });
+  });
+
+  it('runs scheduled cleanup when launch is disabled', async () => {
+    mockRun.mockResolvedValueOnce({
+      project: mock<Project>({ id: 'PVT_kwHOtest123' }),
+      issues: [],
+      cacheUsed: false,
+      targetDateTimes: [],
+      rotationOrder: null,
+    });
+    jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
+    await new HandleScheduledEventUseCaseHandler().handle('config.yml', false);
+    expect(
+      jest.mocked(cleanStaleTmuxSessions).mock.calls[0]?.[0].project.id,
+    ).toBe('PVT_kwHOtest123');
+  });
+
+  it('logs cleanup failures instead of reporting cleanup success', async () => {
+    mockRun.mockResolvedValueOnce({
+      project: mock<Project>({ id: 'PVT_kwHOtest123' }),
+      issues: [],
+      cacheUsed: false,
+      targetDateTimes: [],
+      rotationOrder: null,
+    });
+    jest
+      .mocked(cleanStaleTmuxSessions)
+      .mockRejectedValueOnce(new Error('scope stop failed'));
+    const errorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    await new HandleScheduledEventUseCaseHandler().handle('config.yml', false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Failed to clean stale tmux sessions: scope stop failed',
+      ),
+    );
   });
 
   describe('owner call file cleanup of closed issues', () => {
