@@ -616,4 +616,89 @@ describe('StaleTmuxSessionKillUseCase', () => {
       expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
     },
   );
+
+  describe('one live session shared by an unheld issue and a held issue', () => {
+    const SHARED_SESSION_NAME = 'leader-session';
+    const UNHELD_ISSUE_URL = 'https://github.com/user/repo/issues/21';
+    const HELD_ISSUE_URL = 'https://github.com/user/repo/issues/22';
+
+    const createSharedSessionIssues = (): {
+      unheldIssue: Issue;
+      heldIssue: Issue;
+    } => ({
+      unheldIssue: createMockIssue({
+        url: UNHELD_ISSUE_URL,
+        status: 'In Progress',
+        nextActionHour: null,
+      }),
+      heldIssue: createMockIssue({
+        url: HELD_ISSUE_URL,
+        status: 'In Progress',
+        nextActionHour: 0,
+      }),
+    });
+
+    const killCandidateLines = (
+      logSpy: jest.SpyInstance<void, unknown[]>,
+    ): string[] =>
+      logSpy.mock.calls
+        .map((call: unknown[]) => String(call[0]))
+        .filter((line: string) => line.startsWith('Kill candidate:'));
+
+    beforeEach(() => {
+      mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue([
+        SHARED_SESSION_NAME,
+      ]);
+      setLiveSessions([
+        {
+          sessionName: SHARED_SESSION_NAME,
+          activityEpochSeconds:
+            nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS,
+        },
+      ]);
+    });
+
+    it('does not stop the shared session when the unheld issue is listed before the held issue', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { unheldIssue, heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        unheldIssue,
+        heldIssue,
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+      expect(killCandidateLines(logSpy)).toEqual([]);
+    });
+
+    it('does not stop the shared session when the held issue is listed before the unheld issue', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { unheldIssue, heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        heldIssue,
+        unheldIssue,
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+      expect(killCandidateLines(logSpy)).toEqual([]);
+    });
+
+    it('stops a session whose only mapped issue is held, with the held issue URL as the reason', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([heldIssue]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
+        SHARED_SESSION_NAME,
+      );
+      expect(killCandidateLines(logSpy)).toEqual([
+        `Kill candidate: ${SHARED_SESSION_NAME} (mapped to held issue ${HELD_ISSUE_URL})`,
+      ]);
+    });
+  });
 });
