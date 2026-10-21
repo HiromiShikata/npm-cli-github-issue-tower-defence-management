@@ -1,3 +1,10 @@
+## [2.180.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.4...v2.180.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **tmux:** prevent sessions for held issues ([#3565](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3565)) ([7abfdf1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7abfdf1ca435a3dc7d25ab2c02295f77c70db8db))
+
 ## [2.180.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.3...v2.180.4) (2026-10-21)
 
 
