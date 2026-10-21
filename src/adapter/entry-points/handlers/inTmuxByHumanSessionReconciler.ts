@@ -9,7 +9,7 @@ export type ReconcileInTmuxByHumanSessionsParams = {
   assigneeLogin: string;
   issues: Issue[];
   localCommandRunner: LocalCommandRunner;
-  issueStateRepository: Pick<IssueRepository, 'getIssueOrPullRequestState'>;
+  issueStateRepository: Pick<IssueRepository, 'getIssueByUrl'>;
   now: Date;
 };
 

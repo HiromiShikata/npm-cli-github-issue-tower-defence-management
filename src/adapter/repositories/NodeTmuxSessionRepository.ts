@@ -18,12 +18,15 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   ) {}
 
   listLiveSessionNames = async (): Promise<string[]> => {
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
-      'tmux',
-      ['list-sessions', '-F', '#{session_name}'],
-    );
+    const { stdout, stderr, exitCode } =
+      await this.localCommandRunner.runCommand('tmux', [
+        'list-sessions',
+        '-F',
+        '#{session_name}',
+      ]);
     if (exitCode !== 0) {
-      return [];
+      if (this.isAbsentTmuxServer(stderr)) return [];
+      throw new Error(`Failed to list tmux sessions: ${stderr}`);
     }
     return stdout
       .split('\n')
@@ -32,12 +35,15 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   };
 
   listLiveSessionsWithActivity = async (): Promise<LiveTmuxSession[]> => {
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
-      'tmux',
-      ['list-sessions', '-F', '#{session_name} #{session_activity}'],
-    );
+    const { stdout, stderr, exitCode } =
+      await this.localCommandRunner.runCommand('tmux', [
+        'list-sessions',
+        '-F',
+        '#{session_name} #{session_activity}',
+      ]);
     if (exitCode !== 0) {
-      return [];
+      if (this.isAbsentTmuxServer(stderr)) return [];
+      throw new Error(`Failed to list tmux sessions: ${stderr}`);
     }
     return stdout
       .split('\n')
@@ -81,12 +87,10 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   };
 
   listInteractiveProcessCommandLines = async (): Promise<string[]> => {
-    const { stdout, exitCode } = await this.localCommandRunner.runCommand(
-      'ps',
-      ['-eo', 'args='],
-    );
+    const { stdout, stderr, exitCode } =
+      await this.localCommandRunner.runCommand('ps', ['-eo', 'args=']);
     if (exitCode !== 0) {
-      return [];
+      throw new Error(`Failed to list interactive processes: ${stderr}`);
     }
     return stdout
       .split('\n')
@@ -99,7 +103,7 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     launcherCommand: string,
     issueUrl: string,
   ): Promise<void> => {
-    await this.localCommandRunner.runCommand('tmux', [
+    const result = await this.localCommandRunner.runCommand('tmux', [
       'new-session',
       '-A',
       '-d',
@@ -112,6 +116,8 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       launcherCommand,
       issueUrl,
     ]);
+    if (result.exitCode !== 0)
+      throw new Error(`Failed to launch tmux session: ${result.stderr}`);
   };
 
   killSession = async (sessionName: string): Promise<void> => {
@@ -161,7 +167,7 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
       scopeUnitName,
     ]);
     if (exitCode !== 0) {
-      console.error(
+      throw new Error(
         `Failed to stop systemd user scope "${scopeUnitName}": exit code ${exitCode}${
           stderr ? `: ${stderr}` : ''
         }`,
@@ -237,16 +243,44 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     ]);
   };
 
+  listSessionNamesForIssueUrl = async (issueUrl: string): Promise<string[]> => {
+    const liveNames = await this.listLiveSessionNames();
+    if (liveNames.length === 0) return [];
+    const canonicalName = issueUrl.replace(/[.:]/g, '_');
+    const mappedNames = await this.findSessionNamesForUrl(issueUrl);
+    return [
+      ...new Set([
+        ...liveNames.filter((name) => name === canonicalName),
+        ...mappedNames.filter((name) => liveNames.includes(name)),
+      ]),
+    ];
+  };
+
+  private isAbsentTmuxServer = (stderr: string): boolean =>
+    /no server running|no sessions|error connecting to .+: No such file or directory/i.test(
+      stderr,
+    );
+
   private findSessionNameForUrl = async (
     issueUrl: string,
-  ): Promise<string | null> => {
-    const { stdout: psOut, exitCode: psExit } =
-      await this.localCommandRunner.runCommand('ps', [
-        '-eo',
-        'pid=,ppid=,args=',
-      ]);
+  ): Promise<string | null> =>
+    (await this.findSessionNamesForUrl(issueUrl))[0] ?? null;
+
+  private findSessionNamesForUrl = async (
+    issueUrl: string,
+  ): Promise<string[]> => {
+    const {
+      stdout: psOut,
+      stderr: psError,
+      exitCode: psExit,
+    } = await this.localCommandRunner.runCommand('ps', [
+      '-eo',
+      'pid=,ppid=,args=',
+    ]);
     if (psExit !== 0) {
-      return null;
+      throw new Error(
+        `Failed to list processes for session mapping: ${psError}`,
+      );
     }
     const processes = psOut
       .split('\n')
@@ -264,20 +298,28 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
         ];
       });
     const matchingPids = new Set(
-      processes.filter((p) => p.args.includes(issueUrl)).map((p) => p.pid),
+      processes
+        .filter((p) => p.args.split(/[\s'"]+/).includes(issueUrl))
+        .map((p) => p.pid),
     );
     if (matchingPids.size === 0) {
-      return null;
+      return [];
     }
-    const { stdout: panesOut, exitCode: panesExit } =
-      await this.localCommandRunner.runCommand('tmux', [
-        'list-panes',
-        '-a',
-        '-F',
-        '#{pane_pid} #{session_name}',
-      ]);
+    const {
+      stdout: panesOut,
+      stderr: panesError,
+      exitCode: panesExit,
+    } = await this.localCommandRunner.runCommand('tmux', [
+      'list-panes',
+      '-a',
+      '-F',
+      '#{pane_pid} #{session_name}',
+    ]);
     if (panesExit !== 0) {
-      return null;
+      if (this.isAbsentTmuxServer(panesError)) return [];
+      throw new Error(
+        `Failed to list panes for session mapping: ${panesError}`,
+      );
     }
     const paneSessionMap = new Map<number, string>();
     for (const line of panesOut
@@ -295,19 +337,21 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     const ppidMap = new Map<number, number>(
       processes.map((p) => [p.pid, p.ppid]),
     );
+    const sessionNames = new Set<string>();
     for (const startPid of matchingPids) {
       let pid = startPid;
       const visited = new Set<number>();
       while (pid > 1 && !visited.has(pid)) {
         const found = paneSessionMap.get(pid);
         if (found !== undefined) {
-          return found;
+          sessionNames.add(found);
+          break;
         }
         visited.add(pid);
         pid = ppidMap.get(pid) ?? 0;
       }
     }
-    return null;
+    return [...sessionNames];
   };
 
   private sendEnter = async (sessionName: string): Promise<void> => {

@@ -10,7 +10,7 @@ import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRep
 
 export type CleanStaleTmuxSessionsParams = {
   project: Project;
-  issueRepository: Pick<IssueRepository, 'getAllOpened'>;
+  issueRepository: Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl'>;
   localCommandRunner: LocalCommandRunner;
   now: Date;
 };

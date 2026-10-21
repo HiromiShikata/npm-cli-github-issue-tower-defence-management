@@ -1,3 +1,4 @@
+import { issueSessionIsOnHold } from '../issueSessionIsOnHold';
 import { Issue } from '../../entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
 import { IssueRepository } from '../adapter-interfaces/IssueRepository';
@@ -30,17 +31,17 @@ export class InTmuxByHumanSessionReconcileUseCase {
     private readonly tmuxSessionRepository: TmuxSessionRepository,
     private readonly issueStateRepository: Pick<
       IssueRepository,
-      'getIssueOrPullRequestState'
+      'getIssueByUrl'
     >,
   ) {}
 
   run = async (
     input: InTmuxByHumanSessionReconcileInput,
   ): Promise<InTmuxByHumanSessionReconcileResult> => {
-    const { issues, assigneeLogin, launcherCommand, now } = input;
+    const { issues, assigneeLogin, launcherCommand } = input;
 
     const targetIssues = issues.filter((issue) =>
-      this.isInTmuxByHuman(issue, assigneeLogin, now),
+      this.isInTmuxByHuman(issue, assigneeLogin),
     );
     if (targetIssues.length === 0) {
       return { launchedIssueUrls: [] };
@@ -50,41 +51,56 @@ export class InTmuxByHumanSessionReconcileUseCase {
       await this.tmuxSessionRepository.listInteractiveProcessCommandLines();
 
     const launchedIssueUrls: string[] = [];
+    const failures: unknown[] = [];
     for (const issue of targetIssues) {
-      if (this.hasLiveSession(issue.url, processCommandLines)) {
-        continue;
+      try {
+        if (this.hasLiveSession(issue.url, processCommandLines)) {
+          continue;
+        }
+        const liveIssue = await this.issueStateRepository.getIssueByUrl(
+          issue.url,
+          { bypassCache: true },
+        );
+        if (
+          liveIssue === null ||
+          liveIssue.isClosed ||
+          liveIssue.state.toLowerCase() !== 'open' ||
+          issueSessionIsOnHold(liveIssue)
+        ) {
+          continue;
+        }
+        await this.tmuxSessionRepository.launchDetachedSession(
+          toTmuxSessionName(issue.url),
+          launcherCommand,
+          issue.url,
+        );
+        launchedIssueUrls.push(issue.url);
+      } catch (error) {
+        console.error(
+          `Failed to reconcile interactive session for ${issue.url}`,
+          error,
+        );
+        failures.push(error);
       }
-      const liveState =
-        await this.issueStateRepository.getIssueOrPullRequestState(issue.url);
-      if (liveState.state.toLowerCase() !== 'open') {
-        continue;
-      }
-      await this.tmuxSessionRepository.launchDetachedSession(
-        toTmuxSessionName(issue.url),
-        launcherCommand,
-        issue.url,
-      );
-      launchedIssueUrls.push(issue.url);
+    }
+    if (failures.length > 0) {
+      throw new Error(failures.map(String).join('; '));
     }
 
     return { launchedIssueUrls };
   };
 
-  private isInTmuxByHuman = (
-    issue: Issue,
-    assigneeLogin: string,
-    now: Date,
-  ): boolean =>
+  private isInTmuxByHuman = (issue: Issue, assigneeLogin: string): boolean =>
     issue.status === IN_TMUX_STATUS_NAME &&
     issue.isClosed === false &&
     issue.assignees.includes(assigneeLogin) &&
-    (issue.nextActionDate === null ||
-      issue.nextActionDate.getTime() <= now.getTime()) &&
-    issue.nextActionHour === null;
+    !issueSessionIsOnHold(issue);
 
   private hasLiveSession = (
     issueUrl: string,
     processCommandLines: string[],
   ): boolean =>
-    processCommandLines.some((commandLine) => commandLine.includes(issueUrl));
+    processCommandLines.some((commandLine) =>
+      commandLine.split(/[\s'"]+/).includes(issueUrl),
+    );
 }
