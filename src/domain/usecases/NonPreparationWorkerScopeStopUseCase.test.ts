@@ -660,4 +660,52 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it('rethrows the very error object when exactly one scope stop fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const tmuxSessionRepository = createMockTmuxSessionRepository();
+    const issueRepository = createMockIssueRepository();
+    const failingUnitName = 'aw-owner-repo-1-100.scope';
+    const healthyUnitName = 'aw-owner-repo-2-200.scope';
+    const awaitingIssues = [1, 2].map((number) =>
+      buildIssue({
+        org: 'owner',
+        repo: 'repo',
+        number,
+        status: AWAITING_WORKSPACE_STATUS_NAME,
+        url: `https://github.com/owner/repo/issues/${number}`,
+      }),
+    );
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+      failingUnitName,
+      healthyUnitName,
+    ]);
+    issueRepository.get.mockImplementation(
+      async (url: string) =>
+        awaitingIssues.find((issue) => issue.url === url) ?? null,
+    );
+    const stopError = new Error('unit exited with code 1');
+    tmuxSessionRepository.stopWorkerScopeUnit
+      .mockRejectedValueOnce(stopError)
+      .mockResolvedValueOnce(undefined);
+    const useCase = new NonPreparationWorkerScopeStopUseCase(
+      tmuxSessionRepository,
+      issueRepository,
+    );
+
+    await expect(
+      useCase.run({
+        issues: awaitingIssues,
+        currentProjectOrg: 'owner',
+        project,
+      }),
+    ).rejects.toBe(stopError);
+
+    expect(tmuxSessionRepository.stopWorkerScopeUnit.mock.calls).toEqual([
+      [failingUnitName],
+      [healthyUnitName],
+    ]);
+
+    consoleErrorSpy.mockRestore();
+  });
 });
