@@ -4,6 +4,7 @@ import { IssueSummary } from '../../entities/IssueSummary';
 import { Member } from '../../entities/Member';
 import { SearchedIssue } from '../../entities/SearchedIssue';
 import { StoryObjectMap } from '../../entities/StoryObjectMap';
+import { ProjectFieldWriteOutcome } from '../../entities/ProjectFieldWriteOutcome';
 
 export type RelatedPullRequest = {
   url: string;
@@ -250,7 +251,7 @@ export interface IssueRepository {
     issueUrl: string,
     project: Project,
     agentOptionId: string,
-  ) => Promise<void>;
+  ) => Promise<ProjectFieldWriteOutcome>;
   getIssueOrPullRequestBody: (url: string) => Promise<string>;
   getIssueOrPullRequestComments: (
     url: string,

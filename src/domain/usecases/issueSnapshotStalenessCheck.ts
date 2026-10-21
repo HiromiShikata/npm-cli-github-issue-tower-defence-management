@@ -16,13 +16,16 @@ export type IssueSnapshotStaleness =
     }
   | { type: 'removedFromProject' };
 
-export const issueSnapshotStalenessCheck = async (params: {
+type LiveIssueFetchParams = {
   issueRepository: Pick<IssueRepository, 'get' | 'removeIssueFromProjectCache'>;
   project: Project;
   snapshotIssue: Issue;
-  checkedFieldNames: IssueSnapshotCheckedFieldName[];
   skippedWriteDescription: string;
-}): Promise<IssueSnapshotStaleness> => {
+};
+
+export const liveIssueFetchOrEvictFromProjectCache = async (
+  params: LiveIssueFetchParams,
+): Promise<Issue | null> => {
   const { snapshotIssue } = params;
   const liveIssue = await params.issueRepository.get(
     snapshotIssue.url,
@@ -36,6 +39,18 @@ export const issueSnapshotStalenessCheck = async (params: {
       params.project.id,
       snapshotIssue,
     );
+  }
+  return liveIssue;
+};
+
+export const issueSnapshotStalenessCheck = async (
+  params: LiveIssueFetchParams & {
+    checkedFieldNames: IssueSnapshotCheckedFieldName[];
+  },
+): Promise<IssueSnapshotStaleness> => {
+  const { snapshotIssue } = params;
+  const liveIssue = await liveIssueFetchOrEvictFromProjectCache(params);
+  if (liveIssue === null) {
     return { type: 'removedFromProject' };
   }
   const changedFieldNames = params.checkedFieldNames.filter(
