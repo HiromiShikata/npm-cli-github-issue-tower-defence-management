@@ -27,6 +27,7 @@ export class NonPreparationWorkerScopeStopUseCase {
       await this.tmuxSessionRepository.listRunningWorkerScopeUnitNames();
 
     const stoppedScopeUnitNames: string[] = [];
+    const stopErrors: unknown[] = [];
     for (const scopeUnitName of runningScopeUnitNames) {
       const resolvedIssue = resolveIssueForWorkerScopeUnitName(
         scopeUnitName,
@@ -69,9 +70,18 @@ export class NonPreparationWorkerScopeStopUseCase {
       if (!shouldStopScope) {
         continue;
       }
-      await this.tmuxSessionRepository.stopWorkerScopeUnit(scopeUnitName);
-      stoppedScopeUnitNames.push(scopeUnitName);
+      try {
+        await this.tmuxSessionRepository.stopWorkerScopeUnit(scopeUnitName);
+        stoppedScopeUnitNames.push(scopeUnitName);
+      } catch (error) {
+        console.error(
+          `[NonPreparationWorkerScopeStopUseCase] Failed to stop scope unit ${scopeUnitName}: ${error instanceof Error ? error.message : String(error)}`,
+          error,
+        );
+        stopErrors.push(error);
+      }
     }
+    if (stopErrors.length > 0) throw stopErrors[0];
     return { stoppedScopeUnitNames };
   };
 }

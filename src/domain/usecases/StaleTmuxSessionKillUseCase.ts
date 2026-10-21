@@ -44,7 +44,7 @@ export class StaleTmuxSessionKillUseCase {
     const liveSessions =
       await this.tmuxSessionRepository.listLiveSessionsWithActivity();
     const openIssues = await this.issueRepository.getAllOpened(params.project);
-    const issueBySessionName = new Map<string, Issue>();
+    const issuesBySessionName = new Map<string, Issue[]>();
     const protectedSessionNames = new Set<string>();
     const failures: unknown[] = [];
     for (const issue of openIssues) {
@@ -64,7 +64,10 @@ export class StaleTmuxSessionKillUseCase {
         );
         if (liveIssue !== null) {
           for (const sessionName of sessionNames) {
-            issueBySessionName.set(sessionName, liveIssue);
+            issuesBySessionName.set(sessionName, [
+              ...(issuesBySessionName.get(sessionName) ?? []),
+              liveIssue,
+            ]);
           }
         } else {
           for (const sessionName of sessionNames)
@@ -86,12 +89,12 @@ export class StaleTmuxSessionKillUseCase {
     for (const session of liveSessions) {
       if (
         protectedSessionNames.has(session.sessionName) ||
-        (failures.length > 0 && !issueBySessionName.has(session.sessionName))
+        (failures.length > 0 && !issuesBySessionName.has(session.sessionName))
       )
         continue;
       const reason = this.evaluateKillReason(
         session,
-        issueBySessionName.get(session.sessionName) ?? null,
+        issuesBySessionName.get(session.sessionName) ?? [],
         nowEpochSeconds,
         params.excludedStatusNames,
         params.idleThresholdSeconds,
@@ -129,14 +132,17 @@ export class StaleTmuxSessionKillUseCase {
 
   private evaluateKillReason = (
     session: LiveTmuxSession,
-    issue: Issue | null,
+    issues: readonly Issue[],
     nowEpochSeconds: number,
     excludedStatusNames: readonly string[],
     idleThresholdSeconds: number,
   ): string | null => {
-    if (issue !== null) {
-      if (issueSessionIsOnHold(issue))
-        return `mapped to held issue ${issue.url}`;
+    if (issues.length > 0) {
+      const heldIssues = issues.filter((issue) => issueSessionIsOnHold(issue));
+      if (heldIssues.length === issues.length)
+        return `mapped to held issue ${heldIssues[0].url}`;
+      if (heldIssues.length > 0) return null;
+      const issue = issues[issues.length - 1];
       const isExcludedStatus =
         issue.status !== null && excludedStatusNames.includes(issue.status);
       if (isExcludedStatus) {
