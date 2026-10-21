@@ -51,6 +51,12 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       expected: false,
     },
     {
+      name: 'returns false when the body contains the "edit this template" link on any host with a keyword',
+      title: 'Status update',
+      body: 'Filed the monthly 報告 (report). [edit this template](https://example.com/template-editor)',
+      expected: false,
+    },
+    {
       name: 'returns true when a non-calendar link label contains "template" and the body has a keyword',
       title: 'Attachment check',
       body: 'Please 確認 the attachment. [template guide](https://example.com/template-guide)',

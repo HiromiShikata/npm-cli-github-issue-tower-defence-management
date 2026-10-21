@@ -40,6 +40,7 @@ export const isHumanAuthoredInvestigationTaskCloseOverride = (args: {
   body: string;
 }): boolean =>
   !isAutomatedReportBody(args.body) &&
+  !args.body.includes('[edit this template](') &&
   !CALENDAR_TEMPLATE_LINK_PATTERN.test(args.body) &&
   (containsInvestigationTaskKeyword(args.title) ||
     containsInvestigationTaskKeyword(args.body));
