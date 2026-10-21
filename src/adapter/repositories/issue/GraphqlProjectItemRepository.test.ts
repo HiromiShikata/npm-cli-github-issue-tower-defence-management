@@ -4250,7 +4250,7 @@ describe('GraphqlProjectItemRepository', () => {
         }
 
         if (expected === 'resolves') {
-          expect(result).toBeUndefined();
+          expect(result).toBe('applied');
           return;
         }
 
@@ -4307,6 +4307,325 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(sentQuery).toContain('fieldValues(first: 50)');
     });
+  });
+
+  describe('updateProjectField write verification', () => {
+    const requestStartedAt = '2026-10-19T17:54:08.498Z';
+    const fixedNow = Date.parse(requestStartedAt);
+    const fieldId = 'field-id';
+    const itemId = 'item-id';
+    const field = { id: fieldId, name: 'Field' };
+    const cases: {
+      name: string;
+      value:
+        | { singleSelectOptionId: string }
+        | { text: string }
+        | { number: number }
+        | { date: string };
+      node: Record<string, unknown> | null;
+      actual: string | null;
+      updatedAt: string | null | undefined;
+      expected: 'applied' | 'overwrittenByAnotherWriter' | 'error';
+    }[] = [
+      {
+        name: 'single select matching',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'A', field },
+        actual: 'A',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'applied',
+      },
+      {
+        name: 'text matching',
+        value: { text: 'foo' },
+        node: { text: 'foo', field },
+        actual: 'foo',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'applied',
+      },
+      {
+        name: 'number matching',
+        value: { number: 5 },
+        node: { number: 5, field },
+        actual: '5',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'applied',
+      },
+      {
+        name: 'date matching',
+        value: { date: '2026-10-17' },
+        node: { date: '2026-10-17', field },
+        actual: '2026-10-17',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'applied',
+      },
+      {
+        name: 'single select later overwrite',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'single select same second overwrite',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: '2026-10-19T17:54:08Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'single select inclusive boundary',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: '2026-10-19T17:54:07Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'single select before boundary',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: '2026-10-19T17:54:06Z',
+        expected: 'error',
+      },
+      {
+        name: 'text later overwrite',
+        value: { text: 'foo' },
+        node: { text: 'bar', field },
+        actual: 'bar',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'number later overwrite',
+        value: { number: 5 },
+        node: { number: 6, field },
+        actual: '6',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'date later overwrite',
+        value: { date: '2026-10-17' },
+        node: { date: '2026-10-18', field },
+        actual: '2026-10-18',
+        updatedAt: '2026-10-19T17:54:09Z',
+        expected: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'text before boundary',
+        value: { text: 'foo' },
+        node: { text: 'bar', field },
+        actual: 'bar',
+        updatedAt: '2026-10-19T17:54:06Z',
+        expected: 'error',
+      },
+      {
+        name: 'single select absent timestamp',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: undefined,
+        expected: 'error',
+      },
+      {
+        name: 'single select null timestamp',
+        value: { singleSelectOptionId: 'A' },
+        node: { optionId: 'B', field },
+        actual: 'B',
+        updatedAt: null,
+        expected: 'error',
+      },
+      {
+        name: 'missing field value node',
+        value: { singleSelectOptionId: 'A' },
+        node: null,
+        actual: null,
+        updatedAt: undefined,
+        expected: 'error',
+      },
+    ];
+
+    afterEach(() => {
+      mockPost.mockReset();
+      jest.restoreAllMocks();
+    });
+
+    it.each(cases)(
+      '$name',
+      async ({ value, node, actual, updatedAt, expected }) => {
+        const getCurrentTimeMilliseconds = jest.fn(() => fixedNow);
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+          [],
+          getCurrentTimeMilliseconds,
+        );
+        const warn = jest
+          .spyOn(console, 'warn')
+          .mockImplementation(() => undefined);
+        const responseNode =
+          node === null
+            ? null
+            : { ...node, ...(updatedAt === undefined ? {} : { updatedAt }) };
+        mockPost.mockReturnValue(
+          mockJsonResponse({
+            data: {
+              updateProjectV2ItemFieldValue: {
+                clientMutationId: null,
+                projectV2Item: {
+                  fieldValues: {
+                    nodes: responseNode === null ? [] : [responseNode],
+                  },
+                },
+              },
+            },
+          }),
+        );
+
+        const result = await repository
+          .updateProjectField('project-id', fieldId, itemId, value)
+          .catch((error: unknown) => error);
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(getCurrentTimeMilliseconds).toHaveBeenCalledTimes(1);
+        expect(
+          getCurrentTimeMilliseconds.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockPost.mock.invocationCallOrder[0]);
+        const query = extractRequestedQueryFromMockCall(mockPost.mock.calls[0]);
+        expect(query).toContain('fieldValues(first: 50)');
+        for (const valueKind of ['Text', 'Number', 'Date', 'SingleSelect']) {
+          expect(query).toMatch(
+            new RegExp(
+              `ProjectV2ItemField${valueKind}Value\\s*\\{\\s*updatedAt`,
+            ),
+          );
+        }
+        const intendedValue =
+          'singleSelectOptionId' in value
+            ? value.singleSelectOptionId
+            : 'text' in value
+              ? value.text
+              : 'number' in value
+                ? String(value.number)
+                : value.date;
+        if (expected === 'error') {
+          expect(result).toBeInstanceOf(ProjectFieldWriteVerificationError);
+          expect(extractErrorMessage(result)).toContain(itemId);
+          expect(extractErrorMessage(result)).toContain(fieldId);
+          expect(extractErrorMessage(result)).toContain(intendedValue);
+          if (actual === null) {
+            expect(extractErrorMessage(result)).toContain(
+              'no matching field value was found',
+            );
+          } else {
+            expect(extractErrorMessage(result)).toContain(actual);
+            expect(extractErrorMessage(result)).toContain(
+              String(updatedAt ?? 'null'),
+            );
+            expect(extractErrorMessage(result)).toContain(requestStartedAt);
+            if (result instanceof ProjectFieldWriteVerificationError) {
+              expect(result.actualValueUpdatedAt).toBe(updatedAt ?? null);
+              expect(result.requestStartedAt).toBe(requestStartedAt);
+            }
+          }
+        } else {
+          expect(result).toBe(expected);
+          if (expected === 'overwrittenByAnotherWriter') {
+            const warning = warn.mock.calls.flat().join(' ');
+            for (const required of [
+              itemId,
+              fieldId,
+              intendedValue,
+              actual,
+              updatedAt,
+            ]) {
+              expect(warning).toContain(required);
+            }
+          } else {
+            expect(warn).not.toHaveBeenCalled();
+          }
+        }
+      },
+    );
+
+    it.each([
+      {
+        name: 'all FORBIDDEN errors',
+        errors: [{ type: 'FORBIDDEN', message: 'forbidden' }],
+        expected: 'skipped',
+      },
+      {
+        name: 'all archived errors',
+        errors: [{ message: 'The item is archived and cannot be updated' }],
+        expected: 'skipped',
+      },
+      {
+        name: 'unresolved node error',
+        errors: [{ message: 'Could not resolve to a node with the global id' }],
+        expected: 'error',
+      },
+    ])('$name', async ({ errors, expected }) => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const warn = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mockPost.mockReturnValue(mockJsonResponse({ errors }));
+      const result = await repository
+        .updateProjectField('project-id', fieldId, itemId, { text: 'value' })
+        .catch((error: unknown) => error);
+      if (expected === 'error') {
+        expect(result).toBeInstanceOf(Error);
+        expect(result).not.toBeInstanceOf(ProjectFieldWriteVerificationError);
+        expect(extractErrorMessage(result)).toContain(errors[0].message);
+      } else {
+        expect(result).toBe('skipped');
+        expect(warn).toHaveBeenCalled();
+      }
+    });
+
+    it.each(['overwrittenByAnotherWriter', 'verificationError'])(
+      'updateProjectTextField preserves its void result or original error for %s',
+      async (outcome) => {
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+        const verificationError = new ProjectFieldWriteVerificationError(
+          itemId,
+          fieldId,
+          'foo',
+          'bar',
+        );
+        const update = jest.spyOn(repository, 'updateProjectField');
+        if (outcome === 'verificationError') {
+          update.mockRejectedValue(verificationError);
+          await expect(
+            repository.updateProjectTextField(
+              'project-id',
+              fieldId,
+              itemId,
+              'foo',
+            ),
+          ).rejects.toBe(verificationError);
+        } else {
+          update.mockResolvedValue('overwrittenByAnotherWriter');
+          await expect(
+            repository.updateProjectTextField(
+              'project-id',
+              fieldId,
+              itemId,
+              'foo',
+            ),
+          ).resolves.toBeUndefined();
+        }
+      },
+    );
   });
 
   describe('clearProjectField', () => {
