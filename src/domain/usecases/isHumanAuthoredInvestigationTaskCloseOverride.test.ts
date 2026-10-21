@@ -45,6 +45,18 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       expected: false,
     },
     {
+      name: 'returns false when the body contains the calendar "template edit" link label with a keyword (the Zapier template variant)',
+      title: 'Attachment check',
+      body: '- [ ] 添付ファイルを確認：\n\n[template edit](https://calendar.google.com/calendar/event?eid=jkl012)',
+      expected: false,
+    },
+    {
+      name: 'returns true when a non-calendar link label contains "template" and the body has a keyword',
+      title: 'Attachment check',
+      body: 'Please 確認 the attachment. [template guide](https://example.com/template-guide)',
+      expected: true,
+    },
+    {
       name: 'returns true when only the first line is human-authored even though a later line quotes a past automated report',
       title: 'Please 確認 this',
       body: 'Can you 確認 the deployment went well?\n\nQuoting an earlier update:\n> From: :robot: chore (model)\n> Completed.',
