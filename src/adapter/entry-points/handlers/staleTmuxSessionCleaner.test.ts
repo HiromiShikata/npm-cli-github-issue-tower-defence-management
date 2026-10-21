@@ -1,3 +1,10 @@
+import * as fs from 'fs';
+
+jest.mock('fs', () => {
+  const actualFs: typeof fs = jest.requireActual('fs');
+  return { ...actualFs, readFileSync: jest.fn(actualFs.readFileSync) };
+});
+
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
@@ -78,9 +85,43 @@ const createMockIssueRepository = (
     ),
 });
 
+const sessionIdentityCommandResult = (
+  program: string,
+  args: string[],
+): { stdout: string; stderr: string; exitCode: number } => {
+  if (program === 'tmux' && args[0] === 'list-panes')
+    return {
+      stdout:
+        '91001 https_//github_com/demo/repo/issues/1\n91002 idle_no_task\n91003 recent_no_task\n',
+      stderr: '',
+      exitCode: 0,
+    };
+  if (program === 'ps')
+    return {
+      stdout:
+        '91001 1 claude --name https://github.com/demo/repo/issues/1\n91002 1 bash\n91003 1 bash\n',
+      stderr: '',
+      exitCode: 0,
+    };
+  return { stdout: '', stderr: '', exitCode: 0 };
+};
+
 describe('cleanStaleTmuxSessions', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const actualFs = jest.requireActual<typeof fs>('fs');
+    jest.mocked(fs.readFileSync).mockImplementation((filePath, options) => {
+      if (
+        typeof filePath === 'string' &&
+        /^\/proc\/9100[123]\/cgroup$/.test(filePath)
+      )
+        return '0::/user.slice/user-1000.slice/user@1000.service/app.slice/terminal.service\n';
+      if (typeof filePath === 'string' && filePath.startsWith('/proc/'))
+        throw new Error(
+          'Unexpected real process read in constructed session fixture',
+        );
+      return actualFs.readFileSync(filePath, options);
+    });
   });
 
   afterEach(() => {
@@ -98,7 +139,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return { stdout: '', stderr: '', exitCode: 0 };
+      return sessionIdentityCommandResult(program, args);
     });
 
     await cleanStaleTmuxSessions({
@@ -130,7 +171,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return { stdout: '', stderr: '', exitCode: 0 };
+      return sessionIdentityCommandResult(program, args);
     });
 
     await cleanStaleTmuxSessions({
@@ -159,7 +200,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return { stdout: '', stderr: '', exitCode: 0 };
+      return sessionIdentityCommandResult(program, args);
     });
 
     await cleanStaleTmuxSessions({
@@ -189,7 +230,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return { stdout: '', stderr: '', exitCode: 0 };
+      return sessionIdentityCommandResult(program, args);
     });
 
     await cleanStaleTmuxSessions({
@@ -214,7 +255,7 @@ describe('cleanStaleTmuxSessions', () => {
           stderr: '',
           exitCode: 0,
         };
-      return { stdout: '', stderr: '', exitCode: 0 };
+      return sessionIdentityCommandResult(program, args);
     });
     await cleanStaleTmuxSessions({
       project: makeProject(),
