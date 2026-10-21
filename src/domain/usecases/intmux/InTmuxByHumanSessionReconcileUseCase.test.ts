@@ -157,7 +157,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     issueCounter = 0;
   });
 
-  it('launches one session for an unheld open assigned issue', async () => {
+  it('AC7: launches exactly one session for an open assigned issue with empty hold fields and no session', async () => {
     const issue = makeIssue();
     const repository = createFakeTmuxSessionRepository({
       liveSessionNames: [],
@@ -183,6 +183,36 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       },
     ]);
     expect(result.launchedIssueUrls).toEqual([issue.url]);
+  });
+
+  it('AC8: does not launch for a dependency or past, current, or future action date or any action hour', async () => {
+    const heldIssues = [
+      makeIssue({
+        dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
+      }),
+      makeIssue({ nextActionDate: new Date('2020-01-01T00:00:00.000Z') }),
+      makeIssue({ nextActionDate: NOW }),
+      makeIssue({ nextActionDate: new Date('2030-01-01T00:00:00.000Z') }),
+      makeIssue({ nextActionHour: 0 }),
+    ];
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
+
+    const result = await runReconcile(useCase, {
+      issues: heldIssues,
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
   });
 
   it('does not launch when a live session already exists for the issue', async () => {
@@ -457,7 +487,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([]);
   });
 
-  it('skips launch when a live hold appears', async () => {
+  it('AC9: skips launch when any hold appears between the board snapshot and the live read', async () => {
     for (const hold of [
       { dependedIssueUrls: ['https://github.com/demo/repo/issues/99'] },
       { nextActionDate: new Date('2020-01-01T00:00:00Z') },

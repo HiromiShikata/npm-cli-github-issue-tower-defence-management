@@ -41,12 +41,23 @@ export class StaleTmuxSessionKillUseCase {
     idleThresholdSeconds: number;
     now: Date;
   }): Promise<void> => {
-    const liveSessions =
-      await this.tmuxSessionRepository.listLiveSessionsWithActivity();
+    let liveSessions: LiveTmuxSession[];
+    try {
+      liveSessions =
+        await this.tmuxSessionRepository.listLiveSessionsWithActivity();
+    } catch (error) {
+      console.error('Failed to list live tmux sessions', error);
+      throw error;
+    }
     const openIssues = await this.issueRepository.getAllOpened(params.project);
+    if (liveSessions.length === 0) return;
     const issuesBySessionName = new Map<string, Issue[]>();
     const protectedSessionNames = new Set<string>();
     const failures: unknown[] = [];
+    const liveSessionNames = new Set(
+      liveSessions.map((session) => session.sessionName),
+    );
+
     for (const issue of openIssues) {
       let sessionNames = [toTmuxSessionName(issue.url)];
       try {
@@ -58,26 +69,56 @@ export class StaleTmuxSessionKillUseCase {
             )),
           ]),
         ];
-        const liveIssue = await this.issueRepository.get(
-          issue.url,
-          params.project,
-        );
-        if (liveIssue !== null) {
-          for (const sessionName of sessionNames) {
-            issuesBySessionName.set(sessionName, [
-              ...(issuesBySessionName.get(sessionName) ?? []),
-              liveIssue,
-            ]);
-          }
-        } else {
-          for (const sessionName of sessionNames)
-            protectedSessionNames.add(sessionName);
+        for (const sessionName of sessionNames) {
+          if (!liveSessionNames.has(sessionName)) continue;
+          issuesBySessionName.set(sessionName, [
+            ...(issuesBySessionName.get(sessionName) ?? []),
+            issue,
+          ]);
         }
       } catch (error) {
         console.error(
           `Failed to read live session mapping for ${issue.url}`,
           error,
         );
+        failures.push(error);
+        for (const sessionName of sessionNames)
+          protectedSessionNames.add(sessionName);
+      }
+    }
+
+    const revalidatedHeldIssueUrls = new Set<string>();
+    for (const issue of openIssues) {
+      if (!issueSessionIsOnHold(issue)) continue;
+      if (revalidatedHeldIssueUrls.has(issue.url)) continue;
+      const sessionNames = [...issuesBySessionName.entries()]
+        .filter(([, issues]) =>
+          issues.some((mapped) => mapped.url === issue.url),
+        )
+        .map(([sessionName]) => sessionName);
+      if (sessionNames.length === 0) continue;
+      revalidatedHeldIssueUrls.add(issue.url);
+      try {
+        const liveIssue = await this.issueRepository.get(
+          issue.url,
+          params.project,
+        );
+        if (liveIssue === null) {
+          for (const sessionName of sessionNames)
+            protectedSessionNames.add(sessionName);
+          continue;
+        }
+        for (const sessionName of sessionNames) {
+          const mappedIssues = issuesBySessionName.get(sessionName) ?? [];
+          issuesBySessionName.set(
+            sessionName,
+            mappedIssues.map((mapped) =>
+              mapped.url === issue.url ? liveIssue : mapped,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error(`Failed to read live issue ${issue.url}`, error);
         failures.push(error);
         for (const sessionName of sessionNames)
           protectedSessionNames.add(sessionName);

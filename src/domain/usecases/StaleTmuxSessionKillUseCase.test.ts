@@ -596,7 +596,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
         [mockProject.id, selectedIssue],
         [otherProject.id, otherIssue],
       ]);
-      mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+      mockIssueRepository.getAllOpened.mockResolvedValue([selectedIssue]);
       mockIssueRepository.get.mockImplementation(
         async (_url: string, project: Project) =>
           projectMemberships.get(project.id) ?? null,
@@ -608,11 +608,15 @@ describe('StaleTmuxSessionKillUseCase', () => {
       expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual(
         selectedHeld ? [[sessionName]] : [],
       );
-      expect(mockIssueRepository.get).toHaveBeenCalledTimes(1);
-      expect(mockIssueRepository.get).toHaveBeenCalledWith(
-        issue.url,
-        mockProject,
+      expect(mockIssueRepository.get).toHaveBeenCalledTimes(
+        selectedHeld ? 1 : 0,
       );
+      if (selectedHeld) {
+        expect(mockIssueRepository.get).toHaveBeenCalledWith(
+          issue.url,
+          mockProject,
+        );
+      }
       expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
     },
   );
