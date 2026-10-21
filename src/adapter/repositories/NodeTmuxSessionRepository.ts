@@ -257,7 +257,7 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   };
 
   private isAbsentTmuxServer = (stderr: string): boolean =>
-    /no server running|no sessions|error connecting to .+: No such file or directory/i.test(
+    /no server running|no sessions|error connecting to .+(?:: No such file or directory| \(No such file or directory\))/i.test(
       stderr,
     );
 
