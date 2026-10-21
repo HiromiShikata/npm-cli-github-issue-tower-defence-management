@@ -20,6 +20,9 @@ const INVESTIGATION_TASK_KEYWORDS = [
   'リサーチ',
 ];
 
+const CALENDAR_TEMPLATE_LINK_PATTERN =
+  /\[[^\]]{0,200}template[^\]]{0,200}\]\(https:\/\/calendar\.google\.com\//i;
+
 const isAutomatedReportBody = (body: string): boolean =>
   AUTOMATED_REPORT_FIRST_LINE_PREFIX.test(
     normalizeReportBody(body).split('\n')[0],
@@ -38,5 +41,6 @@ export const isHumanAuthoredInvestigationTaskCloseOverride = (args: {
 }): boolean =>
   !isAutomatedReportBody(args.body) &&
   !args.body.includes('[edit this template](') &&
+  !CALENDAR_TEMPLATE_LINK_PATTERN.test(args.body) &&
   (containsInvestigationTaskKeyword(args.title) ||
     containsInvestigationTaskKeyword(args.body));
