@@ -91,4 +91,16 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       expected,
     );
   });
+
+  it('decides a long crafted body without catastrophic backtracking', () => {
+    const body = '[template'.repeat(1200);
+    const startedAt = Date.now();
+    const result = isHumanAuthoredInvestigationTaskCloseOverride({
+      title: '確認',
+      body,
+    });
+    const elapsedMs = Date.now() - startedAt;
+    expect(result).toBe(true);
+    expect(elapsedMs).toBeLessThan(200);
+  });
 });
