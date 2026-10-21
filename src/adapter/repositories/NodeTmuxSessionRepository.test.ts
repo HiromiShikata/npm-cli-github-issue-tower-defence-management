@@ -11,6 +11,12 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
   spawnInteractive: jest.fn(),
 });
 
+const repositoryMapsIssueSessions = (
+  repository: object,
+): repository is {
+  listSessionNamesForIssueUrl: (issueUrl: string) => Promise<string[]>;
+} => 'listSessionNamesForIssueUrl' in repository;
+
 describe('NodeTmuxSessionRepository', () => {
   describe('listLiveSessionNames', () => {
     it('parses tmux session names and drops blank lines', async () => {
@@ -692,7 +698,7 @@ describe('NodeTmuxSessionRepository', () => {
       expect(runner.spawnInteractive.mock.calls).toEqual([]);
     });
 
-    it('creates a new session when tmux list-panes fails after a matching process is found', async () => {
+    it('propagates genuine pane failure without fallback launch', async () => {
       const runner = createMockRunner();
       runner.runCommand
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
@@ -703,19 +709,19 @@ describe('NodeTmuxSessionRepository', () => {
         })
         .mockResolvedValueOnce({
           stdout: '',
-          stderr: 'no server running',
+          stderr: 'pane permission denied',
           exitCode: 1,
         });
       const repository = new NodeTmuxSessionRepository(runner);
 
-      await repository.attachOrCreateInteractiveSession(
-        issueUrl,
-        '/path/to/cl-scope-lib.sh',
-      );
+      await expect(
+        repository.attachOrCreateInteractiveSession(
+          issueUrl,
+          '/path/to/cl-scope-lib.sh',
+        ),
+      ).rejects.toThrow('pane permission denied');
 
-      expect(runner.spawnInteractive.mock.calls).toEqual([
-        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
-      ]);
+      expect(runner.spawnInteractive.mock.calls).toEqual([]);
     });
 
     it('creates a new session when no pane PID in the list-panes output matches the process ancestor chain', async () => {
@@ -792,9 +798,9 @@ describe('NodeTmuxSessionRepository', () => {
         exitCode: 0,
       };
     });
-    const repository: NodeTmuxSessionRepository & {
-      listSessionNamesForIssueUrl: (url: string) => Promise<string[]>;
-    } = new NodeTmuxSessionRepository(runner);
+    const repository = new NodeTmuxSessionRepository(runner);
+    if (!repositoryMapsIssueSessions(repository))
+      throw new Error('Missing exact issue session mapping method');
     expect(
       await repository.listSessionNamesForIssueUrl(
         'https://github.com/demo/repo/issues/9',
@@ -851,9 +857,9 @@ describe('NodeTmuxSessionRepository', () => {
           exitCode: 0,
         };
       });
-      const repository: NodeTmuxSessionRepository & {
-        listSessionNamesForIssueUrl: (url: string) => Promise<string[]>;
-      } = new NodeTmuxSessionRepository(runner);
+      const repository = new NodeTmuxSessionRepository(runner);
+      if (!repositoryMapsIssueSessions(repository))
+        throw new Error('Missing exact issue session mapping method');
       await expect(
         repository.listSessionNamesForIssueUrl(
           'https://github.com/demo/repo/issues/9',
