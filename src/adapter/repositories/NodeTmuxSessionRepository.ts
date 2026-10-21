@@ -3,7 +3,6 @@ import * as path from 'path';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { TmuxSessionRepository } from '../../domain/usecases/adapter-interfaces/TmuxSessionRepository';
 import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
-import { clSessionScopeUnitName } from './clSessionScopeUnitName';
 import { clSessionScopeUnitNameFromCgroupContent } from './clSessionScopeUnitNameFromCgroupContent';
 
 const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
@@ -121,8 +120,10 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   };
 
   killSession = async (sessionName: string): Promise<void> => {
-    const scopeUnitName = clSessionScopeUnitName(sessionName);
-    await this.stopScopeUnit(scopeUnitName);
+    const scopeUnitNames = await this.sessionScopeUnitNames(sessionName);
+    for (const scopeUnitName of scopeUnitNames) {
+      await this.stopScopeUnit(scopeUnitName);
+    }
     const { stderr, exitCode } = await this.localCommandRunner.runCommand(
       'tmux',
       ['kill-session', '-t', `=${sessionName}`],
@@ -134,6 +135,74 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
         }`,
       );
     }
+  };
+
+  private sessionScopeUnitNames = async (
+    sessionName: string,
+  ): Promise<string[]> => {
+    const panes = await this.localCommandRunner.runCommand('tmux', [
+      'list-panes',
+      '-a',
+      '-F',
+      '#{pane_pid} #{session_name}',
+    ]);
+    if (panes.exitCode !== 0) {
+      throw new Error(
+        `Failed to list panes for session "${sessionName}": ${panes.stderr}`,
+      );
+    }
+    const panePids = new Set(
+      panes.stdout.split('\n').flatMap((line) => {
+        const match = line.trim().match(/^(\d+) (.+)$/);
+        return match !== null && match[2] === sessionName
+          ? [Number(match[1])]
+          : [];
+      }),
+    );
+    if (panePids.size === 0) {
+      throw new Error(
+        `No pane process found for tmux session "${sessionName}"`,
+      );
+    }
+    const processResult = await this.localCommandRunner.runCommand('ps', [
+      '-eo',
+      'pid=,ppid=,args=',
+    ]);
+    if (processResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to list processes for session "${sessionName}": ${processResult.stderr}`,
+      );
+    }
+    const parentPidByPid = new Map(
+      processResult.stdout.split('\n').flatMap((line): [number, number][] => {
+        const match = line.trim().match(/^(\d+)\s+(\d+)(?:\s|$)/);
+        return match === null ? [] : [[Number(match[1]), Number(match[2])]];
+      }),
+    );
+    const sessionPids = new Set(panePids);
+    for (const processPid of parentPidByPid.keys()) {
+      let ancestorPid = processPid;
+      const visitedPids = new Set<number>();
+      while (ancestorPid > 1 && !visitedPids.has(ancestorPid)) {
+        if (panePids.has(ancestorPid)) {
+          sessionPids.add(processPid);
+          break;
+        }
+        visitedPids.add(ancestorPid);
+        ancestorPid = parentPidByPid.get(ancestorPid) ?? 0;
+      }
+    }
+    const scopeUnitNames = new Set<string>();
+    for (const processPid of sessionPids) {
+      const cgroupContent = fs.readFileSync(
+        path.join(this.procDirectory, String(processPid), 'cgroup'),
+        'utf8',
+      );
+      const scopeUnitName =
+        clSessionScopeUnitNameFromCgroupContent(cgroupContent);
+      if (scopeUnitName !== null) scopeUnitNames.add(scopeUnitName);
+    }
+    return [...scopeUnitNames];
   };
 
   killOwnSession = async (): Promise<void> => {
