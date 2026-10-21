@@ -21,7 +21,7 @@ const INVESTIGATION_TASK_KEYWORDS = [
 ];
 
 const CALENDAR_TEMPLATE_LINK_PATTERN =
-  /\[[^\]]*template[^\]]*\]\(https:\/\/calendar\.google\.com\//i;
+  /\[[^\]]{0,200}template[^\]]{0,200}\]\(https:\/\/calendar\.google\.com\//i;
 
 const isAutomatedReportBody = (body: string): boolean =>
   AUTOMATED_REPORT_FIRST_LINE_PREFIX.test(
