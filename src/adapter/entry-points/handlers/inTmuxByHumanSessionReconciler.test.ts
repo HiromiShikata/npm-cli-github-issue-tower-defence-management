@@ -1,3 +1,4 @@
+import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
@@ -5,6 +6,21 @@ import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler
 
 const ASSIGNEE = 'owner-login';
 const NOW = new Date('2026-06-25T12:00:00.000Z');
+
+const PROJECT: Project = {
+  id: 'selected-project',
+  url: 'https://github.com/users/demo/projects/9',
+  databaseId: 9,
+  name: 'Selected project',
+  status: { name: 'Status', fieldId: 'selected-status', statuses: [] },
+  nextActionDate: null,
+  nextActionHour: null,
+  story: null,
+  remainingEstimationMinutes: null,
+  dependedIssueUrlSeparatedByComma: null,
+  completionDate50PercentConfidence: null,
+  agent: null,
+};
 
 const makeIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'demo/repo',
@@ -46,7 +62,15 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 const createIssueStateRepository = (
   state = 'open',
-): Pick<IssueRepository, 'getIssueOrPullRequestState' | 'getIssueByUrl'> => ({
+): Pick<
+  IssueRepository,
+  'getIssueOrPullRequestState' | 'getIssueByUrl' | 'get'
+> => ({
+  get: async () =>
+    makeIssue({
+      state: state === 'closed' ? 'CLOSED' : 'OPEN',
+      isClosed: state === 'closed',
+    }),
   getIssueByUrl: async () =>
     makeIssue({
       state: state === 'closed' ? 'CLOSED' : 'OPEN',
@@ -61,11 +85,18 @@ const createIssueStateRepository = (
   }),
 });
 
+const reconcileWithProject = (
+  params: Omit<Parameters<typeof reconcileInTmuxByHumanSessions>[0], 'project'>,
+) => {
+  const input = { ...params, project: PROJECT };
+  return reconcileInTmuxByHumanSessions(input);
+};
+
 describe('reconcileInTmuxByHumanSessions', () => {
   it('does nothing when no launcher command is configured', async () => {
     const runner = createMockRunner();
 
-    await reconcileInTmuxByHumanSessions({
+    await reconcileWithProject({
       inTmuxLauncherCommand: null,
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
@@ -89,7 +120,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       return { stdout: '', stderr: '', exitCode: 0 };
     });
 
-    await reconcileInTmuxByHumanSessions({
+    await reconcileWithProject({
       inTmuxLauncherCommand: 'cl',
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
@@ -137,7 +168,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       return { stdout: '', stderr: '', exitCode: 0 };
     });
 
-    await reconcileInTmuxByHumanSessions({
+    await reconcileWithProject({
       inTmuxLauncherCommand: 'cl',
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
@@ -160,7 +191,7 @@ describe('reconcileInTmuxByHumanSessions', () => {
       exitCode: 0,
     }));
 
-    await reconcileInTmuxByHumanSessions({
+    await reconcileWithProject({
       inTmuxLauncherCommand: 'cl',
       assigneeLogin: ASSIGNEE,
       issues: [makeIssue()],
@@ -173,5 +204,34 @@ describe('reconcileInTmuxByHumanSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'new-session',
     );
     expect(newSessionCalls).toHaveLength(0);
+  });
+  it('forwards the selected project to the project-scoped live issue lookup', async () => {
+    const issue = makeIssue();
+    const repository = createIssueStateRepository();
+    repository.get = jest
+      .fn()
+      .mockResolvedValue({ ...issue, nextActionHour: 0 });
+    repository.getIssueByUrl = jest.fn().mockResolvedValue(issue);
+    const runner = createMockRunner();
+    runner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await reconcileWithProject({
+      inTmuxLauncherCommand: 'cl',
+      assigneeLogin: ASSIGNEE,
+      issues: [issue],
+      localCommandRunner: runner,
+      issueStateRepository: repository,
+      now: NOW,
+    });
+    expect(repository.get).toHaveBeenCalledWith(issue.url, PROJECT);
+    expect(repository.getIssueByUrl).not.toHaveBeenCalled();
+    expect(
+      runner.runCommand.mock.calls.some(
+        ([program, args]) => program === 'tmux' && args[0] === 'new-session',
+      ),
+    ).toBe(false);
   });
 });

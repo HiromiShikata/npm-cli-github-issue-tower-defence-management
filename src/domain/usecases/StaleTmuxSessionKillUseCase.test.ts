@@ -73,7 +73,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
 describe('StaleTmuxSessionKillUseCase', () => {
   let useCase: StaleTmuxSessionKillUseCase;
   let mockIssueRepository: Mocked<
-    Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl'>
+    Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl' | 'get'>
   >;
   let mockTmuxSessionRepository: Mocked<
     Pick<
@@ -109,6 +109,14 @@ describe('StaleTmuxSessionKillUseCase', () => {
     mockProject = createMockProject();
     mockIssueRepository = {
       getAllOpened: jest.fn().mockResolvedValue([]),
+      get: jest
+        .fn()
+        .mockImplementation(
+          async (url: string) =>
+            (await mockIssueRepository.getAllOpened(mockProject)).find(
+              (issue) => issue.url === url,
+            ) ?? null,
+        ),
       getIssueByUrl: jest
         .fn()
         .mockImplementation(
@@ -473,7 +481,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
           ...hold,
         });
         mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+        mockIssueRepository.get.mockResolvedValue(issue);
         mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue(
           ['renamed-first', 'renamed-second'],
         );
@@ -486,9 +494,9 @@ describe('StaleTmuxSessionKillUseCase', () => {
           ),
         );
         await useCase.run(runParams());
-        expect(mockIssueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        expect(mockIssueRepository.get).toHaveBeenCalledWith(
           issue.url,
-          { bypassCache: true },
+          mockProject,
         );
         expect(
           mockTmuxSessionRepository.listSessionNamesForIssueUrl,
@@ -504,7 +512,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
   it('preserves a session when a live hold is cleared', async () => {
     const issue = createMockIssue({ nextActionHour: 0 });
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    mockIssueRepository.getIssueByUrl.mockResolvedValue({
+    mockIssueRepository.get.mockResolvedValue({
       ...issue,
       nextActionHour: null,
     });
@@ -515,9 +523,10 @@ describe('StaleTmuxSessionKillUseCase', () => {
       },
     ]);
     await useCase.run(runParams());
-    expect(mockIssueRepository.getIssueByUrl).toHaveBeenCalledWith(issue.url, {
-      bypassCache: true,
-    });
+    expect(mockIssueRepository.get).toHaveBeenCalledWith(
+      issue.url,
+      mockProject,
+    );
     expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
   });
 
@@ -530,14 +539,14 @@ describe('StaleTmuxSessionKillUseCase', () => {
         activityEpochSeconds: nowEpochSeconds,
       },
     ]);
-    mockIssueRepository.getIssueByUrl.mockRejectedValue(
+    mockIssueRepository.get.mockRejectedValue(
       new Error('live issue unavailable'),
     );
     await expect(useCase.run(runParams())).rejects.toThrow(
       'live issue unavailable',
     );
     expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+    mockIssueRepository.get.mockResolvedValue(issue);
     mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockRejectedValue(
       new Error('pane mapping failed'),
     );
@@ -548,7 +557,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
   it('continues independent session stops and propagates collected failures', async () => {
     const issue = createMockIssue({ nextActionHour: 0 });
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+    mockIssueRepository.get.mockResolvedValue(issue);
     mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue([
       'first',
       'second',
@@ -568,4 +577,43 @@ describe('StaleTmuxSessionKillUseCase', () => {
       ['second'],
     ]);
   });
+  it.each([true, false])(
+    'uses the selected project live hold for cleanup when membership fields disagree: selected held=%s',
+    async (selectedHeld) => {
+      const issue = createMockIssue();
+      const otherProject: Project = {
+        ...mockProject,
+        id: 'other-project',
+        databaseId: 10,
+        url: 'https://github.com/users/user/projects/10',
+      };
+      const selectedIssue = {
+        ...issue,
+        nextActionHour: selectedHeld ? 0 : null,
+      };
+      const otherIssue = { ...issue, nextActionHour: selectedHeld ? null : 0 };
+      const projectMemberships = new Map([
+        [mockProject.id, selectedIssue],
+        [otherProject.id, otherIssue],
+      ]);
+      mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+      mockIssueRepository.get.mockImplementation(
+        async (_url: string, project: Project) =>
+          projectMemberships.get(project.id) ?? null,
+      );
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(otherIssue);
+      const sessionName = toTmuxSessionName(issue.url);
+      setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
+      await useCase.run(runParams());
+      expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual(
+        selectedHeld ? [[sessionName]] : [],
+      );
+      expect(mockIssueRepository.get).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.get).toHaveBeenCalledWith(
+        issue.url,
+        mockProject,
+      );
+      expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    },
+  );
 });

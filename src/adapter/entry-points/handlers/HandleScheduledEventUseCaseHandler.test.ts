@@ -155,10 +155,15 @@ jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('./inTmuxByHumanSessionReconciler', () => ({
+  reconcileInTmuxByHumanSessions: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('./staleTmuxSessionCleaner', () => ({
   cleanStaleTmuxSessions: jest.fn().mockResolvedValue(undefined),
 }));
 
+import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
@@ -960,6 +965,39 @@ defaultAgentName: readme-agent
 
       expect(getInTmuxProjectOrderArg()).toBeNull();
     });
+  });
+
+  it('forwards the exact fetched project to launch reconciliation and cleanup', async () => {
+    const project: Project = {
+      id: 'selected-project',
+      url: 'https://github.com/users/demo/projects/9',
+      databaseId: 9,
+      name: 'Selected project',
+      status: { name: 'Status', fieldId: 'selected-status', statuses: [] },
+      nextActionDate: null,
+      nextActionHour: null,
+      story: null,
+      remainingEstimationMinutes: null,
+      dependedIssueUrlSeparatedByComma: null,
+      completionDate50PercentConfidence: null,
+      agent: null,
+    };
+    mockRun.mockResolvedValueOnce({
+      project,
+      issues: [],
+      cacheUsed: false,
+      targetDateTimes: [],
+      rotationOrder: null,
+    });
+    await new HandleScheduledEventUseCaseHandler().handle('config.yml', false);
+    const launchInput = jest.mocked(reconcileInTmuxByHumanSessions).mock
+      .calls[0]?.[0];
+    expect(
+      launchInput && 'project' in launchInput ? launchInput.project : null,
+    ).toBe(project);
+    expect(jest.mocked(cleanStaleTmuxSessions).mock.calls[0]?.[0].project).toBe(
+      project,
+    );
   });
 
   it('runs scheduled cleanup when launch is disabled', async () => {
