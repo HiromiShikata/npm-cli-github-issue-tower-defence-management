@@ -2246,6 +2246,147 @@ describe('DailySecurityScanUseCase', () => {
         },
       );
 
+      it('records scanFailed and continues after an empty exit-1 result without publishing findings', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRunLogScanRunner({
+            broken: { scanExitCode: 1, scanStdout: '' },
+            next: { scanExitCode: 0 },
+          }),
+        );
+
+        await runDailySecurityScanOnce(useCase);
+
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenNthCalledWith(
+          1,
+          expect.objectContaining({
+            repositoryName: 'broken',
+            outcome: {
+              type: 'scanFailed',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+              exitCode: 1,
+              stderr: '',
+            },
+          }),
+        );
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenNthCalledWith(
+          2,
+          expect.objectContaining({
+            repositoryName: 'next',
+            outcome: {
+              type: 'scanCompletedClean',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+            },
+          }),
+        );
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        errorSpy.mockRestore();
+      });
+
+      it('records scanFailed and continues after an unparsable exit-1 result without publishing findings', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRunLogScanRunner({
+            broken: { scanExitCode: 1, scanStdout: 'not json' },
+            next: { scanExitCode: 0 },
+          }),
+        );
+
+        await runDailySecurityScanOnce(useCase);
+
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenNthCalledWith(
+          1,
+          expect.objectContaining({
+            repositoryName: 'broken',
+            outcome: {
+              type: 'scanFailed',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+              exitCode: 1,
+              stderr: '',
+            },
+          }),
+        );
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenNthCalledWith(
+          2,
+          expect.objectContaining({
+            repositoryName: 'next',
+            outcome: {
+              type: 'scanCompletedClean',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+            },
+          }),
+        );
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        errorSpy.mockRestore();
+      });
+
+      it('records one vulnerable package for a valid exit-1 result', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRunLogScanRunner({
+            app: {
+              scanExitCode: 1,
+              scanStdout: osvScanOutputOf([exampleVulnerablePackage('one')]),
+            },
+          }),
+        );
+
+        await runDailySecurityScanOnce(useCase);
+
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            repositoryName: 'app',
+            outcome: {
+              type: 'scanCompletedWithVulnerabilities',
+              clonedCommitSha: SCANNED_COMMIT_SHA,
+              vulnerablePackageCount: 1,
+            },
+          }),
+        );
+      });
+
       it.each([
         {
           name: 'the scanner executable cannot start',
