@@ -1,3 +1,10 @@
+## [2.180.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.6...v2.180.7) (2026-10-21)
+
+
+### Bug Fixes
+
+* **tdpm:** match calendar template links by label pattern in close override ([#3566](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3566)) ([047c82e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/047c82e26b5acb71a024b43a7f8b11c7646c45a3))
+
 ## [2.180.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.5...v2.180.6) (2026-10-21)
 
 
