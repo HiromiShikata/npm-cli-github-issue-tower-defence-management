@@ -906,7 +906,6 @@ export class HandleScheduledEventUseCaseHandler {
 
       try {
         await reconcileInTmuxByHumanSessions({
-          project: result.project,
           inTmuxLauncherCommand: mergedInput.inTmuxLauncherCommand ?? null,
           assigneeLogin: input.manager,
           issues: result.issues,

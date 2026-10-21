@@ -1,4 +1,3 @@
-import { issueSessionIsOnHold } from './issueSessionIsOnHold';
 import { Issue } from '../entities/Issue';
 import { LiveTmuxSession } from '../entities/LiveTmuxSession';
 import { Project } from '../entities/Project';
@@ -23,15 +22,10 @@ type KillCandidate = {
 
 export class StaleTmuxSessionKillUseCase {
   constructor(
-    private readonly issueRepository: Pick<
-      IssueRepository,
-      'getAllOpened' | 'get'
-    >,
+    private readonly issueRepository: Pick<IssueRepository, 'getAllOpened'>,
     private readonly tmuxSessionRepository: Pick<
       TmuxSessionRepository,
-      | 'listLiveSessionsWithActivity'
-      | 'killSession'
-      | 'listSessionNamesForIssueUrl'
+      'listLiveSessionsWithActivity' | 'killSession'
     >,
   ) {}
 
@@ -44,57 +38,17 @@ export class StaleTmuxSessionKillUseCase {
     const liveSessions =
       await this.tmuxSessionRepository.listLiveSessionsWithActivity();
     const openIssues = await this.issueRepository.getAllOpened(params.project);
-    const issuesBySessionName = new Map<string, Issue[]>();
-    const protectedSessionNames = new Set<string>();
-    const failures: unknown[] = [];
+    const issueBySessionName = new Map<string, Issue>();
     for (const issue of openIssues) {
-      let sessionNames = [toTmuxSessionName(issue.url)];
-      try {
-        sessionNames = [
-          ...new Set([
-            ...sessionNames,
-            ...(await this.tmuxSessionRepository.listSessionNamesForIssueUrl(
-              issue.url,
-            )),
-          ]),
-        ];
-        const liveIssue = await this.issueRepository.get(
-          issue.url,
-          params.project,
-        );
-        if (liveIssue !== null) {
-          for (const sessionName of sessionNames) {
-            issuesBySessionName.set(sessionName, [
-              ...(issuesBySessionName.get(sessionName) ?? []),
-              liveIssue,
-            ]);
-          }
-        } else {
-          for (const sessionName of sessionNames)
-            protectedSessionNames.add(sessionName);
-        }
-      } catch (error) {
-        console.error(
-          `Failed to read live session mapping for ${issue.url}`,
-          error,
-        );
-        failures.push(error);
-        for (const sessionName of sessionNames)
-          protectedSessionNames.add(sessionName);
-      }
+      issueBySessionName.set(toTmuxSessionName(issue.url), issue);
     }
 
     const nowEpochSeconds = Math.floor(params.now.getTime() / 1000);
     const killCandidates: KillCandidate[] = [];
     for (const session of liveSessions) {
-      if (
-        protectedSessionNames.has(session.sessionName) ||
-        (failures.length > 0 && !issuesBySessionName.has(session.sessionName))
-      )
-        continue;
       const reason = this.evaluateKillReason(
         session,
-        issuesBySessionName.get(session.sessionName) ?? [],
+        issueBySessionName.get(session.sessionName) ?? null,
         nowEpochSeconds,
         params.excludedStatusNames,
         params.idleThresholdSeconds,
@@ -114,35 +68,21 @@ export class StaleTmuxSessionKillUseCase {
     }
 
     for (const candidate of killCandidates) {
-      try {
-        await this.tmuxSessionRepository.killSession(candidate.sessionName);
-        console.log(
-          `Killed tmux session: ${candidate.sessionName} (${candidate.reason})`,
-        );
-      } catch (error) {
-        console.error(
-          `Failed to kill tmux session ${candidate.sessionName}`,
-          error,
-        );
-        failures.push(error);
-      }
+      await this.tmuxSessionRepository.killSession(candidate.sessionName);
+      console.log(
+        `Killed tmux session: ${candidate.sessionName} (${candidate.reason})`,
+      );
     }
-    if (failures.length > 0) throw new Error(failures.map(String).join('; '));
   };
 
   private evaluateKillReason = (
     session: LiveTmuxSession,
-    issues: readonly Issue[],
+    issue: Issue | null,
     nowEpochSeconds: number,
     excludedStatusNames: readonly string[],
     idleThresholdSeconds: number,
   ): string | null => {
-    if (issues.length > 0) {
-      const heldIssues = issues.filter((issue) => issueSessionIsOnHold(issue));
-      if (heldIssues.length === issues.length)
-        return `mapped to held issue ${heldIssues[0].url}`;
-      if (heldIssues.length > 0) return null;
-      const issue = issues[issues.length - 1];
+    if (issue !== null) {
       const isExcludedStatus =
         issue.status !== null && excludedStatusNames.includes(issue.status);
       if (isExcludedStatus) {

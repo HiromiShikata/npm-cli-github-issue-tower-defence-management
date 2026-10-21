@@ -1,10 +1,3 @@
-import * as fs from 'fs';
-
-jest.mock('fs', () => {
-  const actualFs: typeof fs = jest.requireActual('fs');
-  return { ...actualFs, readFileSync: jest.fn(actualFs.readFileSync) };
-});
-
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
@@ -76,57 +69,13 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
 
 const createMockIssueRepository = (
   issues: Issue[],
-): Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl' | 'get'> => ({
+): Pick<IssueRepository, 'getAllOpened'> => ({
   getAllOpened: jest.fn().mockResolvedValue(issues),
-  get: jest
-    .fn()
-    .mockImplementation(
-      async (url: string) => issues.find((issue) => issue.url === url) ?? null,
-    ),
-  getIssueByUrl: jest
-    .fn()
-    .mockImplementation(
-      async (url) => issues.find((issue) => issue.url === url) ?? null,
-    ),
 });
-
-const sessionIdentityCommandResult = (
-  program: string,
-  args: string[],
-): { stdout: string; stderr: string; exitCode: number } => {
-  if (program === 'tmux' && args[0] === 'list-panes')
-    return {
-      stdout:
-        '91001 https_//github_com/demo/repo/issues/1\n91002 idle_no_task\n91003 recent_no_task\n',
-      stderr: '',
-      exitCode: 0,
-    };
-  if (program === 'ps')
-    return {
-      stdout:
-        '91001 1 claude --name https://github.com/demo/repo/issues/1\n91002 1 bash\n91003 1 bash\n',
-      stderr: '',
-      exitCode: 0,
-    };
-  return { stdout: '', stderr: '', exitCode: 0 };
-};
 
 describe('cleanStaleTmuxSessions', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
-    const actualFs = jest.requireActual<typeof fs>('fs');
-    jest.mocked(fs.readFileSync).mockImplementation((filePath, options) => {
-      if (
-        typeof filePath === 'string' &&
-        /^\/proc\/9100[123]\/cgroup$/.test(filePath)
-      )
-        return '0::/user.slice/user-1000.slice/user@1000.service/app.slice/terminal.service\n';
-      if (typeof filePath === 'string' && filePath.startsWith('/proc/'))
-        throw new Error(
-          'Unexpected real process read in constructed session fixture',
-        );
-      return actualFs.readFileSync(filePath, options);
-    });
   });
 
   afterEach(() => {
@@ -144,7 +93,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return sessionIdentityCommandResult(program, args);
+      return { stdout: '', stderr: '', exitCode: 0 };
     });
 
     await cleanStaleTmuxSessions({
@@ -176,7 +125,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return sessionIdentityCommandResult(program, args);
+      return { stdout: '', stderr: '', exitCode: 0 };
     });
 
     await cleanStaleTmuxSessions({
@@ -205,7 +154,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return sessionIdentityCommandResult(program, args);
+      return { stdout: '', stderr: '', exitCode: 0 };
     });
 
     await cleanStaleTmuxSessions({
@@ -235,7 +184,7 @@ describe('cleanStaleTmuxSessions', () => {
           exitCode: 0,
         };
       }
-      return sessionIdentityCommandResult(program, args);
+      return { stdout: '', stderr: '', exitCode: 0 };
     });
 
     await cleanStaleTmuxSessions({
@@ -250,66 +199,5 @@ describe('cleanStaleTmuxSessions', () => {
     );
     expect(killCalls).toHaveLength(1);
     expect(killCalls[0][1]).toEqual(['kill-session', '-t', '=idle_no_task']);
-  });
-  it('runs cleanup when launch is disabled', async () => {
-    const runner = createMockRunner();
-    runner.runCommand.mockImplementation(async (program, args) => {
-      if (program === 'tmux' && args[0] === 'list-sessions')
-        return {
-          stdout: `https_//github_com/demo/repo/issues/1 ${NOW_EPOCH_SECONDS}\n`,
-          stderr: '',
-          exitCode: 0,
-        };
-      return sessionIdentityCommandResult(program, args);
-    });
-    await cleanStaleTmuxSessions({
-      project: makeProject(),
-      issueRepository: createMockIssueRepository([
-        makeIssue({ nextActionHour: 0 }),
-      ]),
-      localCommandRunner: runner,
-      now: NOW,
-    });
-    expect(
-      runner.runCommand.mock.calls.some(
-        ([program, args]) => program === 'tmux' && args[0] === 'kill-session',
-      ),
-    ).toBe(true);
-    expect(
-      runner.runCommand.mock.calls.some(
-        ([program, args]) => program === 'tmux' && args[0] === 'new-session',
-      ),
-    ).toBe(false);
-  });
-  it('forwards the selected project to cleanup live issue decisions', async () => {
-    const project = makeProject();
-    const issue = makeIssue();
-    const repository = createMockIssueRepository([issue]);
-    repository.get = jest
-      .fn()
-      .mockResolvedValue({ ...issue, nextActionHour: 0 });
-    repository.getIssueByUrl = jest.fn().mockResolvedValue(issue);
-    const runner = createMockRunner();
-    runner.runCommand.mockImplementation(async (program, args) => {
-      if (program === 'tmux' && args[0] === 'list-sessions')
-        return {
-          stdout: `https_//github_com/demo/repo/issues/1 ${NOW_EPOCH_SECONDS}\n`,
-          stderr: '',
-          exitCode: 0,
-        };
-      return sessionIdentityCommandResult(program, args);
-    });
-    await cleanStaleTmuxSessions({
-      project,
-      issueRepository: repository,
-      localCommandRunner: runner,
-      now: NOW,
-    });
-    expect(repository.get).toHaveBeenCalledWith(issue.url, project);
-    expect(repository.getIssueByUrl).not.toHaveBeenCalled();
-    expect(runner.runCommand.mock.calls).toContainEqual([
-      'tmux',
-      ['kill-session', '-t', '=https_//github_com/demo/repo/issues/1'],
-    ]);
   });
 });
