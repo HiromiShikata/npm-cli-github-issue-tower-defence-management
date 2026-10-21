@@ -2306,6 +2306,45 @@ describe('DailySecurityScanUseCase', () => {
         },
       );
 
+      it('rejects a numeric scanner result when checkout cleanup fails without recording a completed scan or findings', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+        } = buildUseCase();
+        const cleanupError = new Error('checkout cleanup failed');
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const successfulScanRunner = buildRunLogScanRunner({
+          app: {
+            scanExitCode: 1,
+            scanStdout: osvScanOutputOf([exampleVulnerablePackage('one')]),
+          },
+        });
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          async (program, args) => {
+            if (program === 'rm') {
+              throw cleanupError;
+            }
+            return successfulScanRunner(program, args);
+          },
+        );
+
+        await expect(runDailySecurityScanOnce(useCase)).rejects.toBe(
+          cleanupError,
+        );
+
+        expect(mockLocalCommandRunner.runCommand.mock.calls).toContainEqual([
+          'rm',
+          ['-rf', checkoutDirectoryOf('app')],
+        ]);
+        expect(
+          mockDailySecurityScanRunLogRepository.append,
+        ).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
       describe('osv-scanner exit code classification', () => {
         const NO_PACKAGE_SOURCES_STDERR =
           'No package sources found, --help for usage information.';
