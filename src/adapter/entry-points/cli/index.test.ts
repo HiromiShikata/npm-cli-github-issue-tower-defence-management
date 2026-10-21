@@ -5528,6 +5528,36 @@ mysteryKey: 'value'
 
   describe('killTmuxSession', () => {
     it('reaches the real repository command sequence to kill a named session via --session', async () => {
+      const actualFs = jest.requireActual<typeof fs>('fs');
+      jest.mocked(fs.readFileSync).mockImplementation((filePath, options) => {
+        if (
+          filePath === '/proc/91001/cgroup' ||
+          filePath === '/proc/91002/cgroup'
+        )
+          return '0::/user.slice/user-1000.slice/user@1000.service/app.slice/cl-https---github-com-owner-repo-issues-9.scope\n';
+        if (typeof filePath === 'string' && filePath.startsWith('/proc/'))
+          throw new Error(
+            'Unexpected real process read in constructed session fixture',
+          );
+        return actualFs.readFileSync(filePath, options);
+      });
+      mockRunCommand.mockImplementation(async (program, args) => {
+        if (program === 'tmux' && args[0] === 'list-panes')
+          return {
+            stdout: '91001 https_//github_com/owner/repo/issues/9\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        if (program === 'ps')
+          return {
+            stdout:
+              '91001 1 bash\n91002 91001 claude --name https://github.com/owner/repo/issues/9\n',
+            stderr: '',
+            exitCode: 0,
+          };
+        return { stdout: '', stderr: '', exitCode: 0 };
+      });
+
       await program.parseAsync([
         'node',
         'test',
@@ -5539,6 +5569,8 @@ mysteryKey: 'value'
       const expectedScopeUnitName =
         'cl-https---github-com-owner-repo-issues-9.scope';
       expect(mockRunCommand.mock.calls).toEqual([
+        ['tmux', ['list-panes', '-a', '-F', '#{pane_pid} #{session_name}']],
+        ['ps', ['-eo', 'pid=,ppid=,args=']],
         ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
         ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
         ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],

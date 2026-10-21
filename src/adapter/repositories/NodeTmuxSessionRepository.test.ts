@@ -11,7 +11,39 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
   spawnInteractive: jest.fn(),
 });
 
+const repositoryMapsIssueSessions = (
+  repository: object,
+): repository is {
+  listSessionNamesForIssueUrl: (issueUrl: string) => Promise<string[]>;
+} => 'listSessionNamesForIssueUrl' in repository;
+
 describe('NodeTmuxSessionRepository', () => {
+  it.each(['names', 'activity', 'issue mapping'])(
+    'returns zero %s sessions for the actual absent-socket error shape',
+    async (listing) => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr:
+          'error connecting to /test/tmux.sock (No such file or directory)',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+      const result =
+        listing === 'names'
+          ? repository.listLiveSessionNames()
+          : listing === 'activity'
+            ? repository.listLiveSessionsWithActivity()
+            : repositoryMapsIssueSessions(repository)
+              ? repository.listSessionNamesForIssueUrl(
+                  'https://github.com/demo/repo/issues/9',
+                )
+              : Promise.reject(new Error('Missing issue session mapping'));
+
+      await expect(result).resolves.toEqual([]);
+    },
+  );
+
   describe('listLiveSessionNames', () => {
     it('parses tmux session names and drops blank lines', async () => {
       const runner = createMockRunner();
@@ -33,7 +65,7 @@ describe('NodeTmuxSessionRepository', () => {
       ]);
     });
 
-    it('returns an empty list when tmux exits non-zero', async () => {
+    it('returns no sessions when the tmux server is absent', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
@@ -79,7 +111,7 @@ describe('NodeTmuxSessionRepository', () => {
       ]);
     });
 
-    it('returns an empty list when tmux exits non-zero', async () => {
+    it('returns no sessions when the tmux server is absent', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
@@ -171,7 +203,7 @@ describe('NodeTmuxSessionRepository', () => {
       ]);
     });
 
-    it('logs an error but does not throw when stopping the scope unit fails', async () => {
+    it('propagates a scope stop failure', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockImplementation(async (program: string) => {
         if (program === 'systemctl') {
@@ -191,104 +223,431 @@ describe('NodeTmuxSessionRepository', () => {
 
       await expect(
         repository.stopWorkerScopeUnit('aw-owner-repo-1-100.scope'),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('Failed to stop');
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Failed to stop systemd user scope "aw-owner-repo-1-100.scope"',
-        ),
-      );
       errorSpy.mockRestore();
     });
   });
 
-  describe('killSession', () => {
-    it('kills the tmux session by exact name', async () => {
+  describe('launchDetachedSession', () => {
+    it('rejects a failed tmux launch with the original error instead of reporting success', async () => {
       const runner = createMockRunner();
       runner.runCommand.mockResolvedValue({
         stdout: '',
-        stderr: '',
-        exitCode: 0,
+        stderr: 'new-session permission denied',
+        exitCode: 1,
       });
       const repository = new NodeTmuxSessionRepository(runner);
 
-      await repository.killSession('no_task_session');
+      await expect(
+        repository.launchDetachedSession(
+          'held-session',
+          'cl',
+          'https://github.com/demo/repo/issues/9',
+        ),
+      ).rejects.toThrow('new-session permission denied');
+      expect(runner.runCommand.mock.calls).toHaveLength(1);
+      expect(runner.runCommand.mock.calls[0]?.slice(0, 2)).toEqual([
+        'tmux',
+        [
+          'new-session',
+          '-A',
+          '-d',
+          '-s',
+          'held-session',
+          'sh',
+          '-lc',
+          'exec "$1" "$2"',
+          'sh',
+          'cl',
+          'https://github.com/demo/repo/issues/9',
+        ],
+      ]);
+    });
+  });
 
-      const tmuxCall = runner.runCommand.mock.calls.find(
-        (call) => call[0] === 'tmux',
+  describe('killSession', () => {
+    let procDirectory: string;
+    type SessionFixture = {
+      sessionName: string;
+      panePid: number;
+      issueUrl: string | null;
+      scopeName: string | null;
+    };
+
+    beforeEach(() => {
+      procDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'node-tmux-session-stop-proc-'),
       );
-      expect(tmuxCall).toEqual([
+    });
+
+    afterEach(() => {
+      fs.rmSync(procDirectory, { recursive: true, force: true });
+    });
+
+    const createSessionFixture = (
+      sessions: SessionFixture[],
+      failedScopeName: string | null = null,
+      tmuxStopError: string | null = null,
+      processListError: string | null = null,
+    ): {
+      repository: NodeTmuxSessionRepository;
+      runner: Mocked<LocalCommandRunner>;
+    } => {
+      for (const session of sessions) {
+        for (const pid of [session.panePid, session.panePid + 1]) {
+          const processDirectory = path.join(procDirectory, String(pid));
+          fs.mkdirSync(processDirectory, { recursive: true });
+          fs.writeFileSync(
+            path.join(processDirectory, 'cgroup'),
+            `0::/user.slice/user-1000.slice/user@1000.service/app.slice/${session.scopeName ?? 'terminal.service'}\n`,
+          );
+        }
+      }
+      const runner = createMockRunner();
+      runner.runCommand.mockImplementation(
+        async (program: string, args: string[]) => {
+          if (program === 'ps' && processListError !== null)
+            return { stdout: '', stderr: processListError, exitCode: 1 };
+          if (program === 'ps')
+            return {
+              stdout: sessions
+                .map(
+                  (session) =>
+                    `${session.panePid} 1 bash\n${session.panePid + 1} ${session.panePid} claude${session.issueUrl === null ? '' : ` --name ${session.issueUrl}`}\n`,
+                )
+                .join(''),
+              stderr: '',
+              exitCode: 0,
+            };
+          if (program === 'tmux' && args[0] === 'list-sessions')
+            return {
+              stdout: sessions.map((session) => session.sessionName).join('\n'),
+              stderr: '',
+              exitCode: 0,
+            };
+          if (program === 'tmux' && args[0] === 'list-panes')
+            return {
+              stdout: sessions
+                .map((session) => `${session.panePid} ${session.sessionName}\n`)
+                .join(''),
+              stderr: '',
+              exitCode: 0,
+            };
+          if (
+            program === 'tmux' &&
+            args[0] === 'kill-session' &&
+            tmuxStopError !== null
+          )
+            return { stdout: '', stderr: tmuxStopError, exitCode: 1 };
+          if (program === 'systemctl' && args.includes('stop')) {
+            const scopeName = args[args.length - 1];
+            if (scopeName === failedScopeName)
+              return {
+                stdout: '',
+                stderr: `Failed to stop ${scopeName}: Access denied`,
+                exitCode: 1,
+              };
+            if (!sessions.some((session) => session.scopeName === scopeName))
+              return {
+                stdout: '',
+                stderr: `Unit ${scopeName} not loaded.`,
+                exitCode: 5,
+              };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        },
+      );
+      return {
+        repository: new NodeTmuxSessionRepository(runner, procDirectory),
+        runner,
+      };
+    };
+
+    const sessionMutations = (runner: Mocked<LocalCommandRunner>): unknown[] =>
+      runner.runCommand.mock.calls.filter(
+        ([program, args]) =>
+          program === 'systemctl' ||
+          (program === 'tmux' && args[0] === 'kill-session'),
+      );
+
+    it('kills the tmux session by exact name', async () => {
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName: 'no_task_session',
+          panePid: 100,
+          issueUrl: null,
+          scopeName: 'cl-no-task-session.scope',
+        },
+      ]);
+      await repository.killSession('no_task_session');
+      expect(runner.runCommand.mock.calls).toContainEqual([
         'tmux',
         ['kill-session', '-t', '=no_task_session'],
       ]);
     });
 
     it('throws when tmux exits non-zero', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockImplementation(async (program: string) => {
-        if (program === 'tmux') {
-          return { stdout: '', stderr: "can't find session", exitCode: 1 };
-        }
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
-      const repository = new NodeTmuxSessionRepository(runner);
-
+      const { repository } = createSessionFixture(
+        [
+          {
+            sessionName: 'missing_session',
+            panePid: 100,
+            issueUrl: null,
+            scopeName: 'cl-missing-session.scope',
+          },
+        ],
+        null,
+        "can't find session",
+      );
       await expect(repository.killSession('missing_session')).rejects.toThrow(
         'Failed to kill tmux session "missing_session": exit code 1',
       );
     });
 
     it('stops the systemd user scope for the session before killing it, wrapping the stop with reset-failed', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      const repository = new NodeTmuxSessionRepository(runner);
-
-      await repository.killSession('https_//github_com/owner/repo/issues/9');
-
-      const expectedScopeUnitName =
-        'cl-https---github-com-owner-repo-issues-9.scope';
-      expect(runner.runCommand.mock.calls).toEqual([
-        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
-        ['systemctl', ['--user', 'stop', expectedScopeUnitName]],
-        ['systemctl', ['--user', 'reset-failed', expectedScopeUnitName]],
-        [
-          'tmux',
-          ['kill-session', '-t', '=https_//github_com/owner/repo/issues/9'],
-        ],
+      const sessionName = 'https_//github_com/owner/repo/issues/9';
+      const scopeName = 'cl-https---github-com-owner-repo-issues-9.scope';
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName,
+          panePid: 100,
+          issueUrl: 'https://github.com/owner/repo/issues/9',
+          scopeName,
+        },
+      ]);
+      await repository.killSession(sessionName);
+      expect(sessionMutations(runner)).toEqual([
+        ['systemctl', ['--user', 'reset-failed', scopeName]],
+        ['systemctl', ['--user', 'stop', scopeName]],
+        ['systemctl', ['--user', 'reset-failed', scopeName]],
+        ['tmux', ['kill-session', '-t', `=${sessionName}`]],
       ]);
     });
 
-    it('logs an error but does not throw when stopping the systemd user scope fails', async () => {
-      const runner = createMockRunner();
-      runner.runCommand.mockImplementation(async (program: string) => {
-        if (program === 'systemctl') {
-          return {
-            stdout: '',
-            stderr: 'Failed to stop cl-leader-session.scope: Unit not loaded.',
-            exitCode: 5,
-          };
-        }
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
-      const errorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-      const repository = new NodeTmuxSessionRepository(runner);
-
-      await expect(
-        repository.killSession('leader_session'),
-      ).resolves.toBeUndefined();
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Failed to stop systemd user scope "cl-leader-session.scope"',
-        ),
+    it('propagates a scope stop failure before killing the tmux session', async () => {
+      const { repository, runner } = createSessionFixture(
+        [
+          {
+            sessionName: 'leader_session',
+            panePid: 100,
+            issueUrl: null,
+            scopeName: 'cl-leader-session.scope',
+          },
+        ],
+        'cl-leader-session.scope',
       );
-      errorSpy.mockRestore();
+      await expect(repository.killSession('leader_session')).rejects.toThrow(
+        'Failed to stop',
+      );
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program, args]) => program === 'tmux' && args[0] === 'kill-session',
+        ),
+      ).toEqual([]);
+    });
+
+    it('propagates a missing pane instead of reporting a successful session stop', async () => {
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName: 'other-session',
+          panePid: 100,
+          issueUrl: null,
+          scopeName: null,
+        },
+      ]);
+      await expect(repository.killSession('missing-session')).rejects.toThrow(
+        'No pane process found',
+      );
+      expect(sessionMutations(runner)).toEqual([]);
+    });
+
+    it('propagates process listing errors after reading the target pane', async () => {
+      const { repository, runner } = createSessionFixture(
+        [
+          {
+            sessionName: 'renamed-first',
+            panePid: 100,
+            issueUrl: null,
+            scopeName: 'cl-original-first.scope',
+          },
+        ],
+        null,
+        null,
+        'process permission denied',
+      );
+      await expect(repository.killSession('renamed-first')).rejects.toThrow(
+        'process permission denied',
+      );
+      expect(runner.runCommand.mock.calls[0]?.slice(0, 2)).toEqual([
+        'tmux',
+        ['list-panes', '-a', '-F', '#{pane_pid} #{session_name}'],
+      ]);
+      expect(sessionMutations(runner)).toEqual([]);
+    });
+
+    it.each([
+      { name: 'missing pane', pid: 100, unreadable: false },
+      { name: 'missing descendant', pid: 101, unreadable: false },
+      { name: 'unreadable pane', pid: 100, unreadable: true },
+      { name: 'unreadable descendant', pid: 101, unreadable: true },
+    ])(
+      'propagates $name cgroup errors without reporting a successful stop',
+      async ({ pid, unreadable }) => {
+        const { repository, runner } = createSessionFixture([
+          {
+            sessionName: 'renamed-first',
+            panePid: 100,
+            issueUrl: null,
+            scopeName: 'cl-original-first.scope',
+          },
+        ]);
+        const cgroupPath = path.join(procDirectory, String(pid), 'cgroup');
+        fs.unlinkSync(cgroupPath);
+        if (unreadable) fs.mkdirSync(cgroupPath);
+        await expect(repository.killSession('renamed-first')).rejects.toThrow();
+        expect(sessionMutations(runner)).toEqual([]);
+      },
+    );
+
+    it('stops the descendant original scope when the pane shell belongs to a terminal service', async () => {
+      const issueUrl = 'https://github.com/demo/repo/issues/9';
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName: 'renamed-first',
+          panePid: 100,
+          issueUrl,
+          scopeName: 'cl-original-first.scope',
+        },
+      ]);
+      fs.writeFileSync(
+        path.join(procDirectory, '100', 'cgroup'),
+        '0::/user.slice/user-1000.slice/user@1000.service/app.slice/terminal.service\n',
+      );
+      if (!repositoryMapsIssueSessions(repository))
+        throw new Error('Missing exact issue session mapping method');
+      expect(await repository.listSessionNamesForIssueUrl(issueUrl)).toEqual([
+        'renamed-first',
+      ]);
+      await repository.killSession('renamed-first');
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program, args]) => program === 'systemctl' && args.includes('stop'),
+        ),
+      ).toEqual([['systemctl', ['--user', 'stop', 'cl-original-first.scope']]]);
+      expect(runner.runCommand.mock.calls).toContainEqual([
+        'tmux',
+        ['kill-session', '-t', '=renamed-first'],
+      ]);
+    });
+
+    it('maps and stops both renamed issue sessions through their actual original scopes without stopping the issue URL prefix neighbor', async () => {
+      const issueUrl = 'https://github.com/demo/repo/issues/9';
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName: 'renamed-first',
+          panePid: 100,
+          issueUrl,
+          scopeName: 'cl-original-first.scope',
+        },
+        {
+          sessionName: 'renamed-second',
+          panePid: 200,
+          issueUrl,
+          scopeName: 'cl-original-second.scope',
+        },
+        {
+          sessionName: 'issue-90',
+          panePid: 300,
+          issueUrl: 'https://github.com/demo/repo/issues/90',
+          scopeName: 'cl-original-neighbor.scope',
+        },
+        {
+          sessionName: 'unmapped',
+          panePid: 400,
+          issueUrl: null,
+          scopeName: null,
+        },
+      ]);
+      if (!repositoryMapsIssueSessions(repository))
+        throw new Error('Missing exact issue session mapping method');
+      const sessionNames =
+        await repository.listSessionNamesForIssueUrl(issueUrl);
+      expect(sessionNames).toEqual(['renamed-first', 'renamed-second']);
+      for (const sessionName of sessionNames)
+        await repository.killSession(sessionName);
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program, args]) => program === 'systemctl' && args.includes('stop'),
+        ),
+      ).toEqual([
+        ['systemctl', ['--user', 'stop', 'cl-original-first.scope']],
+        ['systemctl', ['--user', 'stop', 'cl-original-second.scope']],
+      ]);
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program, args]) => program === 'tmux' && args[0] === 'kill-session',
+        ),
+      ).toEqual([
+        ['tmux', ['kill-session', '-t', '=renamed-first']],
+        ['tmux', ['kill-session', '-t', '=renamed-second']],
+      ]);
+      expect(
+        runner.runCommand.mock.calls.some(
+          ([program, args]) =>
+            program === 'systemctl' &&
+            args.some((arg) => arg.includes('cl-renamed')),
+        ),
+      ).toBe(false);
+    });
+
+    it('stops a scope-less session without synthesizing a nonexistent scope', async () => {
+      const { repository, runner } = createSessionFixture([
+        {
+          sessionName: 'scope-less',
+          panePid: 100,
+          issueUrl: null,
+          scopeName: null,
+        },
+      ]);
+      await expect(
+        repository.killSession('scope-less'),
+      ).resolves.toBeUndefined();
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program]) => program === 'systemctl',
+        ),
+      ).toEqual([]);
+      expect(runner.runCommand.mock.calls).toContainEqual([
+        'tmux',
+        ['kill-session', '-t', '=scope-less'],
+      ]);
+    });
+
+    it('propagates failure stopping the actual original scope of a renamed session', async () => {
+      const { repository, runner } = createSessionFixture(
+        [
+          {
+            sessionName: 'renamed-first',
+            panePid: 100,
+            issueUrl: 'https://github.com/demo/repo/issues/9',
+            scopeName: 'cl-original-first.scope',
+          },
+        ],
+        'cl-original-first.scope',
+      );
+      await expect(repository.killSession('renamed-first')).rejects.toThrow(
+        'Access denied',
+      );
+      expect(runner.runCommand.mock.calls).toContainEqual([
+        'systemctl',
+        ['--user', 'stop', 'cl-original-first.scope'],
+      ]);
+      expect(
+        runner.runCommand.mock.calls.filter(
+          ([program, args]) => program === 'tmux' && args[0] === 'kill-session',
+        ),
+      ).toEqual([]);
     });
   });
 
@@ -685,24 +1044,24 @@ describe('NodeTmuxSessionRepository', () => {
       ]);
     });
 
-    it('creates a new session when ps command fails to run', async () => {
+    it('propagates process listing failure without fallback launch', async () => {
       const runner = createMockRunner();
       runner.runCommand
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
         .mockResolvedValueOnce({ stdout: '', stderr: 'ps error', exitCode: 1 });
       const repository = new NodeTmuxSessionRepository(runner);
 
-      await repository.attachOrCreateInteractiveSession(
-        issueUrl,
-        '/path/to/cl-scope-lib.sh',
-      );
+      await expect(
+        repository.attachOrCreateInteractiveSession(
+          issueUrl,
+          '/path/to/cl-scope-lib.sh',
+        ),
+      ).rejects.toThrow('ps error');
 
-      expect(runner.spawnInteractive.mock.calls).toEqual([
-        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
-      ]);
+      expect(runner.spawnInteractive.mock.calls).toEqual([]);
     });
 
-    it('creates a new session when tmux list-panes fails after a matching process is found', async () => {
+    it('propagates genuine pane failure without fallback launch', async () => {
       const runner = createMockRunner();
       runner.runCommand
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
@@ -713,19 +1072,19 @@ describe('NodeTmuxSessionRepository', () => {
         })
         .mockResolvedValueOnce({
           stdout: '',
-          stderr: 'no server running',
+          stderr: 'pane permission denied',
           exitCode: 1,
         });
       const repository = new NodeTmuxSessionRepository(runner);
 
-      await repository.attachOrCreateInteractiveSession(
-        issueUrl,
-        '/path/to/cl-scope-lib.sh',
-      );
+      await expect(
+        repository.attachOrCreateInteractiveSession(
+          issueUrl,
+          '/path/to/cl-scope-lib.sh',
+        ),
+      ).rejects.toThrow('pane permission denied');
 
-      expect(runner.spawnInteractive.mock.calls).toEqual([
-        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
-      ]);
+      expect(runner.spawnInteractive.mock.calls).toEqual([]);
     });
 
     it('creates a new session when no pane PID in the list-panes output matches the process ancestor chain', async () => {
@@ -778,5 +1137,97 @@ describe('NodeTmuxSessionRepository', () => {
         ['tmux', ['attach-session', '-t', '=abc123']],
       ]);
     });
+  });
+  it('maps every renamed session to the exact issue URL', async () => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => {
+      if (program === 'ps')
+        return {
+          stdout:
+            '100 1 sh\n101 100 claude --name https://github.com/demo/repo/issues/9\n200 1 sh\n201 200 codex https://github.com/demo/repo/issues/9\n300 1 sh\n301 300 claude --name https://github.com/demo/repo/issues/90\n400 1 unrelated\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      if (args[0] === 'list-panes')
+        return {
+          stdout:
+            '100 renamed-first\n200 renamed-second\n300 issue-90\n400 unmapped\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      return {
+        stdout: 'renamed-first\nrenamed-second\nissue-90\nunmapped\n',
+        stderr: '',
+        exitCode: 0,
+      };
+    });
+    const repository = new NodeTmuxSessionRepository(runner);
+    if (!repositoryMapsIssueSessions(repository))
+      throw new Error('Missing exact issue session mapping method');
+    expect(
+      await repository.listSessionNamesForIssueUrl(
+        'https://github.com/demo/repo/issues/9',
+      ),
+    ).toEqual(['renamed-first', 'renamed-second']);
+    expect(
+      await repository.listSessionNamesForIssueUrl(
+        'https://github.com/demo/repo/issues/90',
+      ),
+    ).toEqual(['issue-90']);
+  });
+
+  it('propagates genuine list and stop failures', async () => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(async (program, args) => ({
+      stdout: '',
+      stderr: `${program} ${args[0]} permission denied`,
+      exitCode: 1,
+    }));
+    const repository = new NodeTmuxSessionRepository(runner);
+    await expect(repository.listLiveSessionNames()).rejects.toThrow(
+      'permission denied',
+    );
+    await expect(repository.listLiveSessionsWithActivity()).rejects.toThrow(
+      'permission denied',
+    );
+    await expect(
+      repository.listInteractiveProcessCommandLines(),
+    ).rejects.toThrow('permission denied');
+    await expect(repository.killSession('held-session')).rejects.toThrow(
+      'permission denied',
+    );
+  });
+
+  it('propagates process and pane mapping failures', async () => {
+    for (const failingProgram of ['ps', 'tmux']) {
+      const runner = createMockRunner();
+      runner.runCommand.mockImplementation(async (program, args) => {
+        if (
+          program === failingProgram &&
+          (program === 'ps' || args[0] === 'list-panes')
+        )
+          return {
+            stdout: '',
+            stderr: 'mapping permission denied',
+            exitCode: 1,
+          };
+        return {
+          stdout:
+            program === 'ps'
+              ? '100 1 claude https://github.com/demo/repo/issues/9\n'
+              : 'held-session\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+      if (!repositoryMapsIssueSessions(repository))
+        throw new Error('Missing exact issue session mapping method');
+      await expect(
+        repository.listSessionNamesForIssueUrl(
+          'https://github.com/demo/repo/issues/9',
+        ),
+      ).rejects.toThrow('mapping permission denied');
+    }
   });
 });

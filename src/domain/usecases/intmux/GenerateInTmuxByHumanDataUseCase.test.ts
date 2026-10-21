@@ -187,6 +187,23 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
     });
   });
 
+  it('keeps held issues out of the interactive list with every populated hold field', () => {
+    for (const hold of [
+      { dependedIssueUrls: ['https://github.com/demo/repo/issues/9'] },
+      { nextActionDate: new Date('2000-01-01T00:00:00Z') },
+      { nextActionDate: NOW },
+      { nextActionDate: new Date('2030-01-01T00:00:00Z') },
+      { nextActionHour: 0 },
+    ]) {
+      const heldIssue = makeIssue({ story: 'Story Alpha', ...hold });
+      const availableIssue = makeIssue({ story: 'Story Alpha' });
+      const result = run([heldIssue, availableIssue]);
+      expect(result.v1.flatMap((group) => group.urls)).toEqual([
+        availableIssue.url,
+      ]);
+    }
+  });
+
   describe('story grouping and ordering', () => {
     it('orders groups by the project story option display order', () => {
       const result = run([
