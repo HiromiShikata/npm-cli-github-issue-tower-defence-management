@@ -72,9 +72,14 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
 
 describe('StaleTmuxSessionKillUseCase', () => {
   let useCase: StaleTmuxSessionKillUseCase;
-  let mockIssueRepository: Mocked<Pick<IssueRepository, 'getAllOpened'>>;
+  let mockIssueRepository: Mocked<
+    Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl' | 'get'>
+  >;
   let mockTmuxSessionRepository: Mocked<
-    Pick<TmuxSessionRepository, 'listLiveSessionsWithActivity' | 'killSession'>
+    Pick<
+      TmuxSessionRepository,
+      'listLiveSessionsWithActivity' | 'killSession'
+    > & { listSessionNamesForIssueUrl: (url: string) => Promise<string[]> }
   >;
   let mockProject: Project;
   const now = new Date('2026-06-26T00:00:00Z');
@@ -104,10 +109,29 @@ describe('StaleTmuxSessionKillUseCase', () => {
     mockProject = createMockProject();
     mockIssueRepository = {
       getAllOpened: jest.fn().mockResolvedValue([]),
+      get: jest
+        .fn()
+        .mockImplementation(
+          async (url: string) =>
+            (await mockIssueRepository.getAllOpened(mockProject)).find(
+              (issue) => issue.url === url,
+            ) ?? null,
+        ),
+      getIssueByUrl: jest
+        .fn()
+        .mockImplementation(
+          async (url) =>
+            (await mockIssueRepository.getAllOpened(mockProject)).find(
+              (issue) => issue.url === url,
+            ) ?? null,
+        ),
     };
     mockTmuxSessionRepository = {
       listLiveSessionsWithActivity: jest.fn().mockResolvedValue([]),
       killSession: jest.fn().mockResolvedValue(undefined),
+      listSessionNamesForIssueUrl: jest
+        .fn()
+        .mockImplementation(async (url: string) => [toTmuxSessionName(url)]),
     };
     useCase = new StaleTmuxSessionKillUseCase(
       mockIssueRepository,
@@ -188,23 +212,23 @@ describe('StaleTmuxSessionKillUseCase', () => {
     },
     {
       row: 5,
-      name: 'In Tmux by human, next action date set, recent activity -> not killed',
+      name: 'In Tmux by human, next action date set, recent activity -> killed',
       mappedToIssue: true,
       issueStatus: IN_TMUX_STATUS_NAME,
       nextActionDate: new Date('2026-06-27T00:00:00Z'),
       nextActionHour: null,
       idleAtOrBeyondThreshold: false,
-      expectedKilled: false,
+      expectedKilled: true,
     },
     {
       row: 6,
-      name: 'In Tmux by human, next action hour set, recent activity -> not killed',
+      name: 'In Tmux by human, next action hour set, recent activity -> killed',
       mappedToIssue: true,
       issueStatus: IN_TMUX_STATUS_NAME,
       nextActionDate: null,
       nextActionHour: 9,
       idleAtOrBeyondThreshold: false,
-      expectedKilled: false,
+      expectedKilled: true,
     },
     {
       row: 7,
@@ -228,23 +252,23 @@ describe('StaleTmuxSessionKillUseCase', () => {
     },
     {
       row: 9,
-      name: 'In Tmux by agent, next action date set, recent activity -> not killed',
+      name: 'In Tmux by agent, next action date set, recent activity -> killed',
       mappedToIssue: true,
       issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
       nextActionDate: new Date('2026-06-27T00:00:00Z'),
       nextActionHour: null,
       idleAtOrBeyondThreshold: false,
-      expectedKilled: false,
+      expectedKilled: true,
     },
     {
       row: 10,
-      name: 'In Tmux by agent, next action hour set, recent activity -> not killed',
+      name: 'In Tmux by agent, next action hour set, recent activity -> killed',
       mappedToIssue: true,
       issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
       nextActionDate: null,
       nextActionHour: 9,
       idleAtOrBeyondThreshold: false,
-      expectedKilled: false,
+      expectedKilled: true,
     },
     {
       row: 11,
@@ -435,5 +459,246 @@ describe('StaleTmuxSessionKillUseCase', () => {
       'failed to load issues',
     );
     expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+  });
+  it('stops all sessions for held issues before status and idle exemptions', async () => {
+    for (const hold of [
+      { dependedIssueUrls: ['https://github.com/user/repo/issues/8'] },
+      { nextActionDate: new Date('2020-01-01T00:00:00Z') },
+      { nextActionDate: now },
+      { nextActionDate: new Date('2030-01-01T00:00:00Z') },
+      { nextActionHour: 0 },
+    ]) {
+      for (const status of [
+        IN_TMUX_STATUS_NAME,
+        IN_TMUX_BY_AGENT_STATUS_NAME,
+        'Done',
+        null,
+      ]) {
+        mockTmuxSessionRepository.killSession.mockClear();
+        const issue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/9',
+          status,
+          ...hold,
+        });
+        mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+        mockIssueRepository.get.mockResolvedValue(issue);
+        mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue(
+          ['renamed-first', 'renamed-second'],
+        );
+        setLiveSessions(
+          ['renamed-first', 'renamed-second', 'issue-90', 'unmapped'].map(
+            (sessionName) => ({
+              sessionName,
+              activityEpochSeconds: nowEpochSeconds,
+            }),
+          ),
+        );
+        await useCase.run(runParams());
+        expect(mockIssueRepository.get).toHaveBeenCalledWith(
+          issue.url,
+          mockProject,
+        );
+        expect(
+          mockTmuxSessionRepository.listSessionNamesForIssueUrl,
+        ).toHaveBeenCalledWith(issue.url);
+        expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual([
+          ['renamed-first'],
+          ['renamed-second'],
+        ]);
+      }
+    }
+  });
+
+  it('preserves a session when a live hold is cleared', async () => {
+    const issue = createMockIssue({ nextActionHour: 0 });
+    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+    mockIssueRepository.get.mockResolvedValue({
+      ...issue,
+      nextActionHour: null,
+    });
+    setLiveSessions([
+      {
+        sessionName: toTmuxSessionName(issue.url),
+        activityEpochSeconds: nowEpochSeconds,
+      },
+    ]);
+    await useCase.run(runParams());
+    expect(mockIssueRepository.get).toHaveBeenCalledWith(
+      issue.url,
+      mockProject,
+    );
+    expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+  });
+
+  it('does not report successful cleanup when live issue reading or mapping fails', async () => {
+    const issue = createMockIssue({ nextActionHour: 0 });
+    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+    setLiveSessions([
+      {
+        sessionName: toTmuxSessionName(issue.url),
+        activityEpochSeconds: nowEpochSeconds,
+      },
+    ]);
+    mockIssueRepository.get.mockRejectedValue(
+      new Error('live issue unavailable'),
+    );
+    await expect(useCase.run(runParams())).rejects.toThrow(
+      'live issue unavailable',
+    );
+    expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockRejectedValue(
+      new Error('pane mapping failed'),
+    );
+    await expect(useCase.run(runParams())).rejects.toThrow(
+      'pane mapping failed',
+    );
+  });
+  it('continues independent session stops and propagates collected failures', async () => {
+    const issue = createMockIssue({ nextActionHour: 0 });
+    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue([
+      'first',
+      'second',
+    ]);
+    setLiveSessions(
+      ['first', 'second'].map((sessionName) => ({
+        sessionName,
+        activityEpochSeconds: nowEpochSeconds,
+      })),
+    );
+    mockTmuxSessionRepository.killSession
+      .mockRejectedValueOnce(new Error('first stop failed'))
+      .mockResolvedValueOnce(undefined);
+    await expect(useCase.run(runParams())).rejects.toThrow();
+    expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual([
+      ['first'],
+      ['second'],
+    ]);
+  });
+  it.each([true, false])(
+    'uses the selected project live hold for cleanup when membership fields disagree: selected held=%s',
+    async (selectedHeld) => {
+      const issue = createMockIssue();
+      const otherProject: Project = {
+        ...mockProject,
+        id: 'other-project',
+        databaseId: 10,
+        url: 'https://github.com/users/user/projects/10',
+      };
+      const selectedIssue = {
+        ...issue,
+        nextActionHour: selectedHeld ? 0 : null,
+      };
+      const otherIssue = { ...issue, nextActionHour: selectedHeld ? null : 0 };
+      const projectMemberships = new Map([
+        [mockProject.id, selectedIssue],
+        [otherProject.id, otherIssue],
+      ]);
+      mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+      mockIssueRepository.get.mockImplementation(
+        async (_url: string, project: Project) =>
+          projectMemberships.get(project.id) ?? null,
+      );
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(otherIssue);
+      const sessionName = toTmuxSessionName(issue.url);
+      setLiveSessions([{ sessionName, activityEpochSeconds: nowEpochSeconds }]);
+      await useCase.run(runParams());
+      expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual(
+        selectedHeld ? [[sessionName]] : [],
+      );
+      expect(mockIssueRepository.get).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.get).toHaveBeenCalledWith(
+        issue.url,
+        mockProject,
+      );
+      expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    },
+  );
+
+  describe('one live session shared by an unheld issue and a held issue', () => {
+    const SHARED_SESSION_NAME = 'leader-session';
+    const UNHELD_ISSUE_URL = 'https://github.com/user/repo/issues/21';
+    const HELD_ISSUE_URL = 'https://github.com/user/repo/issues/22';
+
+    const createSharedSessionIssues = (): {
+      unheldIssue: Issue;
+      heldIssue: Issue;
+    } => ({
+      unheldIssue: createMockIssue({
+        url: UNHELD_ISSUE_URL,
+        status: 'In Progress',
+        nextActionHour: null,
+      }),
+      heldIssue: createMockIssue({
+        url: HELD_ISSUE_URL,
+        status: 'In Progress',
+        nextActionHour: 0,
+      }),
+    });
+
+    const killCandidateLines = (
+      logSpy: jest.SpyInstance<void, unknown[]>,
+    ): string[] =>
+      logSpy.mock.calls
+        .map((call: unknown[]) => String(call[0]))
+        .filter((line: string) => line.startsWith('Kill candidate:'));
+
+    beforeEach(() => {
+      mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockResolvedValue([
+        SHARED_SESSION_NAME,
+      ]);
+      setLiveSessions([
+        {
+          sessionName: SHARED_SESSION_NAME,
+          activityEpochSeconds:
+            nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS,
+        },
+      ]);
+    });
+
+    it('does not stop the shared session when the unheld issue is listed before the held issue', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { unheldIssue, heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        unheldIssue,
+        heldIssue,
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+      expect(killCandidateLines(logSpy)).toEqual([]);
+    });
+
+    it('does not stop the shared session when the held issue is listed before the unheld issue', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { unheldIssue, heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([
+        heldIssue,
+        unheldIssue,
+      ]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+      expect(killCandidateLines(logSpy)).toEqual([]);
+    });
+
+    it('stops a session whose only mapped issue is held, with the held issue URL as the reason', async () => {
+      const logSpy = jest.spyOn(console, 'log');
+      const { heldIssue } = createSharedSessionIssues();
+      mockIssueRepository.getAllOpened.mockResolvedValue([heldIssue]);
+
+      await useCase.run(runParams());
+
+      expect(mockTmuxSessionRepository.killSession).toHaveBeenCalledWith(
+        SHARED_SESSION_NAME,
+      );
+      expect(killCandidateLines(logSpy)).toEqual([
+        `Kill candidate: ${SHARED_SESSION_NAME} (mapped to held issue ${HELD_ISSUE_URL})`,
+      ]);
+    });
   });
 });
