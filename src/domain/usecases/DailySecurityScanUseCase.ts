@@ -299,22 +299,49 @@ export class DailySecurityScanUseCase {
       }
       const { checkoutDirectory, clonedCommitSha } = checkoutResult;
 
+      let scanResult: Awaited<ReturnType<LocalCommandRunner['runCommand']>>;
+      try {
+        scanResult = await this.localCommandRunner.runCommand('osv-scanner', [
+          'scan',
+          'source',
+          '-r',
+          checkoutDirectory,
+          '--format',
+          'json',
+        ]);
+      } catch (error) {
+        const reason = String(error);
+        console.error(
+          `osv-scanner could not run for ${repositoryName}: ${reason}`,
+        );
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: {
+            type: 'scanFailed',
+            clonedCommitSha,
+            exitCode: null,
+            stderr: reason,
+          },
+        });
+        continue;
+      } finally {
+        try {
+          await this.localCommandRunner.runCommand('rm', [
+            '-rf',
+            checkoutDirectory,
+          ]);
+        } catch (error) {
+          console.error(
+            `Failed to clean up the checkout of ${repositoryName}: ${String(error)}`,
+          );
+        }
+      }
       const {
         stdout: scanOutput,
         stderr: scanStderr,
         exitCode: scanExitCode,
-      } = await this.localCommandRunner.runCommand('osv-scanner', [
-        'scan',
-        'source',
-        '-r',
-        checkoutDirectory,
-        '--format',
-        'json',
-      ]);
-      await this.localCommandRunner.runCommand('rm', [
-        '-rf',
-        checkoutDirectory,
-      ]);
+      } = scanResult;
       if (scanExitCode === 0) {
         await this.appendDailySecurityScanRunLogEntry({
           repositoryName,

@@ -49,11 +49,12 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
           console.error(
             `${program} did not exit with a numeric status: ${String(error.code)}`,
           );
+          throw error;
         }
         return {
           stdout: String(error.stdout),
           stderr: String(error.stderr),
-          exitCode: typeof error.code === 'number' ? error.code : 1,
+          exitCode: error.code,
         };
       }
       throw error;
