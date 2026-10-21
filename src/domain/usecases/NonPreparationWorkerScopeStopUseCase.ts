@@ -81,7 +81,9 @@ export class NonPreparationWorkerScopeStopUseCase {
         stopErrors.push(error);
       }
     }
-    if (stopErrors.length > 0) throw stopErrors[0];
+    if (stopErrors.length === 1) throw stopErrors[0];
+    if (stopErrors.length > 1)
+      throw new Error(stopErrors.map(String).join('; '));
     return { stoppedScopeUnitNames };
   };
 }
