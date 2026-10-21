@@ -3763,7 +3763,7 @@ describe('GraphqlProjectItemRepository', () => {
         repository.updateProjectField('proj-id', 'field-id', 'item-id', {
           singleSelectOptionId: 'opt-id',
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe('applied');
 
       expect(mockPost).toHaveBeenCalledTimes(1);
     });
@@ -3836,7 +3836,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
       await jest.runAllTimersAsync();
 
-      await expect(resultPromise).resolves.toBeUndefined();
+      await expect(resultPromise).resolves.toBe('applied');
       expect(mockPost).toHaveBeenCalledTimes(2);
     });
 
@@ -3894,7 +3894,7 @@ describe('GraphqlProjectItemRepository', () => {
         repository.updateProjectField('proj-id', 'field-id', 'item-id', {
           singleSelectOptionId: 'opt-id',
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe('skipped');
 
       expect(mockPost).toHaveBeenCalledTimes(1);
     });
@@ -3950,7 +3950,7 @@ describe('GraphqlProjectItemRepository', () => {
         repository.updateProjectField('proj-id', 'field-id', 'item-id', {
           singleSelectOptionId: 'opt-id',
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe('skipped');
 
       expect(mockPost).toHaveBeenCalledTimes(1);
     });

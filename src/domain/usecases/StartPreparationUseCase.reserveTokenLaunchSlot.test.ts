@@ -123,7 +123,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       createdAt: new Date(0),
     });
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.setIssueAgentField.mockResolvedValue(undefined);
+    mockIssueRepository.setIssueAgentField.mockResolvedValue('applied');
     mockIssueRepository.removeLabel.mockResolvedValue(undefined);
     mockIssueRepository.getIssueByUrl.mockResolvedValue(
       createMockIssue({
@@ -242,7 +242,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       createdAt: new Date(0),
     });
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.setIssueAgentField.mockResolvedValue(undefined);
+    mockIssueRepository.setIssueAgentField.mockResolvedValue('applied');
     mockIssueRepository.removeLabel.mockResolvedValue(undefined);
     mockIssueRepository.getIssueByUrl.mockResolvedValue(
       createMockIssue({
@@ -395,7 +395,7 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       createdAt: new Date(0),
     });
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.setIssueAgentField.mockResolvedValue(undefined);
+    mockIssueRepository.setIssueAgentField.mockResolvedValue('applied');
     mockIssueRepository.removeLabel.mockResolvedValue(undefined);
     mockIssueRepository.getIssueByUrl.mockResolvedValue(
       createMockIssue({

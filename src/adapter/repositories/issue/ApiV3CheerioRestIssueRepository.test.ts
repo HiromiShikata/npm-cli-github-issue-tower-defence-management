@@ -3107,7 +3107,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       const project = {
         id: 'test-project-id',
@@ -3217,7 +3219,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         inconsistencyMessage: null,
       });
       localStorageCacheRepository.setSingle.mockResolvedValue();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       const firstResult = await repository.getAllIssues('proj-1');
       expect(firstResult.issues[0].status).toBe('Awaiting Workspace');
@@ -3347,7 +3351,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('uses the provided project item id and skips the GraphQL item fetch', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       await repository.updateNextActionDate(
         'https://github.com/o/r/issues/1',
@@ -3369,7 +3375,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('falls back to fetchProjectItemByUrl when no project item id is provided', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         buildProjectItem('https://github.com/o/r/issues/1', 'fallback'),
       );
@@ -3393,7 +3401,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('logs issueUrl and date at the start of the call', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         buildProjectItem('https://github.com/o/r/issues/42', 'item'),
       );
@@ -3440,7 +3450,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('submits singleSelectOptionId when a matching option exists', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       const project = buildProjectWithHourOptions([{ id: 'opt9', name: '9' }]);
 
       await repository.updateNextActionHour(project, testIssue, 9);
@@ -3455,7 +3467,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('falls back to number when no matching option exists', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       const project = buildProjectWithHourOptions([]);
 
       await repository.updateNextActionHour(project, testIssue, 9);
@@ -3917,7 +3931,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         name: 'Agent write skipped result is returned unchanged',
         outcome: 'skipped',
       },
-    ])('$name', async ({ outcome }) => {
+    ] as const)('$name', async ({ outcome }) => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
@@ -13759,7 +13773,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13803,7 +13817,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13832,7 +13846,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
 
@@ -13849,7 +13863,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13882,7 +13896,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const storyIssueUrl = 'https://github.com/user/repo/issues/99';
@@ -13930,7 +13944,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const titleMatchIssueUrl = 'https://github.com/user/repo/issues/31124';
