@@ -18,6 +18,32 @@ const repositoryMapsIssueSessions = (
 } => 'listSessionNamesForIssueUrl' in repository;
 
 describe('NodeTmuxSessionRepository', () => {
+  it.each(['names', 'activity', 'issue mapping'])(
+    'returns zero %s sessions for the actual absent-socket error shape',
+    async (listing) => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr:
+          'error connecting to /test/tmux.sock (No such file or directory)',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+      const result =
+        listing === 'names'
+          ? repository.listLiveSessionNames()
+          : listing === 'activity'
+            ? repository.listLiveSessionsWithActivity()
+            : repositoryMapsIssueSessions(repository)
+              ? repository.listSessionNamesForIssueUrl(
+                  'https://github.com/demo/repo/issues/9',
+                )
+              : Promise.reject(new Error('Missing issue session mapping'));
+
+      await expect(result).resolves.toEqual([]);
+    },
+  );
+
   describe('listLiveSessionNames', () => {
     it('parses tmux session names and drops blank lines', async () => {
       const runner = createMockRunner();
@@ -200,6 +226,43 @@ describe('NodeTmuxSessionRepository', () => {
       ).rejects.toThrow('Failed to stop');
 
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('launchDetachedSession', () => {
+    it('rejects a failed tmux launch with the original error instead of reporting success', async () => {
+      const runner = createMockRunner();
+      runner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: 'new-session permission denied',
+        exitCode: 1,
+      });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await expect(
+        repository.launchDetachedSession(
+          'held-session',
+          'cl',
+          'https://github.com/demo/repo/issues/9',
+        ),
+      ).rejects.toThrow('new-session permission denied');
+      expect(runner.runCommand.mock.calls).toHaveLength(1);
+      expect(runner.runCommand.mock.calls[0]?.slice(0, 2)).toEqual([
+        'tmux',
+        [
+          'new-session',
+          '-A',
+          '-d',
+          '-s',
+          'held-session',
+          'sh',
+          '-lc',
+          'exec "$1" "$2"',
+          'sh',
+          'cl',
+          'https://github.com/demo/repo/issues/9',
+        ],
+      ]);
     });
   });
 
