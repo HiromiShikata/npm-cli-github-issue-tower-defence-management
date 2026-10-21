@@ -13,7 +13,7 @@ export type DailySecurityScanRunLogEntry = {
     | {
         type: 'scanFailed';
         clonedCommitSha: string;
-        exitCode: number;
+        exitCode: number | null;
         stderr: string;
       };
 };

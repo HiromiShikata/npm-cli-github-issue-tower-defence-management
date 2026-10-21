@@ -59,7 +59,24 @@ describe('NodeLocalCommandRunner', () => {
       });
     });
 
-    it('should default to exit code 1 when code is not a number', async () => {
+    it('preserves a numeric scanner exit code of 1', async () => {
+      const error = Object.assign(new Error('Vulnerabilities found'), {
+        code: 1,
+        stdout: '',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(error);
+
+      const result = await runner.runCommand('osv-scanner', []);
+
+      expect(result).toEqual({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+    });
+
+    it('rejects when the command could not start', async () => {
       const error = Object.assign(new Error('Command failed'), {
         code: 'ENOENT',
         stdout: '',
@@ -67,13 +84,7 @@ describe('NodeLocalCommandRunner', () => {
       });
       mockExecFileAsync.mockRejectedValue(error);
 
-      const result = await runner.runCommand('nonexistent', []);
-
-      expect(result).toEqual({
-        stdout: '',
-        stderr: 'command not found',
-        exitCode: 1,
-      });
+      await expect(runner.runCommand('nonexistent', [])).rejects.toBe(error);
     });
 
     it('should report the reason when the command did not exit with a numeric status', async () => {
@@ -87,12 +98,25 @@ describe('NodeLocalCommandRunner', () => {
       });
       mockExecFileAsync.mockRejectedValue(error);
 
-      await runner.runCommand('osv-scanner', []);
+      await expect(runner.runCommand('osv-scanner', [])).rejects.toBe(error);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'osv-scanner did not exit with a numeric status: ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
       );
       consoleErrorSpy.mockRestore();
+    });
+
+    it('rejects when the command was killed by a signal', async () => {
+      const error = Object.assign(new Error('Command failed: SIGKILL'), {
+        code: null,
+        signal: 'SIGKILL',
+        killed: false,
+        stdout: '',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(error);
+
+      await expect(runner.runCommand('osv-scanner', [])).rejects.toBe(error);
     });
 
     it('should throw error if error format is unexpected', async () => {
