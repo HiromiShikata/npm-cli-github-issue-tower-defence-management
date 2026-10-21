@@ -25,7 +25,7 @@ export class StaleTmuxSessionKillUseCase {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllOpened' | 'getIssueByUrl'
+      'getAllOpened' | 'get'
     >,
     private readonly tmuxSessionRepository: Pick<
       TmuxSessionRepository,
@@ -58,9 +58,10 @@ export class StaleTmuxSessionKillUseCase {
             )),
           ]),
         ];
-        const liveIssue = await this.issueRepository.getIssueByUrl(issue.url, {
-          bypassCache: true,
-        });
+        const liveIssue = await this.issueRepository.get(
+          issue.url,
+          params.project,
+        );
         if (liveIssue !== null) {
           for (const sessionName of sessionNames) {
             issueBySessionName.set(sessionName, liveIssue);

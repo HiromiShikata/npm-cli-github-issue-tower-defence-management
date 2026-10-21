@@ -1,10 +1,12 @@
 import { issueSessionIsOnHold } from '../issueSessionIsOnHold';
 import { Issue } from '../../entities/Issue';
+import { Project } from '../../entities/Project';
 import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
 import { IssueRepository } from '../adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from '../adapter-interfaces/TmuxSessionRepository';
 
 export type InTmuxByHumanSessionReconcileInput = {
+  project: Project;
   issues: Issue[];
   assigneeLogin: string;
   launcherCommand: string;
@@ -29,16 +31,13 @@ export const toTmuxSessionName = (issueUrl: string): string =>
 export class InTmuxByHumanSessionReconcileUseCase {
   constructor(
     private readonly tmuxSessionRepository: TmuxSessionRepository,
-    private readonly issueStateRepository: Pick<
-      IssueRepository,
-      'getIssueByUrl'
-    >,
+    private readonly issueStateRepository: Pick<IssueRepository, 'get'>,
   ) {}
 
   run = async (
     input: InTmuxByHumanSessionReconcileInput,
   ): Promise<InTmuxByHumanSessionReconcileResult> => {
-    const { issues, assigneeLogin, launcherCommand } = input;
+    const { issues, assigneeLogin, launcherCommand, project } = input;
 
     const targetIssues = issues.filter((issue) =>
       this.isInTmuxByHuman(issue, assigneeLogin),
@@ -57,9 +56,9 @@ export class InTmuxByHumanSessionReconcileUseCase {
         if (this.hasLiveSession(issue.url, processCommandLines)) {
           continue;
         }
-        const liveIssue = await this.issueStateRepository.getIssueByUrl(
+        const liveIssue = await this.issueStateRepository.get(
           issue.url,
-          { bypassCache: true },
+          project,
         );
         if (
           liveIssue === null ||
