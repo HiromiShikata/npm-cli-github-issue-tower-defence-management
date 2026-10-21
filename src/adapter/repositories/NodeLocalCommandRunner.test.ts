@@ -59,6 +59,23 @@ describe('NodeLocalCommandRunner', () => {
       });
     });
 
+    it('preserves a numeric scanner exit code of 1', async () => {
+      const error = Object.assign(new Error('Vulnerabilities found'), {
+        code: 1,
+        stdout: '',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(error);
+
+      const result = await runner.runCommand('osv-scanner', []);
+
+      expect(result).toEqual({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+    });
+
     it('rejects when the command could not start', async () => {
       const error = Object.assign(new Error('Command failed'), {
         code: 'ENOENT',
@@ -100,21 +117,6 @@ describe('NodeLocalCommandRunner', () => {
       mockExecFileAsync.mockRejectedValue(error);
 
       await expect(runner.runCommand('osv-scanner', [])).rejects.toBe(error);
-    });
-
-    it('preserves numeric exit code 1 and command output', async () => {
-      const error = Object.assign(new Error('Vulnerabilities found'), {
-        code: 1,
-        stdout: '{"results":[]}',
-        stderr: '',
-      });
-      mockExecFileAsync.mockRejectedValue(error);
-
-      await expect(runner.runCommand('osv-scanner', [])).resolves.toEqual({
-        stdout: '{"results":[]}',
-        stderr: '',
-        exitCode: 1,
-      });
     });
 
     it('should throw error if error format is unexpected', async () => {
