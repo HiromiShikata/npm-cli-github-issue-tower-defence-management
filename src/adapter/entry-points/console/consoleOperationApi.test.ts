@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as http from 'http';
 import { mock } from 'jest-mock-extended';
 import * as os from 'os';
 import * as path from 'path';
@@ -45,6 +46,7 @@ import * as projectConfig from '../cli/projectConfig';
 import { readProjectTimer } from './consoleProjectTimerStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { createConsoleProjectResolver } from './consoleProjectResolver';
+import { createWebServer } from './webServer';
 
 const hasErrorMessage = (body: unknown): body is { error: string } =>
   typeof body === 'object' &&
@@ -746,6 +748,316 @@ describe('consoleOperationApi', () => {
       });
       jest.useRealTimers();
     });
+  });
+
+  describe('handleTriage close contract', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+    const projectItemId = 'PVTI_close_contract';
+
+    const requestTriage = async (
+      action: string,
+      targetUrl = issueUrl,
+    ): Promise<{ statusCode: number; body: unknown }> => {
+      const server = createWebServer({
+        accessToken: 'close-contract-test-token',
+        uiDistDir: path.join(baseDir, 'ui-dist'),
+        consoleDataOutputDir: baseDir,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: [],
+        issueRepository,
+        resolveProject: context.resolveProject,
+        isPjcodeConfigured: context.isPjcodeConfigured,
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, '127.0.0.1', resolve),
+      );
+      try {
+        const address = server.address();
+        if (address === null || typeof address === 'string') {
+          throw new Error('server is not listening on a TCP port');
+        }
+        const payload = JSON.stringify({
+          pjcode: 'acme',
+          action,
+          issueUrl: targetUrl,
+          projectItemId,
+          commentBody: 'Closing this issue',
+        });
+        return await new Promise((resolve, reject) => {
+          const request = http.request(
+            {
+              host: '127.0.0.1',
+              port: address.port,
+              path: '/api/triage?k=close-contract-test-token',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload),
+              },
+            },
+            (response) => {
+              const chunks: Uint8Array[] = [];
+              response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+              response.on('end', () =>
+                resolve({
+                  statusCode: response.statusCode ?? 0,
+                  body: JSON.parse(Buffer.concat(chunks).toString('utf8')),
+                }),
+              );
+              response.on('error', reject);
+            },
+          );
+          request.on('error', reject);
+          request.end(payload);
+        });
+      } finally {
+        await new Promise<void>((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve())),
+        );
+      }
+    };
+
+    const expectCompletionCount = (expectedCount: number): void => {
+      for (const tab of CONSOLE_DONE_TAB_NAMES) {
+        expect(
+          readDoneProjectItemIds(baseDir, 'acme', tab).filter(
+            (itemId) => itemId === projectItemId,
+          ),
+        ).toHaveLength(expectedCount);
+      }
+      expect(countCloseEvents(baseDir, 'acme', Date.now())).toEqual({
+        h1: expectedCount,
+        h3: expectedCount,
+        h5: expectedCount,
+      });
+    };
+
+    it.each([
+      { action: 'close', stateReason: 'completed', isPullRequest: false },
+      {
+        action: 'close_not_planned',
+        stateReason: 'not_planned',
+        isPullRequest: false,
+      },
+      { action: 'close', stateReason: 'completed', isPullRequest: true },
+      {
+        action: 'close_not_planned',
+        stateReason: 'not_planned',
+        isPullRequest: true,
+      },
+    ])(
+      'preserves successful close responses, ordering, and completion for $action with pull request $isPullRequest',
+      async ({ action, stateReason, isPullRequest }) => {
+        const targetUrl = isPullRequest
+          ? 'https://github.com/o/r/pull/1'
+          : issueUrl;
+        const response = await requestTriage(action, targetUrl);
+        expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+        const closeMethod = isPullRequest
+          ? issueRepository.closePullRequest
+          : issueRepository.closeIssueByUrl;
+        expect(closeMethod).toHaveBeenCalledTimes(1);
+        if (isPullRequest) {
+          expect(closeMethod).toHaveBeenCalledWith(targetUrl);
+          expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        } else {
+          expect(closeMethod).toHaveBeenCalledWith(targetUrl, stateReason);
+          expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+        }
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          targetUrl,
+          'Closing this issue',
+        );
+        expect(
+          issueRepository.createCommentByUrl.mock.invocationCallOrder[0],
+        ).toBeLessThan(closeMethod.mock.invocationCallOrder[0]);
+        expect(
+          issueRepository.getIssueOrPullRequestState,
+        ).not.toHaveBeenCalled();
+        expectCompletionCount(1);
+      },
+    );
+
+    it.each(
+      [
+        { action: 'close', stateReason: 'completed' },
+        { action: 'close_not_planned', stateReason: 'not_planned' },
+      ].flatMap(({ action, stateReason }) =>
+        [
+          {
+            state: 'closed',
+            observedReason: stateReason,
+            readFails: false,
+            expectedStatus: 200,
+          },
+          {
+            state: 'open',
+            observedReason: stateReason,
+            readFails: false,
+            expectedStatus: 502,
+          },
+          {
+            state: 'closed',
+            observedReason:
+              stateReason === 'completed' ? 'not_planned' : 'completed',
+            readFails: false,
+            expectedStatus: 502,
+          },
+          {
+            state: 'closed',
+            observedReason: '',
+            readFails: false,
+            expectedStatus: 502,
+          },
+          {
+            state: 'closed',
+            observedReason: stateReason,
+            readFails: true,
+            expectedStatus: 502,
+          },
+        ].map((outcome) => ({ action, stateReason, ...outcome })),
+      ),
+    )(
+      'returns success only for a confirmed issue close outcome: $action $state $observedReason read failure $readFails',
+      async ({
+        action,
+        stateReason,
+        state,
+        observedReason,
+        readFails,
+        expectedStatus,
+      }) => {
+        const closeError = new Error('HTTP 502: close response failed');
+        issueRepository.closeIssueByUrl.mockRejectedValue(closeError);
+        if (readFails) {
+          issueRepository.getIssueOrPullRequestState.mockRejectedValue(
+            new Error('read-back failed'),
+          );
+        } else {
+          issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+            state,
+            stateReason: observedReason,
+            merged: false,
+            isPullRequest: false,
+            title: 'Issue',
+          });
+        }
+
+        const response = await requestTriage(action);
+
+        expect(response).toEqual({
+          statusCode: expectedStatus,
+          body:
+            expectedStatus === 200
+              ? { ok: true }
+              : { error: closeError.message },
+        });
+        expect(issueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
+        expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+          issueUrl,
+          stateReason,
+        );
+        expect(
+          issueRepository.getIssueOrPullRequestState,
+        ).toHaveBeenCalledTimes(1);
+        expect(issueRepository.getIssueOrPullRequestState).toHaveBeenCalledWith(
+          issueUrl,
+        );
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(
+          issueRepository.createCommentByUrl.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          issueRepository.closeIssueByUrl.mock.invocationCallOrder[0],
+        );
+        expect(
+          issueRepository.closeIssueByUrl.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          issueRepository.getIssueOrPullRequestState.mock
+            .invocationCallOrder[0],
+        );
+        expectCompletionCount(expectedStatus === 200 ? 1 : 0);
+      },
+    );
+
+    it.each(['close', 'close_not_planned'])(
+      'preserves the original failure identity and no completion for $action',
+      async (action) => {
+        const closeError = new Error('HTTP 502: close failed');
+        issueRepository.closeIssueByUrl.mockRejectedValue(closeError);
+        issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+          state: 'open',
+          stateReason: '',
+          merged: false,
+          isPullRequest: false,
+          title: 'Issue',
+        });
+        await expect(
+          handleTriage(context, {
+            pjcode: 'acme',
+            action,
+            issueUrl,
+            projectItemId,
+          }),
+        ).rejects.toBe(closeError);
+        expectCompletionCount(0);
+      },
+    );
+
+    it.each([
+      { action: 'close', rateLimited: false },
+      { action: 'close_not_planned', rateLimited: false },
+      { action: 'close', rateLimited: true },
+      { action: 'close_not_planned', rateLimited: true },
+    ])(
+      'preserves HTTP failure response for $action with rate limit $rateLimited',
+      async ({ action, rateLimited }) => {
+        const resetAt = '2026-10-21T12:00:00Z';
+        const closeError = rateLimited
+          ? new GitHubRateLimitError('GitHub rate limit exceeded', resetAt)
+          : new Error('HTTP 502: close failed');
+        issueRepository.closeIssueByUrl.mockRejectedValue(closeError);
+        issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+          state: 'open',
+          stateReason: '',
+          merged: false,
+          isPullRequest: false,
+          title: 'Issue',
+        });
+        const response = await requestTriage(action);
+        expect(response).toEqual({
+          statusCode: 502,
+          body: rateLimited
+            ? { error: closeError.message, rateLimitResetAt: resetAt }
+            : { error: closeError.message },
+        });
+        expectCompletionCount(0);
+      },
+    );
+
+    it.each(['close', 'close_not_planned'])(
+      'does not close or record completion when the preceding comment fails for $action',
+      async (action) => {
+        const commentError = new Error('comment failed');
+        issueRepository.createCommentByUrl.mockRejectedValue(commentError);
+        await expect(
+          handleTriage(context, {
+            pjcode: 'acme',
+            action,
+            issueUrl,
+            projectItemId,
+            commentBody: 'Closing this issue',
+          }),
+        ).rejects.toBe(commentError);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+        expect(
+          issueRepository.getIssueOrPullRequestState,
+        ).not.toHaveBeenCalled();
+        expectCompletionCount(0);
+      },
+    );
   });
 
   describe('handleTriage', () => {
