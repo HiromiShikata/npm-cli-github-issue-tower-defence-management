@@ -2293,10 +2293,12 @@ describe('DailySecurityScanUseCase', () => {
           ).toHaveBeenCalledWith({
             repositoryName: 'app',
             executedAtIso: EXECUTED_AT_ISO,
-            outcome: expect.objectContaining({
+            outcome: {
               type: 'scanFailed',
               clonedCommitSha: SCANNED_COMMIT_SHA,
-            }),
+              exitCode: null,
+              stderr: String(scanError),
+            },
           });
           expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
           expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
