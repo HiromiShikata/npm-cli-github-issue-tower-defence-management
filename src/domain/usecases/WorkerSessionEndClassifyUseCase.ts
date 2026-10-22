@@ -57,6 +57,11 @@ const REJECTED_STATUS_TEXT = '"status":"rejected"';
 const HTTP_429_API_ERROR_STATUS_TEXT = '"api_error_status":429';
 const SESSION_LIMIT_TEXT_PATTERN = /session limit/i;
 const TOOL_USE_TYPE_TEXT = '"type":"tool_use"';
+const CODEX_LAUNCH_MARKER = 'Using codex model: ';
+const CODEX_EXIT_LINE_PATTERN =
+  /^Codex command finished with exit code: ([0-9]+)$/;
+const CODEX_RATE_LIMIT_PATTERN =
+  /^(?:ERROR:|Error:|error:).*(?:usage limit|rate limit|rate_limit|(?:^|\s)429(?:\s|$))/i;
 
 const USAGE_LIMIT_ENDING_DETECTED_LINE =
   'usage-limit-ending-detected: consecutive failure counter not incremented';
@@ -120,6 +125,32 @@ const isAssistantToolCallLine = (line: string): boolean => {
 };
 
 const workerSessionLogEndingOf = (lines: string[]): WorkerSessionLogEnding => {
+  if (lines.some((line) => line.startsWith(CODEX_LAUNCH_MARKER))) {
+    let finalTerminalLine: string | null = null;
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      if (CODEX_EXIT_LINE_PATTERN.test(lines[index])) {
+        finalTerminalLine = lines[index];
+        break;
+      }
+    }
+    const exitCode = finalTerminalLine?.match(CODEX_EXIT_LINE_PATTERN)?.[1];
+    const failed = exitCode !== undefined && exitCode !== '0';
+    return {
+      finalTerminalLine,
+      terminalReason:
+        exitCode === undefined
+          ? ''
+          : failed
+            ? `codex_exit_${exitCode}`
+            : COMPLETED_TERMINAL_REASON,
+      usageLimitEndingFound:
+        failed &&
+        lines.slice(-60).some((line) => CODEX_RATE_LIMIT_PATTERN.test(line)),
+      rejectedRateLimitEventFound: false,
+      sessionLimitHttp429Found: false,
+      assistantToolCallFound: false,
+    };
+  }
   const finalTerminalLine = finalLineContaining(
     lines,
     TERMINAL_REASON_KEY_TEXT,
