@@ -3,7 +3,10 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
-import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import {
+  issueSnapshotStalenessCheck,
+  liveIssueFetchOrEvictFromProjectCache,
+} from './issueSnapshotStalenessCheck';
 
 export const adoptIssueAgentDesignationLabel = async (
   issue: Issue,
@@ -49,12 +52,24 @@ export const adoptIssueAgentDesignationLabel = async (
         );
         return;
       }
-      await issueRepository.setIssueAgentField(
+      const outcome = await issueRepository.setIssueAgentField(
         issue.url,
         project,
         agentOptionId,
       );
-      issue.agent = defaultAgentName;
+      if (outcome === 'overwrittenByAnotherWriter') {
+        const liveIssue = await liveIssueFetchOrEvictFromProjectCache({
+          issueRepository,
+          project,
+          snapshotIssue: issue,
+          skippedWriteDescription: `the default Agent write of ${defaultAgentName}`,
+        });
+        if (liveIssue !== null) {
+          issue.agent = liveIssue.agent;
+        }
+      } else {
+        issue.agent = defaultAgentName;
+      }
     }
     return;
   }
@@ -73,7 +88,23 @@ export const adoptIssueAgentDesignationLabel = async (
     );
     return;
   }
-  await issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+  const outcome = await issueRepository.setIssueAgentField(
+    issue.url,
+    project,
+    agentOptionId,
+  );
+  if (outcome === 'overwrittenByAnotherWriter') {
+    const liveIssue = await liveIssueFetchOrEvictFromProjectCache({
+      issueRepository,
+      project,
+      snapshotIssue: issue,
+      skippedWriteDescription: `the Agent designation label write of ${agentLabel}`,
+    });
+    if (liveIssue === null) {
+      return;
+    }
+    issue.agent = liveIssue.agent;
+  }
   if (agentDesignationLabelsToKeep?.includes(agentLabel)) {
     return;
   }

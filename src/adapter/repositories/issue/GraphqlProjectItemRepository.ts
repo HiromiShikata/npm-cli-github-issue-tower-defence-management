@@ -3,6 +3,8 @@ import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { postGithubGraphqlJson } from '../githubGraphqlClient';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
+import { LocalStorageRepository } from '../LocalStorageRepository';
 export type ProjectItem = {
   id: string;
   nameWithOwner: string;
@@ -42,6 +44,7 @@ export type FetchProjectItemsLightResult = {
   inconsistencyMessage: string | null;
 };
 type ProjectV2ItemFieldValueNode = {
+  updatedAt?: string | null;
   text?: string;
   number?: number;
   date?: string;
@@ -216,6 +219,18 @@ const PROJECT_V2_ITEM_FIELD_VALUES_FOR_WRITE_VERIFICATION_SELECTION = `
           fieldValues(first: ${PROJECT_V2_ITEM_FIELD_VALUES_WRITE_VERIFICATION_FIRST}) {
             nodes {
 ${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
+              ... on ProjectV2ItemFieldTextValue {
+                updatedAt
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                updatedAt
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                updatedAt
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                updatedAt
+              }
             }
           }`;
 export const PAGINATION_DELAY_MS = 5000;
@@ -307,11 +322,13 @@ export class ProjectFieldWriteVerificationError extends Error {
     public readonly fieldId: string,
     public readonly intendedValue: string,
     public readonly actualValue: string | null,
+    public readonly actualValueUpdatedAt: string | null = null,
+    public readonly requestStartedAt: string | null = null,
   ) {
     super(
       actualValue === null
         ? `ProjectFieldWriteVerificationError: no matching field value was found for itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}`
-        : `ProjectFieldWriteVerificationError: itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}, actualValue=${actualValue}`,
+        : `ProjectFieldWriteVerificationError: itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValue}, actualValue=${actualValue}, actualValueUpdatedAt=${actualValueUpdatedAt}, requestStartedAt=${requestStartedAt}`,
     );
     this.name = 'ProjectFieldWriteVerificationError';
   }
@@ -430,6 +447,15 @@ const projectFieldValueNodeToActualValueString = (
 };
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
+  constructor(
+    localStorageRepository: LocalStorageRepository,
+    ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readGhTokens: string[] = [],
+    private readonly getCurrentTimeMilliseconds: () => number = Date.now,
+  ) {
+    super(localStorageRepository, ghToken, readGhTokens);
+  }
+
   fetchItemId = async (
     projectId: string,
     owner: string,
@@ -1632,7 +1658,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       | { number: number }
       | { date: string }
       | { singleSelectOptionId: string },
-  ): Promise<void> => {
+  ): Promise<ProjectFieldWriteOutcome> => {
     const graphqlQuery = {
       query: `mutation {
       updateProjectV2ItemFieldValue(input: {
@@ -1649,6 +1675,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     }`,
     };
 
+    const requestStartedAtMs = this.getCurrentTimeMilliseconds();
+    const requestStartedAt = new Date(requestStartedAtMs).toISOString();
+    const overwriteBoundaryMs =
+      Math.floor(requestStartedAtMs / 1000) * 1000 - 1000;
     const res = await postGithubGraphqlJson<{
       data: {
         updateProjectV2ItemFieldValue: {
@@ -1666,7 +1696,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         console.warn(
           `updateProjectField: FORBIDDEN for itemId ${itemId}, skipping. ${res.errors.map((e) => e.message).join('; ')}`,
         );
-        return;
+        return 'skipped';
       }
       if (
         res.errors.every(
@@ -1676,7 +1706,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         console.warn(
           `updateProjectField: archived item for itemId ${itemId}, skipping.`,
         );
-        return;
+        return 'skipped';
       }
       throw new Error(
         `updateProjectField failed: projectId=${projectId}, fieldId=${fieldId}, itemId=${itemId}, value=${JSON.stringify(value)}\n${res.errors.map((e) => e.message).join('\n')}`,
@@ -1700,13 +1730,26 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       );
     }
     if (actualValueString !== intendedValueString) {
+      const actualValueUpdatedAt = matchedFieldValueNode?.updatedAt ?? null;
+      if (
+        actualValueUpdatedAt !== null &&
+        Date.parse(actualValueUpdatedAt) >= overwriteBoundaryMs
+      ) {
+        console.warn(
+          `updateProjectField: overwritten by another writer for itemId=${itemId}, fieldId=${fieldId}, intendedValue=${intendedValueString}, actualValue=${actualValueString}, actualValueUpdatedAt=${actualValueUpdatedAt}`,
+        );
+        return 'overwrittenByAnotherWriter';
+      }
       throw new ProjectFieldWriteVerificationError(
         itemId,
         fieldId,
         intendedValueString,
         actualValueString,
+        actualValueUpdatedAt,
+        requestStartedAt,
       );
     }
+    return 'applied';
   };
 
   clearProjectField = async (

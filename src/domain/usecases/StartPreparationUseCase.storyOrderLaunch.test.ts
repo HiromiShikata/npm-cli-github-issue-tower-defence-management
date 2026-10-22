@@ -169,7 +169,7 @@ const harnessCreate = () => {
     createdAt: new Date(0),
   });
   issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-  issueRepository.setIssueAgentField.mockResolvedValue(undefined);
+  issueRepository.setIssueAgentField.mockResolvedValue('applied');
   issueRepository.removeLabel.mockResolvedValue(undefined);
   issueRepository.getIssueByUrl.mockImplementation(
     async (issueUrl) => issueByUrl.get(issueUrl) ?? null,
