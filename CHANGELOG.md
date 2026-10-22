@@ -1,3 +1,10 @@
+## [2.180.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.8...v2.180.9) (2026-10-22)
+
+
+### Bug Fixes
+
+* **worker-session:** Classify TDPM worker session end from Codex logs ([#3587](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3587)) ([c887927](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c88792796a93ffd58f5843f4630f14bcd3e05b73))
+
 ## [2.180.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.7...v2.180.8) (2026-10-22)
 
 
