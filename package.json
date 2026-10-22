@@ -130,12 +130,13 @@
   },
   "overrides": {
     "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat",
-    "npm": "12.2.0",
+    "npm": "12.2.1",
     "@actions/http-client": {
       "undici": "6.28.1"
     },
     "undici": "7.29.1",
     "brace-expansion": "5.0.12",
+    "braces": "3.0.4",
     "source-map-js": "1.2.2",
     "handlebars": "4.7.10",
     "js-yaml": {
