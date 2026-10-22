@@ -530,6 +530,58 @@ describe('StaleTmuxSessionKillUseCase', () => {
     expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
   });
 
+  it('keeps a session when the live read of a snapshot-held issue returns null', async () => {
+    const issue = createMockIssue({ nextActionHour: 0 });
+    mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
+    mockIssueRepository.get.mockResolvedValue(null);
+    setLiveSessions([
+      {
+        sessionName: toTmuxSessionName(issue.url),
+        activityEpochSeconds: nowEpochSeconds,
+      },
+    ]);
+    await useCase.run(runParams());
+    expect(mockIssueRepository.get).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.get).toHaveBeenCalledWith(
+      issue.url,
+      mockProject,
+    );
+    expect(mockTmuxSessionRepository.killSession).not.toHaveBeenCalled();
+  });
+
+  it('reads live only the held issue that owns a live session and no held issue without one', async () => {
+    const heldWithoutSession = [1, 2, 3].map((hour) =>
+      createMockIssue({ nextActionHour: hour }),
+    );
+    const heldWithSession = createMockIssue({ nextActionHour: 0 });
+    const unheldWithSession = createMockIssue();
+    mockIssueRepository.getAllOpened.mockResolvedValue([
+      ...heldWithoutSession,
+      heldWithSession,
+      unheldWithSession,
+    ]);
+    mockIssueRepository.get.mockResolvedValue(heldWithSession);
+    mockTmuxSessionRepository.listSessionNamesForIssueUrl.mockImplementation(
+      async (url: string) =>
+        url === heldWithSession.url || url === unheldWithSession.url
+          ? [toTmuxSessionName(url)]
+          : [],
+    );
+    setLiveSessions(
+      [heldWithSession, unheldWithSession].map((issue) => ({
+        sessionName: toTmuxSessionName(issue.url),
+        activityEpochSeconds: nowEpochSeconds,
+      })),
+    );
+    await useCase.run(runParams());
+    expect(mockIssueRepository.get.mock.calls).toEqual([
+      [heldWithSession.url, mockProject],
+    ]);
+    expect(mockTmuxSessionRepository.killSession.mock.calls).toEqual([
+      [toTmuxSessionName(heldWithSession.url)],
+    ]);
+  });
+
   it('does not report successful cleanup when live issue reading or mapping fails', async () => {
     const issue = createMockIssue({ nextActionHour: 0 });
     mockIssueRepository.getAllOpened.mockResolvedValue([issue]);
