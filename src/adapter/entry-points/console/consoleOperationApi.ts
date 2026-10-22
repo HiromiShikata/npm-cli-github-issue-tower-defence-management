@@ -33,6 +33,7 @@ import {
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -639,12 +640,12 @@ export const handleTriage = async (
     if (isPullRequestUrl(issueUrl)) {
       await context.resolveIssueRepository(issueUrl).closePullRequest(issueUrl);
     } else {
-      await context
-        .resolveIssueRepository(issueUrl)
-        .closeIssueByUrl(
-          issueUrl,
-          action === 'close_not_planned' ? 'not_planned' : 'completed',
-        );
+      await new IssueCloseOutcomeConfirmUseCase(
+        context.resolveIssueRepository(issueUrl),
+      ).run(
+        issueUrl,
+        action === 'close_not_planned' ? 'not_planned' : 'completed',
+      );
     }
     recordDone(context, pjcodeResult, projectItemId);
     recordTaskClose(context, pjcodeResult);
