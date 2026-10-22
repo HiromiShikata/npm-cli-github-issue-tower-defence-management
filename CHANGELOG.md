@@ -1,3 +1,10 @@
+## [2.180.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.7...v2.180.8) (2026-10-22)
+
+
+### Bug Fixes
+
+* **tmux:** bound stale cleanup live reads to held issues that have live sessions ([#3578](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3578)) ([5975c68](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5975c687737669747ba17d1775b26e13b8152951))
+
 ## [2.180.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.6...v2.180.7) (2026-10-21)
 
 
