@@ -109,11 +109,14 @@ const spawnTokenUsage: ClaudeTokenUsage = {
   modelWeeklyLimits: {},
 };
 
-const harnessCreate = () => {
+const harnessCreate = (
+  candidateLabels = ['category:impl'],
+  availableTokenUsages = [spawnTokenUsage],
+) => {
   const candidateIssue = createMockIssue({
     url: CANDIDATE_ISSUE_URL,
     title: 'Issue 1',
-    labels: ['category:impl'],
+    labels: candidateLabels,
     status: 'Awaiting Workspace',
     number: 1,
     itemId: 'item-1',
@@ -164,9 +167,10 @@ const harnessCreate = () => {
     spawnInteractive: jest.fn(),
   };
   const reserveTokenLaunchSlot = jest.fn().mockResolvedValue(true);
+  const ensureObservable = jest.fn().mockResolvedValue(undefined);
   const claudeTokenUsageRepository: ClaudeTokenUsageRepository = {
-    ensureObservable: jest.fn().mockResolvedValue(undefined),
-    getAvailableTokenUsages: jest.fn().mockResolvedValue([spawnTokenUsage]),
+    ensureObservable,
+    getAvailableTokenUsages: jest.fn().mockResolvedValue(availableTokenUsages),
     getTokenInFlightCounts: jest.fn().mockResolvedValue({ [SPAWN_TOKEN]: 0 }),
     proxyBaseUrl: jest.fn().mockReturnValue(PROXY_BASE_URL),
     reserveTokenLaunchSlot,
@@ -193,6 +197,7 @@ const harnessCreate = () => {
     issueRepository,
     localCommandRunner,
     reserveTokenLaunchSlot,
+    ensureObservable,
   };
 };
 
@@ -293,5 +298,95 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       harness.localCommandRunner.runCommand.mock.invocationCallOrder[0];
     expect(updateStatusOrder).toBeLessThan(awOrder);
     expect(reserveOrder).toBeLessThan(awOrder);
+  });
+
+  it('does not reserve a Claude token launch slot for a future Codex model name', async () => {
+    const harness = harnessCreate([
+      'category:impl',
+      'llm-model:zz-future-model-1',
+    ]);
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
+    expect(harness.ensureObservable).not.toHaveBeenCalled();
+    expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        expect.arrayContaining([
+          CANDIDATE_ISSUE_URL,
+          'agent1',
+          'zz-future-model-1',
+        ]),
+        undefined,
+      ],
+    ]);
+  });
+
+  it('starts a future Codex model when Claude tokens are unavailable', async () => {
+    const harness = harnessCreate(['category:impl'], []);
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'zz-future-model-1',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
+    expect(harness.ensureObservable).not.toHaveBeenCalled();
+    expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        expect.arrayContaining([
+          CANDIDATE_ISSUE_URL,
+          'agent1',
+          'zz-future-model-1',
+        ]),
+        undefined,
+      ],
+    ]);
+  });
+
+  it('does not launch when the resolved model id has invalid syntax', async () => {
+    const harness = harnessCreate(['category:impl', 'llm-model:bad model']);
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(harness.localCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 });

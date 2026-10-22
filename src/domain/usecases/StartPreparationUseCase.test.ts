@@ -5650,11 +5650,11 @@ describe('StartPreparationUseCase', () => {
     expect(
       mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
     ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+    expect(mockProjectRepository.getByUrl.mock.calls.length).toBeGreaterThan(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skipping starting preparation'),
+      expect.stringContaining('Claude tasks will be skipped'),
     );
     consoleWarnSpy.mockRestore();
   });
@@ -5723,7 +5723,7 @@ describe('StartPreparationUseCase', () => {
     expect(
       mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
     ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+    expect(mockProjectRepository.getByUrl.mock.calls.length).toBeGreaterThan(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -6562,10 +6562,11 @@ describe('StartPreparationUseCase', () => {
     expect(
       mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
     ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+    expect(mockProjectRepository.getByUrl.mock.calls.length).toBeGreaterThan(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skipping starting preparation'),
+      expect.stringContaining('Claude tasks will be skipped'),
     );
     consoleWarnSpy.mockRestore();
   });
