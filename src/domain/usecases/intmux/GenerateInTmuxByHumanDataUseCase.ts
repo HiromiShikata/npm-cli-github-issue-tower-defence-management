@@ -1,3 +1,4 @@
+import { issueSessionIsOnHold } from '../issueSessionIsOnHold';
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 
@@ -150,9 +151,7 @@ export class GenerateInTmuxByHumanDataUseCase {
     issue.status === IN_TMUX_BY_HUMAN_STATUS_NAME &&
     issue.isClosed === false &&
     issue.assignees.includes(assigneeLogin) &&
-    issue.dependedIssueUrls.length === 0 &&
-    issue.nextActionDate === null &&
-    issue.nextActionHour === null;
+    !issueSessionIsOnHold(issue);
 
   private groupByStoryOrder = (
     issues: Issue[],

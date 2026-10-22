@@ -1,3 +1,4 @@
+import { Project } from '../../entities/Project';
 import { Issue } from '../../entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../entities/WorkflowStatus';
 import { IssueRepository } from '../adapter-interfaces/IssueRepository';
@@ -10,6 +11,21 @@ import {
 const ASSIGNEE = 'owner-login';
 const LAUNCHER = 'cl';
 const NOW = new Date('2026-06-25T12:00:00.000Z');
+
+const PROJECT: Project = {
+  id: 'selected-project',
+  url: 'https://github.com/users/demo/projects/9',
+  databaseId: 9,
+  name: 'Selected project',
+  status: { name: 'Status', fieldId: 'selected-status', statuses: [] },
+  nextActionDate: null,
+  nextActionHour: null,
+  story: null,
+  remainingEstimationMinutes: null,
+  dependedIssueUrlSeparatedByComma: null,
+  completionDate50PercentConfidence: null,
+  agent: null,
+};
 
 let issueCounter = 0;
 const makeIssue = (overrides: Partial<Issue> = {}): Issue => {
@@ -63,6 +79,7 @@ const createFakeTmuxSessionRepository = (state: {
   }[] = [];
   return {
     launches,
+    ...{ listSessionNamesForIssueUrl: async (): Promise<string[]> => [] },
     listLiveSessionNames: async () => state.liveSessionNames,
     listLiveSessionsWithActivity: async () =>
       state.liveSessionNames.map((sessionName) => ({
@@ -84,12 +101,33 @@ const createFakeTmuxSessionRepository = (state: {
 
 const createFakeIssueStateRepository = (
   stateByUrl: Record<string, string> = {},
-): Pick<IssueRepository, 'getIssueOrPullRequestState'> & {
+): Pick<
+  IssueRepository,
+  'getIssueOrPullRequestState' | 'getIssueByUrl' | 'get'
+> & {
   fetchedUrls: string[];
 } => {
   const fetchedUrls: string[] = [];
   return {
     fetchedUrls,
+    get: async (url, project) => {
+      expect(project).toBe(PROJECT);
+      fetchedUrls.push(url);
+      return makeIssue({
+        url,
+        isClosed: stateByUrl[url] === 'closed',
+        state: stateByUrl[url] === 'closed' ? 'CLOSED' : 'OPEN',
+      });
+    },
+    getIssueByUrl: async (url, options) => {
+      expect(options).toEqual({ bypassCache: true });
+      fetchedUrls.push(url);
+      return makeIssue({
+        url,
+        isClosed: stateByUrl[url] === 'closed',
+        state: stateByUrl[url] === 'closed' ? 'CLOSED' : 'OPEN',
+      });
+    },
     getIssueOrPullRequestState: async (url: string) => {
       fetchedUrls.push(url);
       return {
@@ -103,12 +141,23 @@ const createFakeIssueStateRepository = (
   };
 };
 
+const runReconcile = (
+  useCase: InTmuxByHumanSessionReconcileUseCase,
+  params: Omit<
+    Parameters<InTmuxByHumanSessionReconcileUseCase['run']>[0],
+    'project'
+  >,
+) => {
+  const input = { ...params, project: PROJECT };
+  return useCase.run(input);
+};
+
 describe('InTmuxByHumanSessionReconcileUseCase', () => {
   beforeEach(() => {
     issueCounter = 0;
   });
 
-  it('launches a detached session for an In Tmux by human issue with no live session', async () => {
+  it('AC7: launches exactly one session for an open assigned issue with empty hold fields and no session', async () => {
     const issue = makeIssue();
     const repository = createFakeTmuxSessionRepository({
       liveSessionNames: [],
@@ -119,7 +168,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -136,6 +185,36 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([issue.url]);
   });
 
+  it('AC8: does not launch for a dependency or past, current, or future action date or any action hour', async () => {
+    const heldIssues = [
+      makeIssue({
+        dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
+      }),
+      makeIssue({ nextActionDate: new Date('2020-01-01T00:00:00.000Z') }),
+      makeIssue({ nextActionDate: NOW }),
+      makeIssue({ nextActionDate: new Date('2030-01-01T00:00:00.000Z') }),
+      makeIssue({ nextActionHour: 0 }),
+    ];
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
+
+    const result = await runReconcile(useCase, {
+      issues: heldIssues,
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
+  });
+
   it('does not launch when a live session already exists for the issue', async () => {
     const issue = makeIssue();
     const repository = createFakeTmuxSessionRepository({
@@ -149,7 +228,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -171,7 +250,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -195,7 +274,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [liveIssue, missingIssueOne, missingIssueTwo],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -225,7 +304,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [otherStatusIssue, closedIssue, otherAssigneeIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -249,7 +328,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [futureIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -271,7 +350,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [hourIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -282,7 +361,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([]);
   });
 
-  it('includes an issue whose next action date is in the past and is now due', async () => {
+  it('excludes an issue whose next action date is in the past and is now due', async () => {
     const dueIssue = makeIssue({
       nextActionDate: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
     });
@@ -295,14 +374,14 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [dueIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
       now: NOW,
     });
 
-    expect(result.launchedIssueUrls).toEqual([dueIssue.url]);
+    expect(result.launchedIssueUrls).toEqual([]);
   });
 
   it('does not launch a session for an issue whose live GitHub state is closed even when the cached issue still reports it as open', async () => {
@@ -319,7 +398,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issueStateRepository,
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [staleCachedIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -347,7 +426,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issueStateRepository,
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [staleClosedIssue, openIssue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -374,7 +453,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       issueStateRepository,
     );
 
-    await useCase.run({
+    await runReconcile(useCase, {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -397,7 +476,7 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
       createFakeIssueStateRepository(),
     );
 
-    const result = await useCase.run({
+    const result = await runReconcile(useCase, {
       issues: [issue],
       assigneeLogin: ASSIGNEE,
       launcherCommand: LAUNCHER,
@@ -408,9 +487,180 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(result.launchedIssueUrls).toEqual([]);
   });
 
+  it('AC9: skips launch when any hold appears between the board snapshot and the live read', async () => {
+    for (const hold of [
+      { dependedIssueUrls: ['https://github.com/demo/repo/issues/99'] },
+      { nextActionDate: new Date('2020-01-01T00:00:00Z') },
+      { nextActionDate: NOW },
+      { nextActionDate: new Date('2030-01-01T00:00:00Z') },
+      { nextActionHour: 0 },
+      { nextActionHour: 23 },
+    ]) {
+      const issue = makeIssue();
+      const repository = createFakeTmuxSessionRepository({
+        liveSessionNames: [],
+        processCommandLines: [],
+      });
+      const issueRepository = createFakeIssueStateRepository();
+      issueRepository.get = jest.fn().mockResolvedValue({ ...issue, ...hold });
+      const useCase = new InTmuxByHumanSessionReconcileUseCase(
+        repository,
+        issueRepository,
+      );
+      const result = await runReconcile(useCase, {
+        issues: [issue],
+        assigneeLogin: ASSIGNEE,
+        launcherCommand: LAUNCHER,
+        now: NOW,
+      });
+      expect(issueRepository.get).toHaveBeenCalledWith(issue.url, PROJECT);
+      expect(repository.launches).toEqual([]);
+      expect(result.launchedIssueUrls).toEqual([]);
+    }
+  });
+
+  it('resumes ordinary launch after all hold fields clear', async () => {
+    const issue = makeIssue();
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const issueRepository = createFakeIssueStateRepository();
+    issueRepository.get = jest
+      .fn()
+      .mockResolvedValueOnce({ ...issue, nextActionHour: 0 })
+      .mockResolvedValueOnce(issue);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      issueRepository,
+    );
+    const params = {
+      issues: [issue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    };
+    expect((await runReconcile(useCase, params)).launchedIssueUrls).toEqual([]);
+    expect((await runReconcile(useCase, params)).launchedIssueUrls).toEqual([
+      issue.url,
+    ]);
+    expect(repository.launches).toHaveLength(1);
+  });
+
+  it('fails closed when the live issue is absent or unreadable', async () => {
+    for (const unreadable of [false, true]) {
+      const issue = makeIssue();
+      const repository = createFakeTmuxSessionRepository({
+        liveSessionNames: [],
+        processCommandLines: [],
+      });
+      const issueRepository = createFakeIssueStateRepository();
+      issueRepository.get = unreadable
+        ? jest.fn().mockRejectedValue(new Error('live read failed'))
+        : jest.fn().mockResolvedValue(null);
+      const useCase = new InTmuxByHumanSessionReconcileUseCase(
+        repository,
+        issueRepository,
+      );
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        await runReconcile(useCase, {
+          issues: [issue],
+          assigneeLogin: ASSIGNEE,
+          launcherCommand: LAUNCHER,
+          now: NOW,
+        });
+      } catch (error) {
+        expect(String(error)).toContain('live read failed');
+      }
+      expect(repository.launches).toEqual([]);
+      errorSpy.mockRestore();
+    }
+  });
+
   it('transforms an issue url into the same session name tmux derives from the raw url, replacing only "." and ":" and keeping "/"', () => {
     expect(toTmuxSessionName('https://github.com/demo/repo/issues/42')).toBe(
       'https_//github_com/demo/repo/issues/42',
     );
   });
+  it('continues independent launch candidates and propagates live read failures', async () => {
+    const unreadableIssue = makeIssue();
+    const readableIssue = makeIssue();
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: [],
+      processCommandLines: [],
+    });
+    const issueRepository = createFakeIssueStateRepository();
+    issueRepository.get = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('live issue read failed'))
+      .mockResolvedValueOnce(readableIssue);
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      issueRepository,
+    );
+    await expect(
+      runReconcile(useCase, {
+        issues: [unreadableIssue, readableIssue],
+        assigneeLogin: ASSIGNEE,
+        launcherCommand: LAUNCHER,
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+    expect(repository.launches.map((launch) => launch.issueUrl)).toEqual([
+      readableIssue.url,
+    ]);
+  });
+  it.each([true, false])(
+    'uses the selected project live hold when membership fields disagree: selected held=%s',
+    async (selectedHeld) => {
+      const issue = makeIssue();
+      const otherProject: Project = {
+        ...PROJECT,
+        id: 'other-project',
+        databaseId: 10,
+        url: 'https://github.com/users/demo/projects/10',
+      };
+      const selectedIssue = {
+        ...issue,
+        nextActionHour: selectedHeld ? 0 : null,
+      };
+      const otherIssue = { ...issue, nextActionHour: selectedHeld ? null : 0 };
+      const issueRepository = createFakeIssueStateRepository();
+      const projectMemberships = new Map([
+        [PROJECT.id, selectedIssue],
+        [otherProject.id, otherIssue],
+      ]);
+      issueRepository.get = jest
+        .fn()
+        .mockImplementation(
+          async (_url: string, project: Project) =>
+            projectMemberships.get(project.id) ?? null,
+        );
+      issueRepository.getIssueByUrl = jest.fn().mockResolvedValue(otherIssue);
+      const repository = createFakeTmuxSessionRepository({
+        liveSessionNames: [],
+        processCommandLines: [],
+      });
+      const useCase = new InTmuxByHumanSessionReconcileUseCase(
+        repository,
+        issueRepository,
+      );
+      const result = await runReconcile(useCase, {
+        issues: [issue],
+        assigneeLogin: ASSIGNEE,
+        launcherCommand: LAUNCHER,
+        now: NOW,
+      });
+      expect(result.launchedIssueUrls).toEqual(selectedHeld ? [] : [issue.url]);
+      expect(repository.launches.map((launch) => launch.issueUrl)).toEqual(
+        selectedHeld ? [] : [issue.url],
+      );
+      expect(issueRepository.get).toHaveBeenCalledTimes(1);
+      expect(issueRepository.get).toHaveBeenCalledWith(issue.url, PROJECT);
+      expect(issueRepository.getIssueByUrl).not.toHaveBeenCalled();
+    },
+  );
 });
