@@ -1,6 +1,7 @@
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
 import type { FieldOption, Project } from '../entities/Project';
+import { isValidModelId, modelRuntimeOf } from '../entities/ModelRuntime';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -370,11 +371,9 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number,
     defaultModelName: string | null,
     fallbackModelName: string | null,
-    maxConcurrent: number,
     normalConcurrentLimit: number,
   ): {
     tokens: string[];
-    effectiveCap: number;
     tokensWithLimits: Array<{
       token: string;
       model: string;
@@ -398,7 +397,7 @@ export class StartPreparationUseCase {
           defaultModelName,
           fallbackModelName,
         );
-        if (model === null) return [];
+        if (model === null || !isValidModelId(model)) return [];
         return [{ usage, model }];
       })
       .sort((a, b) =>
@@ -410,7 +409,7 @@ export class StartPreparationUseCase {
       );
 
     if (eligibleTokens.length === 0) {
-      return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
+      return { tokens: [], tokensWithLimits: [] };
     }
 
     const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
@@ -431,9 +430,6 @@ export class StartPreparationUseCase {
       ),
     }));
 
-    const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
-    const effectiveCap = Math.min(maxConcurrent, totalCapacity);
-
     const maxLimit = Math.max(...tokensWithLimits.map((t) => t.limit));
     const rotationList: string[] = [];
     for (let round = 0; round < maxLimit; round++) {
@@ -444,7 +440,7 @@ export class StartPreparationUseCase {
       }
     }
 
-    return { tokens: rotationList, effectiveCap, tokensWithLimits };
+    return { tokens: rotationList, tokensWithLimits };
   };
 
   buildRotationOrder = (
@@ -567,6 +563,9 @@ export class StartPreparationUseCase {
       sevenDayFreeRatio: number;
     }> = [];
     let tokenInFlightCounts: Record<string, number> = {};
+    let tokenInFlightCountsLoaded = false;
+    let claudeRotationUnavailable = false;
+    let claudeSlotsExhausted = false;
     const rotationOrder: RotationOrderEntry[] | null =
       tokenUsages.length > 0
         ? this.buildRotationOrder(
@@ -576,35 +575,30 @@ export class StartPreparationUseCase {
         : null;
     const maximumPreparingIssuesCount =
       params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
-    let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
+    const effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
     const fallbackLlmModelName =
       params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
     if (tokenUsages.length > 0) {
       const {
         tokens: selectedTokens,
-        effectiveCap: selectedCap,
         tokensWithLimits: selectedTokensWithLimitsLocal,
       } = this.selectRotationTokens(
         tokenUsages,
         params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
         fallbackLlmModelName,
-        maximumPreparingIssuesCount,
         normalConcurrentLimit,
       );
       if (selectedTokens.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, weekly limits for every candidate model exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, weekly limits for every candidate model exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Claude tasks will be skipped; Codex tasks can continue.`,
         );
-        return { rotationOrder };
+        claudeRotationUnavailable = true;
+      } else {
+        rotationTokens = selectedTokens;
+        selectedTokensWithLimits = selectedTokensWithLimitsLocal;
+        proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
       }
-      await this.claudeTokenUsageRepository.ensureObservable();
-      tokenInFlightCounts =
-        await this.claudeTokenUsageRepository.getTokenInFlightCounts();
-      rotationTokens = selectedTokens;
-      selectedTokensWithLimits = selectedTokensWithLimitsLocal;
-      effectiveMaxPreparingIssuesCount = selectedCap;
-      proxyBaseUrl = this.claudeTokenUsageRepository.proxyBaseUrl();
     }
 
     const project = await this.projectRepository.getByUrl(params.projectUrl);
@@ -1039,6 +1033,46 @@ export class StartPreparationUseCase {
           : agentNameFromDesignation(staleness.liveIssue.agent ?? '')) ||
         params.defaultAgentName;
 
+      if (
+        !labelModelName &&
+        !params.defaultLlmModelName &&
+        rotationTokens === null &&
+        agentDefinitionModelNameResolvedForAgent !== agent
+      ) {
+        agentDefinitionModelName =
+          await this.agentDefinitionRepository.getLlmModelName(agent);
+        agentDefinitionModelNameResolvedForAgent = agent;
+        if (!agentDefinitionModelName) {
+          console.error(
+            `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
+          );
+          continue;
+        }
+      }
+      const candidateModelName =
+        labelModelName ||
+        (rotationTokens === null ? agentDefinitionModelName : null) ||
+        selectedTokensWithLimits[0]?.model ||
+        params.defaultLlmModelName;
+      if (
+        candidateModelName !== null &&
+        candidateModelName !== undefined &&
+        !isValidModelId(candidateModelName)
+      ) {
+        console.error(
+          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, hyphens, or square brackets and start with a letter or number.`,
+        );
+        continue;
+      }
+      if (
+        (claudeSlotsExhausted || claudeRotationUnavailable) &&
+        candidateModelName !== null &&
+        candidateModelName !== undefined &&
+        modelRuntimeOf(candidateModelName) === 'claude'
+      ) {
+        continue;
+      }
+
       const resolvedLiveIssue: Issue = staleness.liveIssue;
       try {
         await this.issueRepository.updateStatus(
@@ -1086,7 +1120,22 @@ export class StartPreparationUseCase {
       let spawnEnv: Record<string, string> | undefined;
       let routedModelName: string | null = null;
       let selectedTokenName: string | null = null;
-      if (rotationTokens !== null && proxyBaseUrl !== null) {
+      if (
+        rotationTokens !== null &&
+        proxyBaseUrl !== null &&
+        modelRuntimeOf(
+          labelModelName ||
+            params.defaultLlmModelName ||
+            selectedTokensWithLimits[0]?.model ||
+            '',
+        ) === 'claude'
+      ) {
+        if (!tokenInFlightCountsLoaded) {
+          await this.claudeTokenUsageRepository.ensureObservable();
+          tokenInFlightCounts =
+            await this.claudeTokenUsageRepository.getTokenInFlightCounts();
+          tokenInFlightCountsLoaded = true;
+        }
         const tokensDeniedThisAttempt = new Set<string>();
         const tokenToFillOf = (): {
           token: string;
@@ -1148,10 +1197,11 @@ export class StartPreparationUseCase {
           continue;
         }
         if (reservedTokenToFill === null) {
+          claudeSlotsExhausted = true;
           await revertToAwaitingWorkspace(
             'every Claude OAuth token reached its concurrent worker limit',
           );
-          break;
+          continue;
         }
         const selected = reservedTokenToFill.token;
         routedModelName = reservedTokenToFill.model;
@@ -1180,6 +1230,19 @@ export class StartPreparationUseCase {
           `No LLM model configured for issue ${issue.url}. Provide --defaultLlmModelName or add an llm-model: label.`,
         );
         await revertToAwaitingWorkspace('no LLM model is configured');
+        continue;
+      }
+      if (!isValidModelId(model)) {
+        console.error(
+          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, hyphens, or square brackets and start with a letter or number.`,
+        );
+        await revertToAwaitingWorkspace('the model id is invalid');
+        continue;
+      }
+      if (claudeRotationUnavailable && modelRuntimeOf(model) === 'claude') {
+        await revertToAwaitingWorkspace(
+          'every configured Claude OAuth token is unavailable',
+        );
         continue;
       }
       // Captured here, at the moment this use case decides to dispatch `aw`, rather than left for
