@@ -1,3 +1,10 @@
+## [2.180.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.9...v2.180.10) (2026-10-22)
+
+
+### Bug Fixes
+
+* **runtime:** route Codex models without Claude slots ([#3588](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3588)) ([fa117f2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fa117f29e462673beffe672ab601c22b1d27eb65))
+
 ## [2.180.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.8...v2.180.9) (2026-10-22)
 
 
