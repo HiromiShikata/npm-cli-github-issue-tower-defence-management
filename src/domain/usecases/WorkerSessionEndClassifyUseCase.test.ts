@@ -295,6 +295,176 @@ const runUseCaseForConsecutiveSessions = async (
 };
 
 describe('WorkerSessionEndClassifyUseCase', () => {
+  it('does not treat a normally ended Codex session as interrupted', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        'Using codex model: zz-future-model-1',
+        'Codex command finished with exit code: 0',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.turnNotCompleted).toBe(false);
+  });
+
+  it('counts a failed Codex command by exit status', async () => {
+    const { classification, streakAfterClassification } =
+      await classifyWorkerSessionEnd({
+        logLines: [
+          'Using codex model: zz-future-model-1',
+          'Codex command finished with exit code: 1',
+        ],
+        storedStreak: null,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+    expect(classification.turnNotCompleted).toBe(false);
+    expect(streakAfterClassification).toEqual({
+      terminalReason: 'codex_exit_1',
+      consecutiveFailureCount: 1,
+    });
+  });
+
+  it('treats a Codex usage-limit rejection as a rate limit instead of a failure streak', async () => {
+    const { classification, streakAfterClassification } =
+      await classifyWorkerSessionEnd({
+        logLines: [
+          'Using codex model: zz-future-model-1',
+          'ERROR: You have reached your usage limit.',
+          'Codex command finished with exit code: 1',
+        ],
+        storedStreak: null,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+    expect(classification.rateLimitRejected).toBe(true);
+    expect(classification.turnNotCompleted).toBe(false);
+    expect(streakAfterClassification).toBeNull();
+  });
+
+  it('detects a Codex HTTP 429 rejection', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        'Using codex model: zz-future-model-1',
+        'ERROR: HTTP 429 Too Many Requests',
+        'Codex command finished with exit code: 1',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.rateLimitRejected).toBe(true);
+  });
+
+  it('does not call a different Codex failure a rate limit when its output quotes one', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        'Using codex model: zz-future-model-1',
+        'The documentation includes the phrase usage limit.',
+        'ERROR: Failed to run command',
+        'Codex command finished with exit code: 1',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.rateLimitRejected).toBe(false);
+  });
+
+  it('treats a usage-limit failure in Codex JSON events as a rate limit instead of a failure streak', async () => {
+    const { classification, streakAfterClassification } =
+      await classifyWorkerSessionEnd({
+        logLines: [
+          'Using codex model: zz-future-model-1',
+          '{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000001"}',
+          '{"type":"turn.started"}',
+          '{"type":"error","message":"You\'ve hit your usage limit. Try again later."}',
+          '{"type":"turn.failed","error":{"message":"You\'ve hit your usage limit. Try again later."}}',
+          'Codex command finished with exit code: 1',
+        ],
+        storedStreak: null,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+    expect(classification.rateLimitRejected).toBe(true);
+    expect(classification.turnNotCompleted).toBe(false);
+    expect(streakAfterClassification).toBeNull();
+  });
+
+  it('detects an HTTP 429 status carried inside a Codex JSON error message', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        'Using codex model: zz-future-model-1',
+        '{"type":"turn.failed","error":{"message":"{\\"type\\":\\"error\\",\\"status\\":429,\\"error\\":{\\"type\\":\\"rate_limited\\"}}"}}',
+        'Codex command finished with exit code: 1',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.rateLimitRejected).toBe(true);
+  });
+
+  it('counts a Codex JSON invalid-request failure as an ordinary failure', async () => {
+    const { classification, streakAfterClassification } =
+      await classifyWorkerSessionEnd({
+        logLines: [
+          'Using codex model: zz-future-model-1',
+          '{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000001"}',
+          '{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Model metadata for `zz-future-model-1` not found."}}',
+          '{"type":"turn.started"}',
+          '{"type":"error","message":"{\\"type\\":\\"error\\",\\"status\\":400,\\"error\\":{\\"type\\":\\"invalid_request_error\\",\\"message\\":\\"The model is not supported.\\"}}"}',
+          '{"type":"turn.failed","error":{"message":"{\\"type\\":\\"error\\",\\"status\\":400,\\"error\\":{\\"type\\":\\"invalid_request_error\\",\\"message\\":\\"The model is not supported.\\"}}"}}',
+          'Codex command finished with exit code: 1',
+        ],
+        storedStreak: null,
+        sessionWasResumed: false,
+        missingAgentNameReported: false,
+      });
+    expect(classification.rateLimitRejected).toBe(false);
+    expect(streakAfterClassification).toEqual({
+      terminalReason: 'codex_exit_1',
+      consecutiveFailureCount: 1,
+    });
+  });
+
+  it('does not call a failed Codex run a rate limit when an agent message quotes a usage limit', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        'Using codex model: zz-future-model-1',
+        '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"The usage limit text is documented here."}}',
+        'Codex command finished with exit code: 1',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.rateLimitRejected).toBe(false);
+  });
+
+  it('keeps an unfinished Codex log interrupted', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: ['Using codex model: zz-future-model-1', 'codex', 'working'],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.turnNotCompleted).toBe(true);
+  });
+
+  it('does not mistake a Claude stream message quoting a Codex marker for a Codex log', async () => {
+    const { classification } = await classifyWorkerSessionEnd({
+      logLines: [
+        '{"type":"assistant","message":{"content":[{"type":"text","text":"Using codex model: zz-future-model-1"}]}}',
+      ],
+      storedStreak: null,
+      sessionWasResumed: false,
+      missingAgentNameReported: false,
+    });
+    expect(classification.turnNotCompleted).toBe(true);
+  });
+
   it('declares three consecutive same-reason failures as the threshold for Failed Preparation', () => {
     expect(WORKER_SESSION_CONSECUTIVE_FAILURE_THRESHOLD).toBe(3);
   });
