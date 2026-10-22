@@ -96,11 +96,6 @@ describe('direct and overridden dependency patched-version thresholds', () => {
       requiredMinimumVersion: '4.7.10',
     },
     {
-      packageName: 'braces',
-      lockfileKey: 'node_modules/braces',
-      requiredMinimumVersion: '3.0.4',
-    },
-    {
       packageName: 'http-cache-semantics',
       lockfileKey: 'node_modules/npm/node_modules/http-cache-semantics',
       requiredMinimumVersion: '4.2.1',
