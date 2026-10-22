@@ -136,7 +136,6 @@
     },
     "undici": "7.29.1",
     "brace-expansion": "5.0.12",
-    "braces": "3.0.4",
     "source-map-js": "1.2.2",
     "handlebars": "4.7.10",
     "js-yaml": {
