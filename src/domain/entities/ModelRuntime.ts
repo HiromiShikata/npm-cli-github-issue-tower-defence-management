@@ -9,4 +9,4 @@ export const modelRuntimeOf = (modelName: string): ModelRuntime =>
     : 'codex';
 
 export const isValidModelId = (modelName: string): boolean =>
-  /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(modelName);
+  /^[A-Za-z0-9][A-Za-z0-9._:/[\]-]*$/.test(modelName);

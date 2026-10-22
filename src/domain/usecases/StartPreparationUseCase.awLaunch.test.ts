@@ -338,6 +338,49 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
     ]);
   });
 
+  it('launches the bracketed default Claude model with one reserved slot and one Preparation write', async () => {
+    const harness = harnessCreate();
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-sonnet-5-5[1m]',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        expect.arrayContaining([
+          CANDIDATE_ISSUE_URL,
+          'agent1',
+          'claude-sonnet-5-5[1m]',
+        ]),
+        {
+          env: {
+            CLAUDE_CODE_OAUTH_TOKEN: SPAWN_TOKEN,
+            ANTHROPIC_BASE_URL: PROXY_BASE_URL,
+          },
+        },
+      ],
+    ]);
+    expect(harness.localCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+      'claude-sonnet-5-5[1m]',
+    );
+    expect(harness.reserveTokenLaunchSlot).toHaveBeenCalledTimes(1);
+    expect(
+      harness.issueRepository.updateStatus.mock.calls.map((call) => call[2]),
+    ).toEqual(['2']);
+  });
+
   it('starts a future Codex model when Claude tokens are unavailable', async () => {
     const harness = harnessCreate(['category:impl'], []);
 

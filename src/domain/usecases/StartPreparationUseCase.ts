@@ -1060,7 +1060,7 @@ export class StartPreparationUseCase {
         !isValidModelId(candidateModelName)
       ) {
         console.error(
-          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, or hyphens and start with a letter or number.`,
+          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, hyphens, or square brackets and start with a letter or number.`,
         );
         continue;
       }
@@ -1234,7 +1234,7 @@ export class StartPreparationUseCase {
       }
       if (!isValidModelId(model)) {
         console.error(
-          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, or hyphens and start with a letter or number.`,
+          `Invalid model id for issue ${issue.url}: model ids must contain only letters, numbers, dots, underscores, colons, slashes, hyphens, or square brackets and start with a letter or number.`,
         );
         await revertToAwaitingWorkspace('the model id is invalid');
         continue;
