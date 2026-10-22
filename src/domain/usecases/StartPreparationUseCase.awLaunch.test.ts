@@ -112,6 +112,7 @@ const spawnTokenUsage: ClaudeTokenUsage = {
 const harnessCreate = (
   candidateLabels = ['category:impl'],
   availableTokenUsages = [spawnTokenUsage],
+  additionalCandidateIssues: Issue[] = [],
 ) => {
   const candidateIssue = createMockIssue({
     url: CANDIDATE_ISSUE_URL,
@@ -130,7 +131,7 @@ const harnessCreate = (
   };
   const issueRepository: MockProxy<IssueRepository> = mock<IssueRepository>();
   issueRepository.getStoryObjectMap.mockResolvedValue(
-    createMockStoryObjectMap([candidateIssue]),
+    createMockStoryObjectMap([candidateIssue, ...additionalCandidateIssues]),
   );
   issueRepository.getAllOpened.mockResolvedValue([]);
   issueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -152,11 +153,11 @@ const harnessCreate = (
       dependedIssueUrls: [],
     }),
   );
-  issueRepository.get.mockResolvedValue(
-    createMockIssue({
-      status: 'Awaiting Workspace',
-      dependedIssueUrls: [],
-    }),
+  issueRepository.get.mockImplementation(
+    async (url) =>
+      [candidateIssue, ...additionalCandidateIssues].find(
+        (issue) => issue.url === url,
+      ) ?? null,
   );
   issueRepository.removeIssueFromProjectCache.mockResolvedValue(undefined);
   issueRepository.appendIssueToProjectCache.mockResolvedValue(undefined);
@@ -196,6 +197,7 @@ const harnessCreate = (
     useCase,
     issueRepository,
     localCommandRunner,
+    claudeTokenUsageRepository,
     reserveTokenLaunchSlot,
     ensureObservable,
   };
@@ -364,6 +366,111 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
           'agent1',
           'zz-future-model-1',
         ]),
+        undefined,
+      ],
+    ]);
+  });
+
+  it('skips later Claude candidates after every token is at its concurrent limit and launches a Codex candidate', async () => {
+    const candidate = (number: number, model: string): Issue =>
+      createMockIssue({
+        number,
+        itemId: `item-${number}`,
+        url: `https://github.com/user/repo/issues/${number}`,
+        title: `Issue ${number}`,
+        labels: ['category:impl', `llm-model:${model}`],
+        status: 'Awaiting Workspace',
+      });
+    const harness = harnessCreate(
+      ['category:impl', 'llm-model:claude-opus'],
+      [spawnTokenUsage],
+      [
+        candidate(2, 'claude-opus'),
+        candidate(3, 'claude-opus'),
+        candidate(4, 'zz-future-model-1'),
+      ],
+    );
+    jest
+      .mocked(harness.claudeTokenUsageRepository.getTokenInFlightCounts)
+      .mockResolvedValue({ [SPAWN_TOKEN]: 100 });
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 4,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(
+      harness.issueRepository.updateStatus.mock.calls.map(
+        ([, issue, status]) => [issue.url, status],
+      ),
+    ).toEqual([
+      [CANDIDATE_ISSUE_URL, '2'],
+      [CANDIDATE_ISSUE_URL, '1'],
+      ['https://github.com/user/repo/issues/4', '2'],
+    ]);
+    expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
+    expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        expect.arrayContaining([
+          'https://github.com/user/repo/issues/4',
+          'zz-future-model-1',
+        ]),
+        undefined,
+      ],
+    ]);
+  });
+
+  it('skips Claude without a status write when configured tokens are filtered out and launches Codex', async () => {
+    const codexIssue = createMockIssue({
+      number: 2,
+      itemId: 'item-2',
+      url: 'https://github.com/user/repo/issues/2',
+      title: 'Issue 2',
+      labels: ['category:impl', 'llm-model:zz-future-model-1'],
+      status: 'Awaiting Workspace',
+    });
+    const harness = harnessCreate(
+      ['category:impl', 'llm-model:claude-opus'],
+      [{ ...spawnTokenUsage, blocked: true }],
+      [codexIssue],
+    );
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 2,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(
+      harness.issueRepository.updateStatus.mock.calls.map(
+        ([, issue, status]) => [issue.url, status],
+      ),
+    ).toEqual([[codexIssue.url, '2']]);
+    expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
+    expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
+      [
+        'aw',
+        expect.arrayContaining([codexIssue.url, 'zz-future-model-1']),
         undefined,
       ],
     ]);
