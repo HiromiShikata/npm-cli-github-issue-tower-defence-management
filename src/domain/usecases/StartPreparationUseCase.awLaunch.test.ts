@@ -391,7 +391,7 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       ],
     );
     jest
-      .mocked(harness.claudeTokenUsageRepository.getTokenInFlightCounts)
+      .spyOn(harness.claudeTokenUsageRepository, 'getTokenInFlightCounts')
       .mockResolvedValue({ [SPAWN_TOKEN]: 100 });
 
     await harness.useCase.run({

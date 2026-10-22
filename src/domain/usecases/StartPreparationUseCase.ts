@@ -371,11 +371,9 @@ export class StartPreparationUseCase {
     utilizationPercentageThreshold: number,
     defaultModelName: string | null,
     fallbackModelName: string | null,
-    maxConcurrent: number,
     normalConcurrentLimit: number,
   ): {
     tokens: string[];
-    effectiveCap: number;
     tokensWithLimits: Array<{
       token: string;
       model: string;
@@ -411,7 +409,7 @@ export class StartPreparationUseCase {
       );
 
     if (eligibleTokens.length === 0) {
-      return { tokens: [], effectiveCap: 0, tokensWithLimits: [] };
+      return { tokens: [], tokensWithLimits: [] };
     }
 
     const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
@@ -432,9 +430,6 @@ export class StartPreparationUseCase {
       ),
     }));
 
-    const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
-    const effectiveCap = Math.min(maxConcurrent, totalCapacity);
-
     const maxLimit = Math.max(...tokensWithLimits.map((t) => t.limit));
     const rotationList: string[] = [];
     for (let round = 0; round < maxLimit; round++) {
@@ -445,7 +440,7 @@ export class StartPreparationUseCase {
       }
     }
 
-    return { tokens: rotationList, effectiveCap, tokensWithLimits };
+    return { tokens: rotationList, tokensWithLimits };
   };
 
   buildRotationOrder = (
@@ -570,6 +565,7 @@ export class StartPreparationUseCase {
     let tokenInFlightCounts: Record<string, number> = {};
     let tokenInFlightCountsLoaded = false;
     let claudeRotationUnavailable = false;
+    let claudeSlotsExhausted = false;
     const rotationOrder: RotationOrderEntry[] | null =
       tokenUsages.length > 0
         ? this.buildRotationOrder(
@@ -591,7 +587,6 @@ export class StartPreparationUseCase {
         params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
         fallbackLlmModelName,
-        maximumPreparingIssuesCount,
         normalConcurrentLimit,
       );
       if (selectedTokens.length === 0) {
@@ -1070,7 +1065,7 @@ export class StartPreparationUseCase {
         continue;
       }
       if (
-        claudeRotationUnavailable &&
+        (claudeSlotsExhausted || claudeRotationUnavailable) &&
         candidateModelName !== null &&
         candidateModelName !== undefined &&
         modelRuntimeOf(candidateModelName) === 'claude'
@@ -1202,6 +1197,7 @@ export class StartPreparationUseCase {
           continue;
         }
         if (reservedTokenToFill === null) {
+          claudeSlotsExhausted = true;
           await revertToAwaitingWorkspace(
             'every Claude OAuth token reached its concurrent worker limit',
           );
