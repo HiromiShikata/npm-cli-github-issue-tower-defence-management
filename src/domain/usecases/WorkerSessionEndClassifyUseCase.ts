@@ -60,8 +60,9 @@ const TOOL_USE_TYPE_TEXT = '"type":"tool_use"';
 const CODEX_LAUNCH_MARKER = 'Using codex model: ';
 const CODEX_EXIT_LINE_PATTERN =
   /^Codex command finished with exit code: ([0-9]+)$/;
-const CODEX_RATE_LIMIT_PATTERN =
-  /^(?:ERROR:|Error:|error:).*(?:usage limit|rate limit|rate_limit|(?:^|\s)429(?:\s|$))/i;
+const CODEX_HUMAN_ERROR_LINE_PATTERN = /^(?:ERROR:|Error:|error:)/;
+const CODEX_RATE_LIMIT_TEXT_PATTERN =
+  /usage limit|rate limit|rate_limit|(?:^|\s)429(?:\s|$)|"status"\s*:\s*429\b/i;
 
 const USAGE_LIMIT_ENDING_DETECTED_LINE =
   'usage-limit-ending-detected: consecutive failure counter not incremented';
@@ -124,6 +125,34 @@ const isAssistantToolCallLine = (line: string): boolean => {
   );
 };
 
+const codexFailureTextOf = (line: string): string | null => {
+  if (CODEX_HUMAN_ERROR_LINE_PATTERN.test(line)) {
+    return line;
+  }
+  const parsedLine = parsedJsonOrNullOf(line);
+  if (!isRecord(parsedLine)) {
+    return null;
+  }
+  if (parsedLine.type === 'error' && typeof parsedLine.message === 'string') {
+    return parsedLine.message;
+  }
+  if (
+    parsedLine.type === 'turn.failed' &&
+    isRecord(parsedLine.error) &&
+    typeof parsedLine.error.message === 'string'
+  ) {
+    return parsedLine.error.message;
+  }
+  return null;
+};
+
+const isCodexRateLimitLine = (line: string): boolean => {
+  const failureText = codexFailureTextOf(line);
+  return (
+    failureText !== null && CODEX_RATE_LIMIT_TEXT_PATTERN.test(failureText)
+  );
+};
+
 const workerSessionLogEndingOf = (lines: string[]): WorkerSessionLogEnding => {
   if (lines.some((line) => line.startsWith(CODEX_LAUNCH_MARKER))) {
     let finalTerminalLine: string | null = null;
@@ -144,8 +173,7 @@ const workerSessionLogEndingOf = (lines: string[]): WorkerSessionLogEnding => {
             ? `codex_exit_${exitCode}`
             : COMPLETED_TERMINAL_REASON,
       usageLimitEndingFound:
-        failed &&
-        lines.slice(-60).some((line) => CODEX_RATE_LIMIT_PATTERN.test(line)),
+        failed && lines.slice(-60).some(isCodexRateLimitLine),
       rejectedRateLimitEventFound: false,
       sessionLimitHttp429Found: false,
       assistantToolCallFound: false,
