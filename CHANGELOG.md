@@ -1,3 +1,10 @@
+## [2.181.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.0...v2.181.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **daily-security-scan:** Handle rejected local commands in the daily security scan checkout and keep startPreparation running ([#3600](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3600)) ([0a1c632](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0a1c6323d580c3a3fc2c3cc4b0eb4ae289ac88bb))
+
 # [2.181.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.10...v2.181.0) (2026-10-23)
 
 
