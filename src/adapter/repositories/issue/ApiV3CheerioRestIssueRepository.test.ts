@@ -14765,6 +14765,86 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result.issues).toEqual([concurrentIssue]);
     });
 
+    it('ITEM_ID_MERGE preserves an appended item with the same URL while the full fetch is in flight', async () => {
+      const cache = buildRacyLocalStorageCacheRepository();
+      const project = buildTestProject(projectId);
+      const cacheKey = `allIssues-${projectId}`;
+      const transferredUrl = 'https://github.com/o/r/issues/42';
+      const concurrentlyAppendedIssue = buildIssueArgument(
+        'PVTI_OTHER',
+        transferredUrl,
+        'concurrently appended issue',
+      );
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(transferredUrl, 'cached title'),
+            itemId: 'PVTI_TRANSFERRED',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      projectRepository.getProject.mockResolvedValue(project);
+      let fetchStarted!: () => void;
+      const fetchStartedPromise = new Promise<void>((resolve) => {
+        fetchStarted = resolve;
+      });
+      let resolveFetch!: (value: {
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }) => void;
+      const fetchPromise = new Promise<{
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }>((resolve) => {
+        resolveFetch = resolve;
+      });
+      graphqlProjectItemRepository.fetchProjectItems.mockImplementation(() => {
+        fetchStarted();
+        return fetchPromise;
+      });
+
+      const refreshPromise = repository.getAllIssues(projectId);
+      await fetchStartedPromise;
+      await repository.appendIssueToProjectCache(
+        projectId,
+        concurrentlyAppendedIssue,
+      );
+      resolveFetch({
+        issues: [
+          buildFetchedItem(
+            'PVTI_TRANSFERRED',
+            transferredUrl,
+            'fetched title',
+            'Done',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
+      const result = await refreshPromise;
+
+      expect(result.issues).toEqual([
+        expect.objectContaining({
+          itemId: 'PVTI_TRANSFERRED',
+          url: transferredUrl,
+          title: 'fetched title',
+          status: 'Done',
+        }),
+        concurrentlyAppendedIssue,
+      ]);
+    });
+
     it('removed during fetch stays absent when the fetched item has the removed item ID', async () => {
       const cache = buildRacyLocalStorageCacheRepository();
       const project = buildTestProject(projectId);
