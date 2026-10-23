@@ -1,3 +1,10 @@
+# [2.181.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.10...v2.181.0) (2026-10-23)
+
+
+### Features
+
+* **fleet-config:** Add per-agent launch model map to fleet configuration ([#3599](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3599)) ([19a7d0b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/19a7d0b5b430f951790f1b88a203d7e3011b16e7))
+
 ## [2.180.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.180.9...v2.180.10) (2026-10-22)
 
 
