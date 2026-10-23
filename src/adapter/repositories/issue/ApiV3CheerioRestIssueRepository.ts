@@ -1242,8 +1242,11 @@ export class ApiV3CheerioRestIssueRepository
     itemIdsPresentInCacheBeforeFetchStarted: ReadonlySet<Issue['itemId']>,
     fetchedItems: ProjectItem[],
   ): Issue[] => {
-    const mergedIssuesByUrl = new Map<string, Issue>(
-      issuesPresentInCacheAtMergeTime.map((issue) => [issue.url, issue]),
+    if (fetchedItems.length === 0) {
+      return issuesPresentInCacheAtMergeTime;
+    }
+    const mergedIssuesByItemId = new Map<Issue['itemId'], Issue>(
+      issuesPresentInCacheAtMergeTime.map((issue) => [issue.itemId, issue]),
     );
     const itemIdsStillPresentInCacheAtMergeTime = new Set(
       issuesPresentInCacheAtMergeTime.map((issue) => issue.itemId),
@@ -1255,9 +1258,14 @@ export class ApiV3CheerioRestIssueRepository
       if (itemWasRemovedFromCacheWhileThisFetchWasInFlight) {
         continue;
       }
-      mergedIssuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
+      for (const [cachedItemId, cachedIssue] of mergedIssuesByItemId) {
+        if (cachedItemId !== item.id && cachedIssue.url === item.url) {
+          mergedIssuesByItemId.delete(cachedItemId);
+        }
+      }
+      mergedIssuesByItemId.set(item.id, this.convertProjectItemToIssue(item));
     }
-    return Array.from(mergedIssuesByUrl.values());
+    return Array.from(mergedIssuesByItemId.values());
   };
 
   private reconcileIssuesAbsentFromFullFetchResult = (
