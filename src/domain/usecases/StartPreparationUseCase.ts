@@ -544,6 +544,7 @@ export class StartPreparationUseCase {
     codexHomeCandidates: string[] | null;
     labelsAsLlmAgentName: string[] | null;
     agents?: string[] | null;
+    llmModelNameByAgentName?: Record<string, string> | null;
     normalConcurrentLimit?: number;
     maxConcurrentWorkers?: number | null;
     graphqlRateLimitFloor?: number | null;
@@ -578,6 +579,12 @@ export class StartPreparationUseCase {
     const effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
     const fallbackLlmModelName =
       params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
+    const llmModelNameByAgentName = params.llmModelNameByAgentName ?? null;
+    const mappedModelNameOf = (agentName: string): string | null =>
+      llmModelNameByAgentName !== null &&
+      Object.hasOwn(llmModelNameByAgentName, agentName)
+        ? llmModelNameByAgentName[agentName]
+        : null;
     if (tokenUsages.length > 0) {
       const {
         tokens: selectedTokens,
@@ -883,10 +890,12 @@ export class StartPreparationUseCase {
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
         .trim();
+      const mappedModelNameForFirstAgent = mappedModelNameOf(agent);
       let agentDefinitionModelName: string | null = null;
       let agentDefinitionModelNameResolvedForAgent: string | null = null;
       if (
         !labelModelName &&
+        mappedModelNameForFirstAgent === null &&
         !params.defaultLlmModelName &&
         rotationTokens === null
       ) {
@@ -1032,9 +1041,11 @@ export class StartPreparationUseCase {
           ? null
           : agentNameFromDesignation(staleness.liveIssue.agent ?? '')) ||
         params.defaultAgentName;
+      const mappedModelName = mappedModelNameOf(agent);
 
       if (
         !labelModelName &&
+        mappedModelName === null &&
         !params.defaultLlmModelName &&
         rotationTokens === null &&
         agentDefinitionModelNameResolvedForAgent !== agent
@@ -1051,6 +1062,7 @@ export class StartPreparationUseCase {
       }
       const candidateModelName =
         labelModelName ||
+        mappedModelName ||
         (rotationTokens === null ? agentDefinitionModelName : null) ||
         selectedTokensWithLimits[0]?.model ||
         params.defaultLlmModelName;
@@ -1125,6 +1137,7 @@ export class StartPreparationUseCase {
         proxyBaseUrl !== null &&
         modelRuntimeOf(
           labelModelName ||
+            mappedModelName ||
             params.defaultLlmModelName ||
             selectedTokensWithLimits[0]?.model ||
             '',
@@ -1215,6 +1228,7 @@ export class StartPreparationUseCase {
         (agentDefinitionModelName === null ||
           agentDefinitionModelNameResolvedForAgent !== agent) &&
         !labelModelName &&
+        mappedModelName === null &&
         !routedModelName
       ) {
         agentDefinitionModelName =
@@ -1222,6 +1236,7 @@ export class StartPreparationUseCase {
       }
       const model =
         labelModelName ||
+        mappedModelName ||
         routedModelName ||
         agentDefinitionModelName ||
         params.defaultLlmModelName;

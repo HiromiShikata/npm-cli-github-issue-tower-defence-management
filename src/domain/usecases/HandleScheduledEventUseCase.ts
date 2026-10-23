@@ -178,6 +178,7 @@ export class HandleScheduledEventUseCase {
     allowedIssueAuthors?: string[] | null;
     autoAssignManagerAuthors?: string[] | null;
     agents?: string[] | null;
+    llmModelNameByAgentName?: Record<string, string> | null;
     agentDesignationLabelsToKeep?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
@@ -843,6 +844,7 @@ ${JSON.stringify(e)}
         codexHomeCandidates: startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,
         agents: input.agents ?? null,
+        llmModelNameByAgentName: input.llmModelNameByAgentName,
       });
       return { rotationOrder: preparationResult.rotationOrder };
     }

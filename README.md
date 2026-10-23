@@ -209,12 +209,26 @@ preparationWorker:
 The `schedule` command (trigger `schedule`) supports a `startPreparation` mapping in the fleet-wide config file named by the `TDPM_FLEET_CONFIG` environment variable. Supported keys:
 
 - `maximumPreparingIssuesCount` (integer of at least 1, default `80`): the maximum number of issues in preparation status, used when neither the project README nor the project config sets `maximumPreparingIssuesCount`.
+- `llmModelNameByAgentName` (mapping of agent name to model name, default unset): the model used for an issue whose agent name is a key of the mapping and that has no `llm-model:` label. The file is read again on every schedule run, so a change takes effect on the next run without restarting the daemon.
+  - The `startPreparation.llmModelNameByAgentName` value must be a mapping.
+  - Each entry's value must be a non-empty string. An entry whose value is null is ignored.
+  - The model of a work session is chosen in this order: the `llm-model:` label, then `llmModelNameByAgentName`, then the token-routed model, then the agent definition `model:` line, then `defaultLlmModelName`.
 
 A key the file omits keeps its built-in value; a `maximumPreparingIssuesCount` value that is not an integer of at least 1 is reported as an error. Example:
 
 ```yaml
 startPreparation:
   maximumPreparingIssuesCount: 80
+```
+
+Example with the map:
+
+```yaml
+startPreparation:
+  maximumPreparingIssuesCount: 80
+  llmModelNameByAgentName:
+    triager: 'claude-haiku-5-5'
+    developer: 'gpt-5.6-luna'
 ```
 
 The `notifyFinishedIssuePreparation` and `revertOrphanedPreparation` commands support a `workflowIssueReporter` mapping in the fleet-wide config file named by `--fleetConfigFilePath` or the `TDPM_FLEET_CONFIG` environment variable. When a silent-redispatch escalation fires (an agent is dispatched and returns no report three consecutive times, indicating a TDPM process-level problem rather than a task-specific one), TDPM automatically creates a tracking issue in the configured repository or, when an open issue with the same title already exists, adds a comment to it instead of opening a duplicate. Supported keys:
@@ -327,7 +341,7 @@ workingReport:
 startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultAgentName: string # Default agent name to assign for preparation
   configFilePath: string # Path to config file passed to the aw command
-  defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label)
+  defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label and llmModelNameByAgentName)
   fallbackLlmModelName?: string | null # Optional: LLM model used when defaultLlmModelName is not specified (default: claude-opus-4-8). Per-issue llm-model: labels remain authoritative and are never overridden by the fallback
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. When null, the default is 6 per available token, or 6 without token rotation
@@ -340,7 +354,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   codexHomeCandidates?: string[] | null # Optional: Ordered list of CODEX_HOME directory paths. Each launched Codex job cycles through the list; absent or empty keeps current behavior
   awLogDirectoryPath?: string # Optional: Directory path where aw log files named {org}_{repo}_{number}_* are written. Used with awLogStaleThresholdMinutes to detect zombie-wrapper orphans, and by startPreparation when an issue has more than one open same-repository PR: the PR whose head branch is checked out in the working directory recorded on the `Current directory:` line of the issue's newest {org}_{repo}_{number}_{YYYYMMDD}_{HHMMSS}.log is adopted and every other PR is closed. When this is unset, or that branch is the head branch of no open PR, the PR created first is adopted
   awLogStaleThresholdMinutes?: number # Optional: Minutes since last aw log mtime after which a Preparation issue is considered orphaned even when pgrep still returns 0 (outer wrapper alive but inner claude dead). Requires awLogDirectoryPath
-  agentDefinitionsDirectoryPath?: string # Optional: Directory path containing per-agent definition markdown files named {agentName}.md, each with a YAML frontmatter `model:` field. Used as a fallback model source when neither an llm-model: label nor live-session token routing resolves a model. Defaults to ~/.claude/agents when unset
+  agentDefinitionsDirectoryPath?: string # Optional: Directory path containing per-agent definition markdown files named {agentName}.md, each with a YAML frontmatter `model:` field. Used as a fallback model source when neither an `llm-model:` label, an `llmModelNameByAgentName` entry, nor live-session token routing resolves a model. Defaults to ~/.claude/agents when unset
   labelsAsLlmAgentName?: string[] | null # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 developerAgentNames?: string[] # Optional: The agent names treated as "developer" agents for PR link, CI, and conflict checks in both the notifyFinishedIssuePreparation and scheduled revert flows. When omitted or empty, no issue is treated as a developer agent issue (no silent fallback to `developer`). Set this when your project uses one or more agent names for coding tasks and you want those agents' issues to undergo PR/CI/conflict validation. Readable from the project README config section; readme value takes precedence over the config file value. Declared at the top level (sibling of startPreparation), not inside it. Also accepts the legacy single-string key `developerAgentName` for backward compatibility (wrapped as a one-element array).
 labelsNotRequiringPullRequest?: string[] | null # Optional: List of issue labels whose issues are exempt from the pull-request part of the review-readiness check, without that label also being used as an agent name. An issue carrying any of these labels is never rejected for a missing, draft, conflicted, or failing pull request, and its agent is still resolved by the normal precedence (explicit `llm-agent:` label, labelsAsLlmAgentName entry match, `category:` label, defaultLlmAgentName, defaultAgentName). Every label in labelsAsLlmAgentName is exempt as well, so an existing config that relied on that key keeps its behaviour. Use this key for a label such as `story` whose issues produce child issues rather than a pull request and for which no agent of the same name is installed. Declared at the top level (sibling of startPreparation), not inside it.

@@ -487,6 +487,13 @@ export class HandleScheduledEventUseCaseHandler {
         input.startPreparation?.defaultAgentName,
       )}`,
     );
+    const llmModelNameByAgentNameText =
+      startPreparationFleetSettings.llmModelNameByAgentName === null
+        ? 'null'
+        : JSON.stringify(startPreparationFleetSettings.llmModelNameByAgentName);
+    console.log(
+      `Effective llmModelNameByAgentName: ${llmModelNameByAgentNameText} (source: ${fleetConfigFilePath === null ? 'built-in default' : 'fleetConfig'})`,
+    );
 
     const systemDateRepository = new SystemDateRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
@@ -764,6 +771,8 @@ export class HandleScheduledEventUseCaseHandler {
       workflowIssueReporterSettings,
       afterIssuesFetched,
       allowedDependencyRepoNameWithOwner,
+      llmModelNameByAgentName:
+        startPreparationFleetSettings.llmModelNameByAgentName,
     });
     if (result) {
       if (result.rotationOrder !== null) {

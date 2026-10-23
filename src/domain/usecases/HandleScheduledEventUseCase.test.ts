@@ -1283,6 +1283,44 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('passes the llmModelNameByAgentName map from the schedule run input to StartPreparationUseCase.run (AC-01)', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        agents: ['agent1', 'agent2'],
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-opus',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+        llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      mockStartPreparationUseCase.run.mockResolvedValue({
+        rotationOrder: null,
+      });
+      await useCase.run(input);
+
+      expect(mockStartPreparationUseCase.run.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+          }),
+        ],
+      ]);
+    });
+
     it('passes the startPreparation settings, the project URL and the manager to StartPreparationUseCase.run', async () => {
       const input = {
         projectName: 'test-project',
