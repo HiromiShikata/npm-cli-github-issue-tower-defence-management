@@ -1242,9 +1242,6 @@ export class ApiV3CheerioRestIssueRepository
     itemIdsPresentInCacheBeforeFetchStarted: ReadonlySet<Issue['itemId']>,
     fetchedItems: ProjectItem[],
   ): Issue[] => {
-    if (fetchedItems.length === 0) {
-      return issuesPresentInCacheAtMergeTime;
-    }
     const mergedIssuesByItemId = new Map<Issue['itemId'], Issue>(
       issuesPresentInCacheAtMergeTime.map((issue) => [issue.itemId, issue]),
     );
@@ -1257,11 +1254,6 @@ export class ApiV3CheerioRestIssueRepository
         !itemIdsStillPresentInCacheAtMergeTime.has(item.id);
       if (itemWasRemovedFromCacheWhileThisFetchWasInFlight) {
         continue;
-      }
-      for (const [cachedItemId, cachedIssue] of mergedIssuesByItemId) {
-        if (cachedItemId !== item.id && cachedIssue.url === item.url) {
-          mergedIssuesByItemId.delete(cachedItemId);
-        }
       }
       mergedIssuesByItemId.set(item.id, this.convertProjectItemToIssue(item));
     }
