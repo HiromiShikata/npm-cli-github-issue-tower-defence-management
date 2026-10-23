@@ -2268,10 +2268,7 @@ describe('DailySecurityScanUseCase', () => {
         );
         mockLocalCommandRunner.runCommand.mockImplementation(
           async (program, args) => {
-            if (
-              program === 'rm' &&
-              args[1] === checkoutDirectoryOf('failed')
-            ) {
+            if (program === 'rm' && args[1] === checkoutDirectoryOf('failed')) {
               throw cleanupError;
             }
             return rejectingCheckoutRunner(program, args);
@@ -2284,10 +2281,12 @@ describe('DailySecurityScanUseCase', () => {
           ).resolves.toBeUndefined();
 
           expect(
-            errorSpy.mock.calls.flat().some(
-              (value) =>
-                typeof value === 'string' && value.includes('cleanup failed'),
-            ),
+            errorSpy.mock.calls
+              .flat()
+              .some(
+                (value) =>
+                  typeof value === 'string' && value.includes('cleanup failed'),
+              ),
           ).toBe(true);
           expect(
             mockDailySecurityScanRunLogRepository.append,
