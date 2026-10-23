@@ -2246,6 +2246,66 @@ describe('DailySecurityScanUseCase', () => {
         }
       });
 
+      it('logs cleanup failure and continues scanning when clone and cleanup reject', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const scanError = new Error('killed by signal');
+        const cleanupError = new Error('cleanup failed');
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const rejectingCheckoutRunner = buildRejectingCheckoutRunner(
+          'failed',
+          'clone',
+          scanError,
+        );
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          async (program, args) => {
+            if (
+              program === 'rm' &&
+              args[1] === checkoutDirectoryOf('failed')
+            ) {
+              throw cleanupError;
+            }
+            return rejectingCheckoutRunner(program, args);
+          },
+        );
+
+        try {
+          await expect(
+            runDailySecurityScanOnce(useCase),
+          ).resolves.toBeUndefined();
+
+          expect(
+            errorSpy.mock.calls.flat().some(
+              (value) =>
+                typeof value === 'string' && value.includes('cleanup failed'),
+            ),
+          ).toBe(true);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          const failedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(failedEntry.repositoryName).toBe('failed');
+          expect(failedEntry.outcome.type).toBe('checkoutFailed');
+
+          const healthyEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[1][0];
+          expect(healthyEntry.repositoryName).toBe('healthy');
+          expect(healthyEntry.outcome.type).toBe('scanCompletedClean');
+        } finally {
+          errorSpy.mockRestore();
+        }
+      });
+
       it('cleans up and continues scanning when git rev-parse rejects', async () => {
         const {
           useCase,
