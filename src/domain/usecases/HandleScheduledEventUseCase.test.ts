@@ -3279,6 +3279,47 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
       });
 
+      it('logs a daily security scan rejection and still starts preparation', async () => {
+        const scanError = new Error('scan failed');
+        mockDailySecurityScanUseCase.run.mockRejectedValueOnce(scanError);
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        try {
+          await expect(
+            useCase.runEachUseCases(
+              {
+                ...baseInput,
+                dailySecurityScan: {
+                  scanBaseDirectory: '/repos',
+                  targetHourUtc: 5,
+                },
+              },
+              project,
+              issues,
+              false,
+              [new Date('2024-01-01T00:00:00Z')],
+              storyObjectMap,
+              false,
+              now,
+            ),
+          ).resolves.toEqual({ rotationOrder: null });
+
+          expect(mockStartPreparationUseCase.run).toHaveBeenCalledTimes(1);
+          expect(
+            consoleErrorSpy.mock.calls
+              .flat()
+              .some(
+                (value) =>
+                  typeof value === 'string' && value.includes('scan failed'),
+              ),
+          ).toBe(true);
+        } finally {
+          consoleErrorSpy.mockRestore();
+        }
+      });
+
       it('defers updateIssueStatusByLabelUseCase.run, issueNoStatusUpdateUseCase.run, and startPreparationUseCase.run for the cycle when runSlowSweep is true and runSlowSweepUseCases rejects its aggregate error', async () => {
         mockActionAnnouncementUseCase.run.mockRejectedValueOnce(
           new Error('ActionAnnouncementUseCase exploded'),

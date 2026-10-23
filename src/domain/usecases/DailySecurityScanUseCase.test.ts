@@ -2018,6 +2018,90 @@ describe('DailySecurityScanUseCase', () => {
         });
       };
 
+      const buildRejectingCheckoutRunner =
+        (
+          rejectedRepository: string,
+          rejectedCommand: 'mktemp' | 'clone' | 'rev-parse',
+          rejection: Error,
+        ) =>
+        async (program: string, args: string[]) => {
+          const repositoryNames = ['failed', 'healthy'];
+          if (program === 'find') {
+            return {
+              stdout:
+                repositoryNames
+                  .map(
+                    (repositoryName) =>
+                      `/repos/example-org/${repositoryName}/.git`,
+                  )
+                  .join('\n') + '\n',
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'mktemp') {
+            const template = args[args.length - 1];
+            const repositoryName =
+              template.match(/^tdpm-daily-security-scan-(.+)-XXXXXX$/)?.[1] ??
+              '';
+            if (
+              repositoryName === rejectedRepository &&
+              rejectedCommand === 'mktemp'
+            ) {
+              throw rejection;
+            }
+            return {
+              stdout: `${checkoutDirectoryOf(repositoryName)}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git' && args[0] === 'clone') {
+            const checkoutDirectory = args[args.length - 1];
+            const repositoryName =
+              repositoryNameFromCheckoutDirectory(checkoutDirectory);
+            if (
+              repositoryName === rejectedRepository &&
+              rejectedCommand === 'clone'
+            ) {
+              throw rejection;
+            }
+            return { stdout: '', stderr: '', exitCode: 0 };
+          }
+          if (program === 'git' && args.includes('rev-parse')) {
+            const checkoutDirectory = args[1];
+            const repositoryName =
+              repositoryNameFromCheckoutDirectory(checkoutDirectory);
+            if (
+              repositoryName === rejectedRepository &&
+              rejectedCommand === 'rev-parse'
+            ) {
+              throw rejection;
+            }
+            return {
+              stdout: `${SCANNED_COMMIT_SHA}\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'git') {
+            const repositoryDirectory = args[1];
+            const repositoryName = repositoryDirectory.split('/').pop() ?? '';
+            return {
+              stdout: `git@github.com:example-org/${repositoryName}.git\n`,
+              stderr: '',
+              exitCode: 0,
+            };
+          }
+          if (program === 'osv-scanner') {
+            return { stdout: '', stderr: '', exitCode: 0 };
+          }
+          if (program === 'rm') {
+            return { stdout: '', stderr: '', exitCode: 0 };
+          }
+          return { stdout: '', stderr: '', exitCode: 0 };
+        };
+
       it.each([
         {
           name: 'the temporary checkout directory cannot be created',
@@ -2071,6 +2155,199 @@ describe('DailySecurityScanUseCase', () => {
           errorSpy.mockRestore();
         },
       );
+
+      it('resolves and continues scanning when mktemp rejects', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const scanError = new Error('launch failed');
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRejectingCheckoutRunner('failed', 'mktemp', scanError),
+        );
+
+        try {
+          await expect(
+            runDailySecurityScanOnce(useCase),
+          ).resolves.toBeUndefined();
+
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          const failedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(failedEntry.repositoryName).toBe('failed');
+          if (failedEntry.outcome.type !== 'checkoutFailed') {
+            throw new Error('unreachable: checkout failure outcome asserted');
+          }
+          expect(failedEntry.outcome.reason).toContain('launch failed');
+
+          const healthyEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[1][0];
+          expect(healthyEntry.repositoryName).toBe('healthy');
+          expect(healthyEntry.outcome.type).toBe('scanCompletedClean');
+        } finally {
+          errorSpy.mockRestore();
+        }
+      });
+
+      it('cleans up and continues scanning when git clone rejects', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const scanError = new Error('killed by signal');
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRejectingCheckoutRunner('failed', 'clone', scanError),
+        );
+
+        try {
+          await expect(
+            runDailySecurityScanOnce(useCase),
+          ).resolves.toBeUndefined();
+
+          expect(mockLocalCommandRunner.runCommand.mock.calls).toContainEqual([
+            'rm',
+            ['-rf', checkoutDirectoryOf('failed')],
+          ]);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          const failedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(failedEntry.repositoryName).toBe('failed');
+          if (failedEntry.outcome.type !== 'checkoutFailed') {
+            throw new Error('unreachable: checkout failure outcome asserted');
+          }
+          expect(failedEntry.outcome.reason).toContain('killed by signal');
+
+          const healthyEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[1][0];
+          expect(healthyEntry.repositoryName).toBe('healthy');
+          expect(healthyEntry.outcome.type).toBe('scanCompletedClean');
+        } finally {
+          errorSpy.mockRestore();
+        }
+      });
+
+      it('logs cleanup failure and continues scanning when clone and cleanup reject', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const scanError = new Error('killed by signal');
+        const cleanupError = new Error('cleanup failed');
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const rejectingCheckoutRunner = buildRejectingCheckoutRunner(
+          'failed',
+          'clone',
+          scanError,
+        );
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          async (program, args) => {
+            if (program === 'rm' && args[1] === checkoutDirectoryOf('failed')) {
+              throw cleanupError;
+            }
+            return rejectingCheckoutRunner(program, args);
+          },
+        );
+
+        try {
+          await expect(
+            runDailySecurityScanOnce(useCase),
+          ).resolves.toBeUndefined();
+
+          expect(
+            errorSpy.mock.calls
+              .flat()
+              .some(
+                (value) =>
+                  typeof value === 'string' && value.includes('cleanup failed'),
+              ),
+          ).toBe(true);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          const failedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(failedEntry.repositoryName).toBe('failed');
+          expect(failedEntry.outcome.type).toBe('checkoutFailed');
+
+          const healthyEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[1][0];
+          expect(healthyEntry.repositoryName).toBe('healthy');
+          expect(healthyEntry.outcome.type).toBe('scanCompletedClean');
+        } finally {
+          errorSpy.mockRestore();
+        }
+      });
+
+      it('cleans up and continues scanning when git rev-parse rejects', async () => {
+        const {
+          useCase,
+          mockLocalCommandRunner,
+          mockIssueRepository,
+          mockDailySecurityScanRunLogRepository,
+          clock,
+        } = buildUseCase();
+        clock.mockReturnValue(new Date(EXECUTED_AT_ISO));
+        mockIssueRepository.searchIssue.mockResolvedValue([]);
+        const scanError = new Error('killed by signal');
+        const errorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        mockLocalCommandRunner.runCommand.mockImplementation(
+          buildRejectingCheckoutRunner('failed', 'rev-parse', scanError),
+        );
+
+        try {
+          await expect(
+            runDailySecurityScanOnce(useCase),
+          ).resolves.toBeUndefined();
+
+          expect(mockLocalCommandRunner.runCommand.mock.calls).toContainEqual([
+            'rm',
+            ['-rf', checkoutDirectoryOf('failed')],
+          ]);
+          expect(
+            mockDailySecurityScanRunLogRepository.append,
+          ).toHaveBeenCalledTimes(2);
+          const failedEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[0][0];
+          expect(failedEntry.repositoryName).toBe('failed');
+          expect(failedEntry.outcome.type).toBe('checkoutFailed');
+
+          const healthyEntry =
+            mockDailySecurityScanRunLogRepository.append.mock.calls[1][0];
+          expect(healthyEntry.repositoryName).toBe('healthy');
+          expect(healthyEntry.outcome.type).toBe('scanCompletedClean');
+        } finally {
+          errorSpy.mockRestore();
+        }
+      });
 
       const exampleVulnerablePackage = (suffix: string) => ({
         package: {
