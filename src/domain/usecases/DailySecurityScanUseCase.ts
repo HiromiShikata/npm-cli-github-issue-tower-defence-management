@@ -458,52 +458,73 @@ export class DailySecurityScanUseCase {
     repositoryName: string,
     remoteUrl: string,
   ): Promise<DailySecurityScanCheckoutResult> => {
-    const { stdout: checkoutDirectoryOutput, exitCode: checkoutDirectoryExit } =
-      await this.localCommandRunner.runCommand('mktemp', [
-        '-d',
-        '-t',
-        `tdpm-daily-security-scan-${repositoryName}-XXXXXX`,
-      ]);
+    let checkoutDirectoryOutput: string;
+    let checkoutDirectoryExit: number;
+    try {
+      ({ stdout: checkoutDirectoryOutput, exitCode: checkoutDirectoryExit } =
+        await this.localCommandRunner.runCommand('mktemp', [
+          '-d',
+          '-t',
+          `tdpm-daily-security-scan-${repositoryName}-XXXXXX`,
+        ]));
+    } catch (error) {
+      const reason = `Failed to create a checkout directory for ${repositoryName}: ${String(error)}`;
+      console.error(reason);
+      return { type: 'checkoutFailed', reason };
+    }
     const checkoutDirectory = checkoutDirectoryOutput.trim();
     if (checkoutDirectoryExit !== 0 || checkoutDirectory.length === 0) {
       const reason = `Failed to create a checkout directory for ${repositoryName}`;
       console.error(reason);
       return { type: 'checkoutFailed', reason };
     }
-    const { stderr: cloneStderr, exitCode: cloneExitCode } =
-      await this.localCommandRunner.runCommand('git', [
-        'clone',
-        '--depth',
-        '1',
-        remoteUrl,
-        checkoutDirectory,
-      ]);
+    let cloneStderr: string;
+    let cloneExitCode: number;
+    try {
+      ({ stderr: cloneStderr, exitCode: cloneExitCode } =
+        await this.localCommandRunner.runCommand('git', [
+          'clone',
+          '--depth',
+          '1',
+          remoteUrl,
+          checkoutDirectory,
+        ]));
+    } catch (error) {
+      const reason = `Failed to clone the default branch of ${repositoryName}: ${String(error)}`;
+      console.error(reason);
+      await this.removeCheckoutDirectory(checkoutDirectory);
+      return { type: 'checkoutFailed', reason };
+    }
     if (cloneExitCode !== 0) {
       const reason = `Failed to clone the default branch of ${repositoryName}: ${cloneStderr}`;
       console.error(reason);
-      await this.localCommandRunner.runCommand('rm', [
-        '-rf',
-        checkoutDirectory,
-      ]);
+      await this.removeCheckoutDirectory(checkoutDirectory);
       return { type: 'checkoutFailed', reason };
     }
-    const {
-      stdout: revParseStdout,
-      stderr: revParseStderr,
-      exitCode: revParseExitCode,
-    } = await this.localCommandRunner.runCommand('git', [
-      '-C',
-      checkoutDirectory,
-      'rev-parse',
-      'HEAD',
-    ]);
+    let revParseStdout: string;
+    let revParseStderr: string;
+    let revParseExitCode: number;
+    try {
+      ({
+        stdout: revParseStdout,
+        stderr: revParseStderr,
+        exitCode: revParseExitCode,
+      } = await this.localCommandRunner.runCommand('git', [
+        '-C',
+        checkoutDirectory,
+        'rev-parse',
+        'HEAD',
+      ]));
+    } catch (error) {
+      const reason = `Failed to resolve the cloned commit SHA for ${repositoryName}: ${String(error)}`;
+      console.error(reason);
+      await this.removeCheckoutDirectory(checkoutDirectory);
+      return { type: 'checkoutFailed', reason };
+    }
     if (revParseExitCode !== 0) {
       const reason = `Failed to resolve the cloned commit SHA for ${repositoryName}: ${revParseStderr}`;
       console.error(reason);
-      await this.localCommandRunner.runCommand('rm', [
-        '-rf',
-        checkoutDirectory,
-      ]);
+      await this.removeCheckoutDirectory(checkoutDirectory);
       return { type: 'checkoutFailed', reason };
     }
     return {
@@ -511,6 +532,21 @@ export class DailySecurityScanUseCase {
       checkoutDirectory,
       clonedCommitSha: revParseStdout.trim(),
     };
+  };
+
+  private removeCheckoutDirectory = async (
+    checkoutDirectory: string,
+  ): Promise<void> => {
+    try {
+      await this.localCommandRunner.runCommand('rm', [
+        '-rf',
+        checkoutDirectory,
+      ]);
+    } catch (error) {
+      console.error(
+        `Failed to remove the daily security scan checkout directory ${checkoutDirectory}: ${String(error)}`,
+      );
+    }
   };
 
   private reportKevAdditions = async (

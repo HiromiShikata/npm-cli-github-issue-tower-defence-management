@@ -740,13 +740,20 @@ ${JSON.stringify(e)}
         }),
       failures,
     );
-    if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
-      await this.dailySecurityScanUseCase.run({
-        targetDates: targetDateTimes,
-        org: input.org,
-        manager: input.manager,
-        dailySecurityScan: input.dailySecurityScan,
-      });
+    const dailySecurityScanUseCase = this.dailySecurityScanUseCase;
+    const dailySecurityScan = input.dailySecurityScan;
+    if (dailySecurityScanUseCase !== null && dailySecurityScan) {
+      await this.runOperationIsolated(
+        `run daily security scan for project ${project.url}`,
+        () =>
+          dailySecurityScanUseCase.run({
+            targetDates: targetDateTimes,
+            org: input.org,
+            manager: input.manager,
+            dailySecurityScan,
+          }),
+        failures,
+      );
     }
     if (input.startPreparation) {
       const startPreparation = input.startPreparation;
