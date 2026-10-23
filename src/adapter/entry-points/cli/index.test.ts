@@ -357,6 +357,54 @@ describe('CLI', () => {
   });
 
   describe('schedule fleet config validation', () => {
+    it('exits with code 1 and reports the duplicate key error when the fleet map has two identical literal keys (AC-39)', async () => {
+      const fleetConfigFilePath = path.join(
+        tmpDir,
+        'fleet-duplicate-map-key.config.yaml',
+      );
+      fs.writeFileSync(
+        fleetConfigFilePath,
+        [
+          'startPreparation:',
+          '  llmModelNameByAgentName:',
+          '    triager: a',
+          '    triager: a',
+        ].join('\n'),
+      );
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const handleFatalError = jest.fn();
+      const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+      process.env.TDPM_FLEET_CONFIG = fleetConfigFilePath;
+
+      try {
+        await runCliProgram(
+          ['node', 'test', 'schedule', '-t', 'schedule', '-c', configFilePath],
+          handleFatalError,
+        );
+
+        expect(handleFatalError).not.toHaveBeenCalled();
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        const errorOutput = consoleErrorSpy.mock.calls
+          .flat()
+          .map(String)
+          .join('');
+        expect(errorOutput).toContain('Map keys must be unique');
+        expect(mockScheduleHandle).not.toHaveBeenCalled();
+      } finally {
+        processExitSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+        process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+        if (fs.existsSync(fleetConfigFilePath)) {
+          fs.unlinkSync(fleetConfigFilePath);
+        }
+      }
+    });
+
     it('reports an error and exits without calling handleFatalError when errorReportingRepository in fleet config is invalid', async () => {
       const fleetConfigFilePath = path.join(
         tmpDir,

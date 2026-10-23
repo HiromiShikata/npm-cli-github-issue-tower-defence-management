@@ -1343,4 +1343,358 @@ defaultAgentName: readme-agent
       },
     );
   });
+
+  describe('llmModelNameByAgentName fleet map', () => {
+    const fleetConfigFileName = 'test-fleet.config.yaml';
+    const actualFleetConfig =
+      jest.requireActual<typeof import('../cli/fleetConfig')>(
+        '../cli/fleetConfig',
+      );
+    let consoleLines: string[] = [];
+    let consoleSpies: jest.SpyInstance[] = [];
+
+    const effectiveMapLines = (): string[] =>
+      consoleLines.filter((line) =>
+        line.startsWith('Effective llmModelNameByAgentName:'),
+      );
+
+    const mockConfigFiles = (
+      projectConfigContent: string,
+      fleetConfigContent: string | null,
+    ): void => {
+      mockResolveFleetConfigFilePath.mockReturnValue(
+        fleetConfigContent === null ? null : fleetConfigFileName,
+      );
+      mockLoadStartPreparationFleetSettings.mockImplementation(
+        actualFleetConfig.loadStartPreparationFleetSettings,
+      );
+      jest
+        .mocked(fs.readFileSync)
+        .mockImplementation((filePath) =>
+          filePath === fleetConfigFileName && fleetConfigContent !== null
+            ? fleetConfigContent
+            : projectConfigContent,
+        );
+    };
+
+    const runSchedule = async (): Promise<unknown> =>
+      new HandleScheduledEventUseCaseHandler().handle('config.yml', false);
+
+    beforeEach(() => {
+      consoleLines = [];
+      const recordLine = (...args: unknown[]): void => {
+        consoleLines.push(args.map((arg) => String(arg)).join(' '));
+      };
+      consoleSpies = [
+        jest.spyOn(console, 'log').mockImplementation(recordLine),
+        jest.spyOn(console, 'warn').mockImplementation(recordLine),
+        jest.spyOn(console, 'error').mockImplementation(recordLine),
+      ];
+    });
+
+    afterEach(() => {
+      consoleSpies.forEach((spy) => spy.mockRestore());
+    });
+
+    it('passes a null map when only the project configuration has a map (AC-01)', async () => {
+      mockConfigFiles(
+        YAML.stringify({
+          ...validConfig,
+          startPreparation: {
+            llmModelNameByAgentName: { triager: 'claude-sonnet-5-5' },
+          },
+        }),
+        YAML.stringify({
+          startPreparation: { maximumPreparingIssuesCount: 80 },
+        }),
+      );
+
+      await runSchedule();
+
+      expect(capturedRunInputs).toHaveLength(1);
+      expect(capturedRunInputs[0][0]).toHaveProperty(
+        'llmModelNameByAgentName',
+        null,
+      );
+    });
+
+    it('passes the fleet configuration map to the schedule run (AC-01)', async () => {
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: {
+            llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+          },
+        }),
+      );
+
+      await runSchedule();
+
+      expect(capturedRunInputs[0][0]).toHaveProperty(
+        'llmModelNameByAgentName',
+        { triager: 'claude-haiku-5-5' },
+      );
+    });
+
+    it('passes a null map and prints the README key warning when the README has the key (AC-01)', async () => {
+      mockFetchReturningReadme(`<details>
+<summary>config</summary>
+llmModelNameByAgentName: claude-haiku-5-5
+</details>`);
+      mockConfigFiles(
+        YAML.stringify({
+          ...validConfig,
+          startPreparation: { maximumPreparingIssuesCount: 3 },
+        }),
+        YAML.stringify({
+          startPreparation: { maximumPreparingIssuesCount: 80 },
+        }),
+      );
+
+      await runSchedule();
+
+      expect(capturedRunInputs[0][0]).toHaveProperty(
+        'llmModelNameByAgentName',
+        null,
+      );
+      expect(consoleLines).toContain(
+        'Unknown key "llmModelNameByAgentName" in project README config section (project URL: https://github.com/users/TestOrg/projects/1)',
+      );
+    });
+
+    it('passes a null map without error when the project configuration map is a number (AC-01)', async () => {
+      mockConfigFiles(
+        YAML.stringify({
+          ...validConfig,
+          startPreparation: { llmModelNameByAgentName: 3 },
+        }),
+        YAML.stringify({
+          startPreparation: { maximumPreparingIssuesCount: 80 },
+        }),
+      );
+
+      await runSchedule();
+
+      expect(capturedRunInputs[0][0]).toHaveProperty(
+        'llmModelNameByAgentName',
+        null,
+      );
+    });
+
+    it('prints exactly one Effective map line that names an unmatched key (AC-16)', async () => {
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: {
+            llmModelNameByAgentName: {
+              'no-such-agent': 'claude-haiku-5-5',
+            },
+          },
+        }),
+      );
+
+      await runSchedule();
+
+      const linesNamingKey = consoleLines.filter((line) =>
+        line.includes('no-such-agent'),
+      );
+      expect(linesNamingKey).toHaveLength(1);
+      expect(linesNamingKey[0]).toMatch(/^Effective llmModelNameByAgentName:/);
+    });
+
+    it('prints the Effective line with only the non-null entry (AC-17)', async () => {
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: {
+            llmModelNameByAgentName: {
+              triager: 'claude-haiku-5-5',
+              'acceptance-tester': null,
+            },
+          },
+        }),
+      );
+
+      await runSchedule();
+
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: {"triager":"claude-haiku-5-5"} (source: fleetConfig)',
+      ]);
+    });
+
+    it.each([
+      {
+        description: 'a missing key',
+        fleetConfig: { startPreparation: { maximumPreparingIssuesCount: 80 } },
+      },
+      {
+        description: 'a null value',
+        fleetConfig: { startPreparation: { llmModelNameByAgentName: null } },
+      },
+      {
+        description: 'a misspelled key',
+        fleetConfig: {
+          startPreparation: {
+            llmModelNameByAgentNames: { triager: 'claude-haiku-5-5' },
+          },
+        },
+      },
+    ])(
+      'prints exactly one null Effective map line for $description (AC-18)',
+      async ({ fleetConfig }) => {
+        mockConfigFiles(
+          YAML.stringify(validConfig),
+          YAML.stringify(fleetConfig),
+        );
+
+        await runSchedule();
+
+        expect(effectiveMapLines()).toEqual([
+          'Effective llmModelNameByAgentName: null (source: fleetConfig)',
+        ]);
+      },
+    );
+
+    it('prints exactly one built-in default null Effective map line when TDPM_FLEET_CONFIG is unset (AC-18)', async () => {
+      mockConfigFiles(YAML.stringify(validConfig), null);
+
+      await runSchedule();
+
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: null (source: built-in default)',
+      ]);
+    });
+
+    it('rejects the schedule run with the map error and does not call the launch run (AC-25)', async () => {
+      mockFetchReturningReadme('# Test project');
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: { llmModelNameByAgentName: 'claude-haiku-5-5' },
+        }),
+      );
+
+      await expect(runSchedule()).rejects.toThrow(
+        'startPreparation.llmModelNameByAgentName in test-fleet.config.yaml must be a mapping.',
+      );
+      expect(mockRun).not.toHaveBeenCalled();
+    });
+
+    it('prints no Effective map line when the fleet map read fails (AC-26)', async () => {
+      mockFetchReturningReadme('# Test project');
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: { llmModelNameByAgentName: 'claude-haiku-5-5' },
+        }),
+      );
+
+      await expect(runSchedule()).rejects.toThrow(
+        'startPreparation.llmModelNameByAgentName in test-fleet.config.yaml must be a mapping.',
+      );
+      expect(effectiveMapLines()).toEqual([]);
+    });
+
+    it('prints exactly one empty-map Effective line when the read map is {} (AC-32)', async () => {
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({ startPreparation: { llmModelNameByAgentName: {} } }),
+      );
+
+      await runSchedule();
+
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: {} (source: fleetConfig)',
+      ]);
+    });
+
+    it('prints exactly one empty-map Effective line when only the project configuration has a map (AC-32)', async () => {
+      mockConfigFiles(
+        YAML.stringify({
+          ...validConfig,
+          startPreparation: {
+            llmModelNameByAgentName: { triager: 'claude-sonnet-5-5' },
+          },
+        }),
+        YAML.stringify({ startPreparation: { llmModelNameByAgentName: {} } }),
+      );
+
+      await runSchedule();
+
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: {} (source: fleetConfig)',
+      ]);
+    });
+
+    it('prints no Effective map line when the project configuration is disabled, and prints one when enabled (AC-33)', async () => {
+      const fleetConfig = YAML.stringify({
+        startPreparation: {
+          llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+        },
+      });
+      mockConfigFiles(
+        YAML.stringify({ ...validConfig, disabled: true }),
+        fleetConfig,
+      );
+
+      await expect(runSchedule()).resolves.toBeNull();
+      expect(effectiveMapLines()).toEqual([]);
+
+      consoleLines = [];
+      mockConfigFiles(YAML.stringify(validConfig), fleetConfig);
+      await runSchedule();
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: {"triager":"claude-haiku-5-5"} (source: fleetConfig)',
+      ]);
+    });
+
+    it('prints no Effective map line when the project configuration lacks a credential, and prints one when valid (AC-33)', async () => {
+      const fleetConfig = YAML.stringify({
+        startPreparation: {
+          llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+        },
+      });
+      mockConfigFiles(YAML.stringify({}), fleetConfig);
+
+      await expect(runSchedule()).rejects.toThrow('Invalid input');
+      expect(effectiveMapLines()).toEqual([]);
+
+      consoleLines = [];
+      mockConfigFiles(YAML.stringify(validConfig), fleetConfig);
+      await runSchedule();
+      expect(effectiveMapLines()).toEqual([
+        'Effective llmModelNameByAgentName: {"triager":"claude-haiku-5-5"} (source: fleetConfig)',
+      ]);
+    });
+
+    it('passes the map read by each schedule run, not the previous run (AC-36)', async () => {
+      mockConfigFiles(
+        YAML.stringify(validConfig),
+        YAML.stringify({
+          startPreparation: { maximumPreparingIssuesCount: 80 },
+        }),
+      );
+      const firstFleetSettings = {
+        maximumPreparingIssuesCount: 80,
+        llmModelNameByAgentName: { triager: 'claude-haiku-5-5' },
+      };
+      const secondFleetSettings = {
+        maximumPreparingIssuesCount: 80,
+        llmModelNameByAgentName: { triager: 'claude-sonnet-5-5' },
+      };
+      mockLoadStartPreparationFleetSettings
+        .mockReturnValueOnce(firstFleetSettings)
+        .mockReturnValueOnce(secondFleetSettings);
+
+      await runSchedule();
+      await runSchedule();
+
+      expect(mockLoadStartPreparationFleetSettings).toHaveBeenCalledTimes(2);
+      expect(capturedRunInputs).toHaveLength(2);
+      expect(capturedRunInputs[1][0]).toHaveProperty(
+        'llmModelNameByAgentName',
+        { triager: 'claude-sonnet-5-5' },
+      );
+    });
+  });
 });

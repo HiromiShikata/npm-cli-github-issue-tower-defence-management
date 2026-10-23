@@ -1195,3 +1195,340 @@ describe('loadFleetTaskCreateUrl', () => {
     );
   });
 });
+
+describe('loadStartPreparationFleetSettings llmModelNameByAgentName', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  const errorOf = (action: () => unknown): Error => {
+    try {
+      action();
+    } catch (error) {
+      if (error instanceof Error) {
+        return error;
+      }
+      throw error;
+    }
+    throw new Error('expected the action to throw');
+  };
+
+  const maximumPreparingIssuesCountError = (): Error =>
+    errorOf(() =>
+      loadStartPreparationFleetSettings(
+        writeFleetConfig(
+          ['startPreparation:', '  maximumPreparingIssuesCount: 0'].join('\n'),
+        ),
+      ),
+    );
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it.each([
+    {
+      description:
+        'a startPreparation section with only maximumPreparingIssuesCount',
+      content: ['startPreparation:', '  maximumPreparingIssuesCount: 3'].join(
+        '\n',
+      ),
+      expected: {
+        maximumPreparingIssuesCount: 3,
+        llmModelNameByAgentName: null,
+      },
+    },
+    {
+      description: 'no startPreparation section',
+      content: "errorReportingRepository: 'a/b'\n",
+      expected: {
+        ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+        llmModelNameByAgentName: null,
+      },
+    },
+    {
+      description: 'an empty startPreparation section',
+      content: 'startPreparation:\n',
+      expected: {
+        ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+        llmModelNameByAgentName: null,
+      },
+    },
+  ])(
+    'reads a null map when the fleet config has no llmModelNameByAgentName key, for $description (AC-07)',
+    ({ content, expected }) => {
+      expect(
+        loadStartPreparationFleetSettings(writeFleetConfig(content)),
+      ).toEqual(expected);
+    },
+  );
+
+  it('reads a null map without error when llmModelNameByAgentName has no value (AC-08)', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['startPreparation:', '  llmModelNameByAgentName:'].join('\n'),
+    );
+
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+      ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+      llmModelNameByAgentName: null,
+    });
+  });
+
+  it('returns a null map when the fleet config path is null (AC-09)', () => {
+    expect(loadStartPreparationFleetSettings(null)).toEqual({
+      ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+      llmModelNameByAgentName: null,
+    });
+  });
+
+  it.each([
+    {
+      valueDescription: 'a string',
+      valueLine: "  llmModelNameByAgentName: 'claude-haiku-5-5'",
+    },
+    { valueDescription: 'a number', valueLine: '  llmModelNameByAgentName: 3' },
+    {
+      valueDescription: 'a boolean',
+      valueLine: '  llmModelNameByAgentName: true',
+    },
+    { valueDescription: 'a list', valueLine: '  llmModelNameByAgentName: [a]' },
+  ])(
+    'throws the mapping error with the same error class as an invalid maximumPreparingIssuesCount when the map is $valueDescription (AC-12)',
+    ({ valueLine }) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        ['startPreparation:', valueLine].join('\n'),
+      );
+      const message = `startPreparation.llmModelNameByAgentName in ${fleetConfigFilePath} must be a mapping.`;
+
+      expect(() =>
+        loadStartPreparationFleetSettings(fleetConfigFilePath),
+      ).toThrow(message);
+      expect(
+        errorOf(() => loadStartPreparationFleetSettings(fleetConfigFilePath))
+          .constructor,
+      ).toBe(maximumPreparingIssuesCountError().constructor);
+    },
+  );
+
+  it.each([
+    { valueDescription: 'an empty string', valueLine: "    triager: ''" },
+    { valueDescription: 'a number', valueLine: '    triager: 1' },
+    { valueDescription: 'a boolean', valueLine: '    triager: true' },
+    { valueDescription: 'a list', valueLine: '    triager: [a]' },
+    { valueDescription: 'a mapping', valueLine: '    triager: {a: b}' },
+  ])(
+    'throws the non-empty string error for triager when its value is $valueDescription, with the same error class as the mapping error (AC-13)',
+    ({ valueLine }) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        ['startPreparation:', '  llmModelNameByAgentName:', valueLine].join(
+          '\n',
+        ),
+      );
+      const message = `startPreparation.llmModelNameByAgentName.triager in ${fleetConfigFilePath} must be a non-empty string.`;
+
+      expect(() =>
+        loadStartPreparationFleetSettings(fleetConfigFilePath),
+      ).toThrow(message);
+      expect(
+        errorOf(() => loadStartPreparationFleetSettings(fleetConfigFilePath))
+          .constructor,
+      ).toBe(maximumPreparingIssuesCountError().constructor);
+    },
+  );
+
+  it.each([
+    {
+      description:
+        'a non-string value for b-agent before an empty value for a-agent',
+      content: [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        '    b-agent: 1',
+        "    a-agent: ''",
+      ].join('\n'),
+      expectedInMessage: 'llmModelNameByAgentName.b-agent in',
+      unexpectedInMessage: 'a-agent',
+    },
+    {
+      description: 'an empty value for triager before an integer-form key 5',
+      content: [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        "    triager: ''",
+        '    5: 1',
+      ].join('\n'),
+      expectedInMessage: 'llmModelNameByAgentName.5 in',
+      unexpectedInMessage: 'triager',
+    },
+  ])(
+    'names only the first invalid agent in YAML reader order when $description (AC-14)',
+    ({ content, expectedInMessage, unexpectedInMessage }) => {
+      const message = errorOf(() =>
+        loadStartPreparationFleetSettings(writeFleetConfig(content)),
+      ).message;
+
+      expect(message).toContain(expectedInMessage);
+      expect(message).not.toContain(unexpectedInMessage);
+    },
+  );
+
+  it('reads a null map entry as no entry, keeping the other entries (AC-15)', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        '    triager:',
+        "    spec-creator: 'claude-haiku-5-5'",
+      ].join('\n'),
+    );
+
+    expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+      ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+      llmModelNameByAgentName: { 'spec-creator': 'claude-haiku-5-5' },
+    });
+  });
+
+  it('reads a misspelled llmModelNameByAgentNames key as no map, with no warning or error (AC-18)', () => {
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const errorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const fleetConfigFilePath = writeFleetConfig(
+        [
+          'startPreparation:',
+          '  llmModelNameByAgentNames:',
+          '    triager: claude-haiku-5-5',
+        ].join('\n'),
+      );
+
+      expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
+        ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+        llmModelNameByAgentName: null,
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('reads a quoted whitespace-only value and a space-padded value without a warning or error (AC-31)', () => {
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const errorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const fleetConfigFilePath = writeFleetConfig(
+        [
+          'startPreparation:',
+          '  llmModelNameByAgentName:',
+          "    triager: 'model-not-in-any-list-xyz'",
+          "    developer: ' '",
+        ].join('\n'),
+      );
+
+      expect(
+        loadStartPreparationFleetSettings(fleetConfigFilePath),
+      ).toHaveProperty('llmModelNameByAgentName', {
+        triager: 'model-not-in-any-list-xyz',
+        developer: ' ',
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it.each([
+    {
+      description: 'an empty flow mapping',
+      content: ['startPreparation:', '  llmModelNameByAgentName: {}'].join(
+        '\n',
+      ),
+    },
+    {
+      description: 'keys whose values are all null',
+      content: [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        '    triager:',
+        '    developer:',
+      ].join('\n'),
+    },
+  ])('reads an empty map for $description (AC-32)', ({ content }) => {
+    expect(
+      loadStartPreparationFleetSettings(writeFleetConfig(content)),
+    ).toEqual({
+      ...DEFAULT_START_PREPARATION_FLEET_SETTINGS,
+      llmModelNameByAgentName: {},
+    });
+  });
+
+  it('reads the integer, float, boolean and null keys to their string forms (AC-39)', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        '    123: a',
+        '    1.0: b',
+        '    true: c',
+        '    null: d',
+      ].join('\n'),
+    );
+
+    expect(
+      loadStartPreparationFleetSettings(fleetConfigFilePath),
+    ).toHaveProperty('llmModelNameByAgentName', {
+      '1': 'b',
+      '123': 'a',
+      true: 'c',
+      '': 'd',
+    });
+  });
+
+  it('keeps the later value when a quoted key and an unquoted integer key collide (AC-39)', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        "    '1': a",
+        '    1: b',
+      ].join('\n'),
+    );
+
+    expect(
+      loadStartPreparationFleetSettings(fleetConfigFilePath),
+    ).toHaveProperty('llmModelNameByAgentName', { '1': 'b' });
+  });
+
+  it('throws Map keys must be unique when two identical literal keys are in the map (AC-39)', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'startPreparation:',
+        '  llmModelNameByAgentName:',
+        '    triager: a',
+        '    triager: a',
+      ].join('\n'),
+    );
+
+    expect(() =>
+      loadStartPreparationFleetSettings(fleetConfigFilePath),
+    ).toThrow('Map keys must be unique');
+  });
+});
