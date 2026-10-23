@@ -37,11 +37,13 @@ export const DEFAULT_PREPARATION_WORKER_SETTINGS: PreparationWorkerSettings = {
 
 export type StartPreparationFleetSettings = {
   maximumPreparingIssuesCount: number;
+  llmModelNameByAgentName?: Record<string, string> | null;
 };
 
 export const DEFAULT_START_PREPARATION_FLEET_SETTINGS: StartPreparationFleetSettings =
   {
     maximumPreparingIssuesCount: DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+    llmModelNameByAgentName: null,
   };
 
 export const resolveFleetConfigFilePath = (
@@ -230,6 +232,36 @@ export const loadPreparationWorkerSettings = (
   };
 };
 
+const LLM_MODEL_NAME_BY_AGENT_NAME_KEY = 'llmModelNameByAgentName';
+
+const readLlmModelNameByAgentName = (
+  section: Record<string, unknown>,
+  fleetConfigFilePath: string,
+): Record<string, string> | null => {
+  const value = section[LLM_MODEL_NAME_BY_AGENT_NAME_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    throw new Error(
+      `${START_PREPARATION_SECTION_KEY}.${LLM_MODEL_NAME_BY_AGENT_NAME_KEY} in ${fleetConfigFilePath} must be a mapping.`,
+    );
+  }
+  const entries: [string, string][] = [];
+  for (const [agentName, modelName] of Object.entries(value)) {
+    if (modelName === null) {
+      continue;
+    }
+    if (typeof modelName !== 'string' || modelName === '') {
+      throw new Error(
+        `${START_PREPARATION_SECTION_KEY}.${LLM_MODEL_NAME_BY_AGENT_NAME_KEY}.${agentName} in ${fleetConfigFilePath} must be a non-empty string.`,
+      );
+    }
+    entries.push([agentName, modelName]);
+  }
+  return Object.fromEntries(entries);
+};
+
 export const loadStartPreparationFleetSettings = (
   fleetConfigFilePath: string | null,
 ): StartPreparationFleetSettings => {
@@ -252,6 +284,10 @@ export const loadStartPreparationFleetSettings = (
       DEFAULT_START_PREPARATION_FLEET_SETTINGS.maximumPreparingIssuesCount,
       (value) => Number.isInteger(value) && value >= 1,
       'integer of at least 1',
+    ),
+    llmModelNameByAgentName: readLlmModelNameByAgentName(
+      section,
+      fleetConfigFilePath,
     ),
   };
 };

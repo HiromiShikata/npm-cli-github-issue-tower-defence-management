@@ -469,6 +469,7 @@ describe('loadStartPreparationFleetSettings', () => {
 
     expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
       maximumPreparingIssuesCount: 100,
+      llmModelNameByAgentName: null,
     });
   });
 
@@ -559,7 +560,10 @@ describe('loadStartPreparationFleetSettings', () => {
         '  urgentStoryNames:',
         "    - 'Story A'",
       ],
-      expectedSettings: { maximumPreparingIssuesCount: 100 },
+      expectedSettings: {
+        maximumPreparingIssuesCount: 100,
+        llmModelNameByAgentName: null,
+      },
     },
     {
       label: 'as its only key',
@@ -567,6 +571,7 @@ describe('loadStartPreparationFleetSettings', () => {
       expectedSettings: {
         maximumPreparingIssuesCount:
           DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+        llmModelNameByAgentName: null,
       },
     },
   ])(
@@ -597,6 +602,7 @@ describe('loadStartPreparationFleetSettings', () => {
     ).not.toThrow();
     expect(loadStartPreparationFleetSettings(fleetConfigFilePath)).toEqual({
       maximumPreparingIssuesCount: 100,
+      llmModelNameByAgentName: null,
     });
   });
 });
