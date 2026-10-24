@@ -57,6 +57,9 @@ const SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT = [
   '  umino: FAKE_SECRET_VALUE_123 x',
   '',
 ].join('\n');
+const UNRESOLVED_ALIAS_CONFIG_FILE_NAME = 'unresolved-alias-console.yml';
+const UNRESOLVED_ALIAS_CONFIG_CONTENT =
+  'consoleGithubTokens:\n  umino: *FAKE_SECRET_VALUE_123\n';
 const INVALID_ISSUE_URL = 'not-a-url';
 
 type StoryGateCommandName =
@@ -722,6 +725,41 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         stderrHasLoadFailureMessage: true,
         configTokenInOutput: false,
         defaultTokenInOutput: false,
+        requestUrls: [],
+      })),
+    );
+  });
+
+  it('exits 1 with the Unresolved alias message and no alias name in stdout or stderr for each story-gate command when --configFilePath holds an undefined alias', async () => {
+    const configFilePath = path.join(
+      workDirectory,
+      UNRESOLVED_ALIAS_CONFIG_FILE_NAME,
+    );
+    fs.writeFileSync(configFilePath, UNRESOLVED_ALIAS_CONFIG_CONTENT);
+    const expectedLoadFailureMessagePrefix = `Failed to load configuration file "${configFilePath}": `;
+    const runs = await runCommandsWithConfigFile(configFilePath);
+
+    const observations = runs.map(({ commandName, run, requests }) => {
+      const output = outputOf(run);
+      return {
+        commandName,
+        firstExitCode: run.exitCodes[0],
+        stderrStartsWithLoadFailurePrefix: run.stderrText.startsWith(
+          expectedLoadFailureMessagePrefix,
+        ),
+        stderrNamesUnresolvedAlias: run.stderrText.includes('Unresolved alias'),
+        aliasNameInOutput: output.includes(FAKE_SECRET_VALUE),
+        requestUrls: requests.map((request) => request.url),
+      };
+    });
+
+    expect(observations).toEqual(
+      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
+        commandName,
+        firstExitCode: 1,
+        stderrStartsWithLoadFailurePrefix: true,
+        stderrNamesUnresolvedAlias: true,
+        aliasNameInOutput: false,
         requestUrls: [],
       })),
     );

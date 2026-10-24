@@ -473,6 +473,9 @@ const SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT = [
   '',
 ].join('\n');
 
+const UNRESOLVED_ALIAS_CONFIG_CONTENT =
+  'consoleGithubTokens:\n  umino: *FAKE_SECRET_VALUE_123\n';
+
 const printedTextOf = (printedValues: unknown[]): string =>
   printedValues.map(String).join(' ');
 
@@ -702,6 +705,70 @@ describe('loadConfigFile YAML parsing outcomes', () => {
     );
     expect(errorMessage).toMatch(/\bline 3\b/);
     expect(errorMessage).toMatch(/\bcolumn 1\b/);
+    expect(outputText).not.toContain(FAKE_SECRET_VALUE);
+  });
+});
+
+describe('loadConfigFile unresolved alias', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-unresolved-alias-'),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('writes the Unresolved alias message without the alias name to stdout or stderr and exits 1 when a consoleGithubTokens entry is an undefined alias', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_ALIAS_CONFIG_CONTENT);
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const emitWarningSpy = jest
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((): never => {
+        throw new Error('process.exit called');
+      });
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+
+    const errorMessage = printedTextOf(consoleErrorSpy.mock.calls[0] ?? []);
+    const outputText = [
+      ...consoleLogSpy.mock.calls.map(printedTextOf),
+      ...consoleErrorSpy.mock.calls.map(printedTextOf),
+      ...consoleWarnSpy.mock.calls.map(printedTextOf),
+      ...stdoutWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+      ...stderrWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+      ...emitWarningSpy.mock.calls.map(([warning]) => warningTextOf(warning)),
+    ].join('\n');
+    const expectedMessagePrefix = `Failed to load configuration file "${filePath}": `;
+
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(errorMessage.slice(0, expectedMessagePrefix.length)).toBe(
+      expectedMessagePrefix,
+    );
+    expect(errorMessage).toContain('Unresolved alias');
     expect(outputText).not.toContain(FAKE_SECRET_VALUE);
   });
 });
