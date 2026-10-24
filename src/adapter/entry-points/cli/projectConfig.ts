@@ -186,7 +186,17 @@ const knownProjectReadmeConfigKeys = [
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
     const content = fs.readFileSync(configFilePath, 'utf-8');
-    const parsed: unknown = YAML.parse(content, { logLevel: 'error' });
+    const doc = YAML.parseDocument(content);
+    for (const warning of doc.warnings) {
+      const start = warning.linePos?.[0];
+      process.stderr.write(
+        `Config file warning: ${warning.code} at line ${start?.line}, column ${start?.col}\n`,
+      );
+    }
+    if (doc.errors.length > 0) {
+      throw doc.errors[0];
+    }
+    const parsed: unknown = doc.toJS();
     if (!isRecord(parsed)) {
       return {};
     }
