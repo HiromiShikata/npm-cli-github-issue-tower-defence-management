@@ -462,6 +462,135 @@ describe('loadConfigFile consoleProjects', () => {
   });
 });
 
+const UNRESOLVED_TAG_CONFIG_CONTENT =
+  'consoleProjects:\n  umino: https://github.com/orgs/org-a/projects/1\nconsoleGithubTokens:\n  umino: !foo FAKE_SECRET_VALUE_123\n';
+const FAKE_SECRET_VALUE = 'FAKE_SECRET_VALUE_123';
+const YAML_WARNING_NAME = 'YAMLWarning';
+
+describe('loadConfigFile unresolved YAML tag', () => {
+  let dir: string;
+  let emitWarningSpy: jest.SpyInstance;
+  let stderrWriteSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-unresolved-tag-'),
+    );
+    emitWarningSpy = jest
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    emitWarningSpy.mockRestore();
+    stderrWriteSpy.mockRestore();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns the consoleGithubTokens key and writes no YAML warning or token value to stderr', async () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+
+    const config = loadConfigFile(filePath);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const stderrText = stderrWriteSpy.mock.calls
+      .map(([chunk]) => String(chunk))
+      .join('');
+    const warningTextsWithLeak = emitWarningSpy.mock.calls
+      .map(([warning]) => String(warning))
+      .filter(
+        (text) =>
+          text.includes(YAML_WARNING_NAME) || text.includes(FAKE_SECRET_VALUE),
+      );
+
+    expect(config.consoleGithubTokens).toHaveProperty(['umino']);
+    expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
+    expect(stderrText).not.toContain(YAML_WARNING_NAME);
+    expect(warningTextsWithLeak).toEqual([]);
+  });
+});
+
+describe('loadConfigFile YAML parsing outcomes', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-yaml-outcomes-'),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('returns an empty config when the file root is not a mapping', () => {
+    const notMappingCases = [
+      { name: 'a sequence', content: '- token-a\n- token-b\n' },
+      { name: 'a scalar', content: 'token-a\n' },
+    ];
+
+    const observed = notMappingCases.map(({ name, content }) => ({
+      name,
+      config: loadConfigFile(writeConfig(content)),
+    }));
+
+    expect(observed).toEqual(
+      notMappingCases.map(({ name }) => ({ name, config: {} })),
+    );
+  });
+
+  it('reports a syntax error at line 3, column 3 through console.error and exits 1', () => {
+    const syntaxErrorContent = [
+      'consoleProjects: {',
+      "  pj-a: 'https://github.com/orgs/org-a/projects/1'",
+      '  pj-b: token-a x',
+      '',
+    ].join('\n');
+    const filePath = writeConfig(syntaxErrorContent);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((): never => {
+        throw new Error('process.exit called');
+      });
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to load configuration file "${filePath}": `,
+      ),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('at line 3, column 3'),
+    );
+  });
+
+  it('returns the value of a tagged entry as a plain string without the tag', () => {
+    jest.spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+
+    const config = loadConfigFile(writeConfig(UNRESOLVED_TAG_CONFIG_CONTENT));
+
+    expect(config.consoleGithubTokens).toEqual({
+      umino: FAKE_SECRET_VALUE,
+    });
+  });
+});
+
 describe('mergeConfigs consoleGithubTokens', () => {
   it('prefers the cli override consoleGithubTokens over the config file value', () => {
     const merged = mergeConfigs(

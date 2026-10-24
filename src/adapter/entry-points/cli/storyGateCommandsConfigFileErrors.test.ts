@@ -45,6 +45,13 @@ const EXCESSIVE_ALIAS_CONFIG_CONTENT = [
   '',
 ].join('\n');
 
+const UNRESOLVED_TAG_CONFIG_FILE_NAME = 'unresolved-tag-console.yml';
+const UNRESOLVED_TAG_CONFIG_CONTENT =
+  'consoleProjects:\n  umino: https://github.com/orgs/org-a/projects/1\nconsoleGithubTokens:\n  umino: !foo FAKE_SECRET_VALUE_123\n';
+const FAKE_SECRET_VALUE = 'FAKE_SECRET_VALUE_123';
+const YAML_WARNING_NAME = 'YAMLWarning';
+const INVALID_ISSUE_URL = 'not-a-url';
+
 type StoryGateCommandName =
   'checkStoryGate' | 'setIssueStoryIfUnset' | 'startSpecificationTask';
 
@@ -75,6 +82,15 @@ type MalformedConfigFileObservation = ConfigFileErrorObservation & {
   configTokenInOutput: boolean;
 };
 
+type UnresolvedTagObservation = {
+  commandName: StoryGateCommandName;
+  firstExitCode: number | undefined;
+  stdoutLeaks: boolean;
+  stderrLeaks: boolean;
+  emittedWarningLeakCount: number;
+  requestUrls: string[];
+};
+
 type CommandConfigFileRun = {
   commandName: StoryGateCommandName;
   run: CliRun;
@@ -102,6 +118,15 @@ const GH_TOKEN_UNSET_CONFIG_FILE_ERROR_CASES: {
   { commandName: 'checkStoryGate' },
   { commandName: 'setIssueStoryIfUnset' },
   { commandName: 'startSpecificationTask' },
+];
+
+const UNRESOLVED_TAG_INVALID_ISSUE_URL_CASES: {
+  commandName: StoryGateCommandName;
+  expectedExitCode: number;
+}[] = [
+  { commandName: 'checkStoryGate', expectedExitCode: 2 },
+  { commandName: 'setIssueStoryIfUnset', expectedExitCode: 2 },
+  { commandName: 'startSpecificationTask', expectedExitCode: 2 },
 ];
 
 const STORY_GATE_COMMAND_NAMES: StoryGateCommandName[] = [
@@ -163,12 +188,13 @@ const commandArgumentsOf = (
   commandName: StoryGateCommandName,
   configDirectory: string,
   outputDirectory: string,
+  issueUrl: string = ISSUE_A_URL,
 ): string[] => {
   const argumentsByCommand: Record<StoryGateCommandName, string[]> = {
     checkStoryGate: [
       'checkStoryGate',
       '--issueUrl',
-      ISSUE_A_URL,
+      issueUrl,
       '--agentName',
       'developer-agent',
       '--triageAgentName',
@@ -183,14 +209,14 @@ const commandArgumentsOf = (
     setIssueStoryIfUnset: [
       'setIssueStoryIfUnset',
       '--issueUrl',
-      ISSUE_A_URL,
+      issueUrl,
       '--story',
       'feature A',
     ],
     startSpecificationTask: [
       'startSpecificationTask',
       '--issueUrl',
-      ISSUE_A_URL,
+      issueUrl,
       '--specificationAgentName',
       'spec-agent',
     ],
@@ -200,6 +226,7 @@ const commandArgumentsOf = (
 
 const runCliArguments = async (
   commandLineArguments: string[],
+  options: { settleMacrotask: boolean } = { settleMacrotask: false },
 ): Promise<CliRun> => {
   const consoleLogSpy = jest
     .spyOn(console, 'log')
@@ -226,6 +253,10 @@ const runCliArguments = async (
       if (!(error instanceof ProcessExitSentinel)) {
         throw error;
       }
+    }
+
+    if (options.settleMacrotask) {
+      await new Promise((resolve) => setImmediate(resolve));
     }
 
     return {
@@ -288,6 +319,9 @@ const runCliArgumentsWithoutGhToken = async (
 
 const outputOf = (run: CliRun): string =>
   `${run.stdoutText}\n${run.stderrText}`;
+
+const containsUnresolvedTagLeak = (text: string): boolean =>
+  text.includes(FAKE_SECRET_VALUE) || text.includes(YAML_WARNING_NAME);
 
 describe('story-gate commands with an unreadable --configFilePath', () => {
   let workDirectory: string;
@@ -561,6 +595,60 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         defaultTokenInOutput: false,
         requestUrls: [],
       })),
+    );
+  });
+
+  it('exits 2 with no YAML warning and no token value in stdout or stderr when --configFilePath has an unresolved YAML tag and --issueUrl is invalid', async () => {
+    const configFilePath = path.join(
+      workDirectory,
+      UNRESOLVED_TAG_CONFIG_FILE_NAME,
+    );
+    fs.writeFileSync(configFilePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+    const observations: UnresolvedTagObservation[] = [];
+
+    for (const { commandName } of UNRESOLVED_TAG_INVALID_ISSUE_URL_CASES) {
+      const requests = fakeGithubFetch();
+      const emitWarningSpy = jest
+        .spyOn(process, 'emitWarning')
+        .mockImplementation(() => undefined);
+      const run = await runCliArguments(
+        [
+          ...commandArgumentsOf(
+            commandName,
+            configDirectory,
+            outputDirectory,
+            INVALID_ISSUE_URL,
+          ),
+          '--configFilePath',
+          configFilePath,
+        ],
+        { settleMacrotask: true },
+      );
+
+      observations.push({
+        commandName,
+        firstExitCode: run.exitCodes[0],
+        stdoutLeaks: containsUnresolvedTagLeak(run.stdoutText),
+        stderrLeaks: containsUnresolvedTagLeak(run.stderrText),
+        emittedWarningLeakCount: emitWarningSpy.mock.calls.filter(([warning]) =>
+          containsUnresolvedTagLeak(String(warning)),
+        ).length,
+        requestUrls: requests.map((request) => request.url),
+      });
+      jest.restoreAllMocks();
+    }
+
+    expect(observations).toEqual(
+      UNRESOLVED_TAG_INVALID_ISSUE_URL_CASES.map(
+        ({ commandName, expectedExitCode }) => ({
+          commandName,
+          firstExitCode: expectedExitCode,
+          stdoutLeaks: false,
+          stderrLeaks: false,
+          emittedWarningLeakCount: 0,
+          requestUrls: [],
+        }),
+      ),
     );
   });
 
