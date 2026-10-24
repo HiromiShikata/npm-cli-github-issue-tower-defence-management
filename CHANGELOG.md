@@ -1,3 +1,10 @@
+## [2.181.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.1...v2.181.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **issue-cache:** key the TDPM issue-cache merge by project item ID so a transferred item keeps one entry ([#3604](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3604)) ([f0c3848](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f0c38484f3ac540e989bb2b0019ad404ad925004))
+
 ## [2.181.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.0...v2.181.1) (2026-10-23)
 
 
