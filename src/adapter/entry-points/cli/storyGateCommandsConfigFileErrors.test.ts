@@ -5,12 +5,14 @@ import YAML from 'yaml';
 import { program } from './index';
 
 const DEFAULT_TOKEN = 'test-token';
+const CONFIG_FILE_TOKEN_VALUE = 'token-a';
 const ISSUE_A_URL = 'https://github.com/org-a/repo-a/issues/1';
 const MISSING_CONFIG_FILE_NAME = 'absent-console.yml';
 const MALFORMED_CONFIG_FILE_NAME = 'malformed-console.yml';
 const MALFORMED_CONFIG_CONTENT = [
   'consoleProjects: {',
   "  pj-a: 'https://github.com/orgs/org-a/projects/1'",
+  '  pj-b: token-a x',
   '',
 ].join('\n');
 
@@ -38,6 +40,10 @@ type ConfigFileErrorObservation = {
   defaultTokenInOutput: boolean;
   requestUrls: string[];
   defaultTokenRequestCount: number;
+};
+
+type MalformedConfigFileObservation = ConfigFileErrorObservation & {
+  configTokenInOutput: boolean;
 };
 
 const CONFIG_FILE_ERROR_CASES: {
@@ -87,10 +93,27 @@ const requestUrlOf = (input: string | URL | Request): string =>
 
 const loadFailureMessageOf = (configFilePath: string): string => {
   try {
-    YAML.parse(fs.readFileSync(configFilePath, 'utf-8'));
+    fs.readFileSync(configFilePath, 'utf-8');
   } catch (error) {
     const cause = error instanceof Error ? error.message : String(error);
     return `Failed to load configuration file "${configFilePath}": ${cause}`;
+  }
+  throw new Error(`${configFilePath} reads without an error`);
+};
+
+const malformedYamlMessageOf = (configFilePath: string): string => {
+  try {
+    YAML.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  } catch (error) {
+    if (!(error instanceof YAML.YAMLParseError)) {
+      throw error;
+    }
+    const firstLinePos = error.linePos?.[0];
+    const location =
+      firstLinePos === undefined
+        ? 'malformed YAML'
+        : `malformed YAML at line ${firstLinePos.line}, column ${firstLinePos.col}`;
+    return `Failed to load configuration file "${configFilePath}": ${location}`;
   }
   throw new Error(`${configFilePath} loads without an error`);
 };
@@ -266,10 +289,13 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
     return malformedConfigFilePath;
   };
 
-  it('exits 1 with the loadConfigFile message in stderr, no token value and no GitHub request when --configFilePath is missing or unparsable', async () => {
+  it('exits 1 with the loadConfigFile message in stderr, no token value and no GitHub request when --configFilePath is missing', async () => {
+    const missingFileCases = CONFIG_FILE_ERROR_CASES.filter(
+      ({ configFileInput }) => configFileInput === 'missing file',
+    );
     const observations: ConfigFileErrorObservation[] = [];
 
-    for (const { commandName, configFileInput } of CONFIG_FILE_ERROR_CASES) {
+    for (const { commandName, configFileInput } of missingFileCases) {
       const requests = fakeGithubFetch();
       const configFilePath = configFilePathOf(configFileInput);
       const expectedLoadFailureMessage = loadFailureMessageOf(configFilePath);
@@ -298,12 +324,63 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
     }
 
     expect(observations).toEqual(
-      CONFIG_FILE_ERROR_CASES.map(({ commandName, configFileInput }) => ({
+      missingFileCases.map(({ commandName, configFileInput }) => ({
         commandName,
         configFileInput,
         firstExitCode: 1,
         stderrHasLoadFailureMessage: true,
         defaultTokenInOutput: false,
+        requestUrls: [],
+        defaultTokenRequestCount: 0,
+      })),
+    );
+  });
+
+  it('exits 1 with the malformed-YAML message in stderr, no token value and no GitHub request when --configFilePath content is malformed', async () => {
+    const malformedCases = CONFIG_FILE_ERROR_CASES.filter(
+      ({ configFileInput }) => configFileInput === 'malformed content',
+    );
+    const observations: MalformedConfigFileObservation[] = [];
+
+    for (const { commandName, configFileInput } of malformedCases) {
+      const requests = fakeGithubFetch();
+      const configFilePath = configFilePathOf(configFileInput);
+      const expectedLoadFailureMessage = malformedYamlMessageOf(configFilePath);
+      const run = await runCliArguments([
+        ...commandArgumentsOf(commandName, configDirectory, outputDirectory),
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      observations.push({
+        commandName,
+        configFileInput,
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
+        defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
+          DEFAULT_TOKEN,
+        ),
+        configTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
+          CONFIG_FILE_TOKEN_VALUE,
+        ),
+        requestUrls: requests.map((request) => request.url),
+        defaultTokenRequestCount: requests.filter((request) =>
+          (request.authorization ?? '').includes(DEFAULT_TOKEN),
+        ).length,
+      });
+      jest.restoreAllMocks();
+    }
+
+    expect(observations).toEqual(
+      malformedCases.map(({ commandName, configFileInput }) => ({
+        commandName,
+        configFileInput,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
+        defaultTokenInOutput: false,
+        configTokenInOutput: false,
         requestUrls: [],
         defaultTokenRequestCount: 0,
       })),
