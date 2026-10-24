@@ -183,10 +183,43 @@ const knownProjectReadmeConfigKeys = [
   'errorReportingRepository',
 ] as const;
 
+const yamlWarningDiagnosticOf = (
+  configFilePath: string,
+  warning: YAML.YAMLWarning,
+): string => {
+  const start = warning.linePos?.[0];
+  return `Configuration file "${configFilePath}": YAML warning ${warning.code} at line ${start?.line}, column ${start?.col}.`;
+};
+
+const parseConfigFileContent = (
+  configFilePath: string,
+  content: string,
+): unknown => {
+  const document = YAML.parseDocument(content, { logLevel: 'error' });
+  for (const warning of document.warnings) {
+    console.error(yamlWarningDiagnosticOf(configFilePath, warning));
+  }
+  if (document.errors.length > 0) {
+    throw document.errors[0];
+  }
+  const parsed: unknown = document.toJS();
+  return parsed;
+};
+
+const configFileFailureDetailOf = (error: unknown): string => {
+  if (error instanceof YAML.YAMLParseError) {
+    const start = error.linePos?.[0];
+    return `malformed YAML at line ${start?.line}, column ${start?.col}`;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  const firstLine = message.split('\n')[0];
+  return error instanceof ReferenceError ? firstLine.split(':')[0] : firstLine;
+};
+
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
     const content = fs.readFileSync(configFilePath, 'utf-8');
-    const parsed: unknown = YAML.parse(content, { logLevel: 'error' });
+    const parsed = parseConfigFileContent(configFilePath, content);
     if (!isRecord(parsed)) {
       return {};
     }
@@ -280,9 +313,8 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     console.error(
-      `Failed to load configuration file "${configFilePath}": ${message}`,
+      `Failed to load configuration file "${configFilePath}": ${configFileFailureDetailOf(error)}`,
     );
     process.exit(1);
   }
