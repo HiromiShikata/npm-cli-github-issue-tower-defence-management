@@ -1242,8 +1242,8 @@ export class ApiV3CheerioRestIssueRepository
     itemIdsPresentInCacheBeforeFetchStarted: ReadonlySet<Issue['itemId']>,
     fetchedItems: ProjectItem[],
   ): Issue[] => {
-    const mergedIssuesByUrl = new Map<string, Issue>(
-      issuesPresentInCacheAtMergeTime.map((issue) => [issue.url, issue]),
+    const mergedIssuesByItemId = new Map<Issue['itemId'], Issue>(
+      issuesPresentInCacheAtMergeTime.map((issue) => [issue.itemId, issue]),
     );
     const itemIdsStillPresentInCacheAtMergeTime = new Set(
       issuesPresentInCacheAtMergeTime.map((issue) => issue.itemId),
@@ -1255,9 +1255,9 @@ export class ApiV3CheerioRestIssueRepository
       if (itemWasRemovedFromCacheWhileThisFetchWasInFlight) {
         continue;
       }
-      mergedIssuesByUrl.set(item.url, this.convertProjectItemToIssue(item));
+      mergedIssuesByItemId.set(item.id, this.convertProjectItemToIssue(item));
     }
-    return Array.from(mergedIssuesByUrl.values());
+    return Array.from(mergedIssuesByItemId.values());
   };
 
   private reconcileIssuesAbsentFromFullFetchResult = (

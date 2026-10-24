@@ -1474,7 +1474,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(titlesByUrl.get('https://github.com/o/r/issues/2')).toBe(
         'new issue',
       );
-      expect(result.issues).toHaveLength(2);
+      expect(result.issues.map((issue) => issue.itemId)).toEqual([
+        'item-cached',
+        'item-fresh title',
+        'item-new issue',
+      ]);
       const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite).toEqual(
         expect.objectContaining({
@@ -1533,14 +1537,27 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItemsByIds,
       ).toHaveBeenCalledWith(['item-fresh', 'item-deleted']);
       expect(result.cacheUsed).toBe(true);
-      expect(result.issues).toHaveLength(1);
-      expect(result.issues[0].title).toBe('fresh title');
+      expect(result.issues).toHaveLength(2);
+      expect(result.issues.map((issue) => issue.itemId)).toEqual([
+        'item-cached',
+        'item-fresh title',
+      ]);
+      expect(result.issues[1].title).toBe('fresh title');
       const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite).toEqual(
         expect.objectContaining({
           lastFetchedAt: '2026-07-07T00:45:00.000Z',
           lastFullFetchAt: '2026-07-07T00:00:00.000Z',
-          issues: [expect.objectContaining({ title: 'fresh title' })],
+          issues: [
+            expect.objectContaining({
+              itemId: 'item-cached',
+              title: 'stale title',
+            }),
+            expect.objectContaining({
+              itemId: 'item-fresh title',
+              title: 'fresh title',
+            }),
+          ],
         }),
       );
     });
@@ -1755,6 +1772,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               'https://github.com/o/r/issues/50',
               'story issue',
             ),
+            itemId: 'item-story',
             labels: ['story'],
             story: 'umino / story beta',
             storyOptionId: 'umino-story-beta',
@@ -1764,6 +1782,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               'https://github.com/o/r/issues/51',
               'task issue',
             ),
+            itemId: 'item-task',
             labels: [],
             story: 'umino / story beta',
             storyOptionId: 'umino-story-beta',
@@ -14428,6 +14447,408 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expect(realMutationMock).toHaveBeenCalled();
       },
     );
+  });
+
+  describe('getAllIssues cache merge by project item ID', () => {
+    const projectId = 'project-item-id-merge';
+    const cachedTransferredUrl =
+      'https://github.com/example-owner/example-repo/issues/23';
+    const fetchedTransferredUrl =
+      'https://github.com/example-owner/example-repo-2/issues/527';
+    const otherIssueUrl = 'https://github.com/o/r/issues/3';
+
+    const buildFullFetchCache = (issues: object[]) => ({
+      lastFetchedAt: '2026-07-07T00:50:00.000Z',
+      lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+      project: buildTestProject(projectId),
+      issues,
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+
+    const buildFetchedItem = (
+      itemId: string,
+      url: string,
+      title: string,
+      status: string,
+    ): ProjectItem => ({
+      ...buildProjectItem(url, title),
+      id: itemId,
+      customFields: [{ name: 'Status', value: status }],
+    });
+
+    const arrangeFullFetch = (
+      repository: ReturnType<typeof createApiV3CheerioRestIssueRepository>,
+      cachedIssues: object[],
+      fetchedIssues: ProjectItem[],
+    ): void => {
+      repository.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T02:00:00Z'),
+      );
+      repository.localStorageCacheRepository.getSingle.mockResolvedValue(
+        buildFullFetchCache(cachedIssues),
+      );
+      repository.projectRepository.getProject.mockResolvedValue(
+        buildTestProject(projectId),
+      );
+      repository.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+        { issues: fetchedIssues, inconsistencyMessage: null },
+      );
+      repository.localStorageCacheRepository.setSingle.mockResolvedValue(
+        undefined,
+      );
+    };
+
+    it('ITEM_ID_MERGE TRANSFERRED_CACHE_MERGE replaces transferred items, keeps fetched values, and preserves cached order', async () => {
+      const cases = [
+        {
+          name: 'transferred item',
+          cachedIssues: [
+            {
+              ...buildCachedIssueRecord(cachedTransferredUrl, 'old title'),
+              itemId: 'PVTI_TRANSFERRED',
+              status: 'Todo by human',
+            },
+          ],
+          fetchedIssues: [
+            buildFetchedItem(
+              'PVTI_TRANSFERRED',
+              fetchedTransferredUrl,
+              'transferred title',
+              'Done',
+            ),
+          ],
+          expectedIssues: [
+            {
+              itemId: 'PVTI_TRANSFERRED',
+              url: fetchedTransferredUrl,
+              title: 'transferred title',
+              status: 'Done',
+            },
+          ],
+        },
+        {
+          name: 'two items with fetched values',
+          cachedIssues: [
+            {
+              ...buildCachedIssueRecord(
+                'https://github.com/o/r/issues/1',
+                'old transferred title',
+              ),
+              itemId: 'PVTI_TRANSFERRED',
+              status: 'Todo by human',
+            },
+            {
+              ...buildCachedIssueRecord(otherIssueUrl, 'old other title'),
+              itemId: 'PVTI_OTHER',
+              status: 'Preparation',
+            },
+          ],
+          fetchedIssues: [
+            buildFetchedItem(
+              'PVTI_TRANSFERRED',
+              'https://github.com/o/r/issues/1',
+              'new transferred title',
+              'Done',
+            ),
+            buildFetchedItem(
+              'PVTI_OTHER',
+              otherIssueUrl,
+              'new other title',
+              'Awaiting Workspace',
+            ),
+          ],
+          expectedIssues: [
+            {
+              itemId: 'PVTI_TRANSFERRED',
+              url: 'https://github.com/o/r/issues/1',
+              title: 'new transferred title',
+              status: 'Done',
+            },
+            {
+              itemId: 'PVTI_OTHER',
+              url: otherIssueUrl,
+              title: 'new other title',
+              status: 'Awaiting Workspace',
+            },
+          ],
+        },
+        {
+          name: 'new item is appended after cached order',
+          cachedIssues: [
+            {
+              ...buildCachedIssueRecord(
+                'https://github.com/o/r/issues/10',
+                'cached first',
+              ),
+              itemId: 'PVTI_FIRST',
+            },
+            {
+              ...buildCachedIssueRecord(
+                'https://github.com/o/r/issues/11',
+                'cached second',
+              ),
+              itemId: 'PVTI_SECOND',
+            },
+          ],
+          fetchedIssues: [
+            buildFetchedItem(
+              'PVTI_NEW',
+              'https://github.com/o/r/issues/12',
+              'fetched new',
+              'Done',
+            ),
+            buildFetchedItem(
+              'PVTI_SECOND',
+              'https://github.com/o/r/issues/11',
+              'fetched second',
+              'Done',
+            ),
+            buildFetchedItem(
+              'PVTI_FIRST',
+              'https://github.com/o/r/issues/10',
+              'fetched first',
+              'Done',
+            ),
+          ],
+          expectedIssues: [
+            {
+              itemId: 'PVTI_FIRST',
+              url: 'https://github.com/o/r/issues/10',
+              title: 'fetched first',
+              status: 'Done',
+            },
+            {
+              itemId: 'PVTI_SECOND',
+              url: 'https://github.com/o/r/issues/11',
+              title: 'fetched second',
+              status: 'Done',
+            },
+            {
+              itemId: 'PVTI_NEW',
+              url: 'https://github.com/o/r/issues/12',
+              title: 'fetched new',
+              status: 'Done',
+            },
+          ],
+        },
+      ];
+      const observedIssues = [];
+
+      for (const testCase of cases) {
+        const repository = createApiV3CheerioRestIssueRepository();
+        arrangeFullFetch(
+          repository,
+          testCase.cachedIssues,
+          testCase.fetchedIssues,
+        );
+        if (testCase.name === 'transferred item') {
+          repository.graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+            buildFetchedItem(
+              'PVTI_TRANSFERRED',
+              cachedTransferredUrl,
+              'old title refreshed',
+              'Todo by human',
+            ),
+          );
+        }
+
+        const result = await repository.repository.getAllIssues(projectId);
+        observedIssues.push({
+          name: testCase.name,
+          issues: result.issues.map((issue) => ({
+            itemId: issue.itemId,
+            url: issue.url,
+            title: issue.title,
+            status: issue.status,
+          })),
+        });
+      }
+
+      expect(observedIssues).toEqual(
+        cases.map(({ name, expectedIssues }) => ({
+          name,
+          issues: expectedIssues,
+        })),
+      );
+    });
+
+    it('TRANSFERRED_CACHE_MERGE replaces a transferred item in the incremental fetch path', async () => {
+      const repository = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject(projectId);
+      repository.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:45:00Z'),
+      );
+      repository.localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [
+          {
+            ...buildCachedIssueRecord(cachedTransferredUrl, 'old title'),
+            itemId: 'PVTI_TRANSFERRED',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      repository.projectRepository.getProject.mockResolvedValue(project);
+      repository.graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue(
+        {
+          lightItems: [
+            buildLightItem(
+              'PVTI_TRANSFERRED',
+              fetchedTransferredUrl,
+              '2026-07-07T00:40:00.000Z',
+            ),
+          ],
+          inconsistencyMessage: null,
+        },
+      );
+      repository.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [
+          buildFetchedItem(
+            'PVTI_TRANSFERRED',
+            fetchedTransferredUrl,
+            'transferred title',
+            'Done',
+          ),
+        ],
+      );
+      repository.localStorageCacheRepository.setSingle.mockResolvedValue(
+        undefined,
+      );
+
+      const result = await repository.repository.getAllIssues(projectId);
+
+      expect(result.issues).toEqual([
+        expect.objectContaining({
+          itemId: 'PVTI_TRANSFERRED',
+          url: fetchedTransferredUrl,
+          title: 'transferred title',
+          status: 'Done',
+        }),
+      ]);
+    });
+
+    it('ITEM_ID_MERGE preserves a concurrently appended item unchanged while the full fetch is in flight', async () => {
+      const cache = buildRacyLocalStorageCacheRepository();
+      const project = buildTestProject(projectId);
+      const cacheKey = `allIssues-${projectId}`;
+      const concurrentIssue = buildIssueArgument(
+        'PVTI_OTHER',
+        otherIssueUrl,
+        'concurrently appended issue',
+      );
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      projectRepository.getProject.mockResolvedValue(project);
+      let fetchStarted!: () => void;
+      const fetchStartedPromise = new Promise<void>((resolve) => {
+        fetchStarted = resolve;
+      });
+      let resolveFetch!: (value: {
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }) => void;
+      const fetchPromise = new Promise<{
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }>((resolve) => {
+        resolveFetch = resolve;
+      });
+      graphqlProjectItemRepository.fetchProjectItems.mockImplementation(() => {
+        fetchStarted();
+        return fetchPromise;
+      });
+
+      const refreshPromise = repository.getAllIssues(projectId);
+      await fetchStartedPromise;
+      await repository.appendIssueToProjectCache(projectId, concurrentIssue);
+      resolveFetch({ issues: [], inconsistencyMessage: null });
+      const result = await refreshPromise;
+
+      expect(result.issues).toEqual([concurrentIssue]);
+    });
+
+    it('removed during fetch stays absent when the fetched item has the removed item ID', async () => {
+      const cache = buildRacyLocalStorageCacheRepository();
+      const project = buildTestProject(projectId);
+      const cacheKey = `allIssues-${projectId}`;
+      const removedItemId = 'PVTI_TRANSFERRED';
+      const removedIssue = {
+        ...buildCachedIssueRecord(cachedTransferredUrl, 'removed issue'),
+        itemId: removedItemId,
+      };
+      await cache.setSingle(cacheKey, {
+        lastFetchedAt: '2026-07-07T00:50:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [removedIssue],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        projectRepository,
+        dateRepository,
+      } = buildProcessRepository(cache);
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T02:00:00Z'));
+      projectRepository.getProject.mockResolvedValue(project);
+      let fetchStarted!: () => void;
+      const fetchStartedPromise = new Promise<void>((resolve) => {
+        fetchStarted = resolve;
+      });
+      let resolveFetch!: (value: {
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }) => void;
+      const fetchPromise = new Promise<{
+        issues: ProjectItem[];
+        inconsistencyMessage: null;
+      }>((resolve) => {
+        resolveFetch = resolve;
+      });
+      graphqlProjectItemRepository.fetchProjectItems.mockImplementation(() => {
+        fetchStarted();
+        return fetchPromise;
+      });
+
+      const refreshPromise = repository.getAllIssues(projectId);
+      await fetchStartedPromise;
+      await new ProjectIssuesCacheRepository(cache).removeIssueByItemId(
+        projectId,
+        removedItemId,
+      );
+      resolveFetch({
+        issues: [
+          buildFetchedItem(
+            removedItemId,
+            fetchedTransferredUrl,
+            'refetched removed issue',
+            'Done',
+          ),
+        ],
+        inconsistencyMessage: null,
+      });
+      const result = await refreshPromise;
+
+      expect(result.issues).toEqual([]);
+    });
   });
 
   const wait = (milliseconds: number): Promise<void> =>
