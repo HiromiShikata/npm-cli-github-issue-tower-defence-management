@@ -512,6 +512,26 @@ describe('loadConfigFile unresolved YAML tag', () => {
     expect(stderrText).not.toContain(YAML_WARNING_NAME);
     expect(warningTextsWithLeak).toEqual([]);
   });
+
+  it('writes one line per YAML warning with its code and position and no token value to stderr', async () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+    const yamlWarningPositionText = 'TAG_RESOLVE_FAILED at line 4, column 10';
+
+    loadConfigFile(filePath);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const stderrText = stderrWriteSpy.mock.calls
+      .map(([chunk]) => String(chunk))
+      .join('');
+    const warningLines = stderrText
+      .split('\n')
+      .filter((line) => line.includes(yamlWarningPositionText));
+
+    expect(warningLines).toHaveLength(1);
+    expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
+    expect(stderrText).not.toContain(YAML_WARNING_NAME);
+  });
 });
 
 describe('mergeConfigs consoleGithubTokens', () => {
