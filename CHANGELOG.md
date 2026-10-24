@@ -1,3 +1,10 @@
+## [2.181.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.2...v2.181.3) (2026-10-24)
+
+
+### Bug Fixes
+
+* **storygate:** read the GitHub token per repository owner in story-gate commands ([#3613](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3613)) ([229147e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/229147e7ef91de8a0482305273e88ff77e5972b1))
+
 ## [2.181.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.1...v2.181.2) (2026-10-24)
 
 
