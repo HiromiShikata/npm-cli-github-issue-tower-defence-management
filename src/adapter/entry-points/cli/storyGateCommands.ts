@@ -88,8 +88,6 @@ const commandInputValidate = (
   return { issue, ghToken };
 };
 
-// Selects the GitHub token per issue owner with the console rule. Without a
-// config file, or when no pjcode matches the owner, GH_TOKEN is used.
 const githubTokenSourceOf = (
   ghToken: string,
   configFilePath: string | undefined,
