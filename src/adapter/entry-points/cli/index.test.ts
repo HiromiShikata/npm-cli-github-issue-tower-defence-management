@@ -975,6 +975,26 @@ mysteryKey: 'value'
 
       consoleWarnSpy.mockRestore();
     });
+
+    it('should treat the removed model setting as an unknown key', () => {
+      const removedSettingName = ['fallback', 'LlmModelName'].join('');
+      const readme = `<details>
+<summary>config</summary>
+${removedSettingName}: 'claude-sonnet-4-6'
+</details>`;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = parseProjectReadmeConfig(
+        readme,
+        'https://github.com/orgs/example/projects/4',
+      );
+
+      expect(result).not.toHaveProperty(removedSettingName);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `Unknown key "${removedSettingName}" in project README config section (project URL: https://github.com/orgs/example/projects/4)`,
+      );
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe('mergeConfigs', () => {
@@ -1164,6 +1184,17 @@ mysteryKey: 'value'
   });
 
   describe('startDaemon', () => {
+    it('should omit the removed model option from startDaemon help output', () => {
+      const removedOptionName = `--${['fallback', 'LlmModelName'].join('')}`;
+      const startDaemonCommand = program.commands.find(
+        (command) => command.name() === 'startDaemon',
+      );
+
+      expect(startDaemonCommand?.helpInformation()).not.toContain(
+        removedOptionName,
+      );
+    });
+
     it('should read parameters from config file', async () => {
       const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
       const MockedStartPreparationUseCase = jest.mocked(
@@ -1190,7 +1221,6 @@ mysteryKey: 'value'
         projectUrl: 'https://github.com/orgs/test/projects/1',
         defaultAgentName: 'agent1',
         defaultLlmModelName: null,
-        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: configFilePath,
         maximumPreparingIssuesCount: null,
@@ -1293,7 +1323,6 @@ mysteryKey: 'value'
         projectUrl: 'https://github.com/orgs/override/projects/2',
         defaultAgentName: 'override-agent',
         defaultLlmModelName: null,
-        fallbackLlmModelName: null,
         defaultLlmAgentName: null,
         configFilePath: configFilePath,
         maximumPreparingIssuesCount: null,

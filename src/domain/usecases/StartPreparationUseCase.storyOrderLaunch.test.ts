@@ -242,7 +242,6 @@ describe('StartPreparationUseCase.run launch order across several stories with t
       projectUrl: PROJECT_URL,
       defaultAgentName: 'agent1',
       defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 1,
