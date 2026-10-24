@@ -534,6 +534,52 @@ describe('loadConfigFile unresolved YAML tag', () => {
   });
 });
 
+const YAML_SYNTAX_ERROR_CONFIG_CONTENT =
+  'consoleProjects: {umino: https://example.com';
+const YAML_PARSER_ERROR_FIRST_LINE =
+  'Flow map in block collection must be sufficiently indented and end with a } at line 1, column 45:';
+
+describe('loadConfigFile YAML syntax error', () => {
+  let dir: string;
+  let consoleErrorSpy: jest.SpyInstance;
+  let processExitSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-yaml-syntax-error-'),
+    );
+    consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    processExitSpy.mockRestore();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('throws for a YAML syntax error and leaves the existing error message contract unchanged', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, YAML_SYNTAX_ERROR_CONFIG_CONTENT);
+    const expectedLogPrefix = `Failed to load configuration file "${filePath}": ${YAML_PARSER_ERROR_FIRST_LINE}`;
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+
+    const loggedText = consoleErrorSpy.mock.calls
+      .map(([message]) => String(message))
+      .join('');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(loggedText.slice(0, expectedLogPrefix.length)).toBe(
+      expectedLogPrefix,
+    );
+  });
+});
+
 describe('mergeConfigs consoleGithubTokens', () => {
   it('prefers the cli override consoleGithubTokens over the config file value', () => {
     const merged = mergeConfigs(
