@@ -53,12 +53,26 @@ const parseExampleYamlBlock = (
   return YAML.parse(yamlBlockText) as Record<string, unknown>;
 };
 
+const extractMapExampleYamlLines = (markdown: string): string[] => {
+  const mapExampleMatch = markdown.match(
+    /Example with the map:\n\n(```yaml\n[\s\S]*?\n```)/,
+  );
+  if (!mapExampleMatch) {
+    throw new Error('Map example YAML block not found in README.md');
+  }
+
+  return mapExampleMatch[1].split('\n');
+};
+
 const requiredLlmModelNameByAgentNameReadmeFragments = [
   '`llmModelNameByAgentName` (mapping of agent name to model name, default unset)',
   'must be a mapping.',
   'must be a non-empty string.',
   'the `llm-model:` label, then `llmModelNameByAgentName`, then the token-routed model, then the agent definition `model:` line, then `defaultLlmModelName`',
-  'Example with the map:\n\n```yaml',
+] as const;
+
+const requiredMapExampleReadmeLines = [
+  '```yaml',
   '  llmModelNameByAgentName:',
 ] as const;
 
@@ -67,6 +81,13 @@ describe('README.md documents llmModelNameByAgentName', () => {
     'contains the required documentation fragment: %s',
     (requiredFragment) => {
       expect(readmeText).toContain(requiredFragment);
+    },
+  );
+
+  test.each(requiredMapExampleReadmeLines)(
+    'the map example contains the exact required line: %s',
+    (requiredLine) => {
+      expect(extractMapExampleYamlLines(readmeText)).toContain(requiredLine);
     },
   );
 });
