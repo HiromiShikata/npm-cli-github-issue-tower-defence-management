@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import YAML from 'yaml';
 import { GithubIssueReference } from '../../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
 import { githubIssueReferenceParse } from '../../../domain/usecases/storyGate/githubIssueReferenceParse';
 import { IssueStorySetIfUnsetUseCase } from '../../../domain/usecases/storyGate/IssueStorySetIfUnsetUseCase';
@@ -88,10 +89,44 @@ const commandInputValidate = (
   return { issue, ghToken };
 };
 
+const malformedConfigFileMessageOf = (
+  configFilePath: string,
+): string | undefined => {
+  let content: string;
+  try {
+    content = fs.readFileSync(configFilePath, 'utf-8');
+  } catch {
+    return undefined;
+  }
+  try {
+    YAML.parse(content, { logLevel: 'error' });
+    return undefined;
+  } catch (error) {
+    if (!(error instanceof YAML.YAMLParseError)) {
+      return undefined;
+    }
+    const firstLinePos = error.linePos?.[0];
+    const location =
+      firstLinePos === undefined
+        ? 'malformed YAML'
+        : `malformed YAML at line ${firstLinePos.line}, column ${firstLinePos.col}`;
+    return `Failed to load configuration file "${configFilePath}": ${location}`;
+  }
+};
+
 const consoleConfigOf = (
   configFilePath: string | undefined,
-): ConfigFile | undefined =>
-  configFilePath === undefined ? undefined : loadConfigFile(configFilePath);
+): ConfigFile | undefined => {
+  if (configFilePath === undefined) {
+    return undefined;
+  }
+  const malformedMessage = malformedConfigFileMessageOf(configFilePath);
+  if (malformedMessage !== undefined) {
+    console.error(malformedMessage);
+    process.exit(1);
+  }
+  return loadConfigFile(configFilePath);
+};
 
 const githubTokenSourceOf = (
   ghToken: string,
