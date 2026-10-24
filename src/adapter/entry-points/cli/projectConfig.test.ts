@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import YAML from 'yaml';
 import {
   loadConfigFile,
   mergeConfigs,
@@ -458,6 +459,151 @@ describe('loadConfigFile consoleProjects', () => {
         name: consoleProjectsCase.name,
         consoleProjects: consoleProjectsCase.expectedConsoleProjects,
       })),
+    );
+  });
+});
+
+const UNRESOLVED_TAG_CONFIG_CONTENT =
+  'consoleProjects:\n  umino: https://github.com/orgs/org-a/projects/1\nconsoleGithubTokens:\n  umino: !foo FAKE_SECRET_VALUE_123\n';
+const FAKE_SECRET_VALUE = 'FAKE_SECRET_VALUE_123';
+const YAML_WARNING_NAME = 'YAMLWarning';
+
+describe('loadConfigFile unresolved YAML tag', () => {
+  let dir: string;
+  let emitWarningSpy: jest.SpyInstance;
+  let stderrWriteSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-unresolved-tag-'),
+    );
+    emitWarningSpy = jest
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    emitWarningSpy.mockRestore();
+    stderrWriteSpy.mockRestore();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns the consoleGithubTokens key and writes no YAML warning or token value to stderr', async () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+
+    const config = loadConfigFile(filePath);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const stderrText = stderrWriteSpy.mock.calls
+      .map(([chunk]) => String(chunk))
+      .join('');
+    const warningTextsWithLeak = emitWarningSpy.mock.calls
+      .map(([warning]) => String(warning))
+      .filter(
+        (text) =>
+          text.includes(YAML_WARNING_NAME) || text.includes(FAKE_SECRET_VALUE),
+      );
+
+    expect(config.consoleGithubTokens).toHaveProperty(['umino']);
+    expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
+    expect(stderrText).not.toContain(YAML_WARNING_NAME);
+    expect(warningTextsWithLeak).toEqual([]);
+  });
+
+  it('writes one line per YAML warning with its code and position and no token value to stderr', async () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+    const yamlWarningPositionText = 'TAG_RESOLVE_FAILED at line 4, column 10';
+
+    loadConfigFile(filePath);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const stderrText = stderrWriteSpy.mock.calls
+      .map(([chunk]) => String(chunk))
+      .join('');
+    const warningLines = stderrText
+      .split('\n')
+      .filter((line) => line.includes(yamlWarningPositionText));
+
+    expect(warningLines).toHaveLength(1);
+    expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
+    expect(stderrText).not.toContain(YAML_WARNING_NAME);
+  });
+
+  it('writes only the warning code to stderr for a YAML warning without a position', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, '{}\n');
+    const parsedDocument = YAML.parseDocument('{}\n');
+    parsedDocument.warnings.push(
+      new YAML.YAMLWarning(
+        [0, 1],
+        'TAG_RESOLVE_FAILED',
+        'Unresolved tag: !foo',
+      ),
+    );
+    const parseDocumentSpy = jest
+      .spyOn(YAML, 'parseDocument')
+      .mockReturnValueOnce(parsedDocument);
+
+    try {
+      loadConfigFile(filePath);
+    } finally {
+      parseDocumentSpy.mockRestore();
+    }
+
+    const stderrChunks = stderrWriteSpy.mock.calls.map(([chunk]) =>
+      String(chunk),
+    );
+    expect(stderrChunks).toEqual(['Config file warning: TAG_RESOLVE_FAILED\n']);
+  });
+});
+
+const YAML_SYNTAX_ERROR_CONFIG_CONTENT =
+  'consoleProjects: {umino: https://example.com';
+const YAML_PARSER_ERROR_FIRST_LINE =
+  'Flow map in block collection must be sufficiently indented and end with a } at line 1, column 45:';
+
+describe('loadConfigFile YAML syntax error', () => {
+  let dir: string;
+  let consoleErrorSpy: jest.SpyInstance;
+  let processExitSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-yaml-syntax-error-'),
+    );
+    consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    processExitSpy.mockRestore();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('throws for a YAML syntax error and leaves the existing error message contract unchanged', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, YAML_SYNTAX_ERROR_CONFIG_CONTENT);
+    const expectedLogPrefix = `Failed to load configuration file "${filePath}": ${YAML_PARSER_ERROR_FIRST_LINE}`;
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+
+    const loggedText = consoleErrorSpy.mock.calls
+      .map(([message]) => String(message))
+      .join('');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(loggedText.slice(0, expectedLogPrefix.length)).toBe(
+      expectedLogPrefix,
     );
   });
 });
