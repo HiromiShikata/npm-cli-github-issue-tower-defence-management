@@ -105,12 +105,8 @@ const malformedConfigFileMessageOf = (
     if (!(error instanceof YAML.YAMLParseError)) {
       return undefined;
     }
-    const firstLinePos = error.linePos?.[0];
-    const location =
-      firstLinePos === undefined
-        ? 'malformed YAML'
-        : `malformed YAML at line ${firstLinePos.line}, column ${firstLinePos.col}`;
-    return `Failed to load configuration file "${configFilePath}": ${location}`;
+    const start = error.linePos?.[0];
+    return `Failed to load configuration file "${configFilePath}": malformed YAML at line ${start?.line}, column ${start?.col}`;
   }
 };
 
