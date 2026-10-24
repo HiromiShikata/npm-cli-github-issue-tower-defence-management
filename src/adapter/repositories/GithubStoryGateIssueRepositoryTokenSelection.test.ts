@@ -152,4 +152,66 @@ describe('GithubStoryGateIssueRepository token selection', () => {
     expect(authorizationOf(fetchSpy, 1)).toBe('Bearer token-b');
     expect(calls).toEqual([ISSUE_A.url, ISSUE_B.url]);
   });
+
+  describe('updateProjectItemSingleSelectValue', () => {
+    const mutationResponse = (): Response =>
+      jsonResponse({
+        data: {
+          updateProjectV2ItemFieldValue: { projectV2Item: { id: 'ITEM_1' } },
+        },
+      });
+
+    const itemUrlCases = [
+      { name: 'org-a', issue: ISSUE_A, expectedToken: 'token-a' },
+      { name: 'org-b', issue: ISSUE_B, expectedToken: 'token-b' },
+    ];
+
+    it.each(itemUrlCases)(
+      'sends the update whose issueUrl is the $name issue URL with the token that the function returns for that URL (criterion 15)',
+      async ({ issue, expectedToken }) => {
+        const { tokenFunction, calls } = tokenFunctionCreate();
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(mutationResponse());
+        const repository = new GithubStoryGateIssueRepository(
+          tokenFunction,
+          noWait,
+        );
+
+        await repository.updateProjectItemSingleSelectValue({
+          projectId: 'PVT_board',
+          itemId: 'ITEM_1',
+          fieldId: 'FIELD_story',
+          optionId: 'OPT_feature_a',
+          issueUrl: issue.url,
+        });
+
+        expect(calls).toEqual([issue.url]);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(authorizationOf(fetchSpy, 0)).toBe(`Bearer ${expectedToken}`);
+      },
+    );
+
+    it('sends no request and rejects with an error naming the itemId when the update has no issueUrl (criterion 15)', async () => {
+      const { tokenFunction } = tokenFunctionCreate();
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(mutationResponse());
+      const repository = new GithubStoryGateIssueRepository(
+        tokenFunction,
+        noWait,
+      );
+
+      await expect(
+        repository.updateProjectItemSingleSelectValue({
+          projectId: 'PVT_board',
+          itemId: 'PVTI_item_without_url',
+          fieldId: 'FIELD_story',
+          optionId: 'OPT_feature_a',
+        }),
+      ).rejects.toThrow('PVTI_item_without_url');
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
 });

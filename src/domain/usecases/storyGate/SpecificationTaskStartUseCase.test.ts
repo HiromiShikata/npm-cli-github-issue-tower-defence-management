@@ -129,12 +129,14 @@ describe('SpecificationTaskStartUseCase', () => {
           itemId: 'ITEM_1',
           fieldId: 'FIELD_agent',
           optionId: 'OPT_agent_spec',
+          issueUrl: ISSUE.url,
         },
         {
           projectId: 'PVT_board',
           itemId: 'ITEM_1',
           fieldId: 'FIELD_status',
           optionId: 'OPT_status_awaiting',
+          issueUrl: ISSUE.url,
         },
       ]),
     );
