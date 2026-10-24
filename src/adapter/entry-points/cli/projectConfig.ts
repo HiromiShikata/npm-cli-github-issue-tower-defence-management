@@ -1,4 +1,4 @@
-import YAML from 'yaml';
+import YAML, { YAMLParseError } from 'yaml';
 import * as fs from 'fs';
 import { fetchGithubGraphql } from '../../repositories/githubGraphqlClient';
 
@@ -185,109 +185,134 @@ const knownProjectReadmeConfigKeys = [
   'errorReportingRepository',
 ] as const;
 
+const parseConfigFile = (configFilePath: string): ConfigFile => {
+  const content = fs.readFileSync(configFilePath, 'utf-8');
+  const parsed: unknown = YAML.parse(content);
+  if (!isRecord(parsed)) {
+    return {};
+  }
+  return {
+    projectUrl: getStringValue(parsed, 'projectUrl'),
+    manager: getStringValue(parsed, 'manager'),
+    defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
+    developerAgentNames: getDeveloperAgentNamesValue(parsed),
+    defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
+    fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
+    defaultLlmEffortLevel: getStringValue(parsed, 'defaultLlmEffortLevel'),
+    defaultLlmAutocompactMode: getStringValue(
+      parsed,
+      'defaultLlmAutocompactMode',
+    ),
+    defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
+    maximumPreparingIssuesCount: getNumberValue(
+      parsed,
+      'maximumPreparingIssuesCount',
+    ),
+    utilizationPercentageThreshold: getNumberValue(
+      parsed,
+      'utilizationPercentageThreshold',
+    ),
+    allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
+    autoAssignManagerAuthors: getStringValue(
+      parsed,
+      'autoAssignManagerAuthors',
+    ),
+    thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
+    workflowBlockerResolvedWebhookUrl: getStringValue(
+      parsed,
+      'workflowBlockerResolvedWebhookUrl',
+    ),
+    projectName: getStringValue(parsed, 'projectName'),
+    preparationProcessCheckCommand: getStringValue(
+      parsed,
+      'preparationProcessCheckCommand',
+    ),
+    codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
+    claudeCodeOauthTokenListJsonPath: getStringValue(
+      parsed,
+      'claudeCodeOauthTokenListJsonPath',
+    ),
+    awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
+    agentDefinitionsDirectoryPath: getStringValue(
+      parsed,
+      'agentDefinitionsDirectoryPath',
+    ),
+    awLogStaleThresholdMinutes: getNumberValue(
+      parsed,
+      'awLogStaleThresholdMinutes',
+    ),
+    labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+    labelsNotRequiringPullRequest: getStringArrayValue(
+      parsed,
+      'labelsNotRequiringPullRequest',
+    ),
+    agentDesignationLabelsToKeep: getStringArrayValue(
+      parsed,
+      'agentDesignationLabelsToKeep',
+    ),
+    changeTargetPathAliases: getStringRecordValue(
+      parsed,
+      'changeTargetPathAliases',
+    ),
+    agents: getStringArrayValue(parsed, 'agents'),
+    consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
+    consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
+    consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+    consoleGithubTokens: getStringRecordValue(parsed, 'consoleGithubTokens'),
+    consoleGithubAppPrivateKeyPaths: getStringArrayRecordValue(
+      parsed,
+      'consoleGithubAppPrivateKeyPaths',
+    ),
+    consoleGithubTokenFileDir: getStringValue(
+      parsed,
+      'consoleGithubTokenFileDir',
+    ),
+    consoleProjectConfigDirectory: getStringValue(
+      parsed,
+      'consoleProjectConfigDirectory',
+    ),
+    githubAppPrivateKeyPaths: getStringArrayValue(
+      parsed,
+      'githubAppPrivateKeyPaths',
+    ),
+    disks: getDisksValue(parsed, 'disks'),
+    errorReportingRepository: getStringValue(
+      parsed,
+      'errorReportingRepository',
+    ),
+  };
+};
+
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
-    const content = fs.readFileSync(configFilePath, 'utf-8');
-    const parsed: unknown = YAML.parse(content);
-    if (!isRecord(parsed)) {
-      return {};
-    }
-    return {
-      projectUrl: getStringValue(parsed, 'projectUrl'),
-      manager: getStringValue(parsed, 'manager'),
-      defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
-      developerAgentNames: getDeveloperAgentNamesValue(parsed),
-      defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
-      fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
-      defaultLlmEffortLevel: getStringValue(parsed, 'defaultLlmEffortLevel'),
-      defaultLlmAutocompactMode: getStringValue(
-        parsed,
-        'defaultLlmAutocompactMode',
-      ),
-      defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
-      maximumPreparingIssuesCount: getNumberValue(
-        parsed,
-        'maximumPreparingIssuesCount',
-      ),
-      utilizationPercentageThreshold: getNumberValue(
-        parsed,
-        'utilizationPercentageThreshold',
-      ),
-      allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
-      autoAssignManagerAuthors: getStringValue(
-        parsed,
-        'autoAssignManagerAuthors',
-      ),
-      thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
-      workflowBlockerResolvedWebhookUrl: getStringValue(
-        parsed,
-        'workflowBlockerResolvedWebhookUrl',
-      ),
-      projectName: getStringValue(parsed, 'projectName'),
-      preparationProcessCheckCommand: getStringValue(
-        parsed,
-        'preparationProcessCheckCommand',
-      ),
-      codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
-      claudeCodeOauthTokenListJsonPath: getStringValue(
-        parsed,
-        'claudeCodeOauthTokenListJsonPath',
-      ),
-      awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
-      agentDefinitionsDirectoryPath: getStringValue(
-        parsed,
-        'agentDefinitionsDirectoryPath',
-      ),
-      awLogStaleThresholdMinutes: getNumberValue(
-        parsed,
-        'awLogStaleThresholdMinutes',
-      ),
-      labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
-      labelsNotRequiringPullRequest: getStringArrayValue(
-        parsed,
-        'labelsNotRequiringPullRequest',
-      ),
-      agentDesignationLabelsToKeep: getStringArrayValue(
-        parsed,
-        'agentDesignationLabelsToKeep',
-      ),
-      changeTargetPathAliases: getStringRecordValue(
-        parsed,
-        'changeTargetPathAliases',
-      ),
-      agents: getStringArrayValue(parsed, 'agents'),
-      consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
-      consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
-      consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
-      consoleGithubTokens: getStringRecordValue(parsed, 'consoleGithubTokens'),
-      consoleGithubAppPrivateKeyPaths: getStringArrayRecordValue(
-        parsed,
-        'consoleGithubAppPrivateKeyPaths',
-      ),
-      consoleGithubTokenFileDir: getStringValue(
-        parsed,
-        'consoleGithubTokenFileDir',
-      ),
-      consoleProjectConfigDirectory: getStringValue(
-        parsed,
-        'consoleProjectConfigDirectory',
-      ),
-      githubAppPrivateKeyPaths: getStringArrayValue(
-        parsed,
-        'githubAppPrivateKeyPaths',
-      ),
-      disks: getDisksValue(parsed, 'disks'),
-      errorReportingRepository: getStringValue(
-        parsed,
-        'errorReportingRepository',
-      ),
-    };
+    return parseConfigFile(configFilePath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
       `Failed to load configuration file "${configFilePath}": ${message}`,
     );
     process.exit(1);
+  }
+};
+
+const configFileErrorCauseOf = (error: unknown): string => {
+  if (error instanceof YAMLParseError) {
+    const position = error.linePos?.[0];
+    return position === undefined
+      ? error.code
+      : `${error.code} at line ${position.line}, column ${position.col}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+};
+
+export const loadConfigFileOrThrow = (configFilePath: string): ConfigFile => {
+  try {
+    return parseConfigFile(configFilePath);
+  } catch (error) {
+    throw new Error(
+      `Failed to load configuration file "${configFilePath}": ${configFileErrorCauseOf(error)}`,
+      { cause: error },
+    );
   }
 };
 

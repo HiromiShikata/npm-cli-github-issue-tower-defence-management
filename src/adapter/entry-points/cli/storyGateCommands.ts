@@ -19,7 +19,7 @@ import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
 } from '../console/consoleGithubTokenResolver';
-import { loadConfigFile } from './projectConfig';
+import { loadConfigFileOrThrow } from './projectConfig';
 
 export type StoryGateCommandOutput = {
   stdout: string | null;
@@ -95,7 +95,7 @@ const githubTokenSourceOf = (
   if (configFilePath === undefined) {
     return ghToken;
   }
-  const config = loadConfigFile(configFilePath);
+  const config = loadConfigFileOrThrow(configFilePath);
   return createConsoleGithubTokenResolverByItemUrl(
     createConsoleGithubTokenResolver(
       ghToken,
