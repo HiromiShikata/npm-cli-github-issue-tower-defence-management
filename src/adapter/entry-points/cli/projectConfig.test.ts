@@ -466,6 +466,23 @@ const UNRESOLVED_TAG_CONFIG_CONTENT =
   'consoleProjects:\n  umino: https://github.com/orgs/org-a/projects/1\nconsoleGithubTokens:\n  umino: !foo FAKE_SECRET_VALUE_123\n';
 const FAKE_SECRET_VALUE = 'FAKE_SECRET_VALUE_123';
 const YAML_WARNING_NAME = 'YAMLWarning';
+const UNRESOLVED_TAG_DIAGNOSTIC_CODE = 'TAG_RESOLVE_FAILED';
+const SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT = [
+  'consoleGithubTokens: {',
+  '  umino: FAKE_SECRET_VALUE_123 x',
+  '',
+].join('\n');
+
+const printedTextOf = (printedValues: unknown[]): string =>
+  printedValues.map(String).join(' ');
+
+const warningTextOf = (warning: unknown): string => {
+  const code =
+    typeof warning === 'object' && warning !== null && 'code' in warning
+      ? String(warning.code)
+      : '';
+  return `${code} ${String(warning)}`;
+};
 
 describe('loadConfigFile unresolved YAML tag', () => {
   let dir: string;
@@ -511,6 +528,55 @@ describe('loadConfigFile unresolved YAML tag', () => {
     expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
     expect(stderrText).not.toContain(YAML_WARNING_NAME);
     expect(warningTextsWithLeak).toEqual([]);
+  });
+});
+
+describe('loadConfigFile unresolved YAML tag diagnostic', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-unresolved-tag-diagnostic-'),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('writes a diagnostic naming the tag line, column and TAG_RESOLVE_FAILED code to stderr, with no token value or YAMLWarning name', async () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, UNRESOLVED_TAG_CONFIG_CONTENT);
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const emitWarningSpy = jest
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+
+    loadConfigFile(filePath);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const stderrText = [
+      ...consoleErrorSpy.mock.calls.map(printedTextOf),
+      ...consoleWarnSpy.mock.calls.map(printedTextOf),
+      ...stderrWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+      ...emitWarningSpy.mock.calls.map(([warning]) => warningTextOf(warning)),
+    ].join('\n');
+
+    expect(stderrText).toContain(UNRESOLVED_TAG_DIAGNOSTIC_CODE);
+    expect(stderrText).toMatch(/\bline 4\b/);
+    expect(stderrText).toMatch(/\bcolumn 10\b/);
+    expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
+    expect(stderrText).not.toContain(YAML_WARNING_NAME);
   });
 });
 
@@ -588,6 +654,55 @@ describe('loadConfigFile YAML parsing outcomes', () => {
     expect(config.consoleGithubTokens).toEqual({
       umino: FAKE_SECRET_VALUE,
     });
+  });
+
+  it('prints the syntax error location without the source line, writes no token value to stdout or stderr, and exits 1 when the syntax error sits on a token line', () => {
+    const filePath = writeConfig(SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT);
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const emitWarningSpy = jest
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((): never => {
+        throw new Error('process.exit called');
+      });
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+
+    const errorMessage = printedTextOf(consoleErrorSpy.mock.calls[0] ?? []);
+    const outputText = [
+      ...consoleLogSpy.mock.calls.map(printedTextOf),
+      ...consoleErrorSpy.mock.calls.map(printedTextOf),
+      ...consoleWarnSpy.mock.calls.map(printedTextOf),
+      ...stdoutWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+      ...stderrWriteSpy.mock.calls.map(([chunk]) => String(chunk)),
+      ...emitWarningSpy.mock.calls.map(([warning]) => warningTextOf(warning)),
+    ].join('\n');
+    const expectedMessagePrefix = `Failed to load configuration file "${filePath}": `;
+
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(errorMessage.slice(0, expectedMessagePrefix.length)).toBe(
+      expectedMessagePrefix,
+    );
+    expect(errorMessage).toMatch(/\bline 3\b/);
+    expect(errorMessage).toMatch(/\bcolumn 1\b/);
+    expect(outputText).not.toContain(FAKE_SECRET_VALUE);
   });
 });
 
