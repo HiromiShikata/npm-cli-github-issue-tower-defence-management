@@ -15,6 +15,35 @@ const MALFORMED_CONFIG_CONTENT = [
   '  pj-b: token-a x',
   '',
 ].join('\n');
+const TAGGED_MALFORMED_CONFIG_FILE_NAME = 'tagged-malformed-console.yml';
+const TAGGED_MALFORMED_CONFIG_CONTENT = [
+  'consoleProjects: {',
+  "  pj-a: !foo 'https://github.com/orgs/org-a/projects/1'",
+  '  pj-b: token-a x',
+  '',
+].join('\n');
+const YAML_TAG_TEXT = '!foo';
+const MULTI_DOCUMENT_CONFIG_FILE_NAME = 'multi-document-console.yml';
+const MULTI_DOCUMENT_CONFIG_CONTENT = [
+  'consoleProjects:',
+  "  pj-a: 'https://github.com/orgs/org-a/projects/1'",
+  '---',
+  'consoleGithubTokens:',
+  '  pj-b: token-a',
+  '',
+].join('\n');
+const EXCESSIVE_ALIAS_CONFIG_FILE_NAME = 'excessive-alias-console.yml';
+const EXCESSIVE_ALIAS_REFERENCE_COUNT = 101;
+const EXCESSIVE_ALIAS_CONFIG_CONTENT = [
+  'consoleGithubTokens:',
+  '  pj-b: &pj-b-token token-a',
+  'references:',
+  ...Array.from(
+    { length: EXCESSIVE_ALIAS_REFERENCE_COUNT },
+    () => '  - *pj-b-token',
+  ),
+  '',
+].join('\n');
 
 type StoryGateCommandName =
   'checkStoryGate' | 'setIssueStoryIfUnset' | 'startSpecificationTask';
@@ -46,6 +75,12 @@ type MalformedConfigFileObservation = ConfigFileErrorObservation & {
   configTokenInOutput: boolean;
 };
 
+type CommandConfigFileRun = {
+  commandName: StoryGateCommandName;
+  run: CliRun;
+  requests: RecordedRequest[];
+};
+
 const CONFIG_FILE_ERROR_CASES: {
   commandName: StoryGateCommandName;
   configFileInput: ConfigFileInput;
@@ -67,6 +102,12 @@ const GH_TOKEN_UNSET_CONFIG_FILE_ERROR_CASES: {
   { commandName: 'checkStoryGate' },
   { commandName: 'setIssueStoryIfUnset' },
   { commandName: 'startSpecificationTask' },
+];
+
+const STORY_GATE_COMMAND_NAMES: StoryGateCommandName[] = [
+  'checkStoryGate',
+  'setIssueStoryIfUnset',
+  'startSpecificationTask',
 ];
 
 class ProcessExitSentinel extends Error {
@@ -244,6 +285,9 @@ const runCliArgumentsWithoutGhToken = async (
     process.env = envWithDefaultToken;
   }
 };
+
+const outputOf = (run: CliRun): string =>
+  `${run.stdoutText}\n${run.stderrText}`;
 
 describe('story-gate commands with an unreadable --configFilePath', () => {
   let workDirectory: string;
@@ -427,6 +471,130 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         defaultTokenInOutput: false,
         requestUrls: [],
         defaultTokenRequestCount: 0,
+      })),
+    );
+  });
+
+  const runCommandsWithConfigFile = async (
+    configFilePath: string,
+  ): Promise<CommandConfigFileRun[]> => {
+    const runs: CommandConfigFileRun[] = [];
+    for (const commandName of STORY_GATE_COMMAND_NAMES) {
+      const requests = fakeGithubFetch();
+      const run = await runCliArguments([
+        ...commandArgumentsOf(commandName, configDirectory, outputDirectory),
+        '--configFilePath',
+        configFilePath,
+      ]);
+      runs.push({ commandName, run, requests });
+      jest.restoreAllMocks();
+    }
+    return runs;
+  };
+
+  it('exits 1 with the malformed-YAML location, no YAML tag text and no token value in output when --configFilePath has a tag warning and a syntax error', async () => {
+    const configFilePath = path.join(
+      workDirectory,
+      TAGGED_MALFORMED_CONFIG_FILE_NAME,
+    );
+    fs.writeFileSync(configFilePath, TAGGED_MALFORMED_CONFIG_CONTENT);
+    const expectedLoadFailureMessage = `Failed to load configuration file "${configFilePath}": malformed YAML at line 3, column 3`;
+    const runs = await runCommandsWithConfigFile(configFilePath);
+
+    const observations = runs.map(({ commandName, run, requests }) => {
+      const output = outputOf(run);
+      return {
+        commandName,
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
+        yamlTagTextInOutput: output.includes(YAML_TAG_TEXT),
+        configTokenInOutput: output.includes(CONFIG_FILE_TOKEN_VALUE),
+        defaultTokenInOutput: output.includes(DEFAULT_TOKEN),
+        requestUrls: requests.map((request) => request.url),
+      };
+    });
+
+    expect(observations).toEqual(
+      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
+        commandName,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
+        yamlTagTextInOutput: false,
+        configTokenInOutput: false,
+        defaultTokenInOutput: false,
+        requestUrls: [],
+      })),
+    );
+  });
+
+  it('exits 1 with the malformed-YAML location and no token value in output when --configFilePath holds two YAML documents', async () => {
+    const configFilePath = path.join(
+      workDirectory,
+      MULTI_DOCUMENT_CONFIG_FILE_NAME,
+    );
+    fs.writeFileSync(configFilePath, MULTI_DOCUMENT_CONFIG_CONTENT);
+    const expectedLoadFailureMessage = `Failed to load configuration file "${configFilePath}": malformed YAML at line 3, column 1`;
+    const runs = await runCommandsWithConfigFile(configFilePath);
+
+    const observations = runs.map(({ commandName, run, requests }) => {
+      const output = outputOf(run);
+      return {
+        commandName,
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
+        configTokenInOutput: output.includes(CONFIG_FILE_TOKEN_VALUE),
+        defaultTokenInOutput: output.includes(DEFAULT_TOKEN),
+        requestUrls: requests.map((request) => request.url),
+      };
+    });
+
+    expect(observations).toEqual(
+      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
+        commandName,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
+        configTokenInOutput: false,
+        defaultTokenInOutput: false,
+        requestUrls: [],
+      })),
+    );
+  });
+
+  it('exits 1 with the parser error message and no token value in output when --configFilePath exceeds the YAML alias limit', async () => {
+    const configFilePath = path.join(
+      workDirectory,
+      EXCESSIVE_ALIAS_CONFIG_FILE_NAME,
+    );
+    fs.writeFileSync(configFilePath, EXCESSIVE_ALIAS_CONFIG_CONTENT);
+    const expectedLoadFailureMessage = `Failed to load configuration file "${configFilePath}": Excessive alias count indicates a resource exhaustion attack`;
+    const runs = await runCommandsWithConfigFile(configFilePath);
+
+    const observations = runs.map(({ commandName, run, requests }) => {
+      const output = outputOf(run);
+      return {
+        commandName,
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
+        configTokenInOutput: output.includes(CONFIG_FILE_TOKEN_VALUE),
+        defaultTokenInOutput: output.includes(DEFAULT_TOKEN),
+        requestUrls: requests.map((request) => request.url),
+      };
+    });
+
+    expect(observations).toEqual(
+      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
+        commandName,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
+        configTokenInOutput: false,
+        defaultTokenInOutput: false,
+        requestUrls: [],
       })),
     );
   });
