@@ -189,9 +189,11 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
     const doc = YAML.parseDocument(content);
     for (const warning of doc.warnings) {
       const start = warning.linePos?.[0];
-      process.stderr.write(
-        `Config file warning: ${warning.code} at line ${start?.line}, column ${start?.col}\n`,
-      );
+      const location =
+        start === undefined
+          ? ''
+          : ` at line ${start.line}, column ${start.col}`;
+      process.stderr.write(`Config file warning: ${warning.code}${location}\n`);
     }
     if (doc.errors.length > 0) {
       throw doc.errors[0];
