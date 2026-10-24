@@ -353,7 +353,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         commandName,
         configFileInput,
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
@@ -400,7 +400,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         commandName,
         configFileInput,
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
@@ -448,7 +448,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         commandName,
         configFileInput: 'missing file',
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
@@ -506,7 +506,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       return {
         commandName,
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         yamlTagTextInOutput: output.includes(YAML_TAG_TEXT),
@@ -543,7 +543,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       return {
         commandName,
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         configTokenInOutput: output.includes(CONFIG_FILE_TOKEN_VALUE),
@@ -578,7 +578,7 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       return {
         commandName,
         firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.includes(
+        stderrHasLoadFailureMessage: run.stderrText.startsWith(
           expectedLoadFailureMessage,
         ),
         configTokenInOutput: output.includes(CONFIG_FILE_TOKEN_VALUE),
