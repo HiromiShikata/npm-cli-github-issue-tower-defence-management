@@ -19,7 +19,7 @@ import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
 } from '../console/consoleGithubTokenResolver';
-import { loadConfigFile } from './projectConfig';
+import { ConfigFile, loadConfigFile } from './projectConfig';
 
 export type StoryGateCommandOutput = {
   stdout: string | null;
@@ -88,19 +88,23 @@ const commandInputValidate = (
   return { issue, ghToken };
 };
 
+const consoleConfigOf = (
+  configFilePath: string | undefined,
+): ConfigFile | undefined =>
+  configFilePath === undefined ? undefined : loadConfigFile(configFilePath);
+
 const githubTokenSourceOf = (
   ghToken: string,
-  configFilePath: string | undefined,
+  consoleConfig: ConfigFile | undefined,
 ): GithubTokenSource => {
-  if (configFilePath === undefined) {
+  if (consoleConfig === undefined) {
     return ghToken;
   }
-  const config = loadConfigFile(configFilePath);
   return createConsoleGithubTokenResolverByItemUrl(
     createConsoleGithubTokenResolver(
       ghToken,
-      config.consoleProjects ?? null,
-      config.consoleGithubTokens ?? null,
+      consoleConfig.consoleProjects ?? null,
+      consoleConfig.consoleGithubTokens ?? null,
     ),
   );
 };
@@ -108,13 +112,14 @@ const githubTokenSourceOf = (
 export const checkStoryGate = async (
   input: CheckStoryGateInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
   }
   const useCase = new StoryGateCheckUseCase(
     new GithubStoryGateIssueRepository(
-      githubTokenSourceOf(validated.ghToken, input.configFilePath),
+      githubTokenSourceOf(validated.ghToken, consoleConfig),
     ),
     new LocalStorageStoryGateBoardCacheRepository(
       input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
@@ -152,6 +157,7 @@ export const checkStoryGate = async (
 export const setIssueStoryIfUnset = async (
   input: SetIssueStoryIfUnsetInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
@@ -159,7 +165,7 @@ export const setIssueStoryIfUnset = async (
   try {
     const result = await new IssueStorySetIfUnsetUseCase(
       new GithubStoryGateIssueRepository(
-        githubTokenSourceOf(validated.ghToken, input.configFilePath),
+        githubTokenSourceOf(validated.ghToken, consoleConfig),
       ),
     ).run({
       issue: validated.issue,
@@ -177,6 +183,7 @@ export const setIssueStoryIfUnset = async (
 export const startSpecificationTask = async (
   input: StartSpecificationTaskInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
@@ -184,7 +191,7 @@ export const startSpecificationTask = async (
   try {
     const result = await new SpecificationTaskStartUseCase(
       new GithubStoryGateIssueRepository(
-        githubTokenSourceOf(validated.ghToken, input.configFilePath),
+        githubTokenSourceOf(validated.ghToken, consoleConfig),
       ),
     ).run({
       issue: validated.issue,
