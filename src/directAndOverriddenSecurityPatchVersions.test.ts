@@ -78,7 +78,12 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     {
       packageName: 'dompurify',
       lockfileKey: 'node_modules/dompurify',
-      requiredMinimumVersion: '3.4.16',
+      requiredMinimumVersion: '3.4.17',
+    },
+    {
+      packageName: 'storybook',
+      lockfileKey: 'node_modules/storybook',
+      requiredMinimumVersion: '10.6.2',
     },
     {
       packageName: 'brace-expansion',
