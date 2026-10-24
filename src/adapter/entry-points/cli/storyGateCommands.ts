@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import YAML from 'yaml';
 import { GithubIssueReference } from '../../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
 import { githubIssueReferenceParse } from '../../../domain/usecases/storyGate/githubIssueReferenceParse';
 import { IssueStorySetIfUnsetUseCase } from '../../../domain/usecases/storyGate/IssueStorySetIfUnsetUseCase';
@@ -8,10 +9,18 @@ import {
   STORY_GATE_RESULT_FILE_NAME,
   StoryGateCheckUseCase,
 } from '../../../domain/usecases/storyGate/StoryGateCheckUseCase';
-import { GithubStoryGateIssueRepository } from '../../repositories/GithubStoryGateIssueRepository';
+import {
+  GithubStoryGateIssueRepository,
+  GithubTokenSource,
+} from '../../repositories/GithubStoryGateIssueRepository';
 import { localStorageCacheBaseDirectory } from '../../repositories/localStorageCacheDirectory';
 import { LocalStorageStoryGateBoardCacheRepository } from '../../repositories/LocalStorageStoryGateBoardCacheRepository';
 import { YamlStoryGateProjectConfigRepository } from '../../repositories/YamlStoryGateProjectConfigRepository';
+import {
+  createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
+} from '../console/consoleGithubTokenResolver';
+import { ConfigFile, loadConfigFile } from './projectConfig';
 
 export type StoryGateCommandOutput = {
   stdout: string | null;
@@ -28,6 +37,7 @@ export type CheckStoryGateInput = {
   outputDirectory: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
   boardCacheBaseDirectory?: string;
 };
 
@@ -36,6 +46,7 @@ export type SetIssueStoryIfUnsetInput = {
   story: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
 };
 
 export type StartSpecificationTaskInput = {
@@ -43,6 +54,7 @@ export type StartSpecificationTaskInput = {
   specificationAgentName: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
 };
 
 const GH_TOKEN_MISSING_MESSAGE =
@@ -77,15 +89,69 @@ const commandInputValidate = (
   return { issue, ghToken };
 };
 
+const malformedConfigFileMessageOf = (
+  configFilePath: string,
+): string | undefined => {
+  let content: string;
+  try {
+    content = fs.readFileSync(configFilePath, 'utf-8');
+  } catch {
+    return undefined;
+  }
+  try {
+    YAML.parse(content, { logLevel: 'error' });
+    return undefined;
+  } catch (error) {
+    if (!(error instanceof YAML.YAMLParseError)) {
+      return undefined;
+    }
+    const start = error.linePos?.[0];
+    return `Failed to load configuration file "${configFilePath}": malformed YAML at line ${start?.line}, column ${start?.col}`;
+  }
+};
+
+const consoleConfigOf = (
+  configFilePath: string | undefined,
+): ConfigFile | undefined => {
+  if (configFilePath === undefined) {
+    return undefined;
+  }
+  const malformedMessage = malformedConfigFileMessageOf(configFilePath);
+  if (malformedMessage !== undefined) {
+    console.error(malformedMessage);
+    process.exit(1);
+  }
+  return loadConfigFile(configFilePath);
+};
+
+const githubTokenSourceOf = (
+  ghToken: string,
+  consoleConfig: ConfigFile | undefined,
+): GithubTokenSource => {
+  if (consoleConfig === undefined) {
+    return ghToken;
+  }
+  return createConsoleGithubTokenResolverByItemUrl(
+    createConsoleGithubTokenResolver(
+      ghToken,
+      consoleConfig.consoleProjects ?? null,
+      consoleConfig.consoleGithubTokens ?? null,
+    ),
+  );
+};
+
 export const checkStoryGate = async (
   input: CheckStoryGateInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
   }
   const useCase = new StoryGateCheckUseCase(
-    new GithubStoryGateIssueRepository(validated.ghToken),
+    new GithubStoryGateIssueRepository(
+      githubTokenSourceOf(validated.ghToken, consoleConfig),
+    ),
     new LocalStorageStoryGateBoardCacheRepository(
       input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
     ),
@@ -122,13 +188,16 @@ export const checkStoryGate = async (
 export const setIssueStoryIfUnset = async (
   input: SetIssueStoryIfUnsetInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
   }
   try {
     const result = await new IssueStorySetIfUnsetUseCase(
-      new GithubStoryGateIssueRepository(validated.ghToken),
+      new GithubStoryGateIssueRepository(
+        githubTokenSourceOf(validated.ghToken, consoleConfig),
+      ),
     ).run({
       issue: validated.issue,
       storyName: input.story,
@@ -145,13 +214,16 @@ export const setIssueStoryIfUnset = async (
 export const startSpecificationTask = async (
   input: StartSpecificationTaskInput,
 ): Promise<StoryGateCommandOutput> => {
+  const consoleConfig = consoleConfigOf(input.configFilePath);
   const validated = commandInputValidate(input.issueUrl, input.ghToken);
   if ('failure' in validated) {
     return validated.failure;
   }
   try {
     const result = await new SpecificationTaskStartUseCase(
-      new GithubStoryGateIssueRepository(validated.ghToken),
+      new GithubStoryGateIssueRepository(
+        githubTokenSourceOf(validated.ghToken, consoleConfig),
+      ),
     ).run({
       issue: validated.issue,
       specificationAgentName: input.specificationAgentName,

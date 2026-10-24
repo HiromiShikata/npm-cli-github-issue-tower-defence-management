@@ -101,6 +101,7 @@ export class IssueStorySetIfUnsetUseCase {
       itemId: target.item.itemId,
       fieldId: target.storyField.fieldId,
       optionId: target.option.id,
+      issueUrl: input.issue.url,
     });
     const readBack = await this.issueRepository.findIssueProjectItems(
       input.issue,

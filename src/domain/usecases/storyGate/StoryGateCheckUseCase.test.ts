@@ -573,6 +573,7 @@ describe('StoryGateCheckUseCase', () => {
             itemId: `ITEM_${ASSIGNED}`,
             fieldId: STORY_FIELD_ID,
             optionId,
+            issueUrl: issueUrl(ASSIGNED),
           },
         ]);
         expect(result.storyAdoption.outcome).toBe('WRITTEN');
@@ -588,6 +589,16 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe('STORY_ISSUE_READ');
       },
     );
+
+    it('sends the adoption update with the issueUrl of the cache-hit issue', async () => {
+      const scenario = adoptionScenario('feature A');
+
+      await scenario.run();
+
+      expect(scenario.repository.updates).toEqual([
+        expect.objectContaining({ issueUrl: issueUrl(ASSIGNED) }),
+      ]);
+    });
 
     const noUniqueCases: {
       name: string;
@@ -690,6 +701,7 @@ describe('StoryGateCheckUseCase', () => {
           itemId: `ITEM_${ASSIGNED}`,
           fieldId: STORY_FIELD_ID,
           optionId: 'OPT_feature_a',
+          issueUrl: issueUrl(ASSIGNED),
         },
       ]);
     });
@@ -741,6 +753,7 @@ describe('StoryGateCheckUseCase', () => {
           itemId: `ITEM_${ASSIGNED}`,
           fieldId: STORY_FIELD_ID,
           optionId: 'OPT_feature_a',
+          issueUrl: issueUrl(ASSIGNED),
         },
       ]);
     });
