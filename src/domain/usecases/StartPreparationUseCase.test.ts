@@ -3241,7 +3241,7 @@ describe('StartPreparationUseCase', () => {
         'All 1 configured Claude OAuth token(s) are unavailable',
       ),
     );
-    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     consoleWarnSpy.mockRestore();
   });
   it('should continue processing subsequent issues when one issue has no model configured', async () => {
