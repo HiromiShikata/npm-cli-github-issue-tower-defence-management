@@ -44,7 +44,6 @@ import {
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
-export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 export const DEFAULT_MINIMUM_ISSUE_AGE_MS = 5 * 60 * 1000;
@@ -156,18 +155,14 @@ export class StartPreparationUseCase {
   private selectModelForToken = (
     usage: ClaudeTokenUsage,
     defaultModelName: string | null,
-    fallbackModelName: string | null,
   ): string | null => {
     const sevenDayLimit = usage.modelWeeklyLimits['seven_day'];
     if (sevenDayLimit !== undefined && sevenDayLimit.rejected) {
       return null;
     }
-    return (
-      [defaultModelName, fallbackModelName].find(
-        (modelName): modelName is string =>
-          modelName !== null && modelName !== '',
-      ) ?? null
-    );
+    return defaultModelName !== null && defaultModelName !== ''
+      ? defaultModelName
+      : null;
   };
 
   private secondsUntilSevenDayReset = (
@@ -370,7 +365,6 @@ export class StartPreparationUseCase {
     tokenUsages: ClaudeTokenUsage[],
     utilizationPercentageThreshold: number,
     defaultModelName: string | null,
-    fallbackModelName: string | null,
     normalConcurrentLimit: number,
   ): {
     tokens: string[];
@@ -392,11 +386,7 @@ export class StartPreparationUseCase {
           usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
       )
       .flatMap((usage) => {
-        const model = this.selectModelForToken(
-          usage,
-          defaultModelName,
-          fallbackModelName,
-        );
+        const model = this.selectModelForToken(usage, defaultModelName);
         if (model === null || !isValidModelId(model)) return [];
         return [{ usage, model }];
       })
@@ -534,7 +524,6 @@ export class StartPreparationUseCase {
     projectUrl: string;
     defaultAgentName: string;
     defaultLlmModelName: string | null;
-    fallbackLlmModelName: string | null;
     defaultLlmAgentName: string | null;
     configFilePath: string;
     maximumPreparingIssuesCount: number | null;
@@ -577,8 +566,6 @@ export class StartPreparationUseCase {
     const maximumPreparingIssuesCount =
       params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
     const effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
-    const fallbackLlmModelName =
-      params.fallbackLlmModelName ?? DEFAULT_FALLBACK_LLM_MODEL_NAME;
     const llmModelNameByAgentName = params.llmModelNameByAgentName ?? null;
     const mappedModelNameOf = (agentName: string): string | null =>
       llmModelNameByAgentName !== null &&
@@ -593,7 +580,6 @@ export class StartPreparationUseCase {
         tokenUsages,
         params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
-        fallbackLlmModelName,
         normalConcurrentLimit,
       );
       if (selectedTokens.length === 0) {

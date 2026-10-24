@@ -8,7 +8,6 @@ export type ConfigFile = {
   defaultAgentName?: string;
   developerAgentNames?: string[];
   defaultLlmModelName?: string;
-  fallbackLlmModelName?: string;
   defaultLlmEffortLevel?: string;
   defaultLlmAutocompactMode?: string;
   defaultLlmAgentName?: string;
@@ -163,7 +162,6 @@ const knownProjectReadmeConfigKeys = [
   'developerAgentName',
   'developerAgentNames',
   'defaultLlmModelName',
-  'fallbackLlmModelName',
   'defaultLlmAgentName',
   'maximumPreparingIssuesCount',
   'utilizationPercentageThreshold',
@@ -198,7 +196,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       developerAgentNames: getDeveloperAgentNamesValue(parsed),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
-      fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
       defaultLlmEffortLevel: getStringValue(parsed, 'defaultLlmEffortLevel'),
       defaultLlmAutocompactMode: getStringValue(
         parsed,
@@ -323,7 +320,6 @@ export const parseProjectReadmeConfig = (
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       developerAgentNames: getDeveloperAgentNamesValue(parsed),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
-      fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
       maximumPreparingIssuesCount: getNumberValue(
         parsed,
@@ -405,10 +401,6 @@ export const mergeConfigs = (
     readmeOverrides.defaultLlmModelName ??
     cliOverrides.defaultLlmModelName ??
     configFile.defaultLlmModelName,
-  fallbackLlmModelName:
-    readmeOverrides.fallbackLlmModelName ??
-    cliOverrides.fallbackLlmModelName ??
-    configFile.fallbackLlmModelName,
   defaultLlmAgentName:
     readmeOverrides.defaultLlmAgentName ??
     cliOverrides.defaultLlmAgentName ??
