@@ -2080,7 +2080,7 @@ program
   )
   .option(
     '--configFilePath <path>',
-    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner. A missing or malformed file exits with code 1.',
   )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: CheckStoryGateOptions) =>
@@ -2108,7 +2108,7 @@ program
   .requiredOption('--story <name>', 'Story option name to write')
   .option(
     '--configFilePath <path>',
-    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner. A missing or malformed file exits with code 1.',
   )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: SetIssueStoryIfUnsetOptions) =>
@@ -2135,7 +2135,7 @@ program
   )
   .option(
     '--configFilePath <path>',
-    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner. A missing or malformed file exits with code 1.',
   )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: StartSpecificationTaskOptions) =>

@@ -19,7 +19,7 @@ import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
 } from '../console/consoleGithubTokenResolver';
-import { loadConfigFileOrThrow } from './projectConfig';
+import { loadConfigFile } from './projectConfig';
 
 export type StoryGateCommandOutput = {
   stdout: string | null;
@@ -95,7 +95,7 @@ const githubTokenSourceOf = (
   if (configFilePath === undefined) {
     return ghToken;
   }
-  const config = loadConfigFileOrThrow(configFilePath);
+  const config = loadConfigFile(configFilePath);
   return createConsoleGithubTokenResolverByItemUrl(
     createConsoleGithubTokenResolver(
       ghToken,
@@ -112,16 +112,16 @@ export const checkStoryGate = async (
   if ('failure' in validated) {
     return validated.failure;
   }
+  const useCase = new StoryGateCheckUseCase(
+    new GithubStoryGateIssueRepository(
+      githubTokenSourceOf(validated.ghToken, input.configFilePath),
+    ),
+    new LocalStorageStoryGateBoardCacheRepository(
+      input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
+    ),
+    new YamlStoryGateProjectConfigRepository(input.configDirectory),
+  );
   try {
-    const useCase = new StoryGateCheckUseCase(
-      new GithubStoryGateIssueRepository(
-        githubTokenSourceOf(validated.ghToken, input.configFilePath),
-      ),
-      new LocalStorageStoryGateBoardCacheRepository(
-        input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
-      ),
-      new YamlStoryGateProjectConfigRepository(input.configDirectory),
-    );
     const outputDirectory = path.resolve(input.outputDirectory);
     const { result, outputFiles } = await useCase.run({
       issue: validated.issue,
