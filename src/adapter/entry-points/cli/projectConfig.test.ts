@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import YAML from 'yaml';
 import {
   loadConfigFile,
   mergeConfigs,
@@ -531,6 +532,33 @@ describe('loadConfigFile unresolved YAML tag', () => {
     expect(warningLines).toHaveLength(1);
     expect(stderrText).not.toContain(FAKE_SECRET_VALUE);
     expect(stderrText).not.toContain(YAML_WARNING_NAME);
+  });
+
+  it('writes only the warning code to stderr for a YAML warning without a position', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, '{}\n');
+    const parsedDocument = YAML.parseDocument('{}\n');
+    parsedDocument.warnings.push(
+      new YAML.YAMLWarning(
+        [0, 1],
+        'TAG_RESOLVE_FAILED',
+        'Unresolved tag: !foo',
+      ),
+    );
+    const parseDocumentSpy = jest
+      .spyOn(YAML, 'parseDocument')
+      .mockReturnValueOnce(parsedDocument);
+
+    try {
+      loadConfigFile(filePath);
+    } finally {
+      parseDocumentSpy.mockRestore();
+    }
+
+    const stderrChunks = stderrWriteSpy.mock.calls.map(([chunk]) =>
+      String(chunk),
+    );
+    expect(stderrChunks).toEqual(['Config file warning: TAG_RESOLVE_FAILED\n']);
   });
 });
 
