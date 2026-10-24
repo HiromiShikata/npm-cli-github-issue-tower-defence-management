@@ -99,12 +99,14 @@ export class SpecificationTaskStartUseCase {
       itemId: target.item.itemId,
       fieldId: target.agentField.fieldId,
       optionId: target.agentOption.id,
+      issueUrl: input.issue.url,
     });
     await this.issueRepository.updateProjectItemSingleSelectValue({
       projectId: target.item.projectId,
       itemId: target.item.itemId,
       fieldId: statusField.fieldId,
       optionId: statusOption.id,
+      issueUrl: input.issue.url,
     });
     const readBackItem =
       (

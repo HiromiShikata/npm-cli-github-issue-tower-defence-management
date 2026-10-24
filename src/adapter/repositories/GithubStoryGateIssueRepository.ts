@@ -162,19 +162,45 @@ export const PROJECT_ITEM_SINGLE_SELECT_UPDATE_MUTATION = `mutation StoryGatePro
 const defaultWaitForMilliseconds = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+export type GithubTokenSource = string | ((issueUrl: string) => string);
+
 export class GithubStoryGateIssueRepository implements StoryGateIssueRepository {
   constructor(
-    private readonly ghToken: string,
+    private readonly githubTokenSource: GithubTokenSource,
     private readonly waitForMilliseconds: (
       milliseconds: number,
     ) => Promise<void> = defaultWaitForMilliseconds,
   ) {}
 
+  private tokenOf = (issueUrl: string): string =>
+    typeof this.githubTokenSource === 'string'
+      ? this.githubTokenSource
+      : this.githubTokenSource(issueUrl);
+
+  private tokenForUpdate = (
+    update: ProjectItemSingleSelectValueUpdate,
+  ): string => {
+    if (typeof this.githubTokenSource === 'string') {
+      return this.githubTokenSource;
+    }
+    if (update.issueUrl === undefined) {
+      throw new Error(
+        `The GitHub token cannot be selected for project item ${update.itemId}: the update has no issueUrl`,
+      );
+    }
+    return this.githubTokenSource(update.issueUrl);
+  };
+
   findIssue = async (
     issue: GithubIssueReference,
   ): Promise<StoryGateIssue | null> => {
     const url = `${GITHUB_API_BASE_URL}/repos/${issue.owner}/${issue.repo}/issues/${issue.number}`;
-    const response = await this.request('GET', url, null);
+    const response = await this.request(
+      'GET',
+      url,
+      null,
+      this.tokenOf(issue.url),
+    );
     if (response.status === 404) {
       return null;
     }
@@ -195,9 +221,10 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     issue: GithubIssueReference,
   ): Promise<StoryGateIssueComment[]> => {
     const comments: StoryGateIssueComment[] = [];
+    const token = this.tokenOf(issue.url);
     for (let page = 1; ; page++) {
       const url = `${GITHUB_API_BASE_URL}/repos/${issue.owner}/${issue.repo}/issues/${issue.number}/comments?per_page=${GITHUB_COMMENTS_PAGE_SIZE}&page=${page}`;
-      const response = await this.request('GET', url, null);
+      const response = await this.request('GET', url, null, token);
       this.assertSuccessful('GET', url, response);
       const pageComments = Array.isArray(response.body) ? response.body : [];
       pageComments.forEach((comment) =>
@@ -216,11 +243,15 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
   findIssueProjectItems = async (
     issue: GithubIssueReference,
   ): Promise<IssueProjectItemsSnapshot | null> => {
-    const data = await this.graphql(ISSUE_PROJECT_ITEMS_QUERY, {
-      owner: issue.owner,
-      repo: issue.repo,
-      number: issue.number,
-    });
+    const data = await this.graphql(
+      ISSUE_PROJECT_ITEMS_QUERY,
+      {
+        owner: issue.owner,
+        repo: issue.repo,
+        number: issue.number,
+      },
+      this.tokenOf(issue.url),
+    );
     const issueNode = fieldOf(
       fieldOf(data, 'repository'),
       'issueOrPullRequest',
@@ -239,11 +270,15 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
   listClosingPullRequests = async (
     issue: GithubIssueReference,
   ): Promise<ClosingPullRequest[]> => {
-    const data = await this.graphql(CLOSING_PULL_REQUESTS_QUERY, {
-      owner: issue.owner,
-      repo: issue.repo,
-      number: issue.number,
-    });
+    const data = await this.graphql(
+      CLOSING_PULL_REQUESTS_QUERY,
+      {
+        owner: issue.owner,
+        repo: issue.repo,
+        number: issue.number,
+      },
+      this.tokenOf(issue.url),
+    );
     const nodes = arrayFieldOf(
       fieldOf(
         fieldOf(fieldOf(data, 'repository'), 'issueOrPullRequest'),
@@ -273,22 +308,32 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
   updateProjectItemSingleSelectValue = async (
     update: ProjectItemSingleSelectValueUpdate,
   ): Promise<void> => {
-    await this.graphql(PROJECT_ITEM_SINGLE_SELECT_UPDATE_MUTATION, {
-      projectId: update.projectId,
-      itemId: update.itemId,
-      fieldId: update.fieldId,
-      optionId: update.optionId,
-    });
+    await this.graphql(
+      PROJECT_ITEM_SINGLE_SELECT_UPDATE_MUTATION,
+      {
+        projectId: update.projectId,
+        itemId: update.itemId,
+        fieldId: update.fieldId,
+        optionId: update.optionId,
+      },
+      this.tokenForUpdate(update),
+    );
   };
 
   private graphql = async (
     query: string,
     variables: Record<string, string | number>,
+    token: string,
   ): Promise<unknown> => {
-    const response = await this.request('POST', GITHUB_GRAPHQL_URL, {
-      query,
-      variables,
-    });
+    const response = await this.request(
+      'POST',
+      GITHUB_GRAPHQL_URL,
+      {
+        query,
+        variables,
+      },
+      token,
+    );
     this.assertSuccessful('POST', GITHUB_GRAPHQL_URL, response);
     const errors = graphqlErrorsOf(response.body);
     const operationName =
@@ -320,6 +365,7 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     method: HttpMethod,
     url: string,
     requestBody: Record<string, unknown> | null,
+    token: string,
   ): Promise<GithubHttpResponse> => {
     for (let attempt = 0; ; attempt++) {
       let response: Response;
@@ -327,7 +373,7 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
         response = await fetch(url, {
           method,
           headers: {
-            Authorization: `Bearer ${this.ghToken}`,
+            Authorization: `Bearer ${token}`,
             Accept: 'application/vnd.github+json',
             'Content-Type': 'application/json',
           },
