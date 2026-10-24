@@ -55,6 +55,14 @@ const CONFIG_FILE_ERROR_CASES: {
   },
 ];
 
+const GH_TOKEN_UNSET_CONFIG_FILE_ERROR_CASES: {
+  commandName: StoryGateCommandName;
+}[] = [
+  { commandName: 'checkStoryGate' },
+  { commandName: 'setIssueStoryIfUnset' },
+  { commandName: 'startSpecificationTask' },
+];
+
 class ProcessExitSentinel extends Error {
   readonly exitCode: number;
 
@@ -196,6 +204,24 @@ const fakeGithubFetch = (): RecordedRequest[] => {
   return requests;
 };
 
+const envWithoutGhTokenOf = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+  const envWithoutGhToken = { ...env };
+  delete envWithoutGhToken.GH_TOKEN;
+  return envWithoutGhToken;
+};
+
+const runCliArgumentsWithoutGhToken = async (
+  commandLineArguments: string[],
+): Promise<CliRun> => {
+  const envWithDefaultToken = process.env;
+  process.env = envWithoutGhTokenOf(envWithDefaultToken);
+  try {
+    return await runCliArguments(commandLineArguments);
+  } finally {
+    process.env = envWithDefaultToken;
+  }
+};
+
 describe('story-gate commands with an unreadable --configFilePath', () => {
   let workDirectory: string;
   let configDirectory: string;
@@ -275,6 +301,50 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       CONFIG_FILE_ERROR_CASES.map(({ commandName, configFileInput }) => ({
         commandName,
         configFileInput,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
+        defaultTokenInOutput: false,
+        requestUrls: [],
+        defaultTokenRequestCount: 0,
+      })),
+    );
+  });
+
+  it('exits 1 with the loadConfigFile message in stderr, no token value and no GitHub request when GH_TOKEN is unset and --configFilePath is missing', async () => {
+    const observations: ConfigFileErrorObservation[] = [];
+
+    for (const { commandName } of GH_TOKEN_UNSET_CONFIG_FILE_ERROR_CASES) {
+      const requests = fakeGithubFetch();
+      const configFilePath = configFilePathOf('missing file');
+      const expectedLoadFailureMessage = loadFailureMessageOf(configFilePath);
+      const run = await runCliArgumentsWithoutGhToken([
+        ...commandArgumentsOf(commandName, configDirectory, outputDirectory),
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      observations.push({
+        commandName,
+        configFileInput: 'missing file',
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
+        defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
+          DEFAULT_TOKEN,
+        ),
+        requestUrls: requests.map((request) => request.url),
+        defaultTokenRequestCount: requests.filter((request) =>
+          (request.authorization ?? '').includes(DEFAULT_TOKEN),
+        ).length,
+      });
+      jest.restoreAllMocks();
+    }
+
+    expect(observations).toEqual(
+      GH_TOKEN_UNSET_CONFIG_FILE_ERROR_CASES.map(({ commandName }) => ({
+        commandName,
+        configFileInput: 'missing file',
         firstExitCode: 1,
         stderrHasLoadFailureMessage: true,
         defaultTokenInOutput: false,
