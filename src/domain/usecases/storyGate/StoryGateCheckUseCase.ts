@@ -521,6 +521,7 @@ export class StoryGateCheckUseCase {
       itemId: cacheHit.issue.itemId,
       fieldId: cacheHit.cache.storyFieldId,
       optionId: resolution.optionId,
+      issueUrl: cacheHit.issue.url,
     });
     const readBackStory = liveStoryNameFirst(
       (await this.issueProjectItemsRead(input.issue)).filter(

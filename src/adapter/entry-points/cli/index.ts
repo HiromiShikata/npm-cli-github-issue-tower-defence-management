@@ -367,18 +367,21 @@ type CheckStoryGateOptions = {
   specificationAgentName: string;
   configDirectory: string;
   outputDirectory: string;
+  configFilePath?: string;
   dryRun?: boolean;
 };
 
 type SetIssueStoryIfUnsetOptions = {
   issueUrl: string;
   story: string;
+  configFilePath?: string;
   dryRun?: boolean;
 };
 
 type StartSpecificationTaskOptions = {
   issueUrl: string;
   specificationAgentName: string;
+  configFilePath?: string;
   dryRun?: boolean;
 };
 
@@ -2052,7 +2055,7 @@ const storyGateCommandOutputPrintAndExit = (
 program
   .command('checkStoryGate')
   .description(
-    'Evaluate the deterministic part of the story gate for one issue using the GH_TOKEN environment variable: board cache and live Story lookup, Story adoption from linked tasks, story issue lookup, closed, already-routed, merged-without-specification and comment-fold checks, and approved-specification detection. Writes story-gate-result.json and the story issue body and comment files into --outputDirectory, prints the result JSON as the last stdout line and exits 0. Exits 2 with a diagnostic on stderr when GH_TOKEN is missing, the URL is invalid or a GitHub request fails with a status other than 404.',
+    'Evaluate the deterministic part of the story gate for one issue using the GitHub token selected for the issue owner by --configFilePath, falling back to the GH_TOKEN environment variable: board cache and live Story lookup, Story adoption from linked tasks, story issue lookup, closed, already-routed, merged-without-specification and comment-fold checks, and approved-specification detection. Writes story-gate-result.json and the story issue body and comment files into --outputDirectory, prints the result JSON as the last stdout line and exits 0. Exits 2 with a diagnostic on stderr when GH_TOKEN is missing, the URL is invalid, a configured token is blank or a GitHub request fails with a status other than 404.',
   )
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
   .requiredOption(
@@ -2075,6 +2078,10 @@ program
     '--outputDirectory <path>',
     'Directory the result JSON and story issue files are written to',
   )
+  .option(
+    '--configFilePath <path>',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
+  )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: CheckStoryGateOptions) =>
     storyGateCommandOutputPrintAndExit(
@@ -2087,6 +2094,7 @@ program
         outputDirectory: options.outputDirectory,
         dryRun: options.dryRun === true,
         ghToken: process.env.GH_TOKEN,
+        configFilePath: options.configFilePath,
       }),
     ),
   );
@@ -2094,10 +2102,14 @@ program
 program
   .command('setIssueStoryIfUnset')
   .description(
-    'Write the named Story option to the issue project item only while its live Story is empty or NO STORY, then read it back. Prints a JSON result whose outcome is WRITTEN, SKIPPED_DRY_RUN, LIVE_STORY_ALREADY_SET, OPTION_NOT_ACTIVE, ISSUE_NOT_IN_PROJECT or READ_BACK_MISMATCH and exits 0. Exits 2 on a missing GH_TOKEN, an invalid URL or a failed GitHub request.',
+    'Write the named Story option to the issue project item only while its live Story is empty or NO STORY, then read it back. Prints a JSON result whose outcome is WRITTEN, SKIPPED_DRY_RUN, LIVE_STORY_ALREADY_SET, OPTION_NOT_ACTIVE, ISSUE_NOT_IN_PROJECT or READ_BACK_MISMATCH and exits 0. The GitHub token for the issue owner is selected by --configFilePath, falling back to GH_TOKEN. Exits 2 on a missing GH_TOKEN, an invalid URL, a blank configured token or a failed GitHub request.',
   )
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
   .requiredOption('--story <name>', 'Story option name to write')
+  .option(
+    '--configFilePath <path>',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
+  )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: SetIssueStoryIfUnsetOptions) =>
     storyGateCommandOutputPrintAndExit(
@@ -2106,6 +2118,7 @@ program
         story: options.story,
         dryRun: options.dryRun === true,
         ghToken: process.env.GH_TOKEN,
+        configFilePath: options.configFilePath,
       }),
     ),
   );
@@ -2113,12 +2126,16 @@ program
 program
   .command('startSpecificationTask')
   .description(
-    'Set the issue Agent field to --specificationAgentName and its Status to Awaiting Workspace, then read both back. Prints a JSON result whose outcome is STARTED, ISSUE_CLOSED, AGENT_OPTION_NOT_FOUND, STATUS_OPTION_NOT_FOUND, ISSUE_NOT_IN_PROJECT, READ_BACK_MISMATCH or SKIPPED_DRY_RUN and exits 0. Exits 2 on a missing GH_TOKEN, an invalid URL or a failed GitHub request.',
+    'Set the issue Agent field to --specificationAgentName and its Status to Awaiting Workspace, then read both back. Prints a JSON result whose outcome is STARTED, ISSUE_CLOSED, AGENT_OPTION_NOT_FOUND, STATUS_OPTION_NOT_FOUND, ISSUE_NOT_IN_PROJECT, READ_BACK_MISMATCH or SKIPPED_DRY_RUN and exits 0. The GitHub token for the issue owner is selected by --configFilePath, falling back to GH_TOKEN. Exits 2 on a missing GH_TOKEN, an invalid URL, a blank configured token or a failed GitHub request.',
   )
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
   .requiredOption(
     '--specificationAgentName <name>',
     'Agent option name to set on the issue',
+  )
+  .option(
+    '--configFilePath <path>',
+    'Console config file whose consoleProjects and consoleGithubTokens select the GitHub token for the issue owner; GH_TOKEN is used when omitted or when no pjcode matches the owner',
   )
   .option('--dryRun', 'Send no GraphQL mutation', false)
   .action(async (options: StartSpecificationTaskOptions) =>
@@ -2128,6 +2145,7 @@ program
         specificationAgentName: options.specificationAgentName,
         dryRun: options.dryRun === true,
         ghToken: process.env.GH_TOKEN,
+        configFilePath: options.configFilePath,
       }),
     ),
   );

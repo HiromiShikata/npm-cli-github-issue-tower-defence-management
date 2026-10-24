@@ -59,6 +59,7 @@ export type ProjectItemSingleSelectValueUpdate = {
   itemId: string;
   fieldId: string;
   optionId: string;
+  issueUrl?: string;
 };
 
 export class StoryGateGithubRequestError extends Error {

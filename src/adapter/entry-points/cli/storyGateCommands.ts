@@ -8,10 +8,18 @@ import {
   STORY_GATE_RESULT_FILE_NAME,
   StoryGateCheckUseCase,
 } from '../../../domain/usecases/storyGate/StoryGateCheckUseCase';
-import { GithubStoryGateIssueRepository } from '../../repositories/GithubStoryGateIssueRepository';
+import {
+  GithubStoryGateIssueRepository,
+  GithubTokenSource,
+} from '../../repositories/GithubStoryGateIssueRepository';
 import { localStorageCacheBaseDirectory } from '../../repositories/localStorageCacheDirectory';
 import { LocalStorageStoryGateBoardCacheRepository } from '../../repositories/LocalStorageStoryGateBoardCacheRepository';
 import { YamlStoryGateProjectConfigRepository } from '../../repositories/YamlStoryGateProjectConfigRepository';
+import {
+  createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
+} from '../console/consoleGithubTokenResolver';
+import { loadConfigFile } from './projectConfig';
 
 export type StoryGateCommandOutput = {
   stdout: string | null;
@@ -28,6 +36,7 @@ export type CheckStoryGateInput = {
   outputDirectory: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
   boardCacheBaseDirectory?: string;
 };
 
@@ -36,6 +45,7 @@ export type SetIssueStoryIfUnsetInput = {
   story: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
 };
 
 export type StartSpecificationTaskInput = {
@@ -43,6 +53,7 @@ export type StartSpecificationTaskInput = {
   specificationAgentName: string;
   dryRun: boolean;
   ghToken: string | undefined;
+  configFilePath?: string;
 };
 
 const GH_TOKEN_MISSING_MESSAGE =
@@ -77,6 +88,25 @@ const commandInputValidate = (
   return { issue, ghToken };
 };
 
+// Selects the GitHub token per issue owner with the console rule. Without a
+// config file, or when no pjcode matches the owner, GH_TOKEN is used.
+const githubTokenSourceOf = (
+  ghToken: string,
+  configFilePath: string | undefined,
+): GithubTokenSource => {
+  if (configFilePath === undefined) {
+    return ghToken;
+  }
+  const config = loadConfigFile(configFilePath);
+  return createConsoleGithubTokenResolverByItemUrl(
+    createConsoleGithubTokenResolver(
+      ghToken,
+      config.consoleProjects ?? null,
+      config.consoleGithubTokens ?? null,
+    ),
+  );
+};
+
 export const checkStoryGate = async (
   input: CheckStoryGateInput,
 ): Promise<StoryGateCommandOutput> => {
@@ -84,14 +114,16 @@ export const checkStoryGate = async (
   if ('failure' in validated) {
     return validated.failure;
   }
-  const useCase = new StoryGateCheckUseCase(
-    new GithubStoryGateIssueRepository(validated.ghToken),
-    new LocalStorageStoryGateBoardCacheRepository(
-      input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
-    ),
-    new YamlStoryGateProjectConfigRepository(input.configDirectory),
-  );
   try {
+    const useCase = new StoryGateCheckUseCase(
+      new GithubStoryGateIssueRepository(
+        githubTokenSourceOf(validated.ghToken, input.configFilePath),
+      ),
+      new LocalStorageStoryGateBoardCacheRepository(
+        input.boardCacheBaseDirectory ?? localStorageCacheBaseDirectory(),
+      ),
+      new YamlStoryGateProjectConfigRepository(input.configDirectory),
+    );
     const outputDirectory = path.resolve(input.outputDirectory);
     const { result, outputFiles } = await useCase.run({
       issue: validated.issue,
@@ -128,7 +160,9 @@ export const setIssueStoryIfUnset = async (
   }
   try {
     const result = await new IssueStorySetIfUnsetUseCase(
-      new GithubStoryGateIssueRepository(validated.ghToken),
+      new GithubStoryGateIssueRepository(
+        githubTokenSourceOf(validated.ghToken, input.configFilePath),
+      ),
     ).run({
       issue: validated.issue,
       storyName: input.story,
@@ -151,7 +185,9 @@ export const startSpecificationTask = async (
   }
   try {
     const result = await new SpecificationTaskStartUseCase(
-      new GithubStoryGateIssueRepository(validated.ghToken),
+      new GithubStoryGateIssueRepository(
+        githubTokenSourceOf(validated.ghToken, input.configFilePath),
+      ),
     ).run({
       issue: validated.issue,
       specificationAgentName: input.specificationAgentName,
