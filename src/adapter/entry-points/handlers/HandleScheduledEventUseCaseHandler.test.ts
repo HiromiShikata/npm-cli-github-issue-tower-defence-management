@@ -1580,6 +1580,55 @@ llmModelNameByAgentName: claude-haiku-5-5
       expect(mockRun).not.toHaveBeenCalled();
     });
 
+    it.each([
+      {
+        description: 'a number map value',
+        mapValue: 3,
+      },
+      {
+        description: 'a boolean map value',
+        mapValue: true,
+      },
+      {
+        description: 'a list map value',
+        mapValue: ['claude-haiku-5-5'],
+      },
+      {
+        description: 'an empty string per-agent value',
+        mapValue: { triager: '' },
+      },
+      {
+        description: 'a number per-agent value',
+        mapValue: { triager: 3 },
+      },
+      {
+        description: 'a boolean per-agent value',
+        mapValue: { triager: true },
+      },
+      {
+        description: 'a list per-agent value',
+        mapValue: { triager: ['claude-haiku-5-5'] },
+      },
+      {
+        description: 'a mapping per-agent value',
+        mapValue: { triager: { model: 'claude-haiku-5-5' } },
+      },
+    ])(
+      'rejects the schedule run without calling the launch run for $description (AC-25)',
+      async ({ mapValue }) => {
+        mockFetchReturningReadme('# Test project');
+        mockConfigFiles(
+          YAML.stringify(validConfig),
+          YAML.stringify({
+            startPreparation: { llmModelNameByAgentName: mapValue },
+          }),
+        );
+
+        await expect(runSchedule()).rejects.toThrow();
+        expect(mockRun).not.toHaveBeenCalled();
+      },
+    );
+
     it('prints no Effective map line when the fleet map read fails (AC-26)', async () => {
       mockFetchReturningReadme('# Test project');
       mockConfigFiles(
