@@ -295,7 +295,6 @@ describe('StartPreparationUseCase llm model name by agent name', () => {
         setup.defaultLlmModelName === undefined
           ? DEFAULT_LLM_MODEL_NAME
           : setup.defaultLlmModelName,
-      fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,

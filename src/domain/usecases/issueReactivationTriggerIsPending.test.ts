@@ -532,7 +532,6 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           projectUrl: 'https://github.com/users/user/projects/1',
           defaultAgentName: 'agent1',
           defaultLlmModelName: 'claude-sonnet-4-6',
-          fallbackLlmModelName: null,
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,

@@ -1338,7 +1338,6 @@ describe('HandleScheduledEventUseCase', () => {
         startPreparation: {
           defaultAgentName: 'agent1',
           defaultLlmModelName: 'claude-opus',
-          fallbackLlmModelName: 'claude-sonnet',
           defaultLlmAgentName: 'llm-agent',
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: 12,
@@ -1360,7 +1359,6 @@ describe('HandleScheduledEventUseCase', () => {
             manager: 'test-manager',
             defaultAgentName: 'agent1',
             defaultLlmModelName: 'claude-opus',
-            fallbackLlmModelName: 'claude-sonnet',
             defaultLlmAgentName: 'llm-agent',
             configFilePath: '/path/to/config.yml',
             maximumPreparingIssuesCount: 12,
