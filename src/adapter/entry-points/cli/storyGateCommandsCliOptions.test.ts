@@ -634,6 +634,19 @@ describe('story-gate commands through the CLI program', () => {
         expect(normalizedHelpText).toContain('issue owner');
         expect(normalizedHelpText).toContain('GH_TOKEN');
       });
+
+      it('states in the --configFilePath help text that a missing or malformed file exits with code 1', async () => {
+        const helpText = await runHelpOf(commandName);
+        const normalizedHelpText = helpText.replace(/\s+/g, ' ');
+        const configFileOptionHelpText = normalizedHelpText.slice(
+          normalizedHelpText.indexOf('--configFilePath <path>'),
+          normalizedHelpText.indexOf('--dryRun'),
+        );
+
+        expect(configFileOptionHelpText).toContain(
+          'A missing or malformed file exits with code 1.',
+        );
+      });
     },
   );
 

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import YAML from 'yaml';
 import { program } from './index';
 
 const DEFAULT_TOKEN = 'test-token';
@@ -24,13 +25,19 @@ type CliRun = {
   exitCodes: number[];
 };
 
+type RecordedRequest = {
+  url: string;
+  authorization: string | null;
+};
+
 type ConfigFileErrorObservation = {
   commandName: StoryGateCommandName;
   configFileInput: ConfigFileInput;
-  exitCodes: number[];
-  stderrNamesConfigFilePath: boolean;
+  firstExitCode: number | undefined;
+  stderrHasLoadFailureMessage: boolean;
   defaultTokenInOutput: boolean;
   requestUrls: string[];
+  defaultTokenRequestCount: number;
 };
 
 const CONFIG_FILE_ERROR_CASES: {
@@ -48,6 +55,15 @@ const CONFIG_FILE_ERROR_CASES: {
   },
 ];
 
+class ProcessExitSentinel extends Error {
+  readonly exitCode: number;
+
+  constructor(exitCode: number) {
+    super(`process.exit(${exitCode}) called`);
+    this.exitCode = exitCode;
+  }
+}
+
 const jsonResponse = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
     status,
@@ -60,6 +76,16 @@ const requestUrlOf = (input: string | URL | Request): string =>
     : input instanceof URL
       ? input.toString()
       : input.url;
+
+const loadFailureMessageOf = (configFilePath: string): string => {
+  try {
+    YAML.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  } catch (error) {
+    const cause = error instanceof Error ? error.message : String(error);
+    return `Failed to load configuration file "${configFilePath}": ${cause}`;
+  }
+  throw new Error(`${configFilePath} loads without an error`);
+};
 
 const commandArgumentsOf = (
   commandName: StoryGateCommandName,
@@ -117,10 +143,18 @@ const runCliArguments = async (
     .mockImplementation(() => true);
   const processExitSpy = jest
     .spyOn(process, 'exit')
-    .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+    .mockImplementation((exitCode) => {
+      throw new ProcessExitSentinel(Number(exitCode ?? 0));
+    });
 
   try {
-    await program.parseAsync(['node', 'test', ...commandLineArguments]);
+    try {
+      await program.parseAsync(['node', 'test', ...commandLineArguments]);
+    } catch (error) {
+      if (!(error instanceof ProcessExitSentinel)) {
+        throw error;
+      }
+    }
 
     return {
       stdoutText: [
@@ -148,15 +182,18 @@ const runCliArguments = async (
   }
 };
 
-const fakeGithubFetch = (): string[] => {
-  const requestUrls: string[] = [];
+const fakeGithubFetch = (): RecordedRequest[] => {
+  const requests: RecordedRequest[] = [];
   jest
     .spyOn(global, 'fetch')
-    .mockImplementation(async (input): Promise<Response> => {
-      requestUrls.push(requestUrlOf(input));
+    .mockImplementation(async (input, init): Promise<Response> => {
+      requests.push({
+        url: requestUrlOf(input),
+        authorization: new Headers(init?.headers).get('authorization'),
+      });
       return jsonResponse({ message: 'Not Found' }, 404);
     });
-  return requestUrls;
+  return requests;
 };
 
 describe('story-gate commands with an unreadable --configFilePath', () => {
@@ -203,12 +240,13 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
     return malformedConfigFilePath;
   };
 
-  it('exits 2 with the config file path in stderr, no token value and no GitHub request when --configFilePath is missing or unparsable', async () => {
+  it('exits 1 with the loadConfigFile message in stderr, no token value and no GitHub request when --configFilePath is missing or unparsable', async () => {
     const observations: ConfigFileErrorObservation[] = [];
 
     for (const { commandName, configFileInput } of CONFIG_FILE_ERROR_CASES) {
-      const requestUrls = fakeGithubFetch();
+      const requests = fakeGithubFetch();
       const configFilePath = configFilePathOf(configFileInput);
+      const expectedLoadFailureMessage = loadFailureMessageOf(configFilePath);
       const run = await runCliArguments([
         ...commandArgumentsOf(commandName, configDirectory, outputDirectory),
         '--configFilePath',
@@ -218,12 +256,17 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       observations.push({
         commandName,
         configFileInput,
-        exitCodes: run.exitCodes,
-        stderrNamesConfigFilePath: run.stderrText.includes(configFilePath),
+        firstExitCode: run.exitCodes[0],
+        stderrHasLoadFailureMessage: run.stderrText.includes(
+          expectedLoadFailureMessage,
+        ),
         defaultTokenInOutput: `${run.stdoutText}\n${run.stderrText}`.includes(
           DEFAULT_TOKEN,
         ),
-        requestUrls,
+        requestUrls: requests.map((request) => request.url),
+        defaultTokenRequestCount: requests.filter((request) =>
+          (request.authorization ?? '').includes(DEFAULT_TOKEN),
+        ).length,
       });
       jest.restoreAllMocks();
     }
@@ -232,10 +275,11 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
       CONFIG_FILE_ERROR_CASES.map(({ commandName, configFileInput }) => ({
         commandName,
         configFileInput,
-        exitCodes: [2],
-        stderrNamesConfigFilePath: true,
+        firstExitCode: 1,
+        stderrHasLoadFailureMessage: true,
         defaultTokenInOutput: false,
         requestUrls: [],
+        defaultTokenRequestCount: 0,
       })),
     );
   });
