@@ -1,3 +1,10 @@
+# [2.182.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.3...v2.182.0) (2026-10-24)
+
+
+### Features
+
+* **cli:** Remove fallback LLM model setting from TDPM CLI ([#3618](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3618)) ([f2b87bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f2b87bfa1f1ebf8a7a6faa119120d172bc7db1f1))
+
 ## [2.181.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.2...v2.181.3) (2026-10-24)
 
 
