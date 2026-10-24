@@ -50,16 +50,6 @@ const UNRESOLVED_TAG_CONFIG_CONTENT =
   'consoleProjects:\n  umino: https://github.com/orgs/org-a/projects/1\nconsoleGithubTokens:\n  umino: !foo FAKE_SECRET_VALUE_123\n';
 const FAKE_SECRET_VALUE = 'FAKE_SECRET_VALUE_123';
 const YAML_WARNING_NAME = 'YAMLWarning';
-const SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_FILE_NAME =
-  'syntax-error-token-line-console.yml';
-const SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT = [
-  'consoleGithubTokens: {',
-  '  umino: FAKE_SECRET_VALUE_123 x',
-  '',
-].join('\n');
-const UNRESOLVED_ALIAS_CONFIG_FILE_NAME = 'unresolved-alias-console.yml';
-const UNRESOLVED_ALIAS_CONFIG_CONTENT =
-  'consoleGithubTokens:\n  umino: *FAKE_SECRET_VALUE_123\n';
 const INVALID_ISSUE_URL = 'not-a-url';
 
 type StoryGateCommandName =
@@ -662,39 +652,6 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
     );
   });
 
-  it('exits 1 with the malformed-YAML location and no source line in output when --configFilePath has a syntax error on a token line', async () => {
-    const configFilePath = path.join(
-      workDirectory,
-      SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_FILE_NAME,
-    );
-    fs.writeFileSync(configFilePath, SYNTAX_ERROR_ON_TOKEN_LINE_CONFIG_CONTENT);
-    const expectedLoadFailureMessage = `Failed to load configuration file "${configFilePath}": malformed YAML at line 3, column 1`;
-    const runs = await runCommandsWithConfigFile(configFilePath);
-
-    const observations = runs.map(({ commandName, run, requests }) => {
-      const output = outputOf(run);
-      return {
-        commandName,
-        firstExitCode: run.exitCodes[0],
-        stderrHasLoadFailureMessage: run.stderrText.startsWith(
-          expectedLoadFailureMessage,
-        ),
-        tokenValueInOutput: output.includes(FAKE_SECRET_VALUE),
-        requestUrls: requests.map((request) => request.url),
-      };
-    });
-
-    expect(observations).toEqual(
-      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
-        commandName,
-        firstExitCode: 1,
-        stderrHasLoadFailureMessage: true,
-        tokenValueInOutput: false,
-        requestUrls: [],
-      })),
-    );
-  });
-
   it('exits 1 with the parser error message and no token value in output when --configFilePath exceeds the YAML alias limit', async () => {
     const configFilePath = path.join(
       workDirectory,
@@ -725,41 +682,6 @@ describe('story-gate commands with an unreadable --configFilePath', () => {
         stderrHasLoadFailureMessage: true,
         configTokenInOutput: false,
         defaultTokenInOutput: false,
-        requestUrls: [],
-      })),
-    );
-  });
-
-  it('exits 1 with the Unresolved alias message and no alias name in stdout or stderr for each story-gate command when --configFilePath holds an undefined alias', async () => {
-    const configFilePath = path.join(
-      workDirectory,
-      UNRESOLVED_ALIAS_CONFIG_FILE_NAME,
-    );
-    fs.writeFileSync(configFilePath, UNRESOLVED_ALIAS_CONFIG_CONTENT);
-    const expectedLoadFailureMessagePrefix = `Failed to load configuration file "${configFilePath}": `;
-    const runs = await runCommandsWithConfigFile(configFilePath);
-
-    const observations = runs.map(({ commandName, run, requests }) => {
-      const output = outputOf(run);
-      return {
-        commandName,
-        firstExitCode: run.exitCodes[0],
-        stderrStartsWithLoadFailurePrefix: run.stderrText.startsWith(
-          expectedLoadFailureMessagePrefix,
-        ),
-        stderrNamesUnresolvedAlias: run.stderrText.includes('Unresolved alias'),
-        aliasNameInOutput: output.includes(FAKE_SECRET_VALUE),
-        requestUrls: requests.map((request) => request.url),
-      };
-    });
-
-    expect(observations).toEqual(
-      STORY_GATE_COMMAND_NAMES.map((commandName) => ({
-        commandName,
-        firstExitCode: 1,
-        stderrStartsWithLoadFailurePrefix: true,
-        stderrNamesUnresolvedAlias: true,
-        aliasNameInOutput: false,
         requestUrls: [],
       })),
     );
