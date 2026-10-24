@@ -53,6 +53,24 @@ const parseExampleYamlBlock = (
   return YAML.parse(yamlBlockText) as Record<string, unknown>;
 };
 
+const requiredLlmModelNameByAgentNameReadmeFragments = [
+  '`llmModelNameByAgentName` (mapping of agent name to model name, default unset)',
+  'must be a mapping.',
+  'must be a non-empty string.',
+  'the `llm-model:` label, then `llmModelNameByAgentName`, then the token-routed model, then the agent definition `model:` line, then `defaultLlmModelName`',
+  'Example with the map:\n\n```yaml',
+  '  llmModelNameByAgentName:',
+] as const;
+
+describe('README.md documents llmModelNameByAgentName', () => {
+  test.each(requiredLlmModelNameByAgentNameReadmeFragments)(
+    'contains the required documentation fragment: %s',
+    (requiredFragment) => {
+      expect(readmeText).toContain(requiredFragment);
+    },
+  );
+});
+
 describe('README.md Example YAML blocks document agentDefinitionsDirectoryPath', () => {
   test.each<{ sectionHeading: string; isNested: boolean }>([
     { sectionHeading: '### Schedule Command Config', isNested: true },
