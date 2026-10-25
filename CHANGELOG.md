@@ -1,3 +1,10 @@
+## [2.183.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.1...v2.183.2) (2026-10-25)
+
+
+### Performance Improvements
+
+* **lint:** cache eslint results in the lint script ([#3638](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3638)) ([3bdde9f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3bdde9f2db7b390743335e30c2b7c8394df808e7))
+
 ## [2.183.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.0...v2.183.1) (2026-10-25)
 
 
