@@ -1,3 +1,16 @@
+## [2.183.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.0...v2.183.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **project-fields:** Keep concurrent project field value ([#3559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3559)) ([bd303de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd303de963044ea59dae7e6658025c10c9511506))
+* **tests:** repair TS2345 mock and remove stale create-pr auto-merge test ([#3634](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3634)) ([e84e1b1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e84e1b1b978024ff009757a94c2e6408b277f91d))
+
+
+### Performance Improvements
+
+* **StaleTmuxSessionKillUseCase:** run ps once per run instead of once per open issue ([#3624](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3624)) ([56ead46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/56ead464527d7bb8a89c8b41efef3be28c4d8f33)), closes [#3622](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3622)
+
 # [2.183.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.182.0...v2.183.0) (2026-10-25)
 
 
