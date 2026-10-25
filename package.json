@@ -8,7 +8,7 @@
     "doctor:node-version": "check-node-version --node 24 --npx 11 --npm 11",
     "doctor": "npm run doctor:node-version",
     "prettier": "prettier --write --ignore-unknown '**/*'",
-    "lint": "eslint src",
+    "lint": "eslint src --cache --cache-strategy content",
     "lint-fix": "eslint src --fix",
     "fmt": "npm run prettier && npm run lint-fix",
     "build:console-ui": "vite build --config src/adapter/entry-points/console/ui/vite.config.ts",
