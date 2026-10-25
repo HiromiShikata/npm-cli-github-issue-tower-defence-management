@@ -351,7 +351,7 @@ describe('StartPreparationUseCase llm model name by agent name', () => {
     mockIssueRepository.closePullRequest.mockResolvedValue(undefined);
     mockIssueRepository.deletePullRequestBranch.mockResolvedValue(undefined);
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
-    mockIssueRepository.setIssueAgentField.mockResolvedValue(undefined);
+    mockIssueRepository.setIssueAgentField.mockResolvedValue('applied');
     mockIssueRepository.removeLabel.mockResolvedValue(undefined);
     mockIssueRepository.getIssueByUrl.mockResolvedValue(
       createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
