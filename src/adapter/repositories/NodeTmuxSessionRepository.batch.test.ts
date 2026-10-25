@@ -147,8 +147,8 @@ describe('NodeTmuxSessionRepository batch issue session lookup', () => {
     expect(result).toEqual(expectedBatchResultFor(openIssueUrls));
   });
 
-  it.each([{ urlCount: 1 }, { urlCount: 2 }, { urlCount: ISSUE_COUNT }])(
-    'runs one ps and one tmux list-panes for $urlCount issue URLs',
+  it.each([{ urlCount: 1 }, { urlCount: 2 }])(
+    'runs one ps and no tmux list-panes when no issue URL matches a process for $urlCount issue URLs',
     async ({ urlCount }) => {
       const runner = createFixtureRunner(null);
       const repository = new NodeTmuxSessionRepository(runner);
@@ -166,11 +166,31 @@ describe('NodeTmuxSessionRepository batch issue session lookup', () => {
         )
         .map(([program, args]) => [program, args]);
       expect(psCalls).toEqual([['ps', ['-eo', 'pid=,ppid=,args=']]]);
-      expect(listPanesCalls).toEqual([
-        ['tmux', ['list-panes', '-a', '-F', '#{pane_pid} #{session_name}']],
-      ]);
+      expect(listPanesCalls).toEqual([]);
     },
   );
+
+  it('runs one ps and one tmux list-panes when issue URLs match processes', async () => {
+    const runner = createFixtureRunner(null);
+    const repository = new NodeTmuxSessionRepository(runner);
+
+    await asBatchingRepository(repository).listSessionNamesForIssueUrls(
+      openIssueUrls.slice(0, ISSUE_COUNT),
+    );
+
+    const psCalls = runner.runCommand.mock.calls
+      .filter(([program]) => program === 'ps')
+      .map(([program, args]) => [program, args]);
+    const listPanesCalls = runner.runCommand.mock.calls
+      .filter(
+        ([program, args]) => program === 'tmux' && args[0] === 'list-panes',
+      )
+      .map(([program, args]) => [program, args]);
+    expect(psCalls).toEqual([['ps', ['-eo', 'pid=,ppid=,args=']]]);
+    expect(listPanesCalls).toEqual([
+      ['tmux', ['list-panes', '-a', '-F', '#{pane_pid} #{session_name}']],
+    ]);
+  });
 
   it('returns an empty Map and runs no command for an empty input', async () => {
     const runner = createFixtureRunner(null);
