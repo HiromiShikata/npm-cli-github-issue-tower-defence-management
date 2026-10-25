@@ -287,4 +287,30 @@ describe('NodeTmuxSessionRepository batch issue session lookup', () => {
       ]),
     ).rejects.toThrow(/^Failed to list panes for session mapping:/);
   });
+
+  it('resolves an empty list for every requested issue URL when no tmux session is live', async () => {
+    const runner = createMockRunner();
+    runner.runCommand.mockImplementation(
+      async (program: string, args: string[]) => {
+        if (program === 'tmux' && args[0] === 'list-sessions')
+          return commandResult('', null);
+        throw new Error(`Unexpected command: ${program} ${args.join(' ')}`);
+      },
+    );
+    const repository = new NodeTmuxSessionRepository(runner);
+    const issueUrls = [issueUrlFor(7), issueUrlFor(150), issueUrlFor(299)];
+
+    await expect(
+      asBatchingRepository(repository).listSessionNamesForIssueUrls(issueUrls),
+    ).resolves.toEqual(
+      new Map<string, string[]>(
+        issueUrls.map((url): [string, string[]] => [url, []]),
+      ),
+    );
+    const psOrListPanesCalls = runner.runCommand.mock.calls.filter(
+      ([program, args]) =>
+        program === 'ps' || (program === 'tmux' && args[0] === 'list-panes'),
+    );
+    expect(psOrListPanesCalls).toEqual([]);
+  });
 });
