@@ -7,12 +7,14 @@ import {
   IssueProjectItemsSnapshot,
   ProjectItemSingleSelectValueUpdate,
   ProjectSingleSelectField,
+  StoryGateGithubRateLimitError,
   StoryGateGithubRequestError,
   StoryGateIssue,
   StoryGateIssueComment,
   StoryGateIssueRepository,
   StoryGateIssueState,
 } from '../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
+import { githubRateLimitSignalOf } from './githubRateLimitSignalOf';
 
 export const GITHUB_API_BASE_URL = 'https://api.github.com';
 export const GITHUB_GRAPHQL_URL = `${GITHUB_API_BASE_URL}/graphql`;
@@ -27,7 +29,23 @@ type HttpMethod = 'GET' | 'POST';
 
 type GithubHttpResponse = {
   status: number;
+  headers: Headers;
   body: unknown;
+};
+
+const requestErrorOf = (
+  message: string,
+  response: GithubHttpResponse,
+  statusWithoutRateLimit: number | null,
+): StoryGateGithubRequestError => {
+  const signal = githubRateLimitSignalOf(response, new Date());
+  return signal === null
+    ? new StoryGateGithubRequestError(message, statusWithoutRateLimit)
+    : new StoryGateGithubRateLimitError(
+        message,
+        response.status,
+        signal.resetAt,
+      );
 };
 
 const fieldOf = (value: unknown, key: string): unknown =>
@@ -339,10 +357,12 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     const operationName =
       query.match(/^(?:query|mutation)\s+(\w+)/)?.[1] ?? 'anonymous';
     if (errors.some((error) => error.type !== 'NOT_FOUND')) {
-      throw new StoryGateGithubRequestError(
+      throw requestErrorOf(
         `POST ${GITHUB_GRAPHQL_URL} ${operationName} ${JSON.stringify(variables)} returned errors: ${errors
           .map((error) => `${error.type} ${error.message}`)
           .join('; ')}`,
+        response,
+        null,
       );
     }
     return fieldOf(response.body, 'data') ?? null;
@@ -354,8 +374,9 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     response: GithubHttpResponse,
   ): void => {
     if (response.status < 200 || response.status >= 300) {
-      throw new StoryGateGithubRequestError(
+      throw requestErrorOf(
         `${method} ${url} returned HTTP ${response.status}`,
+        response,
         response.status,
       );
     }
@@ -405,7 +426,7 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
       const text = await response.text();
       try {
         const body: unknown = text === '' ? null : JSON.parse(text);
-        return { status: response.status, body };
+        return { status: response.status, headers: response.headers, body };
       } catch {
         if (response.ok) {
           throw new StoryGateGithubRequestError(
@@ -413,7 +434,11 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
             response.status,
           );
         }
-        return { status: response.status, body: null };
+        return {
+          status: response.status,
+          headers: response.headers,
+          body: null,
+        };
       }
     }
   };

@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { GithubIssueReference } from '../../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
+import {
+  GithubIssueReference,
+  StoryGateGithubRateLimitError,
+} from '../../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
 import { githubIssueReferenceParse } from '../../../domain/usecases/storyGate/githubIssueReferenceParse';
 import { IssueStorySetIfUnsetUseCase } from '../../../domain/usecases/storyGate/IssueStorySetIfUnsetUseCase';
 import { SpecificationTaskStartUseCase } from '../../../domain/usecases/storyGate/SpecificationTaskStartUseCase';
@@ -25,7 +28,7 @@ import { ConfigFile, loadConfigFile } from './projectConfig';
 export type StoryGateCommandOutput = {
   stdout: string | null;
   stderr: string | null;
-  exitCode: 0 | 2;
+  exitCode: 0 | 2 | 3;
 };
 
 export type CheckStoryGateInput = {
@@ -68,6 +71,22 @@ const failure = (message: string): StoryGateCommandOutput => ({
 
 const errorMessageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+const commandFailureOf = (
+  commandName: string,
+  issueUrl: string,
+  error: unknown,
+): StoryGateCommandOutput => {
+  const message = `${commandName} failed for ${issueUrl}: ${errorMessageOf(error)}`;
+  if (error instanceof StoryGateGithubRateLimitError) {
+    return {
+      stdout: null,
+      stderr: `${message}\n${JSON.stringify({ rateLimited: true, resetAt: error.resetAt })}`,
+      exitCode: 3,
+    };
+  }
+  return failure(message);
+};
 
 const commandInputValidate = (
   issueUrl: string,
@@ -179,9 +198,7 @@ export const checkStoryGate = async (
     );
     return { stdout: resultJson, stderr: null, exitCode: 0 };
   } catch (error) {
-    return failure(
-      `checkStoryGate failed for ${input.issueUrl}: ${errorMessageOf(error)}`,
-    );
+    return commandFailureOf('checkStoryGate', input.issueUrl, error);
   }
 };
 
@@ -205,9 +222,7 @@ export const setIssueStoryIfUnset = async (
     });
     return { stdout: JSON.stringify(result), stderr: null, exitCode: 0 };
   } catch (error) {
-    return failure(
-      `setIssueStoryIfUnset failed for ${input.issueUrl}: ${errorMessageOf(error)}`,
-    );
+    return commandFailureOf('setIssueStoryIfUnset', input.issueUrl, error);
   }
 };
 
@@ -231,8 +246,6 @@ export const startSpecificationTask = async (
     });
     return { stdout: JSON.stringify(result), stderr: null, exitCode: 0 };
   } catch (error) {
-    return failure(
-      `startSpecificationTask failed for ${input.issueUrl}: ${errorMessageOf(error)}`,
-    );
+    return commandFailureOf('startSpecificationTask', input.issueUrl, error);
   }
 };

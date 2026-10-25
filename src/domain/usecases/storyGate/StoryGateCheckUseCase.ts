@@ -6,6 +6,7 @@ import {
 import {
   GithubIssueReference,
   IssueProjectItem,
+  StoryGateGithubRateLimitError,
   StoryGateGithubRequestError,
   StoryGateIssue,
   StoryGateIssueComment,
@@ -964,6 +965,9 @@ export class StoryGateCheckUseCase {
     try {
       issue = await this.issueRepository.findIssue(issueReference);
     } catch (error) {
+      if (error instanceof StoryGateGithubRateLimitError) {
+        throw error;
+      }
       if (
         error instanceof StoryGateGithubRequestError &&
         error.status === 403
