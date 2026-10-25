@@ -145,10 +145,11 @@ describe('GithubStoryGateIssueRepository', () => {
       if (!(thrown instanceof StoryGateGithubRequestError)) {
         throw thrown;
       }
-      expect(thrown.message).toMatch(
-        new RegExp(
-          `^GET ${ISSUE_API_URL} returned HTTP 403 - .*Resource not accessible by integration`,
-        ),
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain(
+        'Resource not accessible by integration',
       );
       expect(thrown.message).toContain('x-ratelimit-remaining=4999');
       expect(thrown.message).toContain('x-ratelimit-reset=1761432000');
@@ -197,9 +198,9 @@ describe('GithubStoryGateIssueRepository', () => {
       if (!(thrown instanceof StoryGateGithubRequestError)) {
         throw thrown;
       }
-      expect(thrown.message).toMatch(
-        new RegExp(`^GET ${ISSUE_API_URL} returned HTTP 403 - `),
-      );
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
       expect(thrown.message).toContain('x-github-request-id=request-non-json');
       expect(thrown.message).not.toContain('plain forbidden body');
     });
@@ -217,9 +218,9 @@ describe('GithubStoryGateIssueRepository', () => {
       if (!(thrown instanceof StoryGateGithubRequestError)) {
         throw thrown;
       }
-      expect(thrown.message).toMatch(
-        new RegExp(`^GET ${ISSUE_API_URL} returned HTTP 403 - `),
-      );
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
       expect(thrown.message).toContain('a'.repeat(500));
       expect(thrown.message).not.toContain('TAIL');
     });
@@ -238,11 +239,10 @@ describe('GithubStoryGateIssueRepository', () => {
       if (!(thrown instanceof StoryGateGithubRequestError)) {
         throw thrown;
       }
-      expect(thrown.message).toMatch(
-        new RegExp(
-          `^GET ${ISSUE_API_URL} returned HTTP 500 - .*Internal server failure`,
-        ),
-      );
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 500 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain('Internal server failure');
       expect(thrown.message).toContain(
         'x-github-request-id=request-server-error',
       );
