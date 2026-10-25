@@ -56,6 +56,24 @@ const stringFieldOf = (value: unknown, key: string): string | null => {
   return typeof field === 'string' ? field : null;
 };
 
+const RESPONSE_DIAGNOSTIC_HEADER_NAMES = [
+  'x-ratelimit-remaining',
+  'x-ratelimit-reset',
+  'retry-after',
+  'x-github-request-id',
+] as const;
+
+const responseDiagnosticOf = (response: GithubHttpResponse): string => {
+  const message = stringFieldOf(response.body, 'message');
+  const headerValues = RESPONSE_DIAGNOSTIC_HEADER_NAMES.flatMap((name) => {
+    const value = response.headers.get(name);
+    return value === null ? [] : [`${name}=${value}`];
+  });
+  return [message === null ? null : message.slice(0, 500), ...headerValues]
+    .filter((value): value is string => value !== null)
+    .join('; ');
+};
+
 const arrayFieldOf = (value: unknown, key: string): unknown[] => {
   const field = fieldOf(value, key);
   return Array.isArray(field) ? field : [];
@@ -374,8 +392,12 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
     response: GithubHttpResponse,
   ): void => {
     if (response.status < 200 || response.status >= 300) {
+      const message = `${method} ${url} returned HTTP ${response.status}`;
+      const rateLimitSignal = githubRateLimitSignalOf(response, new Date());
       throw requestErrorOf(
-        `${method} ${url} returned HTTP ${response.status}`,
+        rateLimitSignal === null
+          ? `${message} - ${responseDiagnosticOf(response)}`
+          : message,
         response,
         response.status,
       );
