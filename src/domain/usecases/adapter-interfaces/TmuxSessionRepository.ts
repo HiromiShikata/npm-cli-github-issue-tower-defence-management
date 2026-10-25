@@ -2,6 +2,9 @@ import { LiveTmuxSession } from '../../entities/LiveTmuxSession';
 
 export interface TmuxSessionRepository {
   listSessionNamesForIssueUrl: (issueUrl: string) => Promise<string[]>;
+  listSessionNamesForIssueUrls: (
+    issueUrls: string[],
+  ) => Promise<Map<string, string[]>>;
   listLiveSessionNames: () => Promise<string[]>;
   listLiveSessionsWithActivity: () => Promise<LiveTmuxSession[]>;
   listInteractiveProcessCommandLines: () => Promise<string[]>;

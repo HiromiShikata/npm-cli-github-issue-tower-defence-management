@@ -80,6 +80,10 @@ const createFakeTmuxSessionRepository = (state: {
   return {
     launches,
     ...{ listSessionNamesForIssueUrl: async (): Promise<string[]> => [] },
+    listSessionNamesForIssueUrls: async (issueUrls: string[]) =>
+      new Map<string, string[]>(
+        issueUrls.map((issueUrl): [string, string[]] => [issueUrl, []]),
+      ),
     listLiveSessionNames: async () => state.liveSessionNames,
     listLiveSessionsWithActivity: async () =>
       state.liveSessionNames.map((sessionName) => ({
