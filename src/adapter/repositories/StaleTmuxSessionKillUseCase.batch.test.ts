@@ -1,14 +1,14 @@
-import { NodeTmuxSessionRepository } from '../../adapter/repositories/NodeTmuxSessionRepository';
+import { NodeTmuxSessionRepository } from './NodeTmuxSessionRepository';
 import {
   StaleTmuxSessionKillUseCase,
   DEFAULT_EXCLUDED_STATUS_NAMES,
   DEFAULT_IDLE_THRESHOLD_SECONDS,
-} from './StaleTmuxSessionKillUseCase';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
-import { Issue } from '../entities/Issue';
-import { LiveTmuxSession } from '../entities/LiveTmuxSession';
-import { Project } from '../entities/Project';
+} from '../../domain/usecases/StaleTmuxSessionKillUseCase';
+import { IssueRepository } from '../../domain/usecases/adapter-interfaces/IssueRepository';
+import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
+import { Issue } from '../../domain/entities/Issue';
+import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
+import { Project } from '../../domain/entities/Project';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
