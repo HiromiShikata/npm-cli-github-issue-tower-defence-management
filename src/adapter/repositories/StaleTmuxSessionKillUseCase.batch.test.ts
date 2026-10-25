@@ -6,6 +6,7 @@ import {
 } from '../../domain/usecases/StaleTmuxSessionKillUseCase';
 import { IssueRepository } from '../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
+import { TmuxSessionRepository } from '../../domain/usecases/adapter-interfaces/TmuxSessionRepository';
 import { Issue } from '../../domain/entities/Issue';
 import { LiveTmuxSession } from '../../domain/entities/LiveTmuxSession';
 import { Project } from '../../domain/entities/Project';
@@ -147,6 +148,28 @@ const createUseCase = (
   );
 };
 
+type TmuxSessionFake = Mocked<
+  Pick<
+    TmuxSessionRepository,
+    'listLiveSessionsWithActivity' | 'killSession'
+  > & {
+    listSessionNamesForIssueUrl: (issueUrl: string) => Promise<string[]>;
+    listSessionNamesForIssueUrls: (
+      issueUrls: string[],
+    ) => Promise<Map<string, string[]>>;
+  }
+>;
+
+const sessionNameForIssueNumber = (issueNumber: number): string =>
+  `session-${issueNumber}`;
+
+const sessionNamesByIssueUrl = new Map<string, string[]>(
+  openIssues.map((issue): [string, string[]] => [
+    issue.url,
+    [sessionNameForIssueNumber(issue.number)],
+  ]),
+);
+
 describe('StaleTmuxSessionKillUseCase batch issue session lookup', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -215,5 +238,53 @@ describe('StaleTmuxSessionKillUseCase batch issue session lookup', () => {
           (program === 'tmux' && args[0] === 'kill-session'),
       ),
     ).toEqual([]);
+  });
+
+  it('rejects and kills no session of an open issue that has no batch entry', async () => {
+    const failedIssueUrl = issueUrlFor(150);
+    const failedSessionName = sessionNameForIssueNumber(150);
+    const batchEntries = new Map<string, string[]>(
+      Array.from(sessionNamesByIssueUrl).filter(
+        ([issueUrl]) => issueUrl !== failedIssueUrl,
+      ),
+    );
+    const tmuxSessionRepository: TmuxSessionFake = {
+      listLiveSessionsWithActivity: jest.fn().mockResolvedValue([
+        {
+          sessionName: failedSessionName,
+          activityEpochSeconds:
+            nowEpochSeconds - DEFAULT_IDLE_THRESHOLD_SECONDS,
+        },
+      ]),
+      killSession: jest.fn().mockResolvedValue(undefined),
+      listSessionNamesForIssueUrl: jest
+        .fn()
+        .mockImplementation(
+          async (issueUrl: string) =>
+            sessionNamesByIssueUrl.get(issueUrl) ?? [],
+        ),
+      listSessionNamesForIssueUrls: jest.fn().mockResolvedValue(batchEntries),
+    };
+    const issueRepository: Mocked<
+      Pick<IssueRepository, 'getAllOpened' | 'getIssueByUrl' | 'get'>
+    > = {
+      getAllOpened: jest.fn().mockResolvedValue(openIssues),
+      get: jest.fn().mockResolvedValue(null),
+      getIssueByUrl: jest.fn().mockResolvedValue(null),
+    };
+    const useCase = new StaleTmuxSessionKillUseCase(
+      issueRepository,
+      tmuxSessionRepository,
+    );
+
+    await expect(
+      useCase.run({
+        project,
+        excludedStatusNames: DEFAULT_EXCLUDED_STATUS_NAMES,
+        idleThresholdSeconds: DEFAULT_IDLE_THRESHOLD_SECONDS,
+        now,
+      }),
+    ).rejects.toThrow();
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
   });
 });

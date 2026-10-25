@@ -224,4 +224,33 @@ describe('NodeTmuxSessionRepository batch issue session lookup', () => {
       ).rejects.toThrow(stderr);
     },
   );
+
+  it('returns no sessions for one issue URL when the tmux server is absent', async () => {
+    const runner = createFixtureRunner({
+      failedCommand: 'list-panes',
+      stderr: 'no server running',
+    });
+    const repository = new NodeTmuxSessionRepository(runner);
+
+    await expect(
+      repository.listSessionNamesForIssueUrl(issueUrlFor(7)),
+    ).resolves.toEqual([]);
+  });
+
+  it('returns an empty list for every requested issue URL when the tmux server is absent', async () => {
+    const runner = createFixtureRunner({
+      failedCommand: 'list-panes',
+      stderr: 'no server running',
+    });
+    const repository = new NodeTmuxSessionRepository(runner);
+    const issueUrls = [issueUrlFor(7), issueUrlFor(150)];
+
+    await expect(
+      asBatchingRepository(repository).listSessionNamesForIssueUrls(issueUrls),
+    ).resolves.toEqual(
+      new Map<string, string[]>(
+        issueUrls.map((url): [string, string[]] => [url, []]),
+      ),
+    );
+  });
 });
