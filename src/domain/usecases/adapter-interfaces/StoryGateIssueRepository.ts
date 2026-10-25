@@ -72,6 +72,16 @@ export class StoryGateGithubRequestError extends Error {
   }
 }
 
+export class StoryGateGithubRateLimitError extends StoryGateGithubRequestError {
+  readonly resetAt: string | null;
+
+  constructor(message: string, status: number, resetAt: string | null) {
+    super(message, status);
+    this.name = 'StoryGateGithubRateLimitError';
+    this.resetAt = resetAt;
+  }
+}
+
 export interface StoryGateIssueRepository {
   findIssue(issue: GithubIssueReference): Promise<StoryGateIssue | null>;
   listIssueComments(
