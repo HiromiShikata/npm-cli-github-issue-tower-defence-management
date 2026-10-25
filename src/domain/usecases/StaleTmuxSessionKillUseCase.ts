@@ -41,7 +41,6 @@ export class StaleTmuxSessionKillUseCase {
       TmuxSessionRepository,
       | 'listLiveSessionsWithActivity'
       | 'killSession'
-      | 'listSessionNamesForIssueUrl'
       | 'listSessionNamesForIssueUrls'
     >,
   ) {}
@@ -63,11 +62,9 @@ export class StaleTmuxSessionKillUseCase {
     const openIssues = await this.issueRepository.getAllOpened(params.project);
     if (liveSessions.length === 0) return;
     const batchedSessionNamesPromise =
-      this.tmuxSessionRepository.listSessionNamesForIssueUrls === undefined
-        ? null
-        : this.tmuxSessionRepository.listSessionNamesForIssueUrls(
-            openIssues.map((issue) => issue.url),
-          );
+      this.tmuxSessionRepository.listSessionNamesForIssueUrls(
+        openIssues.map((issue) => issue.url),
+      );
     const issuesBySessionName = new Map<string, Issue[]>();
     const protectedSessionNames = new Set<string>();
     const failures: unknown[] = [];
@@ -78,15 +75,10 @@ export class StaleTmuxSessionKillUseCase {
     for (const issue of openIssues) {
       let sessionNames = [toTmuxSessionName(issue.url)];
       try {
-        const mappedSessionNames =
-          batchedSessionNamesPromise === null
-            ? await this.tmuxSessionRepository.listSessionNamesForIssueUrl(
-                issue.url,
-              )
-            : batchedSessionNamesFor(
-                await batchedSessionNamesPromise,
-                issue.url,
-              );
+        const mappedSessionNames = batchedSessionNamesFor(
+          await batchedSessionNamesPromise,
+          issue.url,
+        );
         sessionNames = [...new Set([...sessionNames, ...mappedSessionNames])];
         for (const sessionName of sessionNames) {
           if (!liveSessionNames.has(sessionName)) continue;

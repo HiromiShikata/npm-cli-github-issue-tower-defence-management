@@ -412,20 +412,29 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   ): Promise<Map<string, string[]>> => {
     if (issueUrls.length === 0) return new Map<string, string[]>();
     const liveNames = await this.listLiveSessionNames();
+    if (liveNames.length === 0)
+      return new Map<string, string[]>(
+        issueUrls.map((issueUrl): [string, string[]] => [issueUrl, []]),
+      );
     const processes = await this.readProcessTable();
-    const paneSessionMap = await this.readPaneSessionMap();
     const parentPidMap = parentPidMapOf(processes);
+    const matchesByUrl = issueUrls.map((issueUrl) => ({
+      issueUrl,
+      matchingPids: matchingPidsForIssueUrl(processes, issueUrl),
+    }));
+    const anyUrlMatchesProcess = matchesByUrl.some(
+      ({ matchingPids }) => matchingPids.size > 0,
+    );
+    const paneSessionMap = anyUrlMatchesProcess
+      ? await this.readPaneSessionMap()
+      : new Map<number, string>();
     return new Map<string, string[]>(
-      issueUrls.map((issueUrl): [string, string[]] => [
+      matchesByUrl.map(({ issueUrl, matchingPids }): [string, string[]] => [
         issueUrl,
         selectLiveSessionNamesForIssueUrl(
           issueUrl,
           liveNames,
-          sessionNamesForPids(
-            matchingPidsForIssueUrl(processes, issueUrl),
-            parentPidMap,
-            paneSessionMap,
-          ),
+          sessionNamesForPids(matchingPids, parentPidMap, paneSessionMap),
         ),
       ]),
     );
