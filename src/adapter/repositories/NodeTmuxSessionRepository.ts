@@ -9,6 +9,94 @@ const DEFAULT_SEND_KEYS_SUBMIT_DELAY_MS = 1000;
 const BRACKETED_PASTE_START = '\x1b[200~';
 const BRACKETED_PASTE_END = '\x1b[201~';
 
+type ProcessTableEntry = {
+  pid: number;
+  ppid: number;
+  args: string;
+};
+
+const nonEmptyTrimmedLines = (stdout: string): string[] =>
+  stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+const parseProcessTable = (stdout: string): ProcessTableEntry[] =>
+  nonEmptyTrimmedLines(stdout).flatMap((line) => {
+    const match = line.match(/^(\d+)\s+(\d+)\s+(.*)/);
+    if (!match) return [];
+    return [
+      {
+        pid: parseInt(match[1], 10),
+        ppid: parseInt(match[2], 10),
+        args: match[3],
+      },
+    ];
+  });
+
+const parsePaneSessionMap = (stdout: string): Map<number, string> => {
+  const paneSessionMap = new Map<number, string>();
+  for (const line of nonEmptyTrimmedLines(stdout)) {
+    const spaceIdx = line.indexOf(' ');
+    if (spaceIdx < 0) continue;
+    const panePid = parseInt(line.slice(0, spaceIdx), 10);
+    const sessionName = line.slice(spaceIdx + 1);
+    if (!isNaN(panePid) && sessionName.length > 0) {
+      paneSessionMap.set(panePid, sessionName);
+    }
+  }
+  return paneSessionMap;
+};
+
+const matchingPidsForIssueUrl = (
+  processes: ProcessTableEntry[],
+  issueUrl: string,
+): Set<number> =>
+  new Set(
+    processes
+      .filter((entry) => entry.args.split(/[\s'"]+/).includes(issueUrl))
+      .map((entry) => entry.pid),
+  );
+
+const parentPidMapOf = (processes: ProcessTableEntry[]): Map<number, number> =>
+  new Map<number, number>(processes.map((entry) => [entry.pid, entry.ppid]));
+
+const sessionNamesForPids = (
+  startPids: Iterable<number>,
+  parentPidMap: Map<number, number>,
+  paneSessionMap: Map<number, string>,
+): string[] => {
+  const sessionNames = new Set<string>();
+  for (const startPid of startPids) {
+    let pid = startPid;
+    const visited = new Set<number>();
+    while (pid > 1 && !visited.has(pid)) {
+      const found = paneSessionMap.get(pid);
+      if (found !== undefined) {
+        sessionNames.add(found);
+        break;
+      }
+      visited.add(pid);
+      pid = parentPidMap.get(pid) ?? 0;
+    }
+  }
+  return [...sessionNames];
+};
+
+const selectLiveSessionNamesForIssueUrl = (
+  issueUrl: string,
+  liveNames: string[],
+  mappedNames: string[],
+): string[] => {
+  const canonicalName = issueUrl.replace(/[.:]/g, '_');
+  return [
+    ...new Set([
+      ...liveNames.filter((name) => name === canonicalName),
+      ...mappedNames.filter((name) => liveNames.includes(name)),
+    ]),
+  ];
+};
+
 export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
@@ -315,14 +403,32 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   listSessionNamesForIssueUrl = async (issueUrl: string): Promise<string[]> => {
     const liveNames = await this.listLiveSessionNames();
     if (liveNames.length === 0) return [];
-    const canonicalName = issueUrl.replace(/[.:]/g, '_');
     const mappedNames = await this.findSessionNamesForUrl(issueUrl);
-    return [
-      ...new Set([
-        ...liveNames.filter((name) => name === canonicalName),
-        ...mappedNames.filter((name) => liveNames.includes(name)),
+    return selectLiveSessionNamesForIssueUrl(issueUrl, liveNames, mappedNames);
+  };
+
+  listSessionNamesForIssueUrls = async (
+    issueUrls: string[],
+  ): Promise<Map<string, string[]>> => {
+    if (issueUrls.length === 0) return new Map<string, string[]>();
+    const liveNames = await this.listLiveSessionNames();
+    const processes = await this.readProcessTable();
+    const paneSessionMap = await this.readPaneSessionMap();
+    const parentPidMap = parentPidMapOf(processes);
+    return new Map<string, string[]>(
+      issueUrls.map((issueUrl): [string, string[]] => [
+        issueUrl,
+        selectLiveSessionNamesForIssueUrl(
+          issueUrl,
+          liveNames,
+          sessionNamesForPids(
+            matchingPidsForIssueUrl(processes, issueUrl),
+            parentPidMap,
+            paneSessionMap,
+          ),
+        ),
       ]),
-    ];
+    );
   };
 
   private isAbsentTmuxServer = (stderr: string): boolean =>
@@ -335,92 +441,47 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
   ): Promise<string | null> =>
     (await this.findSessionNamesForUrl(issueUrl))[0] ?? null;
 
+  private readProcessTable = async (): Promise<ProcessTableEntry[]> => {
+    const { stdout, stderr, exitCode } =
+      await this.localCommandRunner.runCommand('ps', [
+        '-eo',
+        'pid=,ppid=,args=',
+      ]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Failed to list processes for session mapping: ${stderr}`,
+      );
+    }
+    return parseProcessTable(stdout);
+  };
+
+  private readPaneSessionMap = async (): Promise<Map<number, string>> => {
+    const { stdout, stderr, exitCode } =
+      await this.localCommandRunner.runCommand('tmux', [
+        'list-panes',
+        '-a',
+        '-F',
+        '#{pane_pid} #{session_name}',
+      ]);
+    if (exitCode !== 0) {
+      if (this.isAbsentTmuxServer(stderr)) return new Map<number, string>();
+      throw new Error(`Failed to list panes for session mapping: ${stderr}`);
+    }
+    return parsePaneSessionMap(stdout);
+  };
+
   private findSessionNamesForUrl = async (
     issueUrl: string,
   ): Promise<string[]> => {
-    const {
-      stdout: psOut,
-      stderr: psError,
-      exitCode: psExit,
-    } = await this.localCommandRunner.runCommand('ps', [
-      '-eo',
-      'pid=,ppid=,args=',
-    ]);
-    if (psExit !== 0) {
-      throw new Error(
-        `Failed to list processes for session mapping: ${psError}`,
-      );
-    }
-    const processes = psOut
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .flatMap((line) => {
-        const match = line.match(/^(\d+)\s+(\d+)\s+(.*)/);
-        if (!match) return [];
-        return [
-          {
-            pid: parseInt(match[1], 10),
-            ppid: parseInt(match[2], 10),
-            args: match[3],
-          },
-        ];
-      });
-    const matchingPids = new Set(
-      processes
-        .filter((p) => p.args.split(/[\s'"]+/).includes(issueUrl))
-        .map((p) => p.pid),
+    const processes = await this.readProcessTable();
+    const matchingPids = matchingPidsForIssueUrl(processes, issueUrl);
+    if (matchingPids.size === 0) return [];
+    const paneSessionMap = await this.readPaneSessionMap();
+    return sessionNamesForPids(
+      matchingPids,
+      parentPidMapOf(processes),
+      paneSessionMap,
     );
-    if (matchingPids.size === 0) {
-      return [];
-    }
-    const {
-      stdout: panesOut,
-      stderr: panesError,
-      exitCode: panesExit,
-    } = await this.localCommandRunner.runCommand('tmux', [
-      'list-panes',
-      '-a',
-      '-F',
-      '#{pane_pid} #{session_name}',
-    ]);
-    if (panesExit !== 0) {
-      if (this.isAbsentTmuxServer(panesError)) return [];
-      throw new Error(
-        `Failed to list panes for session mapping: ${panesError}`,
-      );
-    }
-    const paneSessionMap = new Map<number, string>();
-    for (const line of panesOut
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0)) {
-      const spaceIdx = line.indexOf(' ');
-      if (spaceIdx < 0) continue;
-      const panePid = parseInt(line.slice(0, spaceIdx), 10);
-      const sessionName = line.slice(spaceIdx + 1);
-      if (!isNaN(panePid) && sessionName.length > 0) {
-        paneSessionMap.set(panePid, sessionName);
-      }
-    }
-    const ppidMap = new Map<number, number>(
-      processes.map((p) => [p.pid, p.ppid]),
-    );
-    const sessionNames = new Set<string>();
-    for (const startPid of matchingPids) {
-      let pid = startPid;
-      const visited = new Set<number>();
-      while (pid > 1 && !visited.has(pid)) {
-        const found = paneSessionMap.get(pid);
-        if (found !== undefined) {
-          sessionNames.add(found);
-          break;
-        }
-        visited.add(pid);
-        pid = ppidMap.get(pid) ?? 0;
-      }
-    }
-    return [...sessionNames];
   };
 
   private sendEnter = async (sessionName: string): Promise<void> => {
