@@ -1,3 +1,10 @@
+# [2.183.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.182.0...v2.183.0) (2026-10-25)
+
+
+### Features
+
+* **story-gate:** exit with code 3 and resetAt when GitHub rate limit is hit ([#3623](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3623)) ([0946c51](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0946c5134c96599dc8e33dc70d4b58edd5329cd0))
+
 # [2.182.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.181.3...v2.182.0) (2026-10-24)
 
 
