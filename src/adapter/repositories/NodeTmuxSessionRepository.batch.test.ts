@@ -253,4 +253,38 @@ describe('NodeTmuxSessionRepository batch issue session lookup', () => {
       ),
     );
   });
+
+  it('resolves an empty list for every requested issue URL when list-panes fails and no URL matches a process', async () => {
+    const runner = createFixtureRunner({
+      failedCommand: 'list-panes',
+      stderr: 'list-panes permission denied',
+    });
+    const repository = new NodeTmuxSessionRepository(runner);
+    const unmatchedIssueUrls = [issueUrlFor(1), issueUrlFor(2), issueUrlFor(3)];
+
+    await expect(
+      asBatchingRepository(repository).listSessionNamesForIssueUrls(
+        unmatchedIssueUrls,
+      ),
+    ).resolves.toEqual(
+      new Map<string, string[]>(
+        unmatchedIssueUrls.map((url): [string, string[]] => [url, []]),
+      ),
+    );
+  });
+
+  it('rejects with the pane lookup error when list-panes fails and a URL matches a process', async () => {
+    const runner = createFixtureRunner({
+      failedCommand: 'list-panes',
+      stderr: 'list-panes permission denied',
+    });
+    const repository = new NodeTmuxSessionRepository(runner);
+
+    await expect(
+      asBatchingRepository(repository).listSessionNamesForIssueUrls([
+        issueUrlFor(7),
+        issueUrlFor(1),
+      ]),
+    ).rejects.toThrow(/^Failed to list panes for session mapping:/);
+  });
 });

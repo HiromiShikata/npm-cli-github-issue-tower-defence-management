@@ -79,7 +79,12 @@ describe('StaleTmuxSessionKillUseCase', () => {
     Pick<
       TmuxSessionRepository,
       'listLiveSessionsWithActivity' | 'killSession'
-    > & { listSessionNamesForIssueUrl: (url: string) => Promise<string[]> }
+    > & {
+      listSessionNamesForIssueUrl: (url: string) => Promise<string[]>;
+      listSessionNamesForIssueUrls: (
+        issueUrls: string[],
+      ) => Promise<Map<string, string[]>>;
+    }
   >;
   let mockProject: Project;
   const now = new Date('2026-06-26T00:00:00Z');
@@ -132,6 +137,21 @@ describe('StaleTmuxSessionKillUseCase', () => {
       listSessionNamesForIssueUrl: jest
         .fn()
         .mockImplementation(async (url: string) => [toTmuxSessionName(url)]),
+      listSessionNamesForIssueUrls: jest
+        .fn()
+        .mockImplementation(
+          async (issueUrls: string[]) =>
+            new Map<string, string[]>(
+              await Promise.all(
+                issueUrls.map(async (issueUrl): Promise<[string, string[]]> => [
+                  issueUrl,
+                  await mockTmuxSessionRepository.listSessionNamesForIssueUrl(
+                    issueUrl,
+                  ),
+                ]),
+              ),
+            ),
+        ),
     };
     useCase = new StaleTmuxSessionKillUseCase(
       mockIssueRepository,
