@@ -14,6 +14,7 @@ import { GitHubConfirmedNotFoundError } from '../../../domain/usecases/ClearDepe
 import { isStoryUnset } from '../../../domain/usecases/storyGate/storyValueClassify';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
+import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import {
   StoryObjectMap,
@@ -1825,9 +1826,9 @@ export class ApiV3CheerioRestIssueRepository
     issueUrl: string,
     project: Project,
     agentOptionId: string,
-  ): Promise<void> => {
+  ): Promise<ProjectFieldWriteOutcome> => {
     if (!project.agent) {
-      return;
+      return 'skipped';
     }
     const existingProjectItem =
       await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
@@ -1838,7 +1839,7 @@ export class ApiV3CheerioRestIssueRepository
       console.info(
         `ApiV3CheerioRestIssueRepository: skipping project item creation for pull request not already on the board. issueUrl: ${issueUrl}`,
       );
-      return;
+      return 'skipped';
     }
     const projectItemId =
       existingProjectItem?.id ??
@@ -1847,14 +1848,14 @@ export class ApiV3CheerioRestIssueRepository
         issueUrl,
       ));
     try {
-      await this.graphqlProjectItemRepository.updateProjectField(
+      return await this.graphqlProjectItemRepository.updateProjectField(
         project.id,
         project.agent.fieldId,
         projectItemId,
         { singleSelectOptionId: agentOptionId },
       );
     } catch (error) {
-      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+      return await this.evictAndThrowStaleProjectItemErrorOrRethrow(
         error,
         project,
         projectItemId,
@@ -1901,7 +1902,7 @@ export class ApiV3CheerioRestIssueRepository
       return;
     }
     try {
-      return await this.graphqlProjectItemRepository.updateProjectField(
+      await this.graphqlProjectItemRepository.updateProjectField(
         project.id,
         project.nextActionDate.fieldId,
         itemId,
@@ -1929,7 +1930,7 @@ export class ApiV3CheerioRestIssueRepository
       ? { singleSelectOptionId: option.id }
       : { number: hour };
     try {
-      return await this.graphqlProjectItemRepository.updateProjectField(
+      await this.graphqlProjectItemRepository.updateProjectField(
         project.id,
         project.nextActionHour.fieldId,
         issue.itemId,

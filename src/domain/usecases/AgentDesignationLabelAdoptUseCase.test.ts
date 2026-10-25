@@ -99,6 +99,159 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     );
   });
 
+  describe('adoptIssueAgentDesignationLabel when the Agent write is overwritten by another writer', () => {
+    it.each([
+      {
+        name: 'default Agent applied',
+        outcome: 'applied',
+        liveAgent: 'chore',
+        removed: false,
+      },
+      {
+        name: 'default Agent skipped',
+        outcome: 'skipped',
+        liveAgent: 'chore',
+        removed: false,
+      },
+      {
+        name: 'default Agent overwritten',
+        outcome: 'overwrittenByAnotherWriter',
+        liveAgent: 'other-agent',
+        removed: false,
+      },
+      {
+        name: 'default Agent removed from board',
+        outcome: 'overwrittenByAnotherWriter',
+        liveAgent: null,
+        removed: true,
+      },
+    ])('$name', async ({ outcome, liveAgent, removed }) => {
+      const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
+      const issue = createIssue({ labels: ['bug'], agent: null });
+      mockIssueRepository.setIssueAgentField.mockResolvedValue(outcome);
+      mockIssueRepository.get
+        .mockReset()
+        .mockResolvedValueOnce(createIssue({ agent: null }));
+      if (outcome === 'overwrittenByAnotherWriter') {
+        mockIssueRepository.get.mockResolvedValueOnce(
+          removed ? null : createIssue({ agent: liveAgent }),
+        );
+      }
+
+      await expect(
+        useCase.run({
+          project,
+          issues: [issue],
+          agents: ['chore'],
+          defaultAgentName: 'chore',
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        issue.url,
+        project,
+        'option-chore-id',
+      );
+      expect(mockIssueRepository.get).toHaveBeenCalledTimes(
+        outcome === 'overwrittenByAnotherWriter' ? 2 : 1,
+      );
+      expect(issue.agent).toBe(removed ? null : liveAgent);
+      expect(
+        mockIssueRepository.removeIssueFromProjectCache,
+      ).toHaveBeenCalledTimes(removed ? 1 : 0);
+      if (removed) {
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith(project.id, issue);
+      }
+      expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+      expect(issue.labels).toEqual(['bug']);
+    });
+
+    it.each([
+      {
+        name: 'Agent label applied and removed',
+        outcome: 'applied',
+        liveAgent: 'chore',
+        keep: false,
+        removed: false,
+      },
+      {
+        name: 'Agent label skipped and removed',
+        outcome: 'skipped',
+        liveAgent: 'chore',
+        keep: false,
+        removed: false,
+      },
+      {
+        name: 'Agent label overwritten and removed',
+        outcome: 'overwrittenByAnotherWriter',
+        liveAgent: 'other-agent',
+        keep: false,
+        removed: false,
+      },
+      {
+        name: 'Agent label overwritten and kept',
+        outcome: 'overwrittenByAnotherWriter',
+        liveAgent: 'other-agent',
+        keep: true,
+        removed: false,
+      },
+      {
+        name: 'Agent label item removed from board',
+        outcome: 'overwrittenByAnotherWriter',
+        liveAgent: null,
+        keep: false,
+        removed: true,
+      },
+    ])('$name', async ({ outcome, liveAgent, keep, removed }) => {
+      const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
+      const issue = createIssue({ labels: ['chore'], agent: null });
+      mockIssueRepository.setIssueAgentField.mockResolvedValue(outcome);
+      mockIssueRepository.get.mockReset();
+      if (outcome === 'overwrittenByAnotherWriter') {
+        mockIssueRepository.get.mockResolvedValueOnce(
+          removed ? null : createIssue({ agent: liveAgent }),
+        );
+      }
+
+      await expect(
+        useCase.run({
+          project,
+          issues: [issue],
+          agents: ['chore'],
+          agentDesignationLabelsToKeep: keep ? ['chore'] : [],
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        issue.url,
+        project,
+        'option-chore-id',
+      );
+      expect(mockIssueRepository.get).toHaveBeenCalledTimes(
+        outcome === 'overwrittenByAnotherWriter' ? 1 : 0,
+      );
+      if (!removed) {
+        expect(issue.agent).toBe(liveAgent);
+      }
+      expect(
+        mockIssueRepository.removeIssueFromProjectCache,
+      ).toHaveBeenCalledTimes(removed ? 1 : 0);
+      if (removed) {
+        expect(
+          mockIssueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith(project.id, issue);
+      }
+      expect(mockIssueRepository.removeLabel).toHaveBeenCalledTimes(
+        removed || keep ? 0 : 1,
+      );
+      if (removed || keep) {
+        expect(issue.labels).toContain('chore');
+      } else {
+        expect(issue.labels).not.toContain('chore');
+      }
+    });
+  });
+
   it('should set the Agent field and remove the label for an open non-spawn-candidate item carrying a label matching a configured agent name', async () => {
     const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
     const issue = createIssue({

@@ -399,7 +399,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           [],
         );
         spawnMockIssueRepository.setIssueAgentField.mockResolvedValue(
-          undefined,
+          'applied',
         );
         spawnMockIssueRepository.removeLabel.mockResolvedValue(undefined);
         spawnMockIssueRepository.get.mockResolvedValue(

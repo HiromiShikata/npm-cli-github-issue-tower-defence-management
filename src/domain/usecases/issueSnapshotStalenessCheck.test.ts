@@ -5,6 +5,7 @@ import {
   IssueSnapshotCheckedFieldName,
   IssueSnapshotStaleness,
   issueSnapshotStalenessCheck,
+  liveIssueFetchOrEvictFromProjectCache,
 } from './issueSnapshotStalenessCheck';
 
 const createIssue = (overrides: Partial<Issue> = {}): Issue => ({
@@ -216,5 +217,57 @@ describe('issueSnapshotStalenessCheck', () => {
         skippedWriteDescription: 'the NO STORY Story write',
       }),
     ).rejects.toThrow('GraphQL rate limit exceeded');
+  });
+});
+
+describe('liveIssueFetchOrEvictFromProjectCache', () => {
+  it.each([
+    {
+      name: 'live issue stays on the board',
+      liveIssue: createIssue({ agent: 'other-agent' }),
+      removed: false,
+    },
+    { name: 'live issue has left the board', liveIssue: null, removed: true },
+  ])('$name', async ({ liveIssue, removed }) => {
+    const snapshotIssue = createIssue();
+    const issueRepository: Pick<
+      IssueRepository,
+      'get' | 'removeIssueFromProjectCache'
+    > = {
+      get: jest.fn().mockResolvedValue(liveIssue),
+      removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
+    };
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    try {
+      await expect(
+        liveIssueFetchOrEvictFromProjectCache({
+          issueRepository,
+          project,
+          snapshotIssue,
+          skippedWriteDescription: 'the Agent write',
+        }),
+      ).resolves.toBe(liveIssue);
+      expect(issueRepository.get).toHaveBeenCalledWith(
+        snapshotIssue.url,
+        project,
+      );
+      if (removed) {
+        expect(
+          issueRepository.removeIssueFromProjectCache,
+        ).toHaveBeenCalledWith(project.id, snapshotIssue);
+        expect(warn).toHaveBeenCalledWith(
+          `Skipping the Agent write for ${snapshotIssue.url} because the item is no longer on project ${project.url}.`,
+        );
+      } else {
+        expect(
+          issueRepository.removeIssueFromProjectCache,
+        ).not.toHaveBeenCalled();
+        expect(warn).not.toHaveBeenCalled();
+      }
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

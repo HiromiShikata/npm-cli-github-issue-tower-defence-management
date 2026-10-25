@@ -3126,7 +3126,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('should call graphqlProjectItemRepository.updateProjectField with correct parameters', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       const project = {
         id: 'test-project-id',
@@ -3236,7 +3238,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         inconsistencyMessage: null,
       });
       localStorageCacheRepository.setSingle.mockResolvedValue();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       const firstResult = await repository.getAllIssues('proj-1');
       expect(firstResult.issues[0].status).toBe('Awaiting Workspace');
@@ -3366,7 +3370,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('uses the provided project item id and skips the GraphQL item fetch', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
 
       await repository.updateNextActionDate(
         'https://github.com/o/r/issues/1',
@@ -3388,7 +3394,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('falls back to fetchProjectItemByUrl when no project item id is provided', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         buildProjectItem('https://github.com/o/r/issues/1', 'fallback'),
       );
@@ -3412,7 +3420,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('logs issueUrl and date at the start of the call', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
         buildProjectItem('https://github.com/o/r/issues/42', 'item'),
       );
@@ -3459,7 +3469,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('submits singleSelectOptionId when a matching option exists', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       const project = buildProjectWithHourOptions([{ id: 'opt9', name: '9' }]);
 
       await repository.updateNextActionHour(project, testIssue, 9);
@@ -3474,7 +3486,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('falls back to number when no matching option exists', async () => {
       const { repository, graphqlProjectItemRepository } =
         createApiV3CheerioRestIssueRepository();
-      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
       const project = buildProjectWithHourOptions([]);
 
       await repository.updateNextActionHour(project, testIssue, 9);
@@ -3882,6 +3896,225 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         { singleSelectOptionId: agentOptionId },
       );
     });
+  });
+
+  describe('project field write outcome handling', () => {
+    const issueUrl = 'https://github.com/owner/repo/issues/50';
+    const project: Project & {
+      story: NonNullable<Project['story']>;
+      nextActionHour: NonNullable<Project['nextActionHour']>;
+    } = {
+      ...buildTestProject('project-id'),
+      agent: { name: 'Agent', fieldId: 'agent-field-id', options: [] },
+      nextActionDate: { name: 'Next Action Date', fieldId: 'date-field-id' },
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'hour-field-id',
+        options: [],
+      },
+      story: {
+        name: 'Story',
+        fieldId: 'story-field-id',
+        databaseId: 1,
+        stories: [],
+        workflowManagementStory: { id: 'workflow-id', name: 'Workflow' },
+      },
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL separated by comma',
+        fieldId: 'depended-field-id',
+      },
+    };
+    const issue: Issue = {
+      ...mock<Issue>(),
+      url: issueUrl,
+      itemId: 'item-id',
+      labels: [],
+    };
+    const issueProjectItem: ProjectItem = {
+      ...mock<ProjectItem>(),
+      id: issue.itemId,
+      url: issueUrl,
+      customFields: [],
+    };
+
+    it.each([
+      {
+        name: 'Agent write result is returned unchanged',
+        outcome: 'overwrittenByAnotherWriter',
+      },
+      {
+        name: 'Agent write applied result is returned unchanged',
+        outcome: 'applied',
+      },
+      {
+        name: 'Agent write skipped result is returned unchanged',
+        outcome: 'skipped',
+      },
+    ] as const)('$name', async ({ outcome }) => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        issueProjectItem,
+      );
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        outcome,
+      );
+      await expect(
+        repository.setIssueAgentField(issueUrl, project, 'agent-option-id'),
+      ).resolves.toBe(outcome);
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(project.id, project.agent?.fieldId, issue.itemId, {
+        singleSelectOptionId: 'agent-option-id',
+      });
+    });
+
+    it.each([
+      { name: 'project without Agent field', target: 'missingField' },
+      { name: 'pull request absent from board', target: 'absentPullRequest' },
+    ])('$name returns skipped without writing', async ({ target }) => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        null,
+      );
+      const result =
+        target === 'missingField'
+          ? await repository.setIssueAgentField(
+              issueUrl,
+              { ...project, agent: null },
+              'agent-option-id',
+            )
+          : await repository.setIssueAgentField(
+              'https://github.com/owner/repo/pull/100',
+              project,
+              'agent-option-id',
+            );
+      expect(result).toBe('skipped');
+      expect(
+        graphqlProjectItemRepository.addIssueToProject,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).not.toHaveBeenCalled();
+    });
+
+    const otherWrites = [
+      {
+        name: 'status',
+        invoke: (repository: ApiV3CheerioRestIssueRepository) =>
+          repository.updateStatus(project, issue, 'status-option-id'),
+      },
+      {
+        name: 'story',
+        invoke: (repository: ApiV3CheerioRestIssueRepository) =>
+          repository.updateStory(project, issue, 'story-option-id'),
+      },
+      {
+        name: 'next action date',
+        invoke: (repository: ApiV3CheerioRestIssueRepository) =>
+          repository.updateNextActionDate(
+            issueUrl,
+            project,
+            new Date('2026-10-17T00:00:00Z'),
+            issue.itemId,
+          ),
+      },
+      {
+        name: 'next action hour',
+        invoke: (repository: ApiV3CheerioRestIssueRepository) =>
+          repository.updateNextActionHour(project, issue, 17),
+      },
+    ];
+
+    it.each(otherWrites)(
+      '$name finishes without returning overwritten outcome',
+      async ({ invoke }) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+          'overwrittenByAnotherWriter',
+        );
+        await expect(invoke(repository)).resolves.toBeUndefined();
+        expect(
+          graphqlProjectItemRepository.updateProjectField,
+        ).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it.each(otherWrites)(
+      '$name propagates write verification error unchanged',
+      async ({ invoke }) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        const error = new ProjectFieldWriteVerificationError(
+          issue.itemId,
+          'field-id',
+          'A',
+          'B',
+        );
+        graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+          error,
+        );
+        await expect(invoke(repository)).rejects.toBe(error);
+      },
+    );
+
+    it.each(['overwrittenByAnotherWriter', 'verificationError'])(
+      'text-field and depended-issue-URL writers handle %s',
+      async (outcome) => {
+        const { repository, graphqlProjectItemRepository } =
+          createApiV3CheerioRestIssueRepository();
+        graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+          issueProjectItem,
+        );
+        const error = new ProjectFieldWriteVerificationError(
+          issue.itemId,
+          'depended-field-id',
+          'A',
+          'B',
+        );
+        if (outcome === 'verificationError') {
+          graphqlProjectItemRepository.updateProjectTextField.mockRejectedValue(
+            error,
+          );
+          await expect(
+            repository.updateProjectTextField(
+              project,
+              'depended-field-id',
+              issue,
+              'value',
+            ),
+          ).rejects.toBe(error);
+          await expect(
+            repository.setDependedIssueUrl(
+              issueUrl,
+              project,
+              'https://github.com/owner/repo/issues/51',
+            ),
+          ).rejects.toBe(error);
+        } else {
+          graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue(
+            undefined,
+          );
+          await expect(
+            repository.updateProjectTextField(
+              project,
+              'depended-field-id',
+              issue,
+              'value',
+            ),
+          ).resolves.toBeUndefined();
+          await expect(
+            repository.setDependedIssueUrl(
+              issueUrl,
+              project,
+              'https://github.com/owner/repo/issues/51',
+            ),
+          ).resolves.toBeUndefined();
+        }
+      },
+    );
   });
 
   describe('getPullRequestChangedFilePaths', () => {
@@ -13559,7 +13792,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13603,7 +13836,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13632,7 +13865,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
 
@@ -13649,7 +13882,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const existingCache = {
@@ -13682,7 +13915,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const storyIssueUrl = 'https://github.com/user/repo/issues/99';
@@ -13730,7 +13963,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       } = createApiV3CheerioRestIssueRepository();
 
       graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
-        undefined,
+        'applied',
       );
 
       const titleMatchIssueUrl = 'https://github.com/user/repo/issues/31124';

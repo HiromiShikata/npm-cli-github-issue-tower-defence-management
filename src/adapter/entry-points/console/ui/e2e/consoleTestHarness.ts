@@ -900,8 +900,9 @@ const createStubIssueRepository = (
     issueUrl: string,
     _project,
     agentOptionId: string,
-  ): Promise<void> => {
+  ): Promise<'applied'> => {
     setAgentCalls.push({ issueUrl, agentOptionId });
+    return 'applied';
   },
   updateBranch: async (): Promise<boolean> => false,
   updateStoryOptionColor: async (
