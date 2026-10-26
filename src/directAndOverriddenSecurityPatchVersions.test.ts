@@ -43,6 +43,31 @@ const readPackageJsonOverrideVersion = (packageName: string): string => {
   return overriddenVersion;
 };
 
+const readNestedPackageJsonOverrideVersion = (
+  packageName: string,
+  nestedPackageName: string,
+): string => {
+  const raw: unknown = JSON.parse(
+    readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
+  );
+  if (!isRecord(raw) || !isRecord(raw.overrides)) {
+    throw new Error('package.json must declare an overrides map');
+  }
+  const packageOverride = raw.overrides[packageName];
+  if (!isRecord(packageOverride)) {
+    throw new Error(
+      `package.json overrides must declare a nested map for "${packageName}"`,
+    );
+  }
+  const overriddenVersion = packageOverride[nestedPackageName];
+  if (typeof overriddenVersion !== 'string') {
+    throw new Error(
+      `package.json overrides must pin "${packageName}.${nestedPackageName}" to a plain version string`,
+    );
+  }
+  return overriddenVersion;
+};
+
 const parseNumericVersionTuple = (
   version: string,
 ): [number, number, number] => {
@@ -83,12 +108,12 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     {
       packageName: 'fast-uri',
       lockfileKey: 'node_modules/fast-uri',
-      requiredMinimumVersion: '3.1.9',
+      requiredMinimumVersion: '4.2.3',
     },
     {
       packageName: 'storybook',
       lockfileKey: 'node_modules/storybook',
-      requiredMinimumVersion: '10.6.2',
+      requiredMinimumVersion: '10.6.3',
     },
     {
       packageName: 'brace-expansion',
@@ -107,25 +132,17 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     },
   ];
 
-  it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
-    const packages = readPackageLockPackages();
+  it.each(patchedVersionThresholds)(
+    'resolves $packageName at $lockfileKey at or above $requiredMinimumVersion in package-lock.json',
+    ({ lockfileKey, requiredMinimumVersion }) => {
+      const packages = readPackageLockPackages();
+      const resolvedVersion = readResolvedVersion(packages, lockfileKey);
 
-    patchedVersionThresholds.forEach(
-      ({ lockfileKey, requiredMinimumVersion, packageName }) => {
-        const resolvedVersion = readResolvedVersion(packages, lockfileKey);
-
-        if (!isVersionAtLeast(resolvedVersion, requiredMinimumVersion)) {
-          throw new Error(
-            `${packageName} at "${lockfileKey}" is resolved to ${resolvedVersion}, which is below the required patched minimum ${requiredMinimumVersion}`,
-          );
-        }
-
-        expect(isVersionAtLeast(resolvedVersion, requiredMinimumVersion)).toBe(
-          true,
-        );
-      },
-    );
-  });
+      expect(isVersionAtLeast(resolvedVersion, requiredMinimumVersion)).toBe(
+        true,
+      );
+    },
+  );
 
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
@@ -137,5 +154,20 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('handlebars');
 
     expect(isVersionAtLeast(overriddenVersion, '4.7.10')).toBe(true);
+  });
+
+  it('pins undici to at or above its patched version threshold via a package.json override', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('undici');
+
+    expect(isVersionAtLeast(overriddenVersion, '7.30.1')).toBe(true);
+  });
+
+  it('pins the @actions/http-client undici override to its patched version threshold', () => {
+    const overriddenVersion = readNestedPackageJsonOverrideVersion(
+      '@actions/http-client',
+      'undici',
+    );
+
+    expect(isVersionAtLeast(overriddenVersion, '6.29.1')).toBe(true);
   });
 });
