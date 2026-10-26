@@ -374,6 +374,8 @@ if (process.env.README_TEMP_CLEANUP_CHILD !== '1') {
             '--coverage=false',
             '--runInBand',
             '--reporters=default',
+            '--testNamePattern',
+            '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
             `--cacheDirectory=${cacheDirectory}`,
           ],
           {
