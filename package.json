@@ -148,6 +148,7 @@
     "handlebars": "4.7.10",
     "js-yaml": {
       "argparse": "2.0.1"
-    }
+    },
+    "fast-uri": "4.2.3"
   }
 }
