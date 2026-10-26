@@ -335,7 +335,7 @@ if (process.env.README_TEMP_CLEANUP_CHILD !== '1') {
     'README.md llmModelNameByAgentName map example leaves no temporary files when the $name',
     ({ name, expectedExitCode }) => {
       const sandboxDirectory = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'readme-cleanup-sandbox-'),
+        path.join(__dirname, '.readme-cleanup-sandbox-'),
       );
       const temporaryDirectory = fs.mkdtempSync(
         path.join(os.tmpdir(), 'readme-cleanup-temp-'),
