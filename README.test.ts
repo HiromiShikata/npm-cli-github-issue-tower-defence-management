@@ -690,7 +690,7 @@ test('README.md llmModelNameByAgentName added case titles identify every added c
         '--runInBand',
         '--reporters=default',
         '--testNamePattern',
-        '^(?!.*added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)).*',
+        '^(?!.*(?:added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)|every added case passes with only the map example$)).*',
         '--json',
         `--outputFile=${resultFilePath}`,
         `--cacheDirectory=${path.join(childTemporaryDirectory, 'jest-cache')}`,
@@ -733,5 +733,74 @@ test('README.md llmModelNameByAgentName added case titles identify every added c
     );
   } finally {
     fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName every added case passes with only the map example', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const labelIndex = lines.findIndex(
+    (line) => line === 'Example with the map:',
+  );
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-all-added-minimal-'),
+  );
+  const resultFilePath = path.join(temporaryDirectory, 'result.json');
+  const minimalReadme = lines
+    .slice(labelIndex, closingFenceIndex + 1)
+    .join('\n');
+
+  try {
+    fs.writeFileSync(readmeFilePath, minimalReadme);
+    const result = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        '^(?!.*every added case passes with only the map example$).*llmModelNameByAgentName',
+        '--json',
+        `--outputFile=${resultFilePath}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: temporaryDirectory,
+        },
+        timeout: 120000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    const testResults = JSON.parse(fs.readFileSync(resultFilePath, 'utf8'))
+      .testResults as Array<{
+      assertionResults: Array<{ title: string; status: string }>;
+    }>;
+    const addedCaseResults = testResults.flatMap(
+      ({ assertionResults }) => assertionResults,
+    );
+
+    expect(addedCaseResults.length).toBeGreaterThan(0);
+    expect(addedCaseResults.every(({ status }) => status === 'passed')).toBe(
+      true,
+    );
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
   }
 });
