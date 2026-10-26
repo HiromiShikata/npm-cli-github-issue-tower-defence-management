@@ -94,11 +94,11 @@ const GRAPHQL_FORBIDDEN: HttpMock = {
 
 const PINNED_HTTP_STDERR: Record<CommandName, string> = {
   checkStoryGate:
-    'checkStoryGate failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401',
+    'checkStoryGate failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401 - Bad credentials',
   setIssueStoryIfUnset:
-    'setIssueStoryIfUnset failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401',
+    'setIssueStoryIfUnset failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401 - Bad credentials',
   startSpecificationTask:
-    'startSpecificationTask failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401',
+    'startSpecificationTask failed for https://github.com/o/r/issues/1: POST https://api.github.com/graphql returned HTTP 401 - Bad credentials',
 };
 
 const PINNED_GRAPHQL_STDERR: Record<CommandName, string> = {

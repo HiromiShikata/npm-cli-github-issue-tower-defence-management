@@ -122,6 +122,133 @@ describe('GithubStoryGateIssueRepository', () => {
       await expect(repositoryCreate().findIssue(ISSUE)).resolves.toBeNull();
     });
 
+    it('includes the permission message and allowlisted response headers for HTTP 403', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        jsonResponse(
+          { message: 'Resource not accessible by integration' },
+          403,
+          {
+            'x-ratelimit-remaining': '4999',
+            'x-ratelimit-reset': '1761432000',
+            'retry-after': '60',
+            'x-github-request-id': 'request-permission',
+            'x-secret-header': 'must-not-appear',
+            authorization: 'must-not-appear',
+          },
+        ),
+      );
+
+      const thrown = await repositoryCreate()
+        .findIssue(ISSUE)
+        .catch((error: unknown) => error);
+
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain(
+        'Resource not accessible by integration',
+      );
+      expect(thrown.message).toContain('x-ratelimit-remaining=4999');
+      expect(thrown.message).toContain('x-ratelimit-reset=1761432000');
+      expect(thrown.message).toContain('retry-after=60');
+      expect(thrown.message).toContain(
+        'x-github-request-id=request-permission',
+      );
+      expect(thrown.message).not.toContain('x-secret-header');
+      expect(thrown.message).not.toContain('must-not-appear');
+      expect(thrown.message).not.toContain('test-token');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves the existing rate-limit error for an HTTP 403 response', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        jsonResponse({ message: 'API rate limit exceeded' }, 403, {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 60),
+        }),
+      );
+
+      const thrown = await repositoryCreate()
+        .findIssue(ISSUE)
+        .catch((error: unknown) => error);
+
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(thrown.message).toBe(`GET ${ISSUE_API_URL} returned HTTP 403`);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(noWait).not.toHaveBeenCalled();
+    });
+
+    it('does not expose a non-JSON HTTP 403 response body', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response('plain forbidden body', {
+          status: 403,
+          headers: { 'x-github-request-id': 'request-non-json' },
+        }),
+      );
+
+      const thrown = await repositoryCreate()
+        .findIssue(ISSUE)
+        .catch((error: unknown) => error);
+
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain('x-github-request-id=request-non-json');
+      expect(thrown.message).not.toContain('plain forbidden body');
+    });
+
+    it('truncates an HTTP 403 response message to 500 characters', async () => {
+      const longMessage = `${'a'.repeat(500)}TAIL`;
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(jsonResponse({ message: longMessage }, 403));
+
+      const thrown = await repositoryCreate()
+        .findIssue(ISSUE)
+        .catch((error: unknown) => error);
+
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 403 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain('a'.repeat(500));
+      expect(thrown.message).not.toContain('TAIL');
+    });
+
+    it('includes the response message and headers for an HTTP 500 response', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+        jsonResponse({ message: 'Internal server failure' }, 500, {
+          'x-github-request-id': 'request-server-error',
+        }),
+      );
+
+      const thrown = await repositoryCreate()
+        .findIssue(ISSUE)
+        .catch((error: unknown) => error);
+
+      if (!(thrown instanceof StoryGateGithubRequestError)) {
+        throw thrown;
+      }
+      expect(
+        thrown.message.startsWith(`GET ${ISSUE_API_URL} returned HTTP 500 - `),
+      ).toBe(true);
+      expect(thrown.message).toContain('Internal server failure');
+      expect(thrown.message).toContain(
+        'x-github-request-id=request-server-error',
+      );
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+    });
+
     it('rejects with the failing request after HTTP 500 persists', async () => {
       const fetchSpy = jest
         .spyOn(global, 'fetch')
