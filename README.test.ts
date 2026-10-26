@@ -187,6 +187,7 @@ test('README.md llmModelNameByAgentName map deletion reports the missing label',
   }
 });
 const snapshotRepositoryFiles = (): string => {
+  const generatedReadmeTestArtifactPattern = /^\.readme-cleanup-sandbox-/;
   const hashRegularFile = (filePath: string): string => {
     const hash = createHash('sha256');
     const fileDescriptor = fs.openSync(filePath, 'r');
@@ -231,6 +232,10 @@ const snapshotRepositoryFiles = (): string => {
       .sort((left, right) => (left.name < right.name ? -1 : 1));
 
     for (const directoryEntry of directoryEntries) {
+      if (generatedReadmeTestArtifactPattern.test(directoryEntry.name)) {
+        continue;
+      }
+
       const entryPath = path.join(directoryPath, directoryEntry.name);
       const relativePath = path
         .relative(__dirname, entryPath)
@@ -280,6 +285,42 @@ const snapshotRepositoryFiles = (): string => {
 
   return snapshotHash.digest('hex');
 };
+
+test('repository snapshot ignores generated README cleanup artifacts', () => {
+  const generatedArtifactDirectory = fs.mkdtempSync(
+    path.join(__dirname, '.readme-cleanup-sandbox-'),
+  );
+
+  try {
+    const beforeSnapshot = snapshotRepositoryFiles();
+    fs.writeFileSync(
+      path.join(generatedArtifactDirectory, 'generated-test-artifact.txt'),
+      'generated during the README test run',
+    );
+
+    expect(snapshotRepositoryFiles()).toBe(beforeSnapshot);
+  } finally {
+    fs.rmSync(generatedArtifactDirectory, { force: true, recursive: true });
+  }
+});
+
+test('repository snapshot detects arbitrary repository file changes', () => {
+  const sourceChangeDirectory = fs.mkdtempSync(
+    path.join(__dirname, 'readme-snapshot-source-'),
+  );
+
+  try {
+    const beforeSnapshot = snapshotRepositoryFiles();
+    fs.writeFileSync(
+      path.join(sourceChangeDirectory, 'source-change.txt'),
+      'arbitrary repository change',
+    );
+
+    expect(snapshotRepositoryFiles()).not.toBe(beforeSnapshot);
+  } finally {
+    fs.rmSync(sourceChangeDirectory, { force: true, recursive: true });
+  }
+});
 
 if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
   test('README.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run', () => {
