@@ -239,6 +239,9 @@ const snapshotRepositoryFiles = (): string => {
       if (relativePath.split('/').includes('.git')) {
         continue;
       }
+      if (relativePath.split('/').includes('node_modules')) {
+        continue;
+      }
 
       const entryStat = fs.lstatSync(entryPath);
       const entryType = entryStat.isDirectory()
