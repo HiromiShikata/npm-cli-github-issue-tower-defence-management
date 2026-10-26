@@ -138,54 +138,55 @@ test('README.md llmModelNameByAgentName map example is accepted by the fleet rea
   }
 });
 
-test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
-  const readmeFilePath = path.join(__dirname, 'README.md');
-  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
-  const lines = originalReadme.split('\n');
-  const label = 'Example with the map:';
-  const labelIndex = lines.findIndex((line) => line === label);
-  const openingFenceIndex = lines.findIndex(
-    (line, index) => index > labelIndex && line === '```yaml',
-  );
-  const closingFenceIndex = lines.findIndex(
-    (line, index) => index > openingFenceIndex && line === '```',
-  );
-  const mutatedReadme = [
-    ...lines.slice(0, labelIndex),
-    ...lines.slice(closingFenceIndex + 1),
-  ].join('\n');
-
-  try {
-    fs.writeFileSync(readmeFilePath, mutatedReadme);
-    const subprocess = spawnSync(
-      'npm',
-      [
-        'run',
-        'test',
-        '--',
-        '--coverage=false',
-        '--reporters=default',
-        '--runInBand',
-        '--runTestsByPath',
-        'README.test.ts',
-        '--testNamePattern',
-        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
-      ],
-      { cwd: __dirname, encoding: 'utf8' },
+process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
+  test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
+    const readmeFilePath = path.join(__dirname, 'README.md');
+    const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+    const lines = originalReadme.split('\n');
+    const label = 'Example with the map:';
+    const labelIndex = lines.findIndex((line) => line === label);
+    const openingFenceIndex = lines.findIndex(
+      (line, index) => index > labelIndex && line === '```yaml',
     );
-    const failureOutput = [subprocess.stdout, subprocess.stderr]
-      .filter((output): output is string => typeof output === 'string')
-      .join('\n');
-    const missingLabel =
-      /README\.md label not found: (Example with the map:)/.exec(
-        failureOutput,
-      )?.[1] ?? null;
+    const closingFenceIndex = lines.findIndex(
+      (line, index) => index > openingFenceIndex && line === '```',
+    );
+    const mutatedReadme = [
+      ...lines.slice(0, labelIndex),
+      ...lines.slice(closingFenceIndex + 1),
+    ].join('\n');
 
-    expect(missingLabel).toBe('Example with the map:');
-  } finally {
-    fs.writeFileSync(readmeFilePath, originalReadme);
-  }
-});
+    try {
+      fs.writeFileSync(readmeFilePath, mutatedReadme);
+      const subprocess = spawnSync(
+        'npm',
+        [
+          'run',
+          'test',
+          '--',
+          '--coverage=false',
+          '--reporters=default',
+          '--runInBand',
+          '--runTestsByPath',
+          'README.test.ts',
+          '--testNamePattern',
+          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+        ],
+        { cwd: __dirname, encoding: 'utf8' },
+      );
+      const failureOutput = [subprocess.stdout, subprocess.stderr]
+        .filter((output): output is string => typeof output === 'string')
+        .join('\n');
+      const missingLabel =
+        /README\.md label not found: (Example with the map:)/.exec(
+          failureOutput,
+        )?.[1] ?? null;
+
+      expect(missingLabel).toBe('Example with the map:');
+    } finally {
+      fs.writeFileSync(readmeFilePath, originalReadme);
+    }
+  });
 const snapshotRepositoryFiles = (): string => {
   const generatedReadmeTestArtifactPattern = /^\.readme-cleanup-sandbox-/;
   const hashRegularFile = (filePath: string): string => {
@@ -482,50 +483,51 @@ if (
   );
 }
 
-test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
-  const readmeFilePath = path.join(__dirname, 'README.md');
-  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
-  const lines = originalReadme.split('\n');
-  const label = 'Example with the map:';
-  const labelIndex = lines.findIndex((line) => line === label);
-  const openingFenceIndex = lines.findIndex(
-    (line, index) => index > labelIndex && line === '```yaml',
-  );
-  const mutatedReadme = [
-    ...lines.slice(0, openingFenceIndex),
-    ...lines.slice(openingFenceIndex + 1),
-  ].join('\n');
-
-  try {
-    fs.writeFileSync(readmeFilePath, mutatedReadme);
-    const subprocess = spawnSync(
-      'npm',
-      [
-        'run',
-        'test',
-        '--',
-        '--coverage=false',
-        '--reporters=default',
-        '--runInBand',
-        '--runTestsByPath',
-        'README.test.ts',
-        '--testNamePattern',
-        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
-      ],
-      { cwd: __dirname, encoding: 'utf8' },
+process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
+  test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
+    const readmeFilePath = path.join(__dirname, 'README.md');
+    const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+    const lines = originalReadme.split('\n');
+    const label = 'Example with the map:';
+    const labelIndex = lines.findIndex((line) => line === label);
+    const openingFenceIndex = lines.findIndex(
+      (line, index) => index > labelIndex && line === '```yaml',
     );
-    const failureOutput = [subprocess.stdout, subprocess.stderr]
-      .filter((output): output is string => typeof output === 'string')
-      .join('\n');
-    const missingLabel =
-      /YAML opening fence not found after: (Example with the map:)/.exec(
-        failureOutput,
-      )?.[1] ?? null;
+    const mutatedReadme = [
+      ...lines.slice(0, openingFenceIndex),
+      ...lines.slice(openingFenceIndex + 1),
+    ].join('\n');
 
-    expect(typeof subprocess.status).toBe('number');
-    expect(subprocess.status).not.toBe(0);
-    expect(missingLabel).toBe('Example with the map:');
-  } finally {
-    fs.writeFileSync(readmeFilePath, originalReadme);
-  }
-});
+    try {
+      fs.writeFileSync(readmeFilePath, mutatedReadme);
+      const subprocess = spawnSync(
+        'npm',
+        [
+          'run',
+          'test',
+          '--',
+          '--coverage=false',
+          '--reporters=default',
+          '--runInBand',
+          '--runTestsByPath',
+          'README.test.ts',
+          '--testNamePattern',
+          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+        ],
+        { cwd: __dirname, encoding: 'utf8' },
+      );
+      const failureOutput = [subprocess.stdout, subprocess.stderr]
+        .filter((output): output is string => typeof output === 'string')
+        .join('\n');
+      const missingLabel =
+        /YAML opening fence not found after: (Example with the map:)/.exec(
+          failureOutput,
+        )?.[1] ?? null;
+
+      expect(typeof subprocess.status).toBe('number');
+      expect(subprocess.status).not.toBe(0);
+      expect(missingLabel).toBe('Example with the map:');
+    } finally {
+      fs.writeFileSync(readmeFilePath, originalReadme);
+    }
+  });
