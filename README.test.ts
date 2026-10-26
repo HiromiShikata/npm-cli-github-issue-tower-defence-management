@@ -11,6 +11,13 @@ import { loadStartPreparationFleetSettings } from './src/adapter/entry-points/cl
 
 const readmeText = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
 
+process.once('exit', () => {
+  fs.rmSync(path.join(os.tmpdir(), 'jest_rs'), {
+    force: true,
+    recursive: true,
+  });
+});
+
 const nextSectionHeadingPattern = /^#{2,3} /m;
 
 const extractExampleYamlBlockText = (
@@ -715,7 +722,7 @@ test('README.md llmModelNameByAgentName added case titles identify every added c
       ({ assertionResults }) => assertionResults,
     );
     const metaCaseTitlePattern =
-      /added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)/;
+      /added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)|every added case passes with only the map example/;
     const caseResults = allCaseResults.filter(
       ({ title }) => !metaCaseTitlePattern.test(title),
     );
@@ -770,9 +777,10 @@ test('README.md llmModelNameByAgentName every added case passes with only the ma
         '--runInBand',
         '--reporters=default',
         '--testNamePattern',
-        '^(?!.*every added case passes with only the map example$).*llmModelNameByAgentName',
+        '^(?!.*(?:added cases pass with only the map example|added cases delete temporary files|added case titles identify every added case|every added case passes with only the map example)$).*llmModelNameByAgentName',
         '--json',
         `--outputFile=${resultFilePath}`,
+        `--cacheDirectory=${path.join(temporaryDirectory, 'jest-cache')}`,
       ],
       {
         cwd: __dirname,
@@ -791,9 +799,12 @@ test('README.md llmModelNameByAgentName every added case passes with only the ma
       .testResults as Array<{
       assertionResults: Array<{ title: string; status: string }>;
     }>;
-    const addedCaseResults = testResults.flatMap(
-      ({ assertionResults }) => assertionResults,
-    );
+    const addedCaseResults = testResults
+      .flatMap(({ assertionResults }) => assertionResults)
+      .filter(
+        ({ title, status }) =>
+          title.includes('llmModelNameByAgentName') && status !== 'pending',
+      );
 
     expect(addedCaseResults.length).toBeGreaterThan(0);
     expect(addedCaseResults.every(({ status }) => status === 'passed')).toBe(
