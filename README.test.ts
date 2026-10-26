@@ -138,55 +138,72 @@ test('README.md llmModelNameByAgentName map example is accepted by the fleet rea
   }
 });
 
-process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
-  test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
-    const readmeFilePath = path.join(__dirname, 'README.md');
-    const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
-    const lines = originalReadme.split('\n');
-    const label = 'Example with the map:';
-    const labelIndex = lines.findIndex((line) => line === label);
-    const openingFenceIndex = lines.findIndex(
-      (line, index) => index > labelIndex && line === '```yaml',
-    );
-    const closingFenceIndex = lines.findIndex(
-      (line, index) => index > openingFenceIndex && line === '```',
-    );
-    const mutatedReadme = [
-      ...lines.slice(0, labelIndex),
-      ...lines.slice(closingFenceIndex + 1),
-    ].join('\n');
+test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-map-deletion-'),
+  );
+  const cacheDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-map-deletion-cache-'),
+  );
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const label = 'Example with the map:';
+  const labelIndex = lines.findIndex((line) => line === label);
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  const mutatedReadme = [
+    ...lines.slice(0, labelIndex),
+    ...lines.slice(closingFenceIndex + 1),
+  ].join('\n');
 
-    try {
-      fs.writeFileSync(readmeFilePath, mutatedReadme);
-      const subprocess = spawnSync(
-        'npm',
-        [
-          'run',
-          'test',
-          '--',
-          '--coverage=false',
-          '--reporters=default',
-          '--runInBand',
-          '--runTestsByPath',
-          'README.test.ts',
-          '--testNamePattern',
-          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
-        ],
-        { cwd: __dirname, encoding: 'utf8' },
-      );
-      const failureOutput = [subprocess.stdout, subprocess.stderr]
-        .filter((output): output is string => typeof output === 'string')
-        .join('\n');
-      const missingLabel =
-        /README\.md label not found: (Example with the map:)/.exec(
-          failureOutput,
-        )?.[1] ?? null;
+  try {
+    fs.writeFileSync(readmeFilePath, mutatedReadme);
+    const subprocess = spawnSync(
+      'npm',
+      [
+        'run',
+        'test',
+        '--',
+        '--coverage=false',
+        '--reporters=default',
+        '--runInBand',
+        '--runTestsByPath',
+        'README.test.ts',
+        '--testNamePattern',
+        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+        `--cacheDirectory=${cacheDirectory}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: { ...process.env, TMPDIR: temporaryDirectory },
+      },
+    );
+    const failureOutput = [subprocess.stdout, subprocess.stderr]
+      .filter((output): output is string => typeof output === 'string')
+      .join('\n');
+    const missingLabel =
+      /README\.md label not found: (Example with the map:)/.exec(
+        failureOutput,
+      )?.[1] ?? null;
 
-      expect(missingLabel).toBe('Example with the map:');
-    } finally {
-      fs.writeFileSync(readmeFilePath, originalReadme);
-    }
-  });
+    expect(missingLabel).toBe('Example with the map:');
+    expect(
+      fs
+        .readdirSync(temporaryDirectory)
+        .filter((entryName) => entryName !== 'node-compile-cache'),
+    ).toEqual([]);
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+    fs.rmSync(cacheDirectory, { force: true, recursive: true });
+  }
+});
 const snapshotRepositoryFiles = (): string => {
   const generatedReadmeTestArtifactPattern = /^\.readme-cleanup-sandbox-/;
   const hashRegularFile = (filePath: string): string => {
@@ -290,7 +307,7 @@ const snapshotRepositoryFiles = (): string => {
   return snapshotHash.digest('hex');
 };
 
-test('repository snapshot ignores generated README cleanup artifacts', () => {
+test('README.md llmModelNameByAgentName repository snapshot ignores generated README cleanup artifacts', () => {
   const generatedArtifactDirectory = fs.mkdtempSync(
     path.join(__dirname, '.readme-cleanup-sandbox-'),
   );
@@ -308,7 +325,7 @@ test('repository snapshot ignores generated README cleanup artifacts', () => {
   }
 });
 
-test('repository snapshot ignores generated test reports', () => {
+test('README.md llmModelNameByAgentName repository snapshot ignores generated test reports', () => {
   const reportsDirectory = path.join(__dirname, 'reports');
   const reportsDirectoryExisted = fs.existsSync(reportsDirectory);
   fs.mkdirSync(reportsDirectory, { recursive: true });
@@ -332,7 +349,7 @@ test('repository snapshot ignores generated test reports', () => {
   }
 });
 
-test('repository snapshot detects arbitrary repository file changes', () => {
+test('README.md llmModelNameByAgentName repository snapshot detects arbitrary repository file changes', () => {
   const sourceChangeDirectory = fs.mkdtempSync(
     path.join(__dirname, 'readme-snapshot-source-'),
   );
@@ -350,184 +367,444 @@ test('repository snapshot detects arbitrary repository file changes', () => {
   }
 });
 
-if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
-  test('README.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run', () => {
-    const temporaryDirectory = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'readme-working-tree-test-'),
+test('README.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run', () => {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-working-tree-test-'),
+  );
+  const jestCacheDirectory = path.join(temporaryDirectory, 'jest-cache');
+  const resultFilePath = path.join(temporaryDirectory, 'result.json');
+
+  try {
+    const beforeSnapshot = snapshotRepositoryFiles();
+    const childResult = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+        `--cacheDirectory=${jestCacheDirectory}`,
+        '--json',
+        `--outputFile=${resultFilePath}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: temporaryDirectory,
+        },
+        timeout: 60000,
+      },
     );
-    const jestCacheDirectory = path.join(temporaryDirectory, 'jest-cache');
-    const resultFilePath = path.join(temporaryDirectory, 'result.json');
+
+    if (childResult.error) {
+      throw childResult.error;
+    }
+    if (childResult.status !== 0) {
+      throw new Error(childResult.stderr);
+    }
+
+    const afterSnapshot = snapshotRepositoryFiles();
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+  } finally {
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test.each([
+  { name: 'reader returns', expectedExitCode: 0 },
+  { name: 'reader throws', expectedExitCode: 1 },
+])(
+  'README.md llmModelNameByAgentName map example leaves no temporary files when the $name',
+  ({ name, expectedExitCode }) => {
+    const sandboxDirectory = fs.mkdtempSync(
+      path.join(__dirname, '.readme-cleanup-sandbox-'),
+    );
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-cleanup-temp-'),
+    );
+    const cacheDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-cleanup-cache-'),
+    );
 
     try {
-      const beforeSnapshot = snapshotRepositoryFiles();
-      const childResult = spawnSync(
+      fs.copyFileSync(
+        __filename,
+        path.join(sandboxDirectory, 'README.test.ts'),
+      );
+      const sandboxReadmePath = path.join(sandboxDirectory, 'README.md');
+      fs.copyFileSync(path.join(__dirname, 'README.md'), sandboxReadmePath);
+      fs.symlinkSync(
+        path.join(__dirname, 'src'),
+        path.join(sandboxDirectory, 'src'),
+        'dir',
+      );
+
+      if (name === 'reader throws') {
+        const readmeWithInvalidModelName = fs
+          .readFileSync(sandboxReadmePath, 'utf8')
+          .replace("    developer: 'gpt-5.6-luna'", "    developer: ''");
+        fs.writeFileSync(sandboxReadmePath, readmeWithInvalidModelName);
+      }
+
+      const result = spawnSync(
         'npx',
         [
           'jest',
-          'README.test.ts',
+          path.join(sandboxDirectory, 'README.test.ts'),
           '--selectProjects',
           'backend',
           '--coverage=false',
           '--runInBand',
           '--reporters=default',
-          `--cacheDirectory=${jestCacheDirectory}`,
-          '--json',
-          `--outputFile=${resultFilePath}`,
+          '--testNamePattern',
+          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+          `--cacheDirectory=${cacheDirectory}`,
         ],
         {
           cwd: __dirname,
           encoding: 'utf8',
           env: {
             ...process.env,
-            README_TEST_EXISTING_CASES_ONLY: '1',
             TMPDIR: temporaryDirectory,
           },
-          timeout: 60000,
+          timeout: 120000,
         },
       );
 
-      if (childResult.error) {
-        throw childResult.error;
-      }
-      if (childResult.status !== 0) {
-        throw new Error(childResult.stderr);
-      }
-
-      const afterSnapshot = snapshotRepositoryFiles();
-      expect(afterSnapshot).toEqual(beforeSnapshot);
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(expectedExitCode);
+      expect(
+        fs
+          .readdirSync(temporaryDirectory)
+          .filter((entryName) => entryName !== 'node-compile-cache'),
+      ).toEqual([]);
     } finally {
+      fs.rmSync(sandboxDirectory, { force: true, recursive: true });
       fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+      fs.rmSync(cacheDirectory, { force: true, recursive: true });
     }
-  });
-}
+  },
+);
 
-if (
-  process.env.README_TEMP_CLEANUP_CHILD !== '1' &&
-  process.env.README_TEST_EXISTING_CASES_ONLY !== '1'
-) {
-  test.each([
-    { name: 'reader returns', expectedExitCode: 0 },
-    { name: 'reader throws', expectedExitCode: 1 },
-  ])(
-    'README.md llmModelNameByAgentName map example leaves no temporary files when the $name',
-    ({ name, expectedExitCode }) => {
-      const sandboxDirectory = fs.mkdtempSync(
-        path.join(__dirname, '.readme-cleanup-sandbox-'),
-      );
-      const temporaryDirectory = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'readme-cleanup-temp-'),
-      );
-      const cacheDirectory = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'readme-cleanup-cache-'),
-      );
-
-      try {
-        fs.copyFileSync(
-          __filename,
-          path.join(sandboxDirectory, 'README.test.ts'),
-        );
-        const sandboxReadmePath = path.join(sandboxDirectory, 'README.md');
-        fs.copyFileSync(path.join(__dirname, 'README.md'), sandboxReadmePath);
-        fs.symlinkSync(
-          path.join(__dirname, 'src'),
-          path.join(sandboxDirectory, 'src'),
-          'dir',
-        );
-
-        if (name === 'reader throws') {
-          const readmeWithInvalidModelName = fs
-            .readFileSync(sandboxReadmePath, 'utf8')
-            .replace("    developer: 'gpt-5.6-luna'", "    developer: ''");
-          fs.writeFileSync(sandboxReadmePath, readmeWithInvalidModelName);
-        }
-
-        const result = spawnSync(
-          'npx',
-          [
-            'jest',
-            path.join(sandboxDirectory, 'README.test.ts'),
-            '--selectProjects',
-            'backend',
-            '--coverage=false',
-            '--runInBand',
-            '--reporters=default',
-            '--testNamePattern',
-            '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
-            `--cacheDirectory=${cacheDirectory}`,
-          ],
-          {
-            cwd: __dirname,
-            encoding: 'utf8',
-            env: {
-              ...process.env,
-              README_TEMP_CLEANUP_CHILD: '1',
-              TMPDIR: temporaryDirectory,
-            },
-            timeout: 120000,
-          },
-        );
-
-        expect(result.error).toBeUndefined();
-        expect(result.status).toBe(expectedExitCode);
-        expect(
-          fs
-            .readdirSync(temporaryDirectory)
-            .filter((entryName) => entryName !== 'node-compile-cache'),
-        ).toEqual([]);
-      } finally {
-        fs.rmSync(sandboxDirectory, { force: true, recursive: true });
-        fs.rmSync(temporaryDirectory, { force: true, recursive: true });
-        fs.rmSync(cacheDirectory, { force: true, recursive: true });
-      }
-    },
+test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-fence-deletion-'),
   );
-}
+  const cacheDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-fence-deletion-cache-'),
+  );
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const label = 'Example with the map:';
+  const labelIndex = lines.findIndex((line) => line === label);
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const mutatedReadme = [
+    ...lines.slice(0, openingFenceIndex),
+    ...lines.slice(openingFenceIndex + 1),
+  ].join('\n');
 
-process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
-  test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
-    const readmeFilePath = path.join(__dirname, 'README.md');
-    const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
-    const lines = originalReadme.split('\n');
-    const label = 'Example with the map:';
-    const labelIndex = lines.findIndex((line) => line === label);
-    const openingFenceIndex = lines.findIndex(
-      (line, index) => index > labelIndex && line === '```yaml',
+  try {
+    fs.writeFileSync(readmeFilePath, mutatedReadme);
+    const subprocess = spawnSync(
+      'npm',
+      [
+        'run',
+        'test',
+        '--',
+        '--coverage=false',
+        '--reporters=default',
+        '--runInBand',
+        '--runTestsByPath',
+        'README.test.ts',
+        '--testNamePattern',
+        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+        `--cacheDirectory=${cacheDirectory}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: { ...process.env, TMPDIR: temporaryDirectory },
+      },
     );
-    const mutatedReadme = [
-      ...lines.slice(0, openingFenceIndex),
-      ...lines.slice(openingFenceIndex + 1),
-    ].join('\n');
+    const failureOutput = [subprocess.stdout, subprocess.stderr]
+      .filter((output): output is string => typeof output === 'string')
+      .join('\n');
+    const missingLabel =
+      /YAML opening fence not found after: (Example with the map:)/.exec(
+        failureOutput,
+      )?.[1] ?? null;
 
-    try {
-      fs.writeFileSync(readmeFilePath, mutatedReadme);
-      const subprocess = spawnSync(
-        'npm',
-        [
-          'run',
-          'test',
-          '--',
-          '--coverage=false',
-          '--reporters=default',
-          '--runInBand',
-          '--runTestsByPath',
-          'README.test.ts',
-          '--testNamePattern',
-          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
-        ],
-        { cwd: __dirname, encoding: 'utf8' },
+    expect(typeof subprocess.status).toBe('number');
+    expect(subprocess.status).not.toBe(0);
+    expect(missingLabel).toBe('Example with the map:');
+    expect(
+      fs
+        .readdirSync(temporaryDirectory)
+        .filter((entryName) => entryName !== 'node-compile-cache'),
+    ).toEqual([]);
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+    fs.rmSync(cacheDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName added cases pass with only the map example', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const labelIndex = lines.findIndex(
+    (line) => line === 'Example with the map:',
+  );
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  const childTemporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-meta-minimal-'),
+  );
+  const childCacheDirectory = path.join(childTemporaryDirectory, 'jest-cache');
+  const resultFilePath = path.join(childTemporaryDirectory, 'result.json');
+  const minimalReadme = [
+    ...lines.slice(labelIndex, closingFenceIndex + 1),
+  ].join('\n');
+
+  try {
+    fs.writeFileSync(readmeFilePath, minimalReadme);
+    const result = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        '^README\\.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run$',
+        `--cacheDirectory=${childCacheDirectory}`,
+        '--json',
+        `--outputFile=${resultFilePath}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: childTemporaryDirectory,
+        },
+        timeout: 120000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
+    fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName added cases delete temporary files', () => {
+  const childTemporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-meta-cleanup-'),
+  );
+  const resultDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-meta-result-'),
+  );
+  const childCacheDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-meta-cleanup-cache-'),
+  );
+  const resultFilePath = path.join(resultDirectory, 'result.json');
+
+  try {
+    const result = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        'README\\.md llmModelNameByAgentName (map deletion reports the missing label|map example reports its label when the opening fence is deleted)',
+        `--cacheDirectory=${childCacheDirectory}`,
+        '--json',
+        `--outputFile=${resultFilePath}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: childTemporaryDirectory,
+        },
+        timeout: 120000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(
+      fs
+        .readdirSync(childTemporaryDirectory)
+        .filter((entryName) => entryName !== 'node-compile-cache'),
+    ).toEqual([]);
+  } finally {
+    fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+    fs.rmSync(resultDirectory, { force: true, recursive: true });
+    fs.rmSync(childCacheDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName added case titles identify every added case', () => {
+  const childTemporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-meta-titles-'),
+  );
+  const resultFilePath = path.join(childTemporaryDirectory, 'result.json');
+
+  try {
+    const result = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        '^(?!.*(?:added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)|every added case passes with only the map example$)).*',
+        '--json',
+        `--outputFile=${resultFilePath}`,
+        `--cacheDirectory=${path.join(childTemporaryDirectory, 'jest-cache')}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: childTemporaryDirectory,
+        },
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    const testResults = JSON.parse(fs.readFileSync(resultFilePath, 'utf8'))
+      .testResults as Array<{
+      assertionResults: Array<{ title: string; status: string }>;
+    }>;
+    const allCaseResults = testResults.flatMap(
+      ({ assertionResults }) => assertionResults,
+    );
+    const metaCaseTitlePattern =
+      /added case(?:s)? (pass with only the map example|delete temporary files|titles identify every added case)|every added case passes with only the map example/;
+    const caseResults = allCaseResults.filter(
+      ({ title }) => !metaCaseTitlePattern.test(title),
+    );
+    const existingCaseResults = caseResults.filter(
+      ({ title }) => !title.includes('llmModelNameByAgentName'),
+    );
+    const addedCaseResults = caseResults.filter(({ title }) =>
+      title.includes('llmModelNameByAgentName'),
+    );
+
+    expect(existingCaseResults).toHaveLength(2);
+    expect(caseResults).toHaveLength(2 + addedCaseResults.length);
+    expect(addedCaseResults.every(({ status }) => status === 'passed')).toBe(
+      true,
+    );
+  } finally {
+    fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName every added case passes with only the map example', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const labelIndex = lines.findIndex(
+    (line) => line === 'Example with the map:',
+  );
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-all-added-minimal-'),
+  );
+  const resultFilePath = path.join(temporaryDirectory, 'result.json');
+  const minimalReadme = lines
+    .slice(labelIndex, closingFenceIndex + 1)
+    .join('\n');
+
+  try {
+    fs.writeFileSync(readmeFilePath, minimalReadme);
+    const result = spawnSync(
+      'npx',
+      [
+        'jest',
+        'README.test.ts',
+        '--selectProjects',
+        'backend',
+        '--coverage=false',
+        '--runInBand',
+        '--reporters=default',
+        '--testNamePattern',
+        '^(?!.*(?:added cases pass with only the map example|added cases delete temporary files|added case titles identify every added case|every added case passes with only the map example)$).*llmModelNameByAgentName',
+        '--json',
+        `--outputFile=${resultFilePath}`,
+        `--cacheDirectory=${path.join(temporaryDirectory, 'jest-cache')}`,
+      ],
+      {
+        cwd: __dirname,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          TMPDIR: temporaryDirectory,
+        },
+        timeout: 120000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    const testResults = JSON.parse(fs.readFileSync(resultFilePath, 'utf8'))
+      .testResults as Array<{
+      assertionResults: Array<{ title: string; status: string }>;
+    }>;
+    const addedCaseResults = testResults
+      .flatMap(({ assertionResults }) => assertionResults)
+      .filter(
+        ({ title, status }) =>
+          title.includes('llmModelNameByAgentName') && status !== 'pending',
       );
-      const failureOutput = [subprocess.stdout, subprocess.stderr]
-        .filter((output): output is string => typeof output === 'string')
-        .join('\n');
-      const missingLabel =
-        /YAML opening fence not found after: (Example with the map:)/.exec(
-          failureOutput,
-        )?.[1] ?? null;
 
-      expect(typeof subprocess.status).toBe('number');
-      expect(subprocess.status).not.toBe(0);
-      expect(missingLabel).toBe('Example with the map:');
-    } finally {
-      fs.writeFileSync(readmeFilePath, originalReadme);
-    }
-  });
+    expect(addedCaseResults.length).toBeGreaterThan(0);
+    expect(addedCaseResults.every(({ status }) => status === 'passed')).toBe(
+      true,
+    );
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+  }
+});
