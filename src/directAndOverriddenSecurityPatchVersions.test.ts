@@ -108,7 +108,7 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     {
       packageName: 'fast-uri',
       lockfileKey: 'node_modules/fast-uri',
-      requiredMinimumVersion: '4.2.3',
+      requiredMinimumVersion: '3.1.9',
     },
     {
       packageName: 'storybook',
