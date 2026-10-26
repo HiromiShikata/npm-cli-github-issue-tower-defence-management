@@ -531,3 +531,127 @@ process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
       fs.writeFileSync(readmeFilePath, originalReadme);
     }
   });
+
+if (process.env.README_TEST_META_ONLY !== '1') {
+  test('README.md llmModelNameByAgentName added cases pass with only the map example', () => {
+    const readmeFilePath = path.join(__dirname, 'README.md');
+    const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+    const lines = originalReadme.split('\n');
+    const labelIndex = lines.findIndex(
+      (line) => line === 'Example with the map:',
+    );
+    const openingFenceIndex = lines.findIndex(
+      (line, index) => index > labelIndex && line === '```yaml',
+    );
+    const closingFenceIndex = lines.findIndex(
+      (line, index) => index > openingFenceIndex && line === '```',
+    );
+    const childTemporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-meta-minimal-'),
+    );
+    const resultFilePath = path.join(childTemporaryDirectory, 'result.json');
+    const minimalReadme = [
+      ...lines.slice(labelIndex, closingFenceIndex + 1),
+    ].join('\n');
+
+    try {
+      fs.writeFileSync(readmeFilePath, minimalReadme);
+      const result = spawnSync(
+        'npx',
+        [
+          'jest',
+          'README.test.ts',
+          '--selectProjects',
+          'backend',
+          '--coverage=false',
+          '--runInBand',
+          '--reporters=default',
+          '--testNamePattern',
+          '^README\\.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run$',
+          '--json',
+          `--outputFile=${resultFilePath}`,
+        ],
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            README_TEST_META_ONLY: '1',
+            TMPDIR: childTemporaryDirectory,
+          },
+          timeout: 120000,
+        },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(0);
+    } finally {
+      fs.writeFileSync(readmeFilePath, originalReadme);
+      fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test('README.md llmModelNameByAgentName added cases delete temporary files', () => {
+    const childTemporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-meta-cleanup-'),
+    );
+    const resultDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-meta-result-'),
+    );
+    const resultFilePath = path.join(resultDirectory, 'result.json');
+
+    try {
+      const result = spawnSync(
+        'npx',
+        [
+          'jest',
+          'README.test.ts',
+          '--selectProjects',
+          'backend',
+          '--coverage=false',
+          '--runInBand',
+          '--reporters=default',
+          '--testNamePattern',
+          'README\\.md llmModelNameByAgentName (map deletion reports the missing label|map example reports its label when the opening fence is deleted)',
+          '--json',
+          `--outputFile=${resultFilePath}`,
+        ],
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            README_TEST_META_ONLY: '1',
+            TMPDIR: childTemporaryDirectory,
+          },
+          timeout: 120000,
+        },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(0);
+      expect(
+        fs
+          .readdirSync(childTemporaryDirectory)
+          .filter((entryName) => entryName !== 'node-compile-cache'),
+      ).toEqual([]);
+    } finally {
+      fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+      fs.rmSync(resultDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test('README.md llmModelNameByAgentName added case titles identify every added case', () => {
+    const source = fs.readFileSync(__filename, 'utf8');
+    const addedCaseTitles = [...source.matchAll(/^\s*test\('([^']+)'/gm)].map(
+      ([, title]) => title,
+    );
+
+    expect(addedCaseTitles.length + 2).toBe(2 + addedCaseTitles.length);
+    expect(
+      addedCaseTitles.every((title) =>
+        title.includes('llmModelNameByAgentName'),
+      ),
+    ).toBe(true);
+  });
+}
