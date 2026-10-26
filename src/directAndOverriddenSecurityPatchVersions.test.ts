@@ -95,6 +95,21 @@ describe('direct and overridden dependency patched-version thresholds', () => {
       lockfileKey: 'node_modules/handlebars',
       requiredMinimumVersion: '4.7.10',
     },
+    {
+      packageName: 'http-cache-semantics',
+      lockfileKey: 'node_modules/npm/node_modules/http-cache-semantics',
+      requiredMinimumVersion: '4.2.1',
+    },
+    {
+      packageName: 'ip-address',
+      lockfileKey: 'node_modules/npm/node_modules/ip-address',
+      requiredMinimumVersion: '10.7.1',
+    },
+    {
+      packageName: 'postcss-selector-parser',
+      lockfileKey: 'node_modules/npm/node_modules/postcss-selector-parser',
+      requiredMinimumVersion: '7.1.6',
+    },
   ];
 
   it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
