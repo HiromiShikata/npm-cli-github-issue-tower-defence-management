@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
@@ -133,5 +134,52 @@ test('README.md llmModelNameByAgentName map example is accepted by the fleet rea
     expect(Object.keys(modelMap ?? {}).length).toBeGreaterThan(0);
   } finally {
     fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
+  const readmeFilePath = path.join(__dirname, 'README.md');
+  const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
+  const lines = originalReadme.split('\n');
+  const label = 'Example with the map:';
+  const labelIndex = lines.findIndex((line) => line === label);
+  const openingFenceIndex = lines.findIndex(
+    (line, index) => index > labelIndex && line === '```yaml',
+  );
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  const mutatedReadme = [
+    ...lines.slice(0, labelIndex),
+    ...lines.slice(closingFenceIndex + 1),
+  ].join('\n');
+
+  try {
+    fs.writeFileSync(readmeFilePath, mutatedReadme);
+    const subprocess = spawnSync(
+      'npm',
+      [
+        'run',
+        'test',
+        '--',
+        '--runInBand',
+        '--runTestsByPath',
+        'README.test.ts',
+        '--testNamePattern',
+        '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+      ],
+      { cwd: __dirname, encoding: 'utf8' },
+    );
+    const failureOutput = [subprocess.stdout, subprocess.stderr]
+      .filter((output): output is string => typeof output === 'string')
+      .join('\n');
+    const missingLabel =
+      /README\.md label not found: (Example with the map:)/.exec(
+        failureOutput,
+      )?.[1] ?? null;
+
+    expect(missingLabel).toBe('Example with the map:');
+  } finally {
+    fs.writeFileSync(readmeFilePath, originalReadme);
   }
 });
