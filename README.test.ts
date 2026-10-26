@@ -213,6 +213,7 @@ const snapshotRepositoryFiles = (): string => {
       path: '.',
       type: 'directory',
       permissions: (rootStat.mode & 0o7777).toString(8).padStart(4, '0'),
+      mtimeMs: rootStat.mtimeMs,
       symlinkTarget: '',
       digest: '',
     })}\n`,
@@ -260,6 +261,7 @@ const snapshotRepositoryFiles = (): string => {
           path: relativePath,
           type: entryType,
           permissions: (entryStat.mode & 0o7777).toString(8).padStart(4, '0'),
+          mtimeMs: entryStat.mtimeMs,
           symlinkTarget: entryStat.isSymbolicLink()
             ? fs.readlinkSync(entryPath)
             : '',
