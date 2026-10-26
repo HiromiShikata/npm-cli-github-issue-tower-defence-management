@@ -62,12 +62,12 @@ describe('direct dependency override CVE-2026-85024 (GHSA-3wwx-pv8p-q78v) undici
     {
       packageName: '@actions/http-client > undici',
       lockfileKey: 'node_modules/@actions/http-client/node_modules/undici',
-      requiredMinimumVersion: '6.28.1',
+      requiredMinimumVersion: '6.29.1',
     },
     {
       packageName: 'undici',
       lockfileKey: 'node_modules/undici',
-      requiredMinimumVersion: '7.29.1',
+      requiredMinimumVersion: '7.30.1',
     },
   ];
 
