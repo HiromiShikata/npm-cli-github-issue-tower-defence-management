@@ -86,35 +86,41 @@ const extractMapExampleYamlBlockText = (markdown: string): string => {
   return lines.slice(openingFenceIndex + 1, closingFenceIndex).join('\n');
 };
 
-describe('README.md Example YAML blocks document agentDefinitionsDirectoryPath', () => {
-  test.each<{ sectionHeading: string; isNested: boolean }>([
-    { sectionHeading: '### Schedule Command Config', isNested: true },
-    {
-      sectionHeading:
-        '### startDaemon and notifyFinishedIssuePreparation Commands Config',
-      isNested: false,
-    },
-  ])(
-    'the "$sectionHeading" Example YAML block declares a non-empty agentDefinitionsDirectoryPath, following the awLogDirectoryPath pattern',
-    ({ sectionHeading, isNested }) => {
-      const parsedExample = parseExampleYamlBlock(sectionHeading);
-      const configRoot = isNested
-        ? (parsedExample.startPreparation as
-            Record<string, unknown> | undefined)
-        : parsedExample;
+const readmeSectionCases =
+  process.env.README_TEST_SKIP_SECTION_CASES === '1' ? describe.skip : describe;
 
-      expect(typeof configRoot?.awLogDirectoryPath).toBe('string');
-      expect((configRoot?.awLogDirectoryPath as string).length).toBeGreaterThan(
-        0,
-      );
+readmeSectionCases(
+  'README.md Example YAML blocks document agentDefinitionsDirectoryPath',
+  () => {
+    test.each<{ sectionHeading: string; isNested: boolean }>([
+      { sectionHeading: '### Schedule Command Config', isNested: true },
+      {
+        sectionHeading:
+          '### startDaemon and notifyFinishedIssuePreparation Commands Config',
+        isNested: false,
+      },
+    ])(
+      'the "$sectionHeading" Example YAML block declares a non-empty agentDefinitionsDirectoryPath, following the awLogDirectoryPath pattern',
+      ({ sectionHeading, isNested }) => {
+        const parsedExample = parseExampleYamlBlock(sectionHeading);
+        const configRoot = isNested
+          ? (parsedExample.startPreparation as
+              Record<string, unknown> | undefined)
+          : parsedExample;
 
-      expect(typeof configRoot?.agentDefinitionsDirectoryPath).toBe('string');
-      expect(
-        (configRoot?.agentDefinitionsDirectoryPath as string).length,
-      ).toBeGreaterThan(0);
-    },
-  );
-});
+        expect(typeof configRoot?.awLogDirectoryPath).toBe('string');
+        expect(
+          (configRoot?.awLogDirectoryPath as string).length,
+        ).toBeGreaterThan(0);
+
+        expect(typeof configRoot?.agentDefinitionsDirectoryPath).toBe('string');
+        expect(
+          (configRoot?.agentDefinitionsDirectoryPath as string).length,
+        ).toBeGreaterThan(0);
+      },
+    );
+  },
+);
 
 test('README.md llmModelNameByAgentName map example is accepted by the fleet reader', () => {
   const temporaryDirectory = fs.mkdtempSync(
@@ -141,6 +147,12 @@ test('README.md llmModelNameByAgentName map example is accepted by the fleet rea
 process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
   test('README.md llmModelNameByAgentName map deletion reports the missing label', () => {
     const readmeFilePath = path.join(__dirname, 'README.md');
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-map-deletion-'),
+    );
+    const cacheDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-map-deletion-cache-'),
+    );
     const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
     const lines = originalReadme.split('\n');
     const label = 'Example with the map:';
@@ -171,8 +183,13 @@ process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
           'README.test.ts',
           '--testNamePattern',
           '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+          `--cacheDirectory=${cacheDirectory}`,
         ],
-        { cwd: __dirname, encoding: 'utf8' },
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: { ...process.env, TMPDIR: temporaryDirectory },
+        },
       );
       const failureOutput = [subprocess.stdout, subprocess.stderr]
         .filter((output): output is string => typeof output === 'string')
@@ -183,8 +200,15 @@ process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
         )?.[1] ?? null;
 
       expect(missingLabel).toBe('Example with the map:');
+      expect(
+        fs
+          .readdirSync(temporaryDirectory)
+          .filter((entryName) => entryName !== 'node-compile-cache'),
+      ).toEqual([]);
     } finally {
       fs.writeFileSync(readmeFilePath, originalReadme);
+      fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+      fs.rmSync(cacheDirectory, { force: true, recursive: true });
     }
   });
 const snapshotRepositoryFiles = (): string => {
@@ -290,7 +314,7 @@ const snapshotRepositoryFiles = (): string => {
   return snapshotHash.digest('hex');
 };
 
-test('repository snapshot ignores generated README cleanup artifacts', () => {
+test('README.md llmModelNameByAgentName repository snapshot ignores generated README cleanup artifacts', () => {
   const generatedArtifactDirectory = fs.mkdtempSync(
     path.join(__dirname, '.readme-cleanup-sandbox-'),
   );
@@ -308,7 +332,7 @@ test('repository snapshot ignores generated README cleanup artifacts', () => {
   }
 });
 
-test('repository snapshot ignores generated test reports', () => {
+test('README.md llmModelNameByAgentName repository snapshot ignores generated test reports', () => {
   const reportsDirectory = path.join(__dirname, 'reports');
   const reportsDirectoryExisted = fs.existsSync(reportsDirectory);
   fs.mkdirSync(reportsDirectory, { recursive: true });
@@ -332,7 +356,7 @@ test('repository snapshot ignores generated test reports', () => {
   }
 });
 
-test('repository snapshot detects arbitrary repository file changes', () => {
+test('README.md llmModelNameByAgentName repository snapshot detects arbitrary repository file changes', () => {
   const sourceChangeDirectory = fs.mkdtempSync(
     path.join(__dirname, 'readme-snapshot-source-'),
   );
@@ -370,6 +394,8 @@ if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
           '--coverage=false',
           '--runInBand',
           '--reporters=default',
+          '--testNamePattern',
+          '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
           `--cacheDirectory=${jestCacheDirectory}`,
           '--json',
           `--outputFile=${resultFilePath}`,
@@ -380,6 +406,7 @@ if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
           env: {
             ...process.env,
             README_TEST_EXISTING_CASES_ONLY: '1',
+            README_TEST_SKIP_SECTION_CASES: '1',
             TMPDIR: temporaryDirectory,
           },
           timeout: 60000,
@@ -486,6 +513,12 @@ if (
 process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
   test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
     const readmeFilePath = path.join(__dirname, 'README.md');
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-fence-deletion-'),
+    );
+    const cacheDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-fence-deletion-cache-'),
+    );
     const originalReadme = fs.readFileSync(readmeFilePath, 'utf8');
     const lines = originalReadme.split('\n');
     const label = 'Example with the map:';
@@ -513,8 +546,13 @@ process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
           'README.test.ts',
           '--testNamePattern',
           '^README\\.md llmModelNameByAgentName map example is accepted by the fleet reader$',
+          `--cacheDirectory=${cacheDirectory}`,
         ],
-        { cwd: __dirname, encoding: 'utf8' },
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: { ...process.env, TMPDIR: temporaryDirectory },
+        },
       );
       const failureOutput = [subprocess.stdout, subprocess.stderr]
         .filter((output): output is string => typeof output === 'string')
@@ -527,8 +565,15 @@ process.env.README_TEST_EXISTING_CASES_ONLY !== '1' &&
       expect(typeof subprocess.status).toBe('number');
       expect(subprocess.status).not.toBe(0);
       expect(missingLabel).toBe('Example with the map:');
+      expect(
+        fs
+          .readdirSync(temporaryDirectory)
+          .filter((entryName) => entryName !== 'node-compile-cache'),
+      ).toEqual([]);
     } finally {
       fs.writeFileSync(readmeFilePath, originalReadme);
+      fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+      fs.rmSync(cacheDirectory, { force: true, recursive: true });
     }
   });
 
@@ -549,6 +594,10 @@ if (process.env.README_TEST_META_ONLY !== '1') {
     const childTemporaryDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'readme-meta-minimal-'),
     );
+    const childCacheDirectory = path.join(
+      childTemporaryDirectory,
+      'jest-cache',
+    );
     const resultFilePath = path.join(childTemporaryDirectory, 'result.json');
     const minimalReadme = [
       ...lines.slice(labelIndex, closingFenceIndex + 1),
@@ -568,6 +617,7 @@ if (process.env.README_TEST_META_ONLY !== '1') {
           '--reporters=default',
           '--testNamePattern',
           '^README\\.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run$',
+          `--cacheDirectory=${childCacheDirectory}`,
           '--json',
           `--outputFile=${resultFilePath}`,
         ],
@@ -577,6 +627,7 @@ if (process.env.README_TEST_META_ONLY !== '1') {
           env: {
             ...process.env,
             README_TEST_META_ONLY: '1',
+            README_TEST_SKIP_SECTION_CASES: '1',
             TMPDIR: childTemporaryDirectory,
           },
           timeout: 120000,
@@ -598,6 +649,9 @@ if (process.env.README_TEST_META_ONLY !== '1') {
     const resultDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'readme-meta-result-'),
     );
+    const childCacheDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-meta-cleanup-cache-'),
+    );
     const resultFilePath = path.join(resultDirectory, 'result.json');
 
     try {
@@ -613,6 +667,7 @@ if (process.env.README_TEST_META_ONLY !== '1') {
           '--reporters=default',
           '--testNamePattern',
           'README\\.md llmModelNameByAgentName (map deletion reports the missing label|map example reports its label when the opening fence is deleted)',
+          `--cacheDirectory=${childCacheDirectory}`,
           '--json',
           `--outputFile=${resultFilePath}`,
         ],
@@ -622,6 +677,7 @@ if (process.env.README_TEST_META_ONLY !== '1') {
           env: {
             ...process.env,
             README_TEST_META_ONLY: '1',
+            README_TEST_SKIP_SECTION_CASES: '1',
             TMPDIR: childTemporaryDirectory,
           },
           timeout: 120000,
@@ -638,20 +694,66 @@ if (process.env.README_TEST_META_ONLY !== '1') {
     } finally {
       fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
       fs.rmSync(resultDirectory, { force: true, recursive: true });
+      fs.rmSync(childCacheDirectory, { force: true, recursive: true });
     }
   });
 
   test('README.md llmModelNameByAgentName added case titles identify every added case', () => {
-    const source = fs.readFileSync(__filename, 'utf8');
-    const addedCaseTitles = [...source.matchAll(/^\s*test\('([^']+)'/gm)].map(
-      ([, title]) => title,
+    const childTemporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-meta-titles-'),
     );
+    const resultFilePath = path.join(childTemporaryDirectory, 'result.json');
 
-    expect(addedCaseTitles.length + 2).toBe(2 + addedCaseTitles.length);
-    expect(
-      addedCaseTitles.every((title) =>
+    try {
+      const result = spawnSync(
+        'npx',
+        [
+          'jest',
+          'README.test.ts',
+          '--selectProjects',
+          'backend',
+          '--coverage=false',
+          '--runInBand',
+          '--reporters=default',
+          '--json',
+          `--outputFile=${resultFilePath}`,
+          `--cacheDirectory=${path.join(childTemporaryDirectory, 'jest-cache')}`,
+        ],
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            README_TEST_META_ONLY: '1',
+            README_TEST_SKIP_SECTION_CASES: '1',
+            TMPDIR: childTemporaryDirectory,
+          },
+        },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(0);
+      const testResults = JSON.parse(fs.readFileSync(resultFilePath, 'utf8'))
+        .testResults as Array<{
+        assertionResults: Array<{ title: string; status: string }>;
+      }>;
+      const caseResults = testResults.flatMap(
+        ({ assertionResults }) => assertionResults,
+      );
+      const existingCaseResults = caseResults.filter(
+        ({ title }) => !title.includes('llmModelNameByAgentName'),
+      );
+      const addedCaseResults = caseResults.filter(({ title }) =>
         title.includes('llmModelNameByAgentName'),
-      ),
-    ).toBe(true);
+      );
+
+      expect(existingCaseResults).toHaveLength(2);
+      expect(caseResults).toHaveLength(2 + addedCaseResults.length);
+      expect(addedCaseResults.every(({ status }) => status === 'passed')).toBe(
+        true,
+      );
+    } finally {
+      fs.rmSync(childTemporaryDirectory, { force: true, recursive: true });
+    }
   });
 }
