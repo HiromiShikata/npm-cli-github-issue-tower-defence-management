@@ -227,7 +227,7 @@ const snapshotRepositoryFiles = (): string => {
 };
 
 if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
-  test('README.test.ts leaves no repository file changes after existing README tests run', () => {
+  test('README.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run', () => {
     const temporaryDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'readme-working-tree-test-'),
     );
