@@ -132,17 +132,25 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     },
   ];
 
-  it.each(patchedVersionThresholds)(
-    'resolves $packageName at $lockfileKey at or above $requiredMinimumVersion in package-lock.json',
-    ({ lockfileKey, requiredMinimumVersion }) => {
-      const packages = readPackageLockPackages();
-      const resolvedVersion = readResolvedVersion(packages, lockfileKey);
+  it('resolves every direct and overridden CVE dependency at or above its patched version threshold in package-lock.json', () => {
+    const packages = readPackageLockPackages();
 
-      expect(isVersionAtLeast(resolvedVersion, requiredMinimumVersion)).toBe(
-        true,
-      );
-    },
-  );
+    patchedVersionThresholds.forEach(
+      ({ lockfileKey, requiredMinimumVersion, packageName }) => {
+        const resolvedVersion = readResolvedVersion(packages, lockfileKey);
+
+        if (!isVersionAtLeast(resolvedVersion, requiredMinimumVersion)) {
+          throw new Error(
+            `${packageName} at "${lockfileKey}" is resolved to ${resolvedVersion}, which is below the required patched minimum ${requiredMinimumVersion}`,
+          );
+        }
+
+        expect(isVersionAtLeast(resolvedVersion, requiredMinimumVersion)).toBe(
+          true,
+        );
+      },
+    );
+  });
 
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
