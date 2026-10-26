@@ -327,6 +327,81 @@ if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
       fs.rmSync(temporaryDirectory, { force: true, recursive: true });
     }
   });
+if (process.env.README_TEMP_CLEANUP_CHILD !== '1') {
+  test.each([
+    { name: 'reader returns', expectedExitCode: 0 },
+    { name: 'reader throws', expectedExitCode: 1 },
+  ])(
+    'README.md llmModelNameByAgentName map example leaves no temporary files when the $name',
+    ({ name, expectedExitCode }) => {
+      const sandboxDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'readme-cleanup-sandbox-'),
+      );
+      const temporaryDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'readme-cleanup-temp-'),
+      );
+      const cacheDirectory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'readme-cleanup-cache-'),
+      );
+
+      try {
+        fs.copyFileSync(
+          __filename,
+          path.join(sandboxDirectory, 'README.test.ts'),
+        );
+        const sandboxReadmePath = path.join(sandboxDirectory, 'README.md');
+        fs.copyFileSync(path.join(__dirname, 'README.md'), sandboxReadmePath);
+        fs.symlinkSync(
+          path.join(__dirname, 'src'),
+          path.join(sandboxDirectory, 'src'),
+          'dir',
+        );
+
+        if (name === 'reader throws') {
+          const readmeWithInvalidModelName = fs
+            .readFileSync(sandboxReadmePath, 'utf8')
+            .replace("    developer: 'gpt-5.6-luna'", "    developer: ''");
+          fs.writeFileSync(sandboxReadmePath, readmeWithInvalidModelName);
+        }
+
+        const result = spawnSync(
+          'npx',
+          [
+            'jest',
+            path.join(sandboxDirectory, 'README.test.ts'),
+            '--selectProjects',
+            'backend',
+            '--coverage=false',
+            '--runInBand',
+            '--reporters=default',
+            `--cacheDirectory=${cacheDirectory}`,
+          ],
+          {
+            cwd: __dirname,
+            encoding: 'utf8',
+            env: {
+              ...process.env,
+              README_TEMP_CLEANUP_CHILD: '1',
+              TMPDIR: temporaryDirectory,
+            },
+            timeout: 120000,
+          },
+        );
+
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(expectedExitCode);
+        expect(
+          fs
+            .readdirSync(temporaryDirectory)
+            .filter((entryName) => entryName !== 'node-compile-cache'),
+        ).toEqual([]);
+      } finally {
+        fs.rmSync(sandboxDirectory, { force: true, recursive: true });
+        fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+        fs.rmSync(cacheDirectory, { force: true, recursive: true });
+      }
+    },
+  );
 }
 
 test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
