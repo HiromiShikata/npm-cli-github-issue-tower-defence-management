@@ -11,13 +11,6 @@ import { loadStartPreparationFleetSettings } from './src/adapter/entry-points/cl
 
 const readmeText = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
 
-process.once('exit', () => {
-  fs.rmSync(path.join(os.tmpdir(), 'jest_rs'), {
-    force: true,
-    recursive: true,
-  });
-});
-
 const nextSectionHeadingPattern = /^#{2,3} /m;
 
 const extractExampleYamlBlockText = (
