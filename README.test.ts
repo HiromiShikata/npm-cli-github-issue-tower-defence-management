@@ -327,7 +327,12 @@ if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
       fs.rmSync(temporaryDirectory, { force: true, recursive: true });
     }
   });
-if (process.env.README_TEMP_CLEANUP_CHILD !== '1') {
+}
+
+if (
+  process.env.README_TEMP_CLEANUP_CHILD !== '1' &&
+  process.env.README_TEST_EXISTING_CASES_ONLY !== '1'
+) {
   test.each([
     { name: 'reader returns', expectedExitCode: 0 },
     { name: 'reader throws', expectedExitCode: 1 },
