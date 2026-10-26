@@ -2,8 +2,10 @@
  * @jest-environment node
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
+import { loadStartPreparationFleetSettings } from './src/adapter/entry-points/cli/fleetConfig';
 
 const readmeText = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
 
@@ -53,6 +55,35 @@ const parseExampleYamlBlock = (
   return YAML.parse(yamlBlockText) as Record<string, unknown>;
 };
 
+const extractMapExampleYamlBlockText = (markdown: string): string => {
+  const label = 'Example with the map:';
+  const lines = markdown.split('\n');
+  const labelIndex = lines.findIndex((line) => line === label);
+  if (labelIndex === -1) {
+    throw new Error(`README.md label not found: ${label}`);
+  }
+
+  let openingFenceIndex = labelIndex + 1;
+  while (
+    openingFenceIndex < lines.length &&
+    lines[openingFenceIndex].trim() === ''
+  ) {
+    openingFenceIndex += 1;
+  }
+  if (lines[openingFenceIndex] !== '```yaml') {
+    throw new Error(`YAML opening fence not found after: ${label}`);
+  }
+
+  const closingFenceIndex = lines.findIndex(
+    (line, index) => index > openingFenceIndex && line === '```',
+  );
+  if (closingFenceIndex === -1) {
+    throw new Error(`YAML closing fence not found after: ${label}`);
+  }
+
+  return lines.slice(openingFenceIndex + 1, closingFenceIndex).join('\n');
+};
+
 describe('README.md Example YAML blocks document agentDefinitionsDirectoryPath', () => {
   test.each<{ sectionHeading: string; isNested: boolean }>([
     { sectionHeading: '### Schedule Command Config', isNested: true },
@@ -81,4 +112,26 @@ describe('README.md Example YAML blocks document agentDefinitionsDirectoryPath',
       ).toBeGreaterThan(0);
     },
   );
+});
+
+test('README.md llmModelNameByAgentName map example is accepted by the fleet reader', () => {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'readme-llm-model-map-'),
+  );
+  const fleetConfigFilePath = path.join(
+    temporaryDirectory,
+    'fleet-config.yaml',
+  );
+
+  try {
+    const yamlBlockText = extractMapExampleYamlBlockText(readmeText);
+    fs.writeFileSync(fleetConfigFilePath, yamlBlockText);
+    const settings = loadStartPreparationFleetSettings(fleetConfigFilePath);
+    const modelMap = settings.llmModelNameByAgentName;
+
+    expect(modelMap).not.toBeNull();
+    expect(Object.keys(modelMap ?? {}).length).toBeGreaterThan(0);
+  } finally {
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+  }
 });
