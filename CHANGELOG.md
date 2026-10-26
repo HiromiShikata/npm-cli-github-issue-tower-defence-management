@@ -1,3 +1,10 @@
+## [2.183.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.2...v2.183.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* **story-gate:** include GitHub response diagnostics ([#3639](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3639)) ([2bdd82e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2bdd82efb5b7770da2997c0b3708a7bd3ab9875f))
+
 ## [2.183.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.1...v2.183.2) (2026-10-25)
 
 
