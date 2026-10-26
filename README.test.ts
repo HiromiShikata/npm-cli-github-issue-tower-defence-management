@@ -241,6 +241,9 @@ const snapshotRepositoryFiles = (): string => {
         .relative(__dirname, entryPath)
         .split(path.sep)
         .join('/');
+      if (relativePath === 'reports') {
+        continue;
+      }
       if (relativePath.split('/').includes('.git')) {
         continue;
       }
@@ -301,6 +304,30 @@ test('repository snapshot ignores generated README cleanup artifacts', () => {
     expect(snapshotRepositoryFiles()).toBe(beforeSnapshot);
   } finally {
     fs.rmSync(generatedArtifactDirectory, { force: true, recursive: true });
+  }
+});
+
+test('repository snapshot ignores generated test reports', () => {
+  const reportsDirectory = path.join(__dirname, 'reports');
+  const reportsDirectoryExisted = fs.existsSync(reportsDirectory);
+  fs.mkdirSync(reportsDirectory, { recursive: true });
+  const generatedReportDirectory = fs.mkdtempSync(
+    path.join(reportsDirectory, 'readme-snapshot-report-'),
+  );
+
+  try {
+    const beforeSnapshot = snapshotRepositoryFiles();
+    fs.writeFileSync(
+      path.join(generatedReportDirectory, 'generated-report.txt'),
+      'generated during the test run',
+    );
+
+    expect(snapshotRepositoryFiles()).toBe(beforeSnapshot);
+  } finally {
+    fs.rmSync(generatedReportDirectory, { force: true, recursive: true });
+    if (!reportsDirectoryExisted) {
+      fs.rmSync(reportsDirectory, { force: true, recursive: true });
+    }
   }
 });
 
