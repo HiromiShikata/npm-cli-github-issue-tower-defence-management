@@ -351,6 +351,8 @@ test('README.md llmModelNameByAgentName map example reports its label when the o
         'run',
         'test',
         '--',
+        '--coverage=false',
+        '--reporters=default',
         '--runInBand',
         '--runTestsByPath',
         'README.test.ts',
