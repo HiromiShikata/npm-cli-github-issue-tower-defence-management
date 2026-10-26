@@ -328,3 +328,15 @@ if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
     }
   });
 }
+
+test('README.md llmModelNameByAgentName map example reports its label when the opening fence is deleted', () => {
+  const mutatedReadmeText = readmeText.replace(
+    'Example with the map:\n\n```yaml\n',
+    'Example with the map:\n\n',
+  );
+
+  expect(mutatedReadmeText).not.toBe(readmeText);
+  expect(() => extractMapExampleYamlBlockText(mutatedReadmeText)).toThrow(
+    'Example with the map:',
+  );
+});
