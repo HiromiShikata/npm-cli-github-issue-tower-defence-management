@@ -183,3 +183,96 @@ test('README.md llmModelNameByAgentName map deletion reports the missing label',
     fs.writeFileSync(readmeFilePath, originalReadme);
   }
 });
+const snapshotRepositoryFiles = (): string => {
+  const result = spawnSync(
+    'find',
+    [
+      '.',
+      '-path',
+      './node_modules',
+      '-prune',
+      '-o',
+      '-path',
+      './.git',
+      '-prune',
+      '-o',
+      '-path',
+      './.cdp-tools',
+      '-prune',
+      '-o',
+      '-type',
+      'f',
+      '-printf',
+      '%p %s %T@\n',
+    ],
+    {
+      cwd: __dirname,
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(result.stderr);
+  }
+
+  return result.stdout
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .sort()
+    .join('\n');
+};
+
+if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
+  test('README.test.ts leaves no repository file changes after existing README tests run', () => {
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-working-tree-test-'),
+    );
+    const jestCacheDirectory = path.join(temporaryDirectory, 'jest-cache');
+    const resultFilePath = path.join(temporaryDirectory, 'result.json');
+
+    try {
+      const beforeSnapshot = snapshotRepositoryFiles();
+      const childResult = spawnSync(
+        'npx',
+        [
+          'jest',
+          'README.test.ts',
+          '--selectProjects',
+          'backend',
+          '--coverage=false',
+          '--runInBand',
+          '--reporters=default',
+          `--cacheDirectory=${jestCacheDirectory}`,
+          '--json',
+          `--outputFile=${resultFilePath}`,
+        ],
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            README_TEST_EXISTING_CASES_ONLY: '1',
+            TMPDIR: temporaryDirectory,
+          },
+          timeout: 60000,
+        },
+      );
+
+      if (childResult.error) {
+        throw childResult.error;
+      }
+      if (childResult.status !== 0) {
+        throw new Error(childResult.stderr);
+      }
+
+      const afterSnapshot = snapshotRepositoryFiles();
+      expect(afterSnapshot).toEqual(beforeSnapshot);
+    } finally {
+      fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+}
