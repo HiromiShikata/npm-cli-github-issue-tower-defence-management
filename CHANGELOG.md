@@ -1,3 +1,10 @@
+## [2.183.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.3...v2.183.4) (2026-10-26)
+
+
+### Bug Fixes
+
+* **dependencies:** patch open security alerts ([#3641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3641)) ([2a7b508](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a7b508ae774078cd88c4615b890b8323c9466ab))
+
 ## [2.183.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.2...v2.183.3) (2026-10-26)
 
 
