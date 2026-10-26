@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { loadStartPreparationFleetSettings } from './src/adapter/entry-points/cli/fleetConfig';
 
@@ -162,6 +163,8 @@ test('README.md llmModelNameByAgentName map deletion reports the missing label',
         'run',
         'test',
         '--',
+        '--coverage=false',
+        '--reporters=default',
         '--runInBand',
         '--runTestsByPath',
         'README.test.ts',
@@ -183,3 +186,145 @@ test('README.md llmModelNameByAgentName map deletion reports the missing label',
     fs.writeFileSync(readmeFilePath, originalReadme);
   }
 });
+const snapshotRepositoryFiles = (): string => {
+  const hashRegularFile = (filePath: string): string => {
+    const hash = createHash('sha256');
+    const fileDescriptor = fs.openSync(filePath, 'r');
+    const buffer = Buffer.allocUnsafe(64 * 1024);
+
+    try {
+      let bytesRead = buffer.length;
+      while (bytesRead > 0) {
+        bytesRead = fs.readSync(fileDescriptor, buffer, 0, buffer.length, null);
+        if (bytesRead > 0) {
+          hash.update(buffer.subarray(0, bytesRead));
+        }
+      }
+    } finally {
+      fs.closeSync(fileDescriptor);
+    }
+
+    return hash.digest('hex');
+  };
+
+  const snapshotHash = createHash('sha256');
+  const directoriesToVisit = [__dirname];
+  const rootStat = fs.lstatSync(__dirname);
+  snapshotHash.update(
+    `${JSON.stringify({
+      path: '.',
+      type: 'directory',
+      permissions: (rootStat.mode & 0o7777).toString(8).padStart(4, '0'),
+      symlinkTarget: '',
+      digest: '',
+    })}\n`,
+  );
+
+  while (directoriesToVisit.length > 0) {
+    const directoryPath = directoriesToVisit.pop();
+    if (directoryPath === undefined) {
+      break;
+    }
+
+    const directoryEntries = fs
+      .readdirSync(directoryPath, { withFileTypes: true })
+      .sort((left, right) => (left.name < right.name ? -1 : 1));
+
+    for (const directoryEntry of directoryEntries) {
+      const entryPath = path.join(directoryPath, directoryEntry.name);
+      const relativePath = path
+        .relative(__dirname, entryPath)
+        .split(path.sep)
+        .join('/');
+      if (relativePath.split('/').includes('.git')) {
+        continue;
+      }
+
+      const entryStat = fs.lstatSync(entryPath);
+      const entryType = entryStat.isDirectory()
+        ? 'directory'
+        : entryStat.isFile()
+          ? 'regular'
+          : entryStat.isSymbolicLink()
+            ? 'symlink'
+            : entryStat.isFIFO()
+              ? 'fifo'
+              : entryStat.isSocket()
+                ? 'socket'
+                : entryStat.isBlockDevice()
+                  ? 'block-device'
+                  : entryStat.isCharacterDevice()
+                    ? 'character-device'
+                    : 'unknown';
+
+      snapshotHash.update(
+        `${JSON.stringify({
+          path: relativePath,
+          type: entryType,
+          permissions: (entryStat.mode & 0o7777).toString(8).padStart(4, '0'),
+          symlinkTarget: entryStat.isSymbolicLink()
+            ? fs.readlinkSync(entryPath)
+            : '',
+          digest: entryStat.isFile() ? hashRegularFile(entryPath) : '',
+        })}\n`,
+      );
+
+      if (entryStat.isDirectory()) {
+        directoriesToVisit.push(entryPath);
+      }
+    }
+  }
+
+  return snapshotHash.digest('hex');
+};
+
+if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
+  test('README.md llmModelNameByAgentName test leaves no repository file changes after existing README tests run', () => {
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'readme-working-tree-test-'),
+    );
+    const jestCacheDirectory = path.join(temporaryDirectory, 'jest-cache');
+    const resultFilePath = path.join(temporaryDirectory, 'result.json');
+
+    try {
+      const beforeSnapshot = snapshotRepositoryFiles();
+      const childResult = spawnSync(
+        'npx',
+        [
+          'jest',
+          'README.test.ts',
+          '--selectProjects',
+          'backend',
+          '--coverage=false',
+          '--runInBand',
+          '--reporters=default',
+          `--cacheDirectory=${jestCacheDirectory}`,
+          '--json',
+          `--outputFile=${resultFilePath}`,
+        ],
+        {
+          cwd: __dirname,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            README_TEST_EXISTING_CASES_ONLY: '1',
+            TMPDIR: temporaryDirectory,
+          },
+          timeout: 60000,
+        },
+      );
+
+      if (childResult.error) {
+        throw childResult.error;
+      }
+      if (childResult.status !== 0) {
+        throw new Error(childResult.stderr);
+      }
+
+      const afterSnapshot = snapshotRepositoryFiles();
+      expect(afterSnapshot).toEqual(beforeSnapshot);
+    } finally {
+      fs.rmSync(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+}
