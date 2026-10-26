@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { loadStartPreparationFleetSettings } from './src/adapter/entry-points/cli/fleetConfig';
 
@@ -184,38 +185,95 @@ test('README.md llmModelNameByAgentName map deletion reports the missing label',
   }
 });
 const snapshotRepositoryFiles = (): string => {
-  const result = spawnSync(
-    'find',
-    [
-      '.',
-      '-path',
-      './.git',
-      '-prune',
-      '-o',
-      '-type',
-      'f',
-      '-printf',
-      '%p %s %T@\n',
-    ],
-    {
-      cwd: __dirname,
-      encoding: 'utf8',
-      maxBuffer: 10 * 1024 * 1024,
-    },
+  const hashRegularFile = (filePath: string): string => {
+    const hash = createHash('sha256');
+    const fileDescriptor = fs.openSync(filePath, 'r');
+    const buffer = Buffer.allocUnsafe(64 * 1024);
+
+    try {
+      let bytesRead = buffer.length;
+      while (bytesRead > 0) {
+        bytesRead = fs.readSync(fileDescriptor, buffer, 0, buffer.length, null);
+        if (bytesRead > 0) {
+          hash.update(buffer.subarray(0, bytesRead));
+        }
+      }
+    } finally {
+      fs.closeSync(fileDescriptor);
+    }
+
+    return hash.digest('hex');
+  };
+
+  const snapshotHash = createHash('sha256');
+  const directoriesToVisit = [__dirname];
+  const rootStat = fs.lstatSync(__dirname);
+  snapshotHash.update(
+    `${JSON.stringify({
+      path: '.',
+      type: 'directory',
+      permissions: (rootStat.mode & 0o7777).toString(8).padStart(4, '0'),
+      symlinkTarget: '',
+      digest: '',
+    })}\n`,
   );
 
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(result.stderr);
+  while (directoriesToVisit.length > 0) {
+    const directoryPath = directoriesToVisit.pop();
+    if (directoryPath === undefined) {
+      break;
+    }
+
+    const directoryEntries = fs
+      .readdirSync(directoryPath, { withFileTypes: true })
+      .sort((left, right) => (left.name < right.name ? -1 : 1));
+
+    for (const directoryEntry of directoryEntries) {
+      const entryPath = path.join(directoryPath, directoryEntry.name);
+      const relativePath = path
+        .relative(__dirname, entryPath)
+        .split(path.sep)
+        .join('/');
+      if (relativePath.split('/').includes('.git')) {
+        continue;
+      }
+
+      const entryStat = fs.lstatSync(entryPath);
+      const entryType = entryStat.isDirectory()
+        ? 'directory'
+        : entryStat.isFile()
+          ? 'regular'
+          : entryStat.isSymbolicLink()
+            ? 'symlink'
+            : entryStat.isFIFO()
+              ? 'fifo'
+              : entryStat.isSocket()
+                ? 'socket'
+                : entryStat.isBlockDevice()
+                  ? 'block-device'
+                  : entryStat.isCharacterDevice()
+                    ? 'character-device'
+                    : 'unknown';
+
+      snapshotHash.update(
+        `${JSON.stringify({
+          path: relativePath,
+          type: entryType,
+          permissions: (entryStat.mode & 0o7777).toString(8).padStart(4, '0'),
+          symlinkTarget: entryStat.isSymbolicLink()
+            ? fs.readlinkSync(entryPath)
+            : '',
+          digest: entryStat.isFile() ? hashRegularFile(entryPath) : '',
+        })}\n`,
+      );
+
+      if (entryStat.isDirectory()) {
+        directoriesToVisit.push(entryPath);
+      }
+    }
   }
 
-  return result.stdout
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .sort()
-    .join('\n');
+  return snapshotHash.digest('hex');
 };
 
 if (process.env.README_TEST_EXISTING_CASES_ONLY !== '1') {
