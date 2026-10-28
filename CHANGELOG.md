@@ -1,3 +1,10 @@
+## [2.183.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.5...v2.183.6) (2026-10-28)
+
+
+### Bug Fixes
+
+* **session:** remove fleet-specific title suffix from issue url extraction ([#3659](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3659)) ([f960b90](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f960b90b89f01bec55108f03a96ab0d696c02774))
+
 ## [2.183.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.4...v2.183.5) (2026-10-26)
 
 
