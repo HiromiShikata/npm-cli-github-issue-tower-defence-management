@@ -1,13 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
   ProcClaudeInteractiveSessionRepository,
-  URGENT_TASKFORCE_LEADER_TITLE_SUFFIX,
   extractIssueUrl,
 } from './ProcClaudeInteractiveSessionRepository';
-import { secretaryScopeLibPath } from './secretaryScopeLibPath';
 
 type FakeProcess = {
   pid: number;
@@ -16,6 +13,7 @@ type FakeProcess = {
 };
 
 const issueUrl = 'https://github.com/HiromiShikata/example/issues/1';
+const pullRequestUrl = 'https://github.com/HiromiShikata/example/pull/2';
 
 const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
 
@@ -188,95 +186,101 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
     expect(repository.listInteractiveSessions()).toEqual([]);
   });
 
-  it('extracts the issue url from the --name argument value, stripping any urgent-taskforce-leader title suffix regardless of how many times it repeats, and leaving a near-miss suffix or an absent --name argument unaffected', () => {
+  it('returns the leading GitHub issue or pull request url of the --name argument value, ignoring any text after the number, and leaves any other value unchanged', () => {
     const testCases: {
       name: string;
       commandArguments: string[];
       expectedIssueUrl: string | null;
     }[] = [
       {
-        name: 'no suffix (existing case, regression check)',
+        name: 'plain issue url',
         commandArguments: ['claude', '--name', issueUrl],
         expectedIssueUrl: issueUrl,
       },
       {
-        name: 'suffix appears once',
+        name: 'one title suffix after the issue url',
+        commandArguments: ['claude', '--name', `${issueUrl}/title-suffix`],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'another title suffix after the issue url',
+        commandArguments: ['claude', '--name', `${issueUrl}/another-suffix`],
+        expectedIssueUrl: issueUrl,
+      },
+      {
+        name: 'one title suffix repeated twice',
         commandArguments: [
           'claude',
           '--name',
-          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
+          `${issueUrl}/title-suffix/title-suffix`,
         ],
         expectedIssueUrl: issueUrl,
       },
       {
-        name: 'suffix appears twice in a row',
+        name: 'one title suffix repeated six times',
         commandArguments: [
           'claude',
           '--name',
-          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
+          `${issueUrl}${'/title-suffix'.repeat(6)}`,
         ],
         expectedIssueUrl: issueUrl,
       },
       {
-        name: 'suffix repeated six times in a row (maximum stacked count observed in production)',
-        commandArguments: [
-          'claude',
-          '--name',
-          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX.repeat(6)}`,
-        ],
+        name: 'text directly after the issue number',
+        commandArguments: ['claude', '--name', `${issueUrl}-extra`],
         expectedIssueUrl: issueUrl,
       },
       {
-        name: 'not a url (existing case, regression check)',
+        name: 'plain pull request url',
+        commandArguments: ['claude', '--name', pullRequestUrl],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
+        name: 'one title suffix after the pull request url',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${pullRequestUrl}/title-suffix`,
+        ],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
+        name: 'text directly after the pull request number',
+        commandArguments: ['claude', '--name', `${pullRequestUrl}-extra`],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
+        name: 'non-GitHub https url is returned unchanged',
+        commandArguments: [
+          'claude',
+          '--name',
+          'https://example.com/owner/repo/issues/1/title-suffix',
+        ],
+        expectedIssueUrl:
+          'https://example.com/owner/repo/issues/1/title-suffix',
+      },
+      {
+        name: 'not a url',
         commandArguments: ['claude', '--name', 'just-a-label'],
         expectedIssueUrl: null,
       },
       {
-        name: 'resembles but does not exactly match the suffix, so it must not be truncated',
-        commandArguments: [
-          'claude',
-          '--name',
-          `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}-extra`,
-        ],
-        expectedIssueUrl: `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}-extra`,
-      },
-      {
-        name: 'no --name argument present (existing case, regression check)',
+        name: 'no --name argument present',
         commandArguments: ['claude'],
         expectedIssueUrl: null,
       },
     ];
 
-    for (const testCase of testCases) {
-      expect(extractIssueUrl(testCase.commandArguments)).toBe(
-        testCase.expectedIssueUrl,
-      );
-    }
+    expect(
+      testCases.map((testCase) => ({
+        name: testCase.name,
+        issueUrl: extractIssueUrl(testCase.commandArguments),
+      })),
+    ).toEqual(
+      testCases.map((testCase) => ({
+        name: testCase.name,
+        issueUrl: testCase.expectedIssueUrl,
+      })),
+    );
   });
-
-  const scopeLibPath = secretaryScopeLibPath();
-  const urgentTaskforceLeaderSuffixContractTest =
-    scopeLibPath === null ? it.skip : it;
-  urgentTaskforceLeaderSuffixContractTest(
-    'URGENT_TASKFORCE_LEADER_TITLE_SUFFIX matches the suffix the cl_claude_session_title shell function actually appends',
-    () => {
-      if (scopeLibPath === null) {
-        return;
-      }
-      const sessionTitle = execFileSync(
-        'bash',
-        [
-          '-c',
-          'source "$1" && cl_claude_session_title "$2"',
-          'bash',
-          scopeLibPath,
-          issueUrl,
-        ],
-        { encoding: 'utf8' },
-      );
-      expect(sessionTitle).toBe(
-        `${issueUrl}${URGENT_TASKFORCE_LEADER_TITLE_SUFFIX}`,
-      );
-    },
-  );
 });
