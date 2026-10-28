@@ -13,6 +13,7 @@ type FakeProcess = {
 };
 
 const issueUrl = 'https://github.com/HiromiShikata/example/issues/1';
+const pullRequestUrl = 'https://github.com/HiromiShikata/example/pull/2';
 
 const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
 
@@ -185,7 +186,7 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
     expect(repository.listInteractiveSessions()).toEqual([]);
   });
 
-  it('returns the leading GitHub issue url of the --name argument value, ignoring any text after the issue number, and leaves any other value unchanged', () => {
+  it('returns the leading GitHub issue or pull request url of the --name argument value, ignoring any text after the number, and leaves any other value unchanged', () => {
     const testCases: {
       name: string;
       commandArguments: string[];
@@ -230,6 +231,25 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
         expectedIssueUrl: issueUrl,
       },
       {
+        name: 'plain pull request url',
+        commandArguments: ['claude', '--name', pullRequestUrl],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
+        name: 'one title suffix after the pull request url',
+        commandArguments: [
+          'claude',
+          '--name',
+          `${pullRequestUrl}/title-suffix`,
+        ],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
+        name: 'text directly after the pull request number',
+        commandArguments: ['claude', '--name', `${pullRequestUrl}-extra`],
+        expectedIssueUrl: pullRequestUrl,
+      },
+      {
         name: 'non-GitHub https url is returned unchanged',
         commandArguments: [
           'claude',
@@ -251,14 +271,16 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
       },
     ];
 
-    for (const testCase of testCases) {
-      expect({
+    expect(
+      testCases.map((testCase) => ({
         name: testCase.name,
         issueUrl: extractIssueUrl(testCase.commandArguments),
-      }).toEqual({
+      })),
+    ).toEqual(
+      testCases.map((testCase) => ({
         name: testCase.name,
         issueUrl: testCase.expectedIssueUrl,
-      });
-    }
+      })),
+    );
   });
 });
