@@ -10,31 +10,24 @@ const OAUTH_TOKEN_ENVIRON_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';
 const SESSION_ID_ENVIRON_KEY = 'CLAUDE_CODE_SESSION_ID';
 const NAME_ARGUMENT = '--name';
 const TAKE_OWNERSHIP_MARKER = 'Take ownership';
-export const URGENT_TASKFORCE_LEADER_TITLE_SUFFIX = '/urgent-taskforce-leader';
-
 const isIssueUrl = (value: string): boolean =>
   value.startsWith('http://') || value.startsWith('https://');
 
 const parseCommandLineArguments = (cmdline: string): string[] =>
   cmdline.split('\0').filter((argument) => argument.length > 0);
 
-const stripUrgentTaskforceLeaderTitleSuffix = (value: string): string => {
-  let strippedValue = value;
-  while (strippedValue.endsWith(URGENT_TASKFORCE_LEADER_TITLE_SUFFIX)) {
-    strippedValue = strippedValue.slice(
-      0,
-      strippedValue.length - URGENT_TASKFORCE_LEADER_TITLE_SUFFIX.length,
-    );
-  }
-  return strippedValue;
-};
+const GITHUB_ISSUE_URL_PATTERN =
+  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/\d+/;
+
+const extractLeadingGitHubIssueUrl = (value: string): string =>
+  GITHUB_ISSUE_URL_PATTERN.exec(value)?.[0] ?? value;
 
 export const extractIssueUrl = (commandArguments: string[]): string | null => {
   for (let index = 0; index < commandArguments.length - 1; index += 1) {
     if (commandArguments[index] === NAME_ARGUMENT) {
       const value = commandArguments[index + 1] ?? '';
       if (isIssueUrl(value)) {
-        return stripUrgentTaskforceLeaderTitleSuffix(value);
+        return extractLeadingGitHubIssueUrl(value);
       }
     }
   }
