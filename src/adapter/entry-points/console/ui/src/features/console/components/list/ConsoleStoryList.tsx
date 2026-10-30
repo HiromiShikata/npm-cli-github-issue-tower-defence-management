@@ -18,13 +18,6 @@ type RowReorderState = {
   error: string | null;
 };
 
-const OWNER_ACTIONABLE_STATUS_NAMES = new Set<string>([
-  'Todo by human',
-  'Awaiting Owner',
-  'Failed Preparation',
-  'In Tmux by human',
-]);
-
 type StoryTaskListProps = {
   items: ConsoleListItem[];
   onOpenItem: (item: ConsoleListItem) => void;
@@ -249,24 +242,9 @@ export const ConsoleStoryList = ({
     }
   };
 
-  const visibleStories = stories.filter((entry) => {
-    if (!showArchived && entry.color === 'GRAY') {
-      return false;
-    }
-    const items = entry.items ?? [];
-    if (
-      !showDone &&
-      items.length > 0 &&
-      items.every(
-        (item) =>
-          item.status !== null &&
-          !OWNER_ACTIONABLE_STATUS_NAMES.has(item.status),
-      )
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const visibleStories = stories.filter(
+    (entry) => showArchived || entry.color !== 'GRAY',
+  );
 
   const taskCreateEntry =
     taskCreateDialogId !== null
@@ -336,6 +314,9 @@ export const ConsoleStoryList = ({
               expandedTasksOptionId === entry.storyOptionId;
             const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
+            const visibleTaskItems = (entry.items ?? []).filter(
+              (item) => showDone || item.status !== 'Done',
+            );
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -481,7 +462,10 @@ export const ConsoleStoryList = ({
                   <p className="console-story-description">{description}</p>
                 )}
                 {isTasksExpanded && (
-                  <StoryTaskList items={entry.items} onOpenItem={onOpenItem} />
+                  <StoryTaskList
+                    items={visibleTaskItems}
+                    onOpenItem={onOpenItem}
+                  />
                 )}
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
