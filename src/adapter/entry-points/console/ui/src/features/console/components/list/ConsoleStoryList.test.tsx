@@ -223,6 +223,47 @@ const taskTitleMatchesStoryNameStoryEntry: ConsoleStoryEntry = {
   ],
 };
 
+const grayDoneStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Archived Done Story',
+  storyOptionId: 'gray-done-id',
+  color: 'GRAY',
+  description: '',
+  openItemCount: 1,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      status: 'Done',
+      url: 'https://github.com/demo/repo/issues/9400',
+    }),
+  ],
+};
+
+const taskRowsStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Task Row Story',
+  storyOptionId: 'task-row-id',
+  color: 'BLUE',
+  description: '',
+  openItemCount: 3,
+  storyViewUrl: null,
+  items: [
+    makeItem({
+      title: 'Done task',
+      status: 'Done',
+      url: 'https://github.com/demo/repo/issues/9500',
+    }),
+    makeItem({
+      title: 'Awaiting workspace task',
+      status: 'Awaiting Workspace',
+      url: 'https://github.com/demo/repo/issues/9501',
+    }),
+    makeItem({
+      title: 'Unset status task',
+      status: null,
+      url: 'https://github.com/demo/repo/issues/9502',
+    }),
+  ],
+};
+
 const defaultProps = {
   stories: storyEntries,
   isLoading: false,
@@ -864,15 +905,15 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Move to Okinawa')).toBeInTheDocument();
     });
 
-    it('hides a story whose tasks are all at Status Done when showDone is false', () => {
-      const { queryByText } = render(
+    it('shows a story whose tasks are all at Status Done when showDone is false', () => {
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[...storyEntries, allDoneStoryEntry]}
           showDone={false}
         />,
       );
-      expect(queryByText('Completed Story')).toBeNull();
+      expect(getByText('Completed Story')).toBeInTheDocument();
     });
 
     it('shows a story whose tasks are all at Status Done when showDone is true, independently of showArchived', () => {
@@ -887,15 +928,15 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Completed Story')).toBeInTheDocument();
     });
 
-    it('hides a story whose tasks mix Status Done with another non-owner-actionable status when showDone is false', () => {
-      const { queryByText } = render(
+    it('shows a story whose tasks mix Status Done with another status when showDone is false', () => {
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[...storyEntries, partiallyDoneStoryEntry]}
           showDone={false}
         />,
       );
-      expect(queryByText('In Progress Story')).toBeNull();
+      expect(getByText('In Progress Story')).toBeInTheDocument();
     });
 
     it('keeps a zero-task, non-gray story visible when showDone is false', () => {
@@ -974,19 +1015,20 @@ describe('ConsoleStoryList', () => {
       expect(getByText('No active stories')).toBeInTheDocument();
     });
 
-    it('shows No active stories when all stories are fully Done and showDone is false', () => {
-      const { getByText } = render(
+    it('shows the fully Done story instead of No active stories when showDone is false', () => {
+      const { getByText, queryByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[allDoneStoryEntry]}
           showDone={false}
         />,
       );
-      expect(getByText('No active stories')).toBeInTheDocument();
+      expect(getByText('Completed Story')).toBeInTheDocument();
+      expect(queryByText('No active stories')).toBeNull();
     });
 
-    it('hides each story whose tasks are all at a non-owner-actionable, non-Done status when showDone is false', () => {
-      const { queryByText, getByText } = render(
+    it('shows each story whose tasks are all at a non-owner-actionable, non-Done status when showDone is false', () => {
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[
@@ -997,7 +1039,7 @@ describe('ConsoleStoryList', () => {
         />,
       );
       nonOwnerActionableHiddenCandidateCases.forEach((testCase) => {
-        expect(queryByText(testCase.storyName)).toBeNull();
+        expect(getByText(testCase.storyName)).toBeInTheDocument();
       });
       expect(getByText('TDPM Console port')).toBeInTheDocument();
       expect(getByText('Move to Okinawa')).toBeInTheDocument();
@@ -1016,15 +1058,15 @@ describe('ConsoleStoryList', () => {
       });
     });
 
-    it('shows a story immediately without remounting when the Done switch is turned on after being hidden only under the extended owner-actionable rule', () => {
-      const { queryByText, getByText, rerender } = render(
+    it('keeps a story visible across a showDone toggle when its tasks are only at Awaiting Workspace', () => {
+      const { getByText, rerender } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[...storyEntries, hiddenOnlyByExtendedRuleStoryEntry]}
           showDone={false}
         />,
       );
-      expect(queryByText('Awaiting Workspace Toggle Story')).toBeNull();
+      expect(getByText('Awaiting Workspace Toggle Story')).toBeInTheDocument();
       rerender(
         <ConsoleStoryList
           {...defaultProps}
@@ -1062,15 +1104,119 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Zero Task Toggle Story')).toBeInTheDocument();
     });
 
-    it('hides a story whose storyName matches the title of one of its own tasks when every task is outside the owner-actionable status set', () => {
-      const { queryByText } = render(
+    it('shows a story whose storyName matches the title of one of its own tasks when showDone is false', () => {
+      const { getByText } = render(
         <ConsoleStoryList
           {...defaultProps}
           stories={[...storyEntries, taskTitleMatchesStoryNameStoryEntry]}
           showDone={false}
         />,
       );
-      expect(queryByText('Task/921')).toBeNull();
+      expect(getByText('Task/921')).toBeInTheDocument();
+    });
+
+    it('keeps every story visible whatever its task statuses are, for both showDone values', () => {
+      const storyCases: ConsoleStoryEntry[] = [
+        allDoneStoryEntry,
+        partiallyDoneStoryEntry,
+        hiddenOnlyByExtendedRuleStoryEntry,
+        zeroTaskStoryEntryForToggleTest,
+        ...nonOwnerActionableHiddenCandidateEntries,
+      ];
+      const missingStoryCases: string[] = [];
+      [false, true].forEach((showDone) => {
+        storyCases.forEach((storyEntry) => {
+          const { queryByText, unmount } = render(
+            <ConsoleStoryList
+              {...defaultProps}
+              stories={[storyEntry]}
+              showDone={showDone}
+            />,
+          );
+          if (queryByText(storyEntry.storyName) === null) {
+            missingStoryCases.push(
+              `showDone=${showDone}: ${storyEntry.storyName}`,
+            );
+          }
+          unmount();
+        });
+      });
+      expect(missingStoryCases).toEqual([]);
+    });
+
+    it('hides Done task rows when showDone is false and shows every task row when showDone is true', () => {
+      const taskRowCases: Array<{
+        showDone: boolean;
+        title: string;
+        expectedRendered: boolean;
+      }> = [
+        { showDone: false, title: 'Done task', expectedRendered: false },
+        {
+          showDone: false,
+          title: 'Awaiting workspace task',
+          expectedRendered: true,
+        },
+        { showDone: false, title: 'Unset status task', expectedRendered: true },
+        { showDone: true, title: 'Done task', expectedRendered: true },
+        {
+          showDone: true,
+          title: 'Awaiting workspace task',
+          expectedRendered: true,
+        },
+        { showDone: true, title: 'Unset status task', expectedRendered: true },
+      ];
+      const mismatches: string[] = [];
+      taskRowCases.forEach(({ showDone, title, expectedRendered }) => {
+        const { getByRole, queryByText, unmount } = render(
+          <ConsoleStoryList
+            {...defaultProps}
+            stories={[taskRowsStoryEntry]}
+            showDone={showDone}
+          />,
+        );
+        fireEvent.click(getByRole('button', { name: 'Show tasks' }));
+        const isRendered = queryByText(title) !== null;
+        if (isRendered !== expectedRendered) {
+          mismatches.push(
+            `showDone=${showDone}: "${title}" rendered=${isRendered}`,
+          );
+        }
+        unmount();
+      });
+      expect(mismatches).toEqual([]);
+    });
+
+    it('lists a gray story only when showArchived is true, whatever showDone is', () => {
+      const archivedCases: Array<{
+        showArchived: boolean;
+        showDone: boolean;
+        expectedVisible: boolean;
+      }> = [
+        { showArchived: false, showDone: false, expectedVisible: false },
+        { showArchived: false, showDone: true, expectedVisible: false },
+        { showArchived: true, showDone: false, expectedVisible: true },
+        { showArchived: true, showDone: true, expectedVisible: true },
+      ];
+      const mismatches: string[] = [];
+      archivedCases.forEach(({ showArchived, showDone, expectedVisible }) => {
+        const { getByText, queryByText, unmount } = render(
+          <ConsoleStoryList
+            {...defaultProps}
+            stories={[...storyEntries, grayDoneStoryEntry]}
+            showArchived={showArchived}
+            showDone={showDone}
+          />,
+        );
+        expect(getByText('TDPM Console port')).toBeInTheDocument();
+        const isVisible = queryByText('Archived Done Story') !== null;
+        if (isVisible !== expectedVisible) {
+          mismatches.push(
+            `showArchived=${showArchived} showDone=${showDone}: visible=${isVisible}`,
+          );
+        }
+        unmount();
+      });
+      expect(mismatches).toEqual([]);
     });
   });
 
