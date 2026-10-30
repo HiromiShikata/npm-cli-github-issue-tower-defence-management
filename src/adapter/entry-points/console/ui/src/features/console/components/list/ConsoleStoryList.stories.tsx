@@ -340,8 +340,7 @@ export const TasksExpandedWithDoneRowsHidden: Story = {
             title: 'Hide Done task rows while the Done switch is off',
             url: 'https://github.com/demo/repo/issues/3660',
             repo: 'demo/repo',
-            nameWithOwner:
-              'demo/repo',
+            nameWithOwner: 'demo/repo',
             projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3660',
             itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3660',
             isPr: false,
@@ -360,8 +359,7 @@ export const TasksExpandedWithDoneRowsHidden: Story = {
             title: 'Keep stories visible whatever their task statuses are',
             url: 'https://github.com/demo/repo/issues/3661',
             repo: 'demo/repo',
-            nameWithOwner:
-              'demo/repo',
+            nameWithOwner: 'demo/repo',
             projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3661',
             itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3661',
             isPr: false,
@@ -370,9 +368,7 @@ export const TasksExpandedWithDoneRowsHidden: Story = {
             agent: 'developer',
             nextActionDate: '2026-10-31',
             nextActionHour: 9,
-            dependedIssueUrls: [
-              'https://github.com/demo/repo/issues/3660',
-            ],
+            dependedIssueUrls: ['https://github.com/demo/repo/issues/3660'],
             labels: [],
             createdAt: '2026-10-21T08:00:00.000Z',
             relatedOpenPullRequestUrls: [],
@@ -382,8 +378,7 @@ export const TasksExpandedWithDoneRowsHidden: Story = {
             title: 'Review Stories tab screenshots built from fixture data',
             url: 'https://github.com/demo/repo/issues/3662',
             repo: 'demo/repo',
-            nameWithOwner:
-              'demo/repo',
+            nameWithOwner: 'demo/repo',
             projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3662',
             itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3662',
             isPr: false,
