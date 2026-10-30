@@ -1,3 +1,10 @@
+## [2.183.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.6...v2.183.7) (2026-10-30)
+
+
+### Bug Fixes
+
+* **console-ui:** hide only Done task rows with the Done switch ([#3660](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3660)) ([753e445](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/753e44548e6370b70b441a077a7d3686f2346302))
+
 ## [2.183.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.5...v2.183.6) (2026-10-28)
 
 
