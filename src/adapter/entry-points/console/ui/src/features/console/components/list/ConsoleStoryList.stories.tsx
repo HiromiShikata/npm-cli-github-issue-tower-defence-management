@@ -323,3 +323,88 @@ export const TasksExpanded: Story = {
     await userEvent.click(firstChevron);
   },
 };
+
+export const TasksExpandedWithDoneRowsHidden: Story = {
+  args: {
+    stories: [
+      {
+        storyName: 'Stories tab task visibility',
+        storyOptionId: '6e0b5f3a',
+        color: 'BLUE' as const,
+        description: 'Keep Stories tab task rows in step with the Done switch.',
+        openItemCount: 2,
+        storyViewUrl: null,
+        items: [
+          {
+            number: 3660,
+            title: 'Hide Done task rows while the Done switch is off',
+            url: 'https://github.com/demo/repo/issues/3660',
+            repo: 'demo/repo',
+            nameWithOwner: 'demo/repo',
+            projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3660',
+            itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3660',
+            isPr: false,
+            story: 'Stories tab task visibility',
+            status: 'Done',
+            agent: 'developer',
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
+            labels: [],
+            createdAt: '2026-10-20T08:00:00.000Z',
+            relatedOpenPullRequestUrls: [],
+          },
+          {
+            number: 3661,
+            title: 'Keep stories visible whatever their task statuses are',
+            url: 'https://github.com/demo/repo/issues/3661',
+            repo: 'demo/repo',
+            nameWithOwner: 'demo/repo',
+            projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3661',
+            itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3661',
+            isPr: false,
+            story: 'Stories tab task visibility',
+            status: 'In Progress',
+            agent: 'developer',
+            nextActionDate: '2026-10-31',
+            nextActionHour: 9,
+            dependedIssueUrls: ['https://github.com/demo/repo/issues/3660'],
+            labels: [],
+            createdAt: '2026-10-21T08:00:00.000Z',
+            relatedOpenPullRequestUrls: [],
+          },
+          {
+            number: 3662,
+            title: 'Review Stories tab screenshots built from fixture data',
+            url: 'https://github.com/demo/repo/issues/3662',
+            repo: 'demo/repo',
+            nameWithOwner: 'demo/repo',
+            projectItemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3662',
+            itemId: 'PVTI_lAHOAGJHa84AFWnrzgSb3662',
+            isPr: false,
+            story: 'Stories tab task visibility',
+            status: 'Todo by human',
+            agent: null,
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
+            labels: [],
+            createdAt: '2026-10-22T08:00:00.000Z',
+            relatedOpenPullRequestUrls: [],
+          },
+        ],
+      },
+    ],
+    isLoading: false,
+    error: null,
+    showArchived: false,
+    showDone: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
+    await userEvent.click(firstChevron);
+  },
+};
