@@ -660,7 +660,7 @@ describe('GithubStoryGateIssueRepository', () => {
   });
 
   describe('listClosingPullRequests', () => {
-    it('maps pull requests that close the issue once each', async () => {
+    it('maps referenced pull requests once each', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         jsonResponse({
           data: {
@@ -711,6 +711,7 @@ describe('GithubStoryGateIssueRepository', () => {
       expect(pullRequests).toEqual([
         { url: 'https://github.com/owner/repo/pull/9', state: 'OPEN' },
         { url: 'https://github.com/owner/repo/pull/10', state: 'MERGED' },
+        { url: 'https://github.com/owner/repo/pull/11', state: 'OPEN' },
       ]);
       expect(requestOf(fetchSpy, 0)).toEqual({
         url: GRAPHQL_URL,

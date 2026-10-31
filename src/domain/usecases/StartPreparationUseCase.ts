@@ -14,6 +14,7 @@ import {
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
+import { pullRequestReferencedIssueUrls } from './pullRequestReferencedIssueUrls';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { DISABLED_STORY_OPTION_COLOR } from './storyGate/storyValueClassify';
 import type { AgentDefinitionRepository } from './adapter-interfaces/AgentDefinitionRepository';
@@ -313,7 +314,7 @@ export class StartPreparationUseCase {
       if (!issue.isPr || issue.isClosed) {
         continue;
       }
-      for (const issueUrl of issue.closingIssueReferenceUrls) {
+      for (const issueUrl of pullRequestReferencedIssueUrls(issue)) {
         issueUrlsWithOpenPrs.add(issueUrl);
       }
     }

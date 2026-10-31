@@ -1,13 +1,6 @@
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import {
-  AWAITING_OWNER_STATUS_NAME,
-  DONE_STATUS_NAME,
-} from '../entities/WorkflowStatus';
-import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
-import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
-import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 export class QualityCheckAdvanceUseCase {
   constructor(
@@ -17,84 +10,10 @@ export class QualityCheckAdvanceUseCase {
     >,
   ) {}
 
-  run = async (params: {
+  run = async (_params: {
     project: Project;
     issues: Issue[];
     awaitingOwnerStatusName?: string;
     evaluatedAt?: Date;
-  }): Promise<number> => {
-    const qualityCheckStatusName =
-      params.awaitingOwnerStatusName ?? AWAITING_OWNER_STATUS_NAME;
-    const evaluatedAt = params.evaluatedAt ?? new Date();
-    const doneStatusOption = params.project.status.statuses.find(
-      (s) => s.name === DONE_STATUS_NAME,
-    );
-    if (!doneStatusOption) {
-      console.error(
-        `Done status option '${DONE_STATUS_NAME}' not found in project.`,
-      );
-      return 0;
-    }
-
-    const issueUrlsWithMergedPr = new Set<string>();
-    for (const item of params.issues) {
-      if (item.isPr && item.state === 'MERGED') {
-        for (const referencedIssueUrl of item.closingIssueReferenceUrls) {
-          issueUrlsWithMergedPr.add(referencedIssueUrl);
-        }
-      }
-    }
-
-    const itemsToAdvance = params.issues.filter(
-      (issue) =>
-        issue.status === qualityCheckStatusName &&
-        !issue.isClosed &&
-        issue.stateReason !== 'REOPENED' &&
-        issue.dependedIssueUrls.length === 0 &&
-        !issueReactivationTriggerIsPending(issue, evaluatedAt) &&
-        issueUrlsWithMergedPr.has(issue.url),
-    );
-
-    let advancedCount = 0;
-    const errors: unknown[] = [];
-    for (const issue of itemsToAdvance) {
-      try {
-        const staleness = await issueSnapshotStalenessCheck({
-          issueRepository: this.issueRepository,
-          project: params.project,
-          snapshotIssue: issue,
-          checkedFieldNames: ['status', 'isClosed'],
-          skippedWriteDescription: `the ${DONE_STATUS_NAME} Status write of a ${qualityCheckStatusName} item with a merged pull request`,
-        });
-        if (staleness.type !== 'current') {
-          continue;
-        }
-        try {
-          await this.issueRepository.updateStatus(
-            params.project,
-            staleness.liveIssue,
-            doneStatusOption.id,
-          );
-        } catch (error) {
-          if (error instanceof StaleProjectItemError) {
-            console.warn(
-              `QualityCheckAdvanceUseCase: project item no longer exists in GitHub, skipping. issueUrl: ${issue.url} itemId: ${error.itemId}`,
-            );
-            continue;
-          }
-          throw error;
-        }
-        advancedCount++;
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    if (errors.length > 0) {
-      throw new AggregateError(
-        errors,
-        `Failed to advance ${errors.length} issue(s) from ${qualityCheckStatusName} to ${DONE_STATUS_NAME}`,
-      );
-    }
-    return advancedCount;
-  };
+  }): Promise<number> => 0;
 }

@@ -1310,6 +1310,11 @@ describe('GraphqlProjectItemRepository', () => {
           expected: [],
         },
         {
+          name: 'extracts a same-repository URL from a Ref line',
+          body: 'Ref https://github.com/owner/repo/issues/5',
+          expected: ['https://github.com/owner/repo/issues/5'],
+        },
+        {
           name: 'de-duplicates the same cross-repo URL appearing twice',
           body: 'https://github.com/other/repo/issues/99 and again https://github.com/other/repo/issues/99',
           expected: ['https://github.com/other/repo/issues/99'],
