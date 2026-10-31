@@ -37,7 +37,7 @@ get_issue_body() {
   pr_body_with_urls_normalized=$(printf '%s' "${pr_body}" | sed -E 's@https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)@\1#\3@g')
 
   local closing_ref
-  closing_ref=$(printf '%s' "${pr_body_with_urls_normalized}" | grep -oiP '(?i)(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+\K([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+#[0-9]+|#[0-9]+)' | head -1 || true)
+  closing_ref=$(printf '%s' "${pr_body_with_urls_normalized}" | grep -oiP '(?i)\b(close[sd]?|fix(?:e[sd])?|resolve[sd]?|ref|relates\s+to)\b\s+\K([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+#[0-9]+|#[0-9]+)' | head -1 || true)
 
   if [ -z "${closing_ref}" ]; then
     printf ''

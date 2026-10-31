@@ -390,6 +390,57 @@ index abc..def 100644
   });
 
   describe('closing reference parsing via TEST_PR_BODY injection', () => {
+    const nonClosingReferenceCases: Array<{
+      description: string;
+      prBody: string;
+      issueBody: string;
+      expectedExitStatus: number;
+    }> = [
+      {
+        description: 'Ref references an issue with acceptance criteria',
+        prBody: 'Ref https://github.com/owner/repo/issues/7',
+        issueBody: issueBodyWithAcceptanceCriteria,
+        expectedExitStatus: 0,
+      },
+      {
+        description: 'Ref references an issue without acceptance criteria',
+        prBody: 'Ref https://github.com/owner/repo/issues/7',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+        expectedExitStatus: 1,
+      },
+      {
+        description: 'Relates to references an issue with acceptance criteria',
+        prBody: 'Relates to https://github.com/owner/repo/issues/7',
+        issueBody: issueBodyWithAcceptanceCriteria,
+        expectedExitStatus: 0,
+      },
+      {
+        description:
+          'Relates to references an issue without acceptance criteria',
+        prBody: 'Relates to https://github.com/owner/repo/issues/7',
+        issueBody: issueBodyWithoutAcceptanceCriteria,
+        expectedExitStatus: 1,
+      },
+      {
+        description: 'prefer does not reference an issue',
+        prBody: 'prefer #7',
+        issueBody: issueBodyWithAcceptanceCriteria,
+        expectedExitStatus: 1,
+      },
+    ];
+
+    it.each(nonClosingReferenceCases)(
+      '$description and returns exit status $expectedExitStatus',
+      ({ prBody, issueBody, expectedExitStatus }) => {
+        const result = runCheck({
+          diffContent: diffWithDeletedAssertion,
+          prBody,
+          issueBody,
+        });
+        expect(result.exitStatus).toBe(expectedExitStatus);
+      },
+    );
+
     it('passes when the PR body has a cross-repo closing ref and the issue has criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedAssertion,
