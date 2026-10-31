@@ -6,7 +6,10 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 
 describe('QualityCheckAdvanceUseCase', () => {
   test.each([
-    { name: 'an open issue and merged pull request', issues: [mock<Issue>(), mock<Issue>()] },
+    {
+      name: 'an open issue and merged pull request',
+      issues: [mock<Issue>(), mock<Issue>()],
+    },
     { name: 'an issue with no pull request', issues: [mock<Issue>()] },
   ])('does not advance $name', async ({ issues }) => {
     const issueRepository = {

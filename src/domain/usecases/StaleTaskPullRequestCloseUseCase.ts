@@ -65,14 +65,14 @@ export class StaleTaskPullRequestCloseUseCase {
       if (!pullRequestIssue || pullRequestIssue.isClosed) {
         continue;
       }
-      const referencedIssueUrls = pullRequestReferencedIssueUrls(pullRequestIssue);
+      const referencedIssueUrls =
+        pullRequestReferencedIssueUrls(pullRequestIssue);
       if (referencedIssueUrls.length === 0) {
         continue;
       }
-      const everyReferencedTaskIssueClosed =
-        referencedIssueUrls.every((url) =>
-          closedTaskIssueUrls.has(url),
-        );
+      const everyReferencedTaskIssueClosed = referencedIssueUrls.every((url) =>
+        closedTaskIssueUrls.has(url),
+      );
       if (!everyReferencedTaskIssueClosed) {
         continue;
       }

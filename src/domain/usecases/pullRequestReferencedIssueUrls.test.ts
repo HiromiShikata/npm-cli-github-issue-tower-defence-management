@@ -5,10 +5,10 @@ const issue = (
     plainCrossRepoIssueReferenceUrls: string[];
   }>,
 ) => ({
-    closingIssueReferenceUrls: [],
-    plainCrossRepoIssueReferenceUrls: [],
-    ...overrides,
-  });
+  closingIssueReferenceUrls: [],
+  plainCrossRepoIssueReferenceUrls: [],
+  ...overrides,
+});
 
 describe('pullRequestReferencedIssueUrls', () => {
   test.each([
