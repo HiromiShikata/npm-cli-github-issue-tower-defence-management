@@ -825,6 +825,110 @@ describe('ComposeDashboardUseCase', () => {
     );
   });
 
+  it('keeps token columns aligned when reset values are known or unknown', () => {
+    const resetCases = [
+      {
+        name: 'both resets unknown',
+        fiveHourResetSeconds: null,
+        sevenDayResetSeconds: null,
+      },
+      {
+        name: 'five hour reset unknown',
+        fiveHourResetSeconds: null,
+        sevenDayResetSeconds: 86400,
+      },
+      {
+        name: 'seven day reset unknown',
+        fiveHourResetSeconds: 3600,
+        sevenDayResetSeconds: null,
+      },
+      {
+        name: 'both resets known',
+        fiveHourResetSeconds: 3600,
+        sevenDayResetSeconds: 86400,
+      },
+    ] satisfies Array<{
+      name: string;
+      fiveHourResetSeconds: number | null;
+      sevenDayResetSeconds: number | null;
+    }>;
+    const codePointIndexOf = (value: string, search: string): number => {
+      const valueCharacters = [...value];
+      const searchCharacters = [...search];
+      return valueCharacters.findIndex((_, valueIndex) =>
+        searchCharacters.every(
+          (character, searchIndex) =>
+            valueCharacters[valueIndex + searchIndex] === character,
+        ),
+      );
+    };
+    const tokenRows = resetCases.map((resetCase) => {
+      const output = new ComposeDashboardUseCase().run({
+        ...representativeInput,
+        tokens: [
+          tokenStatus({
+            name: 'alice',
+            fiveHourUtilizationPercent: 10,
+            fiveHourResetSeconds: resetCase.fiveHourResetSeconds,
+            sevenDayUtilizationPercent: 12,
+            sevenDayResetSeconds: resetCase.sevenDayResetSeconds,
+            color: 'G',
+            prep: 2,
+            hum: 1,
+          }),
+        ],
+      });
+      const tokenRow = output
+        .split('\n')
+        .map((line) =>
+          line
+            .replace(/^<tt>/, '')
+            .replace(/<\/tt><br>$/, '')
+            .replace(/&nbsp;/g, ' '),
+        )
+        .find((line) => line.includes('🟢ce'));
+      if (tokenRow === undefined) {
+        throw new Error(`Token row not found for ${resetCase.name}`);
+      }
+      return { ...resetCase, tokenRow };
+    });
+    const knownTokenRow = tokenRows[3].tokenRow;
+    const fiveHourResetColumnStart = codePointIndexOf(
+      knownTokenRow,
+      '0d01h00',
+    );
+    const sevenDayResetColumnStart = codePointIndexOf(
+      knownTokenRow,
+      '1d00h00',
+    );
+    const sevenDayUtilizationColumnStarts = tokenRows.map(({ tokenRow }) =>
+      codePointIndexOf(tokenRow, '12'),
+    );
+    const tokenRowLengths = tokenRows.map(({ tokenRow }) =>
+      codePointLength(tokenRow),
+    );
+
+    expect(new Set(sevenDayUtilizationColumnStarts).size).toBe(1);
+    expect(new Set(tokenRowLengths).size).toBe(1);
+    for (const { fiveHourResetSeconds, sevenDayResetSeconds, tokenRow } of
+      tokenRows) {
+      if (fiveHourResetSeconds === null) {
+        expect(
+          [...tokenRow]
+            .slice(fiveHourResetColumnStart, fiveHourResetColumnStart + 7)
+            .join(''),
+        ).toBe('--     ');
+      }
+      if (sevenDayResetSeconds === null) {
+        expect(
+          [...tokenRow]
+            .slice(sevenDayResetColumnStart, sevenDayResetColumnStart + 7)
+            .join(''),
+        ).toBe('--     ');
+      }
+    }
+  });
+
   it('sorts token rows by seven day reset ascending with null resets last', () => {
     const output = new ComposeDashboardUseCase().run(representativeInput);
     const bobIndex = output.indexOf('⚪ob');
