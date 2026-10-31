@@ -1,3 +1,10 @@
+# [2.184.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.7...v2.184.0) (2026-10-31)
+
+
+### Features
+
+* relate pull requests without closing keywords ([#3663](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3663)) ([4c199f3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4c199f3e2726081d78aac8fec5ea5bed40e88ddb))
+
 ## [2.183.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.6...v2.183.7) (2026-10-30)
 
 
