@@ -10256,6 +10256,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(resolved.get(issueUrlOf(1))).toEqual([
         'https://github.com/HiromiShikata/other-repo/pull/5',
+        'https://github.com/HiromiShikata/other-repo/pull/6',
       ]);
     });
 
@@ -10547,7 +10548,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(1)]);
     });
 
-    it('excludes a same-repo pull request whose shorthand closing keyword number is only a numeric prefix of the issue number', async () => {
+    it('includes a same-repo pull request referenced by the timeline', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10567,10 +10568,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+      expect(resolved.get(issueUrlOf(1))).toEqual([
+        'https://github.com/HiromiShikata/test-repository/pull/10',
+      ]);
     });
 
-    it('excludes a pull request whose shorthand closing keyword number matches the issue number but which lives in a different repository', async () => {
+    it('includes a cross-repo pull request referenced by the timeline', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10591,7 +10594,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+      expect(resolved.get(issueUrlOf(1))).toEqual([
+        'https://github.com/HiromiShikata/another-repository/pull/55',
+      ]);
     });
   });
 
@@ -12638,30 +12643,30 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('excludes the PR when willCloseTarget is false and the PR body does not contain a closing keyword referencing the issue URL', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildTimelineResponse([
-              buildCrossReferencedEventNode({
-                willCloseTarget: false,
-                prUrl:
-                  'https://github.com/HiromiShikata/repositories-management/pull/427',
-                prState: 'OPEN',
-                prBody: 'This PR fixes something unrelated.',
-              }),
-            ]),
-          ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+    it('includes the PR when willCloseTarget is false and the PR body has no closing keyword', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl:
+                'https://github.com/HiromiShikata/repositories-management/pull/427',
+              prState: 'OPEN',
+              prBody: 'This PR fixes something unrelated.',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/repositories-management/pull/427',
+          }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/secretary/issues/2380',
       );
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
     });
 
     it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "Closes {issueUrl}"', async () => {
@@ -12754,31 +12759,31 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('excludes the PR when willCloseTarget is false, the body has a closing keyword, but the URL references a different issue', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildTimelineResponse([
-              buildCrossReferencedEventNode({
-                willCloseTarget: false,
-                prUrl:
-                  'https://github.com/HiromiShikata/repositories-management/pull/427',
-                prState: 'OPEN',
-                prBody:
-                  'Closes https://github.com/HiromiShikata/secretary/issues/9999',
-              }),
-            ]),
-          ),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
-      );
+    it('includes the PR when willCloseTarget is false, regardless of closing-keyword text', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl:
+                'https://github.com/HiromiShikata/repositories-management/pull/427',
+              prState: 'OPEN',
+              prBody:
+                'Closes https://github.com/HiromiShikata/secretary/issues/9999',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/repositories-management/pull/427',
+          }),
+      });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/secretary/issues/2380',
       );
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
     });
 
     it('excludes the cross-repo PR when it is not in OPEN state even if the body contains a closing keyword', async () => {

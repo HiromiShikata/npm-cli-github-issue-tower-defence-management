@@ -330,7 +330,6 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
         stringFieldOf(source, 'state'),
       );
       if (
-        fieldOf(node, 'willCloseTarget') === true &&
         url !== null &&
         state !== null &&
         !closingPullRequests.some((pullRequest) => pullRequest.url === url)

@@ -11,6 +11,7 @@ import {
 } from '../../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from '../issueReactivationTriggerIsPending';
 import { encodeForURI } from '../utils';
+import { pullRequestReferencedIssueUrls } from '../pullRequestReferencedIssueUrls';
 
 export type ConsoleColor = FieldOption['color'];
 
@@ -332,7 +333,7 @@ export class GenerateConsoleListsUseCase {
       if (!issue.isPr || issue.isClosed) {
         continue;
       }
-      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+      for (const referencedIssueUrl of pullRequestReferencedIssueUrls(issue)) {
         const existing = urlsByIssueUrl.get(referencedIssueUrl);
         if (existing === undefined) {
           urlsByIssueUrl.set(referencedIssueUrl, [issue.url]);

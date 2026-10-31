@@ -1,5 +1,6 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { pullRequestReferencedIssueUrls } from './pullRequestReferencedIssueUrls';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import {
@@ -261,7 +262,7 @@ export class ConflictedIssueRevertUseCase {
       if (!issue.isPr || issue.isClosed) {
         continue;
       }
-      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+      for (const referencedIssueUrl of pullRequestReferencedIssueUrls(issue)) {
         const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
         if (existing) {
           existing.add(issue.url);

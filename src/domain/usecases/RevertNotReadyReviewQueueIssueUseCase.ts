@@ -11,6 +11,7 @@ import {
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
+import { pullRequestReferencedIssueUrls } from './pullRequestReferencedIssueUrls';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
@@ -481,7 +482,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       if (!issue.isPr || issue.isClosed) {
         continue;
       }
-      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
+      for (const referencedIssueUrl of pullRequestReferencedIssueUrls(issue)) {
         const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
         if (existing) {
           existing.add(issue.url);

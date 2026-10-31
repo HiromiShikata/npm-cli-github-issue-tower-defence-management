@@ -1,5 +1,6 @@
 import type { Issue } from '../entities/Issue';
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { pullRequestReferencedIssueUrls } from './pullRequestReferencedIssueUrls';
 import {
   commentCreateWithDedupRetry,
   realSleep,
@@ -64,11 +65,12 @@ export class StaleTaskPullRequestCloseUseCase {
       if (!pullRequestIssue || pullRequestIssue.isClosed) {
         continue;
       }
-      if (pullRequestIssue.closingIssueReferenceUrls.length === 0) {
+      const referencedIssueUrls = pullRequestReferencedIssueUrls(pullRequestIssue);
+      if (referencedIssueUrls.length === 0) {
         continue;
       }
       const everyReferencedTaskIssueClosed =
-        pullRequestIssue.closingIssueReferenceUrls.every((url) =>
+        referencedIssueUrls.every((url) =>
           closedTaskIssueUrls.has(url),
         );
       if (!everyReferencedTaskIssueClosed) {
@@ -79,7 +81,7 @@ export class StaleTaskPullRequestCloseUseCase {
       if (pullRequestAgeMs < minimumPullRequestAgeMs) {
         continue;
       }
-      const closedRefs = pullRequestIssue.closingIssueReferenceUrls.join(', ');
+      const closedRefs = referencedIssueUrls.join(', ');
       try {
         await this.createCommentByUrlWithDedup(
           pullRequestIssue.url,

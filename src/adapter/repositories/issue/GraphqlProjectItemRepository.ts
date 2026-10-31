@@ -838,7 +838,12 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     const crossRepoUrls = Array.from(body.matchAll(githubIssueOrPullUrlPattern))
       .filter((match) => `${match[1]}/${match[2]}` !== ownRepoNameWithOwner)
       .map((match) => match[0]);
-    return Array.from(new Set(crossRepoUrls));
+    const sameRepoReferenceUrls = body
+      .split(/\r?\n/)
+      .filter((line) => /^\s*(?:ref|relates to)\s+/i.test(line))
+      .flatMap((line) => Array.from(line.matchAll(githubIssueOrPullUrlPattern)))
+      .map((match) => match[0]);
+    return Array.from(new Set([...crossRepoUrls, ...sameRepoReferenceUrls]));
   };
   private mapProjectV2ItemNodeToProjectItem = (
     item: ProjectV2ItemNode | null,

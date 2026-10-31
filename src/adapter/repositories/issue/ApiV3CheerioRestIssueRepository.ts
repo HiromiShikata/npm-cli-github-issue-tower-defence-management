@@ -2355,61 +2355,6 @@ export class ApiV3CheerioRestIssueRepository
     };
   };
 
-  private prBodyContainsCrossRepoClosingKeyword = (
-    prBody: string | null,
-    issueUrl: string,
-  ): boolean => {
-    if (!prBody) return false;
-    const closingKeywords =
-      /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+/gi;
-    const normalizedIssueUrl = issueUrl.replace(/\/+$/, '');
-    let match: RegExpExecArray | null;
-    while ((match = closingKeywords.exec(prBody)) !== null) {
-      const afterKeyword = prBody.slice(match.index + match[0].length);
-      const urlMatch = afterKeyword.match(/^https?:\/\/[^\s]+/);
-      if (!urlMatch) continue;
-      const candidateUrl = urlMatch[0].replace(/\/+$/, '');
-      if (candidateUrl.toLowerCase() === normalizedIssueUrl.toLowerCase())
-        return true;
-    }
-    return false;
-  };
-
-  private prBodyContainsSameRepoClosingKeywordShorthand = (
-    prBody: string | null,
-    prUrl: string | null | undefined,
-    issueUrl: string,
-  ): boolean => {
-    if (!prBody || !prUrl) return false;
-    let prOwner: string;
-    let prRepo: string;
-    let issueOwner: string;
-    let issueRepo: string;
-    let issueNumber: number;
-    try {
-      const parsedPrUrl = this.parseIssueUrl(prUrl);
-      prOwner = parsedPrUrl.owner;
-      prRepo = parsedPrUrl.repo;
-      const parsedIssueUrl = this.parseIssueUrl(issueUrl);
-      issueOwner = parsedIssueUrl.owner;
-      issueRepo = parsedIssueUrl.repo;
-      issueNumber = parsedIssueUrl.issueNumber;
-    } catch {
-      return false;
-    }
-    if (
-      prOwner.toLowerCase() !== issueOwner.toLowerCase() ||
-      prRepo.toLowerCase() !== issueRepo.toLowerCase()
-    ) {
-      return false;
-    }
-    const closingKeywordShorthand = new RegExp(
-      `(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\\s+#${issueNumber}(?!\\d)`,
-      'i',
-    );
-    return closingKeywordShorthand.test(prBody);
-  };
-
   private readonly requiredCheckNamesCache = new Map<
     string,
     { fetchedAtMs: number; names: string[] }
@@ -3398,7 +3343,7 @@ export class ApiV3CheerioRestIssueRepository
 
   private isRelatedOpenPullRequestTimelineItem = (
     item: TimelineItem | null,
-    issueUrl: string,
+    _issueUrl: string,
   ): item is TimelineItem & {
     source: NonNullable<TimelineItem['source']>;
   } => {
@@ -3406,18 +3351,7 @@ export class ApiV3CheerioRestIssueRepository
     if (item.__typename !== 'CrossReferencedEvent') return false;
     if (!item.source || item.source.__typename !== 'PullRequest') return false;
     if (item.source.state !== 'OPEN') return false;
-    return (
-      item.willCloseTarget === true ||
-      this.prBodyContainsCrossRepoClosingKeyword(
-        item.source.body ?? null,
-        issueUrl,
-      ) ||
-      this.prBodyContainsSameRepoClosingKeywordShorthand(
-        item.source.body ?? null,
-        item.source.url ?? null,
-        issueUrl,
-      )
-    );
+    return true;
   };
 
   findRelatedOpenPrUrls = async (
