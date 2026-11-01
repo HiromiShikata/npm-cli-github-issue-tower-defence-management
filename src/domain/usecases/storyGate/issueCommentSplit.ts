@@ -3,7 +3,6 @@ import { StoryGateIssueComment } from '../adapter-interfaces/StoryGateIssueRepos
 export const AGENT_REPORT_PREFIX = 'From: :robot:';
 export const FOLD_MARKER_LINE = '## Fold';
 export const AGENT_COMMENT_READ_LIMIT = 40;
-export const COMMENT_HISTORY_FOLD_THRESHOLD = 40;
 
 export type IssueCommentSplit = {
   ownerComments: StoryGateIssueComment[];
