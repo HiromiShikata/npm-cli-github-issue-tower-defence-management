@@ -1267,6 +1267,40 @@ describe('fetchProjectReadmeWithCache', () => {
     expect(result2).toBe(readme);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('ignores a fresh disk entry written under the pre-v2 key and writes the fetched README under the v2 key', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 6</details>';
+    mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
+      if (key === 'projectReadme/TestOrg/1') {
+        return {
+          fetchedAtMs: baseNowMs - (PROJECT_README_CACHE_TTL_MS - 60000),
+          readme: null,
+        };
+      }
+      return null;
+    });
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(readme));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(readme);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(mockCacheRepo.getSingle).toHaveBeenCalledWith(
+      'projectReadme/v2/TestOrg/1',
+    );
+    expect(mockCacheRepo.setSingle).toHaveBeenCalledWith(
+      'projectReadme/v2/TestOrg/1',
+      { fetchedAtMs: baseNowMs, readme },
+    );
+  });
 });
 
 describe('fetchProjectReadme failure classification', () => {

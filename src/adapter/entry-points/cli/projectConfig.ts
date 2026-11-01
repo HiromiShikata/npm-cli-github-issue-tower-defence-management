@@ -738,7 +738,7 @@ const projectReadmeDiskCacheKey = (projectUrl: string): string => {
   const urlParts = projectUrl.split('/');
   const projectNumber = urlParts[urlParts.length - 1];
   const owner = urlParts[urlParts.length - 3];
-  return `projectReadme/${owner}/${projectNumber}`;
+  return `projectReadme/v2/${owner}/${projectNumber}`;
 };
 
 export const fetchProjectReadmeWithCache = async (
