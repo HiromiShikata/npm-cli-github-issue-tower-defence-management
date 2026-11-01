@@ -233,7 +233,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     );
   });
 
-  it('uses the wrapper token when the worker has no claude descendant yet', () => {
+  it('ignores a wrapper when it has no print-flag descendant yet', () => {
     writeWorkerTree({
       wrapperPid: 200,
       wrapperToken: 'wrapper-token',
@@ -247,7 +247,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[200, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
   it('uses the wrapper token when the only descendants on another token are not the claude process', () => {
@@ -376,7 +376,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     expect(reader.listWorkerSessions()).toEqual([]);
   });
 
-  it('treats a worker process whose stat cannot be read as its own session', () => {
+  it('ignores a marker process whose stat cannot be read when it has no print-flag descendant', () => {
     writeProcess({
       pid: 700,
       parentPid: 1,
@@ -392,10 +392,10 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[700, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
-  it('returns once when the parent pids of a wrapper and a non-worker process point at each other', () => {
+  it('ignores a marker process whose parent pids point at each other without a print-flag descendant', () => {
     writeProcess({
       pid: 800,
       parentPid: 801,
@@ -417,7 +417,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[800, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
   it('returns an empty list when the proc directory does not exist', () => {
