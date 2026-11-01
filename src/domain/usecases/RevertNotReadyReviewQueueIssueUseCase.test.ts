@@ -1,8 +1,8 @@
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
-import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -178,7 +178,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     requestChangesWithInlineComment: jest.Mock;
     get: jest.Mock;
     removeIssueFromProjectCache: jest.Mock;
-    getLatestReopenedEventAt: jest.Mock;
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock<Promise<void>, [Issue, string]>;
@@ -222,7 +221,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           ),
         ),
       removeIssueFromProjectCache: jest.fn().mockResolvedValue(undefined),
-      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
 
     mockIssueCommentRepository = {
@@ -1570,240 +1568,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
   });
 
-  describe('StaleProjectItemError containment', () => {
-    type IssueCommentFixture = {
-      author: string;
-      content: string;
-      createdAt: Date;
-    };
-
-    type StaleProjectItemBranchCase = {
-      branch: string;
-      staleIssueOverrides: Partial<Issue>;
-      staleIssueComments: IssueCommentFixture[];
-      thresholdForAutoReject: number;
-      thresholdForDispatchLoop: number;
-      expectedStaleIssueStatusId: string;
-    };
-
-    const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
-
-    const agentReportNamingNextStepAgent = (
-      nextStepAgent: string,
-    ): IssueCommentFixture => ({
-      author: 'owner',
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
-      createdAt: new Date(),
-    });
-
-    const silentRedispatchCommentForDeveloper = (
-      dispatchCount: number,
-      thresholdForAutoReject: number,
-    ): IssueCommentFixture => ({
-      author: 'owner',
-      content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${dispatchCount}/${thresholdForAutoReject}).`,
-      createdAt: new Date(),
-    });
-
-    const humanContinueComment: IssueCommentFixture = {
-      author: 'owner',
-      content: 'please continue',
-      createdAt: new Date(),
-    };
-
-    const staleProjectItemBranchCases: StaleProjectItemBranchCase[] = [
-      {
-        branch: 'the dependent issue revert',
-        staleIssueOverrides: {
-          dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
-        },
-        staleIssueComments: [],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'awaiting-workspace-id',
-      },
-      {
-        branch: 'the pending reactivation trigger revert',
-        staleIssueOverrides: {
-          nextActionDate: new Date(Date.UTC(2026, 0, 16)),
-        },
-        staleIssueComments: [],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'awaiting-workspace-id',
-      },
-      {
-        branch: 'the silent redispatch escalation',
-        staleIssueOverrides: {},
-        staleIssueComments: [
-          agentReportNamingNextStepAgent('developer'),
-          humanContinueComment,
-          silentRedispatchCommentForDeveloper(1, 3),
-          silentRedispatchCommentForDeveloper(2, 3),
-        ],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
-        branch: 'the reporting loop escalation',
-        staleIssueOverrides: {},
-        staleIssueComments: [
-          humanContinueComment,
-          silentRedispatchCommentForDeveloper(1, 2),
-          agentReportNamingNextStepAgent('developer'),
-        ],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
-        branch: 'the dispatch loop escalation',
-        staleIssueOverrides: {},
-        staleIssueComments: [
-          agentReportNamingNextStepAgent('chore'),
-          agentReportNamingNextStepAgent('chore'),
-          agentReportNamingNextStepAgent('chore'),
-        ],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
-        branch: 'the default rejection revert',
-        staleIssueOverrides: {},
-        staleIssueComments: [],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'awaiting-workspace-id',
-      },
-    ];
-
-    let warnSpy: jest.SpyInstance;
-
-    const arrangeStaleAndRemainingIssues = (
-      branchCase: StaleProjectItemBranchCase,
-      updateStatusErrorForStaleIssue: Error,
-    ): { staleIssue: Issue; remainingIssue: Issue } => {
-      const staleIssue = createMockIssue({
-        number: 1,
-        url: 'https://github.com/user/repo/issues/1',
-        itemId: 'stale-item',
-        status: 'Awaiting Owner',
-        ...branchCase.staleIssueOverrides,
-      });
-      const remainingIssue = createMockIssue({
-        number: 2,
-        url: 'https://github.com/user/repo/issues/2',
-        itemId: 'remaining-item',
-        status: 'Awaiting Owner',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [staleIssue, remainingIssue],
-        cacheUsed: false,
-      });
-      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
-        (issue: Issue) =>
-          Promise.resolve(
-            issue.url === staleIssue.url ? branchCase.staleIssueComments : [],
-          ),
-      );
-      mockIssueRepository.updateStatus.mockImplementation(
-        (_project: Project, issue: Issue) =>
-          issue.url === staleIssue.url
-            ? Promise.reject(updateStatusErrorForStaleIssue)
-            : Promise.resolve(undefined),
-      );
-      return { staleIssue, remainingIssue };
-    };
-
-    beforeEach(() => {
-      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      warnSpy.mockRestore();
-    });
-
-    it.each(staleProjectItemBranchCases)(
-      'skips the issue with a warning naming its url when updateStatus rejects with StaleProjectItemError in $branch, and still reverts the remaining issue',
-      async (branchCase) => {
-        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
-          branchCase,
-          new StaleProjectItemError('stale-item'),
-        );
-
-        await expect(
-          useCase.run({
-            manager: 'manager-user',
-            projectUrl: 'https://github.com/users/user/projects/1',
-            allowedIssueAuthors: ['owner'],
-            developerAgentNames: ['developer'],
-            evaluatedAt,
-            thresholdForAutoReject: branchCase.thresholdForAutoReject,
-            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
-          }),
-        ).resolves.toBeUndefined();
-
-        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-          mockProject,
-          staleIssue,
-          branchCase.expectedStaleIssueStatusId,
-        );
-        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-          mockProject,
-          remainingIssue,
-          'awaiting-workspace-id',
-        );
-        expect(
-          mockIssueCommentRepository.createComment,
-        ).not.toHaveBeenCalledWith(staleIssue, expect.anything());
-        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-          remainingIssue,
-          expect.stringContaining('Auto Status Check: REJECTED'),
-        );
-        expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringContaining(staleIssue.url),
-        );
-      },
-    );
-
-    it.each(staleProjectItemBranchCases)(
-      'propagates an unrelated updateStatus error unchanged in $branch without reverting the remaining issue',
-      async (branchCase) => {
-        const unrelatedError = new Error('GraphQL rate limit exceeded');
-        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
-          branchCase,
-          unrelatedError,
-        );
-
-        await expect(
-          useCase.run({
-            manager: 'manager-user',
-            projectUrl: 'https://github.com/users/user/projects/1',
-            allowedIssueAuthors: ['owner'],
-            developerAgentNames: ['developer'],
-            evaluatedAt,
-            thresholdForAutoReject: branchCase.thresholdForAutoReject,
-            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
-          }),
-        ).rejects.toBe(unrelatedError);
-
-        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-          mockProject,
-          staleIssue,
-          branchCase.expectedStaleIssueStatusId,
-        );
-        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-          expect.anything(),
-          remainingIssue,
-          expect.anything(),
-        );
-      },
-    );
-  });
-
   describe('ky TimeoutError containment', () => {
     let warnSpy: jest.SpyInstance;
 
@@ -2570,644 +2334,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
   });
 
-  describe('dispatch repetition escalation', () => {
-    const projectWithFailedPrep = createMockProject({
-      status: {
-        name: 'Status',
-        fieldId: 'field-1',
-        statuses: [
-          {
-            id: 'awaiting-workspace-id',
-            name: 'Awaiting Workspace',
-            color: 'GRAY',
-            description: '',
-          },
-          {
-            id: 'awaiting-owner-id',
-            name: 'Awaiting Owner',
-            color: 'BLUE',
-            description: '',
-          },
-          {
-            id: 'failed-preparation-id',
-            name: 'Failed Preparation',
-            color: 'RED',
-            description: '',
-          },
-        ],
-      },
-    });
-
-    const projectWithoutFailedPreparation = createMockProject({
-      status: {
-        name: 'Status',
-        fieldId: 'field-1',
-        statuses: [
-          {
-            id: 'awaiting-workspace-id',
-            name: 'Awaiting Workspace',
-            color: 'GRAY',
-            description: '',
-          },
-          {
-            id: 'awaiting-owner-id',
-            name: 'Awaiting Owner',
-            color: 'BLUE',
-            description: '',
-          },
-        ],
-      },
-    });
-
-    const agentReport = (nextStepAgent: string) => ({
-      author: 'owner',
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
-      createdAt: new Date(),
-    });
-
-    it('dispatches again for self-reference when dispatch loop threshold is reached', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        agentReport('developer'),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
-    });
-
-    it('dispatches again for self-reference when dispatch loop threshold is reached and Failed Preparation issue is not processed on the following cycle', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      const firstRunComments = [
-        agentReport('developer'),
-        agentReport('developer'),
-        agentReport('developer'),
-      ];
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        firstRunComments,
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'awaiting-workspace-id',
-      );
-      const lastCreateCommentCall =
-        mockIssueCommentRepository.createComment.mock.calls[
-          mockIssueCommentRepository.createComment.mock.calls.length - 1
-        ];
-      const escalationCommentBody = lastCreateCommentCall[1];
-
-      mockIssueRepository.updateStatus.mockClear();
-      mockIssueCommentRepository.createComment.mockClear();
-      issue.status = 'Failed Preparation';
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ...firstRunComments,
-        {
-          author: 'owner',
-          content: escalationCommentBody,
-          createdAt: new Date(),
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('escalates to Failed Preparation instead of reverting when silent redispatch threshold is reached', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      const silentRedispatchComment = (count: number) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-        createdAt: new Date(),
-      });
-      // The agent report is placed before the human comment so it is outside
-      // the current cycle. Silent-redispatch comments inside the cycle with
-      // no agent report in the cycle → hasReportsInCycle = false →
-      // escalateSilentRedispatch (not escalateReportingLoop).
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        humanComment,
-        silentRedispatchComment(1),
-        silentRedispatchComment(2),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Failed to receive a report'),
-      );
-    });
-
-    it('reverts normally to Awaiting Workspace when dispatch count is below threshold', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
-    });
-
-    it('escalates to Failed Preparation for self-reference when agent has been reporting every cycle and count reaches threshold', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      const silentRedispatchComment = (count: number) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
-        createdAt: new Date(),
-      });
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
-      // agentReport in cycle → hasReportsInCycle = true.
-      // escalateReportingLoop triggers regardless of self-reference.
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        humanComment,
-        silentRedispatchComment(1),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-owner-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining(
-          'This task has been marked as Failed Preparation',
-        ),
-      );
-    });
-
-    it('does not update any status or post a comment for the escalating issue when the project defines no Failed Preparation status option', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(
-        projectWithoutFailedPreparation,
-      );
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithoutFailedPreparation,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        agentReport('developer'),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('passes issueRepository.getLatestReopenedEventAt through to the silent-redispatch escalation decision, and its value changes whether escalation fires (issue #2814)', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      const silentRedispatchComment = (count: number, createdAt: Date) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-        createdAt,
-      });
-
-      const comments = [
-        {
-          ...agentReport('developer'),
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-        },
-        {
-          author: 'owner',
-          content: 'please continue',
-          createdAt: new Date('2026-01-02T00:00:00Z'),
-        },
-        silentRedispatchComment(1, new Date('2026-01-03T00:00:00Z')),
-        silentRedispatchComment(2, new Date('2026-01-04T00:00:00Z')),
-      ];
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        comments,
-      );
-
-      const runParams = {
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      };
-
-      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
-      await useCase.run(runParams);
-
-      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
-        issue,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'failed-preparation-id',
-      );
-
-      mockIssueRepository.getLatestReopenedEventAt.mockClear();
-      mockIssueRepository.updateStatus.mockClear();
-      mockIssueCommentRepository.createComment.mockClear();
-
-      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
-        new Date('2026-01-03T12:00:00Z'),
-      );
-      await useCase.run(runParams);
-
-      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
-        issue,
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Auto Status Check: REJECTED'),
-      );
-    });
-
-    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when escalating a silently-redispatched issue to Failed Preparation and the Status check reports current', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const snapshotIssue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-        itemId: 'placeholder-item-id',
-      });
-      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [snapshotIssue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-      mockIssueRepository.get.mockResolvedValue(liveIssue);
-
-      const silentRedispatchComment = (count: number) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-        createdAt: new Date(),
-      });
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        humanComment,
-        silentRedispatchComment(1),
-        silentRedispatchComment(2),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        liveIssue,
-        'failed-preparation-id',
-      );
-    });
-
-    it('writes the live issue with the resolved project item ID, not the snapshot issue with the placeholder project item ID, when escalating a reporting-loop issue to Failed Preparation and the Status check reports current', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const snapshotIssue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-        itemId: 'placeholder-item-id',
-      });
-      const liveIssue: Issue = { ...snapshotIssue, itemId: 'resolved-item-id' };
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [snapshotIssue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-      mockIssueRepository.get.mockResolvedValue(liveIssue);
-
-      const silentRedispatchComment = (count: number) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
-        createdAt: new Date(),
-      });
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        humanComment,
-        silentRedispatchComment(1),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        liveIssue,
-        'failed-preparation-id',
-      );
-    });
-
-    it('derives the dispatch-loop escalation from the issue-agent-matched reports, not a later stray report from a different agent (identity regression guard)', async () => {
-      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
-
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'triager',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: projectWithFailedPrep,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        {
-          author: 'owner',
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-03-01T00:00:00Z'),
-        },
-        {
-          author: 'owner',
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-03-02T00:00:00Z'),
-        },
-        {
-          author: 'owner',
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-03-03T00:00:00Z'),
-        },
-        {
-          author: 'owner',
-          content:
-            'From: :robot: some-other-agent (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
-          createdAt: new Date('2026-03-04T00:00:00Z'),
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        manager: 'manager-user',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['triager'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-    });
-  });
-
   describe('when the Status changed after the item snapshot was taken', () => {
     const snapshotIssueWithoutLinkedPullRequest = createMockIssue({
       status: 'Awaiting Owner',
@@ -3357,26 +2483,406 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
   });
 
+  describe('StaleProjectItemError containment', () => {
+    type IssueCommentFixture = {
+      author: string;
+      content: string;
+      createdAt: Date;
+    };
+
+    type StaleProjectItemBranchCase = {
+      branch: string;
+      staleIssueOverrides: Partial<Issue>;
+      staleIssueComments: IssueCommentFixture[];
+      expectedStaleIssueStatusId: string;
+    };
+
+    const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+
+    const staleProjectItemBranchCases: StaleProjectItemBranchCase[] = [
+      {
+        branch: 'the dependent issue revert',
+        staleIssueOverrides: {
+          dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+        },
+        staleIssueComments: [],
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+      {
+        branch: 'the pending reactivation trigger revert',
+        staleIssueOverrides: {
+          nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+        },
+        staleIssueComments: [],
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+      {
+        branch: 'the default rejection revert',
+        staleIssueOverrides: {},
+        staleIssueComments: [],
+        expectedStaleIssueStatusId: 'awaiting-workspace-id',
+      },
+    ];
+
+    let warnSpy: jest.SpyInstance;
+
+    const arrangeStaleAndRemainingIssues = (
+      branchCase: StaleProjectItemBranchCase,
+      updateStatusErrorForStaleIssue: Error,
+    ): { staleIssue: Issue; remainingIssue: Issue } => {
+      const staleIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'stale-item',
+        status: 'Awaiting Owner',
+        ...branchCase.staleIssueOverrides,
+      });
+      const remainingIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'remaining-item',
+        status: 'Awaiting Owner',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [staleIssue, remainingIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        (issue: Issue) =>
+          Promise.resolve(
+            issue.url === staleIssue.url ? branchCase.staleIssueComments : [],
+          ),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === staleIssue.url
+            ? Promise.reject(updateStatusErrorForStaleIssue)
+            : Promise.resolve(undefined),
+      );
+      return { staleIssue, remainingIssue };
+    };
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it.each(staleProjectItemBranchCases)(
+      'skips the issue with a warning naming its url when updateStatus rejects with StaleProjectItemError in $branch, and still reverts the remaining issue',
+      async (branchCase) => {
+        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
+          branchCase,
+          new StaleProjectItemError('stale-item'),
+        );
+
+        await expect(
+          useCase.run({
+            manager: 'manager-user',
+            projectUrl: 'https://github.com/users/user/projects/1',
+            allowedIssueAuthors: ['owner'],
+            developerAgentNames: ['developer'],
+            evaluatedAt,
+          }),
+        ).resolves.toBeUndefined();
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          remainingIssue,
+          'awaiting-workspace-id',
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(staleIssue, expect.anything());
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          remainingIssue,
+          expect.stringContaining('Auto Status Check: REJECTED'),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(staleIssue.url),
+        );
+      },
+    );
+
+    it.each(staleProjectItemBranchCases)(
+      'propagates an unrelated updateStatus error unchanged in $branch without reverting the remaining issue',
+      async (branchCase) => {
+        const unrelatedError = new Error('GraphQL rate limit exceeded');
+        const { staleIssue, remainingIssue } = arrangeStaleAndRemainingIssues(
+          branchCase,
+          unrelatedError,
+        );
+
+        await expect(
+          useCase.run({
+            manager: 'manager-user',
+            projectUrl: 'https://github.com/users/user/projects/1',
+            allowedIssueAuthors: ['owner'],
+            developerAgentNames: ['developer'],
+            evaluatedAt,
+          }),
+        ).rejects.toBe(unrelatedError);
+
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          mockProject,
+          staleIssue,
+          branchCase.expectedStaleIssueStatusId,
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+          expect.anything(),
+          remainingIssue,
+          expect.anything(),
+        );
+      },
+    );
+  });
+
+  describe('dispatch repetition escalation', () => {
+    const projectWithFailedPrep = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'awaiting-owner-id',
+            name: 'Awaiting Owner',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'failed-preparation-id',
+            name: 'Failed Preparation',
+            color: 'RED',
+            description: '',
+          },
+        ],
+      },
+    });
+    const projectWithoutFailedPreparation = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'awaiting-owner-id',
+            name: 'Awaiting Owner',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      },
+    });
+    const agentReport = (agentName = 'developer') => ({
+      author: 'owner',
+      content: `From: :robot: ${agentName} (model-id)
+
+## Summary
+\`\`\`json
+{}
+\`\`\``,
+      createdAt: new Date(),
+    });
+    it('dispatches again for self-reference when dispatch loop threshold is reached', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+    it('dispatches again for self-reference when dispatch loop threshold is reached and Failed Preparation issue is not processed on the following cycle', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      const firstRunComments = [
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        firstRunComments,
+      );
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'awaiting-workspace-id',
+      );
+      const lastCreateCommentCall =
+        mockIssueCommentRepository.createComment.mock.calls[
+          mockIssueCommentRepository.createComment.mock.calls.length - 1
+        ];
+      const escalationCommentBody = lastCreateCommentCall[1];
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+      issue.status = 'Failed Preparation';
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ...firstRunComments,
+        {
+          author: 'owner',
+          content: escalationCommentBody,
+          createdAt: new Date(),
+        },
+      ]);
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+    it('reverts normally to Awaiting Workspace when dispatch count is below threshold', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+    it('does not update any status or post a comment for the escalating issue when the project defines no Failed Preparation status option', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithoutFailedPreparation,
+      );
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithoutFailedPreparation,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
+      });
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+  });
+
   describe('owner confirmation request gating', () => {
     const trustedAuthor = 'owner';
-
     const ownerConfirmationReport = (at: Date) => ({
       author: trustedAuthor,
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true }\n\`\`\``,
+      content: `From: :robot: developer (model-id)
+
+## Summary
+\`\`\`json
+{ "needOwnerConfirmationOrApproval": true }
+\`\`\``,
       createdAt: at,
       updatedAt: at,
     });
-
-    const ownerConfirmationReportWithNextStepAgent = (
-      at: Date,
-      nextStepAgent: string,
-    ) => ({
-      author: trustedAuthor,
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true, "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
-      createdAt: at,
-      updatedAt: at,
-    });
-
     const trustedHumanReply = (at: Date) => ({
       author: trustedAuthor,
       content: 'Please proceed with the merge.',
@@ -3405,56 +2911,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when the dispatch-loop escalation threshold is configured and its own condition is independently satisfied by a non-self-referencing next-step agent, while the last matching report also carries an unanswered owner confirmation flag with no reply after it (AC2, row 2)', async () => {
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
-        {
-          ...createReadyPr(),
-          isPassedAllCiJob: false,
-          isCiStateSuccess: false,
-        },
-      ]);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-01T00:00:00Z'),
-          'triager',
-        ),
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-02T00:00:00Z'),
-          'triager',
-        ),
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-03T00:00:00Z'),
-          'triager',
-        ),
-      ]);
-
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'failed-preparation-id',
-      );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
@@ -3622,72 +3078,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('escalates to Failed Preparation and posts the escalation comment unchanged when no owner confirmation flag exists and the dispatch-loop escalation threshold is configured and met (AC9, row 9, regression pin)', async () => {
-      const issue = createMockIssue({
-        status: 'Awaiting Owner',
-        author: 'owner',
-        assignees: ['manager-user'],
-        agent: 'developer',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
-
-      const selfReferenceAgentReport = (at: Date) => ({
-        author: trustedAuthor,
-        content:
-          'From: :robot: developer (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-        createdAt: at,
-        updatedAt: at,
-      });
-      const silentRedispatchComment = (count: number, at: Date) => ({
-        author: trustedAuthor,
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-        createdAt: at,
-        updatedAt: at,
-      });
-      const humanComment = {
-        author: trustedAuthor,
-        content: 'please continue',
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-        updatedAt: new Date('2026-01-01T00:00:00Z'),
-      };
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        selfReferenceAgentReport(new Date('2026-01-02T00:00:00Z')),
-        humanComment,
-        silentRedispatchComment(1, new Date('2026-01-03T00:00:00Z')),
-        silentRedispatchComment(2, new Date('2026-01-04T00:00:00Z')),
-      ]);
-
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-        developerAgentNames: ['developer'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Failed to receive a report'),
-      );
     });
 
     it('does not revert and does not comment when the issue has unresolved dependent issue URLs and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC10, row 10)', async () => {

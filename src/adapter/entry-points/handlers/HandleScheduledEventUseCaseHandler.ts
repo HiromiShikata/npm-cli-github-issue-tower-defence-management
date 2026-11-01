@@ -27,7 +27,6 @@ import {
 import {
   loadSilentNotificationEnabled,
   loadStartPreparationFleetSettings,
-  loadWorkflowIssueReporterSettings,
   loadWorkflowImprovementIssueUrl,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
@@ -360,8 +359,6 @@ export class HandleScheduledEventUseCaseHandler {
     const fleetConfigFilePath = resolveFleetConfigFilePath(null);
     const startPreparationFleetSettings =
       loadStartPreparationFleetSettings(fleetConfigFilePath);
-    const workflowIssueReporterSettings =
-      loadWorkflowIssueReporterSettings(fleetConfigFilePath);
     const workflowImprovementIssueUrl =
       loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
     const allowedDependencyRepoNameWithOwner = (() => {
@@ -765,7 +762,6 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run({
       ...mergedInput,
-      workflowIssueReporterSettings,
       afterIssuesFetched,
       allowedDependencyRepoNameWithOwner,
       llmModelNameByAgentName:

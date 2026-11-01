@@ -52,7 +52,7 @@ import {
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { secretaryScopeLibPath } from '../../repositories/secretaryScopeLibPath';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
-import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
+import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { FileSystemWorkerSessionFailureStreakRepository } from '../../repositories/FileSystemWorkerSessionFailureStreakRepository';
@@ -102,12 +102,10 @@ import {
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
   loadErrorReportingRepository,
-  loadFleetBannedAgents,
   loadFleetTaskCreateUrl,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadWorkflowImprovementIssueUrl,
-  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 import {
@@ -690,16 +688,6 @@ program
         revertIssueCommentRepository,
         localCommandRunner,
       );
-      let workflowIssueReporterSettingsForRevert: ReturnType<
-        typeof loadWorkflowIssueReporterSettings
-      >;
-      try {
-        workflowIssueReporterSettingsForRevert =
-          loadWorkflowIssueReporterSettings(fleetConfigFilePath);
-      } catch (error) {
-        console.error(error instanceof Error ? error.message : String(error));
-        return process.exit(1);
-      }
       await revertUseCase.run({
         projectUrl,
         preparationProcessCheckCommand,
@@ -710,7 +698,6 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
-        workflowIssueReporterSettings: workflowIssueReporterSettingsForRevert,
       });
 
       const revertOrphanedWaitConditionUseCase =
@@ -818,7 +805,7 @@ program
   )
   .option(
     '--thresholdForDispatchLoop <count>',
-    'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)',
+    'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment (default: 6)',
   )
   .option(
     '--workflowBlockerResolvedWebhookUrl <url>',
@@ -924,16 +911,6 @@ program
       notifyEffectiveErrorReportingRepo ??
       process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
-    let notifyLoadedFleetBannedAgents: string[] | null;
-    try {
-      notifyLoadedFleetBannedAgents = loadFleetBannedAgents(
-        notifyFleetConfigFilePath,
-      );
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
-      return process.exit(1);
-    }
-
     const projectUrl = config.projectUrl;
 
     if (!projectUrl) {
@@ -970,18 +947,6 @@ program
           .map((s) => s.trim())
           .filter(Boolean)
       : null;
-
-    let notifyWorkflowIssueReporterSettings: ReturnType<
-      typeof loadWorkflowIssueReporterSettings
-    >;
-    try {
-      notifyWorkflowIssueReporterSettings = loadWorkflowIssueReporterSettings(
-        notifyFleetConfigFilePath,
-      );
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
-      return process.exit(1);
-    }
 
     await notifyFinishedIssuePreparationRunWithRetry(
       async () => {
@@ -1058,7 +1023,6 @@ program
               config.labelsNotRequiringPullRequest ?? null,
             changeTargetPathAliases: config.changeTargetPathAliases ?? null,
             agents: config.agents ?? null,
-            fleetBannedAgents: notifyLoadedFleetBannedAgents,
             missingAgentName: options.missingAgentName ?? null,
             sessionErrorLine: sessionEndFlags.sessionErrorLine,
             manager: config.manager ?? null,
@@ -1069,7 +1033,6 @@ program
             promptTooLongOnResume: sessionEndFlags.promptTooLongOnResume,
             moveToFailedPreparation: sessionEndFlags.moveToFailedPreparation,
             sessionEndedWithoutCompletingTurn: sessionEndFlags.turnNotCompleted,
-            workflowIssueReporterSettings: notifyWorkflowIssueReporterSettings,
             tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
             projectName: config.projectName ?? null,
             dispatchStartedAt,
@@ -2053,15 +2016,15 @@ program
   .requiredOption('--issueUrl <url>', 'GitHub issue URL')
   .requiredOption(
     '--agentName <name>',
-    'Name of the agent running the gate, written as returnToAgent',
+    'Name of the agent running the gate; checked against the agents list of the project and against --triageAgentName',
   )
   .requiredOption(
     '--triageAgentName <name>',
-    'Agent name written as nextStepAgent when the Story cannot be resolved',
+    'Name of the triage agent; when it equals --agentName and the Story cannot be resolved, the result reason is TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF. The gate never routes the issue to another agent',
   )
   .requiredOption(
     '--specificationAgentName <name>',
-    'Agent name that writes approved specifications',
+    'Name of the specification agent; accepted but not read by checkStoryGate (startSpecificationTask reads its own --specificationAgentName)',
   )
   .requiredOption(
     '--configDirectory <path>',

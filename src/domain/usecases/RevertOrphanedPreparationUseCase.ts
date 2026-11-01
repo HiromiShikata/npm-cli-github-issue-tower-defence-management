@@ -14,7 +14,6 @@ import {
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
-import { extractNextStepAgent } from './extractNextStepAgent';
 import {
   CloseIssueAsRequest,
   extractCloseIssueAs,
@@ -28,13 +27,8 @@ import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-  resolveNextStepAgentDispatchRepetition,
-} from './resolveNextStepAgentDispatchRepetition';
-import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
-import {
-  reportSilentRedispatchWorkflowIssue,
-  WorkflowIssueReporterSettings,
-} from './reportSilentRedispatchWorkflowIssue';
+  resolveDispatchRepetition,
+} from './resolveDispatchRepetition';
 import {
   commentCreateWithDedupRetry,
   Sleep,
@@ -113,7 +107,6 @@ export class RevertOrphanedPreparationUseCase {
     allowedIssueAuthors?: string[] | null;
     agents?: string[] | null;
     developerAgentNames?: string[] | null;
-    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -217,16 +210,12 @@ export class RevertOrphanedPreparationUseCase {
           TRIAGER_AGENT_NAME,
         );
         const lastAgentReport = strictAgentReport ?? triagerAgentReport;
-        const nextStepAgent = lastAgentReport
-          ? extractNextStepAgent(lastAgentReport.content)
-          : null;
         const closeIssueAsRequest: CloseIssueAsRequest = lastAgentReport
           ? extractCloseIssueAs(lastAgentReport.content)
           : { kind: 'notRequested' };
         if (
           lastAgentReport !== null &&
           closeIssueAsRequest.kind === 'requested' &&
-          nextStepAgent === null &&
           extractWorkflowError(lastAgentReport.content) === null &&
           !extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
         ) {
@@ -253,26 +242,6 @@ export class RevertOrphanedPreparationUseCase {
           continue;
         }
         if (
-          nextStepAgent !== null &&
-          params.agents &&
-          params.agents.length > 0 &&
-          !params.agents.includes(nextStepAgent)
-        ) {
-          if (failedPreparationStatusOption) {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              failedPreparationStatusOption.id,
-            );
-          }
-          await this.createCommentWithDedup(
-            issue,
-            `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
-          );
-          continue;
-        }
-        if (
-          nextStepAgent === null &&
           issueHasUnansweredOwnerConfirmationRequest(
             comments,
             isTrustedAuthor,
@@ -288,12 +257,8 @@ export class RevertOrphanedPreparationUseCase {
           }
           continue;
         }
-        const isNoStory =
-          nextStepAgent !== null &&
-          (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
-        const repetition = resolveNextStepAgentDispatchRepetition({
+        const repetition = resolveDispatchRepetition({
           agentFieldValue: issue.agent,
-          nextStepAgent,
           currentDispatchHasNoReportRejection: false,
           comments,
           isTrustedAuthor,
@@ -301,7 +266,6 @@ export class RevertOrphanedPreparationUseCase {
           thresholdForDispatchLoop:
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-          isNoStory,
           dependedIssueUrls: issue.dependedIssueUrls,
           latestReopenedAt,
         });
@@ -315,21 +279,9 @@ export class RevertOrphanedPreparationUseCase {
             failedPreparationStatusOption.id,
           );
           await this.createCommentWithDedup(issue, repetition.comment);
-          if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
-            await reportSilentRedispatchWorkflowIssue(
-              nextStepAgent,
-              issue.url,
-              params.workflowIssueReporterSettings,
-              this.issueRepository,
-              this.projectRepository,
-            );
-          }
           continue;
         }
-        if (
-          repetition.type === 'escalateReportingLoop' ||
-          (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
-        ) {
+        if (repetition.type === 'escalateReportingLoop') {
           if (failedPreparationStatusOption) {
             await this.issueRepository.updateStatus(
               project,
@@ -340,10 +292,7 @@ export class RevertOrphanedPreparationUseCase {
           await this.createCommentWithDedup(issue, repetition.comment);
           continue;
         }
-        if (
-          repetition.type === 'escalateDispatchLoop' &&
-          nextStepAgent === null
-        ) {
+        if (repetition.type === 'escalateDispatchLoop') {
           if (failedPreparationStatusOption) {
             await this.issueRepository.updateStatus(
               project,
@@ -354,30 +303,6 @@ export class RevertOrphanedPreparationUseCase {
           await this.createCommentWithDedup(issue, repetition.comment);
           continue;
         }
-        if (nextStepAgent !== null) {
-          const agentOptionId = await ensureAgentOptionAndGetId(
-            this.projectRepository,
-            project,
-            nextStepAgent,
-          );
-          if (agentOptionId !== null) {
-            await this.issueRepository.setIssueAgentField(
-              issue.url,
-              project,
-              agentOptionId,
-            );
-          }
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingWorkspaceStatusOption.id,
-          );
-          if (repetition.type !== 'notRepeated') {
-            await this.createCommentWithDedup(issue, repetition.comment);
-          }
-          continue;
-        }
-
         if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
           const firstDeveloperAgentName =
             params.developerAgentNames?.length != null &&

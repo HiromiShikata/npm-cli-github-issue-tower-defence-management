@@ -1,8 +1,8 @@
+import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
-import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import {
   AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
   AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
@@ -127,7 +127,6 @@ describe('ConflictedIssueRevertUseCase', () => {
     getOpenPullRequests: jest.Mock;
     updateStatus: jest.Mock;
     updateBranch: jest.Mock;
-    getLatestReopenedEventAt: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -155,7 +154,6 @@ describe('ConflictedIssueRevertUseCase', () => {
       getOpenPullRequests: jest.fn().mockResolvedValue(new Map()),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateBranch: jest.fn().mockResolvedValue(false),
-      getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
     };
 
     mockIssueCommentRepository = {
@@ -1619,11 +1617,22 @@ describe('ConflictedIssueRevertUseCase', () => {
       },
     });
 
-    const agentReport = (nextStepAgent: string) => ({
+    const agentReport = (agentName = 'developer') => ({
       author: 'owner',
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      content: `From: :robot: ${agentName} (model-id)
+
+## Summary
+\`\`\`json
+{}
+\`\`\``,
       createdAt: new Date(),
     });
+
+    const noReportFromAgentBotComment = {
+      author: 'owner',
+      content: 'Auto Status Check: REJECTED\\n- NO_REPORT_FROM_AGENT_BOT',
+      createdAt: new Date(),
+    };
 
     const buildConflictedIssueWithLinkedPr = (project = mockProject) => {
       const issue = createMockIssue({
@@ -1653,63 +1662,17 @@ describe('ConflictedIssueRevertUseCase', () => {
       return issue;
     };
 
-    it('escalates to Failed Preparation instead of posting conflict comment when dispatch loop threshold is reached', async () => {
-      const issue = buildConflictedIssueWithLinkedPr(
-        projectWithEscalationStatuses,
-      );
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        agentReport('developer'),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithEscalationStatuses,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('dispatched 3 times'),
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        issue,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
-      );
-    });
-
     it('does not escalate to Failed Preparation for an escalateDispatchLoop-shaped comment history when dependedIssueUrls is set, posting the normal conflict comment instead', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithEscalationStatuses,
       );
       issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
-
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         agentReport('developer'),
         agentReport('developer'),
         agentReport('developer'),
       ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
+      await useCase.run({ projectUrl, allowedIssueAuthors: ['owner'] });
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -1727,112 +1690,6 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
         expect.stringContaining('dispatched 3 times'),
-      );
-    });
-
-    it('keeps an escalateDispatchLoop issue out of the conflict target set on the following cycle', async () => {
-      const issue = buildConflictedIssueWithLinkedPr(
-        projectWithAllEscalationStatuses,
-      );
-
-      const firstRunComments = [
-        agentReport('developer'),
-        agentReport('developer'),
-        agentReport('developer'),
-      ];
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        firstRunComments,
-      );
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithAllEscalationStatuses,
-        issue,
-        'failed-preparation-id',
-      );
-      const lastCreateCommentCall =
-        mockIssueCommentRepository.createComment.mock.calls[
-          mockIssueCommentRepository.createComment.mock.calls.length - 1
-        ];
-      const escalationCommentBody = lastCreateCommentCall[1];
-
-      mockIssueRepository.updateStatus.mockClear();
-      mockIssueCommentRepository.createComment.mockClear();
-      issue.status = FAILED_PREPARATION_STATUS_NAME;
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ...firstRunComments,
-        {
-          author: 'owner',
-          content: escalationCommentBody,
-          createdAt: new Date(),
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('escalates to Failed Preparation when silent redispatch threshold is reached on conflict path', async () => {
-      const issue = buildConflictedIssueWithLinkedPr(
-        projectWithEscalationStatuses,
-      );
-      issue.agent = 'developer';
-
-      const silentRedispatchComment = (count: number) => ({
-        author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-        createdAt: new Date(),
-      });
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        agentReport('developer'),
-        humanComment,
-        silentRedispatchComment(1),
-        silentRedispatchComment(2),
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithEscalationStatuses,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Failed to receive a report'),
       );
     });
 
@@ -1842,10 +1699,12 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       issue.agent = 'developer';
       issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
-
       const silentRedispatchCommentForGuardTest = (count: number) => ({
         author: 'owner',
-        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        content:
+          'Auto Status Check: DISPATCH_AGAIN developer\\n\\nThe latest agent report came from the agent named in the agent field, so the previous dispatch to it ended without a report. Dispatching it again (' +
+          count +
+          '/3).',
         createdAt: new Date(),
       });
       const humanComment = {
@@ -1853,21 +1712,13 @@ describe('ConflictedIssueRevertUseCase', () => {
         content: 'please continue',
         createdAt: new Date(),
       };
-
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         agentReport('developer'),
         humanComment,
         silentRedispatchCommentForGuardTest(1),
         silentRedispatchCommentForGuardTest(2),
       ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-      });
-
+      await useCase.run({ projectUrl, allowedIssueAuthors: ['owner'] });
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -1890,63 +1741,11 @@ describe('ConflictedIssueRevertUseCase', () => {
 
     const silentRedispatchComment = (count: number) => ({
       author: 'owner',
-      content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+      content:
+        'Auto Status Check: DISPATCH_AGAIN developer\\n\\nThe latest agent report came from the agent named in the agent field, so the previous dispatch to it ended without a report. Dispatching it again (' +
+        count +
+        '/2).',
       createdAt: new Date(),
-    });
-
-    it('escalates to Failed Preparation for self-reference when agent has been reporting every cycle and count reaches threshold', async () => {
-      const issue = buildConflictedIssueWithLinkedPr(
-        projectWithAllEscalationStatuses,
-      );
-      issue.agent = 'developer';
-
-      const humanComment = {
-        author: 'owner',
-        content: 'please continue',
-        createdAt: new Date(),
-      };
-
-      // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
-      // agentReport in cycle → hasReportsInCycle = true.
-      // escalateReportingLoop triggers regardless of self-reference.
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        humanComment,
-        silentRedispatchComment(1),
-        agentReport('developer'),
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithAllEscalationStatuses,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-owner-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining(
-          'This task has been marked as Failed Preparation',
-        ),
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        issue,
-        expect.stringContaining('Owner judgment is required to break the loop'),
-      );
     });
 
     it('does not escalate to Failed Preparation for an escalateReportingLoop-shaped comment history when dependedIssueUrls is set, posting the normal conflict comment instead', async () => {
@@ -1955,26 +1754,18 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       issue.agent = 'developer';
       issue.dependedIssueUrls = ['https://github.com/user/repo/issues/999'];
-
       const humanComment = {
         author: 'owner',
         content: 'please continue',
         createdAt: new Date(),
       };
-
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         humanComment,
         silentRedispatchComment(1),
         agentReport('developer'),
+        noReportFromAgentBotComment,
       ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-      });
-
+      await useCase.run({ projectUrl, allowedIssueAuthors: ['owner'] });
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -2001,19 +1792,11 @@ describe('ConflictedIssueRevertUseCase', () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithEscalationStatuses,
       );
-
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         agentReport('developer'),
         agentReport('developer'),
       ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
+      await useCase.run({ projectUrl, allowedIssueAuthors: ['owner'] });
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         projectWithEscalationStatuses,
         issue,
@@ -2027,260 +1810,14 @@ describe('ConflictedIssueRevertUseCase', () => {
 
     it('does not update any status or post a comment for the escalating issue when the project defines no Failed Preparation status option', async () => {
       buildConflictedIssueWithLinkedPr(projectWithoutFailedPreparation);
-
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         agentReport('developer'),
         agentReport('developer'),
         agentReport('developer'),
       ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
+      await useCase.run({ projectUrl, allowedIssueAuthors: ['owner'] });
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('passes issueRepository.getLatestReopenedEventAt through to the dispatch-loop escalation decision, and its value changes whether escalation fires (issue #2814)', async () => {
-      const issue = buildConflictedIssueWithLinkedPr(
-        projectWithEscalationStatuses,
-      );
-
-      const reportAt = (createdAt: Date) => ({
-        author: 'owner',
-        content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "developer" }\n\`\`\``,
-        createdAt,
-      });
-      const comments = [
-        reportAt(new Date('2026-01-01T00:00:00Z')),
-        reportAt(new Date('2026-01-02T00:00:00Z')),
-        reportAt(new Date('2026-01-03T00:00:00Z')),
-      ];
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        comments,
-      );
-
-      const runParams = {
-        projectUrl,
-        allowedIssueAuthors: ['owner'],
-        thresholdForAutoReject: 99,
-        thresholdForDispatchLoop: 3,
-      };
-
-      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(null);
-      await useCase.run(runParams);
-
-      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
-        issue,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithEscalationStatuses,
-        issue,
-        'failed-preparation-id',
-      );
-
-      mockIssueRepository.getLatestReopenedEventAt.mockClear();
-      mockIssueRepository.updateStatus.mockClear();
-      mockIssueCommentRepository.createComment.mockClear();
-
-      mockIssueRepository.getLatestReopenedEventAt.mockResolvedValueOnce(
-        new Date('2026-01-01T12:00:00Z'),
-      );
-      await useCase.run(runParams);
-
-      expect(mockIssueRepository.getLatestReopenedEventAt).toHaveBeenCalledWith(
-        issue,
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        issue,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
-      );
-    });
-
-    describe('retry with dedup at the dispatch-repetition escalation call sites', () => {
-      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateSilentRedispatch call site', async () => {
-        const mockSleep = jest
-          .fn<Promise<void>, [number]>()
-          .mockResolvedValue(undefined);
-        const retryingUseCase = new ConflictedIssueRevertUseCase(
-          mockProjectRepository,
-          mockIssueRepository,
-          mockIssueCommentRepository,
-          mockSleep,
-        );
-        const issue = buildConflictedIssueWithLinkedPr(
-          projectWithEscalationStatuses,
-        );
-        issue.agent = 'developer';
-
-        const silentRedispatchComment = (count: number) => ({
-          author: 'owner',
-          content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
-          createdAt: new Date(),
-        });
-        const humanComment = {
-          author: 'owner',
-          content: 'please continue',
-          createdAt: new Date(),
-        };
-
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          agentReport('developer'),
-          humanComment,
-          silentRedispatchComment(1),
-          silentRedispatchComment(2),
-        ]);
-
-        const transientError = Object.assign(
-          new Error(
-            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
-          ),
-          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
-        );
-        mockIssueCommentRepository.createComment
-          .mockRejectedValueOnce(transientError)
-          .mockResolvedValueOnce(undefined);
-
-        await expect(
-          retryingUseCase.run({
-            projectUrl,
-            allowedIssueAuthors: ['owner'],
-            thresholdForAutoReject: 3,
-            thresholdForDispatchLoop: 6,
-          }),
-        ).resolves.not.toThrow();
-
-        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-          2,
-        );
-        expect(mockSleep).toHaveBeenCalledTimes(1);
-        expect(
-          mockIssueCommentRepository.createComment,
-        ).toHaveBeenLastCalledWith(
-          issue,
-          expect.stringContaining('Failed to receive a report'),
-        );
-      });
-
-      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateReportingLoop call site', async () => {
-        const mockSleep = jest
-          .fn<Promise<void>, [number]>()
-          .mockResolvedValue(undefined);
-        const retryingUseCase = new ConflictedIssueRevertUseCase(
-          mockProjectRepository,
-          mockIssueRepository,
-          mockIssueCommentRepository,
-          mockSleep,
-        );
-        const issue = buildConflictedIssueWithLinkedPr(
-          projectWithAllEscalationStatuses,
-        );
-        issue.agent = 'developer';
-
-        const humanComment = {
-          author: 'owner',
-          content: 'please continue',
-          createdAt: new Date(),
-        };
-
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          humanComment,
-          silentRedispatchComment(1),
-          agentReport('developer'),
-        ]);
-
-        const transientError = Object.assign(
-          new Error(
-            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
-          ),
-          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
-        );
-        mockIssueCommentRepository.createComment
-          .mockRejectedValueOnce(transientError)
-          .mockResolvedValueOnce(undefined);
-
-        await expect(
-          retryingUseCase.run({
-            projectUrl,
-            allowedIssueAuthors: ['owner'],
-            thresholdForAutoReject: 2,
-            thresholdForDispatchLoop: 6,
-          }),
-        ).resolves.not.toThrow();
-
-        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-          2,
-        );
-        expect(mockSleep).toHaveBeenCalledTimes(1);
-        expect(
-          mockIssueCommentRepository.createComment,
-        ).toHaveBeenLastCalledWith(
-          issue,
-          expect.stringContaining(
-            'This task has been marked as Failed Preparation',
-          ),
-        );
-      });
-
-      it('retries once and succeeds when createComment fails with a transient 502 error at the escalateDispatchLoop call site', async () => {
-        const mockSleep = jest
-          .fn<Promise<void>, [number]>()
-          .mockResolvedValue(undefined);
-        const retryingUseCase = new ConflictedIssueRevertUseCase(
-          mockProjectRepository,
-          mockIssueRepository,
-          mockIssueCommentRepository,
-          mockSleep,
-        );
-        const issue = buildConflictedIssueWithLinkedPr(
-          projectWithEscalationStatuses,
-        );
-
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          agentReport('developer'),
-          agentReport('developer'),
-          agentReport('developer'),
-        ]);
-
-        const transientError = Object.assign(
-          new Error(
-            'Failed to create comment via GitHub REST API: 502 Bad Gateway',
-          ),
-          { name: 'GitHubCommentCreateHttpError', statusCode: 502 },
-        );
-        mockIssueCommentRepository.createComment
-          .mockRejectedValueOnce(transientError)
-          .mockResolvedValueOnce(undefined);
-
-        await expect(
-          retryingUseCase.run({
-            projectUrl,
-            allowedIssueAuthors: ['owner'],
-            thresholdForAutoReject: 5,
-            thresholdForDispatchLoop: 3,
-          }),
-        ).resolves.not.toThrow();
-
-        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(
-          2,
-        );
-        expect(mockSleep).toHaveBeenCalledTimes(1);
-        expect(
-          mockIssueCommentRepository.createComment,
-        ).toHaveBeenLastCalledWith(
-          issue,
-          expect.stringContaining('dispatched 3 times'),
-        );
-      });
     });
   });
 
@@ -2295,83 +1832,17 @@ describe('ConflictedIssueRevertUseCase', () => {
       branch: string;
       staleIssueAgent: string | null;
       staleIssueComments: IssueCommentFixture[];
-      thresholdForAutoReject: number;
-      thresholdForDispatchLoop: number;
       expectedStaleIssueStatusId: string;
-    };
-
-    const agentReportNamingNextStepAgent = (
-      nextStepAgent: string,
-    ): IssueCommentFixture => ({
-      author: 'owner',
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
-      createdAt: new Date(),
-    });
-
-    const silentRedispatchCommentForDeveloper = (
-      dispatchCount: number,
-      thresholdForAutoReject: number,
-    ): IssueCommentFixture => ({
-      author: 'owner',
-      content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${dispatchCount}/${thresholdForAutoReject}).`,
-      createdAt: new Date(),
-    });
-
-    const humanContinueComment: IssueCommentFixture = {
-      author: 'owner',
-      content: 'please continue',
-      createdAt: new Date(),
     };
 
     const staleProjectItemBranchCases: StaleProjectItemBranchCase[] = [
       {
-        branch: 'the silent redispatch escalation',
-        staleIssueAgent: 'developer',
-        staleIssueComments: [
-          agentReportNamingNextStepAgent('developer'),
-          humanContinueComment,
-          silentRedispatchCommentForDeveloper(1, 3),
-          silentRedispatchCommentForDeveloper(2, 3),
-        ],
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
-        branch: 'the reporting loop escalation',
-        staleIssueAgent: 'developer',
-        staleIssueComments: [
-          humanContinueComment,
-          silentRedispatchCommentForDeveloper(1, 2),
-          agentReportNamingNextStepAgent('developer'),
-        ],
-        thresholdForAutoReject: 2,
-        thresholdForDispatchLoop: 6,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
-        branch: 'the dispatch loop escalation',
-        staleIssueAgent: null,
-        staleIssueComments: [
-          agentReportNamingNextStepAgent('developer'),
-          agentReportNamingNextStepAgent('developer'),
-          agentReportNamingNextStepAgent('developer'),
-        ],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-        expectedStaleIssueStatusId: 'failed-preparation-id',
-      },
-      {
         branch: 'the default conflict revert',
         staleIssueAgent: null,
         staleIssueComments: [],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
         expectedStaleIssueStatusId: 'awaiting-workspace-id',
       },
     ];
-
-    let warnSpy: jest.SpyInstance;
 
     const arrangeStaleAndRemainingConflictedIssues = (
       branchCase: StaleProjectItemBranchCase,
@@ -2437,6 +1908,8 @@ describe('ConflictedIssueRevertUseCase', () => {
       return { staleIssue, remainingIssue };
     };
 
+    let warnSpy: jest.SpyInstance;
+
     beforeEach(() => {
       warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     });
@@ -2458,8 +1931,6 @@ describe('ConflictedIssueRevertUseCase', () => {
           useCase.run({
             projectUrl,
             allowedIssueAuthors: ['owner'],
-            thresholdForAutoReject: branchCase.thresholdForAutoReject,
-            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
           }),
         ).resolves.toBeUndefined();
 
@@ -2497,8 +1968,6 @@ describe('ConflictedIssueRevertUseCase', () => {
           useCase.run({
             projectUrl,
             allowedIssueAuthors: ['owner'],
-            thresholdForAutoReject: branchCase.thresholdForAutoReject,
-            thresholdForDispatchLoop: branchCase.thresholdForDispatchLoop,
           }),
         ).rejects.toBe(unrelatedError);
 
@@ -2522,16 +1991,6 @@ describe('ConflictedIssueRevertUseCase', () => {
     const ownerConfirmationReport = (at: Date) => ({
       author: trustedAuthor,
       content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true }\n\`\`\``,
-      createdAt: at,
-      updatedAt: at,
-    });
-
-    const ownerConfirmationReportWithNextStepAgent = (
-      at: Date,
-      nextStepAgent: string,
-    ) => ({
-      author: trustedAuthor,
-      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "needOwnerConfirmationOrApproval": true, "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
       createdAt: at,
       updatedAt: at,
     });
@@ -2704,43 +2163,6 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
-    it('does not revert to Awaiting Workspace or Failed Preparation and does not comment when one report block carries both the owner confirmation flag and a nextStepAgent that also matches the dispatch-loop escalation pattern (row 7)', async () => {
-      buildCiFailingIssueWithLinkedPr();
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-01T00:00:00Z'),
-          'developer',
-        ),
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-02T00:00:00Z'),
-          'developer',
-        ),
-        ownerConfirmationReportWithNextStepAgent(
-          new Date('2026-01-03T00:00:00Z'),
-          'developer',
-        ),
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: [trustedAuthor],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
     it('detects the unanswered owner confirmation request from the issue-agent-matched report even when a later report from a different agent carries no flag (identity regression guard)', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/32',
@@ -2790,81 +2212,6 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('derives the dispatch-loop escalation from the issue-agent-matched reports, not a later stray report from a different agent (identity regression guard)', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/33',
-        status: AWAITING_OWNER_STATUS_NAME,
-        author: trustedAuthor,
-        agent: 'triager',
-      });
-      const prItem = createMockPrItem({
-        url: 'https://github.com/user/repo/pull/33',
-        closingIssueReferenceUrls: [issue.url],
-      });
-      const conflictedPr = createMockRelatedPullRequest({
-        url: prItem.url,
-        isConflicted: true,
-        mergeable: 'CONFLICTING',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [issue, prItem],
-        cacheUsed: false,
-      });
-      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
-        new Map([[conflictedPr.url, conflictedPr]]),
-      );
-      mockIssueRepository.updateBranch.mockResolvedValue(false);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        {
-          author: trustedAuthor,
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-02-01T00:00:00Z'),
-          updatedAt: new Date('2026-02-01T00:00:00Z'),
-        },
-        {
-          author: trustedAuthor,
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-02-02T00:00:00Z'),
-          updatedAt: new Date('2026-02-02T00:00:00Z'),
-        },
-        {
-          author: trustedAuthor,
-          content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStepAgent": "developer" }\n```',
-          createdAt: new Date('2026-02-03T00:00:00Z'),
-          updatedAt: new Date('2026-02-03T00:00:00Z'),
-        },
-        {
-          author: trustedAuthor,
-          content:
-            'From: :robot: some-other-agent (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
-          createdAt: new Date('2026-02-04T00:00:00Z'),
-          updatedAt: new Date('2026-02-04T00:00:00Z'),
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl,
-        allowedIssueAuthors: [trustedAuthor],
-        thresholdForAutoReject: 5,
-        thresholdForDispatchLoop: 3,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        issue,
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
     });
   });
 });

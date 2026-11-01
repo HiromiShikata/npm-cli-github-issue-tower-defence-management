@@ -21,7 +21,7 @@ const AGENT_REPORT_BODY =
 const AGENT_PREFIXED_BODY_WITHOUT_JSON =
   'From: :robot: leader (example-model)\n\nThe fleet patrol found this issue waiting for the owner.';
 const AGENT_PREFIXED_BODY_WITHOUT_JSON_AFTER_LEADING_WHITESPACE = `\n\n  ${AGENT_PREFIXED_BODY_WITHOUT_JSON}`;
-const JSON_ONLY_AGENT_REPORT_BODY = '```json\n{"nextStepAgent": null}\n```';
+const JSON_ONLY_AGENT_REPORT_BODY = '```json\n{}\n```';
 const OWNER_REPLY_BODY = 'Why was this routed to me?';
 const AUTO_STATUS_CHECK_BODY = `${AUTO_STATUS_CHECK_MESSAGE_HEAD} CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.`;
 const REACTIVATION_TRIGGER_BODY = `${REACTIVATION_TRIGGER_COMMENT_HEAD}\nNext Action Date: 2026-10-04`;

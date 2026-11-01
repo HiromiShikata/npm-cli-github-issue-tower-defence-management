@@ -571,8 +571,6 @@ describe('storyGateCommands', () => {
         'reason',
         'story',
         'storyAdoption',
-        'routingJson',
-        'specificationMissingRoutingJson',
         'activeStoryOptions',
         'storyIssues',
         'assignedIssue',

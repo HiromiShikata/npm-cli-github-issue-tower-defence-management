@@ -28,7 +28,7 @@ describe('isAgentComment', () => {
 
   it('returns true for a trusted-author comment whose body carries a trailing fenced JSON object, even without the agent report prefix', () => {
     const comment = createComment({
-      content: '```json\n{"nextStepAgent": null}\n```',
+      content: '```json\n{}\n```',
     });
 
     expect(isAgentComment(comment, isTrustedAuthor)).toBe(true);
@@ -47,7 +47,7 @@ describe('isAgentComment', () => {
   it('returns false for an untrusted author even when the body carries a trailing fenced JSON object', () => {
     const comment = createComment({
       author: UNTRUSTED_LOGIN,
-      content: '```json\n{"nextStepAgent": null}\n```',
+      content: '```json\n{}\n```',
     });
 
     expect(isAgentComment(comment, isTrustedAuthor)).toBe(false);

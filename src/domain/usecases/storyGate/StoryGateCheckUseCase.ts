@@ -23,10 +23,7 @@ import {
   issueCommentsFormatAsText,
   issueCommentsSplitByAuthorKind,
 } from './issueCommentSplit';
-import {
-  approvedSpecificationUrlsExtract,
-  isSpecificationRoutingAlreadyPosted,
-} from './specificationRoutingDetect';
+import { approvedSpecificationUrlsExtract } from './specificationRoutingDetect';
 import { specificationSectionsDetect } from './specificationSectionDetect';
 import {
   BACKLOG_MILESTONE_STORY_MARKER,
@@ -41,9 +38,9 @@ export const STORY_GATE_RESULT_SCHEMA_VERSION = 1;
 export const STORY_GATE_RESULT_FILE_NAME = 'story-gate-result.json';
 
 export type StoryGateAction =
-  'PROCEED' | 'STOP_SILENT' | 'ROUTE' | 'SELF_RESOLVE_STORY' | 'JUDGE';
+  'PROCEED' | 'STOP_SILENT' | 'SELF_RESOLVE_STORY' | 'JUDGE';
 
-export type TriageAgentSelfRouteAction = Extract<
+export type UnresolvedStoryAction = Extract<
   StoryGateAction,
   'SELF_RESOLVE_STORY' | 'PROCEED'
 >;
@@ -54,7 +51,6 @@ export type StoryGateReason =
   | 'STORY_ISSUE_READ'
   | 'ISSUE_CLOSED'
   | 'STORY_ISSUE_CLOSED'
-  | 'SPECIFICATION_ROUTING_ALREADY_POSTED'
   | 'ISSUE_NOT_IN_BOARD_CACHE'
   | 'STORY_NOT_ADOPTABLE'
   | 'STORY_ISSUE_NOT_FOUND'
@@ -74,11 +70,6 @@ export type StoryAdoptionOutcome =
   | 'LIVE_STORY_ALREADY_SET'
   | 'NO_UNIQUE_LINKED_STORY'
   | 'READ_BACK_MISMATCH';
-
-export type AgentRoutingJson = {
-  nextStepAgent: string;
-  returnToAgent: string;
-};
 
 export type IssueCommentFiles = {
   ownerCommentsPath: string;
@@ -146,8 +137,6 @@ export type StoryGateResult = {
     adoptedFromUrls: string[];
   };
   storyAdoption: { outcome: StoryAdoptionOutcome };
-  routingJson: AgentRoutingJson | null;
-  specificationMissingRoutingJson: AgentRoutingJson;
   activeStoryOptions: string[];
   storyIssues: StoryIssueReadResult[];
   assignedIssue: AssignedIssueSummary | null;
@@ -248,7 +237,7 @@ export class StoryGateCheckUseCase {
           caches.some((cache) => cache.projectId === item.projectId),
         );
         if (itemsOnCachedBoards.length > 0) {
-          return this.routeToTriage(
+          return this.decideUnresolvedStory(
             state,
             input,
             'ISSUE_NOT_IN_BOARD_CACHE',
@@ -278,7 +267,7 @@ export class StoryGateCheckUseCase {
     );
     const storyIssueUrls = this.storyIssueUrlsFind(searchCaches, storyValue);
     if (storyIssueUrls.length === 0) {
-      return this.routeToTriage(
+      return this.decideUnresolvedStory(
         state,
         input,
         'STORY_ISSUE_NOT_FOUND',
@@ -287,7 +276,7 @@ export class StoryGateCheckUseCase {
     }
     await this.storyIssuesRead(state, input, storyIssueUrls);
     if (state.result.storyIssues.length === 0) {
-      return this.routeToTriage(
+      return this.decideUnresolvedStory(
         state,
         input,
         'STORY_ISSUES_NOT_READABLE',
@@ -309,11 +298,6 @@ export class StoryGateCheckUseCase {
       reason: 'NOT_ON_ANY_BOARD',
       story: { value: null, source: 'NONE', adoptedFromUrls: [] },
       storyAdoption: { outcome: 'NOT_ATTEMPTED' },
-      routingJson: null,
-      specificationMissingRoutingJson: {
-        nextStepAgent: input.specificationAgentName,
-        returnToAgent: input.agentName,
-      },
       activeStoryOptions: activeStoryOptionNames(cacheHit?.cache ?? null),
       storyIssues: [],
       assignedIssue: null,
@@ -371,24 +355,20 @@ export class StoryGateCheckUseCase {
     return { result: state.result, outputFiles: state.outputFiles };
   };
 
-  private routeToTriage = (
+  private decideUnresolvedStory = (
     state: EvaluationState,
     input: StoryGateCheckInput,
     reason: StoryGateReason,
-    selfRouteAction: TriageAgentSelfRouteAction,
+    unresolvedStoryAction: UnresolvedStoryAction,
   ): StoryGateCheckOutput => {
     if (input.agentName === input.triageAgentName) {
       return this.decide(
         state,
-        selfRouteAction,
+        unresolvedStoryAction,
         'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF',
       );
     }
-    state.result.routingJson = {
-      nextStepAgent: input.triageAgentName,
-      returnToAgent: input.agentName,
-    };
-    return this.decide(state, 'ROUTE', reason);
+    return this.decide(state, unresolvedStoryAction, reason);
   };
 
   private linkedStoryResolve = async (
@@ -569,7 +549,7 @@ export class StoryGateCheckUseCase {
         candidate.org.toLowerCase() === input.issue.owner.toLowerCase(),
     );
     if (config === undefined) {
-      return this.routeToTriage(
+      return this.decideUnresolvedStory(
         state,
         input,
         'STORY_NOT_ADOPTABLE',
@@ -596,7 +576,7 @@ export class StoryGateCheckUseCase {
         'OPEN_PULL_REQUEST_EXISTS',
       );
     }
-    return this.routeToTriage(
+    return this.decideUnresolvedStory(
       state,
       input,
       'STORY_NOT_ADOPTABLE',
@@ -810,21 +790,6 @@ export class StoryGateCheckUseCase {
       )
     ) {
       return this.decide(state, 'STOP_SILENT', 'STORY_ISSUE_CLOSED');
-    }
-    const latestComment = comments[comments.length - 1];
-    if (
-      input.agentName !== input.specificationAgentName &&
-      latestComment !== undefined &&
-      isSpecificationRoutingAlreadyPosted(
-        latestComment.body,
-        input.specificationAgentName,
-      )
-    ) {
-      return this.decide(
-        state,
-        'STOP_SILENT',
-        'SPECIFICATION_ROUTING_ALREADY_POSTED',
-      );
     }
     const specification = await this.specificationDetect(
       input,

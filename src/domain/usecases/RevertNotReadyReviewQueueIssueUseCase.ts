@@ -14,7 +14,6 @@ import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { pullRequestReferencedIssueUrls } from './pullRequestReferencedIssueUrls';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
@@ -26,10 +25,6 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
-import {
-  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-  resolveNextStepAgentDispatchRepetition,
-} from './resolveNextStepAgentDispatchRepetition';
 
 // GitHub rejects field mutations against archived project items with
 // "The item is archived and cannot be updated". Such a failure is specific to
@@ -67,7 +62,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'requestChangesWithInlineComment'
       | 'get'
       | 'removeIssueFromProjectCache'
-      | 'getLatestReopenedEventAt'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -90,8 +84,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     allowedIssueAuthors?: string[] | null;
     developerAgentNames?: string[] | null;
     evaluatedAt?: Date;
-    thresholdForAutoReject?: number;
-    thresholdForDispatchLoop?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
     const isTrustedAuthorForAutoStatusCheck = (author: string): boolean =>
@@ -278,68 +270,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             )
           ) {
             continue;
-          }
-          if (params.thresholdForAutoReject !== undefined) {
-            const latestReopenedAt =
-              await this.issueRepository.getLatestReopenedEventAt(issue);
-            const nextStepAgent = extractNextStepAgentFromComments(
-              comments,
-              isTrustedAuthorForAutoStatusCheck,
-              issue.agent,
-            );
-            if (nextStepAgent !== null) {
-              const repetition = resolveNextStepAgentDispatchRepetition({
-                agentFieldValue: issue.agent,
-                nextStepAgent,
-                currentDispatchHasNoReportRejection: false,
-                comments,
-                isTrustedAuthor: isTrustedAuthorForAutoStatusCheck,
-                thresholdForAutoReject: params.thresholdForAutoReject,
-                thresholdForDispatchLoop:
-                  params.thresholdForDispatchLoop ??
-                  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-                isNoStory: false,
-                dependedIssueUrls: issue.dependedIssueUrls,
-                latestReopenedAt,
-              });
-              if (repetition.type === 'escalateSilentRedispatch') {
-                const liveIssue = await this.isSnapshotStatusStillCurrent(
-                  project,
-                  issue,
-                  failedPreparationStatusOption.name,
-                );
-                if (liveIssue === null) {
-                  continue;
-                }
-                await this.issueRepository.updateStatus(
-                  project,
-                  liveIssue,
-                  failedPreparationStatusOption.id,
-                );
-                await this.createCommentWithDedup(issue, repetition.comment);
-                continue;
-              }
-              if (
-                repetition.type === 'escalateReportingLoop' ||
-                repetition.type === 'escalateDispatchLoop'
-              ) {
-                const liveIssue = await this.isSnapshotStatusStillCurrent(
-                  project,
-                  issue,
-                  failedPreparationStatusOption.name,
-                );
-                if (liveIssue === null) {
-                  continue;
-                }
-                await this.issueRepository.updateStatus(
-                  project,
-                  liveIssue,
-                  failedPreparationStatusOption.id,
-                );
-                await this.createCommentWithDedup(issue, repetition.comment);
-                continue;
-              }
-            }
           }
           const liveIssue = await this.isSnapshotStatusStillCurrent(
             project,

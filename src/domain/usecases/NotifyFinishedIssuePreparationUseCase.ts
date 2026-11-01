@@ -1,4 +1,3 @@
-import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
@@ -28,15 +27,12 @@ import {
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
-import { ensureStoryOptionAndGetId } from './ensureStoryOptionAndGetId';
 import {
   CloseIssueAsRequest,
   extractCloseIssueAs,
 } from './extractCloseIssueAs';
 import { CloseIssueAsRequestApplier } from './CloseIssueAsRequestApplier';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
-import { extractNextStepAgent } from './extractNextStepAgent';
-import { extractStory } from './extractStory';
 import { extractWorkflowError } from './extractWorkflowError';
 import {
   findLastAgentReportPostedSince,
@@ -57,14 +53,10 @@ import {
   countConsecutiveNoReportDispatches,
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   NO_REPORT_REDISPATCH_COUNT_PREFIX,
-  resolveNextStepAgentDispatchRepetition,
-} from './resolveNextStepAgentDispatchRepetition';
+  resolveDispatchRepetition,
+} from './resolveDispatchRepetition';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
-import {
-  reportSilentRedispatchWorkflowIssue,
-  WorkflowIssueReporterSettings,
-} from './reportSilentRedispatchWorkflowIssue';
 import {
   commentCreateWithDedupRetry,
   Sleep,
@@ -110,7 +102,6 @@ type NotifyFinishedIssuePreparationParams = {
   labelsNotRequiringPullRequest?: string[] | null;
   changeTargetPathAliases?: Record<string, string> | null;
   agents?: string[] | null;
-  fleetBannedAgents?: string[] | null;
   missingAgentName?: string | null;
   sessionErrorLine?: string | null;
   manager?: string | null;
@@ -121,7 +112,6 @@ type NotifyFinishedIssuePreparationParams = {
   promptTooLongOnResume?: boolean | null;
   moveToFailedPreparation?: boolean | null;
   sessionEndedWithoutCompletingTurn?: boolean | null;
-  workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
   projectName?: string | null;
   dispatchStartedAt?: Date | null;
@@ -477,9 +467,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       TRIAGER_AGENT_NAME,
     );
     const lastAgentReport = strictAgentReport ?? triagerAgentReport;
-    let nextStepAgent = lastAgentReport
-      ? extractNextStepAgent(lastAgentReport.content)
-      : null;
     const workflowError = lastAgentReport
       ? extractWorkflowError(lastAgentReport.content)
       : null;
@@ -490,9 +477,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       ? extractCloseIssueAs(lastAgentReport.content)
       : { kind: 'notRequested' };
     const isCloseIssueAsOverriddenByReportRouting =
-      nextStepAgent !== null ||
-      workflowError !== null ||
-      needOwnerConfirmationOrApproval;
+      workflowError !== null || needOwnerConfirmationOrApproval;
     if (
       closeIssueAsRequest.kind === 'requested' &&
       !isCloseIssueAsOverriddenByReportRouting
@@ -514,36 +499,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         return;
       }
     }
-    const storyName = strictAgentReport
-      ? extractStory(strictAgentReport.content)
-      : null;
-    const isNextStepAgentFleetBanned =
-      nextStepAgent !== null &&
-      params.fleetBannedAgents != null &&
-      params.fleetBannedAgents.includes(nextStepAgent);
-    if (isNextStepAgentFleetBanned) {
-      await this.createCommentWithDedup(
-        issue,
-        `\`${nextStepAgent}\` is excluded from automatic dispatch and will not be re-dispatched by TDPM.`,
-      );
-      nextStepAgent = null;
-    } else if (
-      nextStepAgent !== null &&
-      params.agents &&
-      params.agents.length > 0 &&
-      !params.agents.includes(nextStepAgent)
-    ) {
-      await this.handleUnregisteredNextStepAgent(
-        issue,
-        project,
-        awaitingWorkspaceStatusOption,
-        nextStepAgent,
-        reportingTarget,
-        params.projectName ?? null,
-      );
-      return;
-    }
-
     const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(
       issue,
       params.developerAgentNames ?? null,
@@ -592,9 +547,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       issue,
       lastAgentReport,
       resolveLabelsNotRequiringPullRequest(params),
-      nextStepAgent,
       params.developerAgentNames,
-      params.defaultAgentName,
     );
 
     const rejectionStatusMessage =
@@ -607,7 +560,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
     if (
       workflowError === null &&
-      nextStepAgent === null &&
       issueHasUnansweredOwnerConfirmationRequest(
         comments,
         isTrustedAuthor,
@@ -701,20 +653,14 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const isNoStory =
-      nextStepAgent !== null &&
-      (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME)) &&
-      storyName === null;
-    const repetition = resolveNextStepAgentDispatchRepetition({
+    const repetition = resolveDispatchRepetition({
       agentFieldValue: issue.agent,
-      nextStepAgent,
       currentDispatchHasNoReportRejection: hasNoReportRejection,
       comments,
       isTrustedAuthor,
       thresholdForAutoReject: params.thresholdForAutoReject,
       thresholdForDispatchLoop:
         params.thresholdForDispatchLoop ?? DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-      isNoStory,
       dependedIssueUrls: issue.dependedIssueUrls,
       latestReopenedAt,
       sessionEndedWithoutCompletingTurn:
@@ -735,22 +681,9 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.workflowBlockerResolvedWebhookUrl,
         project,
       );
-      if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
-        await reportSilentRedispatchWorkflowIssue(
-          nextStepAgent,
-          params.issueUrl,
-          params.workflowIssueReporterSettings,
-          this.issueRepository,
-          this.projectRepository,
-        );
-      }
       return;
     }
-    if (
-      repetition.type === 'escalateReportingLoop' ||
-      repetition.type === 'escalateStoryUnsetLoop' ||
-      (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
-    ) {
+    if (repetition.type === 'escalateReportingLoop') {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -762,7 +695,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.createCommentWithDedup(issue, repetition.comment);
       return;
     }
-    if (repetition.type === 'escalateDispatchLoop' && nextStepAgent === null) {
+    if (repetition.type === 'escalateDispatchLoop') {
       issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -782,68 +715,6 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (repetition.type === 'sessionInterruptedBeforeCompletion') {
       await this.createCommentWithDedup(issue, repetition.comment);
-      return;
-    }
-
-    if (nextStepAgent !== null) {
-      const agentOptionId = await this.ensureAgentOptionAndGetId(
-        project,
-        nextStepAgent,
-      );
-      if (agentOptionId) {
-        await this.issueRepository.setIssueAgentField(
-          params.issueUrl,
-          project,
-          agentOptionId,
-        );
-      }
-      if (storyName !== null && project.story !== null) {
-        const storyOptionId = await ensureStoryOptionAndGetId(
-          this.projectRepository,
-          project,
-          storyName,
-        );
-        if (storyOptionId !== null) {
-          await this.issueRepository.updateStory(
-            { ...project, story: project.story },
-            issue,
-            storyOptionId,
-          );
-        }
-      }
-      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.patchConsoleTab(issue);
-      if (rejections.length > 0) {
-        await this.setDependedIssueUrlForAllOpenPRs(
-          issue,
-          params.issueUrl,
-          project,
-        );
-        await this.createCommentWithDedup(issue, rejectionStatusMessage);
-      }
-      if (repetition.type === 'dispatchAgain') {
-        await this.createCommentWithDedup(issue, repetition.comment);
-      }
-      if (repetition.type === 'storyUnset') {
-        if (repetition.existingCommentId !== null) {
-          await this.issueCommentRepository.updateComment(
-            issue,
-            repetition.existingCommentId,
-            repetition.comment,
-          );
-        } else {
-          await this.issueCommentRepository.createComment(
-            issue,
-            repetition.comment,
-          );
-        }
-      }
       return;
     }
 
@@ -1187,105 +1058,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
   };
 
-  private handleUnregisteredNextStepAgent = async (
-    issue: Issue,
-    project: Project,
-    awaitingWorkspaceStatusOption: { id: string },
-    nextStepAgent: string,
-    reportingTarget: { owner: string; repo: string } | null,
-    projectName: string | null,
-  ): Promise<void> => {
-    const blockerIssueTitle = `Unregistered agent in workflow configuration: ${nextStepAgent}`;
-    const targetOwner = reportingTarget?.owner ?? issue.org;
-    const targetRepo = reportingTarget?.repo ?? issue.repo;
-
-    const searchResults = await this.issueRepository.searchIssue({
-      owner: targetOwner,
-      repositoryName: targetRepo,
-      type: 'issue',
-      state: 'open',
-      title: blockerIssueTitle,
-    });
-    const exactMatch = searchResults.find((i) => i.title === blockerIssueTitle);
-
-    let blockerIssueUrl: string;
-    if (exactMatch) {
-      blockerIssueUrl = exactMatch.url;
-    } else {
-      const bodyLines = [
-        `The last agent report on ${issue.url} designated \`nextStepAgent\` as \`${nextStepAgent}\`, which is absent from the configured agents list.`,
-        '',
-        `- Missing agent name: \`${nextStepAgent}\``,
-        `- Declaring task: ${issue.url}`,
-      ];
-      if (projectName !== null) {
-        bodyLines.push(`- TDPM project: ${projectName}`);
-      }
-      const body = bodyLines.join('\n');
-      const issueNumber = await this.issueRepository.createNewIssue(
-        targetOwner,
-        targetRepo,
-        blockerIssueTitle,
-        body,
-        [],
-        [],
-      );
-      blockerIssueUrl = `https://github.com/${targetOwner}/${targetRepo}/issues/${issueNumber}`;
-    }
-
-    if (project.story) {
-      const workflowBlockerStory = project.story.stories.find((s) =>
-        s.name.toLowerCase().includes('workflow blocker'),
-      );
-      if (workflowBlockerStory) {
-        const projectItemId = await this.issueRepository.addIssueToProject(
-          project,
-          blockerIssueUrl,
-        );
-        try {
-          await this.issueRepository.updateStoryByProjectItemId(
-            { ...project, story: project.story },
-            projectItemId,
-            workflowBlockerStory.id,
-          );
-        } catch (error) {
-          if (error instanceof StaleProjectItemError) {
-            console.warn(
-              `Skipping stale project item while setting workflow blocker story: itemId=${error.itemId}`,
-            );
-          } else {
-            throw error;
-          }
-        }
-      }
-    }
-
-    if (project.dependedIssueUrlSeparatedByComma) {
-      await this.issueRepository.setDependedIssueUrl(
-        issue.url,
-        project,
-        blockerIssueUrl,
-      );
-    } else {
-      console.warn(
-        `dependedIssueUrlSeparatedByComma not configured; cannot block ${issue.url} via ${blockerIssueUrl}`,
-      );
-    }
-
-    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
-    await this.issueRepository.update(issue, project);
-    await this.issueRepository.updateStatus(
-      project,
-      issue,
-      awaitingWorkspaceStatusOption.id,
-    );
-    await this.patchConsoleTab(issue);
-    await this.createCommentWithDedup(
-      issue,
-      `nextStepAgent \`${nextStepAgent}\` is not in the configured agents list. Created workflow blocker task:\n${blockerIssueUrl}`,
-    );
-  };
-
   private hasNonEmptyBodyInEditHistory = async (
     issueUrl: string,
   ): Promise<boolean> => {
@@ -1301,7 +1073,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return true;
     }
   };
-
   private collectRejections = async (
     issue: {
       url: string;
@@ -1313,9 +1084,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     },
     lastAgentReport: { content: string } | null,
     labelsNotRequiringPullRequest: string[],
-    nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
-    defaultAgentName?: string | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -1357,14 +1126,11 @@ export class NotifyFinishedIssuePreparationUseCase {
       effectiveDeveloperAgentNames.some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name, issue.agent),
       );
-    const nextStepIsDefaultAgent =
-      defaultAgentName != null && nextStepAgent === defaultAgentName;
-    const requiredPrRejections =
-      nextStepIsDefaultAgent || !lastReportIsFromDeveloperAgent
-        ? prRejections.filter(
-            (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
-          )
-        : prRejections;
+    const requiredPrRejections = !lastReportIsFromDeveloperAgent
+      ? prRejections.filter(
+          (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
+        )
+      : prRejections;
     return {
       rejections: [...rejections, ...requiredPrRejections],
       approvedPrUrl,

@@ -5,14 +5,13 @@ import {
 
 const trustEveryAuthor = (): boolean => true;
 
-const report = (agent: string): string =>
-  `From: :robot: agent (model)\n\`\`\`json\n{"nextStepAgent": "${agent}"}\n\`\`\``;
+const report = (_agent: string): string =>
+  `From: :robot: agent (model)\n\`\`\`json\n{}\n\`\`\``;
 
 const reportPostedByAgent = (agentName: string): string =>
-  `From: :robot: ${agentName} (model)\n\`\`\`json\n{"nextStepAgent": "${agentName}"}\n\`\`\``;
+  `From: :robot: ${agentName} (model)\n\`\`\`json\n{}\n\`\`\``;
 
-const reportWithoutPostingAgentDeclared =
-  '```json\n{"nextStepAgent": "developer"}\n```';
+const reportWithoutPostingAgentDeclared = '```json\n{}\n```';
 
 describe('findLastAgentReport', () => {
   it('returns the only agent report', () => {

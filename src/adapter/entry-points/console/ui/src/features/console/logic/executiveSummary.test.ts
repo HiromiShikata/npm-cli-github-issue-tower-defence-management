@@ -13,7 +13,7 @@ const makeComment = (body: string): ConsoleComment => ({
 
 const AGENT_COMMENT = `From: :robot: tdpm-workflow-improver (claude-sonnet-4-6)
 \`\`\`json
-{ "nextStepAgent": "pr-reviewer" }
+{ }
 \`\`\`
 ## Loaded skills
 general-development-policy, markdown-writing-rules

@@ -45,7 +45,7 @@ describe('isHumanComment', () => {
         {
           author: 'bot',
           content:
-            '```json\n{ "nextStepAgent": "developer" }\n```\n\nFrom: :robot: agent (model)\n\nReport body.',
+            '```json\n{ }\n```\n\nFrom: :robot: agent (model)\n\nReport body.',
         },
         trustAll,
       ),

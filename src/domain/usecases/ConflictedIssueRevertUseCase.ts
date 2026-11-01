@@ -10,11 +10,6 @@ import {
 } from '../entities/WorkflowStatus';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
-import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
-import {
-  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-  resolveNextStepAgentDispatchRepetition,
-} from './resolveNextStepAgentDispatchRepetition';
 import {
   AUTO_STATUS_CHECK_CI_FAILURE_MESSAGE,
   AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
@@ -34,11 +29,7 @@ export class ConflictedIssueRevertUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      | 'getAllIssues'
-      | 'getOpenPullRequests'
-      | 'updateStatus'
-      | 'updateBranch'
-      | 'getLatestReopenedEventAt'
+      'getAllIssues' | 'getOpenPullRequests' | 'updateStatus' | 'updateBranch'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -50,8 +41,6 @@ export class ConflictedIssueRevertUseCase {
   run = async (params: {
     projectUrl: string;
     allowedIssueAuthors?: string[] | null;
-    thresholdForAutoReject?: number;
-    thresholdForDispatchLoop?: number;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -167,52 +156,6 @@ export class ConflictedIssueRevertUseCase {
           )
         ) {
           continue;
-        }
-        const latestReopenedAt =
-          await this.issueRepository.getLatestReopenedEventAt(issue);
-        if (params.thresholdForAutoReject !== undefined) {
-          const nextStepAgent = extractNextStepAgentFromComments(
-            existingComments,
-            isTrustedAuthorForAutoStatusCheck,
-            issue.agent,
-          );
-          if (nextStepAgent !== null) {
-            const repetition = resolveNextStepAgentDispatchRepetition({
-              agentFieldValue: issue.agent,
-              nextStepAgent,
-              currentDispatchHasNoReportRejection: false,
-              comments: existingComments,
-              isTrustedAuthor: isTrustedAuthorForAutoStatusCheck,
-              thresholdForAutoReject: params.thresholdForAutoReject,
-              thresholdForDispatchLoop:
-                params.thresholdForDispatchLoop ??
-                DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-              isNoStory: false,
-              dependedIssueUrls: issue.dependedIssueUrls,
-              latestReopenedAt,
-            });
-            if (repetition.type === 'escalateSilentRedispatch') {
-              await this.issueRepository.updateStatus(
-                project,
-                issue,
-                failedPreparationStatusOption.id,
-              );
-              await this.createCommentWithDedup(issue, repetition.comment);
-              continue;
-            }
-            if (
-              repetition.type === 'escalateReportingLoop' ||
-              repetition.type === 'escalateDispatchLoop'
-            ) {
-              await this.issueRepository.updateStatus(
-                project,
-                issue,
-                failedPreparationStatusOption.id,
-              );
-              await this.createCommentWithDedup(issue, repetition.comment);
-              continue;
-            }
-          }
         }
         await this.issueRepository.updateStatus(
           project,

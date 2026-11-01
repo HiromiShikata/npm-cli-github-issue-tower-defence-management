@@ -247,7 +247,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -269,7 +269,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -290,8 +290,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
-          content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "developer"}\n```',
+          content: 'From: :robot: Agent report\n```json\n{}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -315,7 +314,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -346,7 +345,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "my-developer", "nextStep": null}\n```',
+            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -368,7 +367,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "my-developer", "nextStep": null}\n```',
+            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
         }),
         createMockComment({
           content:
