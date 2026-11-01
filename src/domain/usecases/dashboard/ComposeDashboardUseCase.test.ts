@@ -893,14 +893,8 @@ describe('ComposeDashboardUseCase', () => {
       return { ...resetCase, tokenRow };
     });
     const knownTokenRow = tokenRows[3].tokenRow;
-    const fiveHourResetColumnStart = codePointIndexOf(
-      knownTokenRow,
-      '0d01h00',
-    );
-    const sevenDayResetColumnStart = codePointIndexOf(
-      knownTokenRow,
-      '1d00h00',
-    );
+    const fiveHourResetColumnStart = codePointIndexOf(knownTokenRow, '0d01h00');
+    const sevenDayResetColumnStart = codePointIndexOf(knownTokenRow, '1d00h00');
     const sevenDayUtilizationColumnStarts = tokenRows.map(({ tokenRow }) =>
       codePointIndexOf(tokenRow, '12'),
     );
@@ -910,8 +904,11 @@ describe('ComposeDashboardUseCase', () => {
 
     expect(new Set(sevenDayUtilizationColumnStarts).size).toBe(1);
     expect(new Set(tokenRowLengths).size).toBe(1);
-    for (const { fiveHourResetSeconds, sevenDayResetSeconds, tokenRow } of
-      tokenRows) {
+    for (const {
+      fiveHourResetSeconds,
+      sevenDayResetSeconds,
+      tokenRow,
+    } of tokenRows) {
       if (fiveHourResetSeconds === null) {
         expect(
           [...tokenRow]
