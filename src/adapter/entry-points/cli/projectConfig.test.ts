@@ -892,6 +892,17 @@ describe('mergeConfigs githubAppPrivateKeyPaths', () => {
   });
 });
 
+describe('setProjectReadmeMaxPreparingIssuesCount on an unparseable config section', () => {
+  it('throws instead of replacing the section and dropping its other keys', () => {
+    const readme =
+      '# Project\n<details>\n<summary>config</summary>\ndefaultAgentName: agent\ninvalid: [unclosed\n</details>\n';
+
+    expect(() => setProjectReadmeMaxPreparingIssuesCount(readme, 4)).toThrow(
+      'Failed to parse YAML from project README config section',
+    );
+  });
+});
+
 describe('fetchProjectReadmeWithCache', () => {
   const mockCacheRepo = {
     getSingle: jest.fn<Promise<unknown>, [string]>(),
@@ -905,7 +916,7 @@ describe('fetchProjectReadmeWithCache', () => {
     new Response(
       JSON.stringify(
         readme === null
-          ? { data: {} }
+          ? { data: { organization: { projectV2: { readme: null } } } }
           : { data: { organization: { projectV2: { readme } } } },
       ),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -972,7 +983,7 @@ describe('fetchProjectReadmeWithCache', () => {
       '<details><summary>config</summary>maximumPreparingIssuesCount: 5</details>';
     const fetchSpy = jest
       .spyOn(global, 'fetch')
-      .mockResolvedValue(makeReadmeResponse(readme));
+      .mockImplementation(async () => makeReadmeResponse(readme));
 
     await fetchProjectReadmeWithCache(
       projectUrl,
@@ -1065,6 +1076,101 @@ describe('fetchProjectReadmeWithCache', () => {
       fetchedAtMs: baseNowMs,
       readme: freshReadme,
     });
+  });
+
+  it('does not cache a failed read and fetches again on the next call', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 4</details>';
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(makeReadmeResponse(readme));
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow('network down');
+    expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs + 1,
+    );
+
+    expect(result).toBe(readme);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('never caches a failed README response in memory or on disk', async () => {
+    const failureCases: {
+      name: string;
+      response: Response;
+      expectedMessage: string;
+    }[] = [
+      {
+        name: 'non-ok HTTP status',
+        response: new Response('', { status: 503 }),
+        expectedMessage: 'GraphQL request failed: 503',
+      },
+      {
+        name: 'rate limit error without data',
+        response: new Response(
+          JSON.stringify({
+            errors: [
+              { type: 'RATE_LIMIT', message: 'API rate limit exceeded' },
+            ],
+          }),
+          { status: 200 },
+        ),
+        expectedMessage: 'API rate limit exceeded',
+      },
+      {
+        name: 'project not resolved',
+        response: new Response(
+          JSON.stringify({ data: { organization: null, user: null } }),
+          { status: 200 },
+        ),
+        expectedMessage: 'did not resolve the project',
+      },
+    ];
+    for (const failureCase of failureCases) {
+      mockCacheRepo.setSingle.mockClear();
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(failureCase.response);
+      let message = 'resolved without error';
+      try {
+        await fetchProjectReadmeWithCache(
+          projectUrl,
+          token,
+          mockCacheRepo,
+          baseNowMs,
+        );
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      expect(`${failureCase.name}: ${message}`).toContain(
+        failureCase.expectedMessage,
+      );
+      expect(mockCacheRepo.setSingle.mock.calls.length).toBe(0);
+    }
+  });
+
+  it('does not serve an expired disk entry when the fresh read fails', async () => {
+    const staleFetchedAt = baseNowMs - PROJECT_README_CACHE_TTL_MS - 1;
+    mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
+      if (key.startsWith('projectReadme/')) {
+        return { fetchedAtMs: staleFetchedAt, readme: 'stale content' };
+      }
+      return null;
+    });
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('server error', { status: 500 }));
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow('GraphQL request failed: 500');
+    expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
   });
 
   it('returns the fetched readme even when the cache write throws', async () => {

@@ -211,10 +211,7 @@ describe('CLI', () => {
   };
 
   const mockFetchReturningReadme = (readme: string | null): void => {
-    const responseBody =
-      readme === null
-        ? { data: {} }
-        : { data: { organization: { projectV2: { readme } } } };
+    const responseBody = { data: { organization: { projectV2: { readme } } } };
     jest.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(responseBody), {
         status: 200,
@@ -799,19 +796,13 @@ defaultLlmModelName: 'claude-opus-4-5'
       expect(result).toEqual({});
     });
 
-    it('should handle invalid YAML gracefully', () => {
+    it('should throw on invalid YAML instead of ignoring the config section', () => {
       const readme =
         '<details>\n<summary>config</summary>\ninvalid: [unclosed\n</details>';
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      const result = parseProjectReadmeConfig(readme);
-
-      expect(result).toEqual({});
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(() => parseProjectReadmeConfig(readme)).toThrow(
         'Failed to parse YAML from project README config section',
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it('should parse number fields from README config', () => {
@@ -1127,22 +1118,119 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       expect(result).toBe('# User Owned Project README');
     });
 
-    it('should return null and warn on failure', async () => {
+    it('should throw when the request itself fails', async () => {
       jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
 
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      await expect(
+        fetchProjectReadme(
+          'https://github.com/orgs/test/projects/1',
+          'test-token',
+        ),
+      ).rejects.toThrow('Network error');
+    });
 
-      const result = await fetchProjectReadme(
-        'https://github.com/orgs/test/projects/1',
-        'test-token',
-      );
+    it('should throw a description of the failure for every response that does not carry the project README', async () => {
+      const jsonResponse = (body: unknown): Response =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      const failureCases: {
+        name: string;
+        response: Response;
+        expectedMessage: string;
+      }[] = [
+        {
+          name: 'non-ok HTTP status',
+          response: new Response('', { status: 502 }),
+          expectedMessage: 'GraphQL request failed: 502',
+        },
+        {
+          name: 'rate limit error without data',
+          response: jsonResponse({
+            errors: [
+              { type: 'RATE_LIMIT', message: 'API rate limit exceeded' },
+            ],
+          }),
+          expectedMessage: 'API rate limit exceeded',
+        },
+        {
+          name: 'body without data',
+          response: jsonResponse({}),
+          expectedMessage: 'has no data',
+        },
+        {
+          name: 'neither organization nor user resolved',
+          response: jsonResponse({
+            data: { organization: null, user: null },
+            errors: [
+              {
+                type: 'NOT_FOUND',
+                message:
+                  "Could not resolve to an Organization with the login of 'test-user'.",
+              },
+            ],
+          }),
+          expectedMessage:
+            "Could not resolve to an Organization with the login of 'test-user'.",
+        },
+        {
+          name: 'neither organization nor user resolved without errors',
+          response: jsonResponse({ data: { organization: null, user: null } }),
+          expectedMessage: 'did not resolve the project',
+        },
+      ];
+      for (const failureCase of failureCases) {
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(failureCase.response);
+        let message = 'resolved without error';
+        try {
+          await fetchProjectReadme(
+            'https://github.com/orgs/test/projects/1',
+            'test-token',
+          );
+        } catch (error) {
+          message = error instanceof Error ? error.message : String(error);
+        }
+        expect(`${failureCase.name}: ${message}`).toContain(
+          failureCase.expectedMessage,
+        );
+      }
+    });
 
-      expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to fetch project README'),
-      );
+    it('should throw a JSON parse error for a response body that is not JSON', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(new Response('not json', { status: 200 }));
 
-      consoleWarnSpy.mockRestore();
+      await expect(
+        fetchProjectReadme(
+          'https://github.com/orgs/test/projects/1',
+          'test-token',
+        ),
+      ).rejects.toMatchObject({ name: 'SyntaxError' });
+    });
+
+    it('should return null for a project found with an empty README', async () => {
+      const responseBodies = [
+        { data: { organization: { projectV2: { readme: null } } } },
+        { data: { organization: null, user: { projectV2: { readme: null } } } },
+      ];
+      const results: (string | null)[] = [];
+      for (const responseBody of responseBodies) {
+        jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify(responseBody), { status: 200 }),
+          );
+        results.push(
+          await fetchProjectReadme(
+            'https://github.com/users/test-user/projects/1',
+            'test-token',
+          ),
+        );
+      }
+
+      expect(results).toEqual([null, null]);
     });
 
     it('should reflect maximumPreparingIssuesCount from user-owned project README in merged config', async () => {
@@ -3683,10 +3771,15 @@ ${removedSettingName}: 'claude-sonnet-4-6'
         process.env.XDG_CACHE_HOME = workerSessionTemporaryDirectory;
         jest.spyOn(global, 'fetch').mockImplementation(
           async () =>
-            new Response(JSON.stringify({ data: {} }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
+            new Response(
+              JSON.stringify({
+                data: { organization: { projectV2: { readme: null } } },
+              }),
+              {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            ),
         );
         processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
           throw new Error('process.exit called');

@@ -262,10 +262,9 @@ const validConfig = {
 };
 
 const mockFetchReturningReadme = (readme: string | null): void => {
-  const responseBody =
-    readme === null
-      ? { data: {} }
-      : { data: { organization: { projectV2: { readme } } } };
+  const responseBody = {
+    data: { organization: { projectV2: { readme } } },
+  };
   jest.spyOn(global, 'fetch').mockResolvedValue(
     new Response(JSON.stringify(responseBody), {
       status: 200,
@@ -513,6 +512,43 @@ utilizationPercentageThreshold: 80
           utilizationPercentageThreshold: 80,
         },
       });
+    });
+
+    it('should fail the scheduled run and start no worker when the README read fails', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            errors: [
+              { type: 'RATE_LIMIT', message: 'API rate limit exceeded' },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await expect(handler.handle('config.yml', false)).rejects.toThrow(
+        'API rate limit exceeded',
+      );
+      expect(capturedRunInputs).toHaveLength(0);
+    });
+
+    it('should fail the scheduled run and start no worker when the README config section is not valid YAML', async () => {
+      mockFetchReturningReadme(
+        '<details>\n<summary>config</summary>\ninvalid: [unclosed\n</details>',
+      );
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithStartPreparation));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await expect(handler.handle('config.yml', false)).rejects.toThrow(
+        'Failed to parse YAML from project README config section',
+      );
+      expect(capturedRunInputs).toHaveLength(0);
     });
 
     it('should split comma-separated allowedIssueAuthors from README config', async () => {
