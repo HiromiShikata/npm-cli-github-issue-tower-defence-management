@@ -11,7 +11,6 @@ const DEFAULT_PROC_DIRECTORY = '/proc';
 const LOG_PATH_PATTERN = /\/logs-aw\/[^\0"]+\.log/;
 const TAKE_OWNERSHIP_ISSUE_URL_PATTERN =
   /Take ownership of (https:\/\/github\.com\/[^\s\0"]+)/;
-const ISSUE_URL_PATTERN = /https:\/\/github\.com\/[^\s\0"]+/;
 
 const extractLogPath = (cmdline: string): string | null => {
   const match = cmdline.match(LOG_PATH_PATTERN);
@@ -50,9 +49,7 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
       if (!claudePrintModeFlagOf(commandArguments)) {
         continue;
       }
-      const match =
-        rawCmdline.match(TAKE_OWNERSHIP_ISSUE_URL_PATTERN) ??
-        rawCmdline.match(ISSUE_URL_PATTERN);
+      const match = rawCmdline.match(TAKE_OWNERSHIP_ISSUE_URL_PATTERN);
       if (match !== null) {
         urls.push(match[1] ?? match[0]);
       }
