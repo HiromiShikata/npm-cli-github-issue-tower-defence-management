@@ -1286,7 +1286,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(result).toEqual({ 'sk-ant-claude': 1 });
     });
 
-    it('should count the wrapper token when the worker wrapper has no claude descendant yet', async () => {
+    it('should not count a worker wrapper that has no print-flag descendant yet', async () => {
       mockProcessTable(
         workerTree({
           wrapperPid: 600,
@@ -1299,7 +1299,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
       const result = await repository.getTokenInFlightCounts();
 
-      expect(result).toEqual({ 'sk-ant-wrapper': 1 });
+      expect(result).toEqual({});
     });
 
     it('should count two sessions on the shared token when two worker wrappers have claude children on the same token', async () => {
