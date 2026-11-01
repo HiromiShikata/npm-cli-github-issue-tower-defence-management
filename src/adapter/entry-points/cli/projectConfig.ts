@@ -288,6 +288,17 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
   }
 };
 
+const createProjectReadmeConfigParseError = (
+  error: unknown,
+  projectUrl?: string,
+): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+  const projectUrlSuffix = projectUrl ? ` (project URL: ${projectUrl})` : '';
+  return new Error(
+    `Failed to parse YAML from project README config section${projectUrlSuffix}: ${message}`,
+  );
+};
+
 export const parseProjectReadmeConfig = (
   readme: string,
   projectUrl?: string,
@@ -376,9 +387,8 @@ export const parseProjectReadmeConfig = (
         'errorReportingRepository',
       ),
     };
-  } catch {
-    console.warn('Failed to parse YAML from project README config section');
-    return {};
+  } catch (error) {
+    throw createProjectReadmeConfigParseError(error, projectUrl);
   }
 };
 
@@ -498,9 +508,10 @@ export const mergeConfigs = (
 
 type GraphqlProjectV2ReadmeResponse = {
   data?: {
-    organization?: { projectV2?: { readme?: string | null } };
-    user?: { projectV2?: { readme?: string | null } };
-  };
+    organization?: { projectV2?: { readme?: string | null } | null } | null;
+    user?: { projectV2?: { readme?: string | null } | null } | null;
+  } | null;
+  errors?: unknown;
 };
 
 const isGraphqlProjectV2ReadmeResponse = (
@@ -508,65 +519,90 @@ const isGraphqlProjectV2ReadmeResponse = (
 ): value is GraphqlProjectV2ReadmeResponse => {
   if (!isRecord(value)) return false;
   const data = value['data'];
-  if (data !== undefined && !isRecord(data)) return false;
-  return true;
+  return data === undefined || data === null || isRecord(data);
+};
+
+const describeGraphqlErrors = (errors: unknown): string => {
+  if (!Array.isArray(errors)) return '';
+  const descriptions: string[] = [];
+  for (const error of errors) {
+    if (!isRecord(error)) continue;
+    const type: unknown = error['type'];
+    const message: unknown = error['message'];
+    const description = [type, message]
+      .filter(
+        (part): part is string => typeof part === 'string' && part.length > 0,
+      )
+      .join(': ');
+    if (description.length > 0) descriptions.push(description);
+  }
+  return descriptions.length > 0 ? `: ${descriptions.join('; ')}` : '';
 };
 
 export const fetchProjectReadme = async (
   projectUrl: string,
   token: string,
 ): Promise<string | null> => {
-  try {
-    const urlParts = projectUrl.split('/');
-    const projectNumber = parseInt(urlParts[urlParts.length - 1], 10);
-    const owner = urlParts[urlParts.length - 3];
+  const urlParts = projectUrl.split('/');
+  const projectNumber = parseInt(urlParts[urlParts.length - 1], 10);
+  const owner = urlParts[urlParts.length - 3];
 
-    const query = `
-      query ProjectReadme($owner: String!, $number: Int!) {
-        organization(login: $owner) {
-          projectV2(number: $number) {
-            readme
-          }
-        }
-        user(login: $owner) {
-          projectV2(number: $number) {
-            readme
-          }
+  const query = `
+    query ProjectReadme($owner: String!, $number: Int!) {
+      organization(login: $owner) {
+        projectV2(number: $number) {
+          readme
         }
       }
-    `;
-
-    const response = await fetchGithubGraphql({
-      ghToken: token,
-      query,
-      variables: { owner, number: projectNumber },
-    });
-
-    if (!response.ok) {
-      throw new Error(`GraphQL request failed: ${response.status}`);
+      user(login: $owner) {
+        projectV2(number: $number) {
+          readme
+        }
+      }
     }
+  `;
 
-    const responseData: unknown = await response.json();
+  const response = await fetchGithubGraphql({
+    ghToken: token,
+    query,
+    variables: { owner, number: projectNumber },
+  });
 
-    if (!isGraphqlProjectV2ReadmeResponse(responseData)) {
-      return null;
-    }
-
-    const orgReadme = responseData.data?.organization?.projectV2?.readme;
-    const userReadme = responseData.data?.user?.projectV2?.readme;
-    const readme =
-      typeof orgReadme === 'string'
-        ? orgReadme
-        : typeof userReadme === 'string'
-          ? userReadme
-          : null;
-
-    return readme;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Failed to fetch project README: ${message}`);
-    return null;
+  if (!response.ok) {
+    throw new Error(`GraphQL request failed: ${response.status}`);
   }
+
+  const responseData: unknown = await response.json();
+
+  if (!isGraphqlProjectV2ReadmeResponse(responseData)) {
+    throw new Error('GitHub GraphQL response has an unexpected shape');
+  }
+
+  const errorsDescription = describeGraphqlErrors(responseData.errors);
+  const data = responseData.data;
+  if (!data) {
+    throw new Error(
+      `GitHub GraphQL response has no data for the project README${errorsDescription}`,
+    );
+  }
+
+  const organizationProject = data.organization?.projectV2;
+  const userProject = data.user?.projectV2;
+  if (!organizationProject && !userProject) {
+    throw new Error(
+      `GitHub GraphQL response did not resolve the project README${errorsDescription}`,
+    );
+  }
+
+  const organizationReadme = organizationProject?.readme;
+  const userReadme = userProject?.readme;
+  if (typeof organizationReadme === 'string') {
+    return organizationReadme;
+  }
+  if (typeof userReadme === 'string') {
+    return userReadme;
+  }
+  return null;
 };
 
 const CONFIG_DETAILS_REGEX =
@@ -591,8 +627,8 @@ export const setProjectReadmeMaxPreparingIssuesCount = (
       if (isRecord(result)) {
         parsed = result;
       }
-    } catch {
-      parsed = {};
+    } catch (error) {
+      throw createProjectReadmeConfigParseError(error);
     }
   }
   parsed['maximumPreparingIssuesCount'] = count;
