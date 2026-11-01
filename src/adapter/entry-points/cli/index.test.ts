@@ -26,6 +26,7 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertOrphanedWaitConditionUseCase } from '../../../domain/usecases/RevertOrphanedWaitConditionUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
@@ -5107,6 +5108,131 @@ ${removedSettingName}: 'claude-sonnet-4-6'
           }
         }
       });
+    });
+  });
+
+  describe('README read failure in CLI entry points', () => {
+    const readmeReadFailureMessage = /^GraphQL request failed: 503$/;
+
+    const mockReadmeReadFailure = (): void => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(new Response('', { status: 503 }));
+    };
+
+    it('fails startDaemon without starting the preparation when the README read fails', async () => {
+      mockReadmeReadFailure();
+      const mockRun = jest.fn();
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'startDaemon',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow(readmeReadFailureMessage);
+
+      expect(MockedStartPreparationUseCase).not.toHaveBeenCalled();
+      expect(mockRun).not.toHaveBeenCalled();
+    });
+
+    it('fails notifyFinishedIssuePreparation without notifying when the README read fails', async () => {
+      mockReadmeReadFailure();
+      const mockRun = jest.fn();
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'notifyFinishedIssuePreparation',
+          '--configFilePath',
+          configFilePath,
+          '--issueUrl',
+          'https://github.com/test/repo/issues/1',
+        ]),
+      ).rejects.toThrow(readmeReadFailureMessage);
+
+      expect(MockedNotifyFinishedUseCase).not.toHaveBeenCalled();
+      expect(mockRun).not.toHaveBeenCalled();
+    });
+
+    it('fails checkIssueReviewReadiness without checking readiness when the README read fails', async () => {
+      mockReadmeReadFailure();
+      const mockRun = jest.fn();
+      const MockedCheckUseCase = jest.mocked(CheckIssueReviewReadinessUseCase);
+      MockedCheckUseCase.mockImplementation(function (
+        this: CheckIssueReviewReadinessUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      try {
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'checkIssueReviewReadiness',
+            '--configFilePath',
+            configFilePath,
+            '--issueUrl',
+            'https://github.com/test/repo/issues/1',
+          ]),
+        ).rejects.toThrow(readmeReadFailureMessage);
+
+        expect(MockedCheckUseCase).not.toHaveBeenCalled();
+        expect(mockRun).not.toHaveBeenCalled();
+        expect(stdoutSpy).not.toHaveBeenCalled();
+      } finally {
+        stdoutSpy.mockRestore();
+      }
+    });
+
+    it('fails countInTmuxByHumanSessionsPerToken without listing issues or writing counts when the README read fails', async () => {
+      mockReadmeReadFailure();
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      try {
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'countInTmuxByHumanSessionsPerToken',
+            '--configFilePath',
+            configFilePath,
+          ]),
+        ).rejects.toThrow(readmeReadFailureMessage);
+
+        expect(ApiV3CheerioRestIssueRepository).not.toHaveBeenCalled();
+        expect(stdoutSpy).not.toHaveBeenCalled();
+      } finally {
+        stdoutSpy.mockRestore();
+      }
     });
   });
 
