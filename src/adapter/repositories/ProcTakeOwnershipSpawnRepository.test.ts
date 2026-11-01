@@ -412,6 +412,98 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       );
     });
 
+    it('extracts exactly the issue URL before whitespace in the worker request', () => {
+      const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
+      const testCases = [
+        `Take ownership of ${requestedIssueUrl}\n\nRead the usage policy skill before starting.`,
+        `Take ownership of ${requestedIssueUrl} and continue the task`,
+        `Take ownership of ${requestedIssueUrl}\tand continue the task`,
+        `Take ownership of ${requestedIssueUrl}`,
+      ];
+
+      testCases.forEach((request, index) => {
+        writeProcess({
+          pid: 600 + index,
+          cmdline: argv('claude-agent', '-p', request),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-url-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual(
+        testCases.map(() => requestedIssueUrl),
+      );
+    });
+
+    it('extracts the issue URL from the request instead of the worker name', () => {
+      const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
+      const namedIssueUrl = 'https://github.com/octo/repo/issues/99';
+      const testCases = [
+        [
+          'claude-agent',
+          '--name',
+          `${namedIssueUrl}/impl`,
+          '-p',
+          `Take ownership of ${requestedIssueUrl}`,
+        ],
+        [
+          'claude-agent',
+          '-p',
+          `Take ownership of ${requestedIssueUrl}`,
+          '--name',
+          `${namedIssueUrl}/impl`,
+        ],
+      ];
+
+      testCases.forEach((commandArguments, index) => {
+        writeProcess({
+          pid: 610 + index,
+          cmdline: argv(...commandArguments),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-name-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual([
+        requestedIssueUrl,
+        requestedIssueUrl,
+      ]);
+    });
+
+    it('keeps URL-only print requests and ignores prompts without an exact print flag', () => {
+      const nonPrintIssueUrl =
+        'https://github.com/HiromiShikata/example/issues/2';
+      const testCases: {
+        commandArguments: string[];
+        expectedUrls: string[];
+      }[] = [
+        {
+          commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
+          expectedUrls: [issueUrl],
+        },
+        {
+          commandArguments: ['claude', `Take ownership of ${nonPrintIssueUrl}`],
+          expectedUrls: [],
+        },
+      ];
+
+      testCases.forEach((testCase, index) => {
+        writeProcess({
+          pid: 620 + index,
+          cmdline: argv(...testCase.commandArguments),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-guard-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual(
+        testCases.flatMap((testCase) => testCase.expectedUrls),
+      );
+    });
+
     it('extracts the issue URL from a worker spawn whose -p argument is the worker request text of that issue URL', () => {
       const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
       writeProcess({
