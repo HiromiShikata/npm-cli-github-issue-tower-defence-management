@@ -1,3 +1,11 @@
+## [2.184.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.1...v2.184.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* fail on project README read errors instead of falling back to defaults ([#3669](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3669)) ([63dd9ee](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/63dd9eeb97167816c72a0aa193a4c92c11f4928f))
+* **story-gate:** remove comment-count fold requirement from checkStoryGate ([#3670](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3670)) ([198a741](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/198a741fb9c6ed12c063cb3d16f70cd9306ccf29))
+
 ## [2.184.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.0...v2.184.1) (2026-11-01)
 
 
