@@ -1,3 +1,10 @@
+## [2.184.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.0...v2.184.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **dashboard:** pad unknown token reset with dashes ([#3665](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3665)) ([f4116ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f4116ce1766b274be00b7ca22920cee8a8e6dedc))
+
 # [2.184.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.183.7...v2.184.0) (2026-10-31)
 
 
