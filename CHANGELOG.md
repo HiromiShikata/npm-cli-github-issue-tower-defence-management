@@ -1,3 +1,10 @@
+## [2.184.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.3...v2.184.4) (2026-11-01)
+
+
+### Bug Fixes
+
+* **worker-spawn:** classify worker spawns by the print flag ([#3676](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3676)) ([194aa6c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/194aa6c71aa290048904a37ab75e611f09170e7c))
+
 ## [2.184.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.2...v2.184.3) (2026-11-01)
 
 
