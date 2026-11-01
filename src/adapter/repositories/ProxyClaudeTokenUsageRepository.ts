@@ -262,7 +262,9 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
       );
       const reservationBecameLiveWorker = liveWorkerCommandLines.some(
         (rawCommandLine) => {
-          const commandArguments = rawCommandLine.trim().split(/\s+/);
+          const commandArguments = rawCommandLine
+            .split('\0')
+            .filter((argument) => argument.length > 0);
           return (
             claudePrintModeFlagOf(commandArguments) &&
             reservedIssueCommandLineInfixPattern.test(rawCommandLine)

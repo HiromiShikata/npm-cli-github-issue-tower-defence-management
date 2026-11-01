@@ -135,6 +135,30 @@ export class ProcTakeOwnershipWorkerSessionReader {
     return false;
   };
 
+  private wrapperProcessIsAncestorOfAnyPrintFlagWorker = (
+    wrapperProcessId: number,
+    snapshotsByProcessId: Map<number, ProcessSnapshot>,
+    printFlagWorkerProcessIds: Set<number>,
+  ): boolean => {
+    for (const printFlagWorkerProcessId of printFlagWorkerProcessIds) {
+      let currentProcessId = printFlagWorkerProcessId;
+      const visitedProcessIds = new Set<number>();
+      while (!visitedProcessIds.has(currentProcessId)) {
+        visitedProcessIds.add(currentProcessId);
+        const parentProcessId =
+          snapshotsByProcessId.get(currentProcessId)?.stat?.parentProcessId;
+        if (parentProcessId === undefined) {
+          break;
+        }
+        if (parentProcessId === wrapperProcessId) {
+          return true;
+        }
+        currentProcessId = parentProcessId;
+      }
+    }
+    return false;
+  };
+
   private readProcessSnapshots = (): Map<number, ProcessSnapshot> => {
     const snapshotsByProcessId = new Map<number, ProcessSnapshot>();
     let entries: string[];
@@ -183,11 +207,13 @@ export class ProcTakeOwnershipWorkerSessionReader {
   private readTokenHoldingWorkerProcesses = (
     snapshotsByProcessId: Map<number, ProcessSnapshot>,
   ): Map<number, TokenHoldingWorkerProcess> => {
-    const workerProcessesById = new Map<number, TokenHoldingWorkerProcess>();
+    const printFlagWorkerProcessIds = new Set<number>();
+    const printFlagWorkerProcessesById = new Map<
+      number,
+      TokenHoldingWorkerProcess
+    >();
+    const markerWrapperProcesses = new Map<number, TokenHoldingWorkerProcess>();
     for (const snapshot of snapshotsByProcessId.values()) {
-      if (snapshot.oauthToken === null) {
-        continue;
-      }
       const rawCommandLine = this.readProcessFile(
         String(snapshot.processId),
         'cmdline',
@@ -200,17 +226,42 @@ export class ProcTakeOwnershipWorkerSessionReader {
         .filter((argument) => argument.length > 0);
       const isClaudeProcess =
         snapshot.stat?.commandName === CLAUDE_COMMAND_NAME;
-      if (
-        (isClaudeProcess && !claudePrintModeFlagOf(commandArguments)) ||
-        (!isClaudeProcess && !rawCommandLine.includes(TAKE_OWNERSHIP_MARKER))
-      ) {
+      const hasPrintFlag = claudePrintModeFlagOf(commandArguments);
+      const hasTakeOwnershipMarker = rawCommandLine.includes(
+        TAKE_OWNERSHIP_MARKER,
+      );
+      const isPrintFlagWorker =
+        hasPrintFlag && (isClaudeProcess || hasTakeOwnershipMarker);
+      if (isPrintFlagWorker) {
+        printFlagWorkerProcessIds.add(snapshot.processId);
+      }
+      if (snapshot.oauthToken === null) {
         continue;
       }
-      workerProcessesById.set(snapshot.processId, {
+      const workerProcess = {
         processId: snapshot.processId,
         rawCommandLine,
         oauthToken: snapshot.oauthToken,
-      });
+      };
+      if (isPrintFlagWorker) {
+        printFlagWorkerProcessesById.set(snapshot.processId, workerProcess);
+        continue;
+      }
+      if (!isClaudeProcess && hasTakeOwnershipMarker) {
+        markerWrapperProcesses.set(snapshot.processId, workerProcess);
+      }
+    }
+    const workerProcessesById = new Map(printFlagWorkerProcessesById);
+    for (const [processId, markerWrapperProcess] of markerWrapperProcesses) {
+      if (
+        this.wrapperProcessIsAncestorOfAnyPrintFlagWorker(
+          processId,
+          snapshotsByProcessId,
+          printFlagWorkerProcessIds,
+        )
+      ) {
+        workerProcessesById.set(processId, markerWrapperProcess);
+      }
     }
     return workerProcessesById;
   };

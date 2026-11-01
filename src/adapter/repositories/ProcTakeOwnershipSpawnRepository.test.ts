@@ -124,11 +124,10 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     expect(repository.listSpawns()).toEqual([
       { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
-      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
     ]);
   });
 
-  it('reports the wrapper token when the worker wrapper has no claude descendant yet', () => {
+  it('reports no spawn when the worker wrapper has no print-flag descendant yet', () => {
     writeWorkerTree({
       wrapperPid: 320,
       wrapperToken: 'wrapper-token',
@@ -138,10 +137,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
-    expect(repository.listSpawns()).toEqual([
-      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
-      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
-    ]);
+    expect(repository.listSpawns()).toEqual([]);
   });
 
   it('reports each worker on the shared token when two worker wrappers have claude children on the same token', () => {
@@ -162,13 +158,11 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     expect(sortSpawns(repository.listSpawns())).toEqual([
       { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
       { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
     ]);
   });
 
-  it('reads the token and log path of a Take ownership spawn', () => {
+  it('does not report a wrapper-only Take ownership marker as a spawn', () => {
     writeProcess({
       pid: 301,
       cmdline: argv(
@@ -181,9 +175,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
-    expect(repository.listSpawns()).toEqual([
-      { token: 'token-a', logPath: '/logs-aw/20260626_120000_abc.log' },
-    ]);
+    expect(repository.listSpawns()).toEqual([]);
   });
 
   it('ignores a process that is not a Take ownership spawn', () => {
@@ -226,9 +218,8 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     expect(repository.listSpawns()).toEqual([]);
   });
 
-  it('returns one entry per child process so the use case can dedupe by log path', () => {
+  it('does not report wrapper-only marker processes or their children as spawns', () => {
     const fullLogPath = '/home/user/logs-aw/20260626_120000_dup.log';
-    const capturedLogPath = '/logs-aw/20260626_120000_dup.log';
     writeProcess({
       pid: 305,
       cmdline: argv(
@@ -246,10 +237,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
-    expect(repository.listSpawns()).toEqual([
-      { token: 'token-d', logPath: capturedLogPath },
-      { token: 'token-d', logPath: capturedLogPath },
-    ]);
+    expect(repository.listSpawns()).toEqual([]);
   });
 
   it('returns an empty list when the proc directory does not exist', () => {
@@ -352,7 +340,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       expect(repository.listRunningIssueUrls()).toEqual([issueUrl, issueUrl2]);
     });
 
-    it('returns issue URLs only for exact print flag elements, regardless of prompt text', () => {
+    it('returns issue URLs only when an exact print flag and request marker are both present', () => {
       const markerPrompt = `Take ownership of ${issueUrl}`;
       const testCases: {
         commandArguments: string[];
@@ -380,7 +368,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
         },
         {
           commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
-          expectedRunning: true,
+          expectedRunning: false,
         },
         {
           commandArguments: [
@@ -436,6 +424,30 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       );
     });
 
+    it('extracts exactly the issue URL before a quote in the worker request', () => {
+      const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
+      const testCases = [
+        `Take ownership of ${requestedIssueUrl}"trailing text`,
+        `Take ownership of ${requestedIssueUrl}'trailing text`,
+        `Take ownership of ${requestedIssueUrl}"`,
+        `Take ownership of ${requestedIssueUrl}'`,
+      ];
+
+      testCases.forEach((request, index) => {
+        writeProcess({
+          pid: 700 + index,
+          cmdline: argv('claude-agent', '-p', request),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-quote-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual(
+        testCases.map(() => requestedIssueUrl),
+      );
+    });
+
     it('extracts the issue URL from the request instead of the worker name', () => {
       const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
       const namedIssueUrl = 'https://github.com/octo/repo/issues/99';
@@ -472,7 +484,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       ]);
     });
 
-    it('keeps URL-only print requests and ignores prompts without an exact print flag', () => {
+    it('does not return bare URLs from print requests without the request marker', () => {
       const nonPrintIssueUrl =
         'https://github.com/HiromiShikata/example/issues/2';
       const testCases: {
@@ -481,7 +493,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       }[] = [
         {
           commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
-          expectedUrls: [issueUrl],
+          expectedUrls: [],
         },
         {
           commandArguments: ['claude', `Take ownership of ${nonPrintIssueUrl}`],

@@ -14,6 +14,8 @@ import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerS
 describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
   let tempCacheDir: string;
 
+  const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
+
   const buildRepository = (
     workerSessionReader?: ProcTakeOwnershipWorkerSessionReader,
   ): ProxyClaudeTokenUsageRepository =>
@@ -190,7 +192,13 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 1,
-            rawCommandLine: `claude --model opus -p "Take ownership of ${issueUrl}"`,
+            rawCommandLine: argv(
+              'claude',
+              '--model',
+              'opus',
+              '-p',
+              `Take ownership of ${issueUrl}`,
+            ),
           },
         ],
       },
@@ -234,7 +242,13 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 4,
-            rawCommandLine: `claude --model opus -p "Take ownership of ${unrelatedLongerIssueUrl}"`,
+            rawCommandLine: argv(
+              'claude',
+              '--model',
+              'opus',
+              '-p',
+              `Take ownership of ${unrelatedLongerIssueUrl}`,
+            ),
           },
         ],
       },
@@ -277,7 +291,13 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 3,
-            rawCommandLine: `claude --model opus -p "Take ownership of ${issueUrl}"`,
+            rawCommandLine: argv(
+              'claude',
+              '--model',
+              'opus',
+              '-p',
+              `Take ownership of ${issueUrl}`,
+            ),
           },
         ],
       },
@@ -294,6 +314,100 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
     expect(fs.existsSync(staleReservationFilePath)).toBe(false);
   });
 
+  it('counts reservations only when a NUL-separated worker command line has an exact print flag and the same issue URL', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const testCases: {
+      commandLine: string;
+      expectedGranted: boolean;
+    }[] = [
+      {
+        commandLine: argv(
+          'claude',
+          '--model',
+          'opus',
+          '-p',
+          `Take ownership of ${issueUrl}`,
+        ),
+        expectedGranted: true,
+      },
+      {
+        commandLine: argv('claude', `Take ownership of ${issueUrl}`),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv(
+          'claude',
+          '--prompt-file',
+          `Take ownership of ${issueUrl}`,
+        ),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv('claude', '-pre', `Take ownership of ${issueUrl}`),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv(
+          'claude',
+          `Take ownership of ${issueUrl} and run git log -p`,
+        ),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv(
+          'bash',
+          '-c',
+          `claude-agent --agent general -p "Take ownership of ${issueUrl}" | tee /logs-aw/x.log`,
+        ),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv(
+          'claude',
+          '-p',
+          'Take ownership of https://github.com/user/repo/issues/12',
+        ),
+        expectedGranted: false,
+      },
+    ];
+
+    const results = await Promise.all(
+      testCases.map(async (testCase, index) => {
+        const token = `token-command-line-${index}`;
+        const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
+          path.join(tempCacheDir, `nonexistent-proc-${index}`),
+        );
+        workerSessionReader.listWorkerSessions = () => [
+          {
+            rootProcessId: index,
+            sessionToken: token,
+            workerProcesses: [
+              { processId: index, rawCommandLine: testCase.commandLine },
+            ],
+          },
+        ];
+        const repository = buildRepository(workerSessionReader);
+        const firstGranted = await repository.reserveTokenLaunchSlot({
+          token,
+          concurrentLimit: 2,
+          issueUrl,
+        });
+        const secondGranted = await repository.reserveTokenLaunchSlot({
+          token,
+          concurrentLimit: 2,
+          issueUrl: 'https://github.com/user/repo/issues/2',
+        });
+
+        expect(firstGranted).toBe(true);
+        return secondGranted;
+      }),
+    );
+
+    expect(results).toEqual(
+      testCases.map((testCase) => testCase.expectedGranted),
+    );
+  });
+
   it("counts a real in-flight worker session running under a token toward that same token's concurrent limit, denying a further reservation for it", async () => {
     const workerSessionReader = new ProcTakeOwnershipWorkerSessionReader(
       path.join(tempCacheDir, 'nonexistent-proc'),
@@ -305,7 +419,13 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 2,
-            rawCommandLine: 'claude --model opus -p ordinary worker prompt',
+            rawCommandLine: argv(
+              'claude',
+              '--model',
+              'opus',
+              '-p',
+              'ordinary worker prompt',
+            ),
           },
         ],
       },

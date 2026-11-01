@@ -147,7 +147,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       {
         rootProcessId: 100,
         sessionToken: 'claude-token',
-        workerProcessIds: [100, 101, 102, 103, 104],
+        workerProcessIds: [100, 102, 103, 104],
       },
     ]);
     expect(sessions[0].workerProcesses[0].rawCommandLine).toBe(
@@ -158,34 +158,42 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
   it('counts only processes with an exact print flag element, including a flag value and a marker in another argument', () => {
     const markerPrompt = `Take ownership of ${issueUrl}`;
     const testCases: {
+      commandName: string;
       commandArguments: string[];
       expectedWorker: boolean;
     }[] = [
       {
+        commandName: 'claude',
         commandArguments: ['claude', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '-p', markerPrompt],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--print', markerPrompt],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--prompt-file', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '-pre', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: [
           'claude',
           '--note',
@@ -195,14 +203,24 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
         ],
         expectedWorker: true,
       },
-      { commandArguments: [], expectedWorker: false },
+      {
+        commandName: 'claude-agent',
+        commandArguments: ['claude-agent', '--print', markerPrompt],
+        expectedWorker: true,
+      },
+      {
+        commandName: 'claude-agent',
+        commandArguments: ['claude-agent', '-pre', markerPrompt],
+        expectedWorker: false,
+      },
+      { commandName: 'claude', commandArguments: [], expectedWorker: false },
     ];
 
     testCases.forEach((testCase, index) => {
       writeProcess({
         pid: 900 + index,
         parentPid: 1,
-        comm: 'claude',
+        comm: testCase.commandName,
         cmdline: argv(...testCase.commandArguments),
         environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-${index}` },
       });
@@ -233,7 +251,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     );
   });
 
-  it('uses the wrapper token when the worker has no claude descendant yet', () => {
+  it('ignores a wrapper when it has no print-flag descendant yet', () => {
     writeWorkerTree({
       wrapperPid: 200,
       wrapperToken: 'wrapper-token',
@@ -247,7 +265,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[200, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
   it('uses the wrapper token when the only descendants on another token are not the claude process', () => {
@@ -376,7 +394,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     expect(reader.listWorkerSessions()).toEqual([]);
   });
 
-  it('treats a worker process whose stat cannot be read as its own session', () => {
+  it('ignores a marker process whose stat cannot be read when it has no print-flag descendant', () => {
     writeProcess({
       pid: 700,
       parentPid: 1,
@@ -392,10 +410,10 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[700, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
-  it('returns once when the parent pids of a wrapper and a non-worker process point at each other', () => {
+  it('ignores a marker process whose parent pids point at each other without a print-flag descendant', () => {
     writeProcess({
       pid: 800,
       parentPid: 801,
@@ -417,7 +435,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
       reader
         .listWorkerSessions()
         .map((session) => [session.rootProcessId, session.sessionToken]),
-    ).toEqual([[800, 'wrapper-token']]);
+    ).toEqual([]);
   });
 
   it('returns an empty list when the proc directory does not exist', () => {
