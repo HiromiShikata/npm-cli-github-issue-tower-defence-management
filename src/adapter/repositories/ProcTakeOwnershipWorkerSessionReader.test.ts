@@ -158,34 +158,42 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
   it('counts only processes with an exact print flag element, including a flag value and a marker in another argument', () => {
     const markerPrompt = `Take ownership of ${issueUrl}`;
     const testCases: {
+      commandName: string;
       commandArguments: string[];
       expectedWorker: boolean;
     }[] = [
       {
+        commandName: 'claude',
         commandArguments: ['claude', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '-p', markerPrompt],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--print', markerPrompt],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--prompt-file', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '-pre', markerPrompt],
         expectedWorker: false,
       },
       {
+        commandName: 'claude',
         commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
         expectedWorker: true,
       },
       {
+        commandName: 'claude',
         commandArguments: [
           'claude',
           '--note',
@@ -195,14 +203,24 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
         ],
         expectedWorker: true,
       },
-      { commandArguments: [], expectedWorker: false },
+      {
+        commandName: 'claude-agent',
+        commandArguments: ['claude-agent', '--print', markerPrompt],
+        expectedWorker: true,
+      },
+      {
+        commandName: 'claude-agent',
+        commandArguments: ['claude-agent', '-pre', markerPrompt],
+        expectedWorker: false,
+      },
+      { commandName: 'claude', commandArguments: [], expectedWorker: false },
     ];
 
     testCases.forEach((testCase, index) => {
       writeProcess({
         pid: 900 + index,
         parentPid: 1,
-        comm: 'claude',
+        comm: testCase.commandName,
         cmdline: argv(...testCase.commandArguments),
         environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-${index}` },
       });

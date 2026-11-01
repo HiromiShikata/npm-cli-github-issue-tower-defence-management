@@ -355,6 +355,14 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
       },
       {
         commandLine: argv(
+          'bash',
+          '-c',
+          `claude-agent --agent general -p "Take ownership of ${issueUrl}" | tee /logs-aw/x.log`,
+        ),
+        expectedGranted: false,
+      },
+      {
+        commandLine: argv(
           'claude',
           '-p',
           'Take ownership of https://github.com/user/repo/issues/12',
