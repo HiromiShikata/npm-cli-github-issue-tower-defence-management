@@ -11838,7 +11838,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('keeps nextStepAgent routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 16)', async () => {
+    it('keeps nextStepAgent routing and does not close the issue when closeIssueAs is combined with nextStepAgent on investigation-type title/body (closeIssueAs criterion 16)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11860,7 +11860,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ]);
     });
 
-    it('keeps workflowError routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 17)', async () => {
+    it('keeps workflowError routing and does not close the issue when closeIssueAs is combined with workflowError on investigation-type title/body (closeIssueAs criterion 17)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11885,7 +11885,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('has no effect on routing when closeIssueAs was not requested even though the title/body looks like a human-authored investigation task (closeIssueAs criterion 18)', async () => {
+    it('has no effect on routing when closeIssueAs was not requested even though the title/body contains investigation-type words (closeIssueAs criterion 18)', async () => {
       const statusIdsWithInvestigationTitleAndBody = await statusIdsForScenario(
         {
           project: projectWithDoneStatus(),
