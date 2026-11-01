@@ -14,6 +14,21 @@ const readPackageLockPackages = (): Record<string, unknown> => {
   return raw.packages;
 };
 
+const readScriptsPackageLockPackages = (): Record<string, unknown> => {
+  const raw: unknown = JSON.parse(
+    readFileSync(
+      join(__dirname, '..', 'scripts', 'typescript', 'package-lock.json'),
+      'utf8',
+    ),
+  );
+  if (!isRecord(raw) || !isRecord(raw.packages)) {
+    throw new Error(
+      'scripts/typescript/package-lock.json must declare a packages map',
+    );
+  }
+  return raw.packages;
+};
+
 const readResolvedVersion = (
   packages: Record<string, unknown>,
   lockfileKey: string,
@@ -68,6 +83,57 @@ const readNestedPackageJsonOverrideVersion = (
   return overriddenVersion;
 };
 
+const readScriptsPackageJsonOverrideVersion = (packageName: string): string => {
+  const raw: unknown = JSON.parse(
+    readFileSync(
+      join(__dirname, '..', 'scripts', 'typescript', 'package.json'),
+      'utf8',
+    ),
+  );
+  if (!isRecord(raw) || !isRecord(raw.overrides)) {
+    throw new Error(
+      'scripts/typescript/package.json must declare an overrides map',
+    );
+  }
+  const overriddenVersion = raw.overrides[packageName];
+  if (typeof overriddenVersion !== 'string') {
+    throw new Error(
+      `scripts/typescript/package.json overrides must pin "${packageName}" to a plain version string`,
+    );
+  }
+  return overriddenVersion;
+};
+
+const readScriptsNestedPackageJsonOverrideVersion = (
+  packageName: string,
+  nestedPackageName: string,
+): string => {
+  const raw: unknown = JSON.parse(
+    readFileSync(
+      join(__dirname, '..', 'scripts', 'typescript', 'package.json'),
+      'utf8',
+    ),
+  );
+  if (!isRecord(raw) || !isRecord(raw.overrides)) {
+    throw new Error(
+      'scripts/typescript/package.json must declare an overrides map',
+    );
+  }
+  const packageOverride = raw.overrides[packageName];
+  if (!isRecord(packageOverride)) {
+    throw new Error(
+      `scripts/typescript/package.json overrides must declare a nested map for "${packageName}"`,
+    );
+  }
+  const overriddenVersion = packageOverride[nestedPackageName];
+  if (typeof overriddenVersion !== 'string') {
+    throw new Error(
+      `scripts/typescript/package.json overrides must pin "${packageName}.${nestedPackageName}" to a plain version string`,
+    );
+  }
+  return overriddenVersion;
+};
+
 const parseNumericVersionTuple = (
   version: string,
 ): [number, number, number] => {
@@ -100,6 +166,16 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     lockfileKey: string;
     requiredMinimumVersion: string;
   }[] = [
+    {
+      packageName: 'qs',
+      lockfileKey: 'node_modules/qs',
+      requiredMinimumVersion: '6.16.1',
+    },
+    {
+      packageName: 'glob',
+      lockfileKey: 'node_modules/glob',
+      requiredMinimumVersion: '14.0.2',
+    },
     {
       packageName: 'dompurify',
       lockfileKey: 'node_modules/dompurify',
@@ -152,6 +228,23 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     );
   });
 
+  it('resolves glob at or above its patched version threshold in scripts/typescript/package-lock.json', () => {
+    const packages = readScriptsPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(packages, 'node_modules/glob');
+
+    expect(isVersionAtLeast(resolvedVersion, '14.0.2')).toBe(true);
+  });
+
+  it('resolves minimatch at or above its patched version threshold in scripts/typescript/package-lock.json', () => {
+    const packages = readScriptsPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/minimatch',
+    );
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
 
@@ -162,6 +255,36 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('handlebars');
 
     expect(isVersionAtLeast(overriddenVersion, '4.7.10')).toBe(true);
+  });
+
+  it('pins glob to at or above its patched version threshold via a package.json override', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('glob');
+
+    expect(isVersionAtLeast(overriddenVersion, '14.0.2')).toBe(true);
+  });
+
+  it('pins scripts/typescript glob to at or above its patched version threshold via a package.json override', () => {
+    const overriddenVersion = readScriptsPackageJsonOverrideVersion('glob');
+
+    expect(isVersionAtLeast(overriddenVersion, '14.0.2')).toBe(true);
+  });
+
+  it('pins the scripts/typescript @typescript-eslint/typescript-estree minimatch override to its patched version threshold', () => {
+    const overriddenVersion = readScriptsNestedPackageJsonOverrideVersion(
+      '@typescript-eslint/typescript-estree',
+      'minimatch',
+    );
+
+    expect(isVersionAtLeast(overriddenVersion, '11.0.1')).toBe(true);
+  });
+
+  it('pins the scripts/typescript test-exclude minimatch override to its patched version threshold', () => {
+    const overriddenVersion = readScriptsNestedPackageJsonOverrideVersion(
+      'test-exclude',
+      'minimatch',
+    );
+
+    expect(isVersionAtLeast(overriddenVersion, '11.0.1')).toBe(true);
   });
 
   it('pins undici to at or above its patched version threshold via a package.json override', () => {
