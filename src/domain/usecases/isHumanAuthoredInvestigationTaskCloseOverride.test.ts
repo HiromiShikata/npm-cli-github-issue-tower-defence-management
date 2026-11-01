@@ -51,6 +51,18 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       expected: false,
     },
     {
+      name: 'returns false for a Zapier template editor link with a numeric id despite investigation keywords',
+      title: 'Re: [owner/repo] Invoice from Generic Store (Issue #1)',
+      body: '- [ ] 添付ファイルを確認：\n\n## Body Plain\nPlease confirm the invoice. 請求書をご確認ください\n\n-------\n[template edit](https://zapier.com/app/editor/100000001)',
+      expected: false,
+    },
+    {
+      name: 'returns false for a case-insensitive Zapier template editor link without an id despite investigation keywords',
+      title: 'Re: [owner/repo] Invoice from Generic Store (Issue #1)',
+      body: '- [ ] 添付ファイルを確認：\n\n## Body Plain\nPlease confirm the invoice. 請求書をご確認ください\n\n-------\n[Template Edit](https://zapier.com/app/editor)',
+      expected: false,
+    },
+    {
       name: 'returns false when the body contains the "edit this template" link on any host with a keyword',
       title: 'Status update',
       body: 'Filed the monthly 報告 (report). [edit this template](https://example.com/template-editor)',
@@ -60,6 +72,36 @@ describe('isHumanAuthoredInvestigationTaskCloseOverride', () => {
       name: 'returns true when a non-calendar link label contains "template" and the body has a keyword',
       title: 'Attachment check',
       body: 'Please 確認 the attachment. [template guide](https://example.com/template-guide)',
+      expected: true,
+    },
+    {
+      name: 'returns true for a human-authored keyword body without a template link',
+      title: 'Invoice review',
+      body: 'Please 確認 the invoice details before closing this task.',
+      expected: true,
+    },
+    {
+      name: 'returns true for a Zapier editor link whose label does not contain template',
+      title: 'Invoice review',
+      body: 'Please 確認 the invoice details. [open zap](https://zapier.com/app/editor/123)',
+      expected: true,
+    },
+    {
+      name: 'returns true for a template link on a spoofed Zapier host',
+      title: 'Invoice review',
+      body: 'Please 確認 the invoice details. [template edit](https://zapier.com.example.com/app/editor/1)',
+      expected: true,
+    },
+    {
+      name: 'returns true for a template link on a non-Zapier host',
+      title: 'Invoice review',
+      body: 'Please 確認 the invoice details. [template edit](https://notzapier.com/app/editor/1)',
+      expected: true,
+    },
+    {
+      name: 'returns true for a template link to a non-editor Zapier path',
+      title: 'Invoice review',
+      body: 'Please 確認 the invoice details. [template edit](https://zapier.com/app/other)',
       expected: true,
     },
     {

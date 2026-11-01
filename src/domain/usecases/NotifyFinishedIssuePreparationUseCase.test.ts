@@ -11230,6 +11230,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const investigationTaskTitle = 'Please research the login failure';
     const investigationTaskBody =
       'Users cannot log in since yesterday. Please research this.';
+    const zapierTemplateIssueTitle =
+      'Re: [owner/repo] Invoice from Generic Store (Issue #1)';
+    const zapierTemplateIssueBodyWithoutLink =
+      '- [ ] 添付ファイルを確認：\n\n## Body Plain\nPlease confirm the invoice. 請求書をご確認ください';
+    const zapierTemplateIssueBody = `${zapierTemplateIssueBodyWithoutLink}\n\n-------\n[template edit](https://zapier.com/app/editor/100000001)`;
     const AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE =
       'Auto Status Check: HUMAN_AUTHORED_INVESTIGATION_TASK\n' +
       'This issue looks like a human-authored investigation or report request, so the requested close was skipped and the issue was routed to Awaiting Owner for the requester to review.';
@@ -11820,6 +11825,57 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockIssueRepository.updateStatus.mock.invocationCallOrder[0],
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('closes the issue and sets Done when the Zapier template editor link excludes the safeguard', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: {
+          title: zapierTemplateIssueTitle,
+          body: zapierTemplateIssueBody,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        issueUrl,
+        'completed',
+      );
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['done-id']);
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ url: issueUrl }),
+        'done-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
+      );
+    });
+
+    it('routes the same keyword body without the Zapier template link to Awaiting Owner', async () => {
+      const project = projectWithDoneStatus();
+
+      await runScenario({
+        project,
+        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+        openPullRequests: [],
+        issueOverrides: {
+          title: zapierTemplateIssueTitle,
+          body: zapierTemplateIssueBodyWithoutLink,
+        },
+      });
+
+      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
+      );
     });
 
     it('keeps nextStepAgent routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 16)', async () => {
