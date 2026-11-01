@@ -14,7 +14,6 @@ describe('ConsoleStatusActions', () => {
     expect(getByText('In Tmux by human')).toBeInTheDocument();
     expect(getByText('Todo by human')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
-    expect(queryByText('In Tmux by agent')).toBeNull();
     expect(queryByText('Preparation')).toBeNull();
   });
 

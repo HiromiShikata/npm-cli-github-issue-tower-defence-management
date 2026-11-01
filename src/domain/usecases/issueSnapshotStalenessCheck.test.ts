@@ -119,7 +119,7 @@ describe('issueSnapshotStalenessCheck', () => {
         isClosed: false,
       }),
       liveIssue: createIssue({
-        status: 'In Tmux by agent',
+        status: 'In Tmux by human',
         stateReason: 'COMPLETED',
         isClosed: true,
       }),
@@ -127,14 +127,14 @@ describe('issueSnapshotStalenessCheck', () => {
       expectedStaleness: {
         type: 'stale',
         liveIssue: createIssue({
-          status: 'In Tmux by agent',
+          status: 'In Tmux by human',
           stateReason: 'COMPLETED',
           isClosed: true,
         }),
         changedFieldNames: ['status', 'stateReason', 'isClosed'],
       },
       expectedWarnings: [
-        'Skipping the NO STORY Story write for https://github.com/user/repo/issues/1 because status changed from "Done" to "In Tmux by agent", stateReason changed from "REOPENED" to "COMPLETED", isClosed changed from false to true after the item snapshot was taken.',
+        'Skipping the NO STORY Story write for https://github.com/user/repo/issues/1 because status changed from "Done" to "In Tmux by human", stateReason changed from "REOPENED" to "COMPLETED", isClosed changed from false to true after the item snapshot was taken.',
       ],
     },
     {

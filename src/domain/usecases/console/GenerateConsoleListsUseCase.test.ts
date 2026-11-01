@@ -23,7 +23,6 @@ const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-aqc', 'Awaiting Owner', 'GREEN'),
   storyOption('st-todo', 'Todo by human', 'PINK'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
-  storyOption('st-tmux-agent', 'In Tmux by agent', 'YELLOW'),
   storyOption('st-done', 'Done', 'PURPLE'),
   storyOption('st-icebox', 'Icebox', 'GRAY'),
 ];
@@ -295,74 +294,6 @@ describe('GenerateConsoleListsUseCase', () => {
     });
   });
 
-  describe('In Tmux by agent shared exclusion', () => {
-    const allTabItems = (
-      result: ReturnType<GenerateConsoleListsUseCase['run']>,
-    ) => [
-      ...result['workflow-blocker'].items,
-      ...result.prs.items,
-      ...result['failed-preparation'].items,
-      ...result['todo-by-human'].items,
-    ];
-
-    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else', () => {
-      const result = run([
-        makeIssue({
-          story: 'regular / WORKFLOW BLOCKER',
-          status: 'In Tmux by agent',
-        }),
-      ]);
-      expect(
-        result['workflow-blocker'].items.map((item) => item.status),
-      ).toEqual(['In Tmux by agent']);
-      expect(allTabItems(result)).toHaveLength(1);
-    });
-
-    it('hides a no-story In Tmux by agent issue from all tabs', () => {
-      const result = run([
-        makeIssue({
-          story: 'no story',
-          status: 'In Tmux by agent',
-        }),
-      ]);
-      expect(allTabItems(result)).toHaveLength(0);
-    });
-
-    it('hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab', () => {
-      const result = run([
-        makeIssue({
-          story: 'regular / WORKFLOW BLOCKER',
-          status: 'in tmux by agent',
-        }),
-      ]);
-      expect(result['workflow-blocker'].items).toHaveLength(1);
-      expect(allTabItems(result)).toHaveLength(1);
-    });
-
-    it('keeps sibling issues with other statuses displaying as before', () => {
-      const result = run([
-        makeIssue({
-          story: 'regular / WORKFLOW BLOCKER',
-          status: 'In Tmux by agent',
-        }),
-        makeIssue({
-          story: 'regular / WORKFLOW BLOCKER',
-          status: 'In Tmux by human',
-        }),
-        makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
-      ]);
-      expect(
-        result['workflow-blocker'].items.map((item) => item.status).sort(),
-      ).toEqual(['In Tmux by agent', 'In Tmux by human']);
-      expect(
-        result.prs.items
-          .concat(result['failed-preparation'].items)
-          .concat(result['todo-by-human'].items)
-          .some((item) => item.status === 'In Tmux by agent'),
-      ).toBe(false);
-    });
-  });
-
   describe('common item projection', () => {
     it('projects the expected keys and never includes a body field', () => {
       const result = run([
@@ -546,7 +477,6 @@ describe('GenerateConsoleListsUseCase', () => {
         'Preparation',
         'Icebox',
         'In Tmux by human',
-        'In Tmux by agent',
       ]) {
         expect(names).not.toContain(excluded);
       }
@@ -629,7 +559,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('collects the linkage from a pull request that no tab shows', () => {
       const issue = awaitingOwnerIssue();
       const pullRequest = makeIssue({
-        status: 'In Tmux by agent',
+        status: 'In Tmux by human',
         assignees: ['another-person'],
         isPr: true,
         url: 'https://github.com/demo/repo/pull/503',
@@ -976,7 +906,6 @@ describe('GenerateConsoleListsUseCase', () => {
         'Awaiting Owner',
         'Todo by human',
         'In Tmux by human',
-        'In Tmux by agent',
         'Done',
         'Icebox',
       ]);
@@ -1056,7 +985,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes issues with statuses other than Awaiting Workspace and Preparation', () => {
       const result = run([
         makeIssue({ status: 'Todo by human' }),
-        makeIssue({ status: 'In Tmux by agent' }),
+        makeIssue({ status: 'In Tmux by human' }),
         makeIssue({ status: 'Awaiting Owner' }),
         makeIssue({ status: 'Done' }),
         makeIssue({ status: 'Failed Preparation' }),

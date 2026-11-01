@@ -2,17 +2,13 @@ import { issueSessionIsOnHold } from './issueSessionIsOnHold';
 import { Issue } from '../entities/Issue';
 import { LiveTmuxSession } from '../entities/LiveTmuxSession';
 import { Project } from '../entities/Project';
-import {
-  IN_TMUX_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
-} from '../entities/WorkflowStatus';
+import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase';
 
 export const DEFAULT_EXCLUDED_STATUS_NAMES: readonly string[] = [
   IN_TMUX_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
 ];
 export const DEFAULT_IDLE_THRESHOLD_SECONDS = 24 * 60 * 60;
 

@@ -10237,7 +10237,7 @@ describe('StartPreparationUseCase', () => {
       createMockIssue({ status: 'Awaiting Workspace', dependedIssueUrls: [] }),
     );
     mockIssueRepository.get.mockResolvedValue(
-      createMockIssue({ status: 'In Tmux by agent', dependedIssueUrls: [] }),
+      createMockIssue({ status: 'In Tmux by human', dependedIssueUrls: [] }),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',

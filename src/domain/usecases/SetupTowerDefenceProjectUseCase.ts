@@ -56,6 +56,7 @@ export class SetupTowerDefenceProjectUseCase {
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
     SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
     'Todo by agent',
+    'In Tmux by agent',
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {

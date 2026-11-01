@@ -3228,7 +3228,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         label:
           'does not overwrite a Status an agent set after the snapshot was taken when the item is rejected',
         snapshotIssue: snapshotIssueWithoutLinkedPullRequest,
-        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        liveIssue: createMockIssue({ status: 'In Tmux by human' }),
         expectedUpdateStatusCalls: [],
         expectedCreateCommentCallCount: 0,
       },
@@ -3236,7 +3236,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         label:
           'does not overwrite a Status an agent set after the snapshot was taken when the item has a depended issue',
         snapshotIssue: snapshotIssueWithDependedIssue,
-        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        liveIssue: createMockIssue({ status: 'In Tmux by human' }),
         expectedUpdateStatusCalls: [],
         expectedCreateCommentCallCount: 0,
       },

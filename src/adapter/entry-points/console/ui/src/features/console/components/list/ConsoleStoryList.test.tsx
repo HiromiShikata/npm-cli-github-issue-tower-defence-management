@@ -109,11 +109,6 @@ const nonOwnerActionableHiddenCandidateCases: Array<{
     statuses: ['Preparation'],
   },
   {
-    storyName: 'In Tmux By Agent Only Story',
-    storyOptionId: 'tmux-agent-only-id',
-    statuses: ['In Tmux by agent'],
-  },
-  {
     storyName: 'Icebox Only Story',
     storyOptionId: 'icebox-only-id',
     statuses: ['Icebox'],

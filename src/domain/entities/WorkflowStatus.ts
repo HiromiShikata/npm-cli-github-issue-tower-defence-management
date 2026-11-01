@@ -7,7 +7,6 @@ export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
 export const TODO_STATUS_NAME = 'Todo by human';
 export const PC_TODO_STATUS_NAME = 'PC Todo';
 export const IN_TMUX_STATUS_NAME = 'In Tmux by human';
-export const IN_TMUX_BY_AGENT_STATUS_NAME = 'In Tmux by agent';
 export const DONE_STATUS_NAME = 'Done';
 export const ICEBOX_STATUS_NAME = 'Icebox';
 export const DISABLED_STATUS_NAME = 'Disabled';
@@ -46,10 +45,6 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
   {
     name: IN_TMUX_STATUS_NAME,
     color: 'RED',
-  },
-  {
-    name: IN_TMUX_BY_AGENT_STATUS_NAME,
-    color: 'YELLOW',
   },
   {
     name: DONE_STATUS_NAME,

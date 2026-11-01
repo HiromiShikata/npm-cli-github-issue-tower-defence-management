@@ -729,10 +729,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should throw IllegalIssueStatusError when issue status is not Preparation, not In Tmux by agent, not Done, and not Awaiting Workspace', async () => {
+  it('should throw IllegalIssueStatusError when issue status is the removed In Tmux by agent status', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Progress',
+      status: 'In Tmux by agent',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -747,95 +747,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
-      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation or In Tmux by agent, but got In Progress',
-    );
-  });
-
-  it('should process issue with "In Tmux by agent" status the same as Preparation', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Owner',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Owner' }),
-      'awaiting-owner-id',
-    );
-  });
-
-  it('should move issue to Awaiting Workspace with NO_REPORT_FROM_AGENT_BOT when issue status is In Tmux by agent and there is no agent report', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      'awaiting-workspace-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got In Tmux by agent',
     );
   });
 
   it('should post NO_REPORT_AGAIN counter comment and skip duplicate rejection comment within dedup window', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
+      status: 'Preparation',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -868,7 +787,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   it('should post NO_REPORT_AGAIN counter comment on second dispatch without report', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
+      status: 'Preparation',
     });
 
     const existingComments = [
@@ -906,7 +825,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   it('should move to Failed Preparation on third dispatch without report', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
+      status: 'Preparation',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -950,7 +869,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   it('should reset counter after agent report and not escalate prematurely', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
+      status: 'Preparation',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -985,7 +904,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   it('should pass issue.agent (not null) as agentFieldValue so a same-agent report resets the no-report streak and avoids premature escalation', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'In Tmux by agent',
+      status: 'Preparation',
       agent: 'developer',
     });
     const dispatchStartedAt = new Date(Date.now() - 45 * 60 * 1000);
@@ -11326,7 +11245,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     it('does not push NO_REPORT_FROM_AGENT_BOT when lastAgentReport is absent and marker is present', async () => {
       const issue = createMockIssue({
         url: issueUrl,
-        status: 'In Tmux by agent',
+        status: 'Preparation',
         body: silentDispatchMarkerBody,
       });
 
@@ -11351,7 +11270,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     it('pushes NO_REPORT_FROM_AGENT_BOT when lastAgentReport is absent and marker is absent', async () => {
       const issue = createMockIssue({
         url: issueUrl,
-        status: 'In Tmux by agent',
+        status: 'Preparation',
         body: normalBody,
       });
 

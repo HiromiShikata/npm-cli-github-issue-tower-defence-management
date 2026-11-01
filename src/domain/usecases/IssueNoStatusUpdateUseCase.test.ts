@@ -246,7 +246,7 @@ describe('IssueNoStatusUpdateUseCase', () => {
         {
           label:
             'does not overwrite a Status an agent set after the snapshot was taken',
-          liveIssue: { ...snapshotIssue, status: 'In Tmux by agent' },
+          liveIssue: { ...snapshotIssue, status: 'In Tmux by human' },
           expectedUpdateStatusCalls: [],
         },
         {

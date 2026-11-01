@@ -4,7 +4,6 @@ import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
@@ -139,13 +138,7 @@ export class GenerateConsoleListsUseCase {
     const relatedOpenPullRequestUrlsByIssueUrl =
       this.buildRelatedOpenPullRequestUrlsByIssueUrl(issues);
 
-    const visibleIssues = issues.filter(
-      (issue) =>
-        issue.status?.toLowerCase() !==
-        IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
-    );
-
-    const actionableIssues = visibleIssues.filter((issue) =>
+    const actionableIssues = issues.filter((issue) =>
       this.isActionable(issue, assigneeLogin),
     );
 
@@ -234,7 +227,7 @@ export class GenerateConsoleListsUseCase {
         ['done'],
       ),
       prs: buildStatusTabFromSource(
-        visibleIssues.filter(
+        issues.filter(
           (issue) =>
             !issue.isClosed &&
             issue.assignees.includes(assigneeLogin) &&
@@ -247,7 +240,7 @@ export class GenerateConsoleListsUseCase {
         [AWAITING_OWNER_STATUS_NAME.toLowerCase(), 'done'],
       ),
       'failed-preparation': buildStatusTabFromSource(
-        visibleIssues.filter(
+        issues.filter(
           (issue) =>
             !issue.isClosed &&
             issue.assignees.includes(assigneeLogin) &&
@@ -261,7 +254,6 @@ export class GenerateConsoleListsUseCase {
           'preparation',
           'icebox',
           'in tmux by human',
-          'in tmux by agent',
         ],
       ),
       'todo-by-human': buildStatusTab(
@@ -279,7 +271,7 @@ export class GenerateConsoleListsUseCase {
         storyOrder,
         storyColors: this.buildStoryColorsObject(storyOptions),
         items: this.sortByStoryOrder(
-          visibleIssues
+          issues
             .filter(
               (issue) =>
                 !issue.isClosed &&
