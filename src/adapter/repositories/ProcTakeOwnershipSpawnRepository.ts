@@ -12,6 +12,11 @@ const LOG_PATH_PATTERN = /\/logs-aw\/[^\0"]+\.log/;
 const TAKE_OWNERSHIP_ISSUE_URL_PATTERN =
   /Take ownership of (https:\/\/github\.com\/[^\s\0"]+)/;
 const ISSUE_URL_PATTERN = /https:\/\/github\.com\/[^\s\0"]+/;
+const isProcessEndedError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error.code === 'ENOENT' || error.code === 'ESRCH');
 
 const extractLogPath = (cmdline: string): string | null => {
   const match = cmdline.match(LOG_PATH_PATTERN);
@@ -61,13 +66,9 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
   };
 
   private listProcessIdDirectories = (): string[] => {
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(this.procDirectory);
-    } catch {
-      return [];
-    }
-    return entries.filter((entry) => /^\d+$/.test(entry));
+    return fs
+      .readdirSync(this.procDirectory)
+      .filter((entry) => /^\d+$/.test(entry));
   };
 
   private readRawCmdline = (processIdDirectory: string): string | null => {
@@ -78,8 +79,9 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
     );
     try {
       return fs.readFileSync(cmdlinePath, 'utf8');
-    } catch {
-      return null;
+    } catch (error) {
+      if (isProcessEndedError(error)) return null;
+      throw error;
     }
   };
 }

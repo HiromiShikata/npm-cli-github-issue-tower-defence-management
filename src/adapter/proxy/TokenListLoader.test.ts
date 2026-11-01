@@ -78,7 +78,7 @@ describe('loadTokenEntries', () => {
     const errorMessage = errorMessageOf(() => loadTokenEntries(filePath));
 
     expect(errorMessage).toContain(filePath);
-    expect(errorMessage).toContain('Unexpected end of JSON input');
+    expect(errorMessage).toContain('SyntaxError');
     expect(errorMessage).not.toContain(secret);
   });
 
@@ -219,7 +219,7 @@ describe('TokenListLoader', () => {
     const errorMessage = errorMessageOf(() => loadTokens(filePath));
 
     expect(errorMessage).toContain(filePath);
-    expect(errorMessage).toContain('Unexpected end of JSON input');
+    expect(errorMessage).toContain('SyntaxError');
     expect(errorMessage).not.toContain('sk-ant-oat01-SECRETSECRET');
   });
 

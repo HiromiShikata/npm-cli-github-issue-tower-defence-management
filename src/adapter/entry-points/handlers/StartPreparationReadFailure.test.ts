@@ -118,9 +118,9 @@ describe('StartPreparationUseCase read failures', () => {
         path.join(tempDir, 'missing-proc'),
       );
 
-      await expect(useCase.run(runParams)).rejects.toThrow(
-        /Unexpected end of JSON input/,
-      );
+      const rejection = useCase.run(runParams);
+      await expect(rejection).rejects.toThrow(/SyntaxError/);
+      await expect(rejection).rejects.toThrow(tokenListPath);
       expect(localCommandRunner.runCommand.mock.calls).toHaveLength(0);
       expect(localCommandRunner.spawnInteractive.mock.calls).toHaveLength(0);
     } finally {
