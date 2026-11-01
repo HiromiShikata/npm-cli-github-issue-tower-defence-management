@@ -11230,9 +11230,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const investigationTaskTitle = 'Please research the login failure';
     const investigationTaskBody =
       'Users cannot log in since yesterday. Please research this.';
-    const AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE =
-      'Auto Status Check: HUMAN_AUTHORED_INVESTIGATION_TASK\n' +
-      'This issue looks like a human-authored investigation or report request, so the requested close was skipped and the issue was routed to Awaiting Owner for the requester to review.';
 
     const statusOptionsWithoutDone: Project['status']['statuses'] = [
       {
@@ -11725,28 +11722,47 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
     });
 
-    it('does not close the issue, sets Awaiting Owner and posts the explanatory comment when the title/body looks like a human-authored investigation task and needOwnerConfirmationOrApproval was not already set (closeIssueAs criterion 13)', async () => {
-      const project = projectWithDoneStatus();
+    it.each([
+      {
+        title: investigationTaskTitle,
+        body: investigationTaskBody,
+      },
+      {
+        title: 'ログイン障害の調査',
+        body: 'ログインできない原因を明らかにしてください。',
+      },
+      {
+        title: 'ログイン障害',
+        body: '原因を報告してください。',
+      },
+    ])(
+      'closes the issue as completed, sets Done and posts no comment when the title/body contains investigation-type words (closeIssueAs criterion 13)',
+      async ({ title, body }) => {
+        const project = projectWithDoneStatus();
 
-      await runScenario({
-        project,
-        comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
-        openPullRequests: [],
-        issueOverrides: {
-          title: investigationTaskTitle,
-          body: investigationTaskBody,
-        },
-      });
+        await runScenario({
+          project,
+          comments: [agentReportEndingWith('{"closeIssueAs": "completed"}')],
+          openPullRequests: [],
+          issueOverrides: { title, body },
+        });
 
-      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
-      expect(statusIdsPassedToUpdateStatus()).toEqual(['awaiting-owner-id']);
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
-        AUTO_STATUS_CHECK_HUMAN_AUTHORED_INVESTIGATION_TASK_MESSAGE,
-      );
-    });
+        expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+          issueUrl,
+          'completed',
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          project,
+          expect.objectContaining({ url: issueUrl }),
+          'done-id',
+        );
+        expect(statusIdsPassedToUpdateStatus()).toEqual(['done-id']);
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      },
+    );
 
-    it('does not close the issue, sets Awaiting Owner and posts no duplicate comment when needOwnerConfirmationOrApproval was already set alongside a matching human-authored investigation title/body (closeIssueAs criterion 14)', async () => {
+    it('routes to Awaiting Owner and posts no comment when needOwnerConfirmationOrApproval is true alongside investigation-type title/body (closeIssueAs criterion 14)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11766,7 +11782,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('does not close the issue, sets Awaiting Owner and posts no duplicate comment when a triager-authored report (not matching the issue agent field) already set needOwnerConfirmationOrApproval alongside a matching human-authored investigation title/body (closeIssueAs criterion 19)', async () => {
+    it('routes to Awaiting Owner and posts no comment when a triager-authored report (not matching the issue agent field) already set needOwnerConfirmationOrApproval alongside investigation-type title/body (closeIssueAs criterion 19)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11790,7 +11806,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('closes the issue and sets Done normally when the calendar edit-template link excludes the safeguard even though the title/body otherwise looks like a report request (closeIssueAs criterion 15)', async () => {
+    it('closes the issue and sets Done when the body has a calendar edit-template link and report-type wording (closeIssueAs criterion 15)', async () => {
       const project = projectWithDoneStatus();
 
       await runScenario({
@@ -11822,7 +11838,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('keeps nextStepAgent routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 16)', async () => {
+    it('keeps nextStepAgent routing and does not close the issue when closeIssueAs is combined with nextStepAgent on investigation-type title/body (closeIssueAs criterion 16)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11844,7 +11860,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ]);
     });
 
-    it('keeps workflowError routing and does not close the issue even when the title/body also looks like a human-authored investigation task (closeIssueAs criterion 17)', async () => {
+    it('keeps workflowError routing and does not close the issue when closeIssueAs is combined with workflowError on investigation-type title/body (closeIssueAs criterion 17)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
@@ -11869,7 +11885,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('has no effect on routing when closeIssueAs was not requested even though the title/body looks like a human-authored investigation task (closeIssueAs criterion 18)', async () => {
+    it('has no effect on routing when closeIssueAs was not requested even though the title/body contains investigation-type words (closeIssueAs criterion 18)', async () => {
       const statusIdsWithInvestigationTitleAndBody = await statusIdsForScenario(
         {
           project: projectWithDoneStatus(),
