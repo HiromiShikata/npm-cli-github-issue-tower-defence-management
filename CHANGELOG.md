@@ -1,3 +1,11 @@
+## [2.184.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.4...v2.184.5) (2026-11-01)
+
+
+### Bug Fixes
+
+* **deps:** resolve findings from the daily security scan ([#3666](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3666)) ([e3e4eab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e3e4eab03092bf2a2d7c86f555c3d71f5b258010))
+* **test:** ignore the repository tmp directory in the README snapshot ([#3679](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3679)) ([6376208](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/63762083d9adbeb11ccc17aac9edc04f628ace64))
+
 ## [2.184.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.3...v2.184.4) (2026-11-01)
 
 
