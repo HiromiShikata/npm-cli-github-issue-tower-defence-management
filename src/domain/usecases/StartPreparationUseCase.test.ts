@@ -256,6 +256,62 @@ describe('StartPreparationUseCase', () => {
     ]);
   });
 
+  it('should reject and start no worker when listing running issue URLs fails', async () => {
+    const error = new Error('proc directory could not be read');
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
+      [],
+    );
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockImplementation(
+      () => {
+        throw error;
+      },
+    );
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      }),
+    ).rejects.toThrow(error);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.spawnInteractive.mock.calls).toHaveLength(0);
+  });
+
+  it('should reject and start no worker when token usage loading fails', async () => {
+    const error = new Error('token list could not be read');
+    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockRejectedValue(
+      error,
+    );
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      }),
+    ).rejects.toThrow(error);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.spawnInteractive.mock.calls).toHaveLength(0);
+  });
+
   it('passes --dispatchStartedAt to aw as a UTC ISO-8601 timestamp captured at dispatch time', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({

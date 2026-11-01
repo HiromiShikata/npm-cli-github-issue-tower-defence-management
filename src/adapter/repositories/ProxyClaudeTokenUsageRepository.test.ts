@@ -77,6 +77,31 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       expect(mockLoadTokenEntries.mock.calls).toEqual([['/tokens.json']]);
     });
 
+    it.each([
+      {
+        label: 'malformed JSON',
+        error: new Error('Unexpected end of JSON input'),
+      },
+      {
+        label: 'an unreadable file',
+        error: Object.assign(new Error('EISDIR: read failed'), {
+          code: 'EISDIR',
+        }),
+      },
+    ])(
+      'should reject when loadTokenEntries reports $label',
+      async ({ error }) => {
+        mockLoadTokenEntries.mockImplementation(() => {
+          throw error;
+        });
+        const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+        await expect(repository.getAvailableTokenUsages()).rejects.toThrow(
+          error,
+        );
+      },
+    );
+
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     const pastReset = Math.floor(Date.now() / 1000) - 3600;
     const observedAfterReset = Math.floor(Date.now() / 1000) - 60;

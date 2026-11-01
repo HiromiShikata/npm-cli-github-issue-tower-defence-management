@@ -3,6 +3,15 @@ import * as os from 'os';
 import * as path from 'path';
 import { loadTokenEntries, loadTokens } from './TokenListLoader';
 
+const errorMessageOf = (action: () => unknown): string => {
+  try {
+    action();
+  } catch (error) {
+    if (error instanceof Error) return error.message;
+  }
+  throw new Error('expected the action to throw an Error');
+};
+
 describe('loadTokenEntries', () => {
   let tempDir: string;
 
@@ -49,6 +58,66 @@ describe('loadTokenEntries', () => {
     const filePath = path.join(tempDir, 'invalid.json');
     fs.writeFileSync(filePath, JSON.stringify([{ name: 'no-token' }]));
     expect(loadTokenEntries(filePath)).toBeNull();
+  });
+
+  it('should throw the read error when the token list path is a directory', () => {
+    const directoryPath = path.join(tempDir, 'tokens');
+    fs.mkdirSync(directoryPath);
+
+    const errorMessage = errorMessageOf(() => loadTokenEntries(directoryPath));
+
+    expect(errorMessage).toContain(directoryPath);
+    expect(errorMessage).toMatch(/EISDIR/);
+  });
+
+  it('should throw the parse error with the path but without a token value', () => {
+    const filePath = path.join(tempDir, 'malformed.json');
+    const secret = 'sk-ant-oat01-SECRETSECRET';
+    fs.writeFileSync(filePath, `{"token":"${secret}",`);
+
+    const errorMessage = errorMessageOf(() => loadTokenEntries(filePath));
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('Unexpected end of JSON input');
+    expect(errorMessage).not.toContain(secret);
+  });
+
+  it('should not leak token text from a JSON syntax error snippet when a trailing comma follows a token entry', () => {
+    const filePath = path.join(tempDir, 'trailing-comma.json');
+    fs.writeFileSync(filePath, '[{"token":"sk-ant-oat01-SECRETSECRET"},]');
+
+    const errorMessage = errorMessageOf(() => loadTokenEntries(filePath));
+    const messageWithoutFilePath = errorMessage.split(filePath).join('');
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('JSON');
+    expect(messageWithoutFilePath).not.toContain('SECRET');
+    expect(messageWithoutFilePath).not.toContain('sk-ant');
+  });
+
+  it('should not leak token text when the file content is a bare token string rather than JSON', () => {
+    const filePath = path.join(tempDir, 'bare-token.txt');
+    fs.writeFileSync(filePath, 'sk-ant-oat01-SECRETSECRET');
+
+    const errorMessage = errorMessageOf(() => loadTokenEntries(filePath));
+    const messageWithoutFilePath = errorMessage.split(filePath).join('');
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('JSON');
+    expect(messageWithoutFilePath).not.toContain('SECRET');
+    expect(messageWithoutFilePath).not.toContain('sk-ant');
+  });
+
+  it('should throw when the token list JSON root is not an array', () => {
+    const filePath = path.join(tempDir, 'object.json');
+    const secret = 'sk-ant-oat01-SECRETSECRET';
+    fs.writeFileSync(filePath, JSON.stringify({ token: secret }));
+
+    const errorMessage = errorMessageOf(() => loadTokenEntries(filePath));
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('array');
+    expect(errorMessage).not.toContain(secret);
   });
 
   it('should include selectionWeight when the entry has a finite number', () => {
@@ -131,16 +200,37 @@ describe('TokenListLoader', () => {
     expect(loadTokens(path.join(tempDir, 'missing.json'))).toBeNull();
   });
 
-  it('should return null when the JSON root is not an array', () => {
+  it('should throw when the JSON root is not an array', () => {
     const filePath = path.join(tempDir, 'object.json');
-    fs.writeFileSync(filePath, JSON.stringify({ token: 'token-1' }));
-    expect(loadTokens(filePath)).toBeNull();
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({ token: 'sk-ant-oat01-SECRETSECRET' }),
+    );
+    const errorMessage = errorMessageOf(() => loadTokens(filePath));
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('array');
+    expect(errorMessage).not.toContain('sk-ant-oat01-SECRETSECRET');
   });
 
-  it('should return null when JSON parsing fails', () => {
+  it('should throw when JSON parsing fails', () => {
     const filePath = path.join(tempDir, 'malformed.json');
-    fs.writeFileSync(filePath, '{not json');
-    expect(loadTokens(filePath)).toBeNull();
+    fs.writeFileSync(filePath, '{"token":"sk-ant-oat01-SECRETSECRET",');
+    const errorMessage = errorMessageOf(() => loadTokens(filePath));
+
+    expect(errorMessage).toContain(filePath);
+    expect(errorMessage).toContain('Unexpected end of JSON input');
+    expect(errorMessage).not.toContain('sk-ant-oat01-SECRETSECRET');
+  });
+
+  it('should throw when the token list path is a directory', () => {
+    const directoryPath = path.join(tempDir, 'tokens');
+    fs.mkdirSync(directoryPath);
+
+    const errorMessage = errorMessageOf(() => loadTokens(directoryPath));
+
+    expect(errorMessage).toContain(directoryPath);
+    expect(errorMessage).toMatch(/EISDIR/);
   });
 
   it('should skip entries that do not contain a string token', () => {

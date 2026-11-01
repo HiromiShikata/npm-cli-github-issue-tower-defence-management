@@ -105,6 +105,20 @@ describe('UpdateRateLimitCacheUseCase', () => {
     expect(mockRateLimitCacheRepository.probeToken).not.toHaveBeenCalled();
   });
 
+  it('should reject and probe nothing when reading token rate-limit caches fails', async () => {
+    const error = new Error('token list could not be read');
+    mockRateLimitCacheRepository.getTokenRateLimitCaches.mockImplementation(
+      () => {
+        throw error;
+      },
+    );
+
+    await expect(useCase.run({ nowEpochSeconds: 1000000000 })).rejects.toThrow(
+      error,
+    );
+    expect(mockRateLimitCacheRepository.probeToken).not.toHaveBeenCalled();
+  });
+
   it('should probe a token whose last probe was 61 minutes ago even when unifiedReset is in the future', async () => {
     const nowEpochSeconds = 1000000000;
     const futureReset = nowEpochSeconds + 7200;
