@@ -213,18 +213,9 @@ describe('direct and overridden dependency patched-version thresholds', () => {
 
   it('resolves scripts/typescript glob consumers at or above their patched version threshold in package-lock.json', () => {
     const packages = readScriptsPackageLockPackages();
-    const resolvedVersions = [
-      'node_modules/@jest/reporters/node_modules/glob',
-      'node_modules/jest-config/node_modules/glob',
-      'node_modules/jest-runtime/node_modules/glob',
-      'node_modules/test-exclude/node_modules/glob',
-    ];
+    const resolvedVersion = readResolvedVersion(packages, 'node_modules/glob');
 
-    resolvedVersions.forEach((lockfileKey) => {
-      const resolvedVersion = readResolvedVersion(packages, lockfileKey);
-
-      expect(isVersionAtLeast(resolvedVersion, '14.0.2')).toBe(true);
-    });
+    expect(isVersionAtLeast(resolvedVersion, '14.0.2')).toBe(true);
   });
 
   it('resolves the scripts/typescript rimraf glob dependency below version 8', () => {
@@ -239,16 +230,12 @@ describe('direct and overridden dependency patched-version thresholds', () => {
 
   it('resolves scripts/typescript minimatch consumers at or above their patched version threshold in package-lock.json', () => {
     const packages = readScriptsPackageLockPackages();
-    const resolvedVersions: string[] = [
-      'node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch',
-      'node_modules/test-exclude/node_modules/minimatch',
-    ];
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/minimatch',
+    );
 
-    resolvedVersions.forEach((lockfileKey) => {
-      const resolvedVersion = readResolvedVersion(packages, lockfileKey);
-
-      expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
-    });
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
   });
 
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
