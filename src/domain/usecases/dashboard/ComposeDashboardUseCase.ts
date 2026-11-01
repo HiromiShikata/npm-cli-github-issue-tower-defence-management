@@ -341,8 +341,15 @@ const formatUtilization = (percent: number | null): string =>
     TOKEN_UTILIZATION_WIDTH,
   );
 
-const formatReset = (resetSeconds: number | null): string =>
-  resetSeconds === null ? '?' : formatResetCountdown(resetSeconds);
+const formatReset = (
+  resetSeconds: number | null,
+  utilizationPercent: number | null,
+): string =>
+  resetSeconds === null
+    ? utilizationPercent === null
+      ? '?'
+      : padEnd('--', TOKEN_RESET_WIDTH, ' ')
+    : formatResetCountdown(resetSeconds);
 
 const tokenSortKey = (token: TokenStatus): [number, number] =>
   token.sevenDayResetSeconds === null
@@ -428,11 +435,17 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   const fiveHourUtilization = formatUtilization(
     token.fiveHourUtilizationPercent,
   );
-  const fiveHourReset = formatReset(token.fiveHourResetSeconds);
+  const fiveHourReset = formatReset(
+    token.fiveHourResetSeconds,
+    token.fiveHourUtilizationPercent,
+  );
   const sevenDayUtilization = formatUtilization(
     token.sevenDayUtilizationPercent,
   );
-  const sevenDayReset = formatReset(token.sevenDayResetSeconds);
+  const sevenDayReset = formatReset(
+    token.sevenDayResetSeconds,
+    token.sevenDayUtilizationPercent,
+  );
   const prep = padStart(capTwoDigits(token.prep), 2);
   const hum = capTwoDigits(token.hum);
   return joinTokenRowSegments([
