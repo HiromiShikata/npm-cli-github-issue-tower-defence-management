@@ -593,6 +593,122 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     ]);
   });
 
+  it('should remove "In Tmux by agent" from the status list when it is present', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<
+        Pick<
+          IssueRepository,
+          | 'getAllIssues'
+          | 'updateStatus'
+          | 'get'
+          | 'removeIssueFromProjectCache'
+        >
+      >();
+    const statuses: FieldOption[] = [
+      {
+        id: 'awaiting-workspace-id',
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: '',
+      },
+      {
+        id: 'preparation-id',
+        name: PREPARATION_STATUS_NAME,
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'failed-preparation-id',
+        name: FAILED_PREPARATION_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'awaiting-owner-id',
+        name: AWAITING_OWNER_STATUS_NAME,
+        color: 'GREEN',
+        description: '',
+      },
+      {
+        id: 'todo-human-id',
+        name: TODO_STATUS_NAME,
+        color: 'PINK',
+        description: '',
+      },
+      {
+        id: 'in-tmux-human-id',
+        name: IN_TMUX_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'done-id',
+        name: DONE_STATUS_NAME,
+        color: 'PURPLE',
+        description: '',
+      },
+      {
+        id: 'icebox-id',
+        name: ICEBOX_STATUS_NAME,
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'in-tmux-agent-id',
+        name: 'In Tmux by agent',
+        color: 'YELLOW',
+        description: '',
+      },
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [],
+      cacheUsed: false,
+    });
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
+    expect(payload.map((s) => s.name)).toEqual([
+      'Awaiting Workspace',
+      'Preparation',
+      'Failed Preparation',
+      'Awaiting Owner',
+      'Todo by human',
+      'In Tmux by human',
+      'Done',
+      'Icebox',
+    ]);
+    expect(payload.some((s) => s.name === 'In Tmux by agent')).toBe(false);
+
+    const preservedIds = [
+      ['Awaiting Workspace', 'awaiting-workspace-id'],
+      ['Preparation', 'preparation-id'],
+      ['Failed Preparation', 'failed-preparation-id'],
+      ['Awaiting Owner', 'awaiting-owner-id'],
+      ['Todo by human', 'todo-human-id'],
+      ['In Tmux by human', 'in-tmux-human-id'],
+      ['Done', 'done-id'],
+      ['Icebox', 'icebox-id'],
+    ] as const;
+    for (const [name, id] of preservedIds) {
+      expect(payload.find((s) => s.name === name)?.id).toBe(id);
+    }
+  });
+
   it('should create the "In Tmux by agent" status with yellow color when it is missing', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
