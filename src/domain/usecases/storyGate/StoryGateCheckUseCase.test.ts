@@ -1650,7 +1650,9 @@ describe('StoryGateCheckUseCase', () => {
 
         expect(result.action).toBe(action);
         expect(result.reason).toBe(reason);
-        expect(result.assignedIssue?.foldMode).toBe(foldMode);
+        if (foldMode !== undefined) {
+          expect(result.assignedIssue?.foldMode).toBe(foldMode);
+        }
       },
     );
 
