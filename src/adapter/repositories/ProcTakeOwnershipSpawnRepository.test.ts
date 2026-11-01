@@ -124,7 +124,6 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     expect(repository.listSpawns()).toEqual([
       { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
-      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
     ]);
   });
 
@@ -159,10 +158,34 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     expect(sortSpawns(repository.listSpawns())).toEqual([
       { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
       { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
     ]);
+  });
+
+  it('reports no spawn when the only print-flag descendant has no oauth token', () => {
+    writeWorkerTree({
+      wrapperPid: 350,
+      wrapperToken: 'wrapper-token',
+      logName: 'worker-e',
+      claudeToken: null,
+    });
+    writeProcess({
+      pid: 352,
+      cmdline: argv(
+        'timeout',
+        '--kill-after=60s',
+        '3h',
+        'claude-agent',
+        '-p',
+        `Take ownership of ${issueUrl}`,
+      ),
+      environ: { HOME: '/home/user' },
+      stat: { parentPid: 350, comm: 'timeout' },
+    });
+
+    const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+    expect(repository.listSpawns()).toEqual([]);
   });
 
   it('does not report a wrapper-only Take ownership marker as a spawn', () => {
