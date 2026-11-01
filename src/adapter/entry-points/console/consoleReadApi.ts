@@ -414,18 +414,22 @@ export const handleProjectReadmeConfig = async (
     };
   }
   const githubToken = resolveGithubToken(projectOwner);
-  const readme = await fetchProjectReadme(binding.project.url, githubToken);
-  if (readme === null) {
+  try {
+    const readme = await fetchProjectReadme(binding.project.url, githubToken);
+    if (readme === null) {
+      return {
+        statusCode: 200,
+        body: { maximumPreparingIssuesCount: null },
+      };
+    }
+    const config = parseProjectReadmeConfig(readme, binding.project.url);
     return {
       statusCode: 200,
-      body: { maximumPreparingIssuesCount: null },
+      body: {
+        maximumPreparingIssuesCount: config.maximumPreparingIssuesCount ?? null,
+      },
     };
+  } catch (error) {
+    return upstreamError(error);
   }
-  const config = parseProjectReadmeConfig(readme);
-  return {
-    statusCode: 200,
-    body: {
-      maximumPreparingIssuesCount: config.maximumPreparingIssuesCount ?? null,
-    },
-  };
 };

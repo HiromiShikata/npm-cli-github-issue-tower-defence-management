@@ -1808,12 +1808,12 @@ export const handleProjectMaxPreparingUpdate = async (
     return badGateway('cannot determine project owner from project URL');
   }
   const githubToken = resolveGithubToken(projectOwner);
-  const existingReadme = await fetchProjectReadme(project.url, githubToken);
-  const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(
-    existingReadme ?? '',
-    count,
-  );
   try {
+    const existingReadme = await fetchProjectReadme(project.url, githubToken);
+    const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(
+      existingReadme ?? '',
+      count,
+    );
     await updateProjectV2Readme(project.id, updatedReadme, githubToken);
   } catch (error) {
     return badGateway(

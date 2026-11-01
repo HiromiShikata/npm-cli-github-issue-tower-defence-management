@@ -7664,6 +7664,35 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(502);
     });
 
+    it('returns 502 and does not update the README when the README read throws', async () => {
+      fetchProjectReadmeSpy.mockRejectedValue(
+        new Error('GraphQL request failed: HTTP 403'),
+      );
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'GraphQL request failed: HTTP 403' },
+      });
+      expect(updateProjectV2ReadmeSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns 502 and does not update the README when the existing README config is not valid YAML', async () => {
+      fetchProjectReadmeSpy.mockResolvedValue(
+        '# P\n<details>\n<summary>config</summary>\ninvalid: [unclosed\n</details>\n',
+      );
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
+      );
+      expect(response.statusCode).toBe(502);
+      expect(updateProjectV2ReadmeSpy).not.toHaveBeenCalled();
+    });
+
     it('returns 200 and updates the README on success', async () => {
       const response = await handleProjectMaxPreparingUpdate(
         context,
