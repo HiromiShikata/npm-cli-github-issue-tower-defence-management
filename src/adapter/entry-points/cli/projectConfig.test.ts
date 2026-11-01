@@ -1155,6 +1155,71 @@ describe('fetchProjectReadmeWithCache', () => {
     }
   });
 
+  it('includes the GraphQL error type and message from a non-OK JSON response body and does not cache it', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              message: 'Could not resolve to a ProjectV2 with the number 1.',
+            },
+          ],
+        }),
+        { status: 502 },
+      ),
+    );
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow(
+      new Error(
+        'GraphQL request failed: 502: NOT_FOUND: Could not resolve to a ProjectV2 with the number 1.',
+      ),
+    );
+    expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
+  });
+
+  it('includes the text of a non-OK plain-text response body and does not cache it', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response('upstream connect error', { status: 503 }),
+      );
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow(
+      new Error('GraphQL request failed: 503: upstream connect error'),
+    );
+    expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
+  });
+
+  it('truncates a non-OK plain-text response body to 200 characters', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('x'.repeat(250), { status: 503 }));
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow(
+      new Error(`GraphQL request failed: 503: ${'x'.repeat(200)}`),
+    );
+  });
+
+  it('keeps the status-only message when a non-OK response body cannot be read and does not cache it', async () => {
+    const response = new Response('', { status: 503 });
+    jest
+      .spyOn(response, 'text')
+      .mockRejectedValueOnce(new Error('stream reset'));
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(response);
+
+    await expect(
+      fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
+    ).rejects.toThrow(new Error('GraphQL request failed: 503'));
+    expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
+  });
+
   it('does not serve an expired disk entry when the fresh read fails', async () => {
     const staleFetchedAt = baseNowMs - PROJECT_README_CACHE_TTL_MS - 1;
     mockCacheRepo.getSingle.mockImplementation(async (key: string) => {

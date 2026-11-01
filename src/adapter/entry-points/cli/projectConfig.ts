@@ -539,6 +539,29 @@ const describeGraphqlErrors = (errors: unknown): string => {
   return descriptions.length > 0 ? `: ${descriptions.join('; ')}` : '';
 };
 
+const FAILED_RESPONSE_BODY_MAX_LENGTH = 200;
+
+const parseJsonText = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+};
+
+const describeFailedResponseBody = async (
+  response: Response,
+): Promise<string> => {
+  const body = await response.text().catch((): null => null);
+  if (!body) return '';
+  const parsedBody = parseJsonText(body);
+  if (isRecord(parsedBody)) {
+    const errorsDescription = describeGraphqlErrors(parsedBody['errors']);
+    if (errorsDescription.length > 0) return errorsDescription;
+  }
+  return `: ${body.slice(0, FAILED_RESPONSE_BODY_MAX_LENGTH)}`;
+};
+
 export const fetchProjectReadme = async (
   projectUrl: string,
   token: string,
@@ -569,7 +592,10 @@ export const fetchProjectReadme = async (
   });
 
   if (!response.ok) {
-    throw new Error(`GraphQL request failed: ${response.status}`);
+    const bodyDescription = await describeFailedResponseBody(response);
+    throw new Error(
+      `GraphQL request failed: ${response.status}${bodyDescription}`,
+    );
   }
 
   const responseData: unknown = await response.json();
