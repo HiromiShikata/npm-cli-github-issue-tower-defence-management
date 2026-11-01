@@ -261,7 +261,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
   });
 
   describe('listRunningIssueUrls', () => {
-    it('extracts issue URL from a bash-c style Take ownership spawn', () => {
+    it('does not extract an issue URL when -p appears only inside a bash-c script argument', () => {
       writeProcess({
         pid: 401,
         cmdline: argv(
@@ -274,7 +274,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
       const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
-      expect(repository.listRunningIssueUrls()).toEqual([issueUrl]);
+      expect(repository.listRunningIssueUrls()).toEqual([]);
     });
 
     it('extracts issue URL from a null-separated claude-agent spawn', () => {
@@ -350,6 +350,66 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
       expect(repository.listRunningIssueUrls()).toEqual([issueUrl, issueUrl2]);
+    });
+
+    it('returns issue URLs only for exact print flag elements, regardless of prompt text', () => {
+      const markerPrompt = `Take ownership of ${issueUrl}`;
+      const testCases: {
+        commandArguments: string[];
+        expectedRunning: boolean;
+      }[] = [
+        {
+          commandArguments: ['claude', markerPrompt],
+          expectedRunning: false,
+        },
+        {
+          commandArguments: ['claude', '-p', markerPrompt],
+          expectedRunning: true,
+        },
+        {
+          commandArguments: ['claude', '--print', markerPrompt],
+          expectedRunning: true,
+        },
+        {
+          commandArguments: ['claude', '--prompt-file', markerPrompt],
+          expectedRunning: false,
+        },
+        {
+          commandArguments: ['claude', '-pre', markerPrompt],
+          expectedRunning: false,
+        },
+        {
+          commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
+          expectedRunning: true,
+        },
+        {
+          commandArguments: [
+            'claude',
+            '--note',
+            markerPrompt,
+            '-p',
+            'ordinary worker prompt',
+          ],
+          expectedRunning: true,
+        },
+        { commandArguments: [], expectedRunning: false },
+      ];
+
+      testCases.forEach((testCase, index) => {
+        writeProcess({
+          pid: 500 + index,
+          cmdline: argv(...testCase.commandArguments),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual(
+        testCases.flatMap((testCase) =>
+          testCase.expectedRunning ? [issueUrl] : [],
+        ),
+      );
     });
 
     it('extracts the issue URL from a worker spawn whose -p argument is the worker request text of that issue URL', () => {

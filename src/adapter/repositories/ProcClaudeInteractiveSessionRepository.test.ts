@@ -100,6 +100,115 @@ describe('ProcClaudeInteractiveSessionRepository', () => {
     expect(repository.listInteractiveSessions()).toEqual([]);
   });
 
+  it('classifies processes from exact print-flag elements instead of prompt text', () => {
+    const markerPrompt = `Take ownership of ${issueUrl} and continue`;
+    const testCases: {
+      commandArguments: string[];
+      expectedInteractive: boolean;
+    }[] = [
+      {
+        commandArguments: ['claude', '--name', issueUrl, markerPrompt],
+        expectedInteractive: true,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--name',
+          issueUrl,
+          'Please review this issue',
+        ],
+        expectedInteractive: true,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--name',
+          issueUrl,
+          '-p',
+          'ordinary worker prompt',
+        ],
+        expectedInteractive: false,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--name',
+          issueUrl,
+          '--print',
+          'ordinary worker prompt',
+        ],
+        expectedInteractive: false,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--name',
+          issueUrl,
+          '--prompt-file',
+          markerPrompt,
+        ],
+        expectedInteractive: true,
+      },
+      {
+        commandArguments: ['claude', '--name', issueUrl, '-pre', markerPrompt],
+        expectedInteractive: true,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--prompt-file',
+          '-p',
+          '--name',
+          issueUrl,
+          'ordinary prompt',
+        ],
+        expectedInteractive: false,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--name',
+          issueUrl,
+          '--note',
+          markerPrompt,
+          '-p',
+          'ordinary worker prompt',
+        ],
+        expectedInteractive: false,
+      },
+      { commandArguments: [], expectedInteractive: false },
+    ];
+
+    testCases.forEach((testCase, index) => {
+      writeProcess({
+        pid: 600 + index,
+        cmdline: argv(...testCase.commandArguments),
+        environ: {
+          CLAUDE_CODE_OAUTH_TOKEN: `token-${index}`,
+          CLAUDE_CODE_SESSION_ID: `session-${index}`,
+        },
+      });
+    });
+
+    const repository = new ProcClaudeInteractiveSessionRepository(
+      procDirectory,
+    );
+
+    expect(repository.listInteractiveSessions()).toEqual(
+      testCases.flatMap((testCase, index) =>
+        testCase.expectedInteractive
+          ? [
+              {
+                token: `token-${index}`,
+                sessionId: `session-${index}`,
+                issueUrl,
+              },
+            ]
+          : [],
+      ),
+    );
+  });
+
   it('ignores a --name process without an oauth token', () => {
     writeProcess({
       pid: 204,

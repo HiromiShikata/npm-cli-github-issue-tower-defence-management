@@ -155,6 +155,84 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     );
   });
 
+  it('counts only processes with an exact print flag element, including a flag value and a marker in another argument', () => {
+    const markerPrompt = `Take ownership of ${issueUrl}`;
+    const testCases: {
+      commandArguments: string[];
+      expectedWorker: boolean;
+    }[] = [
+      {
+        commandArguments: ['claude', markerPrompt],
+        expectedWorker: false,
+      },
+      {
+        commandArguments: ['claude', '-p', markerPrompt],
+        expectedWorker: true,
+      },
+      {
+        commandArguments: ['claude', '--print', markerPrompt],
+        expectedWorker: true,
+      },
+      {
+        commandArguments: ['claude', '--prompt-file', markerPrompt],
+        expectedWorker: false,
+      },
+      {
+        commandArguments: ['claude', '-pre', markerPrompt],
+        expectedWorker: false,
+      },
+      {
+        commandArguments: ['claude', '--prompt-file', '-p', issueUrl],
+        expectedWorker: true,
+      },
+      {
+        commandArguments: [
+          'claude',
+          '--note',
+          markerPrompt,
+          '-p',
+          'ordinary worker prompt',
+        ],
+        expectedWorker: true,
+      },
+      { commandArguments: [], expectedWorker: false },
+    ];
+
+    testCases.forEach((testCase, index) => {
+      writeProcess({
+        pid: 900 + index,
+        parentPid: 1,
+        comm: 'claude',
+        cmdline: argv(...testCase.commandArguments),
+        environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-${index}` },
+      });
+    });
+
+    const reader = new ProcTakeOwnershipWorkerSessionReader(procDirectory);
+
+    expect(
+      reader.listWorkerSessions().map((session) => ({
+        rootProcessId: session.rootProcessId,
+        sessionToken: session.sessionToken,
+        workerProcessIds: session.workerProcesses.map(
+          (workerProcess) => workerProcess.processId,
+        ),
+      })),
+    ).toEqual(
+      testCases.flatMap((testCase, index) =>
+        testCase.expectedWorker
+          ? [
+              {
+                rootProcessId: 900 + index,
+                sessionToken: `token-${index}`,
+                workerProcessIds: [900 + index],
+              },
+            ]
+          : [],
+      ),
+    );
+  });
+
   it('uses the wrapper token when the worker has no claude descendant yet', () => {
     writeWorkerTree({
       wrapperPid: 200,
