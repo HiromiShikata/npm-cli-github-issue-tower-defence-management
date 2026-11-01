@@ -1,11 +1,13 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { isTransientApiError } from '../../../domain/usecases/isTransientApiError';
 import {
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
   setProjectReadmeMaxPreparingIssuesCount,
+  fetchProjectReadme,
   fetchProjectReadmeWithCache,
   PROJECT_README_CACHE_TTL_MS,
   resetProjectReadmeInMemoryCacheForTesting,
@@ -1111,7 +1113,7 @@ describe('fetchProjectReadmeWithCache', () => {
       {
         name: 'non-ok HTTP status',
         response: new Response('', { status: 503 }),
-        expectedMessage: 'GraphQL request failed: 503',
+        expectedMessage: 'GraphQL request failed: HTTP 503',
       },
       {
         name: 'rate limit error without data',
@@ -1174,7 +1176,7 @@ describe('fetchProjectReadmeWithCache', () => {
       fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
     ).rejects.toThrow(
       new Error(
-        'GraphQL request failed: 502: NOT_FOUND: Could not resolve to a ProjectV2 with the number 1.',
+        'GraphQL request failed: HTTP 502: NOT_FOUND: Could not resolve to a ProjectV2 with the number 1.',
       ),
     );
     expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
@@ -1190,7 +1192,7 @@ describe('fetchProjectReadmeWithCache', () => {
     await expect(
       fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
     ).rejects.toThrow(
-      new Error('GraphQL request failed: 503: upstream connect error'),
+      new Error('GraphQL request failed: HTTP 503: upstream connect error'),
     );
     expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
   });
@@ -1203,7 +1205,7 @@ describe('fetchProjectReadmeWithCache', () => {
     await expect(
       fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
     ).rejects.toThrow(
-      new Error(`GraphQL request failed: 503: ${'x'.repeat(200)}`),
+      new Error(`GraphQL request failed: HTTP 503: ${'x'.repeat(200)}`),
     );
   });
 
@@ -1216,7 +1218,7 @@ describe('fetchProjectReadmeWithCache', () => {
 
     await expect(
       fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
-    ).rejects.toThrow(new Error('GraphQL request failed: 503'));
+    ).rejects.toThrow(new Error('GraphQL request failed: HTTP 503'));
     expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
   });
 
@@ -1234,7 +1236,7 @@ describe('fetchProjectReadmeWithCache', () => {
 
     await expect(
       fetchProjectReadmeWithCache(projectUrl, token, mockCacheRepo, baseNowMs),
-    ).rejects.toThrow('GraphQL request failed: 500');
+    ).rejects.toThrow('GraphQL request failed: HTTP 500');
     expect(mockCacheRepo.setSingle).not.toHaveBeenCalled();
   });
 
@@ -1264,5 +1266,68 @@ describe('fetchProjectReadmeWithCache', () => {
 
     expect(result2).toBe(readme);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('fetchProjectReadme failure classification', () => {
+  const projectUrl = 'https://github.com/users/TestOrg/projects/1';
+  const token = 'test-token';
+
+  const captureError = async (promise: Promise<unknown>): Promise<Error> => {
+    try {
+      await promise;
+    } catch (error) {
+      if (error instanceof Error) {
+        return error;
+      }
+    }
+    throw new Error('Expected the promise to reject with an Error');
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each([401, 403, 429, 500, 502, 503, 504])(
+    'throws a transient API error for a non-OK HTTP %i response with an empty body',
+    async (status) => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('', { status }));
+
+      const error = await captureError(fetchProjectReadme(projectUrl, token));
+
+      expect(error.message).toBe(`GraphQL request failed: HTTP ${status}`);
+      expect(isTransientApiError(error)).toBe(true);
+    },
+  );
+
+  it('throws a transient API error for a rate-limited GraphQL response without data', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          errors: [
+            { type: 'RATE_LIMITED', message: 'API rate limit exceeded' },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    const error = await captureError(fetchProjectReadme(projectUrl, token));
+
+    expect(error.message).toContain('RATE_LIMITED');
+    expect(isTransientApiError(error)).toBe(true);
+  });
+
+  it('does not classify a non-OK HTTP 404 response as a transient API error', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 404 }));
+
+    const error = await captureError(fetchProjectReadme(projectUrl, token));
+
+    expect(error.message).toBe('GraphQL request failed: HTTP 404');
+    expect(isTransientApiError(error)).toBe(false);
   });
 });

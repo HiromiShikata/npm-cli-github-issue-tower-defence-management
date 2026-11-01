@@ -7666,7 +7666,7 @@ describe('consoleOperationApi', () => {
 
     it('returns 502 and does not update the README when the README read throws', async () => {
       fetchProjectReadmeSpy.mockRejectedValue(
-        new Error('GraphQL request failed: 403'),
+        new Error('GraphQL request failed: HTTP 403'),
       );
       const response = await handleProjectMaxPreparingUpdate(
         context,
@@ -7675,7 +7675,7 @@ describe('consoleOperationApi', () => {
       );
       expect(response).toEqual({
         statusCode: 502,
-        body: { error: 'GraphQL request failed: 403' },
+        body: { error: 'GraphQL request failed: HTTP 403' },
       });
       expect(updateProjectV2ReadmeSpy).not.toHaveBeenCalled();
     });

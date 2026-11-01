@@ -594,7 +594,7 @@ export const fetchProjectReadme = async (
   if (!response.ok) {
     const bodyDescription = await describeFailedResponseBody(response);
     throw new Error(
-      `GraphQL request failed: ${response.status}${bodyDescription}`,
+      `GraphQL request failed: HTTP ${response.status}${bodyDescription}`,
     );
   }
 

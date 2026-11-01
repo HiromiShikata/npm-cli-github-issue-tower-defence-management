@@ -853,7 +853,7 @@ describe('consoleReadApi', () => {
 
     it('returns 502 with the read error when the README cannot be read', async () => {
       fetchProjectReadmeSpy.mockRejectedValue(
-        new Error('GraphQL request failed: 403'),
+        new Error('GraphQL request failed: HTTP 403'),
       );
       const response = await handleProjectReadmeConfig(
         makeResolver(),
@@ -862,7 +862,7 @@ describe('consoleReadApi', () => {
       );
       expect(response).toEqual({
         statusCode: 502,
-        body: { error: 'GraphQL request failed: 403' },
+        body: { error: 'GraphQL request failed: HTTP 403' },
       });
     });
 

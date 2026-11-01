@@ -1144,7 +1144,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
         {
           name: 'non-ok HTTP status',
           response: new Response('', { status: 502 }),
-          expectedMessage: 'GraphQL request failed: 502',
+          expectedMessage: 'GraphQL request failed: HTTP 502',
         },
         {
           name: 'rate limit error without data',
@@ -5112,7 +5112,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
   });
 
   describe('README read failure in CLI entry points', () => {
-    const readmeReadFailureMessage = /^GraphQL request failed: 503$/;
+    const readmeReadFailureMessage = /^GraphQL request failed: HTTP 503$/;
 
     const mockReadmeReadFailure = (): void => {
       jest
