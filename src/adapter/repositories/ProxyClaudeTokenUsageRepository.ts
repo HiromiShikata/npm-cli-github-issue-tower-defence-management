@@ -1,4 +1,5 @@
 import { pbkdf2Sync, randomUUID } from 'crypto';
+import { claudePrintModeFlagOf } from '../../domain/entities/ClaudePrintModeFlag';
 import { ClaudeTokenUsage } from '../../domain/entities/ClaudeTokenUsage';
 import { ClaudeTokenUsageRepository } from '../../domain/usecases/adapter-interfaces/ClaudeTokenUsageRepository';
 import { isRecord } from '../../domain/usecases/isRecord';
@@ -260,8 +261,13 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
         )}(?:$|[\\s\\0"])`,
       );
       const reservationBecameLiveWorker = liveWorkerCommandLines.some(
-        (rawCommandLine) =>
-          reservedIssueCommandLineInfixPattern.test(rawCommandLine),
+        (rawCommandLine) => {
+          const commandArguments = rawCommandLine.trim().split(/\s+/);
+          return (
+            claudePrintModeFlagOf(commandArguments) &&
+            reservedIssueCommandLineInfixPattern.test(rawCommandLine)
+          );
+        },
       );
       if (
         tokenLaunchReservationIsStillPendingOf(

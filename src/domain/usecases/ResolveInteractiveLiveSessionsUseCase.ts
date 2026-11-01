@@ -1,21 +1,16 @@
 import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
+import { claudePrintModeFlagOf } from '../entities/ClaudePrintModeFlag';
 import {
   LiveSessionProcessInfo,
   LiveSessionProcessSnapshot,
 } from '../entities/LiveSessionProcessSnapshot';
 
-// Command-line substring that identifies an "owner-handover" agent spawn (for
-// example a background implementation agent started with a prompt beginning
-// "Take ownership of ..."). These spawns are not interactive owner sessions and
-// MUST NOT be notified, so any process whose command line contains this marker
-// is excluded even if it somehow appears under a monitored pane.
-export const OWNER_HANDOVER_COMMAND_MARKER = 'Take ownership of';
-
 // Command-name substring that identifies the interactive Claude Code process.
 const INTERACTIVE_PROCESS_COMMAND_MARKER = 'claude';
 
 const isInteractiveCandidate = (process: LiveSessionProcessInfo): boolean => {
-  if (process.commandLine.includes(OWNER_HANDOVER_COMMAND_MARKER)) {
+  const commandArguments = process.commandLine.trim().split(/\s+/);
+  if (claudePrintModeFlagOf(commandArguments)) {
     return false;
   }
   if (!process.commandLine.includes(INTERACTIVE_PROCESS_COMMAND_MARKER)) {
@@ -32,12 +27,11 @@ const isInteractiveCandidate = (process: LiveSessionProcessInfo): boolean => {
  * Selection works purely from a process snapshot: for each live tmux session,
  * the descendants of its pane processes are walked, and the first descendant
  * that looks like an interactive Claude Code process (command line contains
- * `claude`, does not contain the owner-handover marker, and exposes both a
- * session id and a config directory in its environment) is taken as the
- * session's interactive process. Because the walk is anchored on tmux panes,
- * background owner-handover spawns, the preparation daemon, and monitor
- * processes — none of which run inside an interactive tmux pane — are naturally
- * excluded; the explicit owner-handover marker check is an additional guard.
+ * `claude`, has no `-p` or `--print` argument, and exposes both a session id and
+ * a config directory in its environment) is taken as the session's interactive
+ * process. Because the walk is anchored on tmux panes, background preparation
+ * spawns, the preparation daemon, and monitor processes — none of which run
+ * inside an interactive tmux pane — are naturally excluded.
  */
 export class ResolveInteractiveLiveSessionsUseCase {
   resolve = (

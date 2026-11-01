@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { claudePrintModeFlagOf } from '../../domain/entities/ClaudePrintModeFlag';
 
 const OAUTH_TOKEN_ENVIRON_PREFIX = 'CLAUDE_CODE_OAUTH_TOKEN=';
 const TAKE_OWNERSHIP_MARKER = 'Take ownership';
@@ -73,12 +74,12 @@ export class ProcTakeOwnershipWorkerSessionReader {
       this.readTokenHoldingWorkerProcesses(snapshotsByProcessId);
     const sessions: TakeOwnershipWorkerSession[] = [];
     for (const rootProcess of workerProcessesById.values()) {
-      const parentProcessId =
-        snapshotsByProcessId.get(rootProcess.processId)?.stat
-          ?.parentProcessId ?? null;
       if (
-        parentProcessId !== null &&
-        workerProcessesById.has(parentProcessId)
+        this.hasWorkerAncestor(
+          rootProcess.processId,
+          snapshotsByProcessId,
+          workerProcessesById,
+        )
       ) {
         continue;
       }
@@ -107,6 +108,31 @@ export class ProcTakeOwnershipWorkerSessionReader {
     return sessions.sort(
       (left, right) => left.rootProcessId - right.rootProcessId,
     );
+  };
+
+  private hasWorkerAncestor = (
+    processId: number,
+    snapshotsByProcessId: Map<number, ProcessSnapshot>,
+    workerProcessesById: Map<number, TokenHoldingWorkerProcess>,
+  ): boolean => {
+    let currentProcessId = processId;
+    const visitedProcessIds = new Set<number>();
+    while (!visitedProcessIds.has(currentProcessId)) {
+      visitedProcessIds.add(currentProcessId);
+      const parentProcessId =
+        snapshotsByProcessId.get(currentProcessId)?.stat?.parentProcessId;
+      if (parentProcessId === undefined) {
+        return false;
+      }
+      if (visitedProcessIds.has(parentProcessId)) {
+        return false;
+      }
+      if (workerProcessesById.has(parentProcessId)) {
+        return true;
+      }
+      currentProcessId = parentProcessId;
+    }
+    return false;
   };
 
   private readProcessSnapshots = (): Map<number, ProcessSnapshot> => {
@@ -166,9 +192,17 @@ export class ProcTakeOwnershipWorkerSessionReader {
         String(snapshot.processId),
         'cmdline',
       );
+      if (rawCommandLine === null) {
+        continue;
+      }
+      const commandArguments = rawCommandLine
+        .split('\0')
+        .filter((argument) => argument.length > 0);
+      const isClaudeProcess =
+        snapshot.stat?.commandName === CLAUDE_COMMAND_NAME;
       if (
-        rawCommandLine === null ||
-        !rawCommandLine.includes(TAKE_OWNERSHIP_MARKER)
+        (isClaudeProcess && !claudePrintModeFlagOf(commandArguments)) ||
+        (!isClaudeProcess && !rawCommandLine.includes(TAKE_OWNERSHIP_MARKER))
       ) {
         continue;
       }
