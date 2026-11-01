@@ -1585,17 +1585,17 @@ describe('StoryGateCheckUseCase', () => {
         name: '41 comments without the story label',
         labels: [],
         comments: numbered('comment', 41),
-        action: 'FOLD_REQUIRED',
-        reason: 'COMMENT_HISTORY_OVER_LIMIT',
-        foldMode: 'NEW_ISSUE',
+        action: 'PROCEED',
+        reason: 'REGULAR_STORY',
+        foldMode: null,
       },
       {
         name: '41 comments with an early fold and without the story label',
         labels: [],
         comments: [FOLD_COMMENT, ...numbered('comment', 40)],
-        action: 'FOLD_REQUIRED',
-        reason: 'COMMENT_HISTORY_OVER_LIMIT',
-        foldMode: 'NEW_ISSUE',
+        action: 'PROCEED',
+        reason: 'REGULAR_STORY',
+        foldMode: null,
       },
       {
         name: '40 comments without the story label',
@@ -1603,7 +1603,7 @@ describe('StoryGateCheckUseCase', () => {
         comments: numbered('comment', 40),
         action: 'PROCEED',
         reason: 'REGULAR_STORY',
-        foldMode: undefined,
+        foldMode: null,
       },
       {
         name: '41 comments after the latest fold with the story label',
@@ -1613,17 +1613,17 @@ describe('StoryGateCheckUseCase', () => {
           FOLD_COMMENT,
           ...numbered('comment', 41),
         ],
-        action: 'FOLD_REQUIRED',
-        reason: 'COMMENT_HISTORY_OVER_LIMIT',
-        foldMode: 'IN_PLACE',
+        action: 'PROCEED',
+        reason: 'REGULAR_STORY',
+        foldMode: null,
       },
       {
         name: '41 comments without any fold with the story label',
         labels: ['story'],
         comments: numbered('comment', 41),
-        action: 'FOLD_REQUIRED',
-        reason: 'COMMENT_HISTORY_OVER_LIMIT',
-        foldMode: 'IN_PLACE',
+        action: 'PROCEED',
+        reason: 'REGULAR_STORY',
+        foldMode: null,
       },
       {
         name: '40 comments after the latest fold with the story label',
@@ -1635,7 +1635,7 @@ describe('StoryGateCheckUseCase', () => {
         ],
         action: 'PROCEED',
         reason: 'REGULAR_STORY',
-        foldMode: undefined,
+        foldMode: null,
       },
     ])(
       'returns $action for $name',
@@ -1650,9 +1650,7 @@ describe('StoryGateCheckUseCase', () => {
 
         expect(result.action).toBe(action);
         expect(result.reason).toBe(reason);
-        if (foldMode !== undefined) {
-          expect(result.assignedIssue?.foldMode).toBe(foldMode);
-        }
+        expect(result.assignedIssue?.foldMode).toBe(foldMode);
       },
     );
 

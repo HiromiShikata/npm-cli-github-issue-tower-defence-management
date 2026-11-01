@@ -19,7 +19,6 @@ import {
 } from './githubIssueReferenceParse';
 import {
   AGENT_REPORT_PREFIX,
-  COMMENT_HISTORY_FOLD_THRESHOLD,
   issueCommentsAfterLatestFold,
   issueCommentsFormatAsText,
   issueCommentsSplitByAuthorKind,
@@ -42,12 +41,7 @@ export const STORY_GATE_RESULT_SCHEMA_VERSION = 1;
 export const STORY_GATE_RESULT_FILE_NAME = 'story-gate-result.json';
 
 export type StoryGateAction =
-  | 'PROCEED'
-  | 'STOP_SILENT'
-  | 'ROUTE'
-  | 'SELF_RESOLVE_STORY'
-  | 'FOLD_REQUIRED'
-  | 'JUDGE';
+  'PROCEED' | 'STOP_SILENT' | 'ROUTE' | 'SELF_RESOLVE_STORY' | 'JUDGE';
 
 export type TriageAgentSelfRouteAction = Extract<
   StoryGateAction,
@@ -67,7 +61,6 @@ export type StoryGateReason =
   | 'STORY_ISSUES_NOT_READABLE'
   | 'AGENT_NOT_IN_PROJECT_AGENTS'
   | 'OPEN_PULL_REQUEST_EXISTS'
-  | 'COMMENT_HISTORY_OVER_LIMIT'
   | 'WORK_MERGED_WITHOUT_APPROVED_SPECIFICATION'
   | 'TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF'
   | 'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED';
@@ -101,15 +94,13 @@ export type StoryIssueReadResult = IssueCommentFiles & {
   bodyPath: string;
 };
 
-export type AssignedIssueFoldMode = 'NEW_ISSUE' | 'IN_PLACE';
-
 export type AssignedIssueSummary = {
   url: string;
   state: StoryGateIssue['state'];
   hasStoryLabel: boolean;
   commentCountTotal: number;
   commentCountAfterLatestFold: number;
-  foldMode: AssignedIssueFoldMode | null;
+  foldMode: null;
   commentFiles: IssueCommentFiles | null;
 };
 
@@ -798,18 +789,13 @@ export class StoryGateCheckUseCase {
     const hasStoryLabel = hasStoryIssueLabel(assignedIssue.labels);
     const commentCountAfterLatestFold =
       issueCommentsAfterLatestFold(comments).length;
-    const foldMode = this.assignedIssueFoldModeDecide(
-      hasStoryLabel,
-      comments.length,
-      commentCountAfterLatestFold,
-    );
     state.result.assignedIssue = {
       url: input.issue.url,
       state: assignedIssue.state,
       hasStoryLabel,
       commentCountTotal: comments.length,
       commentCountAfterLatestFold,
-      foldMode,
+      foldMode: null,
       commentFiles: hasStoryLabel
         ? this.commentFilesWrite(state, input, 'assigned-issue', comments)
         : null,
@@ -871,25 +857,7 @@ export class StoryGateCheckUseCase {
         );
       }
     }
-    if (foldMode !== null) {
-      return this.decide(state, 'FOLD_REQUIRED', 'COMMENT_HISTORY_OVER_LIMIT');
-    }
     return this.decide(state, 'PROCEED', proceedReason);
-  };
-
-  private assignedIssueFoldModeDecide = (
-    hasStoryLabel: boolean,
-    commentCountTotal: number,
-    commentCountAfterLatestFold: number,
-  ): AssignedIssueFoldMode | null => {
-    if (hasStoryLabel) {
-      return commentCountAfterLatestFold > COMMENT_HISTORY_FOLD_THRESHOLD
-        ? 'IN_PLACE'
-        : null;
-    }
-    return commentCountTotal > COMMENT_HISTORY_FOLD_THRESHOLD
-      ? 'NEW_ISSUE'
-      : null;
   };
 
   private specificationDetect = async (
