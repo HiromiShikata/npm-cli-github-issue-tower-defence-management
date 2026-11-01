@@ -424,6 +424,30 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       );
     });
 
+    it('extracts exactly the issue URL before a quote in the worker request', () => {
+      const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
+      const testCases = [
+        `Take ownership of ${requestedIssueUrl}"trailing text`,
+        `Take ownership of ${requestedIssueUrl}'trailing text`,
+        `Take ownership of ${requestedIssueUrl}"`,
+        `Take ownership of ${requestedIssueUrl}'`,
+      ];
+
+      testCases.forEach((request, index) => {
+        writeProcess({
+          pid: 700 + index,
+          cmdline: argv('claude-agent', '-p', request),
+          environ: { CLAUDE_CODE_OAUTH_TOKEN: `token-quote-${index}` },
+        });
+      });
+
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(repository.listRunningIssueUrls()).toEqual(
+        testCases.map(() => requestedIssueUrl),
+      );
+    });
+
     it('extracts the issue URL from the request instead of the worker name', () => {
       const requestedIssueUrl = 'https://github.com/octo/repo/issues/12';
       const namedIssueUrl = 'https://github.com/octo/repo/issues/99';
