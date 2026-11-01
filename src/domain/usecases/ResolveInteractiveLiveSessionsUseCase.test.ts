@@ -152,6 +152,82 @@ describe('ResolveInteractiveLiveSessionsUseCase', () => {
     expect(result).toEqual([]);
   });
 
+  it('classifies a command-line string by whitespace-delimited exact print flag tokens instead of prompt text', () => {
+    const issueUrl = 'https://github.com/owner/repo/issues/1';
+    const markerPrompt = `Take ownership of ${issueUrl}`;
+    const testCases: {
+      commandLine: string;
+      expectedInteractive: boolean;
+    }[] = [
+      {
+        commandLine: `claude --name ${issueUrl} ${markerPrompt}`,
+        expectedInteractive: true,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} Please review this issue`,
+        expectedInteractive: true,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} -p ordinary worker prompt`,
+        expectedInteractive: false,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} --print ordinary worker prompt`,
+        expectedInteractive: false,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} --prompt-file ${markerPrompt}`,
+        expectedInteractive: true,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} -pre ${markerPrompt}`,
+        expectedInteractive: true,
+      },
+      {
+        commandLine: `claude --prompt-file -p --name ${issueUrl} ordinary prompt`,
+        expectedInteractive: false,
+      },
+      {
+        commandLine: `claude --name ${issueUrl} --note ${markerPrompt} -p ordinary worker prompt`,
+        expectedInteractive: false,
+      },
+      { commandLine: '', expectedInteractive: false },
+    ];
+
+    testCases.forEach((testCase, index) => {
+      const result = useCase.resolve({
+        sessions: [{ sessionName: `session-${index}`, panePids: [1000] }],
+        processes: [
+          processInfo({
+            pid: 1000,
+            ppid: 1,
+            commandLine: 'shell',
+          }),
+          processInfo({
+            pid: 1001,
+            ppid: 1000,
+            commandLine: testCase.commandLine,
+            sessionId: `session-id-${index}`,
+            configDir: `/config/session-${index}`,
+          }),
+        ],
+      });
+
+      expect(result).toEqual(
+        testCase.expectedInteractive
+          ? [
+              {
+                sessionName: `session-${index}`,
+                sessionId: `session-id-${index}`,
+                candidateSessionIds: [`session-id-${index}`],
+                configDir: `/config/session-${index}`,
+              },
+            ]
+          : [],
+      );
+    });
+  });
+
   it('skips a session whose interactive process exposes no session id or config dir', () => {
     const snapshot: LiveSessionProcessSnapshot = {
       sessions: [{ sessionName: 'partial', panePids: [500] }],

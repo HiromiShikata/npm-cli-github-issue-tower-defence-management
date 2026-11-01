@@ -1649,7 +1649,7 @@ program
 program
   .command('countInTmuxByHumanSessionsPerToken')
   .description(
-    'Print, per Claude Code OAuth token, the count of live interactive sessions (cl-launched Claude processes carrying CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CODE_SESSION_ID with a --name <issue-url> argument, excluding Take ownership spawns) whose issue is currently in GitHub Project Status "In Tmux by human". One tab-separated line per token (<tokenName>\\t<count>) is written to stdout; the decision trace is written to stderr. Token values are never printed.',
+    'Print, per Claude Code OAuth token, the count of live interactive sessions (cl-launched Claude processes carrying CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CODE_SESSION_ID with a --name <issue-url> argument, excluding processes with a -p or --print argument) whose issue is currently in GitHub Project Status "In Tmux by human". One tab-separated line per token (<tokenName>\\t<count>) is written to stdout; the decision trace is written to stderr. Token values are never printed.',
   )
   .requiredOption(
     '--configFilePath <path>',
@@ -2023,7 +2023,7 @@ program
 program
   .command('workerRequestTextRead')
   .description(
-    'Print the request text a worker session receives for one issue, "Take ownership of <issue url>", followed by one newline to stdout and exit 0. The worker launcher passes the printed text to the worker session unchanged, so this CLI, which also parses that text back out of running processes, is the single place that defines it. Reads nothing and changes nothing.',
+    'Print the request text a worker session receives for one issue, "Take ownership of <issue url>", followed by one newline to stdout and exit 0. The worker launcher passes the printed text to the worker session unchanged, so this CLI identifies worker processes by their -p or --print argument while keeping the request text in one place. Reads nothing and changes nothing.',
   )
   .requiredOption(
     '--issueUrl <url>',

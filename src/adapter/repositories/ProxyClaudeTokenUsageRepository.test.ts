@@ -830,7 +830,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     const statWithParent = (parentPid: number): string =>
       `${parentPid + 1} (worker) S ${parentPid} ${parentPid} ${parentPid} 0 -1 4194304`;
     const takeOwnershipCommandLine =
-      'claude\0Take ownership of https://github.com/o/r/issues/1 and finish it\0';
+      'claude\0-p\0Take ownership of https://github.com/o/r/issues/1 and finish it\0';
 
     it('should return empty object when proc directory cannot be read', async () => {
       mockFsReaddirSync.mockImplementation(() => {
@@ -1322,6 +1322,73 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       const result = await repository.getTokenInFlightCounts();
 
       expect(result).toEqual({ 'sk-ant-shared': 2 });
+    });
+
+    it('counts only processes with exact print flag elements, including a flag value and a marker in another argument', async () => {
+      const markerPrompt = 'Take ownership of https://github.com/o/r/issues/1';
+      const testCases: {
+        commandLine: string;
+        expectedCount: number;
+      }[] = [
+        {
+          commandLine: argv('claude', markerPrompt),
+          expectedCount: 0,
+        },
+        {
+          commandLine: argv('claude', '-p', markerPrompt),
+          expectedCount: 1,
+        },
+        {
+          commandLine: argv('claude', '--print', markerPrompt),
+          expectedCount: 1,
+        },
+        {
+          commandLine: argv('claude', '--prompt-file', markerPrompt),
+          expectedCount: 0,
+        },
+        {
+          commandLine: argv('claude', '-pre', markerPrompt),
+          expectedCount: 0,
+        },
+        {
+          commandLine: argv('claude', '--prompt-file', '-p', 'ordinary prompt'),
+          expectedCount: 1,
+        },
+        {
+          commandLine: argv(
+            'claude',
+            '--note',
+            markerPrompt,
+            '-p',
+            'ordinary worker prompt',
+          ),
+          expectedCount: 1,
+        },
+        { commandLine: argv(), expectedCount: 0 },
+      ];
+
+      for (const [index, testCase] of testCases.entries()) {
+        jest.clearAllMocks();
+        mockProcessTable([
+          {
+            pid: 900 + index,
+            parentPid: 1,
+            comm: 'claude',
+            cmdline: testCase.commandLine,
+            environ: `CLAUDE_CODE_OAUTH_TOKEN=token-${index}\0`,
+          },
+        ]);
+
+        const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+        const result = await repository.getTokenInFlightCounts();
+
+        expect(result).toEqual(
+          testCase.expectedCount === 0
+            ? {}
+            : { [`token-${index}`]: testCase.expectedCount },
+        );
+      }
     });
   });
 });

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { claudePrintModeFlagOf } from '../../domain/entities/ClaudePrintModeFlag';
 import {
   TakeOwnershipSpawn,
   TakeOwnershipSpawnRepository,
@@ -8,7 +9,9 @@ import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerS
 
 const DEFAULT_PROC_DIRECTORY = '/proc';
 const LOG_PATH_PATTERN = /\/logs-aw\/[^\0"]+\.log/;
-const ISSUE_URL_PATTERN = /Take ownership of (https:\/\/github\.com\/[^ \0"]+)/;
+const TAKE_OWNERSHIP_ISSUE_URL_PATTERN =
+  /Take ownership of (https:\/\/github\.com\/[^\s\0"]+)/;
+const ISSUE_URL_PATTERN = /https:\/\/github\.com\/[^\s\0"]+/;
 
 const extractLogPath = (cmdline: string): string | null => {
   const match = cmdline.match(LOG_PATH_PATTERN);
@@ -41,9 +44,17 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
       if (rawCmdline === null) {
         continue;
       }
-      const match = rawCmdline.match(ISSUE_URL_PATTERN);
+      const commandArguments = rawCmdline
+        .split('\0')
+        .filter((argument) => argument.length > 0);
+      if (!claudePrintModeFlagOf(commandArguments)) {
+        continue;
+      }
+      const match =
+        rawCmdline.match(TAKE_OWNERSHIP_ISSUE_URL_PATTERN) ??
+        rawCmdline.match(ISSUE_URL_PATTERN);
       if (match !== null) {
-        urls.push(match[1]);
+        urls.push(match[1] ?? match[0]);
       }
     }
     return urls;

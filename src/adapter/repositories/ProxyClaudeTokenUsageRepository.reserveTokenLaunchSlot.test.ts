@@ -190,7 +190,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 1,
-            rawCommandLine: `claude --model opus "Take ownership of ${issueUrl}"`,
+            rawCommandLine: `claude --model opus -p "Take ownership of ${issueUrl}"`,
           },
         ],
       },
@@ -234,7 +234,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 4,
-            rawCommandLine: `claude --model opus "Take ownership of ${unrelatedLongerIssueUrl}"`,
+            rawCommandLine: `claude --model opus -p "Take ownership of ${unrelatedLongerIssueUrl}"`,
           },
         ],
       },
@@ -277,7 +277,7 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         workerProcesses: [
           {
             processId: 3,
-            rawCommandLine: `claude --model opus "Take ownership of ${issueUrl}"`,
+            rawCommandLine: `claude --model opus -p "Take ownership of ${issueUrl}"`,
           },
         ],
       },
@@ -303,7 +303,10 @@ describe('ProxyClaudeTokenUsageRepository.reserveTokenLaunchSlot', () => {
         rootProcessId: 2,
         sessionToken: 'token-e',
         workerProcesses: [
-          { processId: 2, rawCommandLine: 'claude --model opus' },
+          {
+            processId: 2,
+            rawCommandLine: 'claude --model opus -p ordinary worker prompt',
+          },
         ],
       },
     ];

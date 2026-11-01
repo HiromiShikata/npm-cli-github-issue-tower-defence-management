@@ -4,12 +4,12 @@ import {
   ClaudeInteractiveSession,
   ClaudeInteractiveSessionRepository,
 } from '../../domain/usecases/adapter-interfaces/ClaudeInteractiveSessionRepository';
+import { claudePrintModeFlagOf } from '../../domain/entities/ClaudePrintModeFlag';
 
 const DEFAULT_PROC_DIRECTORY = '/proc';
 const OAUTH_TOKEN_ENVIRON_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';
 const SESSION_ID_ENVIRON_KEY = 'CLAUDE_CODE_SESSION_ID';
 const NAME_ARGUMENT = '--name';
-const TAKE_OWNERSHIP_MARKER = 'Take ownership';
 const isIssueUrl = (value: string): boolean =>
   value.startsWith('http://') || value.startsWith('https://');
 
@@ -33,9 +33,6 @@ export const extractIssueUrl = (commandArguments: string[]): string | null => {
   }
   return null;
 };
-
-const isTakeOwnershipSpawn = (commandArguments: string[]): boolean =>
-  commandArguments.some((argument) => argument.includes(TAKE_OWNERSHIP_MARKER));
 
 export class ProcClaudeInteractiveSessionRepository implements ClaudeInteractiveSessionRepository {
   constructor(
@@ -70,7 +67,7 @@ export class ProcClaudeInteractiveSessionRepository implements ClaudeInteractive
     if (commandArguments === null) {
       return null;
     }
-    if (isTakeOwnershipSpawn(commandArguments)) {
+    if (claudePrintModeFlagOf(commandArguments)) {
       return null;
     }
     const issueUrl = extractIssueUrl(commandArguments);
