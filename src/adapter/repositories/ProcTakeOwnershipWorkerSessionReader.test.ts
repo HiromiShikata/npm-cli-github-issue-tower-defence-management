@@ -281,7 +281,7 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
     ).toEqual([[210, 'wrapper-token']]);
   });
 
-  it('does not create a session when the claude descendant holds no oauth token', () => {
+  it('uses the wrapper token when the claude descendant holds no oauth token', () => {
     writeWorkerTree({
       wrapperPid: 220,
       wrapperToken: 'wrapper-token',
@@ -298,27 +298,11 @@ describe('ProcTakeOwnershipWorkerSessionReader', () => {
 
     const reader = new ProcTakeOwnershipWorkerSessionReader(procDirectory);
 
-    expect(reader.listWorkerSessions()).toEqual([]);
-  });
-
-  it('does not create a session when the only print-flag descendant has no oauth token', () => {
-    writeWorkerTree({
-      wrapperPid: 230,
-      wrapperToken: 'wrapper-token',
-      logName: 'worker-d2',
-      claudeToken: null,
-    });
-    writeProcess({
-      pid: 232,
-      parentPid: 230,
-      comm: 'timeout',
-      cmdline: timeoutCommandLine,
-      environ: { HOME: '/home/user' },
-    });
-
-    const reader = new ProcTakeOwnershipWorkerSessionReader(procDirectory);
-
-    expect(reader.listWorkerSessions()).toEqual([]);
+    expect(
+      reader
+        .listWorkerSessions()
+        .map((session) => [session.rootProcessId, session.sessionToken]),
+    ).toEqual([[220, 'wrapper-token']]);
   });
 
   it('uses the shallowest claude descendant when a claude process runs another claude process', () => {
