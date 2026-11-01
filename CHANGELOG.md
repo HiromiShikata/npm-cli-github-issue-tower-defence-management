@@ -1,3 +1,10 @@
+## [2.184.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.2...v2.184.3) (2026-11-01)
+
+
+### Bug Fixes
+
+* remove human-authored investigation task close override ([#3671](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3671)) ([1f27bc7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f27bc72a8b117807943ff268146bce7c1d8f173))
+
 ## [2.184.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.1...v2.184.2) (2026-11-01)
 
 
