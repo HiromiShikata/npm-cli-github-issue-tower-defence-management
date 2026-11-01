@@ -259,7 +259,7 @@ const snapshotRepositoryFiles = (): string => {
         .relative(__dirname, entryPath)
         .split(path.sep)
         .join('/');
-      if (relativePath === 'reports') {
+      if (relativePath === 'reports' || relativePath === 'tmp') {
         continue;
       }
       if (relativePath.split('/').includes('.git')) {
@@ -346,6 +346,26 @@ test('README.md llmModelNameByAgentName repository snapshot ignores generated te
     if (!reportsDirectoryExisted) {
       fs.rmSync(reportsDirectory, { force: true, recursive: true });
     }
+  }
+});
+
+test('README.md llmModelNameByAgentName repository snapshot ignores files other suites write under tmp', () => {
+  const temporaryRootDirectory = path.join(__dirname, 'tmp');
+  fs.mkdirSync(temporaryRootDirectory, { recursive: true });
+  const generatedTemporaryDirectory = fs.mkdtempSync(
+    path.join(temporaryRootDirectory, 'readme-snapshot-tmp-'),
+  );
+
+  try {
+    const beforeSnapshot = snapshotRepositoryFiles();
+    fs.writeFileSync(
+      path.join(generatedTemporaryDirectory, 'generated-by-another-suite.txt'),
+      'written by a suite running in parallel with the README test',
+    );
+
+    expect(snapshotRepositoryFiles()).toBe(beforeSnapshot);
+  } finally {
+    fs.rmSync(generatedTemporaryDirectory, { force: true, recursive: true });
   }
 });
 
