@@ -10,7 +10,7 @@ import { ProcTakeOwnershipWorkerSessionReader } from './ProcTakeOwnershipWorkerS
 const DEFAULT_PROC_DIRECTORY = '/proc';
 const LOG_PATH_PATTERN = /\/logs-aw\/[^\0"]+\.log/;
 const TAKE_OWNERSHIP_ISSUE_URL_PATTERN =
-  /Take ownership of (https:\/\/github\.com\/[^\s\0"]+)/;
+  /Take ownership of (https:\/\/github\.com\/[^\s\0"']+)/;
 
 const extractLogPath = (cmdline: string): string | null => {
   const match = cmdline.match(LOG_PATH_PATTERN);
