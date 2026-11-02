@@ -11801,38 +11801,36 @@ describe('ConsolePage story task row story pulldown', () => {
   });
 
   const installStoriesFetch = (respondToTriage: TriageResponder): jest.Mock => {
-    const fetchMock = jest.fn(
-      async (url: string, init: RequestInit = {}) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          const tab = listMatch[1];
-          return {
-            ok: true,
-            status: 200,
-            json: async () =>
-              tab === 'stories' ? storiesPayload() : listPayload(tab),
-          };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme'] }),
-          };
-        }
-        if (url.startsWith('/api/projectreadmeconfig')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ maximumPreparingIssuesCount: 3 }),
-          };
-        }
-        if (url.endsWith('/api/triage')) {
-          return respondToTriage(url, init);
-        }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-      },
-    );
+    const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesPayload() : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.endsWith('/api/triage')) {
+        return respondToTriage(url, init);
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
     global.fetch = fetchMock as unknown as typeof fetch;
     return fetchMock;
   };
@@ -11867,7 +11865,10 @@ describe('ConsolePage story task row story pulldown', () => {
     return row;
   };
 
-  const taskRowsOf = (container: HTMLElement, storyName: string): HTMLElement[] =>
+  const taskRowsOf = (
+    container: HTMLElement,
+    storyName: string,
+  ): HTMLElement[] =>
     Array.from(
       storyRowNamed(container, storyName).querySelectorAll<HTMLElement>(
         'li.console-story-task-row',
