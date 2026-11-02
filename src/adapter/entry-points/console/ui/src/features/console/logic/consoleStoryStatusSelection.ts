@@ -54,3 +54,25 @@ export const filterConsoleStoryEntriesByStatusSelection = (
     return items.length > 0 ? [{ ...entry, items }] : [];
   });
 };
+
+const CONSOLE_STORY_STATUS_PARAM = 'status';
+
+export const parseConsoleStoryStatusSelectionFromSearch = (
+  search: string,
+): string[] => {
+  const names = new URLSearchParams(search).getAll(CONSOLE_STORY_STATUS_PARAM);
+  return Array.from(new Set(names.filter((name) => name.length > 0)));
+};
+
+export const formatConsoleStoryStatusSelectionIntoSearch = (
+  search: string,
+  statuses: string[],
+): string => {
+  const params = new URLSearchParams(search);
+  params.delete(CONSOLE_STORY_STATUS_PARAM);
+  for (const status of Array.from(new Set(statuses))) {
+    params.append(CONSOLE_STORY_STATUS_PARAM, status);
+  }
+  const query = params.toString();
+  return query.length > 0 ? `?${query}` : '';
+};

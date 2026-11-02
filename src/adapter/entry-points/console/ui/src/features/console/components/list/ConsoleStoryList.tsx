@@ -260,6 +260,9 @@ export const ConsoleStoryList = ({
     statusOptionNames,
   );
   const hasStatusSelection = effectiveStatusSelection.length > 0;
+  const reorderLockTitle = hasStatusSelection
+    ? 'Clear the status filter to reorder stories'
+    : undefined;
   const visibleStories = filterConsoleStoryEntriesByStatusSelection(
     stories,
     effectiveStatusSelection,
@@ -404,7 +407,10 @@ export const ConsoleStoryList = ({
                     type="button"
                     className="console-op-button"
                     aria-label="Move up"
-                    disabled={isFirst || reorderInProgress}
+                    disabled={
+                      isFirst || reorderInProgress || hasStatusSelection
+                    }
+                    title={reorderLockTitle}
                     onClick={() =>
                       void handleReorder(entry.storyOptionId, 'up')
                     }
@@ -415,7 +421,8 @@ export const ConsoleStoryList = ({
                     type="button"
                     className="console-op-button"
                     aria-label="Move down"
-                    disabled={isLast || reorderInProgress}
+                    disabled={isLast || reorderInProgress || hasStatusSelection}
+                    title={reorderLockTitle}
                     onClick={() =>
                       void handleReorder(entry.storyOptionId, 'down')
                     }

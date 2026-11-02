@@ -64,7 +64,10 @@ import {
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
 import {
+  formatConsoleStoryStatusSelectionIntoSearch,
+  parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
+  resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from '../logic/consoleStoryStatusSelection';
 import {
@@ -978,7 +981,14 @@ export const ConsolePage = () => {
   }, []);
 
   const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
-    () => readConsoleStoryStatusSelection(),
+    () => {
+      const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
+        window.location.search,
+      );
+      return statusesFromUrl.length > 0
+        ? statusesFromUrl
+        : readConsoleStoryStatusSelection();
+    },
   );
 
   const handleToggleStoryStatus = useCallback((status: string): void => {
@@ -997,9 +1007,47 @@ export const ConsolePage = () => {
   }, []);
 
   const storiesSnapshot = snapshots.stories;
-  const storyStatusOptionNames = (storiesSnapshot?.statusOptions ?? []).map(
-    (option) => option.name,
+  const storyStatusOptionNames = useMemo(
+    () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
+    [storiesSnapshot],
   );
+
+  useEffect(() => {
+    if (activeTab !== 'stories' || storyStatusOptionNames.length === 0) {
+      return;
+    }
+    const effectiveStatuses = resolveEffectiveConsoleStoryStatusSelection(
+      selectedStoryStatuses,
+      storyStatusOptionNames,
+    );
+    const search = formatConsoleStoryStatusSelectionIntoSearch(
+      window.location.search,
+      effectiveStatuses,
+    );
+    if (search !== window.location.search) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${search}${window.location.hash}`,
+      );
+    }
+  }, [activeTab, selectedStoryStatuses, storyStatusOptionNames]);
+
+  useEffect(() => {
+    if (activeTab !== 'stories') {
+      return;
+    }
+    const handlePopState = (): void => {
+      setSelectedStoryStatuses(
+        parseConsoleStoryStatusSelectionFromSearch(window.location.search),
+      );
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [activeTab]);
+
   const rawStoryEntries = storiesSnapshot?.stories ?? [];
   const storyEntries =
     localStoryEntriesOverride !== null &&
