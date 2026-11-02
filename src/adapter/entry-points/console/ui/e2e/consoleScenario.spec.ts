@@ -1631,6 +1631,7 @@ test('story tab task row pulldown moves the task to the chosen story group and f
       tdpmRow.locator('.console-story-task-title', { hasText: taskTitle }),
     ).toHaveCount(0);
 
+    await page.getByRole('switch', { name: 'Archived' }).click();
     const regularRow = page.locator('.console-story-list-row', {
       hasText: 'regular / workflow improvement',
     });

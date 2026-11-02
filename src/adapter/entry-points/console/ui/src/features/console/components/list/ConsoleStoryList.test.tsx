@@ -1723,7 +1723,7 @@ describe('ConsoleStoryList', () => {
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(getByText('Fix login bug')).toBeInTheDocument();
       expect(queryByText('Move to Okinawa tasks')).toBeNull();
     });
 

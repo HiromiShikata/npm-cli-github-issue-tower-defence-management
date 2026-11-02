@@ -144,6 +144,46 @@ const isSameNavigationPosition = (
   left.tab === right.tab &&
   left.itemKey === right.itemKey;
 
+const moveTaskToStory = (
+  entries: ConsoleStoryEntry[],
+  projectItemId: string,
+  target: ConsoleFieldOption,
+): ConsoleStoryEntry[] => {
+  const sourceEntry = entries.find((entry) =>
+    (entry.items ?? []).some((item) => item.projectItemId === projectItemId),
+  );
+  const movingItem = (sourceEntry?.items ?? []).find(
+    (item) => item.projectItemId === projectItemId,
+  );
+  if (
+    sourceEntry === undefined ||
+    movingItem === undefined ||
+    sourceEntry.storyOptionId === target.id
+  ) {
+    return entries;
+  }
+  const countsAsOpen = movingItem.status !== 'Done' ? 1 : 0;
+  return entries.map((entry) => {
+    if (entry.storyOptionId === sourceEntry.storyOptionId) {
+      return {
+        ...entry,
+        items: (entry.items ?? []).filter(
+          (item) => item.projectItemId !== projectItemId,
+        ),
+        openItemCount: Math.max(0, entry.openItemCount - countsAsOpen),
+      };
+    }
+    if (entry.storyOptionId === target.id) {
+      return {
+        ...entry,
+        items: [...(entry.items ?? []), { ...movingItem, story: target.name }],
+        openItemCount: entry.openItemCount + countsAsOpen,
+      };
+    }
+    return entry;
+  });
+};
+
 const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
   input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
 
@@ -1396,6 +1436,17 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const handleSetTaskStory = useCallback(
+    async (item: ConsoleListItem, option: ConsoleFieldOption): Promise<void> => {
+      await operations.setStory(item, option);
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: moveTaskToStory(storyEntries, item.projectItemId, option),
+      });
+    },
+    [operations, storyEntries, storiesSnapshot?.generatedAt],
+  );
+
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
     caches.comments,
@@ -1644,6 +1695,7 @@ export const ConsolePage = () => {
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}
             onOpenItem={(item) => navigation.openItem(item.projectItemId)}
+            onSetTaskStory={handleSetTaskStory}
           />
         </div>
       ) : selectedItem === null ? (

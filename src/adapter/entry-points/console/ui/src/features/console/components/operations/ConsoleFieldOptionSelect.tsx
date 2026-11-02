@@ -8,6 +8,7 @@ type ConsoleFieldOptionSelectProps = {
   currentOption: ConsoleFieldOption | null;
   options: ConsoleFieldOption[];
   onSelect: (option: ConsoleFieldOption) => void;
+  disabled?: boolean;
 };
 
 export const ConsoleFieldOptionSelect = ({
@@ -17,6 +18,7 @@ export const ConsoleFieldOptionSelect = ({
   currentOption,
   options,
   onSelect,
+  disabled = false,
 }: ConsoleFieldOptionSelectProps) => {
   const stateRef = useRef({
     ready: false,
@@ -32,6 +34,7 @@ export const ConsoleFieldOptionSelect = ({
     <select
       className={className}
       defaultValue={currentOption?.id ?? ''}
+      disabled={disabled}
       onChange={(event) => {
         if (!stateRef.current.ready) return;
         if (event.target.value === (stateRef.current.currentOptionId ?? ''))

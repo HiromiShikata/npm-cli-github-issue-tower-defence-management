@@ -158,6 +158,7 @@ const meta: Meta<typeof ConsoleStoryList> = {
     colorChangeInFlight: null,
     colorErrors: {},
     onOpenItem: () => undefined,
+    onSetTaskStory: () => Promise.resolve(),
   },
 };
 

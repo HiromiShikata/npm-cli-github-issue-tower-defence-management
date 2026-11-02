@@ -3579,7 +3579,7 @@ body {
 
 .console-story-task-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto auto auto;
   gap: 8px;
   align-items: baseline;
   padding: 5px 4px;
@@ -3589,6 +3589,11 @@ body {
 
 .console-story-task-row:last-child {
   border-bottom: none;
+}
+
+.console-story-task-error {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .console-story-task-title {
