@@ -1,9 +1,41 @@
 import * as fs from 'fs';
+import type * as NodeFs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { workerRequestTextOf } from '../../domain/entities/WorkerRequestText';
 import { TakeOwnershipSpawn } from '../../domain/usecases/adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ProcTakeOwnershipSpawnRepository } from './ProcTakeOwnershipSpawnRepository';
+
+jest.mock('fs', () => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    readFileSync: jest.fn(actualFs.readFileSync),
+  };
+});
+
+const mockFsReadFileSync = jest.mocked(fs.readFileSync);
+
+const restoreReadFileSync = (): void => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  mockFsReadFileSync.mockReset();
+  mockFsReadFileSync.mockImplementation(actualFs.readFileSync);
+};
+
+const mockReadFileSyncFailureAt = (
+  filePath: string,
+  error: Error & { code: string },
+): void => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  mockFsReadFileSync.mockImplementation(
+    (readPath: NodeFs.PathOrFileDescriptor) => {
+      if (readPath === filePath) {
+        throw error;
+      }
+      return actualFs.readFileSync(readPath, 'utf8');
+    },
+  );
+};
 
 type FakeProcess = {
   pid: number;
@@ -23,6 +55,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
   });
 
   afterEach(() => {
+    restoreReadFileSync();
     fs.rmSync(procDirectory, { recursive: true, force: true });
   });
 
@@ -528,12 +561,53 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
       expect(repository.listRunningIssueUrls()).toEqual([requestedIssueUrl]);
     });
 
-    it('returns empty list when the proc directory does not exist', () => {
+    it('throws when the proc directory does not exist', () => {
       const repository = new ProcTakeOwnershipSpawnRepository(
         path.join(procDirectory, 'missing'),
       );
 
+      expect(() => repository.listRunningIssueUrls()).toThrow();
+    });
+
+    it('throws when the proc directory is a regular file', () => {
+      const filePath = path.join(procDirectory, 'proc-file');
+      fs.writeFileSync(filePath, 'not a proc directory');
+      const repository = new ProcTakeOwnershipSpawnRepository(filePath);
+
+      expect(() => repository.listRunningIssueUrls()).toThrow();
+    });
+
+    it('skips a process whose cmdline file disappeared after listing', () => {
+      fs.mkdirSync(path.join(procDirectory, '407'));
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
       expect(repository.listRunningIssueUrls()).toEqual([]);
+    });
+
+    it('skips a process whose cmdline read reports ESRCH', () => {
+      const processDirectory = path.join(procDirectory, '408');
+      const cmdlinePath = path.join(processDirectory, 'cmdline');
+      fs.mkdirSync(processDirectory);
+      const error = Object.assign(new Error('process ended'), {
+        code: 'ESRCH',
+      });
+      mockReadFileSyncFailureAt(cmdlinePath, error);
+      try {
+        const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+        expect(repository.listRunningIssueUrls()).toEqual([]);
+      } finally {
+        restoreReadFileSync();
+      }
+    });
+
+    it('rethrows a non-process-ended cmdline read error', () => {
+      const processDirectory = path.join(procDirectory, '409');
+      fs.mkdirSync(processDirectory);
+      fs.mkdirSync(path.join(processDirectory, 'cmdline'));
+      const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
+
+      expect(() => repository.listRunningIssueUrls()).toThrow(/EISDIR/);
     });
   });
 });

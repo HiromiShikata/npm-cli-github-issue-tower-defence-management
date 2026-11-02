@@ -16,6 +16,11 @@ const CLAUDE_COMM_PATTERN = /^claude(-agent)?$/;
 const WORKSPACE_PREPARATION_SCOPE_PATTERN = /\/aw-[^/]*\.scope(\/|$)/;
 const ISSUE_OR_PR_URL_PATTERN =
   /https:\/\/github\.com\/[^\s\0]+?\/(?:issues|pull)\/\d+/;
+const isProcessEndedError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error.code === 'ENOENT' || error.code === 'ESRCH');
 
 const normalizeName = (value: string): string => value.replace(/[.:]/g, '_');
 
@@ -133,13 +138,9 @@ export class ProcClaudeHandoverSessionRepository implements ClaudeHandoverSessio
   };
 
   private listProcessIdDirectories = (): string[] => {
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(this.procDirectory);
-    } catch {
-      return [];
-    }
-    return entries.filter((entry) => /^\d+$/.test(entry));
+    return fs
+      .readdirSync(this.procDirectory)
+      .filter((entry) => /^\d+$/.test(entry));
   };
 
   private readHandoverSession = (
@@ -206,8 +207,9 @@ export class ProcClaudeHandoverSessionRepository implements ClaudeHandoverSessio
     const commPath = path.join(this.procDirectory, processIdDirectory, 'comm');
     try {
       return fs.readFileSync(commPath, 'utf8').trim();
-    } catch {
-      return null;
+    } catch (error) {
+      if (isProcessEndedError(error)) return null;
+      throw error;
     }
   };
 
@@ -222,8 +224,9 @@ export class ProcClaudeHandoverSessionRepository implements ClaudeHandoverSessio
     let raw: string;
     try {
       raw = fs.readFileSync(cmdlinePath, 'utf8');
-    } catch {
-      return null;
+    } catch (error) {
+      if (isProcessEndedError(error)) return null;
+      throw error;
     }
     return raw.split('\0').filter((argument) => argument.length > 0);
   };
@@ -239,8 +242,9 @@ export class ProcClaudeHandoverSessionRepository implements ClaudeHandoverSessio
     let raw: string;
     try {
       raw = fs.readFileSync(environPath, 'utf8');
-    } catch {
-      return null;
+    } catch (error) {
+      if (isProcessEndedError(error)) return null;
+      throw error;
     }
     const environ = new Map<string, string>();
     for (const entry of raw.split('\0')) {

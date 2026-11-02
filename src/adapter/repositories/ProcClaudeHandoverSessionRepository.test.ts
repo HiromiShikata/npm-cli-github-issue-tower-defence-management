@@ -1,7 +1,39 @@
 import * as fs from 'fs';
+import type * as NodeFs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { ProcClaudeHandoverSessionRepository } from './ProcClaudeHandoverSessionRepository';
+
+jest.mock('fs', () => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    readFileSync: jest.fn(actualFs.readFileSync),
+  };
+});
+
+const mockFsReadFileSync = jest.mocked(fs.readFileSync);
+
+const restoreReadFileSync = (): void => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  mockFsReadFileSync.mockReset();
+  mockFsReadFileSync.mockImplementation(actualFs.readFileSync);
+};
+
+const mockReadFileSyncFailureAt = (
+  filePath: string,
+  error: Error & { code: string },
+): void => {
+  const actualFs: typeof NodeFs = jest.requireActual('fs');
+  mockFsReadFileSync.mockImplementation(
+    (readPath: NodeFs.PathOrFileDescriptor) => {
+      if (readPath === filePath) {
+        throw error;
+      }
+      return actualFs.readFileSync(readPath, 'utf8');
+    },
+  );
+};
 
 type FakeProcess = {
   pid: number;
@@ -24,6 +56,7 @@ describe('ProcClaudeHandoverSessionRepository', () => {
   });
 
   afterEach(() => {
+    restoreReadFileSync();
     fs.rmSync(procDirectory, { recursive: true, force: true });
   });
 
@@ -232,11 +265,176 @@ describe('ProcClaudeHandoverSessionRepository', () => {
     ).toBe(false);
   });
 
-  it('returns an empty list when the proc directory cannot be read', () => {
+  it('throws when the proc directory does not exist', () => {
     const repository = new ProcClaudeHandoverSessionRepository(
       path.join(procDirectory, 'does-not-exist'),
     );
 
+    expect(() => repository.listHandoverSessions()).toThrow();
+  });
+
+  it('throws when the proc directory is a regular file', () => {
+    const filePath = path.join(procDirectory, 'proc-file');
+    fs.writeFileSync(filePath, 'not a proc directory');
+    const repository = new ProcClaudeHandoverSessionRepository(filePath);
+
+    expect(() => repository.listHandoverSessions()).toThrow();
+  });
+
+  it('skips a process whose comm file disappeared after listing', () => {
+    fs.mkdirSync(path.join(procDirectory, '211'));
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
     expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('skips a process whose cmdline file disappeared after reading comm', () => {
+    const processDirectory = path.join(procDirectory, '212');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('skips a process whose environ file disappeared after reading cmdline', () => {
+    const processDirectory = path.join(procDirectory, '213');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    fs.writeFileSync(
+      path.join(processDirectory, 'cmdline'),
+      argv('claude', '--name', 'app'),
+    );
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('skips the process when readComm reports ESRCH', () => {
+    const processDirectory = path.join(procDirectory, '214');
+    const commPath = path.join(processDirectory, 'comm');
+    fs.mkdirSync(processDirectory);
+    const error = Object.assign(new Error('read comm ESRCH'), {
+      code: 'ESRCH',
+    });
+    mockReadFileSyncFailureAt(commPath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('rethrows when readComm reports EACCES', () => {
+    const processDirectory = path.join(procDirectory, '215');
+    const commPath = path.join(processDirectory, 'comm');
+    fs.mkdirSync(processDirectory);
+    const error = Object.assign(new Error('read comm EACCES'), {
+      code: 'EACCES',
+    });
+    mockReadFileSyncFailureAt(commPath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(error);
+  });
+
+  it('skips the process when readCommandArguments reports ESRCH', () => {
+    const processDirectory = path.join(procDirectory, '216');
+    const cmdlinePath = path.join(processDirectory, 'cmdline');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    const error = Object.assign(new Error('read cmdline ESRCH'), {
+      code: 'ESRCH',
+    });
+    mockReadFileSyncFailureAt(cmdlinePath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('rethrows when readCommandArguments reports EACCES', () => {
+    const processDirectory = path.join(procDirectory, '217');
+    const cmdlinePath = path.join(processDirectory, 'cmdline');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    const error = Object.assign(new Error('read cmdline EACCES'), {
+      code: 'EACCES',
+    });
+    mockReadFileSyncFailureAt(cmdlinePath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(error);
+  });
+
+  it('skips the process when readEnviron reports ESRCH', () => {
+    const processDirectory = path.join(procDirectory, '220');
+    const environPath = path.join(processDirectory, 'environ');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    fs.writeFileSync(
+      path.join(processDirectory, 'cmdline'),
+      argv('claude', '--name', 'app'),
+    );
+    const error = Object.assign(new Error('read environ ESRCH'), {
+      code: 'ESRCH',
+    });
+    mockReadFileSyncFailureAt(environPath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(repository.listHandoverSessions()).toEqual([]);
+  });
+
+  it('rethrows when readEnviron reports EACCES', () => {
+    const processDirectory = path.join(procDirectory, '221');
+    const environPath = path.join(processDirectory, 'environ');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    fs.writeFileSync(
+      path.join(processDirectory, 'cmdline'),
+      argv('claude', '--name', 'app'),
+    );
+    const error = Object.assign(new Error('read environ EACCES'), {
+      code: 'EACCES',
+    });
+    mockReadFileSyncFailureAt(environPath, error);
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(error);
+  });
+
+  it('rethrows an EISDIR error from readComm', () => {
+    const processDirectory = path.join(procDirectory, '217');
+    fs.mkdirSync(path.join(processDirectory, 'comm'), { recursive: true });
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(/EISDIR/);
+  });
+
+  it('rethrows an EISDIR error from readCommandArguments', () => {
+    const processDirectory = path.join(procDirectory, '218');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    fs.mkdirSync(path.join(processDirectory, 'cmdline'));
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(/EISDIR/);
+  });
+
+  it('rethrows an EISDIR error from readEnviron', () => {
+    const processDirectory = path.join(procDirectory, '219');
+    fs.mkdirSync(processDirectory);
+    fs.writeFileSync(path.join(processDirectory, 'comm'), 'claude\n');
+    fs.writeFileSync(
+      path.join(processDirectory, 'cmdline'),
+      argv('claude', '--name', 'app'),
+    );
+    fs.mkdirSync(path.join(processDirectory, 'environ'));
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(() => repository.listHandoverSessions()).toThrow(/EISDIR/);
   });
 });

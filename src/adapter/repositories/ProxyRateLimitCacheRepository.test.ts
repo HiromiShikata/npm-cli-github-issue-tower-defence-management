@@ -36,6 +36,16 @@ describe('ProxyRateLimitCacheRepository', () => {
       expect(result).toEqual([]);
     });
 
+    it('should throw when the token list contains malformed JSON', () => {
+      const error = new Error('Unexpected end of JSON input');
+      mockLoadTokens.mockImplementation(() => {
+        throw error;
+      });
+      const repository = new ProxyRateLimitCacheRepository('/tokens.json');
+
+      expect(() => repository.getTokenRateLimitCaches()).toThrow(error);
+    });
+
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     const recentEpoch = Math.floor(Date.now() / 1000) - 60;
 
