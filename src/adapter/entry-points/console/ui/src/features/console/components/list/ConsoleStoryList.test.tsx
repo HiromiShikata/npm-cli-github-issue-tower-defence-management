@@ -283,6 +283,7 @@ const defaultProps = {
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
   onOpenItem: () => undefined,
+  onSetTaskStory: () => Promise.resolve(),
 };
 
 describe('ConsoleStoryList', () => {

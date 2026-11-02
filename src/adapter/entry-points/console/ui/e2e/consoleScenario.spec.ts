@@ -1594,6 +1594,55 @@ test('story select in task detail shows current story pre-selected and fires set
     .toBe(1);
 });
 
+test('story tab task row pulldown moves the task to the chosen story group and fires set_story for that issue', async ({
+  page,
+}) => {
+  const storyHarness = await startConsoleE2eHarness();
+  try {
+    await page.goto(storyHarness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+
+    const taskTitle =
+      'Auto-advance to the next non-empty console tab when one empties';
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+
+    const taskRow = tdpmRow.locator('.console-story-task-row', {
+      hasText: taskTitle,
+    });
+    await expect(taskRow).toHaveCount(1);
+    const storySelect = taskRow.getByRole('combobox', { name: 'Set story' });
+    await expect(storySelect).toHaveValue('1491051e');
+
+    await storySelect.selectOption('28415d6c');
+
+    await expect
+      .poll(() => storyHarness.setStoryCalls, { timeout: 3000 })
+      .toEqual([
+        {
+          issueUrl: `https://github.com/${CONSOLE_E2E_REPO_NAME_WITH_OWNER}/issues/869`,
+          storyOptionId: '28415d6c',
+        },
+      ]);
+    await expect(
+      tdpmRow.locator('.console-story-task-title', { hasText: taskTitle }),
+    ).toHaveCount(0);
+
+    const regularRow = page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    });
+    await regularRow.getByRole('button', { name: 'Show tasks' }).click();
+    await expect(
+      regularRow.locator('.console-story-task-title', { hasText: taskTitle }),
+    ).toBeVisible();
+  } finally {
+    await storyHarness.stop();
+  }
+});
+
 test('shows latest comment expanded and non-latest as preview in summary mode, expands all after show-all', async ({
   page,
 }) => {
