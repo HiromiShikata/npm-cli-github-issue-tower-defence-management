@@ -6,11 +6,12 @@ describe('ConsoleErrorReportUseCase', () => {
   jest.setTimeout(30 * 1000);
 
   const mockIssueRepository = mock<IssueRepository>();
-  const useCase = new ConsoleErrorReportUseCase(mockIssueRepository);
+  let useCase: ConsoleErrorReportUseCase;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    useCase = new ConsoleErrorReportUseCase(mockIssueRepository);
   });
 
   const owner = 'test-owner';
