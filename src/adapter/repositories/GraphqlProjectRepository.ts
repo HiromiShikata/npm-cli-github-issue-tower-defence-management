@@ -25,11 +25,11 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 
 type UpdateFieldOptionsResponse = {
   data?: {
-    updateProjectV2Field: {
-      projectV2Field: {
+    updateProjectV2Field?: {
+      projectV2Field?: {
         options: FieldOption[];
-      };
-    };
+      } | null;
+    } | null;
   };
   errors?: { message: string }[];
 };
@@ -608,7 +608,9 @@ export class GraphqlProjectRepository
     method: string,
     response: UpdateFieldOptionsResponse,
   ): FieldOption[] => {
-    if (!response.data) {
+    const options =
+      response.data?.updateProjectV2Field?.projectV2Field?.options;
+    if (!options) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
         : 'no data field in response';
@@ -616,7 +618,7 @@ export class GraphqlProjectRepository
         `GitHub GraphQL API returned no data for ${method}: ${errorMessages}`,
       );
     }
-    return response.data.updateProjectV2Field.projectV2Field.options;
+    return options;
   };
   updateStoryList = async (
     project: Project,
