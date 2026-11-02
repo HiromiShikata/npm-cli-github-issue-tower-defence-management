@@ -1844,4 +1844,57 @@ describe('ConsoleStoryList', () => {
       expect(queryByPlaceholderText('Issue title')).toBeNull();
     });
   });
+
+  describe('characterization: Done task rows on expand', () => {
+    const storyWithDoneAndOpenItems: ConsoleStoryEntry[] = [
+      {
+        storyName: 'TDPM Console port',
+        storyOptionId: '1491051e',
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          makeItem({
+            number: 20,
+            title: 'Open task',
+            url: 'https://github.com/demo/repo/issues/20',
+            status: 'Awaiting Owner',
+          }),
+          makeItem({
+            number: 21,
+            title: 'Finished task',
+            url: 'https://github.com/demo/repo/issues/21',
+            status: 'Done',
+          }),
+        ],
+      },
+    ];
+
+    it('hides Done task rows after Show tasks when showDone is false', () => {
+      const { getByRole, getByText, queryByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={storyWithDoneAndOpenItems}
+          showDone={false}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Show tasks' }));
+      expect(getByText('Open task')).toBeInTheDocument();
+      expect(queryByText('Finished task')).toBeNull();
+    });
+
+    it('shows Done task rows after Show tasks when showDone is true', () => {
+      const { getByRole, getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={storyWithDoneAndOpenItems}
+          showDone={true}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Show tasks' }));
+      expect(getByText('Open task')).toBeInTheDocument();
+      expect(getByText('Finished task')).toBeInTheDocument();
+    });
+  });
 });
