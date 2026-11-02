@@ -1,3 +1,10 @@
+## [2.184.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.5...v2.184.6) (2026-11-02)
+
+
+### Bug Fixes
+
+* fail instead of continuing with an empty result when token list or process directory cannot be read ([#3675](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3675)) ([fbfca75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fbfca754db0b774091965b4cb3bba02461916f24))
+
 ## [2.184.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.4...v2.184.5) (2026-11-01)
 
 
