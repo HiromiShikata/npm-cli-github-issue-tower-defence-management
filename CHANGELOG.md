@@ -1,3 +1,10 @@
+# [2.186.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.185.0...v2.186.0) (2026-11-02)
+
+
+### Features
+
+* **console:** add story pulldown to story tab task rows ([#3684](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3684)) ([9060f05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9060f054a5c69605aeb4deb49dd614685445586e))
+
 # [2.185.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.8...v2.185.0) (2026-11-02)
 
 
