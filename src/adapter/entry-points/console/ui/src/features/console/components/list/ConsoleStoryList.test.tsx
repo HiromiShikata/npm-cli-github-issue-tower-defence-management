@@ -1719,10 +1719,17 @@ describe('ConsoleStoryList', () => {
     });
 
     it('only expands the clicked story row not others', () => {
-      const { getAllByRole, getByText, queryByText } = render(
+      const {
+        getAllByRole,
+        getByText: getByTextIncludingOptions,
+        queryByText,
+      } = render(
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
+      const getByText = (text: string) =>
+        getByTextIncludingOptions(text, { selector: ':not(option)' });
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
       expect(getByText('Fix login bug')).toBeInTheDocument();
       expect(queryByText('Move to Okinawa tasks')).toBeNull();
     });
