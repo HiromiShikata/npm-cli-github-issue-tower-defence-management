@@ -294,4 +294,204 @@ describe('ConsoleErrorReportUseCase', () => {
       );
     });
   });
+
+  describe('run grouping and concurrency', () => {
+    const graphQlRateLimitMessage =
+      'GitHub GraphQL API returned no data for fetchProjectItemByUrl: API rate limit already exceeded for user ID 1234567.';
+    const restRateLimitMessage =
+      'API rate limit already exceeded for user ID 1234567.';
+    const secondaryRateLimitMessage = 'secondary rate limit hit';
+    const createdIssueNumber = 42;
+    const createdIssueUrl = `https://github.com/${owner}/${repo}/issues/${createdIssueNumber}`;
+
+    const buildError = (name: string, message: string): Error => {
+      const error = new Error(message);
+      error.name = name;
+      return error;
+    };
+
+    const titleOf = (error: Error): string =>
+      `Console error: ${error.name}: ${error.message}`;
+
+    const createRepository = () => {
+      const repository = mock<IssueRepository>();
+      repository.searchIssue.mockResolvedValue([]);
+      repository.getIssueOrPullRequestComments.mockResolvedValue([]);
+      repository.createNewIssue.mockImplementation(async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+        return createdIssueNumber;
+      });
+      repository.createCommentByUrl.mockResolvedValue({
+        id: 1,
+        author: 'bot',
+        body: '',
+        createdAt: new Date(0),
+      });
+      return repository;
+    };
+
+    const report = (
+      useCaseUnderTest: ConsoleErrorReportUseCase,
+      error: Error,
+    ): Promise<void> =>
+      useCaseUnderTest.run({ error, owner, repo, requestPath });
+
+    it('should create exactly one issue and comment on that issue for every concurrent identical report', async () => {
+      const repository = createRepository();
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+      const error = buildError('TypeError', 'concurrent problem');
+
+      const reports = Array.from({ length: 11 }, () =>
+        report(useCaseUnderTest, error),
+      );
+
+      await expect(Promise.all(reports)).resolves.toHaveLength(11);
+      expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledTimes(10);
+      expect(
+        repository.createCommentByUrl.mock.calls.map(([url]) => url),
+      ).toEqual(Array(10).fill(createdIssueUrl));
+    });
+
+    it('should add a differently worded rate-limit report as a comment on the issue created by the earlier report when reported after it', async () => {
+      const repository = createRepository();
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await report(
+        useCaseUnderTest,
+        buildError('Error', graphQlRateLimitMessage),
+      );
+      await report(useCaseUnderTest, buildError('Error', restRateLimitMessage));
+
+      expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledWith(
+        createdIssueUrl,
+        expect.stringContaining(restRateLimitMessage),
+      );
+    });
+
+    it('should add a differently worded rate-limit report as a comment on the issue created by the concurrent report when both run concurrently', async () => {
+      const repository = createRepository();
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await Promise.all([
+        report(useCaseUnderTest, buildError('Error', graphQlRateLimitMessage)),
+        report(useCaseUnderTest, buildError('Error', restRateLimitMessage)),
+      ]);
+
+      expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledWith(
+        createdIssueUrl,
+        expect.any(String),
+      );
+    });
+
+    it.each([
+      {
+        editedTitle: `Triaged by the team: Console error: TypeError: something went wrong`,
+      },
+      {
+        editedTitle: `Console error: TypeError: something went wrong (reopened for investigation)`,
+      },
+    ])(
+      'should comment on the open issue whose title was edited to "$editedTitle" instead of creating a new issue',
+      async ({ editedTitle }) => {
+        const existingIssueUrl =
+          'https://github.com/test-owner/test-repo/issues/10';
+        const repository = createRepository();
+        repository.searchIssue.mockResolvedValue([
+          { url: existingIssueUrl, title: editedTitle, number: '10' },
+        ]);
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+        await report(
+          useCaseUnderTest,
+          buildError('TypeError', 'something went wrong'),
+        );
+
+        expect(repository.createCommentByUrl).toHaveBeenCalledWith(
+          existingIssueUrl,
+          expect.any(String),
+        );
+        expect(repository.createNewIssue).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      {
+        label: 'two unrelated errors',
+        first: buildError('TypeError', 'first problem'),
+        second: buildError('TypeError', 'second problem'),
+      },
+      {
+        label: 'a rate-limit error and an unrelated error',
+        first: buildError('Error', restRateLimitMessage),
+        second: buildError('TypeError', 'first problem'),
+      },
+    ])(
+      'should create one issue per error and no comment when $label are reported concurrently',
+      async ({ first, second }) => {
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+        await Promise.all([
+          report(useCaseUnderTest, first),
+          report(useCaseUnderTest, second),
+        ]);
+
+        expect(repository.createNewIssue).toHaveBeenCalledTimes(2);
+        expect(
+          repository.createNewIssue.mock.calls
+            .map(([, , title]) => title)
+            .sort(),
+        ).toEqual([titleOf(first), titleOf(second)].sort());
+        expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should group the GraphQL-prefixed, REST and secondary rate-limit reports into one issue when reported one after another', async () => {
+      const repository = createRepository();
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await report(
+        useCaseUnderTest,
+        buildError('Error', graphQlRateLimitMessage),
+      );
+      await report(useCaseUnderTest, buildError('Error', restRateLimitMessage));
+      await report(
+        useCaseUnderTest,
+        buildError('Error', secondaryRateLimitMessage),
+      );
+
+      expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(
+        repository.createCommentByUrl.mock.calls.map(([url]) => url),
+      ).toEqual([createdIssueUrl, createdIssueUrl]);
+    });
+
+    it('should resolve every concurrent run and log the error when createNewIssue rejects for the first identical report', async () => {
+      const repository = createRepository();
+      repository.createNewIssue.mockRejectedValueOnce(
+        new Error('issue creation failed'),
+      );
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const error = buildError('TypeError', 'failing problem');
+        const reports = Array.from({ length: 3 }, () =>
+          report(useCaseUnderTest, error),
+        );
+
+        await expect(Promise.all(reports)).resolves.toHaveLength(3);
+        expect(consoleSpy).toHaveBeenCalled();
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+  });
 });
