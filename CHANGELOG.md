@@ -1,3 +1,10 @@
+## [2.184.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.7...v2.184.8) (2026-11-02)
+
+
+### Bug Fixes
+
+* **console:** report each console error group into a single issue ([#3687](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3687)) ([39076e2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/39076e2b532d8477e5d06424e3b189e55a5c8598))
+
 ## [2.184.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.6...v2.184.7) (2026-11-02)
 
 
