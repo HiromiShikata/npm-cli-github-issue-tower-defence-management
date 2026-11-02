@@ -5,6 +5,7 @@ import {
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
 import { redactSecrets } from '../services/secretRedaction';
+import { GitHubConfirmedNotFoundError } from './ClearDependedIssueURLUseCase';
 
 type ConsoleErrorReportRepository = Pick<
   IssueRepository,
@@ -78,7 +79,7 @@ export class ConsoleErrorReportUseCase {
           createTitle: title,
           searchTitle: title,
           matchesSearchResultTitle: (resultTitle) =>
-            resultTitle.includes(title),
+            resultTitle.endsWith(title),
         };
 
     const buildBody = (prefix: string): string =>
@@ -195,11 +196,17 @@ export class ConsoleErrorReportUseCase {
     if (remembered === null) {
       return null;
     }
-    const issueState = await this.issueRepository.getIssueOrPullRequestState(
-      remembered.issueUrl,
-    );
-    if (issueState.state === 'open') {
-      return remembered.issueUrl;
+    try {
+      const issueState = await this.issueRepository.getIssueOrPullRequestState(
+        remembered.issueUrl,
+      );
+      if (issueState.state.toLowerCase() === 'open') {
+        return remembered.issueUrl;
+      }
+    } catch (stateError) {
+      if (!(stateError instanceof GitHubConfirmedNotFoundError)) {
+        throw stateError;
+      }
     }
     this.rememberedIssueByGroupKey.delete(groupKey);
     return null;
