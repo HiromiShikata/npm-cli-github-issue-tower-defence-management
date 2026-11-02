@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ConsoleErrorReportUseCase } from './ConsoleErrorReportUseCase';
+import { GitHubConfirmedNotFoundError } from './ClearDependedIssueURLUseCase';
 
 describe('ConsoleErrorReportUseCase', () => {
   jest.setTimeout(30 * 1000);
@@ -431,10 +432,10 @@ describe('ConsoleErrorReportUseCase', () => {
         editedTitle: `Triaged by the team: Console error: TypeError: something went wrong`,
       },
       {
-        editedTitle: `Console error: TypeError: something went wrong (reopened for investigation)`,
+        editedTitle: `Investigating Console error: TypeError: something went wrong`,
       },
     ])(
-      'should comment on the open issue whose title was edited to "$editedTitle" instead of creating a new issue',
+      'should comment on the open issue whose title has text added before the generated title, "$editedTitle", instead of creating a new issue',
       async ({ editedTitle }) => {
         const existingIssueUrl =
           'https://github.com/test-owner/test-repo/issues/10';
@@ -456,6 +457,118 @@ describe('ConsoleErrorReportUseCase', () => {
         expect(repository.createNewIssue).not.toHaveBeenCalled();
       },
     );
+
+    it.each([
+      {
+        label: 'text added after the generated title',
+        title:
+          'Console error: TypeError: something went wrong (reopened for investigation)',
+      },
+      {
+        label: 'a longer message after the generated title',
+        title: 'Console error: TypeError: something went wrong and more',
+      },
+    ])(
+      'should create a new issue and no comment when the only search result has $label',
+      async ({ title }) => {
+        const repository = createRepository();
+        repository.searchIssue.mockResolvedValue([
+          { url: issueUrl(10), title, number: '10' },
+        ]);
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+        await report(
+          useCaseUnderTest,
+          buildError('TypeError', 'something went wrong'),
+        );
+
+        expect(repository.createNewIssue).toHaveBeenCalledWith(
+          owner,
+          repo,
+          'Console error: TypeError: something went wrong',
+          expect.any(String),
+          [],
+          [],
+        );
+        expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should create a new issue titled with the shorter generated title and no comment when the only search result has a longer title that starts with it', async () => {
+      const repository = createRepository();
+      repository.searchIssue.mockResolvedValue([
+        {
+          url: issueUrl(9),
+          title: 'Console error: Error: Timeout waiting for X',
+          number: '9',
+        },
+      ]);
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await report(useCaseUnderTest, buildError('Error', 'Timeout'));
+
+      expect(repository.searchIssue).toHaveBeenCalledWith({
+        owner,
+        repositoryName: repo,
+        type: 'issue',
+        state: 'open',
+        title: 'Console error: Error: Timeout',
+      });
+      expect(repository.createNewIssue).toHaveBeenCalledWith(
+        owner,
+        repo,
+        'Console error: Error: Timeout',
+        expect.any(String),
+        [],
+        [],
+      );
+      expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('should comment on the open issue whose title equals the generated title', async () => {
+      const repository = createRepository();
+      repository.searchIssue.mockResolvedValue([
+        {
+          url: issueUrl(10),
+          title: 'Console error: Error: Timeout',
+          number: '10',
+        },
+      ]);
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await report(useCaseUnderTest, buildError('Error', 'Timeout'));
+
+      expect(repository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(repository.createCommentByUrl).toHaveBeenCalledWith(
+        issueUrl(10),
+        expect.any(String),
+      );
+      expect(repository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('should comment on the issue whose title matches and not on the longer-titled issue when the search returns both', async () => {
+      const repository = createRepository();
+      repository.searchIssue.mockResolvedValue([
+        {
+          url: issueUrl(9),
+          title: 'Console error: Error: Timeout waiting for X',
+          number: '9',
+        },
+        {
+          url: issueUrl(10),
+          title: 'Console error: Error: Timeout',
+          number: '10',
+        },
+      ]);
+      const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+      await report(useCaseUnderTest, buildError('Error', 'Timeout'));
+
+      expect(
+        repository.createCommentByUrl.mock.calls.map(([url]) => url),
+      ).toEqual([issueUrl(10)]);
+      expect(repository.createNewIssue).not.toHaveBeenCalled();
+    });
 
     it.each([
       {
@@ -962,6 +1075,152 @@ describe('ConsoleErrorReportUseCase', () => {
         stateReason: 'completed',
       };
       const secondCreatedIssueNumber = 43;
+
+      it('should create a new issue and remember it when the remembered issue no longer exists, without logging an error', async () => {
+        const repository = createRepository();
+        repository.createNewIssue
+          .mockResolvedValueOnce(createdIssueNumber)
+          .mockResolvedValueOnce(secondCreatedIssueNumber);
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+        const consoleSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        try {
+          await report(
+            useCaseUnderTest,
+            buildError('Error', restRateLimitMessage),
+          );
+          repository.getIssueOrPullRequestState.mockRejectedValueOnce(
+            new GitHubConfirmedNotFoundError(createdIssueUrl),
+          );
+          await report(
+            useCaseUnderTest,
+            buildError('Error', restRateLimitMessage),
+          );
+          await report(
+            useCaseUnderTest,
+            buildError('Error', restRateLimitMessage),
+          );
+
+          expect(repository.getIssueOrPullRequestState.mock.calls).toEqual([
+            [createdIssueUrl],
+            [issueUrl(secondCreatedIssueNumber)],
+          ]);
+          expect(repository.searchIssue).toHaveBeenCalledTimes(2);
+          expect(repository.searchIssue).toHaveBeenNthCalledWith(
+            2,
+            rateLimitSearch,
+          );
+          expect(repository.createNewIssue).toHaveBeenCalledTimes(2);
+          expect(
+            repository.createCommentByUrl.mock.calls.map(([url]) => url),
+          ).toEqual([issueUrl(secondCreatedIssueNumber)]);
+          expect(consoleSpy).not.toHaveBeenCalled();
+        } finally {
+          consoleSpy.mockRestore();
+        }
+      });
+
+      it('should comment on the open matching issue found by search when the remembered issue no longer exists, instead of creating a new issue', async () => {
+        const otherIssueUrl = issueUrl(12);
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+        const consoleSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        try {
+          await report(
+            useCaseUnderTest,
+            buildError('Error', restRateLimitMessage),
+          );
+          repository.getIssueOrPullRequestState.mockRejectedValueOnce(
+            new GitHubConfirmedNotFoundError(createdIssueUrl),
+          );
+          repository.searchIssue.mockResolvedValueOnce([
+            {
+              url: otherIssueUrl,
+              title: canonicalRateLimitTitle,
+              number: '12',
+            },
+          ]);
+          await report(
+            useCaseUnderTest,
+            buildError('Error', restRateLimitMessage),
+          );
+
+          expect(repository.searchIssue).toHaveBeenNthCalledWith(
+            2,
+            rateLimitSearch,
+          );
+          expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+          expect(
+            repository.createCommentByUrl.mock.calls.map(([url]) => url),
+          ).toEqual([otherIssueUrl]);
+          expect(consoleSpy).not.toHaveBeenCalled();
+        } finally {
+          consoleSpy.mockRestore();
+        }
+      });
+
+      it('should treat a state of OPEN in any letter case as open and comment on the remembered issue without searching', async () => {
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+        repository.getIssueOrPullRequestState.mockResolvedValueOnce({
+          ...openIssueState,
+          state: 'OPEN',
+        });
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+
+        expect(repository.searchIssue).toHaveBeenCalledTimes(1);
+        expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+        expect(
+          repository.createCommentByUrl.mock.calls.map(([url]) => url),
+        ).toEqual([createdIssueUrl]);
+      });
+
+      it('should treat a state of Closed in any letter case as not open and create a new issue instead of commenting on the remembered issue', async () => {
+        const repository = createRepository();
+        repository.createNewIssue
+          .mockResolvedValueOnce(createdIssueNumber)
+          .mockResolvedValueOnce(secondCreatedIssueNumber);
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(repository);
+
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+        repository.getIssueOrPullRequestState.mockResolvedValueOnce({
+          ...closedIssueState,
+          state: 'Closed',
+        });
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+
+        expect(repository.searchIssue).toHaveBeenCalledTimes(2);
+        expect(repository.createNewIssue).toHaveBeenCalledTimes(2);
+        expect(repository.createNewIssue).toHaveBeenNthCalledWith(
+          2,
+          owner,
+          repo,
+          canonicalRateLimitTitle,
+          expect.stringContaining(restRateLimitMessage),
+          [],
+          [],
+        );
+        expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+      });
 
       it('should comment on the remembered issue without searching when its state is open', async () => {
         const repository = createRepository();
