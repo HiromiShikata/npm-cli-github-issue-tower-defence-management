@@ -12143,4 +12143,244 @@ describe('ConsolePage story task row story pulldown', () => {
       expect(taskTitlesOf(view.container, storyName)).toContain(taskTitle);
     },
   );
+
+  const installFetchWithPayload = (
+    payload: unknown,
+    respondToTriage: TriageResponder,
+  ): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => (tab === 'stories' ? payload : listPayload(tab)),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.endsWith('/api/triage')) {
+        return respondToTriage(url, init);
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const archivedStoryName = 'Story Archived';
+  const archivedStoryOptionId = 'opt-story-archived';
+
+  const storiesPayloadWithArchivedStory = () => {
+    const base = storiesPayload();
+    return {
+      ...base,
+      storyOptions: [
+        ...base.storyOptions,
+        { id: archivedStoryOptionId, name: archivedStoryName, color: 'GRAY' },
+      ],
+      stories: [
+        ...base.stories,
+        {
+          storyName: archivedStoryName,
+          storyOptionId: archivedStoryOptionId,
+          color: 'GRAY',
+          description: '',
+          openItemCount: 0,
+          storyViewUrl: null,
+          items: [],
+        },
+      ],
+    };
+  };
+
+  const concurrentFirstTitle = 'Alpha first open task';
+  const concurrentSecondTitle = 'Alpha second open task';
+
+  const concurrentMovePayload = () => ({
+    ...storiesPayload(),
+    stories: [
+      {
+        storyName: alphaStoryName,
+        storyOptionId: alphaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 2,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            111,
+            concurrentFirstTitle,
+            'PVTI_ALPHA_FIRST',
+            alphaStoryName,
+            'Todo by human',
+          ),
+          storyTaskItem(
+            112,
+            concurrentSecondTitle,
+            'PVTI_ALPHA_SECOND',
+            alphaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+      {
+        storyName: betaStoryName,
+        storyOptionId: betaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            103,
+            openBetaTaskTitle,
+            'PVTI_BETA_OPEN',
+            betaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+    ],
+  });
+
+  const concurrentCompletionOrders = [
+    { name: 'the first request resolves first', resolutionOrder: [0, 1] },
+    { name: 'the second request resolves first', resolutionOrder: [1, 0] },
+  ];
+
+  it.each(concurrentCompletionOrders)(
+    'moves both in-flight tasks of one story group to the target group and updates both counts when $name',
+    async ({ resolutionOrder }) => {
+      const resolvers: Array<() => void> = [];
+      const respondWhenResolved: TriageResponder = () =>
+        new Promise((resolve) => {
+          resolvers.push(() =>
+            resolve({ ok: true, status: 200, json: async () => ({}) }),
+          );
+        });
+      const fetchMock = installFetchWithPayload(
+        concurrentMovePayload(),
+        respondWhenResolved,
+      );
+      const view = await renderStoriesWithStoryExpanded(alphaStoryName);
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentFirstTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentSecondTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+
+      await waitFor(() => {
+        expect(resolvers).toHaveLength(2);
+      });
+      expect(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentFirstTitle),
+        ),
+      ).toBeDisabled();
+      expect(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentSecondTitle),
+        ),
+      ).toBeDisabled();
+
+      for (const index of resolutionOrder) {
+        await act(async () => {
+          resolvers[index]?.();
+        });
+      }
+
+      await waitFor(() => {
+        expect(taskTitlesOf(view.container, alphaStoryName)).toEqual([]);
+        expect(storyCountOf(view.container, alphaStoryName)).toBe('0');
+        expect(storyCountOf(view.container, betaStoryName)).toBe('3');
+      });
+
+      await expandStoryGroup(view.container, betaStoryName);
+      expect(taskTitlesOf(view.container, betaStoryName).sort()).toEqual(
+        [concurrentFirstTitle, concurrentSecondTitle, openBetaTaskTitle].sort(),
+      );
+      expect(postedTriageBodies(fetchMock)).toEqual([
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl: 'https://github.com/demo/repo/issues/111',
+          projectItemId: 'PVTI_ALPHA_FIRST',
+          storyOptionId: betaStoryOptionId,
+        }),
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl: 'https://github.com/demo/repo/issues/112',
+          projectItemId: 'PVTI_ALPHA_SECOND',
+          storyOptionId: betaStoryOptionId,
+        }),
+      ]);
+      expect(allPostCount(fetchMock)).toBe(2);
+    },
+  );
+
+  it.each([
+    {
+      name: 'omits the archived story when the Archived switch is off',
+      archivedSwitchValue: 'false',
+      expectedOptionNames: ['— story —', alphaStoryName, betaStoryName],
+    },
+    {
+      name: 'lists the archived story when the Archived switch is on',
+      archivedSwitchValue: 'true',
+      expectedOptionNames: [
+        '— story —',
+        alphaStoryName,
+        betaStoryName,
+        archivedStoryName,
+      ],
+    },
+  ])(
+    '$name',
+    async ({ archivedSwitchValue, expectedOptionNames }) => {
+      localStorage.setItem('console-story-show-archived', archivedSwitchValue);
+      installFetchWithPayload(
+        storiesPayloadWithArchivedStory(),
+        respondWithSucceeded,
+      );
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const view = render(<ConsolePage />);
+
+      const archivedSwitch = await view.findByRole('switch', {
+        name: 'Archived',
+      });
+      expect(archivedSwitch).toHaveAttribute('aria-checked', archivedSwitchValue);
+
+      await expandStoryGroup(view.container, alphaStoryName);
+      const select = storySelectIn(
+        taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+      );
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(expectedOptionNames);
+      expect(select).toHaveValue(alphaStoryOptionId);
+    },
+  );
 });

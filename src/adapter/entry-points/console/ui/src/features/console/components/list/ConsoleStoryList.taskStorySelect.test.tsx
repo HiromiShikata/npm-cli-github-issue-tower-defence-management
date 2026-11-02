@@ -191,7 +191,7 @@ const createDeferred = (): { promise: Promise<void>; resolve: () => void } => {
 
 describe('ConsoleStoryList task story select', () => {
   it('lists every story of the stories prop in order behind a placeholder option', () => {
-    const { container } = renderStoryList();
+    const { container } = renderStoryList({ showArchived: true });
     expandStory(container, 'Story Alpha');
 
     const options = within(
@@ -302,7 +302,10 @@ describe('ConsoleStoryList task story select', () => {
 
     for (const testCase of cases) {
       const onSetTaskStory = jest.fn(() => Promise.resolve());
-      const { container, unmount } = renderStoryList({ onSetTaskStory });
+      const { container, unmount } = renderStoryList({
+        onSetTaskStory,
+        showArchived: true,
+      });
       expandStory(container, testCase.fromStoryName);
 
       fireEvent.change(
@@ -472,5 +475,69 @@ describe('ConsoleStoryList task story select', () => {
     expect(
       container.querySelectorAll('select[aria-label="Set story"]'),
     ).toHaveLength(0);
+  });
+
+  it.each([
+    {
+      name: 'omits the archived story when the Archived switch is off',
+      showArchived: false,
+      expectedOptionNames: [
+        '— story —',
+        'Story Alpha',
+        'Story Beta',
+        'Story Gamma',
+      ],
+    },
+    {
+      name: 'lists the archived story when the Archived switch is on',
+      showArchived: true,
+      expectedOptionNames: [
+        '— story —',
+        'Story Alpha',
+        'Story Beta',
+        'Story Gamma',
+        'Story Archived',
+      ],
+    },
+  ])(
+    '$name',
+    ({ showArchived, expectedOptionNames }) => {
+      const { container } = renderStoryList({ showArchived });
+      expandStory(container, 'Story Alpha');
+
+      const select = storySelectIn(taskRowTitled(container, 'Alpha task one'));
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(expectedOptionNames);
+      expect(select).toHaveValue('story-alpha');
+    },
+  );
+
+  it('preselects the archived story of a task row and lists it as an option while the Archived switch is on', () => {
+    const archivedTask = makeTaskItem({
+      number: 7301,
+      title: 'Archived task',
+      url: 'https://github.com/demo/repo/issues/7301',
+      projectItemId: 'item-7301',
+      itemId: 'item-7301',
+      story: 'Story Archived',
+    });
+    const stories = buildStories().map((story) =>
+      story.storyName === 'Story Archived'
+        ? { ...story, openItemCount: 1, items: [archivedTask] }
+        : story,
+    );
+    const { container } = renderStoryList({ stories, showArchived: true });
+    expandStory(container, 'Story Archived');
+
+    const select = storySelectIn(taskRowTitled(container, 'Archived task'));
+    expect(select).toHaveValue('story-archived');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toContain('Story Archived');
   });
 });
