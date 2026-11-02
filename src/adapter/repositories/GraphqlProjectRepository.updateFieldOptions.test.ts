@@ -121,4 +121,35 @@ describe('GraphqlProjectRepository field option updates without data', () => {
       );
     },
   );
+
+  it.each(updateMethods)(
+    'should throw the GitHub error message when $method receives a null mutation field with errors',
+    async ({ method, call }) => {
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { updateProjectV2Field: null },
+          errors: [{ message: 'Resource not accessible by integration' }],
+        }),
+      );
+
+      await expect(call(repository)).rejects.toThrow(
+        `GitHub GraphQL API returned no data for ${method}: Resource not accessible by integration`,
+      );
+    },
+  );
+
+  it.each(updateMethods)(
+    'should throw a descriptive error when $method receives a null projectV2Field with no errors',
+    async ({ method, call }) => {
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { updateProjectV2Field: { projectV2Field: null } },
+        }),
+      );
+
+      await expect(call(repository)).rejects.toThrow(
+        `GitHub GraphQL API returned no data for ${method}: no data field in response`,
+      );
+    },
+  );
 });
