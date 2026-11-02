@@ -1,3 +1,10 @@
+# [2.185.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.8...v2.185.0) (2026-11-02)
+
+
+### Features
+
+* **console:** add multi-select status filter to the Stories tab ([#3686](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3686)) ([00f546d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/00f546d6268b5cc6506671c444a641c6b17c20fd))
+
 ## [2.184.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.7...v2.184.8) (2026-11-02)
 
 
