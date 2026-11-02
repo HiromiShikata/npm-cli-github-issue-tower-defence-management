@@ -23,6 +23,17 @@ import {
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+type UpdateFieldOptionsResponse = {
+  data?: {
+    updateProjectV2Field?: {
+      projectV2Field?: {
+        options: FieldOption[];
+      } | null;
+    } | null;
+  };
+  errors?: { message: string }[];
+};
+
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
 
 const PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX = 'projectLocation';
@@ -593,6 +604,22 @@ export class GraphqlProjectRepository
       );
     }
   };
+  private readUpdatedFieldOptions = (
+    method: string,
+    response: UpdateFieldOptionsResponse,
+  ): FieldOption[] => {
+    const options =
+      response.data?.updateProjectV2Field?.projectV2Field?.options;
+    if (!options) {
+      const errorMessages = response.errors
+        ? response.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for ${method}: ${errorMessages}`,
+      );
+    }
+    return options;
+  };
   updateStoryList = async (
     project: Project,
     newStoryList: (Omit<FieldOption, 'id'> & {
@@ -631,22 +658,14 @@ export class GraphqlProjectRepository
     console.log(
       `updateStoryList: fieldId=${project.story.fieldId} optionCount=${newStoryList.length} names=${JSON.stringify(newStoryList.map((o) => o.name))}`,
     );
-    const response = await postGithubGraphqlJson<{
-      data: {
-        updateProjectV2Field: {
-          projectV2Field: {
-            options: FieldOption[];
-          };
-        };
-      };
-    }>({
+    const response = await postGithubGraphqlJson<UpdateFieldOptionsResponse>({
       ghToken: isMutationOperation(mutation)
         ? this.ghToken
         : this.selectReadToken(),
       query: mutation,
       variables,
     });
-    const options = response.data.updateProjectV2Field.projectV2Field.options;
+    const options = this.readUpdatedFieldOptions('updateStoryList', response);
     await this.projectIssuesCacheRepository?.updateFieldOptions(
       project.id,
       project.story.fieldId,
@@ -689,22 +708,14 @@ export class GraphqlProjectRepository
         description,
       })),
     };
-    const response = await postGithubGraphqlJson<{
-      data: {
-        updateProjectV2Field: {
-          projectV2Field: {
-            options: FieldOption[];
-          };
-        };
-      };
-    }>({
+    const response = await postGithubGraphqlJson<UpdateFieldOptionsResponse>({
       ghToken: isMutationOperation(mutation)
         ? this.ghToken
         : this.selectReadToken(),
       query: mutation,
       variables,
     });
-    return response.data.updateProjectV2Field.projectV2Field.options;
+    return this.readUpdatedFieldOptions('updateAgentList', response);
   };
   updateNextActionHourList = async (
     project: Project,
@@ -741,22 +752,14 @@ export class GraphqlProjectRepository
         description,
       })),
     };
-    const response = await postGithubGraphqlJson<{
-      data: {
-        updateProjectV2Field: {
-          projectV2Field: {
-            options: FieldOption[];
-          };
-        };
-      };
-    }>({
+    const response = await postGithubGraphqlJson<UpdateFieldOptionsResponse>({
       ghToken: isMutationOperation(mutation)
         ? this.ghToken
         : this.selectReadToken(),
       query: mutation,
       variables,
     });
-    return response.data.updateProjectV2Field.projectV2Field.options;
+    return this.readUpdatedFieldOptions('updateNextActionHourList', response);
   };
   updateStatusList = async (
     project: Project,
@@ -790,22 +793,14 @@ export class GraphqlProjectRepository
         description,
       })),
     };
-    const response = await postGithubGraphqlJson<{
-      data: {
-        updateProjectV2Field: {
-          projectV2Field: {
-            options: FieldOption[];
-          };
-        };
-      };
-    }>({
+    const response = await postGithubGraphqlJson<UpdateFieldOptionsResponse>({
       ghToken: isMutationOperation(mutation)
         ? this.ghToken
         : this.selectReadToken(),
       query: mutation,
       variables,
     });
-    const options = response.data.updateProjectV2Field.projectV2Field.options;
+    const options = this.readUpdatedFieldOptions('updateStatusList', response);
     await this.projectIssuesCacheRepository?.updateFieldOptions(
       project.id,
       project.status.fieldId,
