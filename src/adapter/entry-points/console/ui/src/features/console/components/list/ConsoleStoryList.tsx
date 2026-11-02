@@ -6,9 +6,11 @@ import {
 } from '../../logic/consoleStoryStatusSelection';
 import type {
   ConsoleColor,
+  ConsoleFieldOption,
   ConsoleListItem,
   ConsoleStoryEntry,
 } from '../../logic/types';
+import { ConsoleStorySelectActions } from '../operations/ConsoleStorySelectActions';
 import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 import { ConsoleStoryColorSelectModalDialog } from './ConsoleStoryColorSelectModalDialog';
 import { ConsoleStoryCreateModalDialog } from './ConsoleStoryCreateModalDialog';
@@ -25,7 +27,24 @@ type RowReorderState = {
 
 type StoryTaskListProps = {
   items: ConsoleListItem[];
+  storyOptions: ConsoleFieldOption[];
+  currentStoryOptionId: string;
   onOpenItem: (item: ConsoleListItem) => void;
+  onSetTaskStory: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+};
+
+type StoryTaskRowProps = {
+  item: ConsoleListItem;
+  storyOptions: ConsoleFieldOption[];
+  currentStoryOptionId: string;
+  onOpenItem: (item: ConsoleListItem) => void;
+  onSetTaskStory: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
 };
 
 type StoryVisibilityToggleProps = {
@@ -49,33 +68,86 @@ const StoryVisibilityToggle = ({
   </div>
 );
 
-const StoryTaskList = ({ items, onOpenItem }: StoryTaskListProps) => (
+const StoryTaskRow = ({
+  item,
+  storyOptions,
+  currentStoryOptionId,
+  onOpenItem,
+  onSetTaskStory,
+}: StoryTaskRowProps) => {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+
+  const handleSetStory = (option: ConsoleFieldOption) => {
+    setPending(true);
+    setError(null);
+    onSetTaskStory(item, option).then(
+      () => setPending(false),
+      (caught: unknown) => {
+        setPending(false);
+        setError(caught instanceof Error ? caught.message : String(caught));
+        setRevision((current) => current + 1);
+      },
+    );
+  };
+
+  return (
+    <li className="console-story-task-row">
+      <button
+        type="button"
+        className="console-story-task-title"
+        onClick={() => onOpenItem(item)}
+      >
+        {item.title}
+      </button>
+      <ConsoleStorySelectActions
+        key={revision}
+        storyOptions={storyOptions}
+        currentStoryName={null}
+        currentStoryOptionId={currentStoryOptionId}
+        onSetStory={handleSetStory}
+        disabled={pending}
+      />
+      <span className="console-story-task-status">{item.status ?? '—'}</span>
+      <span className="console-story-task-agent">{item.agent ?? '—'}</span>
+      <span className="console-story-task-depended-urls">
+        {item.dependedIssueUrls.length > 0
+          ? item.dependedIssueUrls.join(', ')
+          : '—'}
+      </span>
+      <span className="console-story-task-next-action-date">
+        {item.nextActionDate !== null ? item.nextActionDate.slice(0, 10) : '—'}
+      </span>
+      <span className="console-story-task-next-action-hour">
+        {item.nextActionHour !== null ? String(item.nextActionHour) : '—'}
+      </span>
+      {error !== null && (
+        <p role="alert" className="console-list-error console-story-task-error">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+};
+
+const StoryTaskList = ({
+  items,
+  storyOptions,
+  currentStoryOptionId,
+  onOpenItem,
+  onSetTaskStory,
+}: StoryTaskListProps) => (
   <ul className="console-story-task-list">
     {items.map((item) => (
-      <li key={item.url} className="console-story-task-row">
-        <button
-          type="button"
-          className="console-story-task-title"
-          onClick={() => onOpenItem(item)}
-        >
-          {item.title}
-        </button>
-        <span className="console-story-task-status">{item.status ?? '—'}</span>
-        <span className="console-story-task-agent">{item.agent ?? '—'}</span>
-        <span className="console-story-task-depended-urls">
-          {item.dependedIssueUrls.length > 0
-            ? item.dependedIssueUrls.join(', ')
-            : '—'}
-        </span>
-        <span className="console-story-task-next-action-date">
-          {item.nextActionDate !== null
-            ? item.nextActionDate.slice(0, 10)
-            : '—'}
-        </span>
-        <span className="console-story-task-next-action-hour">
-          {item.nextActionHour !== null ? String(item.nextActionHour) : '—'}
-        </span>
-      </li>
+      <StoryTaskRow
+        key={item.url}
+        item={item}
+        storyOptions={storyOptions}
+        currentStoryOptionId={currentStoryOptionId}
+        onOpenItem={onOpenItem}
+        onSetTaskStory={onSetTaskStory}
+      />
     ))}
   </ul>
 );
@@ -113,6 +185,10 @@ export type ConsoleStoryListProps = {
   statusOptionNames?: string[];
   onToggleStatus?: (status: string) => void;
   onClearStatuses?: () => void;
+  onSetTaskStory: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
 };
 
 type StoryDeleteState = {
@@ -144,6 +220,7 @@ export const ConsoleStoryList = ({
   statusOptionNames = [],
   onToggleStatus,
   onClearStatuses,
+  onSetTaskStory,
 }: ConsoleStoryListProps) => {
   const [taskCreateDialogId, setTaskCreateDialogId] = useState<string | null>(
     null,
@@ -263,10 +340,13 @@ export const ConsoleStoryList = ({
   const reorderLockTitle = hasStatusSelection
     ? 'Clear the status filter to reorder stories'
     : undefined;
+  const archiveVisibleStories = stories.filter(
+    (entry) => showArchived || entry.color !== 'GRAY',
+  );
   const visibleStories = filterConsoleStoryEntriesByStatusSelection(
-    stories,
+    archiveVisibleStories,
     effectiveStatusSelection,
-  ).filter((entry) => showArchived || entry.color !== 'GRAY');
+  );
 
   const taskCreateEntry =
     taskCreateDialogId !== null
@@ -296,6 +376,13 @@ export const ConsoleStoryList = ({
       ? (stories.find((s) => s.storyOptionId === descriptionEditOptionId) ??
         null)
       : null;
+  const storyFieldOptions: ConsoleFieldOption[] = archiveVisibleStories.map(
+    (entry) => ({
+      id: entry.storyOptionId,
+      name: entry.storyName,
+      color: entry.color,
+    }),
+  );
 
   return (
     <div className="console-story-list-container">
@@ -502,7 +589,10 @@ export const ConsoleStoryList = ({
                 {isTasksExpanded && (
                   <StoryTaskList
                     items={visibleTaskItems}
+                    storyOptions={storyFieldOptions}
+                    currentStoryOptionId={entry.storyOptionId}
                     onOpenItem={onOpenItem}
+                    onSetTaskStory={onSetTaskStory}
                   />
                 )}
                 {reorderError !== null && (

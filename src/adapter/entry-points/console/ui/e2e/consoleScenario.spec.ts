@@ -1594,6 +1594,56 @@ test('story select in task detail shows current story pre-selected and fires set
     .toBe(1);
 });
 
+test('story tab task row pulldown moves the task to the chosen story group and fires set_story for that issue', async ({
+  page,
+}) => {
+  const storyHarness = await startConsoleE2eHarness();
+  try {
+    await page.goto(storyHarness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+    await page.getByRole('switch', { name: 'Archived' }).click();
+
+    const taskTitle =
+      'Auto-advance to the next non-empty console tab when one empties';
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+
+    const taskRow = tdpmRow.locator('.console-story-task-row', {
+      hasText: taskTitle,
+    });
+    await expect(taskRow).toHaveCount(1);
+    const storySelect = taskRow.getByRole('combobox', { name: 'Set story' });
+    await expect(storySelect).toHaveValue('1491051e');
+
+    await storySelect.selectOption('28415d6c');
+
+    await expect
+      .poll(() => storyHarness.setStoryCalls, { timeout: 3000 })
+      .toEqual([
+        {
+          issueUrl: `https://github.com/${CONSOLE_E2E_REPO_NAME_WITH_OWNER}/issues/869`,
+          storyOptionId: '28415d6c',
+        },
+      ]);
+    await expect(
+      tdpmRow.locator('.console-story-task-title', { hasText: taskTitle }),
+    ).toHaveCount(0);
+
+    const regularRow = page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    });
+    await regularRow.getByRole('button', { name: 'Show tasks' }).click();
+    await expect(
+      regularRow.locator('.console-story-task-title', { hasText: taskTitle }),
+    ).toBeVisible();
+  } finally {
+    await storyHarness.stop();
+  }
+});
+
 test('shows latest comment expanded and non-latest as preview in summary mode, expands all after show-all', async ({
   page,
 }) => {
@@ -2191,4 +2241,75 @@ test.describe('story task create with server failure', () => {
       }),
     ).toBeVisible();
   });
+});
+
+test('phone viewport keeps each story tab task row inside the screen width with its title and Set story select visible', async ({
+  browser,
+}) => {
+  const phoneContext = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await phoneContext.newPage();
+  try {
+    await page.goto(harness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+
+    const taskRows = tdpmRow.locator('.console-story-task-row');
+    await expect(taskRows.first()).toBeVisible();
+    const taskRowCount = await taskRows.count();
+    expect(taskRowCount).toBeGreaterThan(0);
+
+    const documentOverflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(documentOverflow.scrollWidth).toBeLessThanOrEqual(
+      documentOverflow.clientWidth,
+    );
+
+    for (let index = 0; index < taskRowCount; index += 1) {
+      const taskRow = taskRows.nth(index);
+      const rowOverflow = await taskRow.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      expect(rowOverflow.scrollWidth).toBeLessThanOrEqual(
+        rowOverflow.clientWidth,
+      );
+
+      const titleBox = await taskRow
+        .locator('.console-story-task-title')
+        .first()
+        .boundingBox();
+      expect(titleBox?.width ?? 0).toBeGreaterThanOrEqual(100);
+
+      const rowBox = await taskRow.boundingBox();
+      const selectBox = await taskRow
+        .getByRole('combobox', { name: 'Set story' })
+        .boundingBox();
+      expect(rowBox).not.toBeNull();
+      expect(selectBox).not.toBeNull();
+      if (rowBox === null || selectBox === null) {
+        throw new Error('task row or Set story select has no bounding box');
+      }
+      expect(selectBox.x).toBeGreaterThanOrEqual(rowBox.x);
+      expect(selectBox.y).toBeGreaterThanOrEqual(rowBox.y);
+      expect(selectBox.x + selectBox.width).toBeLessThanOrEqual(
+        rowBox.x + rowBox.width,
+      );
+      expect(selectBox.y + selectBox.height).toBeLessThanOrEqual(
+        rowBox.y + rowBox.height,
+      );
+    }
+  } finally {
+    await phoneContext.close();
+  }
 });

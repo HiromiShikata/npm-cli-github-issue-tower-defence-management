@@ -1443,4 +1443,40 @@ describe('GenerateConsoleListsUseCase', () => {
       },
     );
   });
+
+  describe('stories tab issue open state', () => {
+    const isClosedOf = (item: object): unknown => Reflect.get(item, 'isClosed');
+
+    it('flags each stories item with whether its issue is closed and counts only the open one', () => {
+      const result = run([
+        makeIssue({
+          number: 101,
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          status: 'Todo by human',
+          isClosed: false,
+        }),
+        makeIssue({
+          number: 102,
+          story: 'Story Alpha',
+          storyOptionId: 's2',
+          status: 'Todo by human',
+          isClosed: true,
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(
+        alpha?.items.map((item) => ({
+          number: item.number,
+          isClosed: isClosedOf(item),
+        })),
+      ).toEqual([
+        { number: 101, isClosed: false },
+        { number: 102, isClosed: true },
+      ]);
+      expect(alpha?.openItemCount).toBe(1);
+    });
+  });
 });

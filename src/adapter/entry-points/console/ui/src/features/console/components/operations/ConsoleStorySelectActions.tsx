@@ -6,6 +6,7 @@ export type ConsoleStorySelectActionsProps = {
   currentStoryName: string | null;
   currentStoryOptionId: string | null;
   onSetStory: (option: ConsoleFieldOption) => void;
+  disabled?: boolean;
 };
 
 export const ConsoleStorySelectActions = ({
@@ -13,6 +14,7 @@ export const ConsoleStorySelectActions = ({
   currentStoryName,
   currentStoryOptionId,
   onSetStory,
+  disabled = false,
 }: ConsoleStorySelectActionsProps) => {
   if (storyOptions.length === 0) return null;
 
@@ -33,6 +35,7 @@ export const ConsoleStorySelectActions = ({
         currentOption={currentOption}
         options={storyOptions}
         onSelect={onSetStory}
+        disabled={disabled}
       />
     </div>
   );

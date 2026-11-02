@@ -11688,3 +11688,816 @@ describe('ConsolePage story status filter', () => {
     });
   });
 });
+
+describe('ConsolePage story task row story pulldown', () => {
+  const alphaStoryName = 'Story Alpha';
+  const betaStoryName = 'Story Beta';
+  const alphaStoryOptionId = 'opt-story-alpha';
+  const betaStoryOptionId = 'opt-story-beta';
+  const openAlphaTaskTitle = 'Alpha open task';
+  const doneAlphaTaskTitle = 'Alpha done task';
+  const openBetaTaskTitle = 'Beta open task';
+
+  type TriageResponder = (url: string, init: RequestInit) => Promise<unknown>;
+
+  const respondWithSucceeded: TriageResponder = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  });
+
+  const respondWithStatus =
+    (status: number, text: string): TriageResponder =>
+    async () => ({
+      ok: false,
+      status,
+      text: async () => text,
+    });
+
+  const storyTaskItem = (
+    number: number,
+    title: string,
+    projectItemId: string,
+    story: string,
+    status: string,
+  ) => ({
+    number,
+    title,
+    url: `https://github.com/demo/repo/issues/${number}`,
+    repo: 'demo/repo',
+    nameWithOwner: 'demo/repo',
+    projectItemId,
+    itemId: projectItemId,
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story,
+    status,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-18T00:00:00.000Z',
+  });
+
+  const storiesPayload = () => ({
+    generatedAt: '2026-06-19T00:00:00.000Z',
+    statusOptions: [
+      { id: 'status-todo', name: 'Todo by human', color: 'BLUE' },
+      { id: 'status-done', name: 'Done', color: 'GREEN' },
+    ],
+    agentOptions: [],
+    storyOptions: [
+      { id: alphaStoryOptionId, name: alphaStoryName, color: 'BLUE' },
+      { id: betaStoryOptionId, name: betaStoryName, color: 'BLUE' },
+    ],
+    storyColors: {},
+    items: [],
+    defaultNameWithOwner: 'demo/repo',
+    storyOrder: [],
+    stories: [
+      {
+        storyName: alphaStoryName,
+        storyOptionId: alphaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            101,
+            openAlphaTaskTitle,
+            'PVTI_ALPHA_OPEN',
+            alphaStoryName,
+            'Todo by human',
+          ),
+          storyTaskItem(
+            102,
+            doneAlphaTaskTitle,
+            'PVTI_ALPHA_DONE',
+            alphaStoryName,
+            'Done',
+          ),
+        ],
+      },
+      {
+        storyName: betaStoryName,
+        storyOptionId: betaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            103,
+            openBetaTaskTitle,
+            'PVTI_BETA_OPEN',
+            betaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+    ],
+  });
+
+  const installStoriesFetch = (respondToTriage: TriageResponder): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesPayload() : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.endsWith('/api/triage')) {
+        return respondToTriage(url, init);
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const allPostCount = (fetchMock: jest.Mock): number =>
+    fetchMock.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+    ).length;
+
+  const postedTriageBodies = (fetchMock: jest.Mock): unknown[] =>
+    fetchMock.mock.calls
+      .filter(
+        ([url, init]) =>
+          String(url).endsWith('/api/triage') &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+
+  const storyRowNamed = (
+    container: HTMLElement,
+    storyName: string,
+  ): HTMLElement => {
+    const row = Array.from(
+      container.querySelectorAll<HTMLElement>('li.console-story-list-row'),
+    ).find(
+      (element) =>
+        element.querySelector('.console-storytag')?.textContent === storyName,
+    );
+    if (row === undefined) {
+      throw new Error(`story row not found: ${storyName}`);
+    }
+    return row;
+  };
+
+  const taskRowsOf = (
+    container: HTMLElement,
+    storyName: string,
+  ): HTMLElement[] =>
+    Array.from(
+      storyRowNamed(container, storyName).querySelectorAll<HTMLElement>(
+        'li.console-story-task-row',
+      ),
+    );
+
+  const taskTitlesOf = (
+    container: HTMLElement,
+    storyName: string,
+  ): (string | null | undefined)[] =>
+    taskRowsOf(container, storyName).map(
+      (row) => row.querySelector('.console-story-task-title')?.textContent,
+    );
+
+  const taskRowTitled = (
+    container: HTMLElement,
+    storyName: string,
+    title: string,
+  ): HTMLElement => {
+    const row = taskRowsOf(container, storyName).find(
+      (element) =>
+        element.querySelector('.console-story-task-title')?.textContent ===
+        title,
+    );
+    if (row === undefined) {
+      throw new Error(`task row not found: ${title} in ${storyName}`);
+    }
+    return row;
+  };
+
+  const storyCountOf = (
+    container: HTMLElement,
+    storyName: string,
+  ): string | null | undefined =>
+    storyRowNamed(container, storyName).querySelector('.console-story-count')
+      ?.textContent;
+
+  const storySelectIn = (taskRow: HTMLElement): HTMLElement =>
+    within(taskRow).getByRole('combobox', { name: 'Set story' });
+
+  const expandStoryGroup = async (
+    container: HTMLElement,
+    storyName: string,
+  ): Promise<void> => {
+    const showTasksButton = await waitFor(() =>
+      within(storyRowNamed(container, storyName)).getByRole('button', {
+        name: 'Show tasks',
+      }),
+    );
+    fireEvent.click(showTasksButton);
+    await waitFor(() => {
+      expect(taskRowsOf(container, storyName).length).toBeGreaterThan(0);
+    });
+  };
+
+  const renderStoriesWithStoryExpanded = async (
+    storyName: string,
+  ): Promise<ReturnType<typeof render>> => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const view = render(<ConsolePage />);
+    await expandStoryGroup(view.container, storyName);
+    return view;
+  };
+
+  const settleStoryChange = async (
+    container: HTMLElement,
+    fetchMock: jest.Mock,
+    expectedPostCount: number,
+  ): Promise<void> => {
+    await waitFor(() => {
+      const dismissButton = container.querySelector<HTMLElement>(
+        '.console-undo-toast-dismiss',
+      );
+      if (dismissButton !== null) {
+        fireEvent.click(dismissButton);
+      }
+      expect(allPostCount(fetchMock)).toBe(expectedPostCount);
+    });
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('console-story-show-done', 'true');
+  });
+
+  const moveCases = [
+    {
+      name: 'an open task from Story Alpha to Story Beta',
+      taskTitle: openAlphaTaskTitle,
+      sourceStoryName: alphaStoryName,
+      targetStoryName: betaStoryName,
+      targetStoryOptionId: betaStoryOptionId,
+      issueUrl: 'https://github.com/demo/repo/issues/101',
+      projectItemId: 'PVTI_ALPHA_OPEN',
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'an open task from Story Beta to Story Alpha',
+      taskTitle: openBetaTaskTitle,
+      sourceStoryName: betaStoryName,
+      targetStoryName: alphaStoryName,
+      targetStoryOptionId: alphaStoryOptionId,
+      issueUrl: 'https://github.com/demo/repo/issues/103',
+      projectItemId: 'PVTI_BETA_OPEN',
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'a Done task from Story Alpha to Story Beta',
+      taskTitle: doneAlphaTaskTitle,
+      sourceStoryName: alphaStoryName,
+      targetStoryName: betaStoryName,
+      targetStoryOptionId: betaStoryOptionId,
+      issueUrl: 'https://github.com/demo/repo/issues/102',
+      projectItemId: 'PVTI_ALPHA_DONE',
+      expectedSourceCount: '1',
+      expectedTargetCount: '1',
+    },
+  ];
+
+  it.each(moveCases)(
+    'moves $name and updates both open-task counts without waiting for a poll cycle when the triage request succeeds',
+    async ({
+      taskTitle,
+      sourceStoryName,
+      targetStoryName,
+      targetStoryOptionId,
+      issueUrl,
+      projectItemId,
+      expectedSourceCount,
+      expectedTargetCount,
+    }) => {
+      const fetchMock = installStoriesFetch(respondWithSucceeded);
+      const view = await renderStoriesWithStoryExpanded(sourceStoryName);
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, sourceStoryName, taskTitle),
+        ),
+        { target: { value: targetStoryOptionId } },
+      );
+      await settleStoryChange(view.container, fetchMock, 1);
+
+      expect(postedTriageBodies(fetchMock)).toEqual([
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl,
+          projectItemId,
+          storyOptionId: targetStoryOptionId,
+        }),
+      ]);
+      await waitFor(() => {
+        expect(taskTitlesOf(view.container, sourceStoryName)).not.toContain(
+          taskTitle,
+        );
+        expect(storyCountOf(view.container, sourceStoryName)).toBe(
+          expectedSourceCount,
+        );
+        expect(storyCountOf(view.container, targetStoryName)).toBe(
+          expectedTargetCount,
+        );
+      });
+
+      await expandStoryGroup(view.container, targetStoryName);
+      expect(taskTitlesOf(view.container, targetStoryName)).toContain(
+        taskTitle,
+      );
+      expect(allPostCount(fetchMock)).toBe(1);
+    },
+  );
+
+  const failureCases = [
+    {
+      name: 'an HTTP 500 response',
+      respondToTriage: respondWithStatus(500, 'Internal Server Error'),
+    },
+    {
+      name: 'an HTTP 403 response',
+      respondToTriage: respondWithStatus(403, 'Forbidden'),
+    },
+    {
+      name: 'a network rejection',
+      respondToTriage: async (): Promise<unknown> => {
+        throw new TypeError('Failed to fetch');
+      },
+    },
+  ];
+
+  it.each(failureCases)(
+    'shows the failure in the task row alert, returns the pulldown to Story Alpha, and keeps the task and both counts unchanged when the triage request fails with $name',
+    async ({ respondToTriage }) => {
+      const fetchMock = installStoriesFetch(respondToTriage);
+      const view = await renderStoriesWithStoryExpanded(alphaStoryName);
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+      await settleStoryChange(view.container, fetchMock, 1);
+
+      await waitFor(() => {
+        const alert = within(
+          taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+        ).getByRole('alert');
+        expect(alert).toHaveTextContent(/\S/);
+      });
+      await waitFor(() => {
+        expect(taskTitlesOf(view.container, alphaStoryName)).toContain(
+          openAlphaTaskTitle,
+        );
+        expect(
+          storySelectIn(
+            taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+          ),
+        ).toHaveValue(alphaStoryOptionId);
+        expect(storyCountOf(view.container, alphaStoryName)).toBe('1');
+        expect(storyCountOf(view.container, betaStoryName)).toBe('1');
+      });
+
+      await expandStoryGroup(view.container, betaStoryName);
+      expect(taskTitlesOf(view.container, betaStoryName)).not.toContain(
+        openAlphaTaskTitle,
+      );
+      expect(postedTriageBodies(fetchMock)).toEqual([
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl: 'https://github.com/demo/repo/issues/101',
+          projectItemId: 'PVTI_ALPHA_OPEN',
+          storyOptionId: betaStoryOptionId,
+        }),
+      ]);
+    },
+  );
+
+  const sameStoryCases = [
+    {
+      name: 'an open task that already belongs to Story Alpha',
+      taskTitle: openAlphaTaskTitle,
+      storyName: alphaStoryName,
+      storyOptionId: alphaStoryOptionId,
+    },
+    {
+      name: 'an open task that already belongs to Story Beta',
+      taskTitle: openBetaTaskTitle,
+      storyName: betaStoryName,
+      storyOptionId: betaStoryOptionId,
+    },
+  ];
+
+  it.each(sameStoryCases)(
+    'sends no triage request when the pulldown of $name is set to that same story',
+    async ({ taskTitle, storyName, storyOptionId }) => {
+      const fetchMock = installStoriesFetch(respondWithSucceeded);
+      const view = await renderStoriesWithStoryExpanded(storyName);
+
+      fireEvent.change(
+        storySelectIn(taskRowTitled(view.container, storyName, taskTitle)),
+        { target: { value: storyOptionId } },
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(allPostCount(fetchMock)).toBe(0);
+      expect(view.container.querySelector('.console-undo-toast')).toBeNull();
+      expect(
+        storySelectIn(taskRowTitled(view.container, storyName, taskTitle)),
+      ).toHaveValue(storyOptionId);
+      expect(taskTitlesOf(view.container, storyName)).toContain(taskTitle);
+    },
+  );
+
+  const installFetchWithPayload = (
+    payload: unknown,
+    respondToTriage: TriageResponder,
+  ): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => (tab === 'stories' ? payload : listPayload(tab)),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.endsWith('/api/triage')) {
+        return respondToTriage(url, init);
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const archivedStoryName = 'Story Archived';
+  const archivedStoryOptionId = 'opt-story-archived';
+
+  const storiesPayloadWithArchivedStory = () => {
+    const base = storiesPayload();
+    return {
+      ...base,
+      storyOptions: [
+        ...base.storyOptions,
+        { id: archivedStoryOptionId, name: archivedStoryName, color: 'GRAY' },
+      ],
+      stories: [
+        ...base.stories,
+        {
+          storyName: archivedStoryName,
+          storyOptionId: archivedStoryOptionId,
+          color: 'GRAY',
+          description: '',
+          openItemCount: 0,
+          storyViewUrl: null,
+          items: [],
+        },
+      ],
+    };
+  };
+
+  const concurrentFirstTitle = 'Alpha first open task';
+  const concurrentSecondTitle = 'Alpha second open task';
+
+  const concurrentMovePayload = () => ({
+    ...storiesPayload(),
+    stories: [
+      {
+        storyName: alphaStoryName,
+        storyOptionId: alphaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 2,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            111,
+            concurrentFirstTitle,
+            'PVTI_ALPHA_FIRST',
+            alphaStoryName,
+            'Todo by human',
+          ),
+          storyTaskItem(
+            112,
+            concurrentSecondTitle,
+            'PVTI_ALPHA_SECOND',
+            alphaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+      {
+        storyName: betaStoryName,
+        storyOptionId: betaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            103,
+            openBetaTaskTitle,
+            'PVTI_BETA_OPEN',
+            betaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+    ],
+  });
+
+  const concurrentCompletionOrders = [
+    { name: 'the first request resolves first', resolutionOrder: [0, 1] },
+    { name: 'the second request resolves first', resolutionOrder: [1, 0] },
+  ];
+
+  it.each(concurrentCompletionOrders)(
+    'moves both in-flight tasks of one story group to the target group and updates both counts when $name',
+    async ({ resolutionOrder }) => {
+      const resolvers: Array<() => void> = [];
+      const respondWhenResolved: TriageResponder = () =>
+        new Promise((resolve) => {
+          resolvers.push(() =>
+            resolve({ ok: true, status: 200, json: async () => ({}) }),
+          );
+        });
+      const fetchMock = installFetchWithPayload(
+        concurrentMovePayload(),
+        respondWhenResolved,
+      );
+      const view = await renderStoriesWithStoryExpanded(alphaStoryName);
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentFirstTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentSecondTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+
+      await waitFor(() => {
+        expect(resolvers).toHaveLength(2);
+      });
+      expect(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentFirstTitle),
+        ),
+      ).toBeDisabled();
+      expect(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, concurrentSecondTitle),
+        ),
+      ).toBeDisabled();
+
+      for (const index of resolutionOrder) {
+        await act(async () => {
+          resolvers[index]?.();
+        });
+      }
+
+      await waitFor(() => {
+        expect(taskTitlesOf(view.container, alphaStoryName)).toEqual([]);
+        expect(storyCountOf(view.container, alphaStoryName)).toBe('0');
+        expect(storyCountOf(view.container, betaStoryName)).toBe('3');
+      });
+
+      await expandStoryGroup(view.container, betaStoryName);
+      expect(taskTitlesOf(view.container, betaStoryName).sort()).toEqual(
+        [concurrentFirstTitle, concurrentSecondTitle, openBetaTaskTitle].sort(),
+      );
+      expect(postedTriageBodies(fetchMock)).toEqual([
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl: 'https://github.com/demo/repo/issues/111',
+          projectItemId: 'PVTI_ALPHA_FIRST',
+          storyOptionId: betaStoryOptionId,
+        }),
+        expect.objectContaining({
+          action: 'set_story',
+          issueUrl: 'https://github.com/demo/repo/issues/112',
+          projectItemId: 'PVTI_ALPHA_SECOND',
+          storyOptionId: betaStoryOptionId,
+        }),
+      ]);
+      expect(allPostCount(fetchMock)).toBe(2);
+    },
+  );
+
+  it.each([
+    {
+      name: 'omits the archived story when the Archived switch is off',
+      archivedSwitchValue: 'false',
+      expectedOptionNames: ['— story —', alphaStoryName, betaStoryName],
+    },
+    {
+      name: 'lists the archived story when the Archived switch is on',
+      archivedSwitchValue: 'true',
+      expectedOptionNames: [
+        '— story —',
+        alphaStoryName,
+        betaStoryName,
+        archivedStoryName,
+      ],
+    },
+  ])('$name', async ({ archivedSwitchValue, expectedOptionNames }) => {
+    localStorage.setItem('console-story-show-archived', archivedSwitchValue);
+    installFetchWithPayload(
+      storiesPayloadWithArchivedStory(),
+      respondWithSucceeded,
+    );
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const view = render(<ConsolePage />);
+
+    const archivedSwitch = await view.findByRole('switch', {
+      name: 'Archived',
+    });
+    expect(archivedSwitch).toHaveAttribute('aria-checked', archivedSwitchValue);
+
+    await expandStoryGroup(view.container, alphaStoryName);
+    const select = storySelectIn(
+      taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+    );
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(expectedOptionNames);
+    expect(select).toHaveValue(alphaStoryOptionId);
+  });
+
+  const stateTaskTitle = 'Alpha issue state task';
+
+  const issueStateMovePayload = (
+    item: object,
+    sourceOpenItemCount: number,
+  ) => ({
+    ...storiesPayload(),
+    stories: [
+      {
+        storyName: alphaStoryName,
+        storyOptionId: alphaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: sourceOpenItemCount,
+        storyViewUrl: null,
+        items: [item],
+      },
+      {
+        storyName: betaStoryName,
+        storyOptionId: betaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            103,
+            openBetaTaskTitle,
+            'PVTI_BETA_OPEN',
+            betaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+    ],
+  });
+
+  const issueStateMoveCases = [
+    {
+      name: 'moves one open badge from the source to the target when the issue is not closed and its status is Todo by human',
+      status: 'Todo by human',
+      isClosed: false,
+      sourceOpenItemCount: 1,
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'moves one open badge from the source to the target when the issue is not closed even though its status is Done',
+      status: 'Done',
+      isClosed: false,
+      sourceOpenItemCount: 1,
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'leaves both badges unchanged when the issue is closed and its status is Todo by human',
+      status: 'Todo by human',
+      isClosed: true,
+      sourceOpenItemCount: 0,
+      expectedSourceCount: '0',
+      expectedTargetCount: '1',
+    },
+    {
+      name: 'leaves both badges unchanged when the issue is closed and its status is Done',
+      status: 'Done',
+      isClosed: true,
+      sourceOpenItemCount: 0,
+      expectedSourceCount: '0',
+      expectedTargetCount: '1',
+    },
+  ];
+
+  it.each(issueStateMoveCases)(
+    '$name',
+    async ({
+      status,
+      isClosed,
+      sourceOpenItemCount,
+      expectedSourceCount,
+      expectedTargetCount,
+    }) => {
+      const item = {
+        ...storyTaskItem(
+          101,
+          stateTaskTitle,
+          'PVTI_ALPHA_STATE',
+          alphaStoryName,
+          status,
+        ),
+        isClosed,
+      };
+      const fetchMock = installFetchWithPayload(
+        issueStateMovePayload(item, sourceOpenItemCount),
+        respondWithSucceeded,
+      );
+      const view = await renderStoriesWithStoryExpanded(alphaStoryName);
+      expect(storyCountOf(view.container, alphaStoryName)).toBe(
+        String(sourceOpenItemCount),
+      );
+      expect(storyCountOf(view.container, betaStoryName)).toBe('1');
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, stateTaskTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+      await settleStoryChange(view.container, fetchMock, 1);
+
+      await waitFor(() => {
+        expect(storyCountOf(view.container, alphaStoryName)).toBe(
+          expectedSourceCount,
+        );
+        expect(storyCountOf(view.container, betaStoryName)).toBe(
+          expectedTargetCount,
+        );
+      });
+    },
+  );
+});

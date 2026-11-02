@@ -144,6 +144,53 @@ const isSameNavigationPosition = (
   left.tab === right.tab &&
   left.itemKey === right.itemKey;
 
+const countsAsOpenBadge = (item: ConsoleListItem): boolean => {
+  if (item.isClosed !== undefined) {
+    return !item.isClosed;
+  }
+  return item.status !== 'Done';
+};
+
+const moveTaskToStory = (
+  entries: ConsoleStoryEntry[],
+  projectItemId: string,
+  target: ConsoleFieldOption,
+): ConsoleStoryEntry[] => {
+  const sourceEntry = entries.find((entry) =>
+    (entry.items ?? []).some((item) => item.projectItemId === projectItemId),
+  );
+  const movingItem = (sourceEntry?.items ?? []).find(
+    (item) => item.projectItemId === projectItemId,
+  );
+  if (
+    sourceEntry === undefined ||
+    movingItem === undefined ||
+    sourceEntry.storyOptionId === target.id
+  ) {
+    return entries;
+  }
+  const countsAsOpen = countsAsOpenBadge(movingItem) ? 1 : 0;
+  return entries.map((entry) => {
+    if (entry.storyOptionId === sourceEntry.storyOptionId) {
+      return {
+        ...entry,
+        items: (entry.items ?? []).filter(
+          (item) => item.projectItemId !== projectItemId,
+        ),
+        openItemCount: Math.max(0, entry.openItemCount - countsAsOpen),
+      };
+    }
+    if (entry.storyOptionId === target.id) {
+      return {
+        ...entry,
+        items: [...(entry.items ?? []), { ...movingItem, story: target.name }],
+        openItemCount: entry.openItemCount + countsAsOpen,
+      };
+    }
+    return entry;
+  });
+};
+
 const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
   input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
 
@@ -1396,6 +1443,38 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const latestStorySnapshotRef = useRef({
+    generatedAt: storiesSnapshot?.generatedAt,
+    rawStoryEntries,
+  });
+  useEffect(() => {
+    latestStorySnapshotRef.current = {
+      generatedAt: storiesSnapshot?.generatedAt,
+      rawStoryEntries,
+    };
+  });
+
+  const handleSetTaskStory = useCallback(
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+    ): Promise<void> => {
+      await operations.setStory(item, option);
+      setLocalStoryEntriesOverride((previous) => {
+        const latest = latestStorySnapshotRef.current;
+        const baseEntries =
+          previous !== null && previous.generatedAt === latest.generatedAt
+            ? previous.stories
+            : latest.rawStoryEntries;
+        return {
+          generatedAt: latest.generatedAt,
+          stories: moveTaskToStory(baseEntries, item.projectItemId, option),
+        };
+      });
+    },
+    [operations],
+  );
+
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
     caches.comments,
@@ -1644,6 +1723,7 @@ export const ConsolePage = () => {
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}
             onOpenItem={(item) => navigation.openItem(item.projectItemId)}
+            onSetTaskStory={handleSetTaskStory}
           />
         </div>
       ) : selectedItem === null ? (
