@@ -499,21 +499,18 @@ describe('ConsoleStoryList task story select', () => {
         'Story Archived',
       ],
     },
-  ])(
-    '$name',
-    ({ showArchived, expectedOptionNames }) => {
-      const { container } = renderStoryList({ showArchived });
-      expandStory(container, 'Story Alpha');
+  ])('$name', ({ showArchived, expectedOptionNames }) => {
+    const { container } = renderStoryList({ showArchived });
+    expandStory(container, 'Story Alpha');
 
-      const select = storySelectIn(taskRowTitled(container, 'Alpha task one'));
-      expect(
-        within(select)
-          .getAllByRole('option')
-          .map((option) => option.textContent),
-      ).toEqual(expectedOptionNames);
-      expect(select).toHaveValue('story-alpha');
-    },
-  );
+    const select = storySelectIn(taskRowTitled(container, 'Alpha task one'));
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(expectedOptionNames);
+    expect(select).toHaveValue('story-alpha');
+  });
 
   it('preselects the archived story of a task row and lists it as an option while the Archived switch is on', () => {
     const archivedTask = makeTaskItem({

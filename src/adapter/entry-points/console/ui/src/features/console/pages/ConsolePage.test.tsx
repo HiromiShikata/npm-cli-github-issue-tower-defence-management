@@ -12355,32 +12355,29 @@ describe('ConsolePage story task row story pulldown', () => {
         archivedStoryName,
       ],
     },
-  ])(
-    '$name',
-    async ({ archivedSwitchValue, expectedOptionNames }) => {
-      localStorage.setItem('console-story-show-archived', archivedSwitchValue);
-      installFetchWithPayload(
-        storiesPayloadWithArchivedStory(),
-        respondWithSucceeded,
-      );
-      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-      const view = render(<ConsolePage />);
+  ])('$name', async ({ archivedSwitchValue, expectedOptionNames }) => {
+    localStorage.setItem('console-story-show-archived', archivedSwitchValue);
+    installFetchWithPayload(
+      storiesPayloadWithArchivedStory(),
+      respondWithSucceeded,
+    );
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const view = render(<ConsolePage />);
 
-      const archivedSwitch = await view.findByRole('switch', {
-        name: 'Archived',
-      });
-      expect(archivedSwitch).toHaveAttribute('aria-checked', archivedSwitchValue);
+    const archivedSwitch = await view.findByRole('switch', {
+      name: 'Archived',
+    });
+    expect(archivedSwitch).toHaveAttribute('aria-checked', archivedSwitchValue);
 
-      await expandStoryGroup(view.container, alphaStoryName);
-      const select = storySelectIn(
-        taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
-      );
-      expect(
-        within(select)
-          .getAllByRole('option')
-          .map((option) => option.textContent),
-      ).toEqual(expectedOptionNames);
-      expect(select).toHaveValue(alphaStoryOptionId);
-    },
-  );
+    await expandStoryGroup(view.container, alphaStoryName);
+    const select = storySelectIn(
+      taskRowTitled(view.container, alphaStoryName, openAlphaTaskTitle),
+    );
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(expectedOptionNames);
+    expect(select).toHaveValue(alphaStoryOptionId);
+  });
 });
