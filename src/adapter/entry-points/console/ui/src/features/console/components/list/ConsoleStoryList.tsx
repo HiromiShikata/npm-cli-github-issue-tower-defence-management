@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
+import {
+  filterConsoleStoryEntriesByStatusSelection,
+  resolveEffectiveConsoleStoryStatusSelection,
+} from '../../logic/consoleStoryStatusSelection';
 import type {
   ConsoleColor,
   ConsoleListItem,
@@ -11,6 +15,7 @@ import { ConsoleStoryCreateModalDialog } from './ConsoleStoryCreateModalDialog';
 import { ConsoleStoryDeleteModalDialog } from './ConsoleStoryDeleteModalDialog';
 import { ConsoleStoryDescriptionModalDialog } from './ConsoleStoryDescriptionModalDialog';
 import { ConsoleStoryRenameModalDialog } from './ConsoleStoryRenameModalDialog';
+import { ConsoleStoryStatusFilter } from './ConsoleStoryStatusFilter';
 import { ConsoleStoryTaskCreateModalDialog } from './ConsoleStoryTaskCreateModalDialog';
 
 type RowReorderState = {
@@ -104,6 +109,10 @@ export type ConsoleStoryListProps = {
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
   onOpenItem: (item: ConsoleListItem) => void;
+  selectedStatuses?: string[];
+  statusOptionNames?: string[];
+  onToggleStatus?: (status: string) => void;
+  onClearStatuses?: () => void;
 };
 
 type StoryDeleteState = {
@@ -131,6 +140,10 @@ export const ConsoleStoryList = ({
   colorChangeInFlight,
   colorErrors,
   onOpenItem,
+  selectedStatuses = [],
+  statusOptionNames = [],
+  onToggleStatus,
+  onClearStatuses,
 }: ConsoleStoryListProps) => {
   const [taskCreateDialogId, setTaskCreateDialogId] = useState<string | null>(
     null,
@@ -242,9 +255,15 @@ export const ConsoleStoryList = ({
     }
   };
 
-  const visibleStories = stories.filter(
-    (entry) => showArchived || entry.color !== 'GRAY',
+  const effectiveStatusSelection = resolveEffectiveConsoleStoryStatusSelection(
+    selectedStatuses,
+    statusOptionNames,
   );
+  const hasStatusSelection = effectiveStatusSelection.length > 0;
+  const visibleStories = filterConsoleStoryEntriesByStatusSelection(
+    stories,
+    effectiveStatusSelection,
+  ).filter((entry) => showArchived || entry.color !== 'GRAY');
 
   const taskCreateEntry =
     taskCreateDialogId !== null
@@ -277,6 +296,16 @@ export const ConsoleStoryList = ({
 
   return (
     <div className="console-story-list-container">
+      {statusOptionNames.length > 0 &&
+        onToggleStatus !== undefined &&
+        onClearStatuses !== undefined && (
+          <ConsoleStoryStatusFilter
+            statusNames={statusOptionNames}
+            selectedStatuses={selectedStatuses}
+            onToggleStatus={onToggleStatus}
+            onClearStatuses={onClearStatuses}
+          />
+        )}
       <div
         style={{
           display: 'flex',
@@ -314,9 +343,11 @@ export const ConsoleStoryList = ({
               expandedTasksOptionId === entry.storyOptionId;
             const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
-            const visibleTaskItems = (entry.items ?? []).filter(
-              (item) => showDone || item.status !== 'Done',
-            );
+            const visibleTaskItems = hasStatusSelection
+              ? (entry.items ?? [])
+              : (entry.items ?? []).filter(
+                  (item) => showDone || item.status !== 'Done',
+                );
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">

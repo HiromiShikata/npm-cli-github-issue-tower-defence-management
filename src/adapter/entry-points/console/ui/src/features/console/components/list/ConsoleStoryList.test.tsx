@@ -1979,10 +1979,7 @@ describe('ConsoleStoryList', () => {
 
     it('with one selected status, keeps only stories that have a matching task and shows only matching tasks on expand', () => {
       const { getByText, getAllByRole, queryByText } = render(
-        <ConsoleStoryList
-          {...filterProps}
-          selectedStatuses={['Unread']}
-        />,
+        <ConsoleStoryList {...filterProps} selectedStatuses={['Unread']} />,
       );
       expect(getByText('Alpha')).toBeInTheDocument();
       expect(queryByText('Beta')).toBeNull();

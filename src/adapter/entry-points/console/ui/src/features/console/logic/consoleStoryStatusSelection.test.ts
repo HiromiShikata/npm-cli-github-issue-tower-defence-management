@@ -1,4 +1,3 @@
-import type { ConsoleStoryEntry } from './types';
 import {
   CONSOLE_STORY_STATUS_SELECTION_KEY,
   filterConsoleStoryEntriesByStatusSelection,
@@ -6,6 +5,7 @@ import {
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from './consoleStoryStatusSelection';
+import type { ConsoleStoryEntry } from './types';
 
 type StoryItem = ConsoleStoryEntry['items'][0];
 
@@ -70,23 +70,22 @@ describe('consoleStoryStatusSelection', () => {
   });
 
   it('reads the saved selection as a list of status names for every stored shape', () => {
-    const cases: { label: string; raw: string | null; expected: string[] }[] =
-      [
-        { label: 'nothing saved', raw: null, expected: [] },
-        {
-          label: 'valid array',
-          raw: '["Done","Unread"]',
-          expected: ['Done', 'Unread'],
-        },
-        { label: 'empty array', raw: '[]', expected: [] },
-        { label: 'broken JSON', raw: '["Done"', expected: [] },
-        { label: 'non-array JSON', raw: '{"status":"Done"}', expected: [] },
-        {
-          label: 'array containing non-strings',
-          raw: '["Done",1,null,{"a":1},"Unread"]',
-          expected: ['Done', 'Unread'],
-        },
-      ];
+    const cases: { label: string; raw: string | null; expected: string[] }[] = [
+      { label: 'nothing saved', raw: null, expected: [] },
+      {
+        label: 'valid array',
+        raw: '["Done","Unread"]',
+        expected: ['Done', 'Unread'],
+      },
+      { label: 'empty array', raw: '[]', expected: [] },
+      { label: 'broken JSON', raw: '["Done"', expected: [] },
+      { label: 'non-array JSON', raw: '{"status":"Done"}', expected: [] },
+      {
+        label: 'array containing non-strings',
+        raw: '["Done",1,null,{"a":1},"Unread"]',
+        expected: ['Done', 'Unread'],
+      },
+    ];
     for (const { label, raw, expected } of cases) {
       localStorage.clear();
       if (raw !== null) {
@@ -151,37 +150,35 @@ describe('consoleStoryStatusSelection', () => {
   });
 
   it('returns stories unchanged for an empty selection and otherwise keeps stories and items whose status is selected, as a union', () => {
-    const cases: { label: string; selected: string[]; expected: unknown }[] =
-      [
-        {
-          label: 'empty selection leaves every story and item',
-          selected: [],
-          expected: summarize(stories),
-        },
-        {
-          label: 'one status keeps matching stories and only matching items',
-          selected: ['Done'],
-          expected: [
-            ['Alpha', ['alpha done']],
-            ['Delta', ['delta done']],
-          ],
-        },
-        {
-          label: 'two statuses are a union',
-          selected: ['Unread', 'In Tmux by agent'],
-          expected: [
-            ['Alpha', ['alpha unread']],
-            ['Beta', ['beta running']],
-          ],
-        },
-      ];
+    const cases: { label: string; selected: string[]; expected: unknown }[] = [
+      {
+        label: 'empty selection leaves every story and item',
+        selected: [],
+        expected: summarize(stories),
+      },
+      {
+        label: 'one status keeps matching stories and only matching items',
+        selected: ['Done'],
+        expected: [
+          ['Alpha', ['alpha done']],
+          ['Delta', ['delta done']],
+        ],
+      },
+      {
+        label: 'two statuses are a union',
+        selected: ['Unread', 'In Tmux by agent'],
+        expected: [
+          ['Alpha', ['alpha unread']],
+          ['Beta', ['beta running']],
+        ],
+      },
+    ];
     for (const { label, selected, expected } of cases) {
       expect({
         label,
-        value: summarize(filterConsoleStoryEntriesByStatusSelection(
-          stories,
-          selected,
-        )),
+        value: summarize(
+          filterConsoleStoryEntriesByStatusSelection(stories, selected),
+        ),
       }).toEqual({ label, value: expected });
     }
   });

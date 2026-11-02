@@ -32,7 +32,9 @@ describe('ConsoleStoryStatusFilter', () => {
     );
     expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
     expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
-    expect(getByRole('checkbox', { name: 'In Tmux by agent' })).not.toBeChecked();
+    expect(
+      getByRole('checkbox', { name: 'In Tmux by agent' }),
+    ).not.toBeChecked();
   });
 
   it('calls onToggleStatus with the status name when its checkbox is clicked', () => {

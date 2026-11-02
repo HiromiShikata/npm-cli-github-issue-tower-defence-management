@@ -64,6 +64,10 @@ import {
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
 import {
+  readConsoleStoryStatusSelection,
+  writeConsoleStoryStatusSelection,
+} from '../logic/consoleStoryStatusSelection';
+import {
   buildConsoleListRows,
   resolveItemStory,
   resolveItemStoryOptionId,
@@ -973,7 +977,29 @@ export const ConsolePage = () => {
     });
   }, []);
 
+  const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
+    () => readConsoleStoryStatusSelection(),
+  );
+
+  const handleToggleStoryStatus = useCallback((status: string): void => {
+    setSelectedStoryStatuses((prev) => {
+      const next = prev.includes(status)
+        ? prev.filter((name) => name !== status)
+        : [...prev, status];
+      writeConsoleStoryStatusSelection(next);
+      return next;
+    });
+  }, []);
+
+  const handleClearStoryStatuses = useCallback((): void => {
+    writeConsoleStoryStatusSelection([]);
+    setSelectedStoryStatuses([]);
+  }, []);
+
   const storiesSnapshot = snapshots.stories;
+  const storyStatusOptionNames = (storiesSnapshot?.statusOptions ?? []).map(
+    (option) => option.name,
+  );
   const rawStoryEntries = storiesSnapshot?.stories ?? [];
   const storyEntries =
     localStoryEntriesOverride !== null &&
@@ -1542,6 +1568,10 @@ export const ConsolePage = () => {
             onSelectColor={handleSelectColor}
             onToggleArchived={handleToggleArchived}
             onToggleDone={handleToggleDone}
+            selectedStatuses={selectedStoryStatuses}
+            statusOptionNames={storyStatusOptionNames}
+            onToggleStatus={handleToggleStoryStatus}
+            onClearStatuses={handleClearStoryStatuses}
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}
