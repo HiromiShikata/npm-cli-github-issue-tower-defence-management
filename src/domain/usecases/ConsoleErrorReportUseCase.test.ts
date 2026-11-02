@@ -493,5 +493,141 @@ describe('ConsoleErrorReportUseCase', () => {
         consoleSpy.mockRestore();
       }
     });
+
+    describe('with the Date clock faked', () => {
+      const startTime = new Date('2026-01-01T00:00:00.000Z');
+      const minutesAfterStart = (minutes: number): Date =>
+        new Date(startTime.getTime() + minutes * 60 * 1000);
+
+      beforeEach(() => {
+        jest.useFakeTimers({
+          doNotFake: [
+            'hrtime',
+            'nextTick',
+            'performance',
+            'queueMicrotask',
+            'requestAnimationFrame',
+            'cancelAnimationFrame',
+            'requestIdleCallback',
+            'cancelIdleCallback',
+            'setImmediate',
+            'clearImmediate',
+            'setInterval',
+            'clearInterval',
+            'setTimeout',
+            'clearTimeout',
+          ],
+        });
+        jest.setSystemTime(startTime);
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should add a rate-limit report to the issue created earlier when it arrives within 3 hours of that issue creation', async () => {
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(
+          repository,
+          async () => undefined,
+        );
+
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+        jest.setSystemTime(minutesAfterStart(179));
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+
+        expect(repository.createNewIssue).toHaveBeenCalledTimes(1);
+        expect(repository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(repository.createCommentByUrl).toHaveBeenCalledWith(
+          createdIssueUrl,
+          expect.any(String),
+        );
+      });
+
+      it('should create a second issue and no comment when a rate-limit report of the same group arrives more than 3 hours after the issue creation', async () => {
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(
+          repository,
+          async () => undefined,
+        );
+
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+        jest.setSystemTime(minutesAfterStart(181));
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+
+        expect(repository.createNewIssue).toHaveBeenCalledTimes(2);
+        expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+
+      it('should comment on the existing open issue found by search again when the same error is reported later and search no longer finds it', async () => {
+        const existingIssueUrl =
+          'https://github.com/test-owner/test-repo/issues/10';
+        const error = buildError('TypeError', 'something went wrong');
+        const repository = createRepository();
+        repository.searchIssue
+          .mockResolvedValueOnce([
+            {
+              url: existingIssueUrl,
+              title: `Triaged by the team: ${titleOf(error)}`,
+              number: '10',
+            },
+          ])
+          .mockResolvedValue([]);
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(
+          repository,
+          async () => undefined,
+        );
+
+        await report(useCaseUnderTest, error);
+        await report(useCaseUnderTest, error);
+
+        expect(
+          repository.createCommentByUrl.mock.calls.map(([url]) => url),
+        ).toEqual([existingIssueUrl, existingIssueUrl]);
+        expect(repository.createNewIssue).not.toHaveBeenCalled();
+      });
+
+      it('should create one issue per repository when the same rate-limit error is reported for two repositories of the same owner', async () => {
+        const otherRepo = 'test-repo-b';
+        const repository = createRepository();
+        const useCaseUnderTest = new ConsoleErrorReportUseCase(
+          repository,
+          async () => undefined,
+        );
+
+        await report(
+          useCaseUnderTest,
+          buildError('Error', restRateLimitMessage),
+        );
+        await useCaseUnderTest.run({
+          error: buildError('Error', restRateLimitMessage),
+          owner,
+          repo: otherRepo,
+          requestPath,
+        });
+
+        expect(
+          repository.createNewIssue.mock.calls.map(
+            ([organization, repositoryName]) => [organization, repositoryName],
+          ),
+        ).toEqual([
+          [owner, repo],
+          [owner, otherRepo],
+        ]);
+        expect(repository.createCommentByUrl).not.toHaveBeenCalled();
+      });
+    });
   });
 });
