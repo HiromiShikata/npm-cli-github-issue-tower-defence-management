@@ -11397,4 +11397,180 @@ describe('ConsolePage story status filter', () => {
     expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
     expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
   });
+
+  describe('status parameters in the URL', () => {
+    const statusParams = (): string[] =>
+      new URLSearchParams(window.location.search).getAll('status');
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('applies the status parameters in the URL over the saved selection', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+
+      const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+      expect(queryByText('Completed Story')).toBeNull();
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+      expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    });
+
+    it('reads every repeated status parameter as part of the selection', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done&status=Unread',
+      );
+
+      const { findByRole, findByText } = render(<ConsolePage />);
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+    });
+
+    it('writes the saved selection into the status parameters when the URL has none', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+
+      const { findByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(window.location.pathname).toBe('/projects/acme/stories');
+    });
+
+    it('mirrors each checkbox change into the status parameters with replaceState and keeps the other parameters and the hash', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token#keep-me',
+      );
+      const pushStateSpy = jest.spyOn(window.history, 'pushState');
+      const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
+
+      const { findByRole } = render(<ConsolePage />);
+      fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done', 'Unread']);
+      });
+
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(window.location.pathname).toBe('/projects/acme/stories');
+      expect(window.location.hash).toBe('#keep-me');
+      expect(pushStateSpy).not.toHaveBeenCalled();
+      expect(replaceStateSpy).toHaveBeenCalled();
+    });
+
+    it('removes the status parameters when Clear is clicked and keeps the other parameters', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { findByRole, findByText } = render(<ConsolePage />);
+      fireEvent.click(await findByRole('button', { name: 'Clear' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual([]);
+      });
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    });
+
+    it('ignores a status parameter that is not an existing status and does not write it back', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Removed&status=Done',
+      );
+
+      const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      expect(queryByText('TDPM Console port')).toBeNull();
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+    });
+
+    it('re-reads the status parameters from the URL when popstate fires while the Stories tab is shown', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      act(() => {
+        window.history.replaceState(
+          {},
+          '',
+          '/projects/acme/stories?k=token&status=Unread',
+        );
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+      });
+    });
+
+    it('writes the status parameters again when Stories is selected from another tab', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+
+      const { container, findByRole, findByText } = render(<ConsolePage />);
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(statusParams()).toEqual([]);
+
+      const storiesTab = tabs().find((el) =>
+        el.textContent?.includes('Stories'),
+      );
+      expect(storiesTab).toBeTruthy();
+      fireEvent.click(storiesTab as HTMLAnchorElement);
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+    });
+  });
 });

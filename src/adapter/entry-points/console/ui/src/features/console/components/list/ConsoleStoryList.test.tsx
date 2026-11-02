@@ -2077,5 +2077,88 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(getByRole('button', { name: 'Clear' }));
       expect(onClearStatuses).toHaveBeenCalledTimes(1);
     });
+
+    it('disables Move up and Move down for every visible story while a status selection is active, with a title explaining why', () => {
+      const cases: {
+        label: string;
+        selectedStatuses: string[];
+        rows: number;
+      }[] = [
+        {
+          label: 'one status leaves one story',
+          selectedStatuses: ['Unread'],
+          rows: 1,
+        },
+        {
+          label: 'two statuses leave two stories',
+          selectedStatuses: ['Unread', 'In Tmux by agent'],
+          rows: 2,
+        },
+      ];
+      for (const { label, selectedStatuses, rows } of cases) {
+        const { getAllByRole, unmount } = render(
+          <ConsoleStoryList
+            {...filterProps}
+            selectedStatuses={selectedStatuses}
+          />,
+        );
+        const upButtons = getAllByRole('button', { name: 'Move up' });
+        const downButtons = getAllByRole('button', { name: 'Move down' });
+        expect({
+          label,
+          up: upButtons.length,
+          down: downButtons.length,
+        }).toEqual({ label, up: rows, down: rows });
+        for (const button of [...upButtons, ...downButtons]) {
+          expect({
+            label,
+            disabled: button.hasAttribute('disabled'),
+            title: button.getAttribute('title'),
+          }).toEqual({
+            label,
+            disabled: true,
+            title: 'Clear the status filter to reorder stories',
+          });
+        }
+        unmount();
+      }
+    });
+
+    it('does not call onReorderStory when a Move button is clicked while a status selection is active', async () => {
+      const onReorderStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Unread', 'In Tmux by agent']}
+          onReorderStory={onReorderStory}
+        />,
+      );
+      await act(async () => {
+        fireEvent.click(getAllByRole('button', { name: 'Move up' })[1]);
+      });
+      expect(onReorderStory).not.toHaveBeenCalled();
+    });
+
+    it('keeps the edge-based Move rules and sets no title when no status is selected', () => {
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
+      );
+      const upButtons = getAllByRole('button', { name: 'Move up' });
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      expect({
+        firstUpDisabled: upButtons[0].hasAttribute('disabled'),
+        secondUpDisabled: upButtons[1].hasAttribute('disabled'),
+        firstDownDisabled: downButtons[0].hasAttribute('disabled'),
+        lastDownDisabled: downButtons[2].hasAttribute('disabled'),
+      }).toEqual({
+        firstUpDisabled: true,
+        secondUpDisabled: false,
+        firstDownDisabled: false,
+        lastDownDisabled: true,
+      });
+      for (const button of [...upButtons, ...downButtons]) {
+        expect(button).not.toHaveAttribute('title');
+      }
+    });
   });
 });

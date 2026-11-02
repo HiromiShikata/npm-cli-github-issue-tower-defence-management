@@ -1,6 +1,8 @@
 import {
   CONSOLE_STORY_STATUS_SELECTION_KEY,
   filterConsoleStoryEntriesByStatusSelection,
+  formatConsoleStoryStatusSelectionIntoSearch,
+  parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
@@ -180,6 +182,117 @@ describe('consoleStoryStatusSelection', () => {
           filterConsoleStoryEntriesByStatusSelection(stories, selected),
         ),
       }).toEqual({ label, value: expected });
+    }
+  });
+
+  it('parses every status query parameter into status names, keeping order and skipping empty or repeated values', () => {
+    const cases: { label: string; search: string; expected: string[] }[] = [
+      { label: 'empty query', search: '', expected: [] },
+      { label: 'no status parameter', search: '?k=token', expected: [] },
+      { label: 'one status', search: '?status=Done', expected: ['Done'] },
+      {
+        label: 'repeated status parameters keep their order',
+        search: '?k=token&status=Done&status=Unread',
+        expected: ['Done', 'Unread'],
+      },
+      {
+        label: 'a repeated name is kept once',
+        search: '?status=Done&status=Done',
+        expected: ['Done'],
+      },
+      { label: 'an empty value is ignored', search: '?status=', expected: [] },
+      {
+        label: 'a plus-encoded name with spaces is decoded',
+        search: '?status=In+Tmux+by+agent',
+        expected: ['In Tmux by agent'],
+      },
+      {
+        label: 'a percent-encoded name with spaces is decoded',
+        search: '?status=In%20Tmux%20by%20agent',
+        expected: ['In Tmux by agent'],
+      },
+    ];
+    for (const { label, search, expected } of cases) {
+      expect({
+        label,
+        value: parseConsoleStoryStatusSelectionFromSearch(search),
+      }).toEqual({ label, value: expected });
+    }
+  });
+
+  it('formats the selection into the query, replacing previous status parameters and keeping other parameters in their order', () => {
+    const cases: {
+      label: string;
+      search: string;
+      statuses: string[];
+      expected: string;
+    }[] = [
+      {
+        label: 'empty selection and empty query stay empty',
+        search: '',
+        statuses: [],
+        expected: '',
+      },
+      {
+        label: 'selection is appended after other parameters',
+        search: '?k=token',
+        statuses: ['Done'],
+        expected: '?k=token&status=Done',
+      },
+      {
+        label: 'previous status parameters are replaced',
+        search: '?status=Unread&k=token',
+        statuses: ['Done'],
+        expected: '?k=token&status=Done',
+      },
+      {
+        label: 'an empty selection removes only the status parameters',
+        search: '?k=token&status=Done&status=Unread',
+        statuses: [],
+        expected: '?k=token',
+      },
+      {
+        label: 'selection order is preserved',
+        search: '?k=token',
+        statuses: ['Unread', 'Done'],
+        expected: '?k=token&status=Unread&status=Done',
+      },
+      {
+        label: 'a repeated name is written once',
+        search: '',
+        statuses: ['Done', 'Done'],
+        expected: '?status=Done',
+      },
+      {
+        label: 'a name with spaces is encoded',
+        search: '',
+        statuses: ['In Tmux by agent'],
+        expected: '?status=In+Tmux+by+agent',
+      },
+    ];
+    for (const { label, search, statuses, expected } of cases) {
+      expect({
+        label,
+        value: formatConsoleStoryStatusSelectionIntoSearch(search, statuses),
+      }).toEqual({ label, value: expected });
+    }
+  });
+
+  it('parses back exactly the selection that was formatted into the query', () => {
+    const selections: string[][] = [
+      [],
+      ['Done'],
+      ['Unread', 'In Tmux by agent'],
+    ];
+    for (const statuses of selections) {
+      const search = formatConsoleStoryStatusSelectionIntoSearch(
+        '?k=token',
+        statuses,
+      );
+      expect({
+        statuses,
+        value: parseConsoleStoryStatusSelectionFromSearch(search),
+      }).toEqual({ statuses, value: statuses });
     }
   });
 });
