@@ -1776,6 +1776,81 @@ describe('webServer new routes integration', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('returns 502 with the GitHub error message when reorderstory receives a GraphQL response without data', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const gitHubMessage = 'API rate limit already exceeded for user ID 1.';
+    const updateStoryList = jest
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          `GitHub GraphQL API returned no data for updateStoryList: ${gitHubMessage}`,
+        ),
+      );
+    const projectWithTwoStories: Project = {
+      ...mock<Project>(),
+      id: 'PVT_1',
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      status: {
+        name: 'Status',
+        fieldId: 'statusField',
+        statuses: [],
+      },
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_first',
+            name: 'First story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_second',
+            name: 'Second story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    };
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository: mock<IssueRepository>(),
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: projectWithTwoStories } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      resolveProjectRepository: () => ({
+        updateStoryList,
+        getProject: jest.fn().mockResolvedValue(projectWithTwoStories),
+      }),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/reorderstory?k=${testToken}`,
+        { pjcode: 'acme', storyOptionId: 'opt_first', direction: 'down' },
+      );
+      expect(response.statusCode).toBe(502);
+      expect(JSON.parse(response.body)).toEqual({
+        error: `GitHub GraphQL API returned no data for updateStoryList: ${gitHubMessage}`,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('resolveFlatInTmuxFilePath', () => {
