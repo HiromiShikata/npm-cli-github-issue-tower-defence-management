@@ -11253,3 +11253,156 @@ describe('ConsolePage Set Depended Issue submission and Undo return to the submi
     );
   });
 });
+
+describe('ConsolePage story status filter', () => {
+  const installStoriesFetch = (): void => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              statusOptions: [
+                { id: 'd', name: 'Done', color: 'GREEN' },
+                { id: 'u', name: 'Unread', color: 'ORANGE' },
+              ],
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [
+                    {
+                      number: 901,
+                      title: 'Open story task',
+                      url: 'https://github.com/o/r/issues/901',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_OPEN',
+                      itemId: 'PVTI_OPEN',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Unread',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                },
+                {
+                  storyName: 'Completed Story',
+                  storyOptionId: 'st3',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [
+                    {
+                      number: 902,
+                      title: 'Nested done task',
+                      url: 'https://github.com/o/r/issues/902',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_DONE',
+                      itemId: 'PVTI_DONE',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'Completed Story',
+                      status: 'Done',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('initializes the status checkboxes from console-story-selected-statuses in localStorage', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Done"]');
+    installStoriesFetch();
+
+    const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+    expect(await findByText('Completed Story')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+    expect(
+      await findByRole('checkbox', { name: 'Unread' }),
+    ).not.toBeChecked();
+    expect(queryByText('TDPM Console port')).toBeNull();
+  });
+
+  it('writes each checkbox change to console-story-selected-statuses in localStorage', async () => {
+    installStoriesFetch();
+
+    const { findByRole } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe(
+      '["Done"]',
+    );
+    fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe(
+      '["Done","Unread"]',
+    );
+  });
+
+  it('empties the saved selection and shows every story again when Clear is clicked', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Done"]');
+    installStoriesFetch();
+
+    const { findByRole, findByText } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Clear' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe('[]');
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(
+      await findByRole('checkbox', { name: 'Done' }),
+    ).not.toBeChecked();
+  });
+
+  it('falls back to no selection and shows every story when the saved value is corrupted', async () => {
+    localStorage.setItem('console-story-selected-statuses', 'not json [');
+    installStoriesFetch();
+
+    const { findByRole, findByText } = render(<ConsolePage />);
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByText('Completed Story')).toBeInTheDocument();
+    expect(
+      await findByRole('checkbox', { name: 'Done' }),
+    ).not.toBeChecked();
+    expect(
+      await findByRole('checkbox', { name: 'Unread' }),
+    ).not.toBeChecked();
+  });
+});
