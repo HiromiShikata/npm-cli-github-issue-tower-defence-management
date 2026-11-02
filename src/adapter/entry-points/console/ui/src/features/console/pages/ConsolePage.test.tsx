@@ -11542,6 +11542,28 @@ describe('ConsolePage story status filter', () => {
       });
     });
 
+    it('falls back to the saved selection when popstate lands on a Stories entry without status parameters, as the first render does', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+
+      const { findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+      act(() => {
+        window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+        expect(statusParams()).toEqual(['Done']);
+      });
+    });
+
     it('writes the status parameters again when Stories is selected from another tab', async () => {
       localStorage.setItem('console-story-selected-statuses', '["Done"]');
       installStoriesFetch();
