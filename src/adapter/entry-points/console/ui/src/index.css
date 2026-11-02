@@ -3629,6 +3629,28 @@ body {
   max-width: 120px;
 }
 
+@media (max-width: 600px) {
+  .console-story-task-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .console-story-task-title,
+  .console-story-task-row > .console-op-group,
+  .console-story-task-error {
+    flex: 1 1 100%;
+  }
+
+  .console-story-task-row > .console-op-group {
+    min-width: 0;
+  }
+
+  .console-story-task-row > .console-op-group .console-story-select {
+    width: 100%;
+  }
+}
+
 .console-story-chevron {
   background: transparent;
   border: none;
