@@ -11358,9 +11358,7 @@ describe('ConsolePage story status filter', () => {
     const { findByRole, findByText, queryByText } = render(<ConsolePage />);
     expect(await findByText('Completed Story')).toBeInTheDocument();
     expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
-    expect(
-      await findByRole('checkbox', { name: 'Unread' }),
-    ).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
@@ -11386,9 +11384,7 @@ describe('ConsolePage story status filter', () => {
     fireEvent.click(await findByRole('button', { name: 'Clear' }));
     expect(localStorage.getItem('console-story-selected-statuses')).toBe('[]');
     expect(await findByText('TDPM Console port')).toBeInTheDocument();
-    expect(
-      await findByRole('checkbox', { name: 'Done' }),
-    ).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
   });
 
   it('falls back to no selection and shows every story when the saved value is corrupted', async () => {
@@ -11398,11 +11394,7 @@ describe('ConsolePage story status filter', () => {
     const { findByRole, findByText } = render(<ConsolePage />);
     expect(await findByText('TDPM Console port')).toBeInTheDocument();
     expect(await findByText('Completed Story')).toBeInTheDocument();
-    expect(
-      await findByRole('checkbox', { name: 'Done' }),
-    ).not.toBeChecked();
-    expect(
-      await findByRole('checkbox', { name: 'Unread' }),
-    ).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
   });
 });
