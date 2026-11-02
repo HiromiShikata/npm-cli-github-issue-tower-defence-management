@@ -279,6 +279,15 @@ export const createIssueWithAttachments = async (
   }
 };
 
+const resolveStoryStatusSelectionFromLocation = (): string[] => {
+  const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
+    window.location.search,
+  );
+  return statusesFromUrl.length > 0
+    ? statusesFromUrl
+    : readConsoleStoryStatusSelection();
+};
+
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const pjcodeRef = useRef(pjcode);
@@ -984,14 +993,7 @@ export const ConsolePage = () => {
   }, []);
 
   const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
-    () => {
-      const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
-        window.location.search,
-      );
-      return statusesFromUrl.length > 0
-        ? statusesFromUrl
-        : readConsoleStoryStatusSelection();
-    },
+    resolveStoryStatusSelectionFromLocation,
   );
   const statusesFromPopStateRef = useRef<string[] | null>(null);
 
@@ -1051,11 +1053,9 @@ export const ConsolePage = () => {
       if (parseTabFromPath(window.location.pathname) !== 'stories') {
         return;
       }
-      const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
-        window.location.search,
-      );
-      statusesFromPopStateRef.current = statusesFromUrl;
-      setSelectedStoryStatuses(statusesFromUrl);
+      const statusesFromLocation = resolveStoryStatusSelectionFromLocation();
+      statusesFromPopStateRef.current = statusesFromLocation;
+      setSelectedStoryStatuses(statusesFromLocation);
     };
     window.addEventListener('popstate', handlePopState);
     return () => {
