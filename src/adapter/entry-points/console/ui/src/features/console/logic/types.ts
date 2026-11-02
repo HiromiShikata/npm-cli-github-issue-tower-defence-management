@@ -21,6 +21,7 @@ export type ConsoleListItem = {
   labels: string[];
   createdAt: string;
   relatedOpenPullRequestUrls: string[];
+  isClosed?: boolean;
 };
 
 export type ConsoleFieldOption = {

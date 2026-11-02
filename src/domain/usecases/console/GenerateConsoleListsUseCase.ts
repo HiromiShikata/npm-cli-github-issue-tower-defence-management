@@ -35,6 +35,7 @@ export type ConsoleListItem = {
   labels: string[];
   createdAt: string;
   relatedOpenPullRequestUrls: string[];
+  isClosed?: boolean;
 };
 
 export type ConsoleFieldOption = {
@@ -196,12 +197,13 @@ export class GenerateConsoleListsUseCase {
           );
         }
         const storyItems = itemsByStoryOptionId.get(storyOptionId) ?? [];
-        storyItems.push(
-          this.projectItem(
+        storyItems.push({
+          ...this.projectItem(
             issue,
             relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
           ),
-        );
+          isClosed: issue.isClosed,
+        });
         itemsByStoryOptionId.set(storyOptionId, storyItems);
       }
     }

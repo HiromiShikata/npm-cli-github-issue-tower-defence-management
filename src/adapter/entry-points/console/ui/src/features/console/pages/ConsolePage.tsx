@@ -144,6 +144,13 @@ const isSameNavigationPosition = (
   left.tab === right.tab &&
   left.itemKey === right.itemKey;
 
+const countsAsOpenBadge = (item: ConsoleListItem): boolean => {
+  if (item.isClosed !== undefined) {
+    return !item.isClosed;
+  }
+  return item.status !== 'Done';
+};
+
 const moveTaskToStory = (
   entries: ConsoleStoryEntry[],
   projectItemId: string,
@@ -162,7 +169,7 @@ const moveTaskToStory = (
   ) {
     return entries;
   }
-  const countsAsOpen = movingItem.status !== 'Done' ? 1 : 0;
+  const countsAsOpen = countsAsOpenBadge(movingItem) ? 1 : 0;
   return entries.map((entry) => {
     if (entry.storyOptionId === sourceEntry.storyOptionId) {
       return {
