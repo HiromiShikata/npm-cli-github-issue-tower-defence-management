@@ -1,3 +1,10 @@
+## [2.184.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.6...v2.184.7) (2026-11-02)
+
+
+### Bug Fixes
+
+* **project-repository:** surface GitHub GraphQL error when story option update returns no data ([#3685](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3685)) ([78d94da](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78d94da7657ba12bcf7bdcc2fb7c8e3120c1f49e))
+
 ## [2.184.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.184.5...v2.184.6) (2026-11-02)
 
 
