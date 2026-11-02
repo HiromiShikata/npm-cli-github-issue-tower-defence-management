@@ -1436,18 +1436,36 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const latestStorySnapshotRef = useRef({
+    generatedAt: storiesSnapshot?.generatedAt,
+    rawStoryEntries,
+  });
+  useEffect(() => {
+    latestStorySnapshotRef.current = {
+      generatedAt: storiesSnapshot?.generatedAt,
+      rawStoryEntries,
+    };
+  });
+
   const handleSetTaskStory = useCallback(
     async (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
     ): Promise<void> => {
       await operations.setStory(item, option);
-      setLocalStoryEntriesOverride({
-        generatedAt: storiesSnapshot?.generatedAt,
-        stories: moveTaskToStory(storyEntries, item.projectItemId, option),
+      setLocalStoryEntriesOverride((previous) => {
+        const latest = latestStorySnapshotRef.current;
+        const baseEntries =
+          previous !== null && previous.generatedAt === latest.generatedAt
+            ? previous.stories
+            : latest.rawStoryEntries;
+        return {
+          generatedAt: latest.generatedAt,
+          stories: moveTaskToStory(baseEntries, item.projectItemId, option),
+        };
       });
     },
-    [operations, storyEntries, storiesSnapshot?.generatedAt],
+    [operations],
   );
 
   const prsTabSummaries = useConsolePrsTabSummaries(
