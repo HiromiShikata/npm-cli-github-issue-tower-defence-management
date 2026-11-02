@@ -5,6 +5,7 @@ import {
   Sleep,
 } from '../services/commentCreateWithDedupRetry';
 import { redactSecrets } from '../services/secretRedaction';
+import { GitHubConfirmedNotFoundError } from './ClearDependedIssueURLUseCase';
 
 type ConsoleErrorReportRepository = Pick<
   IssueRepository,
@@ -12,9 +13,35 @@ type ConsoleErrorReportRepository = Pick<
   | 'createNewIssue'
   | 'createCommentByUrl'
   | 'getIssueOrPullRequestComments'
+  | 'getIssueOrPullRequestState'
 >;
 
+const ISSUE_MEMORY_DURATION_MILLISECONDS = 3 * 60 * 60 * 1000;
+const RATE_LIMIT_GROUP = 'API rate limit';
+const RATE_LIMIT_CANONICAL_TITLE = 'Console error: API rate limit exceeded';
+const RATE_LIMIT_SEARCH_PHRASE = 'rate limit';
+const RATE_LIMIT_MESSAGE_PATTERN = /rate limit/i;
+const CONSOLE_ERROR_TITLE_PREFIX = 'Console error';
+
+type RememberedIssue = {
+  issueUrl: string;
+  rememberedAtMilliseconds: number;
+};
+
+type IssueGroup = {
+  groupKey: string;
+  createTitle: string;
+  searchTitle: string;
+  matchesSearchResultTitle: (resultTitle: string) => boolean;
+};
+
 export class ConsoleErrorReportUseCase {
+  private readonly latestRunByGroupKey = new Map<string, Promise<void>>();
+  private readonly rememberedIssueByGroupKey = new Map<
+    string,
+    RememberedIssue
+  >();
+
   constructor(
     private readonly issueRepository: ConsoleErrorReportRepository,
     private readonly sleep: Sleep = realSleep,
@@ -36,8 +63,24 @@ export class ConsoleErrorReportUseCase {
     const stack = redactSecrets(
       error instanceof Error && error.stack ? error.stack : String(error),
     );
-    const title = `Console error: ${errorName}: ${message.slice(0, 80)}`;
+    const title = `${CONSOLE_ERROR_TITLE_PREFIX}: ${errorName}: ${message.slice(0, 80)}`;
     const occurredAt = new Date().toISOString();
+    const group: IssueGroup = RATE_LIMIT_MESSAGE_PATTERN.test(message)
+      ? {
+          groupKey: `${owner}/${repo}|${RATE_LIMIT_GROUP}`,
+          createTitle: RATE_LIMIT_CANONICAL_TITLE,
+          searchTitle: RATE_LIMIT_SEARCH_PHRASE,
+          matchesSearchResultTitle: (resultTitle) =>
+            resultTitle.includes(CONSOLE_ERROR_TITLE_PREFIX) &&
+            RATE_LIMIT_MESSAGE_PATTERN.test(resultTitle),
+        }
+      : {
+          groupKey: `${owner}/${repo}|${title}`,
+          createTitle: title,
+          searchTitle: title,
+          matchesSearchResultTitle: (resultTitle) =>
+            resultTitle.endsWith(title),
+        };
 
     const buildBody = (prefix: string): string =>
       [
@@ -63,36 +106,124 @@ export class ConsoleErrorReportUseCase {
         `\`\`\``,
       ].join('\n');
 
+    const previousRun =
+      this.latestRunByGroupKey.get(group.groupKey) ?? Promise.resolve();
+    const currentRun = previousRun.then(() =>
+      this.reportWithinTurn({ owner, repo, group, buildBody }),
+    );
+    this.latestRunByGroupKey.set(group.groupKey, currentRun);
     try {
+      await currentRun;
+    } finally {
+      if (this.latestRunByGroupKey.get(group.groupKey) === currentRun) {
+        this.latestRunByGroupKey.delete(group.groupKey);
+      }
+    }
+  };
+
+  private reportWithinTurn = async (params: {
+    owner: string;
+    repo: string;
+    group: IssueGroup;
+    buildBody: (prefix: string) => string;
+  }): Promise<void> => {
+    const { owner, repo, group, buildBody } = params;
+    try {
+      this.removeExpiredRememberedIssues();
+      const rememberedIssueUrl = await this.findOpenRememberedIssueUrl(
+        group.groupKey,
+      );
+      if (rememberedIssueUrl !== null) {
+        await this.createCommentByUrlWithDedup(
+          rememberedIssueUrl,
+          buildBody('Console error recurrence'),
+        );
+        return;
+      }
+
       const results = await this.issueRepository.searchIssue({
         owner,
         repositoryName: repo,
         type: 'issue',
         state: 'open',
-        title,
+        title: group.searchTitle,
       });
-      const existing = results.find((r) => r.title === title);
+      const existing = results.find((r) =>
+        group.matchesSearchResultTitle(r.title),
+      );
       if (existing) {
+        this.rememberIssue(group.groupKey, existing.url);
         await this.createCommentByUrlWithDedup(
           existing.url,
           buildBody('Console error recurrence'),
         );
-      } else {
-        await this.issueRepository.createNewIssue(
-          owner,
-          repo,
-          title,
-          buildBody('Console error'),
-          [],
-          [],
-        );
+        return;
       }
+
+      const createdIssueNumber = await this.issueRepository.createNewIssue(
+        owner,
+        repo,
+        group.createTitle,
+        buildBody('Console error'),
+        [],
+        [],
+      );
+      this.rememberIssue(
+        group.groupKey,
+        `https://github.com/${owner}/${repo}/issues/${createdIssueNumber}`,
+      );
     } catch (reportError) {
       console.error(
         'ConsoleErrorReportUseCase: failed to report error:',
         reportError,
       );
     }
+  };
+
+  private removeExpiredRememberedIssues = (): void => {
+    const nowMilliseconds = Date.now();
+    for (const [groupKey, remembered] of this.rememberedIssueByGroupKey) {
+      if (!this.isRememberedIssueValid(remembered, nowMilliseconds)) {
+        this.rememberedIssueByGroupKey.delete(groupKey);
+      }
+    }
+  };
+
+  private findOpenRememberedIssueUrl = async (
+    groupKey: string,
+  ): Promise<string | null> => {
+    const remembered = this.rememberedIssueByGroupKey.get(groupKey) ?? null;
+    if (remembered === null) {
+      return null;
+    }
+    try {
+      const issueState = await this.issueRepository.getIssueOrPullRequestState(
+        remembered.issueUrl,
+      );
+      if (issueState.state.toLowerCase() === 'open') {
+        return remembered.issueUrl;
+      }
+    } catch (stateError) {
+      if (!(stateError instanceof GitHubConfirmedNotFoundError)) {
+        throw stateError;
+      }
+    }
+    this.rememberedIssueByGroupKey.delete(groupKey);
+    return null;
+  };
+
+  private isRememberedIssueValid = (
+    remembered: RememberedIssue,
+    nowMilliseconds: number,
+  ): boolean =>
+    nowMilliseconds - remembered.rememberedAtMilliseconds <
+    ISSUE_MEMORY_DURATION_MILLISECONDS;
+
+  private rememberIssue = (groupKey: string, issueUrl: string): void => {
+    this.rememberedIssueByGroupKey.set(groupKey, {
+      issueUrl,
+      rememberedAtMilliseconds: Date.now(),
+    });
   };
 
   private createCommentByUrlWithDedup = async (
