@@ -3428,6 +3428,27 @@ body {
   align-items: stretch;
 }
 
+.console-story-status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 4px 8px;
+  border: none;
+}
+
+.console-story-status-filter legend {
+  padding: 0;
+  margin-right: 8px;
+}
+
+.console-story-status-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .console-story-list {
   list-style: none;
   margin: 0;
