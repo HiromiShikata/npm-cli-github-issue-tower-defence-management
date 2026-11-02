@@ -11572,5 +11572,97 @@ describe('ConsolePage story status filter', () => {
       });
       expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
     });
+
+    it('keeps the status parameters and the checkboxes consistent with the URL across Back and Forward through another tab', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { container, findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      const otherTabPath = new URL((otherTab as HTMLAnchorElement).href)
+        .pathname;
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(window.location.pathname).toBe(otherTabPath);
+
+      const storiesTab = tabs().find((el) =>
+        el.textContent?.includes('Stories'),
+      );
+      expect(storiesTab).toBeTruthy();
+      fireEvent.click(storiesTab as HTMLAnchorElement);
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      window.history.back();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(otherTabPath);
+      });
+
+      window.history.forward();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/projects/acme/stories');
+        expect(statusParams()).toEqual(['Done']);
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
+      });
+    });
+
+    it('applies the status parameters of a Stories entry reached by Forward when another tab was shown', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { container, findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      const otherTabPath = new URL((otherTab as HTMLAnchorElement).href)
+        .pathname;
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(window.location.pathname).toBe(otherTabPath);
+
+      window.history.pushState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+      window.history.back();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(otherTabPath);
+      });
+
+      window.history.forward();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/projects/acme/stories');
+        expect(statusParams()).toEqual(['Unread']);
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+      });
+    });
   });
 });
