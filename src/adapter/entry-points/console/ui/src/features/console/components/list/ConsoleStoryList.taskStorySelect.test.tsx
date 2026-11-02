@@ -249,7 +249,9 @@ describe('ConsoleStoryList task story select', () => {
             'select.console-story-select[aria-label="Set story"]',
           ).length,
         }).toEqual({ taskTitle: expectedRow.taskTitle, selectCount: 1 });
-        expect(storySelectIn(row)).toHaveValue(expectedRow.expectedStoryOptionId);
+        expect(storySelectIn(row)).toHaveValue(
+          expectedRow.expectedStoryOptionId,
+        );
       }
       unmount();
     }
@@ -303,9 +305,12 @@ describe('ConsoleStoryList task story select', () => {
       const { container, unmount } = renderStoryList({ onSetTaskStory });
       expandStory(container, testCase.fromStoryName);
 
-      fireEvent.change(storySelectIn(taskRowTitled(container, testCase.taskTitle)), {
-        target: { value: testCase.targetStoryOptionId },
-      });
+      fireEvent.change(
+        storySelectIn(taskRowTitled(container, testCase.taskTitle)),
+        {
+          target: { value: testCase.targetStoryOptionId },
+        },
+      );
 
       expect({
         name: testCase.name,
@@ -324,9 +329,12 @@ describe('ConsoleStoryList task story select', () => {
     const { container } = renderStoryList({ onSetTaskStory });
     expandStory(container, 'Story Alpha');
 
-    fireEvent.change(storySelectIn(taskRowTitled(container, 'Alpha task one')), {
-      target: { value: 'story-alpha' },
-    });
+    fireEvent.change(
+      storySelectIn(taskRowTitled(container, 'Alpha task one')),
+      {
+        target: { value: 'story-alpha' },
+      },
+    );
 
     expect(onSetTaskStory).not.toHaveBeenCalled();
   });
@@ -386,9 +394,12 @@ describe('ConsoleStoryList task story select', () => {
     const { container } = renderStoryList({ onSetTaskStory });
     expandStory(container, 'Story Alpha');
 
-    fireEvent.change(storySelectIn(taskRowTitled(container, 'Alpha task one')), {
-      target: { value: 'story-beta' },
-    });
+    fireEvent.change(
+      storySelectIn(taskRowTitled(container, 'Alpha task one')),
+      {
+        target: { value: 'story-beta' },
+      },
+    );
 
     await waitFor(() =>
       expect(
@@ -424,9 +435,12 @@ describe('ConsoleStoryList task story select', () => {
       const { container, unmount } = renderStoryList({ onSetTaskStory });
       expandStory(container, 'Story Alpha');
 
-      fireEvent.change(storySelectIn(taskRowTitled(container, 'Alpha task one')), {
-        target: { value: 'story-beta' },
-      });
+      fireEvent.change(
+        storySelectIn(taskRowTitled(container, 'Alpha task one')),
+        {
+          target: { value: 'story-beta' },
+        },
+      );
 
       await waitFor(() =>
         expect(

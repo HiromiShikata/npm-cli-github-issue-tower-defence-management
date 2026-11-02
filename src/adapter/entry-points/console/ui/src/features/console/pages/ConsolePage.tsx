@@ -1437,7 +1437,10 @@ export const ConsolePage = () => {
   );
 
   const handleSetTaskStory = useCallback(
-    async (item: ConsoleListItem, option: ConsoleFieldOption): Promise<void> => {
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+    ): Promise<void> => {
       await operations.setStory(item, option);
       setLocalStoryEntriesOverride({
         generatedAt: storiesSnapshot?.generatedAt,
