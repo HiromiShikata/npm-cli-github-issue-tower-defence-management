@@ -26,7 +26,10 @@ import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleExplicitProjectSelection } from '../hooks/useConsoleExplicitProjectSelection';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
-import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
+import {
+  parseTabFromPath,
+  useConsoleNavigation,
+} from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
@@ -63,6 +66,13 @@ import {
   loadCommentDrafts,
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
+import {
+  formatConsoleStoryStatusSelectionIntoSearch,
+  parseConsoleStoryStatusSelectionFromSearch,
+  readConsoleStoryStatusSelection,
+  resolveEffectiveConsoleStoryStatusSelection,
+  writeConsoleStoryStatusSelection,
+} from '../logic/consoleStoryStatusSelection';
 import {
   buildConsoleListRows,
   resolveItemStory,
@@ -267,6 +277,15 @@ export const createIssueWithAttachments = async (
       ),
     );
   }
+};
+
+const resolveStoryStatusSelectionFromLocation = (): string[] => {
+  const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
+    window.location.search,
+  );
+  return statusesFromUrl.length > 0
+    ? statusesFromUrl
+    : readConsoleStoryStatusSelection();
 };
 
 export const ConsolePage = () => {
@@ -973,7 +992,77 @@ export const ConsolePage = () => {
     });
   }, []);
 
+  const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
+    resolveStoryStatusSelectionFromLocation,
+  );
+  const statusesFromPopStateRef = useRef<string[] | null>(null);
+
+  const handleToggleStoryStatus = useCallback((status: string): void => {
+    statusesFromPopStateRef.current = null;
+    setSelectedStoryStatuses((prev) => {
+      const next = prev.includes(status)
+        ? prev.filter((name) => name !== status)
+        : [...prev, status];
+      writeConsoleStoryStatusSelection(next);
+      return next;
+    });
+  }, []);
+
+  const handleClearStoryStatuses = useCallback((): void => {
+    statusesFromPopStateRef.current = null;
+    writeConsoleStoryStatusSelection([]);
+    setSelectedStoryStatuses([]);
+  }, []);
+
   const storiesSnapshot = snapshots.stories;
+  const storyStatusOptionNames = useMemo(
+    () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
+    [storiesSnapshot],
+  );
+
+  useEffect(() => {
+    const statusesFromPopState = statusesFromPopStateRef.current;
+    if (
+      statusesFromPopState !== null &&
+      statusesFromPopState !== selectedStoryStatuses
+    ) {
+      return;
+    }
+    if (activeTab !== 'stories' || storyStatusOptionNames.length === 0) {
+      return;
+    }
+    const effectiveStatuses = resolveEffectiveConsoleStoryStatusSelection(
+      selectedStoryStatuses,
+      storyStatusOptionNames,
+    );
+    const search = formatConsoleStoryStatusSelectionIntoSearch(
+      window.location.search,
+      effectiveStatuses,
+    );
+    if (search !== window.location.search) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${search}${window.location.hash}`,
+      );
+    }
+  }, [activeTab, selectedStoryStatuses, storyStatusOptionNames]);
+
+  useEffect(() => {
+    const handlePopState = (): void => {
+      if (parseTabFromPath(window.location.pathname) !== 'stories') {
+        return;
+      }
+      const statusesFromLocation = resolveStoryStatusSelectionFromLocation();
+      statusesFromPopStateRef.current = statusesFromLocation;
+      setSelectedStoryStatuses(statusesFromLocation);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   const rawStoryEntries = storiesSnapshot?.stories ?? [];
   const storyEntries =
     localStoryEntriesOverride !== null &&
@@ -1542,6 +1631,10 @@ export const ConsolePage = () => {
             onSelectColor={handleSelectColor}
             onToggleArchived={handleToggleArchived}
             onToggleDone={handleToggleDone}
+            selectedStatuses={selectedStoryStatuses}
+            statusOptionNames={storyStatusOptionNames}
+            onToggleStatus={handleToggleStoryStatus}
+            onClearStatuses={handleClearStoryStatuses}
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}

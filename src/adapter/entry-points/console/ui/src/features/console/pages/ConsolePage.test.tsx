@@ -11253,3 +11253,438 @@ describe('ConsolePage Set Depended Issue submission and Undo return to the submi
     );
   });
 });
+
+describe('ConsolePage story status filter', () => {
+  const installStoriesFetch = (): void => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              statusOptions: [
+                { id: 'd', name: 'Done', color: 'GREEN' },
+                { id: 'u', name: 'Unread', color: 'ORANGE' },
+              ],
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [
+                    {
+                      number: 901,
+                      title: 'Open story task',
+                      url: 'https://github.com/o/r/issues/901',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_OPEN',
+                      itemId: 'PVTI_OPEN',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Unread',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                },
+                {
+                  storyName: 'Completed Story',
+                  storyOptionId: 'st3',
+                  color: 'BLUE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [
+                    {
+                      number: 902,
+                      title: 'Nested done task',
+                      url: 'https://github.com/o/r/issues/902',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_DONE',
+                      itemId: 'PVTI_DONE',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'Completed Story',
+                      status: 'Done',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('initializes the status checkboxes from console-story-selected-statuses in localStorage', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Done"]');
+    installStoriesFetch();
+
+    const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+    expect(await findByText('Completed Story')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+    expect(queryByText('TDPM Console port')).toBeNull();
+  });
+
+  it('writes each checkbox change to console-story-selected-statuses in localStorage', async () => {
+    installStoriesFetch();
+
+    const { findByRole } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe(
+      '["Done"]',
+    );
+    fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe(
+      '["Done","Unread"]',
+    );
+  });
+
+  it('empties the saved selection and shows every story again when Clear is clicked', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Done"]');
+    installStoriesFetch();
+
+    const { findByRole, findByText } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Clear' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe('[]');
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+  });
+
+  it('falls back to no selection and shows every story when the saved value is corrupted', async () => {
+    localStorage.setItem('console-story-selected-statuses', 'not json [');
+    installStoriesFetch();
+
+    const { findByRole, findByText } = render(<ConsolePage />);
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByText('Completed Story')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+  });
+
+  describe('status parameters in the URL', () => {
+    const statusParams = (): string[] =>
+      new URLSearchParams(window.location.search).getAll('status');
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('applies the status parameters in the URL over the saved selection', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+
+      const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+      expect(queryByText('Completed Story')).toBeNull();
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+      expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    });
+
+    it('reads every repeated status parameter as part of the selection', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done&status=Unread',
+      );
+
+      const { findByRole, findByText } = render(<ConsolePage />);
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+    });
+
+    it('writes the saved selection into the status parameters when the URL has none', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+
+      const { findByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(window.location.pathname).toBe('/projects/acme/stories');
+    });
+
+    it('mirrors each checkbox change into the status parameters with replaceState and keeps the other parameters and the hash', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token#keep-me',
+      );
+      const pushStateSpy = jest.spyOn(window.history, 'pushState');
+      const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
+
+      const { findByRole } = render(<ConsolePage />);
+      fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done', 'Unread']);
+      });
+
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(window.location.pathname).toBe('/projects/acme/stories');
+      expect(window.location.hash).toBe('#keep-me');
+      expect(pushStateSpy).not.toHaveBeenCalled();
+      expect(replaceStateSpy).toHaveBeenCalled();
+    });
+
+    it('removes the status parameters when Clear is clicked and keeps the other parameters', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { findByRole, findByText } = render(<ConsolePage />);
+      fireEvent.click(await findByRole('button', { name: 'Clear' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual([]);
+      });
+      expect(new URLSearchParams(window.location.search).get('k')).toBe(
+        'token',
+      );
+      expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    });
+
+    it('ignores a status parameter that is not an existing status and does not write it back', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Removed&status=Done',
+      );
+
+      const { findByRole, findByText, queryByText } = render(<ConsolePage />);
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      expect(queryByText('TDPM Console port')).toBeNull();
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+    });
+
+    it('re-reads the status parameters from the URL when popstate fires while the Stories tab is shown', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+      act(() => {
+        window.history.replaceState(
+          {},
+          '',
+          '/projects/acme/stories?k=token&status=Unread',
+        );
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+      });
+    });
+
+    it('falls back to the saved selection when popstate lands on a Stories entry without status parameters, as the first render does', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+
+      const { findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+      act(() => {
+        window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+        expect(statusParams()).toEqual(['Done']);
+      });
+    });
+
+    it('writes the status parameters again when Stories is selected from another tab', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+
+      const { container, findByRole, findByText } = render(<ConsolePage />);
+      expect(await findByText('Completed Story')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(statusParams()).toEqual([]);
+
+      const storiesTab = tabs().find((el) =>
+        el.textContent?.includes('Stories'),
+      );
+      expect(storiesTab).toBeTruthy();
+      fireEvent.click(storiesTab as HTMLAnchorElement);
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+    });
+
+    it('keeps the status parameters and the checkboxes consistent with the URL across Back and Forward through another tab', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { container, findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      const otherTabPath = new URL((otherTab as HTMLAnchorElement).href)
+        .pathname;
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(window.location.pathname).toBe(otherTabPath);
+
+      const storiesTab = tabs().find((el) =>
+        el.textContent?.includes('Stories'),
+      );
+      expect(storiesTab).toBeTruthy();
+      fireEvent.click(storiesTab as HTMLAnchorElement);
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['Done']);
+      });
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      window.history.back();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(otherTabPath);
+      });
+
+      window.history.forward();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/projects/acme/stories');
+        expect(statusParams()).toEqual(['Done']);
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
+      });
+    });
+
+    it('applies the status parameters of a Stories entry reached by Forward when another tab was shown', async () => {
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const { container, findByRole, getByRole } = render(<ConsolePage />);
+      expect(await findByRole('checkbox', { name: 'Done' })).toBeChecked();
+
+      const tabs = () => [
+        ...container.querySelectorAll<HTMLAnchorElement>('a.console-tab'),
+      ];
+      const otherTab = tabs().find(
+        (el) => !el.textContent?.includes('Stories'),
+      );
+      expect(otherTab).toBeTruthy();
+      const otherTabPath = new URL((otherTab as HTMLAnchorElement).href)
+        .pathname;
+      fireEvent.click(otherTab as HTMLAnchorElement);
+      expect(window.location.pathname).toBe(otherTabPath);
+
+      window.history.pushState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Unread',
+      );
+      window.history.back();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(otherTabPath);
+      });
+
+      window.history.forward();
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/projects/acme/stories');
+        expect(statusParams()).toEqual(['Unread']);
+      });
+      await waitFor(() => {
+        expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
+        expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+      });
+    });
+  });
+});

@@ -1844,4 +1844,321 @@ describe('ConsoleStoryList', () => {
       expect(queryByPlaceholderText('Issue title')).toBeNull();
     });
   });
+
+  describe('characterization: Done task rows on expand', () => {
+    const storyWithDoneAndOpenItems: ConsoleStoryEntry[] = [
+      {
+        storyName: 'TDPM Console port',
+        storyOptionId: '1491051e',
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          makeItem({
+            number: 20,
+            title: 'Open task',
+            url: 'https://github.com/demo/repo/issues/20',
+            status: 'Awaiting Owner',
+          }),
+          makeItem({
+            number: 21,
+            title: 'Finished task',
+            url: 'https://github.com/demo/repo/issues/21',
+            status: 'Done',
+          }),
+        ],
+      },
+    ];
+
+    it('hides Done task rows after Show tasks when showDone is false', () => {
+      const { getByRole, getByText, queryByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={storyWithDoneAndOpenItems}
+          showDone={false}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Show tasks' }));
+      expect(getByText('Open task')).toBeInTheDocument();
+      expect(queryByText('Finished task')).toBeNull();
+    });
+
+    it('shows Done task rows after Show tasks when showDone is true', () => {
+      const { getByRole, getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={storyWithDoneAndOpenItems}
+          showDone={true}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Show tasks' }));
+      expect(getByText('Open task')).toBeInTheDocument();
+      expect(getByText('Finished task')).toBeInTheDocument();
+    });
+  });
+
+  describe('status filter', () => {
+    const statusOptionNames = ['Unread', 'In Tmux by agent', 'Done'];
+    const filterStories: ConsoleStoryEntry[] = [
+      {
+        storyName: 'Alpha',
+        storyOptionId: 'alpha',
+        color: 'BLUE',
+        description: '',
+        openItemCount: 2,
+        storyViewUrl: null,
+        items: [
+          makeItem({
+            number: 30,
+            title: 'Alpha unread task',
+            url: 'https://github.com/demo/repo/issues/30',
+            status: 'Unread',
+          }),
+          makeItem({
+            number: 31,
+            title: 'Alpha done task',
+            url: 'https://github.com/demo/repo/issues/31',
+            status: 'Done',
+          }),
+        ],
+      },
+      {
+        storyName: 'Beta',
+        storyOptionId: 'beta',
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          makeItem({
+            number: 32,
+            title: 'Beta running task',
+            url: 'https://github.com/demo/repo/issues/32',
+            status: 'In Tmux by agent',
+          }),
+        ],
+      },
+      {
+        storyName: 'Gamma',
+        storyOptionId: 'gamma',
+        color: 'BLUE',
+        description: '',
+        openItemCount: 0,
+        storyViewUrl: null,
+        items: [],
+      },
+    ];
+    const filterProps = {
+      ...defaultProps,
+      stories: filterStories,
+      statusOptionNames,
+      onToggleStatus: () => {},
+      onClearStatuses: () => {},
+    };
+
+    it('renders one checkbox per status option inside a Status group', () => {
+      const { getByRole, getAllByRole } = render(
+        <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
+      );
+      expect(getByRole('group', { name: 'Status' })).toBeInTheDocument();
+      expect(getAllByRole('checkbox')).toHaveLength(statusOptionNames.length);
+    });
+
+    it('with no selection, shows every story and hides only Done task rows on expand, as before the filter existed', () => {
+      const { getByText, getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
+      );
+      expect(getByText('Alpha')).toBeInTheDocument();
+      expect(getByText('Beta')).toBeInTheDocument();
+      expect(getByText('Gamma')).toBeInTheDocument();
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('Alpha unread task')).toBeInTheDocument();
+      expect(queryByText('Alpha done task')).toBeNull();
+    });
+
+    it('with one selected status, keeps only stories that have a matching task and shows only matching tasks on expand', () => {
+      const { getByText, getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...filterProps} selectedStatuses={['Unread']} />,
+      );
+      expect(getByText('Alpha')).toBeInTheDocument();
+      expect(queryByText('Beta')).toBeNull();
+      expect(queryByText('Gamma')).toBeNull();
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('Alpha unread task')).toBeInTheDocument();
+      expect(queryByText('Alpha done task')).toBeNull();
+    });
+
+    it('with two selected statuses, keeps stories matching either status (union)', () => {
+      const { getByText, queryByText } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Unread', 'In Tmux by agent']}
+        />,
+      );
+      expect(getByText('Alpha')).toBeInTheDocument();
+      expect(getByText('Beta')).toBeInTheDocument();
+      expect(queryByText('Gamma')).toBeNull();
+    });
+
+    it('shows Done task rows when Done is selected even while the Done toggle is off', () => {
+      const { getByText, getAllByRole, queryByText } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Done']}
+          showDone={false}
+        />,
+      );
+      expect(queryByText('Beta')).toBeNull();
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('Alpha done task')).toBeInTheDocument();
+      expect(queryByText('Alpha unread task')).toBeNull();
+    });
+
+    it('ignores a selected status that is not in the status options', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Removed status']}
+        />,
+      );
+      expect(getByText('Alpha')).toBeInTheDocument();
+      expect(getByText('Beta')).toBeInTheDocument();
+      expect(getByText('Gamma')).toBeInTheDocument();
+    });
+
+    it('ignores an absent selected status but still applies a present one', () => {
+      const { getByText, queryByText } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Removed status', 'Done']}
+        />,
+      );
+      expect(getByText('Alpha')).toBeInTheDocument();
+      expect(queryByText('Beta')).toBeNull();
+    });
+
+    it('checks the checkbox of each selected status', () => {
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Done', 'Unread']}
+        />,
+      );
+      expect(getByRole('checkbox', { name: 'Done' })).toBeChecked();
+      expect(getByRole('checkbox', { name: 'Unread' })).toBeChecked();
+      expect(
+        getByRole('checkbox', { name: 'In Tmux by agent' }),
+      ).not.toBeChecked();
+    });
+
+    it('calls onToggleStatus with the status name when its checkbox is clicked', () => {
+      const onToggleStatus = jest.fn();
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={[]}
+          onToggleStatus={onToggleStatus}
+        />,
+      );
+      fireEvent.click(getByRole('checkbox', { name: 'Done' }));
+      expect(onToggleStatus).toHaveBeenCalledWith('Done');
+    });
+
+    it('calls onClearStatuses when the Clear button is clicked', () => {
+      const onClearStatuses = jest.fn();
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Done']}
+          onClearStatuses={onClearStatuses}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Clear' }));
+      expect(onClearStatuses).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables Move up and Move down for every visible story while a status selection is active, with a title explaining why', () => {
+      const cases: {
+        label: string;
+        selectedStatuses: string[];
+        rows: number;
+      }[] = [
+        {
+          label: 'one status leaves one story',
+          selectedStatuses: ['Unread'],
+          rows: 1,
+        },
+        {
+          label: 'two statuses leave two stories',
+          selectedStatuses: ['Unread', 'In Tmux by agent'],
+          rows: 2,
+        },
+      ];
+      for (const { label, selectedStatuses, rows } of cases) {
+        const { getAllByRole, unmount } = render(
+          <ConsoleStoryList
+            {...filterProps}
+            selectedStatuses={selectedStatuses}
+          />,
+        );
+        const upButtons = getAllByRole('button', { name: 'Move up' });
+        const downButtons = getAllByRole('button', { name: 'Move down' });
+        expect({
+          label,
+          up: upButtons.length,
+          down: downButtons.length,
+        }).toEqual({ label, up: rows, down: rows });
+        for (const button of [...upButtons, ...downButtons]) {
+          expect({
+            label,
+            disabled: button.hasAttribute('disabled'),
+            title: button.getAttribute('title'),
+          }).toEqual({
+            label,
+            disabled: true,
+            title: 'Clear the status filter to reorder stories',
+          });
+        }
+        unmount();
+      }
+    });
+
+    it('does not call onReorderStory when a Move button is clicked while a status selection is active', async () => {
+      const onReorderStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList
+          {...filterProps}
+          selectedStatuses={['Unread', 'In Tmux by agent']}
+          onReorderStory={onReorderStory}
+        />,
+      );
+      await act(async () => {
+        fireEvent.click(getAllByRole('button', { name: 'Move up' })[1]);
+      });
+      expect(onReorderStory).not.toHaveBeenCalled();
+    });
+
+    it('keeps the edge-based Move rules and sets no title when no status is selected', () => {
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
+      );
+      const upButtons = getAllByRole('button', { name: 'Move up' });
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      expect({
+        firstUpDisabled: upButtons[0].hasAttribute('disabled'),
+        secondUpDisabled: upButtons[1].hasAttribute('disabled'),
+        firstDownDisabled: downButtons[0].hasAttribute('disabled'),
+        lastDownDisabled: downButtons[2].hasAttribute('disabled'),
+      }).toEqual({
+        firstUpDisabled: true,
+        secondUpDisabled: false,
+        firstDownDisabled: false,
+        lastDownDisabled: true,
+      });
+      for (const button of [...upButtons, ...downButtons]) {
+        expect(button).not.toHaveAttribute('title');
+      }
+    });
+  });
 });

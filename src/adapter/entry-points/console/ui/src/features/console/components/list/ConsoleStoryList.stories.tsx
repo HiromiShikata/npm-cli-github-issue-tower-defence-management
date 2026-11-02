@@ -408,3 +408,106 @@ export const TasksExpandedWithDoneRowsHidden: Story = {
     await userEvent.click(firstChevron);
   },
 };
+
+const statusFilterOptionNames = ['Unread', 'In Tmux by agent', 'Done'];
+
+const statusFilterTaskItem = (
+  number: number,
+  title: string,
+  status: string,
+) => ({
+  number,
+  title,
+  url: `https://github.com/demo/repo/issues/${number}`,
+  repo: 'demo/repo',
+  nameWithOwner: 'demo/repo',
+  projectItemId: `PVTI_status_filter_${number}`,
+  itemId: `PVTI_status_filter_${number}`,
+  isPr: false,
+  story: 'Status filter',
+  status,
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-10-22T08:00:00.000Z',
+  relatedOpenPullRequestUrls: [],
+});
+
+const statusFilterStories = [
+  {
+    storyName: 'Status filter alpha',
+    storyOptionId: 'sf-alpha',
+    color: 'BLUE' as const,
+    description: '',
+    openItemCount: 2,
+    storyViewUrl: null,
+    items: [
+      statusFilterTaskItem(4001, 'Unread task', 'Unread'),
+      statusFilterTaskItem(4002, 'Finished task', 'Done'),
+    ],
+  },
+  {
+    storyName: 'Status filter beta',
+    storyOptionId: 'sf-beta',
+    color: 'BLUE' as const,
+    description: '',
+    openItemCount: 1,
+    storyViewUrl: null,
+    items: [statusFilterTaskItem(4003, 'Running task', 'In Tmux by agent')],
+  },
+  {
+    storyName: 'Status filter gamma',
+    storyOptionId: 'sf-gamma',
+    color: 'BLUE' as const,
+    description: '',
+    openItemCount: 0,
+    storyViewUrl: null,
+    items: [],
+  },
+];
+
+export const StatusFilterNoSelection: Story = {
+  args: {
+    stories: statusFilterStories,
+    isLoading: false,
+    error: null,
+    statusOptionNames: statusFilterOptionNames,
+    selectedStatuses: [],
+    onToggleStatus: () => undefined,
+    onClearStatuses: () => undefined,
+  },
+};
+
+export const StatusFilterMultipleSelected: Story = {
+  args: {
+    stories: statusFilterStories,
+    isLoading: false,
+    error: null,
+    statusOptionNames: statusFilterOptionNames,
+    selectedStatuses: ['Unread', 'In Tmux by agent'],
+    onToggleStatus: () => undefined,
+    onClearStatuses: () => undefined,
+  },
+};
+
+export const StatusFilterDoneSelectedWithDoneToggleOff: Story = {
+  args: {
+    stories: statusFilterStories,
+    isLoading: false,
+    error: null,
+    showDone: false,
+    statusOptionNames: statusFilterOptionNames,
+    selectedStatuses: ['Done'],
+    onToggleStatus: () => undefined,
+    onClearStatuses: () => undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
+    await userEvent.click(firstChevron);
+  },
+};
