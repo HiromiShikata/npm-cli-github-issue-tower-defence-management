@@ -26,7 +26,10 @@ import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleExplicitProjectSelection } from '../hooks/useConsoleExplicitProjectSelection';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
-import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
+import {
+  parseTabFromPath,
+  useConsoleNavigation,
+} from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
@@ -990,8 +993,10 @@ export const ConsolePage = () => {
         : readConsoleStoryStatusSelection();
     },
   );
+  const statusesFromPopStateRef = useRef<string[] | null>(null);
 
   const handleToggleStoryStatus = useCallback((status: string): void => {
+    statusesFromPopStateRef.current = null;
     setSelectedStoryStatuses((prev) => {
       const next = prev.includes(status)
         ? prev.filter((name) => name !== status)
@@ -1002,6 +1007,7 @@ export const ConsolePage = () => {
   }, []);
 
   const handleClearStoryStatuses = useCallback((): void => {
+    statusesFromPopStateRef.current = null;
     writeConsoleStoryStatusSelection([]);
     setSelectedStoryStatuses([]);
   }, []);
@@ -1013,6 +1019,13 @@ export const ConsolePage = () => {
   );
 
   useEffect(() => {
+    const statusesFromPopState = statusesFromPopStateRef.current;
+    if (
+      statusesFromPopState !== null &&
+      statusesFromPopState !== selectedStoryStatuses
+    ) {
+      return;
+    }
     if (activeTab !== 'stories' || storyStatusOptionNames.length === 0) {
       return;
     }
@@ -1034,19 +1047,21 @@ export const ConsolePage = () => {
   }, [activeTab, selectedStoryStatuses, storyStatusOptionNames]);
 
   useEffect(() => {
-    if (activeTab !== 'stories') {
-      return;
-    }
     const handlePopState = (): void => {
-      setSelectedStoryStatuses(
-        parseConsoleStoryStatusSelectionFromSearch(window.location.search),
+      if (parseTabFromPath(window.location.pathname) !== 'stories') {
+        return;
+      }
+      const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
+        window.location.search,
       );
+      statusesFromPopStateRef.current = statusesFromUrl;
+      setSelectedStoryStatuses(statusesFromUrl);
     };
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [activeTab]);
+  }, []);
 
   const rawStoryEntries = storiesSnapshot?.stories ?? [];
   const storyEntries =
