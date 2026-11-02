@@ -12380,4 +12380,124 @@ describe('ConsolePage story task row story pulldown', () => {
     ).toEqual(expectedOptionNames);
     expect(select).toHaveValue(alphaStoryOptionId);
   });
+
+  const stateTaskTitle = 'Alpha issue state task';
+
+  const issueStateMovePayload = (
+    item: object,
+    sourceOpenItemCount: number,
+  ) => ({
+    ...storiesPayload(),
+    stories: [
+      {
+        storyName: alphaStoryName,
+        storyOptionId: alphaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: sourceOpenItemCount,
+        storyViewUrl: null,
+        items: [item],
+      },
+      {
+        storyName: betaStoryName,
+        storyOptionId: betaStoryOptionId,
+        color: 'BLUE',
+        description: '',
+        openItemCount: 1,
+        storyViewUrl: null,
+        items: [
+          storyTaskItem(
+            103,
+            openBetaTaskTitle,
+            'PVTI_BETA_OPEN',
+            betaStoryName,
+            'Todo by human',
+          ),
+        ],
+      },
+    ],
+  });
+
+  const issueStateMoveCases = [
+    {
+      name: 'moves one open badge from the source to the target when the issue is not closed and its status is Todo by human',
+      status: 'Todo by human',
+      isClosed: false,
+      sourceOpenItemCount: 1,
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'moves one open badge from the source to the target when the issue is not closed even though its status is Done',
+      status: 'Done',
+      isClosed: false,
+      sourceOpenItemCount: 1,
+      expectedSourceCount: '0',
+      expectedTargetCount: '2',
+    },
+    {
+      name: 'leaves both badges unchanged when the issue is closed and its status is Todo by human',
+      status: 'Todo by human',
+      isClosed: true,
+      sourceOpenItemCount: 0,
+      expectedSourceCount: '0',
+      expectedTargetCount: '1',
+    },
+    {
+      name: 'leaves both badges unchanged when the issue is closed and its status is Done',
+      status: 'Done',
+      isClosed: true,
+      sourceOpenItemCount: 0,
+      expectedSourceCount: '0',
+      expectedTargetCount: '1',
+    },
+  ];
+
+  it.each(issueStateMoveCases)(
+    '$name',
+    async ({
+      status,
+      isClosed,
+      sourceOpenItemCount,
+      expectedSourceCount,
+      expectedTargetCount,
+    }) => {
+      const item = {
+        ...storyTaskItem(
+          101,
+          stateTaskTitle,
+          'PVTI_ALPHA_STATE',
+          alphaStoryName,
+          status,
+        ),
+        isClosed,
+      };
+      const fetchMock = installFetchWithPayload(
+        issueStateMovePayload(item, sourceOpenItemCount),
+        respondWithSucceeded,
+      );
+      const view = await renderStoriesWithStoryExpanded(alphaStoryName);
+      expect(storyCountOf(view.container, alphaStoryName)).toBe(
+        String(sourceOpenItemCount),
+      );
+      expect(storyCountOf(view.container, betaStoryName)).toBe('1');
+
+      fireEvent.change(
+        storySelectIn(
+          taskRowTitled(view.container, alphaStoryName, stateTaskTitle),
+        ),
+        { target: { value: betaStoryOptionId } },
+      );
+      await settleStoryChange(view.container, fetchMock, 1);
+
+      await waitFor(() => {
+        expect(storyCountOf(view.container, alphaStoryName)).toBe(
+          expectedSourceCount,
+        );
+        expect(storyCountOf(view.container, betaStoryName)).toBe(
+          expectedTargetCount,
+        );
+      });
+    },
+  );
 });

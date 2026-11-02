@@ -2242,3 +2242,74 @@ test.describe('story task create with server failure', () => {
     ).toBeVisible();
   });
 });
+
+test('phone viewport keeps each story tab task row inside the screen width with its title and Set story select visible', async ({
+  browser,
+}) => {
+  const phoneContext = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await phoneContext.newPage();
+  try {
+    await page.goto(harness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+
+    const taskRows = tdpmRow.locator('.console-story-task-row');
+    await expect(taskRows.first()).toBeVisible();
+    const taskRowCount = await taskRows.count();
+    expect(taskRowCount).toBeGreaterThan(0);
+
+    const documentOverflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(documentOverflow.scrollWidth).toBeLessThanOrEqual(
+      documentOverflow.clientWidth,
+    );
+
+    for (let index = 0; index < taskRowCount; index += 1) {
+      const taskRow = taskRows.nth(index);
+      const rowOverflow = await taskRow.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      expect(rowOverflow.scrollWidth).toBeLessThanOrEqual(
+        rowOverflow.clientWidth,
+      );
+
+      const titleBox = await taskRow
+        .locator('.console-story-task-title')
+        .first()
+        .boundingBox();
+      expect(titleBox?.width ?? 0).toBeGreaterThanOrEqual(100);
+
+      const rowBox = await taskRow.boundingBox();
+      const selectBox = await taskRow
+        .getByRole('combobox', { name: 'Set story' })
+        .boundingBox();
+      expect(rowBox).not.toBeNull();
+      expect(selectBox).not.toBeNull();
+      if (rowBox === null || selectBox === null) {
+        throw new Error('task row or Set story select has no bounding box');
+      }
+      expect(selectBox.x).toBeGreaterThanOrEqual(rowBox.x);
+      expect(selectBox.y).toBeGreaterThanOrEqual(rowBox.y);
+      expect(selectBox.x + selectBox.width).toBeLessThanOrEqual(
+        rowBox.x + rowBox.width,
+      );
+      expect(selectBox.y + selectBox.height).toBeLessThanOrEqual(
+        rowBox.y + rowBox.height,
+      );
+    }
+  } finally {
+    await phoneContext.close();
+  }
+});
