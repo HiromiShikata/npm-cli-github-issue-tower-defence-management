@@ -247,6 +247,11 @@ export interface IssueRepository {
     project: Project,
     issueUrl: string,
   ) => Promise<void>;
+  replaceDependedIssueUrlField: (
+    project: Project,
+    issue: Issue,
+    dependedIssueUrl: string | null,
+  ) => Promise<void>;
   setIssueAgentField: (
     issueUrl: string,
     project: Project,

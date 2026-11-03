@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
@@ -290,8 +284,16 @@ const defaultProps = {
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
   onOpenItem: () => undefined,
-  agentOptions: [],
-  statusFieldOptions: [],
+  agentOptions: [
+    { id: 'agent-developer', name: 'developer', color: 'BLUE' as const },
+  ],
+  statusFieldOptions: [
+    {
+      id: 'status-awaiting-owner',
+      name: 'Awaiting Owner',
+      color: 'GRAY' as const,
+    },
+  ],
   hiddenRowFields: [] as ConsoleStoryRowField[],
   onToggleRowField: () => undefined,
   taskActions: {
@@ -1672,26 +1674,9 @@ describe('ConsoleStoryList', () => {
       expect(queryByRole('link', { name: 'Fix login bug' })).toBeNull();
     });
 
-    const rowControlOptions = {
-      agentOptions: [
-        { id: 'agent-developer', name: 'developer', color: 'BLUE' as const },
-      ],
-      statusFieldOptions: [
-        {
-          id: 'status-awaiting-owner',
-          name: 'Awaiting Owner',
-          color: 'GRAY' as const,
-        },
-      ],
-    };
-
     it('shows status value in the row status pulldown when set', () => {
       const { getAllByRole, getAllByLabelText } = render(
-        <ConsoleStoryList
-          {...defaultProps}
-          {...rowControlOptions}
-          stories={storyWithItems}
-        />,
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
       expect(getAllByLabelText('Set status')[0]).toHaveDisplayValue(
@@ -1701,11 +1686,7 @@ describe('ConsoleStoryList', () => {
 
     it('shows agent value in the row agent pulldown when set', () => {
       const { getAllByRole, getAllByLabelText } = render(
-        <ConsoleStoryList
-          {...defaultProps}
-          {...rowControlOptions}
-          stories={storyWithItems}
-        />,
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
       expect(getAllByLabelText('Set agent')[0]).toHaveDisplayValue('developer');
@@ -2010,10 +1991,12 @@ describe('ConsoleStoryList', () => {
       const { getByRole } = render(
         <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
       );
-      const statusGroup = getByRole('group', { name: 'Status' });
-      expect(within(statusGroup).getAllByRole('checkbox')).toHaveLength(
-        statusOptionNames.length,
-      );
+      expect(getByRole('group', { name: 'Status' })).toBeInTheDocument();
+      expect(
+        getByRole('group', { name: 'Status' }).querySelectorAll(
+          'input[type="checkbox"]',
+        ),
+      ).toHaveLength(statusOptionNames.length);
     });
 
     it('with no selection, shows every story and hides only Done task rows on expand, as before the filter existed', () => {

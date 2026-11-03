@@ -53,7 +53,7 @@ export type ConsoleStoryTaskActions = {
   ) => Promise<void>;
   onSetNextActionHour: (
     item: ConsoleListItem,
-    nextActionHour: number,
+    nextActionHour: number | null,
   ) => Promise<void>;
 };
 
@@ -142,11 +142,6 @@ const StoryTaskRow = ({
     if (urls.join(', ') === dependedIssueUrlsText) {
       return;
     }
-    if (urls.length === 0) {
-      setError('Depended issue URL is required');
-      setRevision((current) => current + 1);
-      return;
-    }
     runChange(() => actions.onSetDependedIssueUrl(item, urls.join(', ')));
   };
 
@@ -185,10 +180,7 @@ const StoryTaskRow = ({
               disabled={pending}
               onChange={(event) => {
                 const next = event.target.value;
-                if (
-                  next === '' ||
-                  next === toDateInputValue(item.nextActionDate)
-                ) {
+                if (next === toDateInputValue(item.nextActionDate)) {
                   return;
                 }
                 runChange(() => actions.onSetNextActionDate(item, next));
@@ -203,11 +195,18 @@ const StoryTaskRow = ({
               disabled={pending}
               onChange={(event) => {
                 const next = event.target.value;
-                if (next === '') {
+                const current =
+                  item.nextActionHour === null
+                    ? ''
+                    : String(item.nextActionHour);
+                if (next === current) {
                   return;
                 }
                 runChange(() =>
-                  actions.onSetNextActionHour(item, Number(next)),
+                  actions.onSetNextActionHour(
+                    item,
+                    next === '' ? null : Number(next),
+                  ),
                 );
               }}
             >

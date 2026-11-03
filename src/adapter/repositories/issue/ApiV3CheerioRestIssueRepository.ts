@@ -1822,6 +1822,46 @@ export class ApiV3CheerioRestIssueRepository
     );
   };
 
+  replaceDependedIssueUrlField = async (
+    project: Project,
+    issue: Issue,
+    dependedIssueUrl: string | null,
+  ): Promise<void> => {
+    const dependedIssueUrlField = project.dependedIssueUrlSeparatedByComma;
+    if (!dependedIssueUrlField) {
+      return;
+    }
+    if (dependedIssueUrl === null) {
+      await this.clearProjectField(
+        project,
+        dependedIssueUrlField.fieldId,
+        issue,
+      );
+      return;
+    }
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      dependedIssueUrlField.fieldId,
+      issue.url,
+      issue.itemId,
+      'update',
+    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectTextField(
+        project.id,
+        dependedIssueUrlField.fieldId,
+        issue.itemId,
+        dependedIssueUrl,
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue.itemId,
+      );
+    }
+  };
+
   setIssueAgentField = async (
     issueUrl: string,
     project: Project,

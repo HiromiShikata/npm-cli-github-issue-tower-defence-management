@@ -1717,18 +1717,14 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
   ).toBeVisible();
 
   const pr867Row = tdpmRow.locator('.console-story-task-row').first();
-  await expect(pr867Row.locator('.console-story-task-agent')).toContainText(
-    'developer',
+  await expect(
+    pr867Row.getByLabel('Set agent').locator('option:checked'),
+  ).toHaveText('developer');
+  await expect(pr867Row.getByLabel('Set next action date')).toHaveValue(
+    '2026-06-20',
   );
-  await expect(
-    pr867Row.locator('.console-story-task-next-action-date'),
-  ).toContainText('2026-06-20');
-  await expect(
-    pr867Row.locator('.console-story-task-next-action-hour'),
-  ).toContainText('9');
-  await expect(
-    pr867Row.locator('.console-story-task-depended-urls'),
-  ).toContainText(
+  await expect(pr867Row.getByLabel('Set next action hour')).toHaveValue('9');
+  await expect(pr867Row.getByLabel('Set depended issue URL')).toHaveValue(
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
   );
 

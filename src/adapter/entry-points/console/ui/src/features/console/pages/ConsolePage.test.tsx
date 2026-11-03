@@ -10215,6 +10215,97 @@ describe('ConsolePage operation bar status buttons', () => {
     localStorage.clear();
   });
 
+  const postedBodyOf = (url: string): Record<string, unknown> | undefined => {
+    const calls = (global.fetch as unknown as jest.Mock).mock.calls as [
+      string,
+      { body?: string },
+    ][];
+    const call = calls.filter(([requestUrl]) => requestUrl === url).at(-1);
+    return call?.[1]?.body === undefined
+      ? undefined
+      : (JSON.parse(call[1].body) as Record<string, unknown>);
+  };
+
+  it('replaces the depended issue URL of a row task from the stories tab in replace mode', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetchWithActiveTabPayload('stories', {
+      ...listPayload('stories'),
+      statusOptions: statusOptionsNamed(allStatusButtonNames),
+      stories: [
+        {
+          storyName: 'TDPM Console port',
+          storyOptionId: 'st1',
+          color: 'BLUE',
+          description: '',
+          openItemCount: 1,
+          storyViewUrl: null,
+          items: [taskItem(todoByHumanName)],
+        },
+      ],
+    });
+
+    const { findByRole, findByLabelText } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Show tasks' }));
+    const input = await findByLabelText('Set depended issue URL');
+    fireEvent.change(input, {
+      target: { value: 'https://github.com/o/r/issues/9' },
+    });
+    fireEvent.blur(input);
+
+    await waitFor(() =>
+      expect(postedBodyOf('/api/setdependedissueurl')).toBeDefined(),
+    );
+    expect(postedBodyOf('/api/setdependedissueurl')).toEqual({
+      pjcode: 'acme',
+      issueUrl: 'https://github.com/o/r/issues/3490',
+      dependedIssueUrl: 'https://github.com/o/r/issues/9',
+      projectItemId: 'PVTI_OPERATION_BAR',
+      replaceExisting: true,
+    });
+  });
+
+  it('posts the chosen next action date and hour of a row task from the stories tab', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetchWithActiveTabPayload('stories', {
+      ...listPayload('stories'),
+      statusOptions: statusOptionsNamed(allStatusButtonNames),
+      stories: [
+        {
+          storyName: 'TDPM Console port',
+          storyOptionId: 'st1',
+          color: 'BLUE',
+          description: '',
+          openItemCount: 1,
+          storyViewUrl: null,
+          items: [taskItem(todoByHumanName)],
+        },
+      ],
+    });
+
+    const { findByRole, findByLabelText } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Show tasks' }));
+    fireEvent.change(await findByLabelText('Set next action date'), {
+      target: { value: '2026-08-01' },
+    });
+    await waitFor(() =>
+      expect(postedBodyOf('/api/triage')).toMatchObject({
+        action: 'set_next_action_date',
+        projectItemId: 'PVTI_OPERATION_BAR',
+        nextActionDate: '2026-08-01',
+      }),
+    );
+    fireEvent.change(await findByLabelText('Set next action hour'), {
+      target: { value: '10' },
+    });
+    await waitFor(() =>
+      expect(postedBodyOf('/api/triage')).toMatchObject({
+        action: 'set_next_action_hour',
+        projectItemId: 'PVTI_OPERATION_BAR',
+        nextActionHour: 10,
+      }),
+    );
+  });
+
   it('renders the In Tmux by human, Todo by human and Awaiting Workspace buttons in the operation bar of a non-closed task opened from a story of the stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     installFetchWithActiveTabPayload('stories', {

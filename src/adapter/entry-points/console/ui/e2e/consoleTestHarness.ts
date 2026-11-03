@@ -683,6 +683,8 @@ const createStubIssueRepository = (
   },
   updateStatus: async (): Promise<void> => undefined,
   clearProjectField: () => notImplemented('clearProjectField'),
+  replaceDependedIssueUrlField: () =>
+    notImplemented('replaceDependedIssueUrlField'),
   createComment: () => notImplemented('createComment'),
   updateLabels: () => notImplemented('updateLabels'),
   removeLabel: () => notImplemented('removeLabel'),

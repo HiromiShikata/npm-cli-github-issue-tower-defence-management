@@ -312,6 +312,125 @@ describe('useConsoleOperations', () => {
     expect(stored[issueItem.projectItemId]).toBeUndefined();
   });
 
+  it('posts set_next_action_date with the chosen date for the row task', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionDateValue(
+        issueItem,
+        '2026-08-01',
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
+    expect(lastBody(fetchMock)).toMatchObject({
+      pjcode: 'acme',
+      action: 'set_next_action_date',
+      issueUrl: issueItem.url,
+      projectItemId: issueItem.projectItemId,
+      nextActionDate: '2026-08-01',
+    });
+  });
+
+  it('posts set_next_action_date with an empty date so the server clears the field', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionDateValue(issueItem, '');
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      action: 'set_next_action_date',
+      nextActionDate: '',
+    });
+  });
+
+  it('posts set_next_action_hour with the chosen hour for the row task', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionHourValue(issueItem, 10);
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
+    expect(lastBody(fetchMock)).toMatchObject({
+      action: 'set_next_action_hour',
+      projectItemId: issueItem.projectItemId,
+      nextActionHour: 10,
+    });
+  });
+
+  it('posts set_next_action_hour with null so the server clears the hour', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionHourValue(issueItem, null);
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      action: 'set_next_action_hour',
+      nextActionHour: null,
+    });
+  });
+
+  it('rejects setNextActionHourValue with the server error reason', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: 'project has no hour field' }),
+    })) as unknown as typeof fetch;
+    const { result } = setup();
+    await expect(
+      act(async () => {
+        await result.current.operations.setNextActionHourValue(issueItem, 3);
+      }),
+    ).rejects.toThrow('project has no hour field');
+  });
+
+  it('posts replaceDependedIssueUrl in replace mode with the project item id', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.replaceDependedIssueUrl(
+        issueItem,
+        'https://github.com/o/r/issues/9',
+      );
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/setdependedissueurl');
+    expect(lastBody(fetchMock)).toEqual({
+      pjcode: 'acme',
+      issueUrl: issueItem.url,
+      dependedIssueUrl: 'https://github.com/o/r/issues/9',
+      projectItemId: issueItem.projectItemId,
+      replaceExisting: true,
+    });
+  });
+
+  it('posts replaceDependedIssueUrl with an empty string to clear the field', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.replaceDependedIssueUrl(issueItem, '');
+    });
+    expect(lastBody(fetchMock)).toMatchObject({
+      dependedIssueUrl: '',
+      replaceExisting: true,
+    });
+  });
+
+  it('rejects replaceDependedIssueUrl with the server error reason', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: 'Stale project item' }),
+    })) as unknown as typeof fetch;
+    const { result } = setup();
+    await expect(
+      act(async () => {
+        await result.current.operations.replaceDependedIssueUrl(
+          issueItem,
+          'https://github.com/o/r/issues/9',
+        );
+      }),
+    ).rejects.toThrow('Stale project item');
+  });
+
   it('posts a comment to the comment endpoint and returns the created comment', async () => {
     const fetchMock: jest.Mock = jest.fn(async () => ({
       ok: true,

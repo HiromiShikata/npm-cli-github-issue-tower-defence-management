@@ -68,7 +68,7 @@ export type ConsoleOperationsApi = {
   ) => Promise<void>;
   setNextActionHourValue: (
     item: ConsoleListItem,
-    nextActionHour: number,
+    nextActionHour: number | null,
   ) => Promise<void>;
   setInTmuxByHuman: (
     item: ConsoleListItem,
@@ -106,6 +106,10 @@ export type ConsoleOperationsApi = {
   ) => Promise<void>;
   deleteAllComments: (item: ConsoleListItem) => Promise<void>;
   setDependedIssueUrl: (
+    item: ConsoleListItem,
+    dependedIssueUrl: string,
+  ) => Promise<void>;
+  replaceDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
   ) => Promise<void>;
@@ -185,7 +189,7 @@ export const buildTriageRequest = (
     storyOptionId?: string;
     agentOptionId?: string;
     nextActionDate?: string;
-    nextActionHour?: number;
+    nextActionHour?: number | null;
   },
 ): ConsoleTriageRequest => ({
   pjcode,
@@ -353,7 +357,7 @@ export const useConsoleOperations = (
   );
 
   const setNextActionHourValue = useCallback(
-    async (item: ConsoleListItem, nextActionHour: number) => {
+    async (item: ConsoleListItem, nextActionHour: number | null) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -583,6 +587,22 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
+  const replaceDependedIssueUrl = useCallback(
+    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      await postConsoleSetDependedIssueUrl({
+        pjcode,
+        issueUrl: item.url,
+        dependedIssueUrl,
+        projectItemId: item.projectItemId,
+        replaceExisting: true,
+      });
+    },
+    [pjcode],
+  );
+
   return useMemo(
     () => ({
       reviewPullRequest,
@@ -604,6 +624,7 @@ export const useConsoleOperations = (
       issueCommentBodyUpdate,
       deleteAllComments,
       setDependedIssueUrl,
+      replaceDependedIssueUrl,
       onAfterMoveToAwaitingWorkspace,
     }),
     [
@@ -626,6 +647,7 @@ export const useConsoleOperations = (
       issueCommentBodyUpdate,
       deleteAllComments,
       setDependedIssueUrl,
+      replaceDependedIssueUrl,
       onAfterMoveToAwaitingWorkspace,
     ],
   );

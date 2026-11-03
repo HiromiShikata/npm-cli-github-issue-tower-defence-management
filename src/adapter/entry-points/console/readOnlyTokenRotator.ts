@@ -346,6 +346,16 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       ),
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) =>
       writeRepository.setDependedIssueUrl(prUrl, project, issueUrl),
+    replaceDependedIssueUrlField: (
+      project: Project,
+      issue: Issue,
+      dependedIssueUrl: string | null,
+    ) =>
+      writeRepository.replaceDependedIssueUrlField(
+        project,
+        issue,
+        dependedIssueUrl,
+      ),
     setIssueAgentField: (
       issueUrl: string,
       project: Project,

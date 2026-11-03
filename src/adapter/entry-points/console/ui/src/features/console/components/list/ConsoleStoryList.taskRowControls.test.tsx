@@ -179,6 +179,135 @@ describe('ConsoleStoryList task row controls', () => {
       ).getByRole('alert'),
     ).toBe(alert);
   });
+
+  it('sends the typed depended issue URL when the field loses focus', async () => {
+    const onSetDependedIssueUrl = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetDependedIssueUrl }),
+    });
+    const input = getByLabelText('Set depended issue URL');
+    fireEvent.change(input, {
+      target: { value: 'https://github.com/demo/repo/issues/9' },
+    });
+    fireEvent.blur(input);
+    await waitFor(() => expect(onSetDependedIssueUrl).toHaveBeenCalledTimes(1));
+    expect(onSetDependedIssueUrl).toHaveBeenCalledWith(
+      item,
+      'https://github.com/demo/repo/issues/9',
+    );
+  });
+
+  it('overwrites the depended issue URL with the new text instead of appending', async () => {
+    const onSetDependedIssueUrl = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetDependedIssueUrl }),
+    });
+    const input = getByLabelText('Set depended issue URL');
+    fireEvent.change(input, {
+      target: { value: 'https://github.com/demo/repo/issues/7' },
+    });
+    fireEvent.blur(input);
+    await waitFor(() => expect(onSetDependedIssueUrl).toHaveBeenCalledTimes(1));
+    expect(onSetDependedIssueUrl).toHaveBeenCalledWith(
+      item,
+      'https://github.com/demo/repo/issues/7',
+    );
+  });
+
+  it('clears the depended issue URL when the field is emptied and loses focus', async () => {
+    const onSetDependedIssueUrl = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetDependedIssueUrl }),
+    });
+    const input = getByLabelText('Set depended issue URL');
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(onSetDependedIssueUrl).toHaveBeenCalledTimes(1));
+    expect(onSetDependedIssueUrl).toHaveBeenCalledWith(item, '');
+  });
+
+  it('does not send the depended issue URL when the text is unchanged on blur', () => {
+    const onSetDependedIssueUrl = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetDependedIssueUrl }),
+    });
+    fireEvent.blur(getByLabelText('Set depended issue URL'));
+    expect(onSetDependedIssueUrl).not.toHaveBeenCalled();
+  });
+
+  it('shows the error and restores the stored depended issue URL when the save is rejected', async () => {
+    const { getByLabelText, findByRole, container } = renderRowList({
+      taskActions: buildTaskActions({
+        onSetDependedIssueUrl: () =>
+          Promise.reject(new Error('Depended URL rejected')),
+      }),
+    });
+    const input = getByLabelText('Set depended issue URL');
+    fireEvent.change(input, { target: { value: 'not-a-url' } });
+    fireEvent.blur(input);
+    const alert = await findByRole('alert');
+    expect(alert).toHaveTextContent('Depended URL rejected');
+    expect(
+      within(
+        container.querySelector('.console-story-task-row') as HTMLElement,
+      ).getByLabelText('Set depended issue URL'),
+    ).toHaveValue('https://github.com/demo/repo/issues/5');
+  });
+
+  it('sends the chosen next action hour for the row task', async () => {
+    const onSetNextActionHour = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionHour }),
+    });
+    fireEvent.change(getByLabelText('Set next action hour'), {
+      target: { value: '10' },
+    });
+    await waitFor(() => expect(onSetNextActionHour).toHaveBeenCalledTimes(1));
+    expect(onSetNextActionHour).toHaveBeenCalledWith(item, 10);
+  });
+
+  it('clears the next action hour by sending null when the empty option is chosen', async () => {
+    const onSetNextActionHour = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionHour }),
+    });
+    fireEvent.change(getByLabelText('Set next action hour'), {
+      target: { value: '' },
+    });
+    await waitFor(() => expect(onSetNextActionHour).toHaveBeenCalledTimes(1));
+    expect(onSetNextActionHour).toHaveBeenCalledWith(item, null);
+  });
+
+  it('clears the next action date when the date input is emptied', async () => {
+    const onSetNextActionDate = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionDate }),
+    });
+    fireEvent.change(getByLabelText('Set next action date'), {
+      target: { value: '' },
+    });
+    await waitFor(() => expect(onSetNextActionDate).toHaveBeenCalledTimes(1));
+    expect(onSetNextActionDate).toHaveBeenCalledWith(item, '');
+  });
+
+  it('shows the error and restores the stored hour when the hour change is rejected', async () => {
+    const { getByLabelText, findByRole, container } = renderRowList({
+      taskActions: buildTaskActions({
+        onSetNextActionHour: () =>
+          Promise.reject(new Error('Hour update rejected')),
+      }),
+    });
+    fireEvent.change(getByLabelText('Set next action hour'), {
+      target: { value: '15' },
+    });
+    const alert = await findByRole('alert');
+    expect(alert).toHaveTextContent('Hour update rejected');
+    expect(
+      within(
+        container.querySelector('.console-story-task-row') as HTMLElement,
+      ).getByLabelText('Set next action hour'),
+    ).toHaveValue('9');
+  });
 });
 
 describe('ConsoleStoryRowFieldToggles', () => {

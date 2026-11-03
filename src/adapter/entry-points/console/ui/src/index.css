@@ -3629,6 +3629,16 @@ body {
   flex-wrap: wrap;
 }
 
+.console-story-task-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.console-story-row-field-toggles {
+  font-size: 0.75rem;
+}
+
 .console-story-task-row .console-story-select,
 .console-story-task-row .console-story-task-status-select,
 .console-story-task-row .console-agent-select {

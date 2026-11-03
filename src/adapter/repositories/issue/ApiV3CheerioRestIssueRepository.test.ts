@@ -3501,6 +3501,102 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('replaceDependedIssueUrlField', () => {
+    const projectWithDependedIssueUrlField = {
+      ...mock<Project>(),
+      id: 'test-project-id',
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL separated by comma',
+        fieldId: 'depended-field-id',
+      },
+    };
+    const taskIssue = {
+      ...mock<Issue>(),
+      url: 'https://github.com/owner/repo/issues/1',
+      itemId: 'item-1',
+    };
+
+    it('overwrites an existing value by writing the new text to the project text field', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+
+      await repository.replaceDependedIssueUrlField(
+        projectWithDependedIssueUrlField,
+        taskIssue,
+        'https://github.com/owner/repo/issues/3',
+      );
+
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).toHaveBeenCalledWith(
+        'test-project-id',
+        'depended-field-id',
+        'item-1',
+        'https://github.com/owner/repo/issues/3',
+      );
+      expect(
+        graphqlProjectItemRepository.clearProjectField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('clears the project field when the value is null', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
+
+      await repository.replaceDependedIssueUrlField(
+        projectWithDependedIssueUrlField,
+        taskIssue,
+        null,
+      );
+
+      expect(
+        graphqlProjectItemRepository.clearProjectField,
+      ).toHaveBeenCalledWith('test-project-id', 'depended-field-id', 'item-1');
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the project has no depended issue URL field', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+
+      await repository.replaceDependedIssueUrlField(
+        {
+          ...projectWithDependedIssueUrlField,
+          dependedIssueUrlSeparatedByComma: null,
+        },
+        taskIssue,
+        'https://github.com/owner/repo/issues/3',
+      );
+
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).not.toHaveBeenCalled();
+      expect(
+        graphqlProjectItemRepository.clearProjectField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('propagates a non-stale write error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectTextField.mockRejectedValue(
+        new Error('write failed'),
+      );
+
+      await expect(
+        repository.replaceDependedIssueUrlField(
+          projectWithDependedIssueUrlField,
+          taskIssue,
+          'https://github.com/owner/repo/issues/3',
+        ),
+      ).rejects.toThrow('write failed');
+    });
+  });
+
   describe('setDependedIssueUrl', () => {
     const projectWithDependedIssueUrlField = {
       ...mock<Project>(),

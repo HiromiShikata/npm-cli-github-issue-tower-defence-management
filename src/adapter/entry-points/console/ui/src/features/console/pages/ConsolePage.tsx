@@ -1550,7 +1550,7 @@ export const ConsolePage = () => {
           dependedIssueUrls: parseDependedIssueUrlsInput(dependedIssueUrl),
         },
         { dependedIssueUrls: item.dependedIssueUrls },
-        () => operations.setDependedIssueUrl(item, dependedIssueUrl),
+        () => operations.replaceDependedIssueUrl(item, dependedIssueUrl),
       ),
     [applyStoryTaskChange, operations],
   );
@@ -1559,7 +1559,10 @@ export const ConsolePage = () => {
     (item: ConsoleListItem, nextActionDate: string): Promise<void> =>
       applyStoryTaskChange(
         item,
-        { nextActionDate: `${nextActionDate}T00:00:00.000Z` },
+        {
+          nextActionDate:
+            nextActionDate === '' ? null : `${nextActionDate}T00:00:00.000Z`,
+        },
         { nextActionDate: item.nextActionDate },
         () => operations.setNextActionDateValue(item, nextActionDate),
       ),
@@ -1567,7 +1570,7 @@ export const ConsolePage = () => {
   );
 
   const handleSetTaskNextActionHour = useCallback(
-    (item: ConsoleListItem, nextActionHour: number): Promise<void> =>
+    (item: ConsoleListItem, nextActionHour: number | null): Promise<void> =>
       applyStoryTaskChange(
         item,
         { nextActionHour },

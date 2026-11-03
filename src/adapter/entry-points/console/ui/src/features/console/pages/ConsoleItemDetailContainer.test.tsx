@@ -120,6 +120,7 @@ const buildOperations = (): ConsoleOperationsApi => {
     issueRename: jest.fn(async () => {}),
     deleteAllComments: jest.fn(async () => {}),
     setDependedIssueUrl: jest.fn(async () => {}),
+    replaceDependedIssueUrl: jest.fn(async () => {}),
   };
   return operations;
 };
