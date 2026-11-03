@@ -18610,6 +18610,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       color: 'GRAY',
       description: '',
     };
+    const developerOption: FieldOption = {
+      id: 'opt-developer',
+      name: 'developer',
+      color: 'BLUE',
+      description: '',
+    };
     const projectWithAllRowFields: Project = {
       ...buildTestProject('proj-cache'),
       dependedIssueUrlSeparatedByComma: {
@@ -18622,7 +18628,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         fieldId: 'f-hour',
         options: [],
       },
-      agent: { name: 'Agent', fieldId: 'f-agent', options: [agentOption] },
+      agent: {
+        name: 'Agent',
+        fieldId: 'f-agent',
+        options: [agentOption, developerOption],
+      },
     };
     const buildSeedIssue = (itemId: string, issueNumber: number): Issue => ({
       nameWithOwner: 'o/r',
@@ -18631,8 +18641,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       state: 'OPEN',
       status: null,
       story: null,
-      nextActionDate: null,
-      nextActionHour: null,
+      nextActionDate: new Date('2026-06-01T00:00:00.000Z'),
+      nextActionHour: 9,
       estimationMinutes: null,
       dependedIssueUrls: ['https://github.com/o/r/issues/2'],
       completionDate50PercentConfidence: null,
@@ -18650,8 +18660,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       author: 'author',
       closingIssueReferenceUrls: [],
       plainCrossRepoIssueReferenceUrls: [],
-      agent: null,
-      agentOptionId: null,
+      agent: 'developer',
+      agentOptionId: 'opt-developer',
       stateReason: null,
     });
     const seedItemA = buildSeedIssue('item-a', 1);
@@ -18795,6 +18805,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it.each(writeCases)(
       'writes $name into the cached item only and leaves other items and fields untouched',
       async ({ run, expectedItemAPatch }) => {
+        const patchKeys = Object.keys(expectedItemAPatch).filter(
+          (key): key is keyof Issue => key in seedItemA,
+        );
+        expect(patchKeys.length).toBe(Object.keys(expectedItemAPatch).length);
+        expect(patchKeys.length).toBeGreaterThan(0);
+        for (const key of patchKeys) {
+          expect(seedItemA[key]).not.toEqual(expectedItemAPatch[key]);
+        }
         const { repository, localStorageCacheRepository } =
           setUpWithCachedIssues();
 
@@ -18802,11 +18820,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
         const writes = cacheWrites(localStorageCacheRepository.setSingle);
         expect(writes).toHaveLength(1);
-        expect(writes[0][1]).toEqual(
-          expect.objectContaining({
-            issues: [{ ...seedItemA, ...expectedItemAPatch }, seedItemB],
-          }),
-        );
+        expect(writes[0][1]).toEqual({
+          ...seedCache,
+          issues: [{ ...seedItemA, ...expectedItemAPatch }, seedItemB],
+        });
       },
     );
 
@@ -18895,6 +18912,30 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       const later = await repository.getAllIssues('proj-agent-memo');
+      expect(later.issues[0].agent).toBeNull();
+    });
+
+    it('writes no memo or cache mirror when the applied option is not in the project passed in', async () => {
+      const { repository, localStorageCacheRepository } =
+        await setUpWithMemoizedItem('applied');
+      const before = await repository.getAllIssues('proj-agent-memo');
+      const cacheCallsBefore =
+        localStorageCacheRepository.setSingle.mock.calls.length;
+
+      const outcome = await repository.setIssueAgentField(
+        'https://github.com/o/r/issues/1',
+        projectWithAgent,
+        'opt-missing',
+      );
+
+      expect(outcome).toBe('applied');
+      expect(
+        localStorageCacheRepository.setSingle.mock.calls
+          .slice(cacheCallsBefore)
+          .filter(([key]) => key === 'allIssues-proj-agent-memo'),
+      ).toHaveLength(0);
+      const later = await repository.getAllIssues('proj-agent-memo');
+      expect(later.issues[0]).toEqual(before.issues[0]);
       expect(later.issues[0].agent).toBeNull();
     });
   });

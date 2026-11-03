@@ -1912,10 +1912,12 @@ export class ApiV3CheerioRestIssueRepository
       const agentOption = project.agent.options.find(
         (option) => option.id === agentOptionId,
       );
-      await this.applyIssueFieldsToLaterReads(project.id, projectItemId, {
-        agent: agentOption?.name ?? null,
-        agentOptionId,
-      });
+      if (agentOption) {
+        await this.applyIssueFieldsToLaterReads(project.id, projectItemId, {
+          agent: agentOption.name,
+          agentOptionId,
+        });
+      }
     }
     return outcome;
   };
