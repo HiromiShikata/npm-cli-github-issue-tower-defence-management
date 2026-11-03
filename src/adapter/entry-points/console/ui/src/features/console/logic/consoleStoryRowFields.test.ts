@@ -28,7 +28,9 @@ describe('parseHiddenConsoleStoryRowFieldsFromSearch', () => {
       expected: [],
     },
   ])('$name', ({ search, expected }) => {
-    expect(parseHiddenConsoleStoryRowFieldsFromSearch(search)).toEqual(expected);
+    expect(parseHiddenConsoleStoryRowFieldsFromSearch(search)).toEqual(
+      expected,
+    );
   });
 });
 

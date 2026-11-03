@@ -113,7 +113,8 @@ describe('parseDependedIssueUrlsInput', () => {
     },
     {
       name: 'comma-separated URLs are split and trimmed',
-      input: 'https://github.com/a/b/issues/1 , https://github.com/a/b/issues/2,',
+      input:
+        'https://github.com/a/b/issues/1 , https://github.com/a/b/issues/2,',
       expected: [
         'https://github.com/a/b/issues/1',
         'https://github.com/a/b/issues/2',

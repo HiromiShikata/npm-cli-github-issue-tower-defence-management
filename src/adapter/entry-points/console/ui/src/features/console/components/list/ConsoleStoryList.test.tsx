@@ -1,4 +1,10 @@
-import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
@@ -1688,7 +1694,9 @@ describe('ConsoleStoryList', () => {
         />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getAllByLabelText('Set status')[0]).toHaveDisplayValue('Awaiting Owner');
+      expect(getAllByLabelText('Set status')[0]).toHaveDisplayValue(
+        'Awaiting Owner',
+      );
     });
 
     it('shows agent value in the row agent pulldown when set', () => {
@@ -1708,7 +1716,9 @@ describe('ConsoleStoryList', () => {
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getAllByLabelText('Set next action date')[0]).toHaveValue('2026-07-10');
+      expect(getAllByLabelText('Set next action date')[0]).toHaveValue(
+        '2026-07-10',
+      );
     });
 
     it('shows nextActionHour in the row hour pulldown when set', () => {

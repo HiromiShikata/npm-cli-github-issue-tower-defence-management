@@ -66,9 +66,7 @@ const buildTaskActions = (
   ...overrides,
 });
 
-const renderRowList = (
-  overrides: Partial<ConsoleStoryListProps> = {},
-) => {
+const renderRowList = (overrides: Partial<ConsoleStoryListProps> = {}) => {
   const props: ConsoleStoryListProps = {
     stories,
     isLoading: false,
@@ -136,10 +134,7 @@ describe('ConsoleStoryList task row controls', () => {
       target: { value: 'status-owner' },
     });
     await waitFor(() => expect(onSetStatus).toHaveBeenCalledTimes(1));
-    expect(onSetStatus).toHaveBeenCalledWith(
-      item,
-      statusFieldOptions[1],
-    );
+    expect(onSetStatus).toHaveBeenCalledWith(item, statusFieldOptions[1]);
   });
 
   it('sends the chosen agent for the row task', async () => {
@@ -179,8 +174,9 @@ describe('ConsoleStoryList task row controls', () => {
     expect(alert).toHaveTextContent('Status update rejected');
     expect(alert).toHaveClass('console-story-task-error');
     expect(
-      within(container.querySelector('.console-story-task-row') as HTMLElement)
-        .getByRole('alert'),
+      within(
+        container.querySelector('.console-story-task-row') as HTMLElement,
+      ).getByRole('alert'),
     ).toBe(alert);
   });
 });
@@ -190,7 +186,12 @@ describe('ConsoleStoryRowFieldToggles', () => {
     {
       name: 'checks every field when none is hidden',
       hidden: [] as ConsoleStoryRowField[],
-      expectedChecked: ['Reactivation trigger fields', 'Agent', 'Story', 'Status'],
+      expectedChecked: [
+        'Reactivation trigger fields',
+        'Agent',
+        'Story',
+        'Status',
+      ],
     },
     {
       name: 'unchecks only the hidden fields',
@@ -199,7 +200,10 @@ describe('ConsoleStoryRowFieldToggles', () => {
     },
   ])('$name', ({ hidden, expectedChecked }) => {
     const { getAllByRole } = render(
-      <ConsoleStoryRowFieldToggles hiddenFields={hidden} onToggle={() => undefined} />,
+      <ConsoleStoryRowFieldToggles
+        hiddenFields={hidden}
+        onToggle={() => undefined}
+      />,
     );
     const checked = getAllByRole('checkbox')
       .filter((box) => (box as HTMLInputElement).checked)

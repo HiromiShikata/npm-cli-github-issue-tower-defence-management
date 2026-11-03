@@ -31,12 +31,30 @@ type RowReorderState = {
 };
 
 export type ConsoleStoryTaskActions = {
-  onSetStory: (item: ConsoleListItem, option: ConsoleFieldOption) => Promise<void>;
-  onSetAgent: (item: ConsoleListItem, option: ConsoleFieldOption) => Promise<void>;
-  onSetStatus: (item: ConsoleListItem, option: ConsoleFieldOption) => Promise<void>;
-  onSetDependedIssueUrl: (item: ConsoleListItem, dependedIssueUrl: string) => Promise<void>;
-  onSetNextActionDate: (item: ConsoleListItem, nextActionDate: string) => Promise<void>;
-  onSetNextActionHour: (item: ConsoleListItem, nextActionHour: number) => Promise<void>;
+  onSetStory: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetAgent: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetStatus: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetDependedIssueUrl: (
+    item: ConsoleListItem,
+    dependedIssueUrl: string,
+  ) => Promise<void>;
+  onSetNextActionDate: (
+    item: ConsoleListItem,
+    nextActionDate: string,
+  ) => Promise<void>;
+  onSetNextActionHour: (
+    item: ConsoleListItem,
+    nextActionHour: number,
+  ) => Promise<void>;
 };
 
 type StoryTaskListProps = {
@@ -152,7 +170,9 @@ const StoryTaskRow = ({
               placeholder="Depended issue URL"
               defaultValue={dependedIssueUrlsText}
               disabled={pending}
-              onBlur={(event) => commitDependedIssueUrls(event.currentTarget.value)}
+              onBlur={(event) =>
+                commitDependedIssueUrls(event.currentTarget.value)
+              }
               onKeyDown={(event) => {
                 if (event.key === 'Enter') event.currentTarget.blur();
               }}
@@ -165,7 +185,10 @@ const StoryTaskRow = ({
               disabled={pending}
               onChange={(event) => {
                 const next = event.target.value;
-                if (next === '' || next === toDateInputValue(item.nextActionDate)) {
+                if (
+                  next === '' ||
+                  next === toDateInputValue(item.nextActionDate)
+                ) {
                   return;
                 }
                 runChange(() => actions.onSetNextActionDate(item, next));
@@ -174,7 +197,9 @@ const StoryTaskRow = ({
             <select
               className="console-story-task-hour-select"
               aria-label="Set next action hour"
-              value={item.nextActionHour === null ? '' : String(item.nextActionHour)}
+              value={
+                item.nextActionHour === null ? '' : String(item.nextActionHour)
+              }
               disabled={pending}
               onChange={(event) => {
                 const next = event.target.value;
