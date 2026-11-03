@@ -1893,8 +1893,9 @@ export class ApiV3CheerioRestIssueRepository
         project.id,
         issueUrl,
       ));
+    let outcome: ProjectFieldWriteOutcome;
     try {
-      return await this.graphqlProjectItemRepository.updateProjectField(
+      outcome = await this.graphqlProjectItemRepository.updateProjectField(
         project.id,
         project.agent.fieldId,
         projectItemId,
@@ -1907,6 +1908,16 @@ export class ApiV3CheerioRestIssueRepository
         projectItemId,
       );
     }
+    if (outcome === 'applied') {
+      const agentOption = project.agent.options.find(
+        (option) => option.id === agentOptionId,
+      );
+      await this.applyIssueFieldsToLaterReads(project.id, projectItemId, {
+        agent: agentOption?.name ?? null,
+        agentOptionId,
+      });
+    }
+    return outcome;
   };
 
   removeIssueFromProject = async (
@@ -2148,6 +2159,12 @@ export class ApiV3CheerioRestIssueRepository
         nextActionHour: null,
       });
     }
+    if (project.agent?.fieldId === fieldId) {
+      await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+        agent: null,
+        agentOptionId: null,
+      });
+    }
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
@@ -2244,7 +2261,14 @@ export class ApiV3CheerioRestIssueRepository
     projectId: string,
     itemId: string,
     patch: Partial<
-      Pick<Issue, 'dependedIssueUrls' | 'nextActionDate' | 'nextActionHour'>
+      Pick<
+        Issue,
+        | 'dependedIssueUrls'
+        | 'nextActionDate'
+        | 'nextActionHour'
+        | 'agent'
+        | 'agentOptionId'
+      >
     >,
   ): Promise<void> => {
     const memoized = this.getAllIssuesRefreshMemo.get(projectId);

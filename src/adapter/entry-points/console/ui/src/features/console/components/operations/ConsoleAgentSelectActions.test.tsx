@@ -18,6 +18,26 @@ describe('ConsoleAgentSelectActions', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('disables the select when the disabled prop is true and enables it otherwise', () => {
+    const { rerender } = render(
+      <ConsoleAgentSelectActions
+        agentOptions={agentOptions}
+        currentAgentName={null}
+        onSetAgent={jest.fn()}
+        disabled
+      />,
+    );
+    expect(screen.getByRole('combobox', { name: 'Set agent' })).toBeDisabled();
+    rerender(
+      <ConsoleAgentSelectActions
+        agentOptions={agentOptions}
+        currentAgentName={null}
+        onSetAgent={jest.fn()}
+      />,
+    );
+    expect(screen.getByRole('combobox', { name: 'Set agent' })).toBeEnabled();
+  });
+
   it('renders a select with agent options', () => {
     render(
       <ConsoleAgentSelectActions

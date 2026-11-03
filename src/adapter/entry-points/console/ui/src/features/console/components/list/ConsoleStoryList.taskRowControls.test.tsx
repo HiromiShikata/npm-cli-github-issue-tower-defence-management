@@ -159,6 +159,25 @@ describe('ConsoleStoryList task row controls', () => {
     expect(onSetAgent).toHaveBeenCalledWith(item, agentOptions[1]);
   });
 
+  it('disables the agent select while the agent change is pending and enables it when the change resolves', async () => {
+    let resolveAgentChange: () => void = () => undefined;
+    const onSetAgent = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveAgentChange = resolve;
+        }),
+    );
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetAgent }),
+    });
+    fireEvent.change(getByLabelText('Set agent'), {
+      target: { value: 'agent-chore' },
+    });
+    await waitFor(() => expect(getByLabelText('Set agent')).toBeDisabled());
+    resolveAgentChange();
+    await waitFor(() => expect(getByLabelText('Set agent')).toBeEnabled());
+  });
+
   it('sends the chosen next action date for the row task', async () => {
     const onSetNextActionDate = jest.fn(() => Promise.resolve());
     const { getByLabelText } = renderRowList({

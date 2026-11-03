@@ -18602,6 +18602,303 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('row-control writes mirrored into the on-disk project issues cache', () => {
+    const cacheKey = 'allIssues-proj-cache';
+    const agentOption: FieldOption = {
+      id: 'opt-chore',
+      name: 'chore',
+      color: 'GRAY',
+      description: '',
+    };
+    const projectWithAllRowFields: Project = {
+      ...buildTestProject('proj-cache'),
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL separated by comma',
+        fieldId: 'f-depended',
+      },
+      nextActionDate: { name: 'Next Action Date', fieldId: 'f-date' },
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'f-hour',
+        options: [],
+      },
+      agent: { name: 'Agent', fieldId: 'f-agent', options: [agentOption] },
+    };
+    const buildSeedIssue = (itemId: string, issueNumber: number): Issue => ({
+      nameWithOwner: 'o/r',
+      number: issueNumber,
+      title: `Issue ${itemId}`,
+      state: 'OPEN',
+      status: null,
+      story: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: ['https://github.com/o/r/issues/2'],
+      completionDate50PercentConfidence: null,
+      url: `https://github.com/o/r/issues/${issueNumber}`,
+      assignees: [],
+      labels: [],
+      org: 'o',
+      repo: 'r',
+      body: '',
+      itemId,
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      author: 'author',
+      closingIssueReferenceUrls: [],
+      plainCrossRepoIssueReferenceUrls: [],
+      agent: null,
+      agentOptionId: null,
+      stateReason: null,
+    });
+    const seedItemA = buildSeedIssue('item-a', 1);
+    const seedItemB = buildSeedIssue('item-b', 3);
+    const seedCache = {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: projectWithAllRowFields,
+      issues: [seedItemA, seedItemB],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+      itemUpdatedAtByItemId: {},
+    };
+    const setUpWithCachedIssues = () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      const { localStorageCacheRepository, graphqlProjectItemRepository } =
+        created;
+      localStorageCacheRepository.getSingle.mockImplementation(async (key) =>
+        key === cacheKey ? structuredClone(seedCache) : null,
+      );
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+      graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
+        ...mock<ProjectItem>(),
+        id: 'item-a',
+        url: seedItemA.url,
+        customFields: [],
+      });
+      return created;
+    };
+    const cacheWrites = (
+      setSingle: jest.MockedFunction<LocalStorageCacheRepository['setSingle']>,
+    ) => setSingle.mock.calls.filter(([key]) => key === cacheKey);
+
+    const writeCases: {
+      name: string;
+      run: (
+        repository: ApiV3CheerioRestIssueRepository,
+        issue: Issue,
+      ) => Promise<unknown>;
+      expectedItemAPatch: Partial<Issue>;
+    }[] = [
+      {
+        name: 'depended issue URL replace',
+        run: (repository, issue) =>
+          repository.replaceDependedIssueUrlField(
+            projectWithAllRowFields,
+            issue,
+            'https://github.com/o/r/issues/5',
+          ),
+        expectedItemAPatch: {
+          dependedIssueUrls: ['https://github.com/o/r/issues/5'],
+        },
+      },
+      {
+        name: 'depended issue URL clear',
+        run: (repository, issue) =>
+          repository.clearProjectField(
+            projectWithAllRowFields,
+            'f-depended',
+            issue,
+          ),
+        expectedItemAPatch: { dependedIssueUrls: [] },
+      },
+      {
+        name: 'next action date set',
+        run: (repository, issue) =>
+          repository.updateNextActionDate(
+            issue.url,
+            projectWithAllRowFields,
+            new Date('2026-07-01T00:00:00.000Z'),
+            issue.itemId,
+          ),
+        expectedItemAPatch: {
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        },
+      },
+      {
+        name: 'next action date clear',
+        run: (repository, issue) =>
+          repository.clearProjectField(
+            projectWithAllRowFields,
+            'f-date',
+            issue,
+          ),
+        expectedItemAPatch: { nextActionDate: null },
+      },
+      {
+        name: 'next action hour set',
+        run: (repository, issue) =>
+          repository.updateNextActionHour(
+            {
+              ...projectWithAllRowFields,
+              nextActionHour: {
+                name: 'Next Action Hour',
+                fieldId: 'f-hour',
+                options: [],
+              },
+            },
+            issue,
+            14,
+          ),
+        expectedItemAPatch: { nextActionHour: 14 },
+      },
+      {
+        name: 'next action hour clear',
+        run: (repository, issue) =>
+          repository.clearProjectField(
+            projectWithAllRowFields,
+            'f-hour',
+            issue,
+          ),
+        expectedItemAPatch: { nextActionHour: null },
+      },
+      {
+        name: 'agent set',
+        run: (repository, issue) =>
+          repository.setIssueAgentField(
+            issue.url,
+            projectWithAllRowFields,
+            'opt-chore',
+          ),
+        expectedItemAPatch: { agent: 'chore', agentOptionId: 'opt-chore' },
+      },
+      {
+        name: 'agent clear',
+        run: (repository, issue) =>
+          repository.clearProjectField(
+            projectWithAllRowFields,
+            'f-agent',
+            issue,
+          ),
+        expectedItemAPatch: { agent: null, agentOptionId: null },
+      },
+    ];
+
+    it.each(writeCases)(
+      'writes $name into the cached item only and leaves other items and fields untouched',
+      async ({ run, expectedItemAPatch }) => {
+        const { repository, localStorageCacheRepository } =
+          setUpWithCachedIssues();
+
+        await run(repository, seedItemA);
+
+        const writes = cacheWrites(localStorageCacheRepository.setSingle);
+        expect(writes).toHaveLength(1);
+        expect(writes[0][1]).toEqual(
+          expect.objectContaining({
+            issues: [{ ...seedItemA, ...expectedItemAPatch }, seedItemB],
+          }),
+        );
+      },
+    );
+
+    it('writes no cache entry when the written item is not in the cached issues', async () => {
+      const { repository, localStorageCacheRepository } =
+        setUpWithCachedIssues();
+
+      await repository.updateNextActionDate(
+        seedItemA.url,
+        projectWithAllRowFields,
+        new Date('2026-07-01T00:00:00.000Z'),
+        'item-missing',
+      );
+
+      expect(cacheWrites(localStorageCacheRepository.setSingle)).toHaveLength(
+        0,
+      );
+    });
+  });
+
+  describe('setIssueAgentField in-process memo mirror', () => {
+    const agentOption: FieldOption = {
+      id: 'opt-chore',
+      name: 'chore',
+      color: 'GRAY',
+      description: '',
+    };
+    const projectWithAgent: Project = {
+      ...buildTestProject('proj-agent-memo'),
+      agent: { name: 'Agent', fieldId: 'f-agent', options: [agentOption] },
+    };
+    const setUpWithMemoizedItem = async (
+      updateOutcome: 'applied' | 'overwrittenByAnotherWriter',
+    ) => {
+      const created = createApiV3CheerioRestIssueRepository();
+      const { repository, graphqlProjectItemRepository } = created;
+      created.localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      created.localStorageCacheRepository.setSingle.mockResolvedValue();
+      created.projectRepository.getProject.mockResolvedValue(projectWithAgent);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem('https://github.com/o/r/issues/1', 'Issue 1'),
+            id: 'item-agent',
+            customFields: [],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
+        ...mock<ProjectItem>(),
+        id: 'item-agent',
+        url: 'https://github.com/o/r/issues/1',
+        customFields: [],
+      });
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        updateOutcome,
+      );
+      const first = await repository.getAllIssues('proj-agent-memo');
+      expect(first.issues[0].agent).toBeNull();
+      return created;
+    };
+
+    it('reflects an applied agent write in later reads as the option name and option id', async () => {
+      const { repository } = await setUpWithMemoizedItem('applied');
+      await repository.setIssueAgentField(
+        'https://github.com/o/r/issues/1',
+        projectWithAgent,
+        'opt-chore',
+      );
+
+      const later = await repository.getAllIssues('proj-agent-memo');
+      expect(later.issues[0].agent).toBe('chore');
+      expect(later.issues[0].agentOptionId).toBe('opt-chore');
+    });
+
+    it('leaves later reads unchanged when another writer overwrote the agent', async () => {
+      const { repository } = await setUpWithMemoizedItem(
+        'overwrittenByAnotherWriter',
+      );
+
+      await repository.setIssueAgentField(
+        'https://github.com/o/r/issues/1',
+        projectWithAgent,
+        'opt-chore',
+      );
+
+      const later = await repository.getAllIssues('proj-agent-memo');
+      expect(later.issues[0].agent).toBeNull();
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
