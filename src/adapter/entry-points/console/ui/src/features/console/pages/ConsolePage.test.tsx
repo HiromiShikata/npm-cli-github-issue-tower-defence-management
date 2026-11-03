@@ -10284,9 +10284,11 @@ describe('ConsolePage operation bar status buttons', () => {
 
     const { findByRole, findByLabelText } = render(<ConsolePage />);
     fireEvent.click(await findByRole('button', { name: 'Show tasks' }));
-    fireEvent.change(await findByLabelText('Set next action date'), {
+    const dateInput = await findByLabelText('Set next action date');
+    fireEvent.change(dateInput, {
       target: { value: '2026-08-01' },
     });
+    fireEvent.blur(dateInput);
     await waitFor(() =>
       expect(postedBodyOf('/api/triage')).toMatchObject({
         action: 'set_next_action_date',

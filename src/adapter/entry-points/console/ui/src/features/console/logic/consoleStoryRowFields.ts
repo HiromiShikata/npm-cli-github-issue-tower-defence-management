@@ -1,5 +1,7 @@
 export const CONSOLE_STORY_ROW_FIELDS = [
-  'trigger',
+  'dependedIssueUrl',
+  'nextActionDate',
+  'nextActionHour',
   'agent',
   'story',
   'status',

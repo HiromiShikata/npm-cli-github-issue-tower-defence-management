@@ -18,6 +18,6 @@ export const AllFieldsShown: Story = {};
 
 export const SomeFieldsHidden: Story = {
   args: {
-    hiddenFields: ['trigger', 'status'],
+    hiddenFields: ['nextActionHour', 'status'],
   },
 };

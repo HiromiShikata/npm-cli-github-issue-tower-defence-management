@@ -101,9 +101,19 @@ const renderRowList = (overrides: Partial<ConsoleStoryListProps> = {}) => {
 describe('ConsoleStoryList task row controls', () => {
   it.each([
     {
-      name: 'trigger fields',
-      field: 'trigger' as const,
+      name: 'depended issue URL',
+      field: 'dependedIssueUrl' as const,
+      label: 'Set depended issue URL',
+    },
+    {
+      name: 'next action date',
+      field: 'nextActionDate' as const,
       label: 'Set next action date',
+    },
+    {
+      name: 'next action hour',
+      field: 'nextActionHour' as const,
+      label: 'Set next action hour',
     },
     { name: 'agent', field: 'agent' as const, label: 'Set agent' },
     { name: 'story', field: 'story' as const, label: 'Set story' },
@@ -157,8 +167,69 @@ describe('ConsoleStoryList task row controls', () => {
     fireEvent.change(getByLabelText('Set next action date'), {
       target: { value: '2026-08-01' },
     });
+    fireEvent.blur(getByLabelText('Set next action date'));
     await waitFor(() => expect(onSetNextActionDate).toHaveBeenCalledTimes(1));
     expect(onSetNextActionDate).toHaveBeenCalledWith(item, '2026-08-01');
+  });
+
+  it('sends nothing while the date draft is incomplete or empty', async () => {
+    const onSetNextActionDate = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionDate }),
+    });
+    const dateInput = getByLabelText('Set next action date');
+    fireEvent.change(dateInput, { target: { value: '2026-08' } });
+    fireEvent.blur(dateInput);
+    fireEvent.change(dateInput, { target: { value: '' } });
+    fireEvent.blur(dateInput);
+    await Promise.resolve();
+    expect(onSetNextActionDate).not.toHaveBeenCalled();
+    expect(dateInput).toHaveValue('2026-07-10');
+  });
+
+  it('commits a complete date on Enter', async () => {
+    const onSetNextActionDate = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionDate }),
+    });
+    const dateInput = getByLabelText('Set next action date');
+    dateInput.focus();
+    fireEvent.change(dateInput, { target: { value: '2026-09-15' } });
+    fireEvent.keyDown(dateInput, { key: 'Enter' });
+    await waitFor(() => expect(onSetNextActionDate).toHaveBeenCalledTimes(1));
+    expect(onSetNextActionDate).toHaveBeenCalledWith(item, '2026-09-15');
+  });
+
+  it('does not send when the complete date equals the stored date', async () => {
+    const onSetNextActionDate = jest.fn(() => Promise.resolve());
+    const { getByLabelText } = renderRowList({
+      taskActions: buildTaskActions({ onSetNextActionDate }),
+    });
+    const dateInput = getByLabelText('Set next action date');
+    fireEvent.change(dateInput, { target: { value: '2026-07-10' } });
+    fireEvent.blur(dateInput);
+    await Promise.resolve();
+    expect(onSetNextActionDate).not.toHaveBeenCalled();
+  });
+
+  it('restores the stored date and shows the error when the date save is rejected', async () => {
+    const { getByLabelText, findByRole, container } = renderRowList({
+      taskActions: buildTaskActions({
+        onSetNextActionDate: () =>
+          Promise.reject(new Error('Date update rejected')),
+      }),
+    });
+    fireEvent.change(getByLabelText('Set next action date'), {
+      target: { value: '2026-09-15' },
+    });
+    fireEvent.blur(getByLabelText('Set next action date'));
+    const alert = await findByRole('alert');
+    expect(alert).toHaveTextContent('Date update rejected');
+    expect(
+      within(
+        container.querySelector('.console-story-task-row') as HTMLElement,
+      ).getByLabelText('Set next action date'),
+    ).toHaveValue('2026-07-10');
   });
 
   it('shows the error in the row when a change fails', async () => {
@@ -278,16 +349,28 @@ describe('ConsoleStoryList task row controls', () => {
     expect(onSetNextActionHour).toHaveBeenCalledWith(item, null);
   });
 
-  it('clears the next action date when the date input is emptied', async () => {
+  it('clears the next action date only through the Clear button', async () => {
     const onSetNextActionDate = jest.fn(() => Promise.resolve());
-    const { getByLabelText } = renderRowList({
+    const { getByRole } = renderRowList({
       taskActions: buildTaskActions({ onSetNextActionDate }),
     });
-    fireEvent.change(getByLabelText('Set next action date'), {
-      target: { value: '' },
-    });
+    fireEvent.click(getByRole('button', { name: 'Clear next action date' }));
     await waitFor(() => expect(onSetNextActionDate).toHaveBeenCalledTimes(1));
     expect(onSetNextActionDate).toHaveBeenCalledWith(item, '');
+  });
+
+  it('shows no Clear button when the row has no next action date', () => {
+    const { queryByRole } = renderRowList({
+      stories: [
+        {
+          ...stories[0],
+          items: [{ ...item, nextActionDate: null }],
+        },
+      ],
+    });
+    expect(
+      queryByRole('button', { name: 'Clear next action date' }),
+    ).toBeNull();
   });
 
   it('shows the error and restores the stored hour when the hour change is rejected', async () => {
@@ -316,7 +399,9 @@ describe('ConsoleStoryRowFieldToggles', () => {
       name: 'checks every field when none is hidden',
       hidden: [] as ConsoleStoryRowField[],
       expectedChecked: [
-        'Reactivation trigger fields',
+        'Depended Issue URL',
+        'Next Action Date',
+        'Next Action Hour',
         'Agent',
         'Story',
         'Status',
@@ -324,8 +409,8 @@ describe('ConsoleStoryRowFieldToggles', () => {
     },
     {
       name: 'unchecks only the hidden fields',
-      hidden: ['agent', 'status'] as ConsoleStoryRowField[],
-      expectedChecked: ['Reactivation trigger fields', 'Story'],
+      hidden: ['agent', 'status', 'nextActionDate'] as ConsoleStoryRowField[],
+      expectedChecked: ['Depended Issue URL', 'Next Action Hour', 'Story'],
     },
   ])('$name', ({ hidden, expectedChecked }) => {
     const { getAllByRole } = render(

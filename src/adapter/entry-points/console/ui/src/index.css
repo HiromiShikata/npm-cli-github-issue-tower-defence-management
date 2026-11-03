@@ -3608,9 +3608,8 @@ body {
   color: #4493f8;
   text-decoration: none;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   text-align: left;
 }
 
@@ -3627,6 +3626,11 @@ body {
 
 .console-story-task-trigger {
   flex-wrap: wrap;
+}
+
+.console-story-task-date-clear {
+  padding: 0 6px;
+  font-size: 0.75rem;
 }
 
 .console-story-task-field {

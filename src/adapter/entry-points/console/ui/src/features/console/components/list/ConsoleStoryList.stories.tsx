@@ -542,7 +542,7 @@ export const TasksExpandedWithRowFieldsHidden: Story = {
     stories: storiesWithoutUrl,
     isLoading: false,
     error: null,
-    hiddenRowFields: ['trigger', 'agent'],
+    hiddenRowFields: ['nextActionDate', 'agent'],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

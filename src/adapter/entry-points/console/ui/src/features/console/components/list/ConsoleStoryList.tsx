@@ -82,6 +82,9 @@ const isRowFieldShown = (
 const toDateInputValue = (value: string | null): string =>
   value === null ? '' : value.slice(0, 10);
 
+const isCompleteIsoDate = (value: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+
 const toErrorMessage = (caught: unknown): string =>
   caught instanceof Error ? caught.message : String(caught);
 
@@ -145,6 +148,28 @@ const StoryTaskRow = ({
     runChange(() => actions.onSetDependedIssueUrl(item, urls.join(', ')));
   };
 
+  const storedDateValue = toDateInputValue(item.nextActionDate);
+  const showDependedIssueUrl = isRowFieldShown(
+    hiddenRowFields,
+    'dependedIssueUrl',
+  );
+  const showNextActionDate = isRowFieldShown(hiddenRowFields, 'nextActionDate');
+  const showNextActionHour = isRowFieldShown(hiddenRowFields, 'nextActionHour');
+
+  // The date input is a draft: a partial, empty, or unchanged value is never
+  // sent. Only a complete YYYY-MM-DD different from the stored date commits.
+  const commitNextActionDate = (input: HTMLInputElement) => {
+    const draft = input.value;
+    if (draft === storedDateValue) {
+      return;
+    }
+    if (!isCompleteIsoDate(draft)) {
+      input.value = storedDateValue;
+      return;
+    }
+    runChange(() => actions.onSetNextActionDate(item, draft));
+  };
+
   return (
     <li className="console-story-task-row">
       <button
@@ -155,68 +180,89 @@ const StoryTaskRow = ({
         {item.title}
       </button>
       <div className="console-story-task-ops">
-        {isRowFieldShown(hiddenRowFields, 'trigger') && (
+        {(showDependedIssueUrl || showNextActionDate || showNextActionHour) && (
           <div className="console-op-group console-story-task-trigger">
-            <input
-              key={`depended-${dependedIssueUrlsText}-${revision}`}
-              type="text"
-              className="console-story-task-depended-input"
-              aria-label="Set depended issue URL"
-              placeholder="Depended issue URL"
-              defaultValue={dependedIssueUrlsText}
-              disabled={pending}
-              onBlur={(event) =>
-                commitDependedIssueUrls(event.currentTarget.value)
-              }
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') event.currentTarget.blur();
-              }}
-            />
-            <input
-              type="date"
-              className="console-story-task-date-input"
-              aria-label="Set next action date"
-              value={toDateInputValue(item.nextActionDate)}
-              disabled={pending}
-              onChange={(event) => {
-                const next = event.target.value;
-                if (next === toDateInputValue(item.nextActionDate)) {
-                  return;
+            {showDependedIssueUrl && (
+              <input
+                key={`depended-${dependedIssueUrlsText}-${revision}`}
+                type="text"
+                className="console-story-task-depended-input"
+                aria-label="Set depended issue URL"
+                placeholder="Depended issue URL"
+                defaultValue={dependedIssueUrlsText}
+                disabled={pending}
+                onBlur={(event) =>
+                  commitDependedIssueUrls(event.currentTarget.value)
                 }
-                runChange(() => actions.onSetNextActionDate(item, next));
-              }}
-            />
-            <select
-              className="console-story-task-hour-select"
-              aria-label="Set next action hour"
-              value={
-                item.nextActionHour === null ? '' : String(item.nextActionHour)
-              }
-              disabled={pending}
-              onChange={(event) => {
-                const next = event.target.value;
-                const current =
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+            )}
+            {showNextActionDate && (
+              <>
+                <input
+                  key={`date-${storedDateValue}-${revision}`}
+                  type="date"
+                  className="console-story-task-date-input"
+                  aria-label="Set next action date"
+                  defaultValue={storedDateValue}
+                  disabled={pending}
+                  onBlur={(event) => commitNextActionDate(event.currentTarget)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.currentTarget.blur();
+                  }}
+                />
+                {item.nextActionDate !== null && (
+                  <button
+                    type="button"
+                    className="console-story-task-date-clear"
+                    aria-label="Clear next action date"
+                    disabled={pending}
+                    onClick={() =>
+                      runChange(() => actions.onSetNextActionDate(item, ''))
+                    }
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
+            )}
+            {showNextActionHour && (
+              <select
+                className="console-story-task-hour-select"
+                aria-label="Set next action hour"
+                value={
                   item.nextActionHour === null
                     ? ''
-                    : String(item.nextActionHour);
-                if (next === current) {
-                  return;
+                    : String(item.nextActionHour)
                 }
-                runChange(() =>
-                  actions.onSetNextActionHour(
-                    item,
-                    next === '' ? null : Number(next),
-                  ),
-                );
-              }}
-            >
-              <option value="">— hour —</option>
-              {HOUR_OPTIONS.map((hour) => (
-                <option key={hour} value={String(hour)}>
-                  {String(hour).padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
+                disabled={pending}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  const current =
+                    item.nextActionHour === null
+                      ? ''
+                      : String(item.nextActionHour);
+                  if (next === current) {
+                    return;
+                  }
+                  runChange(() =>
+                    actions.onSetNextActionHour(
+                      item,
+                      next === '' ? null : Number(next),
+                    ),
+                  );
+                }}
+              >
+                <option value="">— hour —</option>
+                {HOUR_OPTIONS.map((hour) => (
+                  <option key={hour} value={String(hour)}>
+                    {String(hour).padStart(2, '0')}:00
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
         {isRowFieldShown(hiddenRowFields, 'agent') && (
@@ -228,6 +274,7 @@ const StoryTaskRow = ({
               onSetAgent={(option) =>
                 runChange(() => actions.onSetAgent(item, option))
               }
+              disabled={pending}
             />
           </div>
         )}

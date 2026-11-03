@@ -4,7 +4,9 @@ import {
 } from '../../logic/consoleStoryRowFields';
 
 const ROW_FIELD_LABELS: Record<ConsoleStoryRowField, string> = {
-  trigger: 'Reactivation trigger fields',
+  dependedIssueUrl: 'Depended Issue URL',
+  nextActionDate: 'Next Action Date',
+  nextActionHour: 'Next Action Hour',
   agent: 'Agent',
   story: 'Story',
   status: 'Status',

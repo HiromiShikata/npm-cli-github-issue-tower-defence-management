@@ -2393,13 +2393,19 @@ test('story tab task row shows the title on its own line, then trigger fields, a
         controls: ['Set story'],
       },
       {
-        checkbox: 'Reactivation trigger fields',
-        param: 'trigger',
-        controls: [
-          'Set depended issue URL',
-          'Set next action date',
-          'Set next action hour',
-        ],
+        checkbox: 'Depended Issue URL',
+        param: 'dependedIssueUrl',
+        controls: ['Set depended issue URL'],
+      },
+      {
+        checkbox: 'Next Action Date',
+        param: 'nextActionDate',
+        controls: ['Set next action date'],
+      },
+      {
+        checkbox: 'Next Action Hour',
+        param: 'nextActionHour',
+        controls: ['Set next action hour'],
       },
     ];
     for (const { checkbox, param, controls } of hiddenFieldCases) {

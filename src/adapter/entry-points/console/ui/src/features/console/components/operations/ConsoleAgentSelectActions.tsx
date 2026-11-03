@@ -6,6 +6,7 @@ export type ConsoleAgentSelectActionsProps = {
   currentAgentName: string | null;
   currentAgentOptionId?: string | null;
   onSetAgent: (option: ConsoleFieldOption) => void;
+  disabled?: boolean;
 };
 
 export const ConsoleAgentSelectActions = ({
@@ -13,6 +14,7 @@ export const ConsoleAgentSelectActions = ({
   currentAgentName,
   currentAgentOptionId,
   onSetAgent,
+  disabled = false,
 }: ConsoleAgentSelectActionsProps) => {
   if (agentOptions.length === 0) return null;
 
@@ -33,6 +35,7 @@ export const ConsoleAgentSelectActions = ({
         currentOption={currentOption}
         options={agentOptions}
         onSelect={onSetAgent}
+        disabled={disabled}
       />
     </div>
   );

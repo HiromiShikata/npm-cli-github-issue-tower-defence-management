@@ -14,8 +14,8 @@ describe('parseHiddenConsoleStoryRowFieldsFromSearch', () => {
     },
     {
       name: 'returns fields in display order regardless of URL order',
-      search: '?hiddenStoryField=status&hiddenStoryField=trigger',
-      expected: ['trigger', 'status'],
+      search: '?hiddenStoryField=status&hiddenStoryField=nextActionDate',
+      expected: ['nextActionDate', 'status'],
     },
     {
       name: 'ignores unknown field names',
@@ -45,8 +45,8 @@ describe('formatHiddenConsoleStoryRowFieldsIntoSearch', () => {
     {
       name: 'writes hidden fields in display order',
       search: '',
-      hidden: ['status', 'trigger'] as const,
-      expected: '?hiddenStoryField=trigger&hiddenStoryField=status',
+      hidden: ['status', 'nextActionDate'] as const,
+      expected: '?hiddenStoryField=nextActionDate&hiddenStoryField=status',
     },
     {
       name: 'keeps unrelated parameters such as the status filter',
