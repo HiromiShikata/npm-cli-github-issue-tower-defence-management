@@ -1668,28 +1668,24 @@ describe('consoleOperationApi', () => {
     });
 
     it('clears the next action hour when set_next_action_hour has a null value', async () => {
-      const response = await handleTriage(
-        contextForProject({
-          ...project,
-          nextActionHour: {
-            name: 'Next Action Hour',
-            fieldId: 'nahField',
-            options: [],
-          },
-        }),
-        {
-          pjcode: 'acme',
-          action: 'set_next_action_hour',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: 'PVTI_nah_clear',
-          nextActionHour: null,
+      const hourProject = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
         },
-      );
+      };
+      const response = await handleTriage(contextForProject(hourProject), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah_clear',
+        nextActionHour: null,
+      });
       expect(response.statusCode).toBe(200);
       expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
-        expect.objectContaining({
-          nextActionHour: expect.objectContaining({ fieldId: 'nahField' }),
-        }),
+        hourProject,
         'nahField',
         expect.objectContaining({
           url: 'https://github.com/o/r/issues/1',
