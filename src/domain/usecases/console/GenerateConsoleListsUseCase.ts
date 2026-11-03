@@ -88,6 +88,7 @@ export type ConsoleStoriesTab = {
   pjcode: string;
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   stories: ConsoleStoryEntry[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
@@ -301,6 +302,7 @@ export class GenerateConsoleListsUseCase {
         pjcode,
         generatedAt,
         statusOptions: this.buildFieldOptions(statusOptions, []),
+        agentOptions: allAgentOptions,
         stories: storyEntries,
         storyOrder,
         storyColors: this.buildStoryColorsObject(storyOptions),
