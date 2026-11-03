@@ -1,4 +1,5 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
+import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
@@ -283,7 +284,18 @@ const defaultProps = {
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
   onOpenItem: () => undefined,
-  onSetTaskStory: () => Promise.resolve(),
+  agentOptions: [],
+  statusFieldOptions: [],
+  hiddenRowFields: [] as ConsoleStoryRowField[],
+  onToggleRowField: () => undefined,
+  taskActions: {
+    onSetStory: () => Promise.resolve(),
+    onSetAgent: () => Promise.resolve(),
+    onSetStatus: () => Promise.resolve(),
+    onSetDependedIssueUrl: () => Promise.resolve(),
+    onSetNextActionDate: () => Promise.resolve(),
+    onSetNextActionHour: () => Promise.resolve(),
+  },
 };
 
 describe('ConsoleStoryList', () => {
@@ -1654,48 +1666,67 @@ describe('ConsoleStoryList', () => {
       expect(queryByRole('link', { name: 'Fix login bug' })).toBeNull();
     });
 
-    it('shows status value when set', () => {
-      const { getAllByRole, getByText } = render(
-        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+    const rowControlOptions = {
+      agentOptions: [
+        { id: 'agent-developer', name: 'developer', color: 'BLUE' as const },
+      ],
+      statusFieldOptions: [
+        {
+          id: 'status-awaiting-owner',
+          name: 'Awaiting Owner',
+          color: 'GRAY' as const,
+        },
+      ],
+    };
+
+    it('shows status value in the row status pulldown when set', () => {
+      const { getAllByRole, getAllByLabelText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          {...rowControlOptions}
+          stories={storyWithItems}
+        />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('Awaiting Owner')).toBeInTheDocument();
+      expect(getAllByLabelText('Set status')[0]).toHaveDisplayValue('Awaiting Owner');
     });
 
-    it('shows agent value when set', () => {
-      const { getAllByRole, getByText } = render(
-        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+    it('shows agent value in the row agent pulldown when set', () => {
+      const { getAllByRole, getAllByLabelText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          {...rowControlOptions}
+          stories={storyWithItems}
+        />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('developer')).toBeInTheDocument();
+      expect(getAllByLabelText('Set agent')[0]).toHaveDisplayValue('developer');
     });
 
-    it('shows nextActionDate when set', () => {
-      const { getAllByRole, getByText } = render(
+    it('shows nextActionDate in the row date input when set', () => {
+      const { getAllByRole, getAllByLabelText } = render(
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('2026-07-10')).toBeInTheDocument();
+      expect(getAllByLabelText('Set next action date')[0]).toHaveValue('2026-07-10');
     });
 
-    it('shows nextActionHour when set', () => {
-      const { getAllByRole, getByText } = render(
+    it('shows nextActionHour in the row hour pulldown when set', () => {
+      const { getAllByRole, getAllByLabelText } = render(
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('9')).toBeInTheDocument();
+      expect(getAllByLabelText('Set next action hour')[0]).toHaveValue('9');
     });
 
-    it('shows dependedIssueUrls comma-separated when set', () => {
-      const { getAllByRole, getByText } = render(
+    it('shows dependedIssueUrls comma-separated in the row text input when set', () => {
+      const { getAllByRole, getAllByLabelText } = render(
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(
-        getByText(
-          'https://github.com/demo/repo/issues/5, https://github.com/demo/repo/issues/6',
-        ),
-      ).toBeInTheDocument();
+      expect(getAllByLabelText('Set depended issue URL')[0]).toHaveValue(
+        'https://github.com/demo/repo/issues/5, https://github.com/demo/repo/issues/6',
+      );
     });
 
     it('changes chevron aria-label to Hide tasks after clicking Show tasks', () => {
@@ -1966,11 +1997,13 @@ describe('ConsoleStoryList', () => {
     };
 
     it('renders one checkbox per status option inside a Status group', () => {
-      const { getByRole, getAllByRole } = render(
+      const { getByRole } = render(
         <ConsoleStoryList {...filterProps} selectedStatuses={[]} />,
       );
-      expect(getByRole('group', { name: 'Status' })).toBeInTheDocument();
-      expect(getAllByRole('checkbox')).toHaveLength(statusOptionNames.length);
+      const statusGroup = getByRole('group', { name: 'Status' });
+      expect(within(statusGroup).getAllByRole('checkbox')).toHaveLength(
+        statusOptionNames.length,
+      );
     });
 
     it('with no selection, shows every story and hides only Done task rows on expand, as before the filter existed', () => {

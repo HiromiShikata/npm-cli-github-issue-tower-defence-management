@@ -95,6 +95,8 @@ const buildOperations = (): ConsoleOperationsApi => {
   const operations = {
     reviewPullRequest: jest.fn(async () => {}),
     setNextActionDate: jest.fn(async () => {}),
+    setNextActionDateValue: jest.fn(async () => {}),
+    setNextActionHourValue: jest.fn(async () => {}),
     setStory: jest.fn(async () => {}),
     setAgent: jest.fn(async () => {}),
     setStatus: jest.fn(async () => {}),

@@ -139,6 +139,19 @@ const storiesWithArchivedAndDone = [
   completedStoryEntry,
 ];
 
+const taskActionOptions = [
+  { id: 'agent-developer', name: 'developer', color: 'BLUE' as const },
+  { id: 'agent-chore', name: 'chore', color: 'GRAY' as const },
+];
+
+const statusFieldOptionNames = ['Todo by human', 'In Progress', 'Done'];
+
+const statusFieldOptions = statusFieldOptionNames.map((name, index) => ({
+  id: `status-option-${index}`,
+  name,
+  color: 'GRAY' as const,
+}));
+
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',
   component: ConsoleStoryList,
@@ -158,7 +171,18 @@ const meta: Meta<typeof ConsoleStoryList> = {
     colorChangeInFlight: null,
     colorErrors: {},
     onOpenItem: () => undefined,
-    onSetTaskStory: () => Promise.resolve(),
+    agentOptions: taskActionOptions,
+    statusFieldOptions,
+    hiddenRowFields: [],
+    onToggleRowField: () => undefined,
+    taskActions: {
+      onSetStory: () => Promise.resolve(),
+      onSetAgent: () => Promise.resolve(),
+      onSetStatus: () => Promise.resolve(),
+      onSetDependedIssueUrl: () => Promise.resolve(),
+      onSetNextActionDate: () => Promise.resolve(),
+      onSetNextActionHour: () => Promise.resolve(),
+    },
   },
 };
 
@@ -503,6 +527,22 @@ export const StatusFilterDoneSelectedWithDoneToggleOff: Story = {
     selectedStatuses: ['Done'],
     onToggleStatus: () => undefined,
     onClearStatuses: () => undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
+    await userEvent.click(firstChevron);
+  },
+};
+
+export const TasksExpandedWithRowFieldsHidden: Story = {
+  args: {
+    stories: storiesWithoutUrl,
+    isLoading: false,
+    error: null,
+    hiddenRowFields: ['trigger', 'agent'],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

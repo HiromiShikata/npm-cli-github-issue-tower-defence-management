@@ -1509,6 +1509,105 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
+    it('sets the next action date to the given UTC day', async () => {
+      const response = await handleTriage(contextForProject(project), {
+        pjcode: 'acme',
+        action: 'set_next_action_date',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nad',
+        nextActionDate: '2026-03-04',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionDate.mock.calls[0];
+      expect(call[2].toISOString()).toBe('2026-03-04T00:00:00.000Z');
+      expect(call[3]).toBe('PVTI_nad');
+      expectRecordedAcrossTabs('PVTI_nad');
+    });
+
+    it.each([
+      ['the field is missing', {}],
+      ['the value is not YYYY-MM-DD', { nextActionDate: '2026/03/04' }],
+      ['the day does not exist', { nextActionDate: '2026-02-30' }],
+    ])('rejects set_next_action_date when %s', async (_label, extra) => {
+      const response = await handleTriage(contextForProject(project), {
+        pjcode: 'acme',
+        action: 'set_next_action_date',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nad_bad',
+        ...extra,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('sets the next action hour via updateNextActionHour', async () => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah',
+        nextActionHour: 7,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionHour.mock.calls[0];
+      expect(call[0]).toMatchObject({
+        nextActionHour: { fieldId: 'nahField' },
+      });
+      expect(call[2]).toBe(7);
+      expectRecordedAcrossTabs('PVTI_nah');
+    });
+
+    it.each([
+      ['the hour is 24', { nextActionHour: 24 }],
+      ['the hour is negative', { nextActionHour: -1 }],
+      ['the hour is not an integer', { nextActionHour: 1.5 }],
+      ['the hour is a string', { nextActionHour: '3' }],
+      ['the hour is missing', {}],
+    ])('rejects set_next_action_hour when %s', async (_label, extra) => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah_bad',
+        ...extra,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
+    it('rejects set_next_action_hour on a project without nextActionHour', async () => {
+      const response = await handleTriage(
+        contextForProject({ ...project, nextActionHour: null }),
+        {
+          pjcode: 'acme',
+          action: 'set_next_action_hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah_none',
+          nextActionHour: 7,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
     it('rejects set_story without a story option id', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',

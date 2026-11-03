@@ -3577,12 +3577,19 @@ body {
   gap: 0;
 }
 
+.console-story-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .console-story-task-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto auto;
-  gap: 8px;
-  align-items: baseline;
-  padding: 5px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 4px;
   border-bottom: 1px solid #21262d;
   font-size: 0.7813rem;
 }
@@ -3592,11 +3599,12 @@ body {
 }
 
 .console-story-task-error {
-  grid-column: 1 / -1;
   margin: 0;
 }
 
 .console-story-task-title {
+  display: block;
+  width: 100%;
   color: #4493f8;
   text-decoration: none;
   min-width: 0;
@@ -3610,45 +3618,45 @@ body {
   text-decoration: underline;
 }
 
-.console-story-task-status,
-.console-story-task-agent,
-.console-story-task-next-action-date,
-.console-story-task-next-action-hour {
-  color: #8b949e;
-  white-space: nowrap;
-  flex-shrink: 0;
+.console-story-task-ops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.console-story-task-trigger {
+  flex-wrap: wrap;
+}
+
+.console-story-task-row .console-story-select,
+.console-story-task-row .console-story-task-status-select,
+.console-story-task-row .console-agent-select {
+  width: auto;
+  max-width: 11rem;
+  padding: 4px 8px;
   font-size: 0.75rem;
 }
 
-.console-story-task-depended-urls {
-  color: #8b949e;
-  font-size: 0.6875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 120px;
+.console-story-task-depended-input {
+  width: 14rem;
+  max-width: 100%;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #e6edf3;
 }
 
-@media (max-width: 600px) {
-  .console-story-task-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 8px;
-  }
-
-  .console-story-task-title,
-  .console-story-task-row > .console-op-group,
-  .console-story-task-error {
-    flex: 1 1 100%;
-  }
-
-  .console-story-task-row > .console-op-group {
-    min-width: 0;
-  }
-
-  .console-story-task-row > .console-op-group .console-story-select {
-    width: 100%;
-  }
+.console-story-task-date-input,
+.console-story-task-hour-select {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #e6edf3;
 }
 
 .console-story-chevron {

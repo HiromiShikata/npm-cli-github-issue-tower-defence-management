@@ -866,6 +866,69 @@ export const handleTriage = async (
     return ok();
   }
 
+  if (action === 'set_next_action_date') {
+    const nextActionDate = body.nextActionDate;
+    const target =
+      isNonEmptyString(nextActionDate) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(nextActionDate)
+        ? new Date(`${nextActionDate}T00:00:00.000Z`)
+        : null;
+    if (
+      target === null ||
+      Number.isNaN(target.getTime()) ||
+      target.toISOString().slice(0, 10) !== nextActionDate
+    ) {
+      return badRequest(
+        'nextActionDate must be a valid YYYY-MM-DD date for set_next_action_date',
+      );
+    }
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionDate(issueUrl, project, target, projectItemId);
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
+  if (action === 'set_next_action_hour') {
+    const nextActionHour = body.nextActionHour;
+    if (
+      typeof nextActionHour !== 'number' ||
+      !Number.isInteger(nextActionHour) ||
+      nextActionHour < 0 ||
+      nextActionHour > 23
+    ) {
+      return badRequest(
+        'nextActionHour must be an integer from 0 to 23 for set_next_action_hour',
+      );
+    }
+    if (project.nextActionHour === null) {
+      return badRequest('project does not have a nextActionHour field');
+    }
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionHour(
+          { ...project, nextActionHour: project.nextActionHour },
+          projectItemReference(issueUrl, projectItemId),
+          nextActionHour,
+        );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
   return badRequest(`unknown triage action "${action}"`);
 };
 

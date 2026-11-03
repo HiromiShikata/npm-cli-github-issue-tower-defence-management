@@ -43,6 +43,8 @@ export type ConsoleTriageRequest = {
   statusName?: string;
   storyOptionId?: string;
   agentOptionId?: string;
+  nextActionDate?: string;
+  nextActionHour?: number;
   commentBody?: string;
   expectedStatusName?: string | null;
 };

@@ -62,6 +62,14 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     option: ConsoleFieldOption,
   ) => Promise<void>;
+  setNextActionDateValue: (
+    item: ConsoleListItem,
+    nextActionDate: string,
+  ) => Promise<void>;
+  setNextActionHourValue: (
+    item: ConsoleListItem,
+    nextActionHour: number,
+  ) => Promise<void>;
   setInTmuxByHuman: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
@@ -169,11 +177,15 @@ export const buildTriageRequest = (
     | ConsoleCloseAction
     | 'set_story'
     | 'set_agent'
-    | 'set_status',
+    | 'set_status'
+    | 'set_next_action_date'
+    | 'set_next_action_hour',
   extra?: {
     statusName?: string;
     storyOptionId?: string;
     agentOptionId?: string;
+    nextActionDate?: string;
+    nextActionHour?: number;
   },
 ): ConsoleTriageRequest => ({
   pjcode,
@@ -319,6 +331,34 @@ export const useConsoleOperations = (
       }
       const request = buildTriageRequest(pjcode, item, 'set_status', {
         statusName: option.name,
+      });
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
+    },
+    [pjcode, invalidateItemContent],
+  );
+
+  const setNextActionDateValue = useCallback(
+    async (item: ConsoleListItem, nextActionDate: string) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      const request = buildTriageRequest(pjcode, item, 'set_next_action_date', {
+        nextActionDate,
+      });
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
+    },
+    [pjcode, invalidateItemContent],
+  );
+
+  const setNextActionHourValue = useCallback(
+    async (item: ConsoleListItem, nextActionHour: number) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      const request = buildTriageRequest(pjcode, item, 'set_next_action_hour', {
+        nextActionHour,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -550,6 +590,8 @@ export const useConsoleOperations = (
       setStory,
       setAgent,
       setStatus,
+      setNextActionDateValue,
+      setNextActionHourValue,
       setInTmuxByHuman,
       closeIssue,
       okAndMoveToAwaitingWorkspace,
@@ -570,6 +612,8 @@ export const useConsoleOperations = (
       setStory,
       setAgent,
       setStatus,
+      setNextActionDateValue,
+      setNextActionHourValue,
       setInTmuxByHuman,
       closeIssue,
       okAndMoveToAwaitingWorkspace,

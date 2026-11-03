@@ -67,12 +67,22 @@ import {
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
 import {
+  type ConsoleStoryRowField,
+  formatHiddenConsoleStoryRowFieldsIntoSearch,
+  parseHiddenConsoleStoryRowFieldsFromSearch,
+  toggleConsoleStoryRowField,
+} from '../logic/consoleStoryRowFields';
+import {
   formatConsoleStoryStatusSelectionIntoSearch,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from '../logic/consoleStoryStatusSelection';
+import {
+  parseDependedIssueUrlsInput,
+  patchTaskInStories,
+} from '../logic/consoleStoryTaskPatch';
 import {
   buildConsoleListRows,
   resolveItemStory,
@@ -1475,6 +1485,128 @@ export const ConsolePage = () => {
     [operations],
   );
 
+  const patchStoryTaskOptimistically = useCallback(
+    (projectItemId: string, patch: Partial<ConsoleListItem>): void => {
+      setLocalStoryEntriesOverride((previous) => {
+        const latest = latestStorySnapshotRef.current;
+        const baseEntries =
+          previous !== null && previous.generatedAt === latest.generatedAt
+            ? previous.stories
+            : latest.rawStoryEntries;
+        return {
+          generatedAt: latest.generatedAt,
+          stories: patchTaskInStories(baseEntries, projectItemId, patch),
+        };
+      });
+    },
+    [],
+  );
+
+  const applyStoryTaskChange = useCallback(
+    async (
+      item: ConsoleListItem,
+      patch: Partial<ConsoleListItem>,
+      revertPatch: Partial<ConsoleListItem>,
+      commit: () => Promise<void>,
+    ): Promise<void> => {
+      patchStoryTaskOptimistically(item.projectItemId, patch);
+      try {
+        await commit();
+      } catch (caught: unknown) {
+        patchStoryTaskOptimistically(item.projectItemId, revertPatch);
+        throw caught;
+      }
+    },
+    [patchStoryTaskOptimistically],
+  );
+
+  const handleSetTaskAgent = useCallback(
+    (item: ConsoleListItem, option: ConsoleFieldOption): Promise<void> =>
+      applyStoryTaskChange(
+        item,
+        { agent: option.name, agentOptionId: option.id },
+        { agent: item.agent, agentOptionId: item.agentOptionId ?? null },
+        () => operations.setAgent(item, option),
+      ),
+    [applyStoryTaskChange, operations],
+  );
+
+  const handleSetTaskStatus = useCallback(
+    (item: ConsoleListItem, option: ConsoleFieldOption): Promise<void> =>
+      applyStoryTaskChange(
+        item,
+        { status: option.name },
+        { status: item.status },
+        () => operations.setStatus(item, option),
+      ),
+    [applyStoryTaskChange, operations],
+  );
+
+  const handleSetTaskDependedIssueUrl = useCallback(
+    (item: ConsoleListItem, dependedIssueUrl: string): Promise<void> =>
+      applyStoryTaskChange(
+        item,
+        {
+          dependedIssueUrls: parseDependedIssueUrlsInput(dependedIssueUrl),
+        },
+        { dependedIssueUrls: item.dependedIssueUrls },
+        () => operations.setDependedIssueUrl(item, dependedIssueUrl),
+      ),
+    [applyStoryTaskChange, operations],
+  );
+
+  const handleSetTaskNextActionDate = useCallback(
+    (item: ConsoleListItem, nextActionDate: string): Promise<void> =>
+      applyStoryTaskChange(
+        item,
+        { nextActionDate: `${nextActionDate}T00:00:00.000Z` },
+        { nextActionDate: item.nextActionDate },
+        () => operations.setNextActionDateValue(item, nextActionDate),
+      ),
+    [applyStoryTaskChange, operations],
+  );
+
+  const handleSetTaskNextActionHour = useCallback(
+    (item: ConsoleListItem, nextActionHour: number): Promise<void> =>
+      applyStoryTaskChange(
+        item,
+        { nextActionHour },
+        { nextActionHour: item.nextActionHour },
+        () => operations.setNextActionHourValue(item, nextActionHour),
+      ),
+    [applyStoryTaskChange, operations],
+  );
+
+  const [hiddenStoryRowFields, setHiddenStoryRowFields] = useState<
+    ConsoleStoryRowField[]
+  >(() => parseHiddenConsoleStoryRowFieldsFromSearch(window.location.search));
+
+  const handleToggleStoryRowField = useCallback(
+    (field: ConsoleStoryRowField): void => {
+      setHiddenStoryRowFields((previous) =>
+        toggleConsoleStoryRowField(previous, field),
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'stories') {
+      return;
+    }
+    const search = formatHiddenConsoleStoryRowFieldsIntoSearch(
+      window.location.search,
+      hiddenStoryRowFields,
+    );
+    if (search !== window.location.search) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${search}${window.location.hash}`,
+      );
+    }
+  }, [activeTab, hiddenStoryRowFields]);
+
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
     caches.comments,
@@ -1723,7 +1855,18 @@ export const ConsolePage = () => {
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}
             onOpenItem={(item) => navigation.openItem(item.projectItemId)}
-            onSetTaskStory={handleSetTaskStory}
+            agentOptions={agentOptions}
+            statusFieldOptions={statusOptions}
+            hiddenRowFields={hiddenStoryRowFields}
+            onToggleRowField={handleToggleStoryRowField}
+            taskActions={{
+              onSetStory: handleSetTaskStory,
+              onSetAgent: handleSetTaskAgent,
+              onSetStatus: handleSetTaskStatus,
+              onSetDependedIssueUrl: handleSetTaskDependedIssueUrl,
+              onSetNextActionDate: handleSetTaskNextActionDate,
+              onSetNextActionHour: handleSetTaskNextActionHour,
+            }}
           />
         </div>
       ) : selectedItem === null ? (

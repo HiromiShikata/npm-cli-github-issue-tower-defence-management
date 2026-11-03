@@ -13,6 +13,7 @@ import type {
 import {
   ConsoleStoryList,
   type ConsoleStoryListProps,
+  type ConsoleStoryTaskActions,
 } from './ConsoleStoryList';
 
 const makeTaskItem = (
@@ -103,9 +104,14 @@ const buildStories = (): ConsoleStoryEntry[] => [
   },
 ];
 
-const buildProps = (
-  overrides: Partial<ConsoleStoryListProps> = {},
-): ConsoleStoryListProps => ({
+type StoryListOverrides = Partial<ConsoleStoryListProps> & {
+  onSetTaskStory?: ConsoleStoryTaskActions['onSetStory'];
+};
+
+const buildProps = ({
+  onSetTaskStory = () => Promise.resolve(),
+  ...overrides
+}: StoryListOverrides = {}): ConsoleStoryListProps => ({
   stories: buildStories(),
   isLoading: false,
   error: null,
@@ -120,15 +126,26 @@ const buildProps = (
   onDeleteStory: () => Promise.resolve(),
   onRenameStory: () => Promise.resolve(),
   onUpdateDescription: () => Promise.resolve(),
-  onSetTaskStory: () => Promise.resolve(),
   optimisticColors: {},
   colorChangeInFlight: null,
   colorErrors: {},
   onOpenItem: () => undefined,
+  agentOptions: [],
+  statusFieldOptions: [],
+  hiddenRowFields: [],
+  onToggleRowField: () => undefined,
+  taskActions: {
+    onSetStory: onSetTaskStory,
+    onSetAgent: () => Promise.resolve(),
+    onSetStatus: () => Promise.resolve(),
+    onSetDependedIssueUrl: () => Promise.resolve(),
+    onSetNextActionDate: () => Promise.resolve(),
+    onSetNextActionHour: () => Promise.resolve(),
+  },
   ...overrides,
 });
 
-const renderStoryList = (overrides: Partial<ConsoleStoryListProps> = {}) =>
+const renderStoryList = (overrides: StoryListOverrides = {}) =>
   render(<ConsoleStoryList {...buildProps(overrides)} />);
 
 const storyRowNamed = (
