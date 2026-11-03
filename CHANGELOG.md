@@ -1,3 +1,10 @@
+# [2.187.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.186.0...v2.187.0) (2026-11-03)
+
+
+### Features
+
+* **console:** add row controls and display settings to story tab tasks ([#3688](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3688)) ([8826f7e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8826f7e532da703c317d2aa170bd9fa1b151204e))
+
 # [2.186.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.185.0...v2.186.0) (2026-11-02)
 
 
