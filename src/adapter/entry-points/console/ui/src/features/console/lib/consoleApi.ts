@@ -43,6 +43,8 @@ export type ConsoleTriageRequest = {
   statusName?: string;
   storyOptionId?: string;
   agentOptionId?: string;
+  nextActionDate?: string;
+  nextActionHour?: number | null;
   commentBody?: string;
   expectedStatusName?: string | null;
 };
@@ -831,6 +833,8 @@ export type ConsoleSetDependedIssueUrlRequest = {
   pjcode: string;
   issueUrl: string;
   dependedIssueUrl: string;
+  projectItemId?: string;
+  replaceExisting?: boolean;
 };
 
 export const postConsoleSetDependedIssueUrl = async (

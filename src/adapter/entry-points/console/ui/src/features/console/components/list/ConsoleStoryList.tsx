@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
+import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import {
   filterConsoleStoryEntriesByStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
 } from '../../logic/consoleStoryStatusSelection';
+import { parseDependedIssueUrlsInput } from '../../logic/consoleStoryTaskPatch';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
   ConsoleListItem,
   ConsoleStoryEntry,
 } from '../../logic/types';
+import { ConsoleAgentSelectActions } from '../operations/ConsoleAgentSelectActions';
+import { ConsoleFieldOptionSelect } from '../operations/ConsoleFieldOptionSelect';
 import { ConsoleStorySelectActions } from '../operations/ConsoleStorySelectActions';
 import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 import { ConsoleStoryColorSelectModalDialog } from './ConsoleStoryColorSelectModalDialog';
@@ -17,6 +21,7 @@ import { ConsoleStoryCreateModalDialog } from './ConsoleStoryCreateModalDialog';
 import { ConsoleStoryDeleteModalDialog } from './ConsoleStoryDeleteModalDialog';
 import { ConsoleStoryDescriptionModalDialog } from './ConsoleStoryDescriptionModalDialog';
 import { ConsoleStoryRenameModalDialog } from './ConsoleStoryRenameModalDialog';
+import { ConsoleStoryRowFieldToggles } from './ConsoleStoryRowFieldToggles';
 import { ConsoleStoryStatusFilter } from './ConsoleStoryStatusFilter';
 import { ConsoleStoryTaskCreateModalDialog } from './ConsoleStoryTaskCreateModalDialog';
 
@@ -25,27 +30,63 @@ type RowReorderState = {
   error: string | null;
 };
 
+export type ConsoleStoryTaskActions = {
+  onSetStory: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetAgent: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetStatus: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
+  onSetDependedIssueUrl: (
+    item: ConsoleListItem,
+    dependedIssueUrl: string,
+  ) => Promise<void>;
+  onSetNextActionDate: (
+    item: ConsoleListItem,
+    nextActionDate: string,
+  ) => Promise<void>;
+  onSetNextActionHour: (
+    item: ConsoleListItem,
+    nextActionHour: number | null,
+  ) => Promise<void>;
+};
+
 type StoryTaskListProps = {
   items: ConsoleListItem[];
   storyOptions: ConsoleFieldOption[];
   currentStoryOptionId: string;
+  agentOptions: ConsoleFieldOption[];
+  statusOptions: ConsoleFieldOption[];
+  hiddenRowFields: ConsoleStoryRowField[];
   onOpenItem: (item: ConsoleListItem) => void;
-  onSetTaskStory: (
-    item: ConsoleListItem,
-    option: ConsoleFieldOption,
-  ) => Promise<void>;
+  actions: ConsoleStoryTaskActions;
 };
 
-type StoryTaskRowProps = {
+type StoryTaskRowProps = Omit<StoryTaskListProps, 'items'> & {
   item: ConsoleListItem;
-  storyOptions: ConsoleFieldOption[];
-  currentStoryOptionId: string;
-  onOpenItem: (item: ConsoleListItem) => void;
-  onSetTaskStory: (
-    item: ConsoleListItem,
-    option: ConsoleFieldOption,
-  ) => Promise<void>;
 };
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => hour);
+
+const isRowFieldShown = (
+  hiddenRowFields: ConsoleStoryRowField[],
+  field: ConsoleStoryRowField,
+): boolean => !hiddenRowFields.includes(field);
+
+const toDateInputValue = (value: string | null): string =>
+  value === null ? '' : value.slice(0, 10);
+
+const isCompleteIsoDate = (value: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+
+const toErrorMessage = (caught: unknown): string =>
+  caught instanceof Error ? caught.message : String(caught);
 
 type StoryVisibilityToggleProps = {
   label: string;
@@ -72,24 +113,61 @@ const StoryTaskRow = ({
   item,
   storyOptions,
   currentStoryOptionId,
+  agentOptions,
+  statusOptions,
+  hiddenRowFields,
   onOpenItem,
-  onSetTaskStory,
+  actions,
 }: StoryTaskRowProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
 
-  const handleSetStory = (option: ConsoleFieldOption) => {
+  const runChange = (change: () => Promise<void>) => {
     setPending(true);
     setError(null);
-    onSetTaskStory(item, option).then(
+    change().then(
       () => setPending(false),
       (caught: unknown) => {
         setPending(false);
-        setError(caught instanceof Error ? caught.message : String(caught));
+        setError(toErrorMessage(caught));
         setRevision((current) => current + 1);
       },
     );
+  };
+
+  const dependedIssueUrlsText = item.dependedIssueUrls.join(', ');
+  const currentStatusOption =
+    statusOptions.find((option) => option.name === item.status) ?? null;
+
+  const commitDependedIssueUrls = (value: string) => {
+    const urls = parseDependedIssueUrlsInput(value);
+    if (urls.join(', ') === dependedIssueUrlsText) {
+      return;
+    }
+    runChange(() => actions.onSetDependedIssueUrl(item, urls.join(', ')));
+  };
+
+  const storedDateValue = toDateInputValue(item.nextActionDate);
+  const showDependedIssueUrl = isRowFieldShown(
+    hiddenRowFields,
+    'dependedIssueUrl',
+  );
+  const showNextActionDate = isRowFieldShown(hiddenRowFields, 'nextActionDate');
+  const showNextActionHour = isRowFieldShown(hiddenRowFields, 'nextActionHour');
+
+  // The date input is a draft: a partial, empty, or unchanged value is never
+  // sent. Only a complete YYYY-MM-DD different from the stored date commits.
+  const commitNextActionDate = (input: HTMLInputElement) => {
+    const draft = input.value;
+    if (draft === storedDateValue) {
+      return;
+    }
+    if (!isCompleteIsoDate(draft)) {
+      input.value = storedDateValue;
+      return;
+    }
+    runChange(() => actions.onSetNextActionDate(item, draft));
   };
 
   return (
@@ -101,27 +179,136 @@ const StoryTaskRow = ({
       >
         {item.title}
       </button>
-      <ConsoleStorySelectActions
-        key={revision}
-        storyOptions={storyOptions}
-        currentStoryName={null}
-        currentStoryOptionId={currentStoryOptionId}
-        onSetStory={handleSetStory}
-        disabled={pending}
-      />
-      <span className="console-story-task-status">{item.status ?? '—'}</span>
-      <span className="console-story-task-agent">{item.agent ?? '—'}</span>
-      <span className="console-story-task-depended-urls">
-        {item.dependedIssueUrls.length > 0
-          ? item.dependedIssueUrls.join(', ')
-          : '—'}
-      </span>
-      <span className="console-story-task-next-action-date">
-        {item.nextActionDate !== null ? item.nextActionDate.slice(0, 10) : '—'}
-      </span>
-      <span className="console-story-task-next-action-hour">
-        {item.nextActionHour !== null ? String(item.nextActionHour) : '—'}
-      </span>
+      <div className="console-story-task-ops">
+        {(showDependedIssueUrl || showNextActionDate || showNextActionHour) && (
+          <div className="console-op-group console-story-task-trigger">
+            {showDependedIssueUrl && (
+              <input
+                key={`depended-${dependedIssueUrlsText}-${revision}`}
+                type="text"
+                className="console-story-task-depended-input"
+                aria-label="Set depended issue URL"
+                placeholder="Depended issue URL"
+                defaultValue={dependedIssueUrlsText}
+                disabled={pending}
+                onBlur={(event) =>
+                  commitDependedIssueUrls(event.currentTarget.value)
+                }
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+            )}
+            {showNextActionDate && (
+              <>
+                <input
+                  key={`date-${storedDateValue}-${revision}`}
+                  type="date"
+                  className="console-story-task-date-input"
+                  aria-label="Set next action date"
+                  defaultValue={storedDateValue}
+                  disabled={pending}
+                  onBlur={(event) => commitNextActionDate(event.currentTarget)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.currentTarget.blur();
+                  }}
+                />
+                {item.nextActionDate !== null && (
+                  <button
+                    type="button"
+                    className="console-story-task-date-clear"
+                    aria-label="Clear next action date"
+                    disabled={pending}
+                    onClick={() =>
+                      runChange(() => actions.onSetNextActionDate(item, ''))
+                    }
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
+            )}
+            {showNextActionHour && (
+              <select
+                className="console-story-task-hour-select"
+                aria-label="Set next action hour"
+                value={
+                  item.nextActionHour === null
+                    ? ''
+                    : String(item.nextActionHour)
+                }
+                disabled={pending}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  const current =
+                    item.nextActionHour === null
+                      ? ''
+                      : String(item.nextActionHour);
+                  if (next === current) {
+                    return;
+                  }
+                  runChange(() =>
+                    actions.onSetNextActionHour(
+                      item,
+                      next === '' ? null : Number(next),
+                    ),
+                  );
+                }}
+              >
+                <option value="">— hour —</option>
+                {HOUR_OPTIONS.map((hour) => (
+                  <option key={hour} value={String(hour)}>
+                    {String(hour).padStart(2, '0')}:00
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+        {isRowFieldShown(hiddenRowFields, 'agent') && (
+          <div key={`agent-${revision}`} className="console-story-task-field">
+            <ConsoleAgentSelectActions
+              agentOptions={agentOptions}
+              currentAgentName={item.agent}
+              currentAgentOptionId={item.agentOptionId ?? null}
+              onSetAgent={(option) =>
+                runChange(() => actions.onSetAgent(item, option))
+              }
+              disabled={pending}
+            />
+          </div>
+        )}
+        {isRowFieldShown(hiddenRowFields, 'story') && (
+          <ConsoleStorySelectActions
+            key={`story-${revision}`}
+            storyOptions={storyOptions}
+            currentStoryName={null}
+            currentStoryOptionId={currentStoryOptionId}
+            onSetStory={(option) =>
+              runChange(() => actions.onSetStory(item, option))
+            }
+            disabled={pending}
+          />
+        )}
+        {isRowFieldShown(hiddenRowFields, 'status') && (
+          <div
+            key={`status-${revision}`}
+            className="console-op-group console-story-task-field"
+          >
+            <ConsoleFieldOptionSelect
+              className="console-story-task-status-select"
+              ariaLabel="Set status"
+              placeholder="— status —"
+              currentOption={currentStatusOption}
+              options={statusOptions}
+              onSelect={(option) =>
+                runChange(() => actions.onSetStatus(item, option))
+              }
+              disabled={pending}
+            />
+          </div>
+        )}
+      </div>
       {error !== null && (
         <p role="alert" className="console-list-error console-story-task-error">
           {error}
@@ -135,8 +322,11 @@ const StoryTaskList = ({
   items,
   storyOptions,
   currentStoryOptionId,
+  agentOptions,
+  statusOptions,
+  hiddenRowFields,
   onOpenItem,
-  onSetTaskStory,
+  actions,
 }: StoryTaskListProps) => (
   <ul className="console-story-task-list">
     {items.map((item) => (
@@ -145,8 +335,11 @@ const StoryTaskList = ({
         item={item}
         storyOptions={storyOptions}
         currentStoryOptionId={currentStoryOptionId}
+        agentOptions={agentOptions}
+        statusOptions={statusOptions}
+        hiddenRowFields={hiddenRowFields}
         onOpenItem={onOpenItem}
-        onSetTaskStory={onSetTaskStory}
+        actions={actions}
       />
     ))}
   </ul>
@@ -185,10 +378,11 @@ export type ConsoleStoryListProps = {
   statusOptionNames?: string[];
   onToggleStatus?: (status: string) => void;
   onClearStatuses?: () => void;
-  onSetTaskStory: (
-    item: ConsoleListItem,
-    option: ConsoleFieldOption,
-  ) => Promise<void>;
+  agentOptions: ConsoleFieldOption[];
+  statusFieldOptions: ConsoleFieldOption[];
+  hiddenRowFields: ConsoleStoryRowField[];
+  onToggleRowField: (field: ConsoleStoryRowField) => void;
+  taskActions: ConsoleStoryTaskActions;
 };
 
 type StoryDeleteState = {
@@ -220,7 +414,11 @@ export const ConsoleStoryList = ({
   statusOptionNames = [],
   onToggleStatus,
   onClearStatuses,
-  onSetTaskStory,
+  agentOptions,
+  statusFieldOptions,
+  hiddenRowFields,
+  onToggleRowField,
+  taskActions,
 }: ConsoleStoryListProps) => {
   const [taskCreateDialogId, setTaskCreateDialogId] = useState<string | null>(
     null,
@@ -386,16 +584,22 @@ export const ConsoleStoryList = ({
 
   return (
     <div className="console-story-list-container">
-      {statusOptionNames.length > 0 &&
-        onToggleStatus !== undefined &&
-        onClearStatuses !== undefined && (
-          <ConsoleStoryStatusFilter
-            statusNames={statusOptionNames}
-            selectedStatuses={selectedStatuses}
-            onToggleStatus={onToggleStatus}
-            onClearStatuses={onClearStatuses}
-          />
-        )}
+      <div className="console-story-filter-bar">
+        {statusOptionNames.length > 0 &&
+          onToggleStatus !== undefined &&
+          onClearStatuses !== undefined && (
+            <ConsoleStoryStatusFilter
+              statusNames={statusOptionNames}
+              selectedStatuses={selectedStatuses}
+              onToggleStatus={onToggleStatus}
+              onClearStatuses={onClearStatuses}
+            />
+          )}
+        <ConsoleStoryRowFieldToggles
+          hiddenFields={hiddenRowFields}
+          onToggle={onToggleRowField}
+        />
+      </div>
       <div
         style={{
           display: 'flex',
@@ -591,8 +795,11 @@ export const ConsoleStoryList = ({
                     items={visibleTaskItems}
                     storyOptions={storyFieldOptions}
                     currentStoryOptionId={entry.storyOptionId}
+                    agentOptions={agentOptions}
+                    statusOptions={statusFieldOptions}
+                    hiddenRowFields={hiddenRowFields}
                     onOpenItem={onOpenItem}
-                    onSetTaskStory={onSetTaskStory}
+                    actions={taskActions}
                   />
                 )}
                 {reorderError !== null && (

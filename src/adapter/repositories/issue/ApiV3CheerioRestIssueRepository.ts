@@ -1822,6 +1822,52 @@ export class ApiV3CheerioRestIssueRepository
     );
   };
 
+  replaceDependedIssueUrlField = async (
+    project: Project,
+    issue: Issue,
+    dependedIssueUrl: string | null,
+  ): Promise<void> => {
+    const dependedIssueUrlField = project.dependedIssueUrlSeparatedByComma;
+    if (!dependedIssueUrlField) {
+      return;
+    }
+    if (dependedIssueUrl === null) {
+      await this.clearProjectField(
+        project,
+        dependedIssueUrlField.fieldId,
+        issue,
+      );
+      return;
+    }
+    await this.logDependedIssueUrlFieldWriteLiveItemIdCrossCheck(
+      project,
+      dependedIssueUrlField.fieldId,
+      issue.url,
+      issue.itemId,
+      'update',
+    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectTextField(
+        project.id,
+        dependedIssueUrlField.fieldId,
+        issue.itemId,
+        dependedIssueUrl,
+      );
+    } catch (error) {
+      await this.evictAndThrowStaleProjectItemErrorOrRethrow(
+        error,
+        project,
+        issue.itemId,
+      );
+    }
+    await this.applyDependedIssueUrlFieldWriteToLaterReads(
+      project,
+      dependedIssueUrlField.fieldId,
+      issue,
+      parseDependedIssueUrls(dependedIssueUrl),
+    );
+  };
+
   setIssueAgentField = async (
     issueUrl: string,
     project: Project,
@@ -1847,8 +1893,9 @@ export class ApiV3CheerioRestIssueRepository
         project.id,
         issueUrl,
       ));
+    let outcome: ProjectFieldWriteOutcome;
     try {
-      return await this.graphqlProjectItemRepository.updateProjectField(
+      outcome = await this.graphqlProjectItemRepository.updateProjectField(
         project.id,
         project.agent.fieldId,
         projectItemId,
@@ -1861,6 +1908,18 @@ export class ApiV3CheerioRestIssueRepository
         projectItemId,
       );
     }
+    if (outcome === 'applied') {
+      const agentOption = project.agent.options.find(
+        (option) => option.id === agentOptionId,
+      );
+      if (agentOption) {
+        await this.applyIssueFieldsToLaterReads(project.id, projectItemId, {
+          agent: agentOption.name,
+          agentOptionId,
+        });
+      }
+    }
+    return outcome;
   };
 
   removeIssueFromProject = async (
@@ -1915,6 +1974,9 @@ export class ApiV3CheerioRestIssueRepository
         itemId,
       );
     }
+    await this.applyIssueFieldsToLaterReads(project.id, itemId, {
+      nextActionDate: new Date(date.toISOString().split('T')[0]),
+    });
   };
   updateNextActionHour = async (
     project: Project & {
@@ -1943,6 +2005,9 @@ export class ApiV3CheerioRestIssueRepository
         issue.itemId,
       );
     }
+    await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+      nextActionHour: hour,
+    });
   };
   updateStory = async (
     project: Project & { story: NonNullable<Project['story']> },
@@ -2086,6 +2151,22 @@ export class ApiV3CheerioRestIssueRepository
       issue,
       [],
     );
+    if (project.nextActionDate?.fieldId === fieldId) {
+      await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+        nextActionDate: null,
+      });
+    }
+    if (project.nextActionHour?.fieldId === fieldId) {
+      await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+        nextActionHour: null,
+      });
+    }
+    if (project.agent?.fieldId === fieldId) {
+      await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+        agent: null,
+        agentOptionId: null,
+      });
+    }
   };
   createComment = async (issue: Issue, comment: string): Promise<void> => {
     await this.restIssueRepository.createComment(issue.url, comment);
@@ -2170,28 +2251,47 @@ export class ApiV3CheerioRestIssueRepository
     if (project.dependedIssueUrlSeparatedByComma?.fieldId !== fieldId) {
       return;
     }
-    const memoized = this.getAllIssuesRefreshMemo.get(project.id);
+    await this.applyIssueFieldsToLaterReads(project.id, issue.itemId, {
+      dependedIssueUrls: [...writtenDependedIssueUrls],
+    });
+  };
+
+  // Mirrors a successful single-item field write into the in-process memo and
+  // the on-disk project issues cache, so later reads see the written value
+  // instead of the value fetched before the write.
+  private applyIssueFieldsToLaterReads = async (
+    projectId: string,
+    itemId: string,
+    patch: Partial<
+      Pick<
+        Issue,
+        | 'dependedIssueUrls'
+        | 'nextActionDate'
+        | 'nextActionHour'
+        | 'agent'
+        | 'agentOptionId'
+      >
+    >,
+  ): Promise<void> => {
+    const memoized = this.getAllIssuesRefreshMemo.get(projectId);
     if (memoized) {
-      this.getAllIssuesRefreshMemo.set(project.id, {
+      this.getAllIssuesRefreshMemo.set(projectId, {
         ...memoized,
         issues: memoized.issues.map((memoizedIssue) =>
-          memoizedIssue.itemId === issue.itemId
-            ? {
-                ...memoizedIssue,
-                dependedIssueUrls: [...writtenDependedIssueUrls],
-              }
+          memoizedIssue.itemId === itemId
+            ? { ...memoizedIssue, ...patch }
             : memoizedIssue,
         ),
       });
     }
-    await this.projectIssuesCacheRepository.withLock(project.id, async () => {
-      const cached = await this.projectIssuesCacheRepository.read(project.id);
-      const cachedIssue = cached?.issues.find((i) => i.itemId === issue.itemId);
+    await this.projectIssuesCacheRepository.withLock(projectId, async () => {
+      const cached = await this.projectIssuesCacheRepository.read(projectId);
+      const cachedIssue = cached?.issues.find((i) => i.itemId === itemId);
       if (cached === null || cachedIssue === undefined) {
         return;
       }
-      cachedIssue.dependedIssueUrls = [...writtenDependedIssueUrls];
-      await this.projectIssuesCacheRepository.write(project.id, cached);
+      Object.assign(cachedIssue, patch);
+      await this.projectIssuesCacheRepository.write(projectId, cached);
     });
   };
 

@@ -1509,6 +1509,208 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
+    it('sets the next action date to the given UTC day', async () => {
+      const response = await handleTriage(contextForProject(project), {
+        pjcode: 'acme',
+        action: 'set_next_action_date',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nad',
+        nextActionDate: '2026-03-04',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionDate.mock.calls[0];
+      expect(call[2].toISOString()).toBe('2026-03-04T00:00:00.000Z');
+      expect(call[3]).toBe('PVTI_nad');
+      expectRecordedAcrossTabs('PVTI_nad');
+    });
+
+    it.each([
+      ['the field is missing', {}],
+      ['the value is not YYYY-MM-DD', { nextActionDate: '2026/03/04' }],
+      ['the day does not exist', { nextActionDate: '2026-02-30' }],
+    ])('rejects set_next_action_date when %s', async (_label, extra) => {
+      const response = await handleTriage(contextForProject(project), {
+        pjcode: 'acme',
+        action: 'set_next_action_date',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nad_bad',
+        ...extra,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('sets the next action hour via updateNextActionHour', async () => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah',
+        nextActionHour: 7,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionHour.mock.calls[0];
+      expect(call[0]).toMatchObject({
+        nextActionHour: { fieldId: 'nahField' },
+      });
+      expect(call[2]).toBe(7);
+      expectRecordedAcrossTabs('PVTI_nah');
+    });
+
+    it.each([
+      ['the hour is 24', { nextActionHour: 24 }],
+      ['the hour is negative', { nextActionHour: -1 }],
+      ['the hour is not an integer', { nextActionHour: 1.5 }],
+      ['the hour is a string', { nextActionHour: '3' }],
+      ['the hour is missing', {}],
+    ])('rejects set_next_action_hour when %s', async (_label, extra) => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah_bad',
+        ...extra,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
+    it('rejects set_next_action_hour on a project without nextActionHour', async () => {
+      const response = await handleTriage(
+        contextForProject({ ...project, nextActionHour: null }),
+        {
+          pjcode: 'acme',
+          action: 'set_next_action_hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah_none',
+          nextActionHour: 7,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
+    it('clears the next action date when set_next_action_date has an empty value', async () => {
+      const projectWithDate: Project = {
+        ...project,
+        nextActionDate: {
+          name: 'Next Action Date',
+          fieldId: 'nadField',
+        },
+      };
+      const response = await handleTriage(contextForProject(projectWithDate), {
+        pjcode: 'acme',
+        action: 'set_next_action_date',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nad_clear',
+        nextActionDate: '',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
+        projectWithDate,
+        'nadField',
+        expect.objectContaining({
+          url: 'https://github.com/o/r/issues/1',
+          itemId: 'PVTI_nad_clear',
+        }),
+      );
+      expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expectRecordedAcrossTabs('PVTI_nad_clear');
+    });
+
+    it('rejects set_next_action_date when the project has no nextActionDate field', async () => {
+      const response = await handleTriage(
+        contextForProject({ ...project, nextActionDate: null }),
+        {
+          pjcode: 'acme',
+          action: 'set_next_action_date',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nad_none',
+          nextActionDate: '2026-03-04',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expect(issueRepository.clearProjectField).not.toHaveBeenCalled();
+    });
+
+    it('rejects clearing the next action date when the project has no nextActionDate field', async () => {
+      const response = await handleTriage(
+        contextForProject({ ...project, nextActionDate: null }),
+        {
+          pjcode: 'acme',
+          action: 'set_next_action_date',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nad_none',
+          nextActionDate: '',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.clearProjectField).not.toHaveBeenCalled();
+    });
+
+    it('clears the next action hour when set_next_action_hour has a null value', async () => {
+      const hourProject = {
+        ...project,
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
+      };
+      const response = await handleTriage(contextForProject(hourProject), {
+        pjcode: 'acme',
+        action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_nah_clear',
+        nextActionHour: null,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
+        hourProject,
+        'nahField',
+        expect.objectContaining({
+          url: 'https://github.com/o/r/issues/1',
+          itemId: 'PVTI_nah_clear',
+        }),
+      );
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+      expectRecordedAcrossTabs('PVTI_nah_clear');
+    });
+
+    it('rejects clearing the next action hour when the project has no nextActionHour field', async () => {
+      const response = await handleTriage(
+        contextForProject({ ...project, nextActionHour: null }),
+        {
+          pjcode: 'acme',
+          action: 'set_next_action_hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah_none',
+          nextActionHour: null,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.clearProjectField).not.toHaveBeenCalled();
+    });
+
     it('rejects set_story without a story option id', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
@@ -5637,6 +5839,206 @@ describe('consoleOperationApi', () => {
           },
         ),
       ).rejects.toThrow('API failure');
+    });
+
+    it('keeps the append-only write without replaceExisting and never calls the replace path', async () => {
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+      await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+          projectItemId: 'PVTI_dep',
+        },
+      );
+      expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('overwrites an existing depended issue URL in replace mode', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.replaceDependedIssueUrlField).toHaveBeenCalledWith(
+        projectWithDependedField(),
+        expect.objectContaining({
+          url: 'https://github.com/o/r/issues/1',
+          itemId: 'PVTI_dep',
+        }),
+        'https://github.com/o/r/issues/3',
+      );
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('clears the depended issue URL in replace mode when the value is empty', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: '',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.replaceDependedIssueUrlField).toHaveBeenCalledWith(
+        projectWithDependedField(),
+        expect.objectContaining({ itemId: 'PVTI_dep' }),
+        null,
+      );
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 in replace mode when projectItemId is missing', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 in replace mode when dependedIssueUrl is not a string', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 42,
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 in replace mode when the project item no longer exists', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockRejectedValue(
+        new StaleProjectItemError('PVTI_dep_stale'),
+      );
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep_stale',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('accepts a comma-separated list of GitHub issue URLs in replace mode', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+      const list =
+        'https://github.com/o/r/issues/2, https://github.com/o/other-repo/issues/30';
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: list,
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.replaceDependedIssueUrlField).toHaveBeenCalledWith(
+        projectWithDependedField(),
+        expect.objectContaining({ itemId: 'PVTI_dep' }),
+        list,
+      );
+    });
+
+    it.each([
+      ['free text', 'see the spec'],
+      ['a non-issue GitHub URL', 'https://github.com/o/r/pull/2'],
+      [
+        'a list with one invalid entry',
+        'https://github.com/o/r/issues/2, not-a-url',
+      ],
+      ['an empty entry in the list', 'https://github.com/o/r/issues/2,'],
+    ])(
+      'rejects %s in replace mode without writing the field',
+      async (_label, dependedIssueUrl) => {
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(400);
+        expect(
+          issueRepository.replaceDependedIssueUrlField,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it('propagates a non-stale error from the replace path', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockRejectedValue(
+        new Error('GraphQL failure'),
+      );
+      await expect(
+        handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl: 'https://github.com/o/r/issues/3',
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        ),
+      ).rejects.toThrow('GraphQL failure');
+    });
+
+    it('returns 400 in replace mode when the project has no depended issue URL field', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject({
+          ...project,
+          dependedIssueUrlSeparatedByComma: null,
+        }),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: '',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
     });
   });
 

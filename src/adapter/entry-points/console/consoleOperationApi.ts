@@ -866,6 +866,108 @@ export const handleTriage = async (
     return ok();
   }
 
+  if (action === 'set_next_action_date') {
+    const nextActionDate = body.nextActionDate;
+    if (project.nextActionDate === null) {
+      return badRequest('project does not have a nextActionDate field');
+    }
+    if (nextActionDate === '') {
+      try {
+        await context
+          .resolveIssueRepository(issueUrl)
+          .clearProjectField(
+            project,
+            project.nextActionDate.fieldId,
+            projectItemReference(issueUrl, projectItemId),
+          );
+      } catch (error) {
+        if (!(error instanceof StaleProjectItemError)) throw error;
+        return badRequest(
+          `project item "${projectItemId}" no longer exists in GitHub`,
+        );
+      }
+      recordDone(context, pjcode, projectItemId);
+      return ok();
+    }
+    const target =
+      isNonEmptyString(nextActionDate) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(nextActionDate)
+        ? new Date(`${nextActionDate}T00:00:00.000Z`)
+        : null;
+    if (
+      target === null ||
+      Number.isNaN(target.getTime()) ||
+      target.toISOString().slice(0, 10) !== nextActionDate
+    ) {
+      return badRequest(
+        'nextActionDate must be a valid YYYY-MM-DD date for set_next_action_date',
+      );
+    }
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionDate(issueUrl, project, target, projectItemId);
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
+  if (action === 'set_next_action_hour') {
+    const nextActionHour = body.nextActionHour;
+    if (project.nextActionHour === null) {
+      return badRequest('project does not have a nextActionHour field');
+    }
+    if (nextActionHour === null) {
+      try {
+        await context
+          .resolveIssueRepository(issueUrl)
+          .clearProjectField(
+            project,
+            project.nextActionHour.fieldId,
+            projectItemReference(issueUrl, projectItemId),
+          );
+      } catch (error) {
+        if (!(error instanceof StaleProjectItemError)) throw error;
+        return badRequest(
+          `project item "${projectItemId}" no longer exists in GitHub`,
+        );
+      }
+      recordDone(context, pjcode, projectItemId);
+      return ok();
+    }
+    if (
+      typeof nextActionHour !== 'number' ||
+      !Number.isInteger(nextActionHour) ||
+      nextActionHour < 0 ||
+      nextActionHour > 23
+    ) {
+      return badRequest(
+        'nextActionHour must be an integer from 0 to 23 for set_next_action_hour',
+      );
+    }
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .updateNextActionHour(
+          { ...project, nextActionHour: project.nextActionHour },
+          projectItemReference(issueUrl, projectItemId),
+          nextActionHour,
+        );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
   return badRequest(`unknown triage action "${action}"`);
 };
 
@@ -1388,16 +1490,30 @@ export const handleStoryAdd = async (
   return { statusCode: 200, body: { ok: true, stories: savedStories } };
 };
 
+const GITHUB_ISSUE_URL_PATTERN =
+  /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+$/;
+
+const isCommaSeparatedGitHubIssueUrlList = (value: string): boolean => {
+  const entries = value.split(',').map((entry) => entry.trim());
+  return entries.every((entry) => GITHUB_ISSUE_URL_PATTERN.test(entry));
+};
+
 export const handleSetDependedIssueUrl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
   const issueUrl = body.issueUrl;
   const dependedIssueUrl = body.dependedIssueUrl;
+  const projectItemId = body.projectItemId;
+  const replaceExisting = body.replaceExisting === true;
   if (!isNonEmptyString(issueUrl)) {
     return badRequest('issueUrl is required');
   }
-  if (!isNonEmptyString(dependedIssueUrl)) {
+  if (replaceExisting) {
+    if (typeof dependedIssueUrl !== 'string') {
+      return badRequest('dependedIssueUrl is required');
+    }
+  } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
   const binding = await resolveBinding(context, body);
@@ -1409,6 +1525,38 @@ export const handleSetDependedIssueUrl = async (
     return badRequest(
       'project does not have a depended issue URL field configured',
     );
+  }
+  if (replaceExisting) {
+    if (
+      typeof dependedIssueUrl === 'string' &&
+      dependedIssueUrl !== '' &&
+      !isCommaSeparatedGitHubIssueUrlList(dependedIssueUrl)
+    ) {
+      return badRequest(
+        'dependedIssueUrl must be a comma-separated list of https://github.com/{owner}/{repo}/issues/{number} URLs',
+      );
+    }
+    if (!isNonEmptyString(projectItemId)) {
+      return badRequest('projectItemId is required');
+    }
+    try {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .replaceDependedIssueUrlField(
+          project,
+          projectItemReference(issueUrl, projectItemId),
+          dependedIssueUrl === '' ? null : dependedIssueUrl,
+        );
+    } catch (error) {
+      if (!(error instanceof StaleProjectItemError)) throw error;
+      return badRequest(
+        `project item "${projectItemId}" no longer exists in GitHub`,
+      );
+    }
+    return ok();
+  }
+  if (!isNonEmptyString(dependedIssueUrl)) {
+    return badRequest('dependedIssueUrl is required');
   }
   await context
     .resolveIssueRepository(issueUrl)

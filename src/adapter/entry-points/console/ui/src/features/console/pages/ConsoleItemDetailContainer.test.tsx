@@ -95,6 +95,8 @@ const buildOperations = (): ConsoleOperationsApi => {
   const operations = {
     reviewPullRequest: jest.fn(async () => {}),
     setNextActionDate: jest.fn(async () => {}),
+    setNextActionDateValue: jest.fn(async () => {}),
+    setNextActionHourValue: jest.fn(async () => {}),
     setStory: jest.fn(async () => {}),
     setAgent: jest.fn(async () => {}),
     setStatus: jest.fn(async () => {}),
@@ -118,6 +120,7 @@ const buildOperations = (): ConsoleOperationsApi => {
     issueRename: jest.fn(async () => {}),
     deleteAllComments: jest.fn(async () => {}),
     setDependedIssueUrl: jest.fn(async () => {}),
+    replaceDependedIssueUrl: jest.fn(async () => {}),
   };
   return operations;
 };

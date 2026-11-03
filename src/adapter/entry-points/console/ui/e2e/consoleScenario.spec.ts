@@ -1717,18 +1717,14 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
   ).toBeVisible();
 
   const pr867Row = tdpmRow.locator('.console-story-task-row').first();
-  await expect(pr867Row.locator('.console-story-task-agent')).toContainText(
-    'developer',
+  await expect(
+    pr867Row.getByLabel('Set agent').locator('option:checked'),
+  ).toHaveText('developer');
+  await expect(pr867Row.getByLabel('Set next action date')).toHaveValue(
+    '2026-06-20',
   );
-  await expect(
-    pr867Row.locator('.console-story-task-next-action-date'),
-  ).toContainText('2026-06-20');
-  await expect(
-    pr867Row.locator('.console-story-task-next-action-hour'),
-  ).toContainText('9');
-  await expect(
-    pr867Row.locator('.console-story-task-depended-urls'),
-  ).toContainText(
+  await expect(pr867Row.getByLabel('Set next action hour')).toHaveValue('9');
+  await expect(pr867Row.getByLabel('Set depended issue URL')).toHaveValue(
     'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
   );
 
@@ -2311,5 +2307,147 @@ test('phone viewport keeps each story tab task row inside the screen width with 
     }
   } finally {
     await phoneContext.close();
+  }
+});
+
+test('story tab task row shows the title on its own line, then trigger fields, agent, story and status, and Display items hides each control on its own', async ({
+  page,
+}) => {
+  const rowHarness = await startConsoleE2eHarness();
+  try {
+    await page.goto(rowHarness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+    await page.getByRole('switch', { name: 'Archived' }).click();
+
+    const taskTitle =
+      'Auto-advance to the next non-empty console tab when one empties';
+    const tdpmRow = page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port',
+    });
+    await tdpmRow.getByRole('button', { name: 'Show tasks' }).click();
+
+    const taskRow = tdpmRow.locator('.console-story-task-row', {
+      hasText: taskTitle,
+    });
+    await expect(taskRow).toHaveCount(1);
+
+    const titleBox = await taskRow
+      .locator('.console-story-task-title')
+      .boundingBox();
+    const opsBox = await taskRow
+      .locator('.console-story-task-ops')
+      .boundingBox();
+    if (titleBox === null || opsBox === null) {
+      throw new Error('task title or operation area has no bounding box');
+    }
+    expect(opsBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
+
+    const controlLabels = await taskRow
+      .locator('.console-story-task-ops')
+      .locator('input, select')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('aria-label')),
+      );
+    expect(controlLabels).toEqual([
+      'Set depended issue URL',
+      'Set next action date',
+      'Set next action hour',
+      'Set agent',
+      'Set story',
+      'Set status',
+    ]);
+
+    const agentSelect = taskRow.getByRole('combobox', { name: 'Set agent' });
+    const currentAgent = await agentSelect.inputValue();
+    const nextAgent = currentAgent === 'agt00002' ? 'agt00001' : 'agt00002';
+    await agentSelect.selectOption(nextAgent);
+    await expect(agentSelect).toHaveValue(nextAgent);
+    await expect
+      .poll(() => rowHarness.setAgentCalls.at(-1)?.agentOptionId, {
+        timeout: 3000,
+      })
+      .toBe(nextAgent);
+
+    const statusSelect = taskRow.getByRole('combobox', { name: 'Set status' });
+    const currentStatus = await statusSelect.inputValue();
+    const nextStatus = currentStatus === 'e9f6a726' ? 'e9931e57' : 'e9f6a726';
+    await statusSelect.selectOption(nextStatus);
+    await expect(statusSelect).toHaveValue(nextStatus);
+
+    const displayItems = page.getByRole('group', { name: 'Display items' });
+    const hiddenFieldCases = [
+      {
+        checkbox: 'Agent',
+        param: 'agent',
+        controls: ['Set agent'],
+      },
+      {
+        checkbox: 'Status',
+        param: 'status',
+        controls: ['Set status'],
+      },
+      {
+        checkbox: 'Story',
+        param: 'story',
+        controls: ['Set story'],
+      },
+      {
+        checkbox: 'Depended Issue URL',
+        param: 'dependedIssueUrl',
+        controls: ['Set depended issue URL'],
+      },
+      {
+        checkbox: 'Next Action Date',
+        param: 'nextActionDate',
+        controls: ['Set next action date'],
+      },
+      {
+        checkbox: 'Next Action Hour',
+        param: 'nextActionHour',
+        controls: ['Set next action hour'],
+      },
+    ];
+    for (const { checkbox, param, controls } of hiddenFieldCases) {
+      await displayItems.getByRole('checkbox', { name: checkbox }).uncheck();
+      await expect(page).toHaveURL(new RegExp(`hiddenStoryField=${param}`));
+      for (const label of controls) {
+        await expect(taskRow.locator(`[aria-label="${label}"]`)).toHaveCount(0);
+      }
+      await expect(taskRow.locator('.console-story-task-title')).toBeVisible();
+      await expect(taskRow.locator('.console-story-task-title')).toHaveText(
+        taskTitle,
+      );
+
+      await displayItems.getByRole('checkbox', { name: checkbox }).check();
+      await expect(page).not.toHaveURL(new RegExp(`hiddenStoryField=${param}`));
+      for (const label of controls) {
+        await expect(taskRow.locator(`[aria-label="${label}"]`)).toHaveCount(1);
+      }
+    }
+
+    await expect(
+      taskRow.getByRole('combobox', { name: 'Set agent' }),
+    ).toHaveValue(nextAgent);
+    await expect(
+      taskRow.getByRole('combobox', { name: 'Set status' }),
+    ).toHaveValue(nextStatus);
+
+    await taskRow
+      .getByRole('combobox', { name: 'Set story' })
+      .selectOption('28415d6c');
+    await expect
+      .poll(() => rowHarness.setStoryCalls, { timeout: 3000 })
+      .toEqual([
+        {
+          issueUrl: `https://github.com/${CONSOLE_E2E_REPO_NAME_WITH_OWNER}/issues/869`,
+          storyOptionId: '28415d6c',
+        },
+      ]);
+    await expect(
+      tdpmRow.locator('.console-story-task-title', { hasText: taskTitle }),
+    ).toHaveCount(0);
+  } finally {
+    await rowHarness.stop();
   }
 });

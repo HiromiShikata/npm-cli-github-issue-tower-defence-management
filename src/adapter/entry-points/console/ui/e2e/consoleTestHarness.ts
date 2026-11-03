@@ -334,6 +334,8 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
 const CONSOLE_E2E_STORIES_SNAPSHOT = {
   pjcode: CONSOLE_E2E_PJCODE,
   generatedAt: '2026-06-18T01:22:09.000Z',
+  agentOptions: AGENT_OPTIONS,
+  statusOptions: STATUS_OPTIONS,
   stories: [
     {
       storyName: 'TDPM Console port',
@@ -681,6 +683,8 @@ const createStubIssueRepository = (
   },
   updateStatus: async (): Promise<void> => undefined,
   clearProjectField: () => notImplemented('clearProjectField'),
+  replaceDependedIssueUrlField: () =>
+    notImplemented('replaceDependedIssueUrlField'),
   createComment: () => notImplemented('createComment'),
   updateLabels: () => notImplemented('updateLabels'),
   removeLabel: () => notImplemented('removeLabel'),

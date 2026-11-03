@@ -1119,6 +1119,21 @@ describe('GenerateConsoleListsUseCase', () => {
       );
     });
 
+    it('propagates agentOptions from project.agent field to the stories tab', () => {
+      const agentOptions: FieldOption[] = [
+        storyOption('ag1', 'developer', 'GRAY'),
+        storyOption('ag2', 'chore', 'GRAY'),
+      ];
+      const projectWithAgent: Project = {
+        ...baseProject(projectWithStory.story),
+        agent: { name: 'Agent', fieldId: 'agent-field', options: agentOptions },
+      };
+      const result = run([], projectWithAgent);
+      expect(result.stories.agentOptions).toEqual(
+        agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
     it('provides empty agentOptions when project.agent is null', () => {
       const result = run([]);
       expect(result.queued.agentOptions).toEqual([]);
