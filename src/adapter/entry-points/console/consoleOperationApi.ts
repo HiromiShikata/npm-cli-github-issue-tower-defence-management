@@ -1490,6 +1490,14 @@ export const handleStoryAdd = async (
   return { statusCode: 200, body: { ok: true, stories: savedStories } };
 };
 
+const GITHUB_ISSUE_URL_PATTERN =
+  /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+$/;
+
+const isCommaSeparatedGitHubIssueUrlList = (value: string): boolean => {
+  const entries = value.split(',').map((entry) => entry.trim());
+  return entries.every((entry) => GITHUB_ISSUE_URL_PATTERN.test(entry));
+};
+
 export const handleSetDependedIssueUrl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -1505,9 +1513,6 @@ export const handleSetDependedIssueUrl = async (
     if (typeof dependedIssueUrl !== 'string') {
       return badRequest('dependedIssueUrl is required');
     }
-    if (!isNonEmptyString(projectItemId)) {
-      return badRequest('projectItemId is required');
-    }
   } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
@@ -1522,6 +1527,15 @@ export const handleSetDependedIssueUrl = async (
     );
   }
   if (replaceExisting) {
+    if (
+      typeof dependedIssueUrl === 'string' &&
+      dependedIssueUrl !== '' &&
+      !isCommaSeparatedGitHubIssueUrlList(dependedIssueUrl)
+    ) {
+      return badRequest(
+        'dependedIssueUrl must be a comma-separated list of https://github.com/{owner}/{repo}/issues/{number} URLs',
+      );
+    }
     if (!isNonEmptyString(projectItemId)) {
       return badRequest('projectItemId is required');
     }

@@ -5953,6 +5953,56 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
+    it('accepts a comma-separated list of GitHub issue URLs in replace mode', async () => {
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+      const list =
+        'https://github.com/o/r/issues/2, https://github.com/o/other-repo/issues/30';
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: list,
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.replaceDependedIssueUrlField).toHaveBeenCalledWith(
+        projectWithDependedField(),
+        expect.objectContaining({ itemId: 'PVTI_dep' }),
+        list,
+      );
+    });
+
+    it.each([
+      ['free text', 'see the spec'],
+      ['a non-issue GitHub URL', 'https://github.com/o/r/pull/2'],
+      [
+        'a list with one invalid entry',
+        'https://github.com/o/r/issues/2, not-a-url',
+      ],
+      ['an empty entry in the list', 'https://github.com/o/r/issues/2,'],
+    ])(
+      'rejects %s in replace mode without writing the field',
+      async (_label, dependedIssueUrl) => {
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(400);
+        expect(
+          issueRepository.replaceDependedIssueUrlField,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
     it('propagates a non-stale error from the replace path', async () => {
       issueRepository.replaceDependedIssueUrlField.mockRejectedValue(
         new Error('GraphQL failure'),

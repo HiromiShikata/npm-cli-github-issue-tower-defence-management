@@ -18456,6 +18456,152 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('later reads after single-item row-control writes', () => {
+    const projectWithRowControlFields = {
+      ...buildTestProject('proj-row'),
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL separated by comma',
+        fieldId: 'f-depended',
+      },
+      nextActionDate: { name: 'Next Action Date', fieldId: 'f-date' },
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'f-hour',
+        options: [],
+      },
+    };
+    const setUpWithOneItem = async () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      const { repository, graphqlProjectItemRepository } = created;
+      created.localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      created.localStorageCacheRepository.setSingle.mockResolvedValue();
+      created.projectRepository.getProject.mockResolvedValue(
+        projectWithRowControlFields,
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [
+          {
+            ...buildProjectItem('https://github.com/o/r/issues/1', 'Issue 1'),
+            id: 'item-row',
+            customFields: [
+              {
+                name: 'Depended Issue URL separated by comma',
+                value: 'https://github.com/o/r/issues/2',
+              },
+              { name: 'Next Action Date', value: '2026-06-20' },
+              { name: 'Next Action Hour', value: '9' },
+            ],
+          },
+        ],
+        inconsistencyMessage: null,
+      });
+      graphqlProjectItemRepository.updateProjectTextField.mockResolvedValue();
+      graphqlProjectItemRepository.clearProjectField.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        'applied',
+      );
+      const first = await repository.getAllIssues('proj-row');
+      return { ...created, issue: first.issues[0] };
+    };
+
+    it('replaces the depended issue URLs in the later reads', async () => {
+      const { repository, graphqlProjectItemRepository, issue } =
+        await setUpWithOneItem();
+      expect(issue.dependedIssueUrls).toEqual([
+        'https://github.com/o/r/issues/2',
+      ]);
+
+      await repository.replaceDependedIssueUrlField(
+        projectWithRowControlFields,
+        issue,
+        'https://github.com/o/r/issues/5',
+      );
+
+      expect(
+        graphqlProjectItemRepository.updateProjectTextField,
+      ).toHaveBeenCalledTimes(1);
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].dependedIssueUrls).toEqual([
+        'https://github.com/o/r/issues/5',
+      ]);
+    });
+
+    it('clears the depended issue URLs in the later reads when replaced with null', async () => {
+      const { repository, issue } = await setUpWithOneItem();
+
+      await repository.replaceDependedIssueUrlField(
+        projectWithRowControlFields,
+        issue,
+        null,
+      );
+
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].dependedIssueUrls).toEqual([]);
+    });
+
+    it('sets the next action date in the later reads', async () => {
+      const { repository, issue } = await setUpWithOneItem();
+
+      await repository.updateNextActionDate(
+        issue.url,
+        projectWithRowControlFields,
+        new Date('2026-07-01T00:00:00.000Z'),
+        'item-row',
+      );
+
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].nextActionDate).toEqual(
+        new Date('2026-07-01T00:00:00.000Z'),
+      );
+    });
+
+    it('clears the next action date in the later reads when the date field is cleared', async () => {
+      const { repository, issue } = await setUpWithOneItem();
+
+      await repository.clearProjectField(
+        projectWithRowControlFields,
+        'f-date',
+        issue,
+      );
+
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].nextActionDate).toBeNull();
+    });
+
+    it('sets the next action hour in the later reads', async () => {
+      const { repository, issue } = await setUpWithOneItem();
+
+      await repository.updateNextActionHour(
+        {
+          ...projectWithRowControlFields,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'f-hour',
+            options: [],
+          },
+        },
+        issue,
+        14,
+      );
+
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].nextActionHour).toBe(14);
+    });
+
+    it('clears the next action hour in the later reads when the hour field is cleared', async () => {
+      const { repository, issue } = await setUpWithOneItem();
+
+      await repository.clearProjectField(
+        projectWithRowControlFields,
+        'f-hour',
+        issue,
+      );
+
+      const later = await repository.getAllIssues('proj-row');
+      expect(later.issues[0].nextActionHour).toBeNull();
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
