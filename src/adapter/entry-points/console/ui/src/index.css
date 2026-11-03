@@ -3632,14 +3632,14 @@ body {
 .console-story-task-row .console-story-select,
 .console-story-task-row .console-story-task-status-select,
 .console-story-task-row .console-agent-select {
-  width: auto;
-  max-width: 11rem;
+  width: 150px;
+  max-width: 100%;
   padding: 4px 8px;
   font-size: 0.75rem;
 }
 
 .console-story-task-depended-input {
-  width: 14rem;
+  width: 240px;
   max-width: 100%;
   padding: 4px 8px;
   font-size: 0.75rem;
