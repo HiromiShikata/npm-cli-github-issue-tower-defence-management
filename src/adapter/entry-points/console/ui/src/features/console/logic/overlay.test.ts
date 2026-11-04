@@ -294,6 +294,67 @@ describe('writeOverlayEntry', () => {
   });
 });
 
+describe('writeOverlayEntry close time', () => {
+  it('records the close time in closedAtMs on a closing write', () => {
+    const next = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    expect(next.PVTI_1).toEqual({
+      done: true,
+      closedAtMs: 5000,
+      ts: 5000,
+      mode: 'todo-by-human',
+    });
+  });
+
+  it('keeps the close time unchanged through a later status write', () => {
+    const closed = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    const next = writeOverlayEntry(
+      closed,
+      'PVTI_1',
+      { status: { name: 'In Tmux by human', color: 'BLUE' } },
+      'todo-by-human',
+      9000,
+    );
+    expect(next.PVTI_1).toEqual({
+      done: true,
+      closedAtMs: 5000,
+      status: { name: 'In Tmux by human', color: 'BLUE' },
+      ts: 9000,
+      mode: 'todo-by-human',
+    });
+  });
+
+  it('keeps the close time unchanged through a later story write', () => {
+    const closed = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    const next = writeOverlayEntry(
+      closed,
+      'PVTI_1',
+      { story: { name: 'New Story', color: 'GREEN' } },
+      'todo-by-human',
+      9000,
+    );
+    expect(next.PVTI_1).toHaveProperty('closedAtMs', 5000);
+    expect(next.PVTI_1.ts).toBe(9000);
+  });
+});
+
 describe('overlayStatusSinceSnapshot', () => {
   const snapshotGeneratedAt = '2026-08-13T21:52:01.000Z';
   const snapshotEpochMs = Date.parse(snapshotGeneratedAt);

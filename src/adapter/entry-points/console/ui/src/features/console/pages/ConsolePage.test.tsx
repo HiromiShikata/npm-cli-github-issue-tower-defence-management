@@ -10,7 +10,7 @@ import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
 import { colorFromEnum } from '../logic/colors';
-import { overlayStorageKey } from '../logic/overlay';
+import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
 import {
   type AttachmentSubmissionProgress,
   attachmentSubmissionParamsChanged,
@@ -186,6 +186,7 @@ const installStoriesDetailFetch = (options?: {
   closeFailsOnce?: boolean;
   closeRequestNetworkDown?: boolean;
   laterStoriesSnapshot?: boolean;
+  storiesGeneratedAt?: string;
 }): void => {
   let storiesRequestCount = 0;
   let closeRequestCount = 0;
@@ -194,9 +195,10 @@ const installStoriesDetailFetch = (options?: {
     if (listMatch !== null) {
       if (listMatch[1] === 'stories') {
         const generatedAt =
-          options?.laterStoriesSnapshot === true && storiesRequestCount > 0
+          options?.storiesGeneratedAt ??
+          (options?.laterStoriesSnapshot === true && storiesRequestCount > 0
             ? '2026-06-19T00:02:00.000Z'
-            : '2026-06-19T00:00:00.000Z';
+            : '2026-06-19T00:00:00.000Z');
         storiesRequestCount += 1;
         return {
           ok: true,
@@ -238,6 +240,35 @@ const installStoriesDetailFetch = (options?: {
       };
     }
     return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+};
+
+const installTriageCloseFailure = (
+  mode: 'fail' | 'failOnce' | 'networkDown',
+): void => {
+  const baseFetch = global.fetch as unknown as (
+    url: string,
+    init?: { method?: string },
+  ) => Promise<unknown>;
+  let closeRequestCount = 0;
+  const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
+    if (url === '/api/triage' && init?.method === 'POST') {
+      closeRequestCount += 1;
+      if (mode === 'networkDown') {
+        throw new TypeError('Failed to fetch');
+      }
+      const fails = mode === 'fail' || closeRequestCount === 1;
+      if (fails) {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => JSON.stringify({ error: 'close failed' }),
+          json: async () => ({ error: 'close failed' }),
+        };
+      }
+    }
+    return baseFetch(url, init);
   });
   global.fetch = fetchMock as unknown as typeof fetch;
 };
@@ -533,6 +564,41 @@ describe('ConsolePage', () => {
       act(() => {
         jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
       });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not keep a Stories row hidden past the first Stories snapshot generated after a close and a later status write', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-06-19T00:02:00.000Z'));
+    try {
+      const closed = writeOverlayEntry(
+        {},
+        'PVTI_STORY_DETAIL',
+        { done: true, closed: true },
+        'todo-by-human',
+        Date.parse('2026-06-19T00:01:00.000Z'),
+      );
+      const overlay = writeOverlayEntry(
+        closed,
+        'PVTI_STORY_DETAIL',
+        { status: { name: 'In Tmux by human', color: 'BLUE' } },
+        'todo-by-human',
+        Date.parse('2026-06-19T00:01:30.000Z'),
+      );
+      localStorage.setItem(overlayStorageKey('acme'), JSON.stringify(overlay));
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({
+        storiesGeneratedAt: '2026-06-19T00:01:15.000Z',
+      });
+      const { getByText, getByRole } = render(<ConsolePage />);
       fireEvent.click(
         await waitFor(() => getByRole('button', { name: 'Show tasks' })),
       );
@@ -1022,6 +1088,117 @@ describe('ConsolePage', () => {
       await waitFor(() => {
         expect(within(tabBar()).queryByText('Todo by human')).toBeNull();
       });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden after the close request fails, and offers retry', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('fail');
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-retry'),
+        ).not.toBeNull();
+      });
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden after a retry of the failed close succeeds', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('failOnce');
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      fireEvent.click(retryButton);
+      await waitFor(() => {
+        expect(container.querySelector('.console-error-toast')).toBeNull();
+      });
+      const closeCalls = (
+        global.fetch as unknown as jest.Mock
+      ).mock.calls.filter(
+        ([url, init]: [string, { method?: string } | undefined]) =>
+          url === '/api/triage' && init?.method === 'POST',
+      );
+      expect(closeCalls).toHaveLength(2);
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden while a close is held in the offline queue', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('networkDown');
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        const queued = JSON.parse(
+          localStorage.getItem('console-offline-action-queue') ?? '[]',
+        ) as unknown[];
+        expect(queued).toHaveLength(1);
+      });
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
     } finally {
       jest.useRealTimers();
     }

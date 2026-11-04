@@ -1,4 +1,5 @@
 import { consoleStoryEntriesWithClosedOverlay } from './consoleStoryClosedOverlay';
+import { writeOverlayEntry } from './overlay';
 import type { ConsoleOverlay, ConsoleStoryEntry } from './types';
 
 const makeStories = (
@@ -39,42 +40,44 @@ const makeStories = (
 describe('consoleStoryEntriesWithClosedOverlay', () => {
   it.each([
     {
-      label: 'entry before snapshot generation',
-      ts: Date.parse('2026-10-04T23:59:59.000Z'),
+      label: 'close before snapshot generation',
+      closedAtMs: Date.parse('2026-10-04T23:59:59.000Z'),
       generatedAt: '2026-10-05T00:00:00.000Z',
       closed: false,
     },
     {
-      label: 'entry at snapshot generation',
-      ts: Date.parse('2026-10-05T00:00:00.000Z'),
+      label: 'close at snapshot generation',
+      closedAtMs: Date.parse('2026-10-05T00:00:00.000Z'),
       generatedAt: '2026-10-05T00:00:00.000Z',
-      closed: true,
+      closed: false,
     },
     {
-      label: 'entry after snapshot generation',
-      ts: Date.parse('2026-10-05T00:00:01.000Z'),
+      label: 'close after snapshot generation',
+      closedAtMs: Date.parse('2026-10-05T00:00:01.000Z'),
       generatedAt: '2026-10-05T00:00:00.000Z',
       closed: true,
     },
     {
       label: 'no snapshot loaded',
-      ts: Date.parse('2026-10-05T00:00:01.000Z'),
+      closedAtMs: Date.parse('2026-10-05T00:00:01.000Z'),
       generatedAt: null,
       closed: true,
     },
     {
       label: 'unparsable snapshot generation',
-      ts: Date.parse('2026-10-05T00:00:01.000Z'),
+      closedAtMs: Date.parse('2026-10-05T00:00:01.000Z'),
       generatedAt: 'not-a-date',
       closed: false,
     },
   ])(
     'applies closure only for the valid $label',
-    ({ ts, generatedAt, closed }) => {
+    ({ closedAtMs, generatedAt, closed }) => {
       const stories = makeStories();
       const result = consoleStoryEntriesWithClosedOverlay(
         stories,
-        { 'item-1': { ts, mode: 'todo-by-human', closed: true } },
+        {
+          'item-1': { ts: closedAtMs, mode: 'todo-by-human', closedAtMs },
+        } as unknown as ConsoleOverlay,
         generatedAt,
       );
       expect(result[0].items[0]).toHaveProperty(
@@ -84,6 +87,99 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
       expect(result[0].openItemCount).toBe(closed ? 0 : 1);
     },
   );
+
+  it.each([
+    {
+      label: 'non-numeric close time',
+      closedAtMs: 'not-a-number',
+    },
+    {
+      label: 'missing close time',
+      closedAtMs: undefined,
+    },
+  ])(
+    'does not apply a legacy closed flag with a $label',
+    ({ closedAtMs }) => {
+      const stories = makeStories();
+      const overlay = {
+        'item-1': {
+          ts: Date.parse('2026-10-05T00:00:01.000Z'),
+          mode: 'todo-by-human',
+          closed: true,
+          closedAtMs,
+        },
+      } as unknown as ConsoleOverlay;
+      const result = consoleStoryEntriesWithClosedOverlay(
+        stories,
+        overlay,
+        '2026-10-05T00:00:00.000Z',
+      );
+      expect(result[0].items[0]).toHaveProperty('isClosed', undefined);
+      expect(result[0].openItemCount).toBe(1);
+    },
+  );
+
+  it.each([
+    {
+      label: 'status write',
+      patch: { status: { name: 'In Tmux by human', color: 'BLUE' as const } },
+    },
+    {
+      label: 'story write',
+      patch: { story: { name: 'New Story', color: 'GREEN' as const } },
+    },
+  ])(
+    'keeps a snapshot generated between the close and a later $label open',
+    ({ patch }) => {
+      const closeAt = Date.parse('2026-10-05T00:01:00.000Z');
+      const snapshotAt = '2026-10-05T00:02:00.000Z';
+      const closed = writeOverlayEntry(
+        {},
+        'item-1',
+        { done: true, closed: true },
+        'todo-by-human',
+        closeAt,
+      );
+      const overlay = writeOverlayEntry(
+        closed,
+        'item-1',
+        patch,
+        'todo-by-human',
+        Date.parse('2026-10-05T00:03:00.000Z'),
+      );
+      const result = consoleStoryEntriesWithClosedOverlay(
+        makeStories(),
+        overlay,
+        snapshotAt,
+      );
+      expect(result[0].items[0]).toHaveProperty('isClosed', undefined);
+      expect(result[0].openItemCount).toBe(1);
+    },
+  );
+
+  it('keeps the item hidden when a later story write follows a close and the snapshot predates it', () => {
+    const closed = writeOverlayEntry(
+      {},
+      'item-1',
+      { done: true, closed: true },
+      'todo-by-human',
+      Date.parse('2026-10-05T00:01:00.000Z'),
+    );
+    const overlay = writeOverlayEntry(
+      closed,
+      'item-1',
+      { story: { name: 'New Story', color: 'GREEN' } },
+      'todo-by-human',
+      Date.parse('2026-10-05T00:03:00.000Z'),
+    );
+    const result = consoleStoryEntriesWithClosedOverlay(
+      makeStories(),
+      overlay,
+      '2026-10-05T00:00:30.000Z',
+    );
+    expect(result[0].items[0]).toHaveProperty('isClosed', true);
+    expect(result[0].openItemCount).toBe(0);
+  });
 
   it.each([
     {
@@ -111,7 +207,7 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
       stories[0].openItemCount = openItemCount;
       const result = consoleStoryEntriesWithClosedOverlay(
         stories,
-        { 'item-1': { ts: 1, mode: 'todo-by-human', closed: true } },
+        { 'item-1': { ts: 1, mode: 'todo-by-human', closedAtMs: 1 } } as unknown as ConsoleOverlay,
         null,
       );
       expect(result[0].openItemCount).toBe(expected);
@@ -120,9 +216,9 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
 
   it('does not mutate the input array or its entries', () => {
     const stories = makeStories();
-    const overlay: ConsoleOverlay = {
-      'item-1': { ts: 1, mode: 'todo-by-human', closed: true },
-    };
+    const overlay = {
+      'item-1': { ts: 1, mode: 'todo-by-human', closedAtMs: 1 },
+    } as unknown as ConsoleOverlay;
     const result = consoleStoryEntriesWithClosedOverlay(stories, overlay, null);
     expect(result).not.toBe(stories);
     expect(result[0]).not.toBe(stories[0]);
