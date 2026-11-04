@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { ConsoleListItem, ConsoleStoryEntry } from '../../logic/types';
 import {
   ConsoleStoryList,
@@ -79,12 +79,20 @@ describe('ConsoleStoryList closed task filtering', () => {
     { showDone: false, expected: false },
     { showDone: true, expected: true },
   ])(
-    'renders a closed task according to the Done switch',
+    'renders a closed task according to the Done switch once the story tasks are expanded',
     ({ showDone, expected }) => {
-      const { queryByText } = render(
+      const { queryByText, getByRole } = render(
         <ConsoleStoryList {...props} showDone={showDone} />,
       );
+      fireEvent.click(getByRole('button', { name: 'Show tasks' }));
       expect(queryByText(closedItem.title) !== null).toBe(expected);
     },
   );
+
+  it('keeps the task list of a story collapsed while Done is on until its toggle is used', () => {
+    const { queryByText } = render(
+      <ConsoleStoryList {...props} showDone={true} />,
+    );
+    expect(queryByText(closedItem.title)).toBeNull();
+  });
 });
