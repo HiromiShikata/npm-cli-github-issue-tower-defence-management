@@ -2348,7 +2348,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             '2026-07-07T01:30:00.000Z',
           ),
         ],
-        expectedDetailFetchedItemIds: [],
+        expectedDetailFetchedItemIds: [
+          'item-removed-from-board',
+          'item-live-refetched',
+        ],
         expectedResultItemIds: [
           'item-fetched-a',
           'item-fetched-b',
@@ -2410,18 +2413,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         );
         graphqlProjectItemRepository.fetchProjectItemsByIds.mockImplementation(
           async (itemIds: string[]) =>
-            detailProjectItems.filter((item) => itemIds.includes(item.id)),
+            [
+              ...detailProjectItems,
+              ...liveProjectItemsOfCachedIssuesAbsentFromFullFetch,
+            ].filter((item) => itemIds.includes(item.id)),
         );
         graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
           issues: fullFetchItems,
           inconsistencyMessage: null,
         });
-        graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
-          async (issueUrl: string) =>
-            liveProjectItemsOfCachedIssuesAbsentFromFullFetch.find(
-              (item) => item.url === issueUrl,
-            ) ?? null,
-        );
         localStorageCacheRepository.setSingle.mockResolvedValue();
 
         const result = await repository.getAllIssues('cached-project');
@@ -2433,6 +2433,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expect([...detailFetchedItemIds].sort()).toEqual(
           [...expectedDetailFetchedItemIds].sort(),
         );
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).not.toHaveBeenCalled();
         expect(result.issues.map((issue) => issue.itemId).sort()).toEqual(
           [...expectedResultItemIds].sort(),
         );
