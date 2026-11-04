@@ -1394,33 +1394,18 @@ export class ApiV3CheerioRestIssueRepository
         ProjectItem | null
       >();
       if (issuesAbsentFromFetchResult.length > 0) {
-        const liveProjectItemsResult =
+        const liveProjectItems =
           await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
             issuesAbsentFromFetchResult.map((issue) => issue.itemId),
           );
-        if (liveProjectItemsResult === undefined) {
-          for (const issue of issuesAbsentFromFetchResult) {
-            const liveProjectItem =
-              await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-                issue.url,
-                projectId,
-              );
-            liveProjectItemsByItemIdAbsentFromFetchResult.set(
-              issue.itemId,
-              liveProjectItem,
-            );
-          }
-        } else {
-          const liveProjectItems = liveProjectItemsResult;
-          const liveProjectItemsByItemId = new Map(
-            liveProjectItems.map((item) => [item.id, item]),
+        const liveProjectItemsByItemId = new Map(
+          liveProjectItems.map((item) => [item.id, item]),
+        );
+        for (const issue of issuesAbsentFromFetchResult) {
+          liveProjectItemsByItemIdAbsentFromFetchResult.set(
+            issue.itemId,
+            liveProjectItemsByItemId.get(issue.itemId) ?? null,
           );
-          for (const issue of issuesAbsentFromFetchResult) {
-            liveProjectItemsByItemIdAbsentFromFetchResult.set(
-              issue.itemId,
-              liveProjectItemsByItemId.get(issue.itemId) ?? null,
-            );
-          }
         }
       }
       const nowIso = now.toISOString();
