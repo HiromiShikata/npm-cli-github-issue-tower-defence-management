@@ -1,3 +1,10 @@
+## [2.187.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.2...v2.187.3) (2026-11-04)
+
+
+### Bug Fixes
+
+* **console:** count status-filtered tasks in story badges and Stories tab ([#3690](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3690)) ([55455d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/55455d136ca70bd959ee80815c74e6ccffe83c7f))
+
 ## [2.187.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.1...v2.187.2) (2026-11-04)
 
 
