@@ -4,6 +4,7 @@ import {
   filterPendingItems,
   isOverlayEntryActed,
   overlayEntriesActedSinceSnapshot,
+  overlayEntryClosedAtUpdate,
   overlayKeyForItem,
   overlayStatusSinceSnapshot,
   overlayStorageKey,
@@ -352,6 +353,81 @@ describe('writeOverlayEntry close time', () => {
     );
     expect(next.PVTI_1).toHaveProperty('closedAtMs', 5000);
     expect(next.PVTI_1.ts).toBe(9000);
+  });
+});
+
+describe('overlayEntryClosedAtUpdate', () => {
+  it('replaces only the closedAtMs of the entry at the key and returns the same object when no close time can be replaced', () => {
+    const closed: ConsoleOverlay = {
+      PVTI_1: {
+        done: true,
+        closedAtMs: 5000,
+        status: { name: 'In Tmux by human', color: 'BLUE' },
+        ts: 9000,
+        mode: 'todo-by-human',
+      },
+      PVTI_2: { done: true, closedAtMs: 6000, ts: 6000, mode: 'prs' },
+    };
+    const closedAtUpdatedTo12000: ConsoleOverlay = {
+      ...closed,
+      PVTI_1: { ...closed.PVTI_1, closedAtMs: 12000 },
+    };
+    const withoutCloseTime: ConsoleOverlay = {
+      PVTI_1: { done: true, ts: 9000, mode: 'todo-by-human' },
+    };
+    const withNaNCloseTime: ConsoleOverlay = {
+      PVTI_1: {
+        done: true,
+        closedAtMs: Number.NaN,
+        ts: 9000,
+        mode: 'todo-by-human',
+      },
+    };
+    const cases: {
+      label: string;
+      overlay: ConsoleOverlay;
+      key: string;
+      expected: ConsoleOverlay | null;
+    }[] = [
+      {
+        label: 'a finite closedAtMs is replaced and every other entry is kept',
+        overlay: closed,
+        key: 'PVTI_1',
+        expected: closedAtUpdatedTo12000,
+      },
+      {
+        label: 'no entry at the key returns the same object',
+        overlay: closed,
+        key: 'PVTI_missing',
+        expected: null,
+      },
+      {
+        label: 'an entry without closedAtMs returns the same object',
+        overlay: withoutCloseTime,
+        key: 'PVTI_1',
+        expected: null,
+      },
+      {
+        label: 'an entry whose closedAtMs is NaN returns the same object',
+        overlay: withNaNCloseTime,
+        key: 'PVTI_1',
+        expected: null,
+      },
+    ];
+    for (const testCase of cases) {
+      const actual = overlayEntryClosedAtUpdate(
+        testCase.overlay,
+        testCase.key,
+        12000,
+      );
+      if (testCase.expected === null) {
+        expect(actual).toBe(testCase.overlay);
+      } else {
+        expect(actual).not.toBe(testCase.overlay);
+        expect(actual).toEqual(testCase.expected);
+      }
+    }
+    expect(closed.PVTI_1.closedAtMs).toBe(5000);
   });
 });
 
