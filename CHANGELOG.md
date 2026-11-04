@@ -1,3 +1,10 @@
+## [2.187.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.1...v2.187.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* **graphql:** end rate limits as GitHubRateLimitError and batch cache reconciliation ([#3689](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3689)) ([f8cb433](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f8cb433c808872cc4aa579fd6d8aad779ea29c1b))
+
 ## [2.187.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.0...v2.187.1) (2026-11-04)
 
 
