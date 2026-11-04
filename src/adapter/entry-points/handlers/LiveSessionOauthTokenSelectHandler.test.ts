@@ -325,7 +325,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(diagnostics).not.toContain('fake-busy');
   });
 
-  it('selects a token with 4% seven day free on the normal path and explains the least seven day budget first ordering', () => {
+  it('selects a token with 4% seven day free on the normal path and explains the seven day reset first ordering', () => {
     writeTokenList([{ name: 'fallbackToken', token: 'fake-fallback' }]);
     writeCache('fake-fallback', {
       fiveHourUtilization: 0.5,
@@ -346,9 +346,60 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     const diagnostics = output.diagnostics.join('\n');
     expect(diagnostics).not.toContain('via fallback');
     expect(diagnostics).toContain('Selected fallbackToken (');
-    expect(diagnostics).toContain('7d free ratio ascending');
+    expect(diagnostics).toContain('ordered by 7d reset soonest first');
     expect(diagnostics).toContain(
-      `cannot be spent by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before the 7d reset`,
+      `sessions needed to spend 7d by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset:`,
+    );
+  });
+
+  it('reports the sessions needed to spend the 7d window by 72 hours before reset in the candidate trace', () => {
+    writeTokenList([{ name: 'needed', token: 'fake-needed' }]);
+    writeCache('fake-needed', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.09,
+      sevenDayReset: NOW + Math.round(81.1 * HOUR),
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+    });
+
+    expect(output.diagnostics.join('\n')).toContain(
+      `sessions needed to spend 7d by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset: 34`,
+    );
+  });
+
+  it('describes the three-step rule and the sevenDayShareConsumedPerSessionHour in the selected line', () => {
+    writeTokenList([{ name: 'described', token: 'fake-described' }]);
+    writeCache('fake-described', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.09,
+      sevenDayReset: NOW + Math.round(81.1 * HOUR),
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+    });
+
+    const selectedLine = output.diagnostics.find((line) =>
+      line.startsWith('Selected described ('),
+    );
+    expect(selectedLine).toContain('ordered by 7d reset soonest first');
+    expect(selectedLine).toContain(
+      `sessions needed to spend its 7d window by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset`,
+    );
+    expect(selectedLine).toContain(
+      `${DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.sevenDayShareConsumedPerSessionHour} of the 7d window per session-hour`,
     );
   });
 

@@ -7,8 +7,7 @@ import {
   fiveHourSustainableSessionCountOf,
   liveSessionConcurrentLimitOf,
   liveSessionOauthTokenCandidateMetricsInSelectionOrder,
-  sevenDayBudgetUndrainableBeforeSpendDeadlineOf,
-  sevenDayShareDrainableBeforeSpendDeadlineOf,
+  sessionCountNeededToDrainSevenDayOf,
 } from './LiveSessionOauthTokenSelectUseCase';
 import {
   OauthTokenCandidate,
@@ -1230,7 +1229,7 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
     expect(result.selected?.name).toBe('nearlySpentInsideDeadline');
   });
 
-  it('selects a 7% free token before the deadline ahead of a 25% free token under fleet minimum free ratios of 10% and 25%', () => {
+  it('selects the token whose seven day reset is sooner even when it has more seven day budget left', () => {
     const result = useCase.run(
       [
         candidate(
@@ -1258,7 +1257,7 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
     );
     expect(sevenPercent?.eligible).toBe(true);
     expect(sevenPercent?.exclusionReason).toBeNull();
-    expect(result.selected?.name).toBe('sevenPercentFree');
+    expect(result.selected?.name).toBe('twentyFivePercentFree');
   });
 
   const rejectedCases: [string, boolean, boolean][] = [
@@ -1343,42 +1342,6 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
     },
   );
 
-  it('moves a token whose remaining seven day budget cannot be spent by 72 hours before its reset at the maximum concurrency ahead of a token with less budget that can be spent', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'drainableSoonerReset',
-          snapshot({
-            sevenDayUtilization: 0.7,
-            sevenDayReset: NOW + 96 * HOUR,
-          }),
-        ),
-        candidate(
-          'undrainableLaterReset',
-          snapshot({
-            sevenDayUtilization: 0,
-            sevenDayReset: NOW + 104 * HOUR,
-          }),
-        ),
-      ],
-      [],
-      NOW,
-      SETTINGS,
-    );
-
-    const drainable = result.metrics.find(
-      (m) => m.name === 'drainableSoonerReset',
-    );
-    const undrainable = result.metrics.find(
-      (m) => m.name === 'undrainableLaterReset',
-    );
-    expect(drainable?.sevenDayBudgetUndrainableBeforeSpendDeadline).toBe(false);
-    expect(undrainable?.sevenDayBudgetUndrainableBeforeSpendDeadline).toBe(
-      true,
-    );
-    expect(result.selected?.name).toBe('undrainableLaterReset');
-  });
-
   it('selects via fallback the token with the highest five hour free ratio when every token is blocked by an HTTP 401 auth failure', () => {
     const result = useCase.run(
       [
@@ -1409,62 +1372,54 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
   });
 });
 
-describe('sevenDayShareDrainableBeforeSpendDeadlineOf', () => {
-  const drainableShareCases: [
-    string,
-    number,
-    LiveSessionOauthTokenSelectionSettings,
-    number,
-  ][] = [
-    ['a reset inside the 72-hour deadline window', 28 * HOUR, SETTINGS, 0],
-    ['a reset 96 hours away', 96 * HOUR, SETTINGS, 0.672],
-    ['a reset seven days away', 7 * DAY, SETTINGS, 2.688],
-    ['a reset already in the past', -HOUR, SETTINGS, 0],
-    [
-      'a reset seven days away when each session consumes only 0.1% of the five hour window per hour',
-      7 * DAY,
-      settingsWhereFiveHourSustainabilityNeverBindsWith({}),
-      0.1344,
-    ],
+describe('sessionCountNeededToDrainSevenDayOf', () => {
+  const neededCases: [string, number, number, number, number][] = [
+    ['91% free with the reset 81.1 hours away', 0.91, 81.1, 10, 34],
+    ['84% free with the reset 102.1 hours away', 0.84, 102.1, 10, 10],
+    ['98% free with the reset 122.1 hours away', 0.98, 122.1, 10, 7],
+    ['fully free with the reset 168 hours away', 1, 168, 10, 4],
+    ['no free share with the reset 100 hours away', 0, 100, 10, 0],
+    ['a reset exactly 72 hours away', 0.5, 72, 4, 4],
+    ['a reset 48 hours away', 0.5, 48, 3, 3],
+    ['a reset that has already passed', 0.5, -1, 10, 10],
   ];
 
-  it.each(drainableShareCases)(
-    'returns the seven day share the maximum concurrency can spend before the spend deadline for %s',
-    (_description, secondsUntilSevenDayReset, settings, expectedShare) => {
+  it.each(neededCases)(
+    'returns the expected count for %s',
+    (
+      _description,
+      sevenDayFreeRatio,
+      hoursUntilReset,
+      concurrentSessionLimit,
+      expected,
+    ) => {
       expect(
-        sevenDayShareDrainableBeforeSpendDeadlineOf(
-          NOW + secondsUntilSevenDayReset,
-          NOW,
-          settings,
-        ),
-      ).toBeCloseTo(expectedShare, 10);
-    },
-  );
-});
-
-describe('sevenDayBudgetUndrainableBeforeSpendDeadlineOf', () => {
-  const undrainableCases: [number, number, boolean][] = [
-    [0.02, 28 * HOUR, true],
-    [0, 28 * HOUR, false],
-    [0.5, 96 * HOUR, false],
-    [0.7, 96 * HOUR, true],
-    [1, 80 * HOUR, true],
-    [1, 7 * DAY, false],
-  ];
-
-  it.each(undrainableCases)(
-    'reports %f seven day free with the reset %i seconds away as undrainable: %s',
-    (sevenDayFreeRatio, secondsUntilSevenDayReset, expectedUndrainable) => {
-      expect(
-        sevenDayBudgetUndrainableBeforeSpendDeadlineOf(
+        sessionCountNeededToDrainSevenDayOf(
           sevenDayFreeRatio,
-          NOW + secondsUntilSevenDayReset,
+          NOW + Math.round(hoursUntilReset * HOUR),
           NOW,
+          concurrentSessionLimit,
           SETTINGS,
         ),
-      ).toBe(expectedUndrainable);
+      ).toBe(expected);
     },
   );
+
+  it('defaults sevenDayShareConsumedPerSessionHour to 0.003', () => {
+    expect(SETTINGS.sevenDayShareConsumedPerSessionHour).toBe(0.003);
+  });
+
+  it('scales the sessions needed with the configured sevenDayShareConsumedPerSessionHour', () => {
+    expect(
+      sessionCountNeededToDrainSevenDayOf(
+        0.91,
+        NOW + Math.round(81.1 * HOUR),
+        NOW,
+        10,
+        settingsWith({ sevenDayShareConsumedPerSessionHour: 0.006 }),
+      ),
+    ).toBe(17);
+  });
 });
 
 describe('liveSessionOauthTokenCandidateMetricsInSelectionOrder', () => {
@@ -1476,7 +1431,7 @@ describe('liveSessionOauthTokenCandidateMetricsInSelectionOrder', () => {
     fiveHourFreeRatio: 1,
     sevenDayFreeRatio: 1,
     sevenDayEndEpoch: NOW + 7 * DAY,
-    sevenDayBudgetUndrainableBeforeSpendDeadline: false,
+    sessionCountNeededToDrainSevenDay: 1,
     liveSessionCount: 0,
     concurrentSessionLimit: MAX_CONCURRENT_SESSION_COUNT,
     hasConcurrencyHeadroom: true,
@@ -1492,54 +1447,40 @@ describe('liveSessionOauthTokenCandidateMetricsInSelectionOrder', () => {
     string[],
   ][] = [
     [
-      'puts a token whose seven day budget is undrainable first even when it has more budget',
+      'orders by seven day reset soonest before seven day free ratio',
       [
-        metricOf('leastBudget', { sevenDayFreeRatio: 0.1 }),
-        metricOf('undrainable', {
-          sevenDayFreeRatio: 0.9,
-          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
-        }),
-      ],
-      ['undrainable', 'leastBudget'],
-    ],
-    [
-      'orders by seven day free ratio ascending',
-      [
-        metricOf('half', { sevenDayFreeRatio: 0.5 }),
-        metricOf('full', { sevenDayFreeRatio: 1 }),
-        metricOf('tenth', { sevenDayFreeRatio: 0.1 }),
-      ],
-      ['tenth', 'half', 'full'],
-    ],
-    [
-      'orders undrainable tokens by seven day free ratio ascending among themselves',
-      [
-        metricOf('undrainableFull', {
+        metricOf('fullLaterReset', {
           sevenDayFreeRatio: 1,
-          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
+          sevenDayEndEpoch: NOW + 6 * DAY,
         }),
-        metricOf('undrainableHalf', {
-          sevenDayFreeRatio: 0.5,
-          sevenDayBudgetUndrainableBeforeSpendDeadline: true,
+        metricOf('tenthSoonerReset', {
+          sevenDayFreeRatio: 0.1,
+          sevenDayEndEpoch: NOW + 5 * DAY,
         }),
       ],
-      ['undrainableHalf', 'undrainableFull'],
+      ['tenthSoonerReset', 'fullLaterReset'],
     ],
     [
-      'breaks a seven day free ratio tie by the sooner seven day reset',
-      [
-        metricOf('laterReset', { sevenDayEndEpoch: NOW + 6 * DAY }),
-        metricOf('soonerReset', { sevenDayEndEpoch: NOW + 5 * DAY }),
-      ],
-      ['soonerReset', 'laterReset'],
-    ],
-    [
-      'breaks a seven day free ratio and reset tie by the fewer live sessions',
+      'breaks a seven day reset tie by the fewer live sessions',
       [
         metricOf('busy', { liveSessionCount: 3 }),
         metricOf('idle', { liveSessionCount: 0 }),
       ],
       ['idle', 'busy'],
+    ],
+    [
+      'ignores the free ratio and the sessions needed when the reset and live sessions tie',
+      [
+        metricOf('needsMore', {
+          sevenDayFreeRatio: 0.9,
+          sessionCountNeededToDrainSevenDay: 9,
+        }),
+        metricOf('needsFew', {
+          sevenDayFreeRatio: 0.1,
+          sessionCountNeededToDrainSevenDay: 1,
+        }),
+      ],
+      ['needsMore', 'needsFew'],
     ],
     [
       'keeps the candidate order for a full tie',
@@ -1568,5 +1509,90 @@ describe('liveSessionOauthTokenCandidateMetricsInSelectionOrder', () => {
     liveSessionOauthTokenCandidateMetricsInSelectionOrder(metrics);
 
     expect(metrics.map((metric) => metric.name)).toEqual(['full', 'tenth']);
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase three-step selection by sessions needed to drain the seven day window', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  const windowOf = (
+    sevenDayFreeRatio: number,
+    hoursUntilSevenDayReset: number,
+  ): OauthTokenWindowSnapshot =>
+    snapshot({
+      sevenDayUtilization: 1 - sevenDayFreeRatio,
+      sevenDayReset: NOW + Math.round(hoursUntilSevenDayReset * HOUR),
+    });
+
+  const selectionCases: [
+    string,
+    OauthTokenCandidate[],
+    ClaudeLiveSession[],
+    string,
+  ][] = [
+    [
+      'selects the sooner resetting token even when the other token has more free budget',
+      [
+        candidate('tokenA', windowOf(0.91, 66)),
+        candidate('tokenB', windowOf(0.88, 89)),
+      ],
+      [],
+      'tokenA',
+    ],
+    [
+      'selects the token below its sessions needed before a sooner resetting token that has reached its sessions needed',
+      [
+        candidate('tokenA', windowOf(0.1, 100)),
+        candidate('tokenB', windowOf(0.9, 120)),
+      ],
+      [...sessionsFor('tokenA', 2), ...sessionsFor('tokenB', 3)],
+      'tokenB',
+    ],
+    [
+      'selects the token with headroom under its limit before a sooner resetting token that has reached its sessions needed',
+      [
+        candidate('tokenA', windowOf(0.2, 100)),
+        candidate('tokenB', windowOf(0.1, 120)),
+      ],
+      [...sessionsFor('tokenA', 3), ...sessionsFor('tokenB', 1)],
+      'tokenA',
+    ],
+    [
+      'skips a sooner resetting token already at its concurrent session limit even though more sessions are needed to drain it',
+      [
+        candidate('tokenA', windowOf(0.9, 120)),
+        candidate('tokenB', windowOf(0.5, 130)),
+      ],
+      sessionsFor('tokenA', 4),
+      'tokenB',
+    ],
+  ];
+
+  it.each(selectionCases)(
+    '%s',
+    (_description, candidates, sessions, expectedName) => {
+      const result = useCase.run(candidates, sessions, NOW, SETTINGS);
+
+      expect(result.selected?.name).toBe(expectedName);
+    },
+  );
+
+  it('reports the sessions needed to drain the seven day window in each candidate metric, and the limit inside 72 hours', () => {
+    const result = useCase.run(
+      [
+        candidate('tokenA', windowOf(0.91, 81.1)),
+        candidate('tokenB', windowOf(0.84, 66)),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const tokenA = result.metrics.find((m) => m.name === 'tokenA');
+    const tokenB = result.metrics.find((m) => m.name === 'tokenB');
+    expect(tokenA?.sessionCountNeededToDrainSevenDay).toBe(34);
+    expect(tokenB?.sessionCountNeededToDrainSevenDay).toBe(
+      tokenB?.concurrentSessionLimit,
+    );
   });
 });
