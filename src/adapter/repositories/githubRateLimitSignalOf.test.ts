@@ -51,6 +51,18 @@ const cases = [
     expected: { resetAt: null },
   },
   {
+    name: 'GraphQL RATE_LIMIT error with HTTP 200 and no headers',
+    response: {
+      status: 200,
+      headers: new Headers(),
+      body: {
+        errors: [{ type: 'RATE_LIMIT', message: 'API rate limit exceeded' }],
+      },
+    },
+    now: NOW,
+    expected: { resetAt: null },
+  },
+  {
     name: 'GraphQL RATE_LIMITED error with HTTP 200 and no headers',
     response: {
       status: 200,

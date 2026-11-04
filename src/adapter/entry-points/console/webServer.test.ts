@@ -33,6 +33,7 @@ import {
 import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import { GraphqlRateLimitError } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { readProjectTimer } from './consoleProjectTimerStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -1327,6 +1328,45 @@ describe('webServer new routes integration', () => {
     }
   });
 
+  it('returns 502 with the error message and does not report /api/createworkflowissue GraphqlRateLimitError', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const operationError = new GraphqlRateLimitError(
+      'GraphQL quota exhausted while creating the issue',
+    );
+    issueRepository.createNewIssue.mockRejectedValue(operationError);
+    const consoleErrorReporter = jest.fn(async () => {});
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      consoleErrorReporter,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/createworkflowissue?k=${testToken}`,
+        { nameWithOwner: 'o/r', title: 'New workflow issue' },
+      );
+      expect(response.statusCode).toBe(502);
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(consoleErrorReporter).not.toHaveBeenCalled();
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('returns 502 with rateLimitResetAt in the body and does not call consoleErrorReporter when /api/createworkflowissue fails with GitHubRateLimitError', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
@@ -1443,6 +1483,87 @@ describe('webServer new routes integration', () => {
       });
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 502 with the error message and does not report a dispatched GraphqlRateLimitError', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      itemId: 'PVTI_loaded',
+    });
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: null,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue({
+      title: 'Test PR',
+      state: 'open',
+      merged: false,
+      isDraft: false,
+      additions: 0,
+      deletions: 0,
+      changedFiles: 0,
+      headRefName: 'feature',
+      baseRefName: 'main',
+      author: 'other-user',
+      files: [],
+    });
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+      'authenticated-user',
+    );
+    const operationError = new GraphqlRateLimitError(
+      'GraphQL quota exhausted while merging the pull request',
+    );
+    issueRepository.mergePullRequest.mockRejectedValue(operationError);
+    const consoleErrorReporter = jest.fn(async () => {});
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      consoleErrorReporter,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/review?k=${testToken}`,
+        {
+          pjcode: 'acme',
+          action: 'approve_and_merge',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_op',
+        },
+      );
+      expect(response.statusCode).toBe(502);
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(consoleErrorReporter).not.toHaveBeenCalled();
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
