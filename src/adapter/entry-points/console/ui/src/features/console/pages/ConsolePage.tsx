@@ -1085,22 +1085,6 @@ export const ConsolePage = () => {
       ),
     [selectedStoryStatuses, storyStatusOptionNames],
   );
-  const storyTabBadgeCounts = useMemo(() => {
-    if (effectiveStoryStatuses.length === 0 || storiesSnapshot === null) {
-      return counts;
-    }
-    const nonArchivedStories = storiesSnapshot.stories.filter(
-      (s) => s.color !== 'GRAY',
-    );
-    return {
-      ...counts,
-      stories: filterConsoleStoryEntriesByStatusSelection(
-        nonArchivedStories,
-        effectiveStoryStatuses,
-      ).length,
-    };
-  }, [counts, effectiveStoryStatuses, storiesSnapshot]);
-
   useEffect(() => {
     const statusesFromPopState = statusesFromPopStateRef.current;
     if (
@@ -1150,6 +1134,19 @@ export const ConsolePage = () => {
     localStoryEntriesOverride.generatedAt === storiesSnapshot?.generatedAt
       ? localStoryEntriesOverride.stories
       : rawStoryEntries;
+  const storyTabBadgeCounts = useMemo(() => {
+    if (effectiveStoryStatuses.length === 0 || storiesSnapshot === null) {
+      return counts;
+    }
+    const nonArchivedStories = storyEntries.filter((s) => s.color !== 'GRAY');
+    return {
+      ...counts,
+      stories: filterConsoleStoryEntriesByStatusSelection(
+        nonArchivedStories,
+        effectiveStoryStatuses,
+      ).length,
+    };
+  }, [counts, effectiveStoryStatuses, storiesSnapshot, storyEntries]);
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
   const newIssueUrl =
     defaultNameWithOwner !== null
