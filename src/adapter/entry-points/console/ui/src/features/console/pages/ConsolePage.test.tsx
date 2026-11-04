@@ -12594,3 +12594,161 @@ describe('ConsolePage story task row story pulldown', () => {
     },
   );
 });
+
+describe('ConsolePage story status filter counts', () => {
+  const storyTaskItem = (number: number, story: string, status: string) => ({
+    number,
+    title: `Task ${number}`,
+    url: `https://github.com/o/r/issues/${number}`,
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: `PVTI_${number}`,
+    itemId: `PVTI_${number}`,
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story,
+    status,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-18T00:00:00.000Z',
+  });
+
+  const installCountFixture = (path: string): void => {
+    window.history.replaceState({}, '', `/projects/acme/${path}?k=token`);
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              statusOptions: [
+                { id: 'ao', name: 'Awaiting Owner', color: 'ORANGE' },
+                { id: 'pr', name: 'Preparation', color: 'BLUE' },
+                { id: 'dn', name: 'Done', color: 'GREEN' },
+                { id: 'ic', name: 'Icebox', color: 'GRAY' },
+              ],
+              stories: [
+                {
+                  storyName: 'Story One',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                  items: [
+                    storyTaskItem(1, 'Story One', 'Awaiting Owner'),
+                    storyTaskItem(2, 'Story One', 'Preparation'),
+                    storyTaskItem(3, 'Story One', 'Preparation'),
+                    storyTaskItem(4, 'Story One', 'Done'),
+                  ],
+                },
+                {
+                  storyName: 'Story Two',
+                  storyOptionId: 'st2',
+                  color: 'PURPLE',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [storyTaskItem(5, 'Story Two', 'Preparation')],
+                },
+                {
+                  storyName: 'Archived Story',
+                  storyOptionId: 'st3',
+                  color: 'GRAY',
+                  openItemCount: 1,
+                  storyViewUrl: null,
+                  items: [storyTaskItem(6, 'Archived Story', 'Awaiting Owner')],
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  const storiesTabBadgeText = (
+    container: HTMLElement,
+  ): string | null | undefined =>
+    Array.from(container.querySelectorAll<HTMLElement>('a.console-tab'))
+      .find(
+        (tab) =>
+          tab.querySelector('.console-tab-label')?.textContent === 'Stories',
+      )
+      ?.querySelector('.console-tab-badge')?.textContent;
+
+  const storyRowCountText = (
+    container: HTMLElement,
+    storyName: string,
+  ): string | null | undefined =>
+    Array.from(
+      container.querySelectorAll<HTMLElement>('li.console-story-list-row'),
+    )
+      .find(
+        (row) =>
+          row.querySelector('.console-storytag')?.textContent === storyName,
+      )
+      ?.querySelector('.console-story-count')?.textContent;
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows the unfiltered row and tab counts when no status is selected, and updates both when a status is checked and cleared', async () => {
+    installCountFixture('stories');
+
+    const { container, findByRole, findByText } = render(<ConsolePage />);
+    expect(await findByText('Story One')).toBeInTheDocument();
+    expect(storyRowCountText(container, 'Story One')).toBe('3');
+    expect(storyRowCountText(container, 'Story Two')).toBe('1');
+    expect(storiesTabBadgeText(container)).toBe('2');
+
+    fireEvent.click(await findByRole('checkbox', { name: 'Awaiting Owner' }));
+    expect(storyRowCountText(container, 'Story One')).toBe('1');
+    expect(storyRowCountText(container, 'Story Two')).toBeUndefined();
+    expect(storiesTabBadgeText(container)).toBe('1');
+
+    fireEvent.click(await findByRole('button', { name: 'Clear' }));
+    expect(storyRowCountText(container, 'Story One')).toBe('3');
+    expect(storyRowCountText(container, 'Story Two')).toBe('1');
+    expect(storiesTabBadgeText(container)).toBe('2');
+  });
+
+  it('restores the filtered counts from the saved selection on load', async () => {
+    localStorage.setItem(
+      'console-story-selected-statuses',
+      '["Awaiting Owner","Done"]',
+    );
+    installCountFixture('stories');
+
+    const { container, findByText } = render(<ConsolePage />);
+    expect(await findByText('Story One')).toBeInTheDocument();
+    expect(storyRowCountText(container, 'Story One')).toBe('2');
+    expect(storiesTabBadgeText(container)).toBe('1');
+  });
+
+  it('keeps the Stories tab with badge 0 when the selection matches no story, even on another tab', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Icebox"]');
+    installCountFixture('prs');
+
+    const { container, findByText } = render(<ConsolePage />);
+    expect(await findByText('Stories')).toBeInTheDocument();
+    expect(storiesTabBadgeText(container)).toBe('0');
+  });
+});
