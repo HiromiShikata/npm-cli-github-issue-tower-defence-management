@@ -5,6 +5,10 @@ import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import {
+  GraphqlRateLimitError,
+  throwIfGraphqlRateLimitError,
+} from './throwIfGraphqlRateLimitError';
 export type ProjectItem = {
   id: string;
   nameWithOwner: string;
@@ -72,6 +76,7 @@ type ProjectV2ItemContentNode = {
 };
 type ProjectV2ItemNode = {
   id: string;
+  isArchived: boolean;
   fieldValues: {
     nodes: ProjectV2ItemFieldValueNode[];
   };
@@ -309,12 +314,7 @@ type GraphqlError = {
   path?: (string | number)[];
 };
 
-export class GraphqlRateLimitError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'GraphqlRateLimitError';
-  }
-}
+export { GraphqlRateLimitError } from './throwIfGraphqlRateLimitError';
 
 export class ProjectFieldWriteVerificationError extends Error {
   constructor(
@@ -333,9 +333,6 @@ export class ProjectFieldWriteVerificationError extends Error {
     this.name = 'ProjectFieldWriteVerificationError';
   }
 }
-
-const isRateLimitGraphqlError = (error: GraphqlError): boolean =>
-  error.type === 'RATE_LIMIT';
 
 const isRateLimitStatus = (status: number): boolean =>
   status === 429 || status === 403;
@@ -512,12 +509,13 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
             issueOrPullRequest?: ProjectItemsContainer | null;
           };
         };
-        errors?: { message: string }[];
+        errors?: GraphqlError[];
       }>({
         ghToken: this.ghToken,
         query: graphqlQuery.query,
         variables: graphqlQuery.variables,
       });
+      throwIfGraphqlRateLimitError(response);
 
       if (!response.data) {
         const errorMessages = response.errors
@@ -538,6 +536,9 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       return projectItemId;
     } catch (error) {
       console.error('Error fetching GitHub Project V2 ID:', error);
+      if (error instanceof GraphqlRateLimitError) {
+        throw error;
+      }
       return undefined;
     }
   };
@@ -556,7 +557,8 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           hasNextPage
         }
         nodes {
-          id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+          id
+          isArchived${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
         }
       }
     }
@@ -578,6 +580,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           };
           nodes: {
             id: string;
+            isArchived: boolean;
             fieldValues: {
               nodes: {
                 text: string;
@@ -628,6 +631,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                 };
                 nodes: {
                   id: string;
+                  isArchived: boolean;
                   fieldValues: {
                     nodes: {
                       text: string;
@@ -664,11 +668,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           query: graphqlQuery.query,
           variables: graphqlQuery.variables,
         });
-        if (result.errors?.some(isRateLimitGraphqlError)) {
-          throw new GraphqlRateLimitError(
-            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
-          );
-        }
+        throwIfGraphqlRateLimitError(result);
         return result;
       });
       if (response.errors && response.errors.length > 0) {
@@ -707,6 +707,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           };
           nodes: {
             id: string;
+            isArchived: boolean;
             fieldValues: {
               nodes: {
                 text: string;
@@ -887,7 +888,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           item.content.repository.nameWithOwner,
         ),
       isRepoArchived: item.content.repository.isArchived ?? false,
-      isArchivedFromProject: false,
+      isArchivedFromProject: item.isArchived,
       stateReason: toStateReason(item.content.stateReason),
       customFields: item.fieldValues.nodes
         .filter((field) => !!field.field)
@@ -975,11 +976,7 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
             query: query ?? null,
           },
         });
-        if (result.errors?.some(isRateLimitGraphqlError)) {
-          throw new GraphqlRateLimitError(
-            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
-          );
-        }
+        throwIfGraphqlRateLimitError(result);
         return result;
       });
       if (response.errors && response.errors.length > 0) {
@@ -1080,7 +1077,8 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
 query GetProjectItemsByIds($ids: [ID!]!) {
   nodes(ids: $ids) {
     ... on ProjectV2Item {
-      id${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+      id
+      isArchived${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
     }
   }
 }
@@ -1099,11 +1097,7 @@ query GetProjectItemsByIds($ids: [ID!]!) {
             ids: batchIds,
           },
         });
-        if (result.errors?.some(isRateLimitGraphqlError)) {
-          throw new GraphqlRateLimitError(
-            `GitHub GraphQL rate limit: ${stringifyGraphqlErrorsForLog(result.errors)}`,
-          );
-        }
+        throwIfGraphqlRateLimitError(result);
         return result;
       });
       if (response.errors && response.errors.length > 0) {
@@ -1273,12 +1267,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           };
         };
       };
-      errors?: { message: string }[];
+      errors?: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: graphqlQuery.query,
       variables: graphqlQuery.variables,
     });
+    throwIfGraphqlRateLimitError(response);
 
     if (!response.data) {
       const errorMessages = response.errors
@@ -1544,21 +1539,23 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         }[];
       };
     };
-    const response = await callWithRateLimitRetry(() =>
-      postGithubGraphqlJson<{
+    const response = await callWithRateLimitRetry(async () => {
+      const result = await postGithubGraphqlJson<{
         data?: {
           repository: {
             issue: ContentNode | null;
             pullRequest: ContentNode | null;
           } | null;
         };
-        errors?: { message: string }[];
+        errors?: GraphqlError[];
       }>({
         ghToken: this.ghToken,
         query: graphqlQuery.query,
         variables: graphqlQuery.variables,
-      }),
-    );
+      });
+      throwIfGraphqlRateLimitError(result);
+      return result;
+    });
     if (!response.data) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
@@ -1696,6 +1693,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       ghToken: this.ghToken,
       query: graphqlQuery.query,
     });
+    throwIfGraphqlRateLimitError(res);
     if (res.errors) {
       if (res.errors.every((e) => e.type === 'FORBIDDEN')) {
         console.warn(
@@ -1785,11 +1783,12 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           clientMutationId: string;
         };
       };
-      errors: { message: string }[];
+      errors: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: graphqlQuery.query,
     });
+    throwIfGraphqlRateLimitError(res);
     if (res.errors) {
       if (
         res.errors.every(
@@ -1835,12 +1834,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           clientMutationId: string;
         };
       };
-      errors?: { message: string }[];
+      errors?: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: graphqlQuery.query,
       variables: graphqlQuery.variables,
     });
+    throwIfGraphqlRateLimitError(res);
 
     if (res.errors) {
       throw new Error(res.errors.map((e) => e.message).join('\n'));
@@ -1895,6 +1895,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       query: nodeIdQuery.query,
       variables: nodeIdQuery.variables,
     });
+    throwIfGraphqlRateLimitError(nodeIdRes);
     if (nodeIdRes.errors) {
       throw new Error(nodeIdRes.errors.map((e) => e.message).join('\n'));
     }
@@ -1922,12 +1923,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           item: { id: string };
         };
       };
-      errors?: { message: string }[];
+      errors?: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: addQuery.query,
       variables: addQuery.variables,
     });
+    throwIfGraphqlRateLimitError(addRes);
     if (addRes.errors) {
       const isDuplicate = addRes.errors.some((e) =>
         e.message.includes('Content already exists in this project'),

@@ -1014,16 +1014,25 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [buildProjectItem(freshIssueUrl, 'Task Issue')],
         inconsistencyMessage: null,
       });
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
-        labels: ['story'],
-        customFields: [{ name: 'story', value: 'regular / StoryA' }],
-        isArchivedFromProject: false,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(storyIssueUrl, 'regular / StoryA'),
+          id: 'item-cached',
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'regular / StoryA' }],
+          isArchivedFromProject: false,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-cached']);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
       expect(result.issues.map((i) => i.url)).toContain(storyIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
     });
@@ -1050,16 +1059,17 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
         inconsistencyMessage: null,
       });
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
-        null,
-      );
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
       expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-cached']);
+      expect(
         graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).toHaveBeenCalledWith(removedIssueUrl, 'proj-full');
+      ).not.toHaveBeenCalled();
       expect(result.issues.map((i) => i.url)).not.toContain(removedIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
     });
@@ -1086,14 +1096,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
         inconsistencyMessage: null,
       });
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(archivedIssueUrl, 'Archived Issue'),
-        isArchivedFromProject: true,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(archivedIssueUrl, 'Archived Issue'),
+          id: 'item-cached',
+          isArchivedFromProject: true,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-cached']);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
       expect(result.issues.map((i) => i.url)).not.toContain(archivedIssueUrl);
       expect(result.issues.map((i) => i.url)).toContain(freshIssueUrl);
     });
@@ -1120,14 +1139,23 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [buildProjectItem(freshIssueUrl, 'Fresh Issue')],
         inconsistencyMessage: null,
       });
-      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue({
-        ...buildProjectItem(stillActiveIssueUrl, 'Live-Checked Title'),
-        isArchivedFromProject: false,
-      });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([
+        {
+          ...buildProjectItem(stillActiveIssueUrl, 'Live-Checked Title'),
+          id: 'item-cached',
+          isArchivedFromProject: false,
+        },
+      ]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
 
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-cached']);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
       const reconciledIssue = result.issues.find(
         (i) => i.url === stillActiveIssueUrl,
       );
@@ -1166,6 +1194,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
         inconsistencyMessage: null,
       });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -1202,6 +1231,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ],
         inconsistencyMessage: null,
       });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const result = await repository.getAllIssues('proj-full');
@@ -2348,7 +2378,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             '2026-07-07T01:30:00.000Z',
           ),
         ],
-        expectedDetailFetchedItemIds: [],
+        expectedDetailFetchedItemIds: [
+          'item-removed-from-board',
+          'item-live-refetched',
+        ],
         expectedResultItemIds: [
           'item-fetched-a',
           'item-fetched-b',
@@ -2410,18 +2443,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         );
         graphqlProjectItemRepository.fetchProjectItemsByIds.mockImplementation(
           async (itemIds: string[]) =>
-            detailProjectItems.filter((item) => itemIds.includes(item.id)),
+            [
+              ...detailProjectItems,
+              ...liveProjectItemsOfCachedIssuesAbsentFromFullFetch,
+            ].filter((item) => itemIds.includes(item.id)),
         );
         graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
           issues: fullFetchItems,
           inconsistencyMessage: null,
         });
-        graphqlProjectItemRepository.fetchProjectItemByUrl.mockImplementation(
-          async (issueUrl: string) =>
-            liveProjectItemsOfCachedIssuesAbsentFromFullFetch.find(
-              (item) => item.url === issueUrl,
-            ) ?? null,
-        );
         localStorageCacheRepository.setSingle.mockResolvedValue();
 
         const result = await repository.getAllIssues('cached-project');
@@ -2433,6 +2463,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         expect([...detailFetchedItemIds].sort()).toEqual(
           [...expectedDetailFetchedItemIds].sort(),
         );
+        expect(
+          graphqlProjectItemRepository.fetchProjectItemByUrl,
+        ).not.toHaveBeenCalled();
         expect(result.issues.map((issue) => issue.itemId).sort()).toEqual(
           [...expectedResultItemIds].sort(),
         );
@@ -2715,6 +2748,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
         inconsistencyMessage: null,
       });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
         lightItems: [],
         inconsistencyMessage: null,
@@ -8956,6 +8990,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         issues: [],
         inconsistencyMessage: null,
       });
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
       graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue({
         lightItems: [],
         inconsistencyMessage: null,
@@ -15601,7 +15636,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           return { issues: [], inconsistencyMessage: null };
         },
       );
-
       await repository.getAllIssues(projectId);
 
       expect(callOrder).toEqual(['fetch', 'withLock']);
@@ -15839,6 +15873,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           };
         },
       );
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
 
       const appendOnceFetchHasStarted = async (): Promise<void> => {
         await wait(1);
@@ -15855,9 +15890,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         appendOnceFetchHasStarted(),
       ]);
 
+      const liveCheckItemIds =
+        graphqlProjectItemRepository.fetchProjectItemsByIds.mock.calls.flatMap(
+          ([itemIds]) => itemIds,
+        );
+      expect(liveCheckItemIds).not.toContain('item-concurrently-added');
       expect(
         graphqlProjectItemRepository.fetchProjectItemByUrl,
-      ).not.toHaveBeenCalledWith(concurrentlyAddedIssueUrl, expect.anything());
+      ).not.toHaveBeenCalled();
 
       const finalCache = await new ProjectIssuesCacheRepository(cache).read(
         projectId,
@@ -18937,6 +18977,223 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const later = await repository.getAllIssues('proj-agent-memo');
       expect(later.issues[0]).toEqual(before.issues[0]);
       expect(later.issues[0].agent).toBeNull();
+    });
+  });
+
+  describe('getAllIssues shared refresh and batched reconciliation', () => {
+    const setUpFullFetch = () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('project-a');
+      created.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T02:00:00Z'),
+      );
+      created.projectRepository.getProject.mockResolvedValue(project);
+      created.localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project,
+        issues: [],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      created.localStorageCacheRepository.setSingle.mockResolvedValue();
+      return created;
+    };
+
+    it('shares one in-flight refresh and keeps the completed result memoized', async () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('project-a');
+      created.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:00:00Z'),
+      );
+      created.projectRepository.getProject.mockResolvedValue(project);
+      created.localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      created.localStorageCacheRepository.setSingle.mockResolvedValue();
+      let resolveFetch:
+        | ((value: {
+            issues: ProjectItem[];
+            inconsistencyMessage: null;
+          }) => void)
+        | undefined;
+      created.graphqlProjectItemRepository.fetchProjectItems.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+
+      const first = created.repository.getAllIssues('project-a');
+      const second = created.repository.getAllIssues('project-a');
+      resolveFetch?.({ issues: [], inconsistencyMessage: null });
+      const results = await Promise.all([first, second]);
+
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
+      expect(results[0]).toEqual(results[1]);
+      await created.repository.getAllIssues('project-a');
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not share refreshes between project ids and does not remember a failed refresh', async () => {
+      const created = createApiV3CheerioRestIssueRepository();
+      created.dateRepository.now.mockResolvedValue(
+        new Date('2026-07-07T00:00:00Z'),
+      );
+      created.localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      created.localStorageCacheRepository.setSingle.mockResolvedValue();
+      created.projectRepository.getProject.mockImplementation(async (id) =>
+        buildTestProject(id),
+      );
+      const fetchError = new Error('refresh failed');
+      created.graphqlProjectItemRepository.fetchProjectItems
+        .mockRejectedValueOnce(fetchError)
+        .mockResolvedValue({ issues: [], inconsistencyMessage: null });
+
+      await expect(created.repository.getAllIssues('project-a')).rejects.toBe(
+        fetchError,
+      );
+      await expect(
+        created.repository.getAllIssues('project-a'),
+      ).resolves.toMatchObject({ issues: [] });
+      await expect(
+        created.repository.getAllIssues('project-b'),
+      ).resolves.toMatchObject({ issues: [] });
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItems.mock.calls.map(
+          ([id]) => id,
+        ),
+      ).toEqual(['project-a', 'project-a', 'project-b']);
+    });
+
+    it('looks up all absent cached item ids with one batched repository call and never fetches by URL', async () => {
+      const created = setUpFullFetch();
+      const cached = buildCachedIssueRecord(
+        'https://github.com/o/r/issues/1',
+        'cached',
+      );
+      cached.itemId = 'item-1';
+      created.localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('project-a'),
+        issues: [cached],
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
+      created.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [],
+      );
+
+      const result = await created.repository.getAllIssues('project-a');
+
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(['item-1']);
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+      expect(result.issues).toEqual([]);
+    });
+
+    it.each([
+      {
+        name: 'missing batched item is removed',
+        returned: [],
+        expectedTitle: undefined,
+      },
+      {
+        name: 'archived batched item is removed',
+        returned: [
+          {
+            ...buildProjectItem('https://github.com/o/r/issues/1', 'archived'),
+            id: 'item-1',
+            isArchivedFromProject: true,
+          },
+        ],
+        expectedTitle: undefined,
+      },
+      {
+        name: 'active batched item replaces the cached item',
+        returned: [
+          {
+            ...buildProjectItem('https://github.com/o/r/issues/1', 'fresh'),
+            id: 'item-1',
+            isArchivedFromProject: false,
+          },
+        ],
+        expectedTitle: 'fresh',
+      },
+    ])(
+      'applies the full-fetch reconciliation outcome for $name',
+      async ({ returned, expectedTitle }) => {
+        const created = setUpFullFetch();
+        const cached = {
+          ...buildCachedIssueRecord(
+            'https://github.com/o/r/issues/1',
+            'cached',
+          ),
+          itemId: 'item-1',
+        };
+        created.localStorageCacheRepository.getSingle.mockResolvedValue({
+          lastFetchedAt: '2026-07-07T00:00:00.000Z',
+          lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+          project: buildTestProject('project-a'),
+          issues: [cached],
+          storyIssueUrlByOptionName: {},
+          storyOptions: [],
+        });
+        created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue(
+          { issues: [], inconsistencyMessage: null },
+        );
+        created.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+          returned,
+        );
+
+        const result = await created.repository.getAllIssues('project-a');
+
+        expect(result.issues[0]?.title).toBe(expectedTitle);
+      },
+    );
+
+    it('passes 250 absent cached item ids in one call for the repository to batch into three requests', async () => {
+      const created = setUpFullFetch();
+      const cachedIssues = Array.from({ length: 250 }, (_, index) => ({
+        ...buildCachedIssueRecord(
+          `https://github.com/o/r/issues/${index}`,
+          `cached-${index}`,
+        ),
+        itemId: `item-${index}`,
+      }));
+      created.localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:00:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('project-a'),
+        issues: cachedIssues,
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+      });
+      created.graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue({
+        issues: [],
+        inconsistencyMessage: null,
+      });
+      created.graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue(
+        [],
+      );
+
+      await created.repository.getAllIssues('project-a');
+
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        created.graphqlProjectItemRepository.fetchProjectItemsByIds,
+      ).toHaveBeenCalledWith(cachedIssues.map((issue) => issue.itemId));
     });
   });
 

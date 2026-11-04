@@ -28,7 +28,9 @@ import {
   RATE_LIMIT_DEFAULT_BACKOFF_MS,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
+  GraphqlRateLimitError,
 } from './GraphqlProjectItemRepository';
+import { GitHubRateLimitError } from './githubRateLimitRetry';
 import { GRAPHQL_RETRY_LIMIT } from '../githubGraphqlClient';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
@@ -4851,6 +4853,297 @@ describe('GraphqlProjectItemRepository', () => {
       ).rejects.toThrow('UNAUTHORIZED');
 
       expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('GraphQL project item selection and rate-limit classification', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      mockPost.mockReset();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('selects and maps ProjectV2Item.isArchived for full and batched item fetches', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const pagePayload = {
+        data: {
+          node: {
+            items: {
+              totalCount: 1,
+              pageInfo: {
+                endCursor: 'cursor',
+                startCursor: 'start',
+                hasNextPage: false,
+              },
+              nodes: [
+                {
+                  id: 'item-1',
+                  isArchived: true,
+                  fieldValues: { nodes: [] },
+                  content: {
+                    repository: { nameWithOwner: 'owner/repo' },
+                    number: 1,
+                    title: 'Issue',
+                    state: 'OPEN',
+                    url: 'https://github.com/owner/repo/issues/1',
+                    body: null,
+                    createdAt: '2024-01-01T00:00:00Z',
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+      mockPost.mockReturnValueOnce(mockJsonResponse(pagePayload));
+
+      const fullResult = await repository.fetchProjectItems('project');
+      expect(fullResult.issues[0]?.isArchivedFromProject).toBe(true);
+      expect(
+        extractRequestedQueryFromMockCall(mockPost.mock.calls[0]),
+      ).toContain('isArchived');
+
+      mockPost.mockReset();
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            nodes: [
+              {
+                id: 'item-1',
+                isArchived: true,
+                fieldValues: { nodes: [] },
+                content: {
+                  repository: { nameWithOwner: 'owner/repo' },
+                  number: 1,
+                  title: 'Issue',
+                  state: 'OPEN',
+                  url: 'https://github.com/owner/repo/issues/1',
+                  body: null,
+                  createdAt: '2024-01-01T00:00:00Z',
+                  labels: { nodes: [] },
+                  assignees: { nodes: [] },
+                },
+              },
+            ],
+          },
+        }),
+      );
+      const batchResult = await repository.fetchProjectItemsByIds(['item-1']);
+      expect(batchResult[0]?.isArchivedFromProject).toBe(true);
+      expect(
+        extractRequestedQueryFromMockCall(mockPost.mock.calls[0]),
+      ).toContain('isArchived');
+    });
+
+    it('classifies the three existing list query rate-limit sites as GitHubRateLimitError', async () => {
+      const calls = [
+        () =>
+          new GraphqlProjectItemRepository(
+            new LocalStorageRepository(),
+            'dummy-token',
+          ).fetchProjectItems('project'),
+        () =>
+          new GraphqlProjectItemRepository(
+            new LocalStorageRepository(),
+            'dummy-token',
+          ).fetchProjectItemsLight('project'),
+        () =>
+          new GraphqlProjectItemRepository(
+            new LocalStorageRepository(),
+            'dummy-token',
+          ).fetchProjectItemsByIds(['item-1']),
+      ];
+      for (const call of calls) {
+        mockPost.mockImplementation(() => rateLimitResponseForSelection());
+        const result = call().catch((error: unknown) => error);
+        await jest.runAllTimersAsync();
+        await expect(result).resolves.toBeInstanceOf(GitHubRateLimitError);
+        mockPost.mockReset();
+      }
+    });
+  });
+
+  const rateLimitResponseForSelection = () =>
+    mockJsonResponse({
+      errors: [{ type: 'RATE_LIMIT', message: 'quota exhausted' }],
+    });
+
+  describe('GraphQL body rate-limit classification', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      mockPost.mockReset();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    const rateLimitResponse = (message: string) =>
+      mockJsonResponse({
+        errors: [{ type: 'RATE_LIMIT', message }],
+      });
+
+    it('retries fetchProjectItemByUrl after a body-embedded rate limit and returns the later item', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const content = {
+        number: 7,
+        title: 'Issue title',
+        state: 'OPEN',
+        url: 'https://github.com/owner/repo/issues/7',
+        body: 'body',
+        createdAt: '2024-01-01T00:00:00Z',
+        author: { login: 'octocat' },
+        labels: { nodes: [] },
+        assignees: { nodes: [] },
+        repository: { nameWithOwner: 'owner/repo' },
+        projectItems: { nodes: [{ id: 'item-7', fieldValues: { nodes: [] } }] },
+      };
+      mockPost
+        .mockReturnValueOnce(rateLimitResponse('quota exhausted'))
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: { repository: { issue: content, pullRequest: null } },
+          }),
+        );
+
+      const resultPromise = repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/7',
+      );
+      await jest.runAllTimersAsync();
+
+      await expect(resultPromise).resolves.toMatchObject({ id: 'item-7' });
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws GitHubRateLimitError with the GraphQL message after body rate-limit retries are exhausted', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockImplementation(() => rateLimitResponse('quota exhausted'));
+
+      const resultPromise = repository
+        .fetchProjectItemByUrl('https://github.com/owner/repo/issues/8')
+        .catch((error: unknown) => error);
+      await jest.runAllTimersAsync();
+      const error = await resultPromise;
+
+      expect(error).toBeInstanceOf(GitHubRateLimitError);
+      expect(error).toHaveProperty(
+        'message',
+        expect.stringContaining('quota exhausted'),
+      );
+      expect(mockPost).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
+    });
+
+    it('classifies every non-list GraphQL rate-limit call as GitHubRateLimitError without retrying', async () => {
+      const operations = [
+        {
+          name: 'fetchItemId',
+          invoke: (repository: GraphqlProjectItemRepository) =>
+            repository.fetchItemId('project', 'owner', 'repo', 1),
+        },
+        {
+          name: 'getProjectItemFields',
+          invoke: (repository: GraphqlProjectItemRepository) =>
+            repository.getProjectItemFields('owner', 'repo', 1),
+        },
+        {
+          name: 'updateProjectField',
+          invoke: (repository: GraphqlProjectItemRepository) =>
+            repository.updateProjectField('project', 'field', 'item', {
+              text: 'v',
+            }),
+        },
+        {
+          name: 'clearProjectField',
+          invoke: (repository: GraphqlProjectItemRepository) =>
+            repository.clearProjectField('project', 'field', 'item'),
+        },
+        {
+          name: 'removeItemFromProject',
+          invoke: (repository: GraphqlProjectItemRepository) =>
+            repository.removeItemFromProject('project', 'item'),
+        },
+      ];
+
+      for (const operation of operations) {
+        mockPost.mockReturnValueOnce(
+          rateLimitResponse(`${operation.name} limited`),
+        );
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+        await expect(operation.invoke(repository)).rejects.toBeInstanceOf(
+          GitHubRateLimitError,
+        );
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        mockPost.mockClear();
+      }
+    });
+
+    it('classifies both addIssueToProject GraphQL rate-limit checks as GitHubRateLimitError', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(rateLimitResponse('lookup limited'));
+      await expect(
+        repository.addIssueToProject(
+          'project',
+          'https://github.com/owner/repo/issues/1',
+        ),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+
+      mockPost.mockReset();
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { repository: { issueOrPullRequest: { id: 'content' } } },
+        }),
+      );
+      mockPost.mockReturnValueOnce(rateLimitResponse('mutation limited'));
+      await expect(
+        repository.addIssueToProject(
+          'project',
+          'https://github.com/owner/repo/issues/1',
+        ),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps non-rate-limit addIssueToProject errors as plain Error', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { repository: { issueOrPullRequest: { id: 'content' } } },
+        }),
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({ errors: [{ message: 'UNAUTHORIZED' }] }),
+      );
+
+      const error = await repository
+        .addIssueToProject('project', 'https://github.com/owner/repo/issues/1')
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(GraphqlRateLimitError);
+      expect(error).not.toBeInstanceOf(GitHubRateLimitError);
     });
   });
 });

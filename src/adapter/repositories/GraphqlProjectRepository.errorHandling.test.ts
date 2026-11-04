@@ -18,6 +18,7 @@ jest.mock('ky', () => ({
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
 import { Project } from '../../domain/entities/Project';
+import { GitHubRateLimitError } from './issue/githubRateLimitRetry';
 
 const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
@@ -186,6 +187,92 @@ describe('GraphqlProjectRepository error handling', () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('403'),
       );
+    });
+  });
+
+  describe('GraphQL rate-limit classification', () => {
+    const rateLimitResponse = (message: string) =>
+      mockJsonResponse({ errors: [{ type: 'RATE_LIMIT', message }] });
+
+    const projectWithFields: Project = {
+      ...minimalProject,
+      story: {
+        name: 'Story',
+        fieldId: 'story-field',
+        databaseId: 1,
+        stories: [],
+        workflowManagementStory: {
+          id: 'workflow',
+          name: 'Workflow Management',
+        },
+      },
+      agent: { name: 'Agent', fieldId: 'agent-field', options: [] },
+      nextActionHour: { name: 'Hour', fieldId: 'hour-field', options: [] },
+    };
+
+    it('classifies every public GraphQL project operation rate-limit response as GitHubRateLimitError', async () => {
+      const cases = [
+        {
+          name: 'fetchProjectId',
+          invoke: () => repository.fetchProjectId('someOrg', 1),
+        },
+        {
+          name: 'getProject',
+          invoke: () => repository.getProject('project-id'),
+        },
+        {
+          name: 'createField',
+          invoke: () =>
+            repository.createField(projectWithFields, {
+              name: 'Field',
+              dataType: 'TEXT',
+              options: [],
+            }),
+        },
+        {
+          name: 'updateStoryList',
+          invoke: () => repository.updateStoryList(projectWithFields, []),
+        },
+        {
+          name: 'updateAgentList',
+          invoke: () => repository.updateAgentList(projectWithFields, []),
+        },
+        {
+          name: 'updateNextActionHourList',
+          invoke: () =>
+            repository.updateNextActionHourList(projectWithFields, []),
+        },
+        {
+          name: 'updateStatusList',
+          invoke: () => repository.updateStatusList(projectWithFields, []),
+        },
+      ];
+
+      for (const testCase of cases) {
+        mockPost.mockReturnValueOnce(
+          rateLimitResponse(`${testCase.name} limited`),
+        );
+        await expect(testCase.invoke()).rejects.toBeInstanceOf(
+          GitHubRateLimitError,
+        );
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        mockPost.mockClear();
+      }
+    });
+
+    it('keeps a non-rate-limit project GraphQL error as a plain Error', async () => {
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          errors: [{ type: 'FORBIDDEN', message: 'denied' }],
+        }),
+      );
+
+      const error = await repository
+        .fetchProjectId('someOrg', 1)
+        .catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(GitHubRateLimitError);
     });
   });
 });

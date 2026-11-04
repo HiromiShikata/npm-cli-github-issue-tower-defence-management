@@ -50,7 +50,9 @@ const hasRateLimitedGraphqlError = (body: unknown): boolean => {
   return (
     Array.isArray(errors) &&
     errors.some(
-      (error: unknown) => isRecord(error) && error.type === 'RATE_LIMITED',
+      (error: unknown) =>
+        isRecord(error) &&
+        (error.type === 'RATE_LIMITED' || error.type === 'RATE_LIMIT'),
     )
   );
 };
