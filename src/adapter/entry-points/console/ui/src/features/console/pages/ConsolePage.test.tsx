@@ -204,7 +204,12 @@ const installStoriesDetailFetch = (options?: {
       return {
         ok: true,
         status: 200,
-        json: async () => listPayload(listMatch[1]),
+        json: async () => {
+          const payload = listPayload(listMatch[1]);
+          return listMatch[1] === 'todo-by-human'
+            ? { ...payload, items: [...payload.items, storiesDetailItem] }
+            : payload;
+        },
       };
     }
     if (url === '/api/projects') {
@@ -345,11 +350,9 @@ describe('ConsolePage', () => {
       installStoriesDetailFetch();
       const { getByText, queryByText, getByRole } = render(<ConsolePage />);
       await waitFor(() => {
-        expect(
-          getByText('Notify finished issue preparation'),
-        ).toBeInTheDocument();
+        expect(getByText('Stories detail task')).toBeInTheDocument();
       });
-      fireEvent.click(getByText('Notify finished issue preparation'));
+      fireEvent.click(getByText('Stories detail task'));
       fireEvent.click(await waitFor(() => getByText('Close')));
       act(() => {
         jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
@@ -419,6 +422,7 @@ describe('ConsolePage', () => {
 
   it('shows a Stories row again when a later open snapshot arrives after close', async () => {
     jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-06-19T00:01:00.000Z'));
     try {
       window.history.replaceState({}, '', '/projects/acme/stories?k=token');
       installStoriesDetailFetch({ laterStoriesSnapshot: true });

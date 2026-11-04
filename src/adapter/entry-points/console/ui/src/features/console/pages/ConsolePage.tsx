@@ -18,10 +18,7 @@ import {
   ConsoleOfflinePendingActionsPanel,
 } from '../components/operations/ConsoleOfflinePendingActionsPanel';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
-import {
-  isNetworkError,
-  useConsoleActionQueue,
-} from '../hooks/useConsoleActionQueue';
+import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
 import { useConsoleAwaitingOwnerListVisibilitySettings } from '../hooks/useConsoleAwaitingOwnerListVisibilitySettings';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
@@ -963,11 +960,7 @@ export const ConsolePage = () => {
         try {
           await input.commit(sentStepCount);
         } catch (cause: unknown) {
-          if (
-            overlayPatch !== undefined &&
-            (input.kind.type === 'close' ||
-              !(isNetworkError(cause) && (input.offline?.length ?? 0) > 0))
-          ) {
+          if (overlayPatch?.closed === true) {
             overlayState.revertOverlayEntry(actedKey);
           }
           throw cause;
@@ -995,17 +988,7 @@ export const ConsolePage = () => {
               },
         optimistic:
           overlayPatch !== undefined
-            ? () =>
-                overlayState.patchOverlay(
-                  actedKey,
-                  {
-                    ...overlayPatch,
-                    itemUrl: input.item.url,
-                    itemStoryName: input.item.story,
-                    snapshotGeneratedAt: snapshots.stories?.generatedAt,
-                  },
-                  activeTab,
-                )
+            ? () => overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
             : undefined,
         revertOptimistic:
           overlayPatch !== undefined

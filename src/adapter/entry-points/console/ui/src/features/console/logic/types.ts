@@ -133,9 +133,6 @@ export type ConsoleOverlayStory = {
 };
 
 export type ConsoleOverlayEntry = {
-  itemUrl?: string;
-  itemStoryName?: string;
-  snapshotGeneratedAt?: string;
   done?: boolean;
   closed?: boolean;
   status?: ConsoleOverlayStatus;
