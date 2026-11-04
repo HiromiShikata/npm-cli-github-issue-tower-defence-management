@@ -445,7 +445,7 @@ export const ConsoleItemDetailContainer = ({
           pjcode != null
             ? [buildTriageOfflinePayload(pjcode, item, action)]
             : undefined,
-        overlayPatch: { done: true },
+        overlayPatch: { done: true, closed: true },
       });
     },
     onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
@@ -744,7 +744,7 @@ export const ConsoleItemDetailContainer = ({
         commentOfflinePayloadBuild(pjcode, item, body),
         buildTriageOfflinePayload(pjcode, item, 'close'),
       ],
-      overlayPatch: { done: true },
+      overlayPatch: { done: true, closed: true },
     });
   };
 
@@ -779,7 +779,7 @@ export const ConsoleItemDetailContainer = ({
               buildTriageOfflinePayload(pjcode, item, 'close'),
             ]
           : undefined,
-      overlayPatch: { done: true },
+      overlayPatch: { done: true, closed: true },
     });
   };
 

@@ -66,6 +66,7 @@ import {
   loadCommentDrafts,
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
+import { consoleStoryEntriesWithClosedOverlay } from '../logic/consoleStoryClosedOverlay';
 import {
   type ConsoleStoryRowField,
   formatHiddenConsoleStoryRowFieldsIntoSearch,
@@ -1134,19 +1135,38 @@ export const ConsolePage = () => {
     localStoryEntriesOverride.generatedAt === storiesSnapshot?.generatedAt
       ? localStoryEntriesOverride.stories
       : rawStoryEntries;
+  const storyEntriesWithClosedOverlay = useMemo(
+    () =>
+      consoleStoryEntriesWithClosedOverlay(
+        storyEntries,
+        overlayState.overlay,
+        storiesSnapshot?.generatedAt ?? null,
+      ),
+    [storyEntries, overlayState.overlay, storiesSnapshot?.generatedAt],
+  );
   const storyTabBadgeCounts = useMemo(() => {
-    if (effectiveStoryStatuses.length === 0 || storiesSnapshot === null) {
+    if (storiesSnapshot === null) {
       return counts;
     }
-    const nonArchivedStories = storyEntries.filter((s) => s.color !== 'GRAY');
+    const nonArchivedStories = storyEntriesWithClosedOverlay.filter(
+      (s) => s.color !== 'GRAY' && s.openItemCount > 0,
+    );
+    if (effectiveStoryStatuses.length === 0) {
+      return { ...counts, stories: nonArchivedStories.length };
+    }
     return {
       ...counts,
       stories: filterConsoleStoryEntriesByStatusSelection(
-        nonArchivedStories,
+        storyEntriesWithClosedOverlay.filter((s) => s.color !== 'GRAY'),
         effectiveStoryStatuses,
       ).length,
     };
-  }, [counts, effectiveStoryStatuses, storiesSnapshot, storyEntries]);
+  }, [
+    counts,
+    effectiveStoryStatuses,
+    storiesSnapshot,
+    storyEntriesWithClosedOverlay,
+  ]);
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
   const newIssueUrl =
     defaultNameWithOwner !== null
@@ -1857,7 +1877,7 @@ export const ConsolePage = () => {
       {activeTab === 'stories' && selectedItem === null ? (
         <div className="console-list-screen">
           <ConsoleStoryList
-            stories={storyEntries}
+            stories={storyEntriesWithClosedOverlay}
             isLoading={isLoading}
             error={error}
             showArchived={showArchived}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
+import { isConsoleListItemDone } from '../../logic/consoleListItemDone';
 import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import {
   filterConsoleStoryEntriesByStatusSelection,
@@ -637,10 +638,12 @@ export const ConsoleStoryList = ({
               expandedTasksOptionId === entry.storyOptionId;
             const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
+            const hasClosedDoneItems =
+              showDone && (entry.items ?? []).some((item) => item.isClosed);
             const visibleTaskItems = hasStatusSelection
               ? (entry.items ?? [])
               : (entry.items ?? []).filter(
-                  (item) => showDone || item.status !== 'Done',
+                  (item) => showDone || !isConsoleListItemDone(item),
                 );
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
@@ -792,7 +795,7 @@ export const ConsoleStoryList = ({
                 {description !== '' && (
                   <p className="console-story-description">{description}</p>
                 )}
-                {isTasksExpanded && (
+                {(isTasksExpanded || hasClosedDoneItems) && (
                   <StoryTaskList
                     items={visibleTaskItems}
                     storyOptions={storyFieldOptions}

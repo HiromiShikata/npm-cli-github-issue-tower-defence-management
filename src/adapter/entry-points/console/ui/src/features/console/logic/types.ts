@@ -134,6 +134,7 @@ export type ConsoleOverlayStory = {
 
 export type ConsoleOverlayEntry = {
   done?: boolean;
+  closed?: boolean;
   status?: ConsoleOverlayStatus;
   story?: ConsoleOverlayStory;
   ts: number;
