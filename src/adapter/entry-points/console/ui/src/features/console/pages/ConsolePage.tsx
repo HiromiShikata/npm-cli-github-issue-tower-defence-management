@@ -1016,7 +1016,6 @@ export const ConsolePage = () => {
       overlayState,
       pjcode,
       returnToSubmittedTask,
-      snapshots.stories?.generatedAt,
     ],
   );
 
