@@ -96,6 +96,18 @@ export const writeOverlayEntry = (
   return { ...overlay, [key]: next };
 };
 
+export const overlayEntryClosedAtUpdate = (
+  overlay: ConsoleOverlay,
+  key: string,
+  closedAtMs: number,
+): ConsoleOverlay => {
+  const existing = overlay[key];
+  if (existing === undefined || !Number.isFinite(existing.closedAtMs)) {
+    return overlay;
+  }
+  return { ...overlay, [key]: { ...existing, closedAtMs } };
+};
+
 export const removeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,

@@ -956,18 +956,26 @@ export const ConsolePage = () => {
       if (dependedIssueSubmission !== null) {
         dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
       }
+      const commitAction =
+        dependedIssueSubmission === null
+          ? input.commit
+          : (sentStepCount: number): Promise<void> => {
+              dependedIssueSubmissionsRef.current.delete(
+                dependedIssueSubmission,
+              );
+              return input.commit(sentStepCount);
+            };
+      const commitClosedAction =
+        overlayPatch?.closed === true
+          ? (sentStepCount: number): Promise<void> =>
+              commitAction(sentStepCount).then(() => {
+                overlayState.overlayEntryClosedAtUpdateToNow(actedKey);
+              })
+          : commitAction;
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
-        commit:
-          dependedIssueSubmission === null
-            ? input.commit
-            : (sentStepCount: number): Promise<void> => {
-                dependedIssueSubmissionsRef.current.delete(
-                  dependedIssueSubmission,
-                );
-                return input.commit(sentStepCount);
-              },
+        commit: commitClosedAction,
         offline: input.offline,
         revertAdvance:
           dependedIssueSubmission === null

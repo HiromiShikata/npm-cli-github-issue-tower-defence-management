@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
+  overlayEntryClosedAtUpdate,
   overlayStorageKey,
   removeOverlayEntry,
   writeOverlayEntry,
@@ -51,6 +52,7 @@ export type ConsoleOverlayState = {
     mode: ConsoleTabName,
   ) => void;
   revertOverlayEntry: (key: string) => void;
+  overlayEntryClosedAtUpdateToNow: (key: string) => void;
 };
 
 export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
@@ -80,5 +82,23 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
     [pjcode],
   );
 
-  return { overlay, patchOverlay, revertOverlayEntry };
+  const overlayEntryClosedAtUpdateToNow = useCallback(
+    (key: string) => {
+      setOverlay((current) => {
+        const next = overlayEntryClosedAtUpdate(current, key, Date.now());
+        if (next !== current) {
+          persistOverlay(pjcode, next);
+        }
+        return next;
+      });
+    },
+    [pjcode],
+  );
+
+  return {
+    overlay,
+    patchOverlay,
+    revertOverlayEntry,
+    overlayEntryClosedAtUpdateToNow,
+  };
 };
