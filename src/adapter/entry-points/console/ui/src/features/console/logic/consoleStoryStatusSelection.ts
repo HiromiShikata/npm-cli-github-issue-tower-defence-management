@@ -48,11 +48,10 @@ export const filterConsoleStoryEntriesByStatusSelection = (
     return stories;
   }
   return stories.flatMap((entry) => {
-    const items = (entry.items ?? []).filter((item) =>
-      effectiveSelection.includes(
-        isConsoleListItemDone(item) ? 'Done' : (item.status ?? ''),
-      ),
-    );
+    const items = (entry.items ?? []).filter((item) => {
+      const statusKey = isConsoleListItemDone(item) ? 'Done' : item.status;
+      return statusKey !== null && effectiveSelection.includes(statusKey);
+    });
     return items.length > 0 ? [{ ...entry, items }] : [];
   });
 };

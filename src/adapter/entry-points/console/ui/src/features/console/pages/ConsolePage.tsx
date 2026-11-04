@@ -1148,11 +1148,13 @@ export const ConsolePage = () => {
     if (storiesSnapshot === null) {
       return counts;
     }
-    const nonArchivedStories = storyEntriesWithClosedOverlay.filter(
-      (s) => s.color !== 'GRAY' && s.openItemCount > 0,
-    );
     if (effectiveStoryStatuses.length === 0) {
-      return { ...counts, stories: nonArchivedStories.length };
+      const countedStories = storyEntriesWithClosedOverlay.filter(
+        (s, index) =>
+          s.color !== 'GRAY' &&
+          !(storyEntries[index].openItemCount > 0 && s.openItemCount === 0),
+      );
+      return { ...counts, stories: countedStories.length };
     }
     return {
       ...counts,
@@ -1165,6 +1167,7 @@ export const ConsolePage = () => {
     counts,
     effectiveStoryStatuses,
     storiesSnapshot,
+    storyEntries,
     storyEntriesWithClosedOverlay,
   ]);
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
