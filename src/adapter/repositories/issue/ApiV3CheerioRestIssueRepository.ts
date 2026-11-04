@@ -922,6 +922,11 @@ export class ApiV3CheerioRestIssueRepository
     { issues: Issue[]; project: Project; cacheUsed: boolean }
   >();
 
+  private readonly getAllIssuesInFlight = new Map<
+    Project['id'],
+    Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>
+  >();
+
   private readonly lastIssuesFetchedAtByProjectId = new Map<
     Project['id'],
     string
@@ -1233,9 +1238,21 @@ export class ApiV3CheerioRestIssueRepository
     if (memoized) {
       return memoized;
     }
-    const result = await this.refreshAllIssues(projectId);
-    this.getAllIssuesRefreshMemo.set(projectId, result);
-    return result;
+    const inFlight = this.getAllIssuesInFlight.get(projectId);
+    if (inFlight) {
+      return inFlight;
+    }
+    const refresh = this.refreshAllIssues(projectId);
+    this.getAllIssuesInFlight.set(projectId, refresh);
+    try {
+      const result = await refresh;
+      this.getAllIssuesRefreshMemo.set(projectId, result);
+      return result;
+    } finally {
+      if (this.getAllIssuesInFlight.get(projectId) === refresh) {
+        this.getAllIssuesInFlight.delete(projectId);
+      }
+    }
   };
 
   private mergeFetchedItemsSkippingOnesRemovedFromCacheWhileFetchWasInFlight = (
@@ -1376,16 +1393,35 @@ export class ApiV3CheerioRestIssueRepository
         Issue['itemId'],
         ProjectItem | null
       >();
-      for (const issue of issuesAbsentFromFetchResult) {
-        const liveProjectItem =
-          await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
-            issue.url,
-            projectId,
+      if (issuesAbsentFromFetchResult.length > 0) {
+        const liveProjectItemsResult =
+          await this.graphqlProjectItemRepository.fetchProjectItemsByIds(
+            issuesAbsentFromFetchResult.map((issue) => issue.itemId),
           );
-        liveProjectItemsByItemIdAbsentFromFetchResult.set(
-          issue.itemId,
-          liveProjectItem,
-        );
+        if (liveProjectItemsResult === undefined) {
+          for (const issue of issuesAbsentFromFetchResult) {
+            const liveProjectItem =
+              await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+                issue.url,
+                projectId,
+              );
+            liveProjectItemsByItemIdAbsentFromFetchResult.set(
+              issue.itemId,
+              liveProjectItem,
+            );
+          }
+        } else {
+          const liveProjectItems = liveProjectItemsResult;
+          const liveProjectItemsByItemId = new Map(
+            liveProjectItems.map((item) => [item.id, item]),
+          );
+          for (const issue of issuesAbsentFromFetchResult) {
+            liveProjectItemsByItemIdAbsentFromFetchResult.set(
+              issue.itemId,
+              liveProjectItemsByItemId.get(issue.itemId) ?? null,
+            );
+          }
+        }
       }
       const nowIso = now.toISOString();
       const { mergedIssues: issues, mergedProject } =

@@ -75,6 +75,7 @@ import {
 } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import { GraphqlRateLimitError } from '../../repositories/issue/GraphqlProjectItemRepository';
 
 export const DEFAULT_WEB_PORT = 9980;
 
@@ -816,6 +817,9 @@ const handleOperationApi = async (
       return await handleCreateWorkflowIssue(issueRepository, body);
     } catch (error) {
       console.error('console operation failed', error);
+      if (error instanceof GraphqlRateLimitError) {
+        return { statusCode: 502, body: { error: error.message } };
+      }
       if (error instanceof GitHubRateLimitError) {
         return {
           statusCode: 502,
@@ -908,6 +912,9 @@ const handleOperationApi = async (
     return result;
   } catch (error) {
     console.error('console operation failed', error);
+    if (error instanceof GraphqlRateLimitError) {
+      return { statusCode: 502, body: { error: error.message } };
+    }
     if (error instanceof GitHubRateLimitError) {
       return {
         statusCode: 502,

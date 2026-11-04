@@ -20,6 +20,7 @@ import {
   isHttpStatusResponse,
   projectLocationFromUrl,
 } from './RestProjectRepository';
+import { throwIfGraphqlRateLimitError } from './issue/throwIfGraphqlRateLimitError';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -31,7 +32,7 @@ type UpdateFieldOptionsResponse = {
       } | null;
     } | null;
   };
-  errors?: { message: string }[];
+  errors?: { message: string; type?: string }[];
 };
 
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
@@ -272,7 +273,7 @@ export class GraphqlProjectRepository
           } | null;
         } | null;
       } | null;
-      errors?: { message: string }[];
+      errors?: { message: string; type?: string }[];
     };
     try {
       response = await postGithubGraphqlJson<{
@@ -290,7 +291,7 @@ export class GraphqlProjectRepository
             } | null;
           } | null;
         } | null;
-        errors?: { message: string }[];
+        errors?: { message: string; type?: string }[];
       }>({
         ghToken: isMutationOperation(graphqlQuery.query)
           ? this.ghToken
@@ -305,6 +306,7 @@ export class GraphqlProjectRepository
         { cause: error },
       );
     }
+    throwIfGraphqlRateLimitError(response);
 
     if (!response.data) {
       this.fetchProjectIdFailedAt.set(cacheKey, Date.now());
@@ -449,7 +451,7 @@ export class GraphqlProjectRepository
           };
         };
       };
-      errors?: { message: string }[];
+      errors?: { message: string; type?: string }[];
     };
     const readToken = isMutationOperation(query)
       ? this.ghToken
@@ -459,6 +461,7 @@ export class GraphqlProjectRepository
       query,
       variables,
     });
+    throwIfGraphqlRateLimitError(response);
     if (!response.data) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
@@ -476,6 +479,7 @@ export class GraphqlProjectRepository
           variables,
         },
       );
+      throwIfGraphqlRateLimitError(fallbackResponse);
       if (fallbackResponse.data) {
         project = fallbackResponse.data.node;
       } else {
@@ -575,7 +579,7 @@ export class GraphqlProjectRepository
           projectV2Field: { id: string; name: string };
         };
       };
-      errors?: { message: string }[];
+      errors?: { message: string; type?: string }[];
     }>({
       ghToken: isMutationOperation(mutation)
         ? this.ghToken
@@ -595,6 +599,7 @@ export class GraphqlProjectRepository
             : null,
       },
     });
+    throwIfGraphqlRateLimitError(response);
     if (!response.data?.createProjectV2Field?.projectV2Field) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
@@ -665,6 +670,7 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
+    throwIfGraphqlRateLimitError(response);
     const options = this.readUpdatedFieldOptions('updateStoryList', response);
     await this.projectIssuesCacheRepository?.updateFieldOptions(
       project.id,
@@ -715,6 +721,7 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
+    throwIfGraphqlRateLimitError(response);
     return this.readUpdatedFieldOptions('updateAgentList', response);
   };
   updateNextActionHourList = async (
@@ -759,6 +766,7 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
+    throwIfGraphqlRateLimitError(response);
     return this.readUpdatedFieldOptions('updateNextActionHourList', response);
   };
   updateStatusList = async (
@@ -800,6 +808,7 @@ export class GraphqlProjectRepository
       query: mutation,
       variables,
     });
+    throwIfGraphqlRateLimitError(response);
     const options = this.readUpdatedFieldOptions('updateStatusList', response);
     await this.projectIssuesCacheRepository?.updateFieldOptions(
       project.id,
