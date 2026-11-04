@@ -12751,4 +12751,45 @@ describe('ConsolePage story status filter counts', () => {
     expect(await findByText('Stories')).toBeInTheDocument();
     expect(storiesTabBadgeText(container)).toBe('0');
   });
+
+  it('restores the filtered counts from the status parameters in the URL', async () => {
+    installCountFixture('stories');
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/acme/stories?k=token&status=Awaiting%20Owner',
+    );
+
+    const { container, findByText } = render(<ConsolePage />);
+    expect(await findByText('Story One')).toBeInTheDocument();
+    expect(storyRowCountText(container, 'Story One')).toBe('1');
+    expect(storiesTabBadgeText(container)).toBe('1');
+  });
+
+  it('updates the filtered counts when popstate moves between a filtered and an unfiltered Stories entry', async () => {
+    installCountFixture('stories');
+
+    const { container, findByText } = render(<ConsolePage />);
+    expect(await findByText('Story One')).toBeInTheDocument();
+    expect(storyRowCountText(container, 'Story One')).toBe('3');
+    expect(storiesTabBadgeText(container)).toBe('2');
+
+    await act(async () => {
+      window.history.pushState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Awaiting%20Owner',
+      );
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(storyRowCountText(container, 'Story One')).toBe('1');
+    expect(storiesTabBadgeText(container)).toBe('1');
+
+    await act(async () => {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(storyRowCountText(container, 'Story One')).toBe('3');
+    expect(storiesTabBadgeText(container)).toBe('2');
+  });
 });
