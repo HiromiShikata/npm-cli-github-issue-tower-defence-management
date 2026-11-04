@@ -179,6 +179,59 @@ describe('useConsoleOperations', () => {
     expect(prItem.url).toContain('/pull/');
   });
 
+  it('stores the close time answered by the triage close as the overlay closedAtMs of the closed item, and keeps the press time when none is answered', async () => {
+    const pressedAtMs = Date.parse('2026-01-01T00:00:00.400Z');
+    const serverClosedAtMs = Date.parse('2026-01-01T00:00:40.000Z');
+    const cases: {
+      name: string;
+      response: Record<string, unknown>;
+      expectedClosedAtMs: number;
+    }[] = [
+      {
+        name: 'server close time answered',
+        response: { ok: true, closedAtMs: serverClosedAtMs },
+        expectedClosedAtMs: serverClosedAtMs,
+      },
+      {
+        name: 'no close time answered',
+        response: { ok: true },
+        expectedClosedAtMs: pressedAtMs,
+      },
+    ];
+    for (const testCase of cases) {
+      const { result } = setup();
+      localStorage.setItem(
+        overlayStorageKey('acme'),
+        JSON.stringify({
+          [issueItem.projectItemId]: {
+            ts: pressedAtMs,
+            mode: 'prs',
+            done: true,
+            closedAtMs: pressedAtMs,
+          },
+        }),
+      );
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => testCase.response,
+      })) as unknown as typeof fetch;
+      await act(async () => {
+        await result.current.operations.closeIssue(issueItem, 'close');
+      });
+      const stored = JSON.parse(
+        localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+      );
+      expect({
+        name: testCase.name,
+        closedAtMs: stored[issueItem.projectItemId]?.closedAtMs,
+      }).toEqual({
+        name: testCase.name,
+        closedAtMs: testCase.expectedClosedAtMs,
+      });
+    }
+  });
+
   it('posts set_status without writing the overlay entry (overlay is set at enqueue time)', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();

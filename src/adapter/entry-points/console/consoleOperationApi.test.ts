@@ -1489,6 +1489,72 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_prnp');
     });
 
+    it('answers each triage close with the server time read after GitHub accepted the close', async () => {
+      const closeStartedAtMs = Date.parse('2026-01-01T00:00:00.000Z');
+      const closeAcceptedAtMs = Date.parse('2026-01-01T00:00:05.000Z');
+      const cases: {
+        action: 'close' | 'close_not_planned';
+        issueUrl: string;
+        closeKind: 'issue' | 'pull_request';
+      }[] = [
+        {
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          closeKind: 'issue',
+        },
+        {
+          action: 'close_not_planned',
+          issueUrl: 'https://github.com/o/r/issues/2',
+          closeKind: 'issue',
+        },
+        {
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/pull/7',
+          closeKind: 'pull_request',
+        },
+        {
+          action: 'close_not_planned',
+          issueUrl: 'https://github.com/o/r/pull/8',
+          closeKind: 'pull_request',
+        },
+      ];
+      for (const testCase of cases) {
+        jest.useFakeTimers().setSystemTime(closeStartedAtMs);
+        try {
+          const advanceClockWhenGitHubAcceptsClose =
+            async (): Promise<void> => {
+              jest.setSystemTime(closeAcceptedAtMs);
+            };
+          if (testCase.closeKind === 'issue') {
+            issueRepository.closeIssueByUrl.mockImplementation(
+              advanceClockWhenGitHubAcceptsClose,
+            );
+          } else {
+            issueRepository.closePullRequest.mockImplementation(
+              advanceClockWhenGitHubAcceptsClose,
+            );
+          }
+          const response = await handleTriage(context, {
+            pjcode: 'acme',
+            action: testCase.action,
+            issueUrl: testCase.issueUrl,
+            projectItemId: `PVTI_close_${testCase.closeKind}_${testCase.action}`,
+          });
+          expect({
+            issueUrl: testCase.issueUrl,
+            statusCode: response.statusCode,
+            body: response.body,
+          }).toEqual({
+            issueUrl: testCase.issueUrl,
+            statusCode: 200,
+            body: { ok: true, closedAtMs: closeAcceptedAtMs },
+          });
+        } finally {
+          jest.useRealTimers();
+        }
+      }
+    });
+
     it('rejects an unknown triage action', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',

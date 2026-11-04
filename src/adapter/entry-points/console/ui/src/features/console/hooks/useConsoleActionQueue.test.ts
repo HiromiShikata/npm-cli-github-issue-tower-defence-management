@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { overlayStorageKey } from '../logic/overlay';
 import {
   ConsoleActionPartiallySentError,
   type ConsoleActionQueue,
@@ -1770,6 +1771,81 @@ describe('useConsoleActionQueue', () => {
       });
       expect(result.current.enqueueSequence).toBe(2);
     });
+  });
+});
+
+describe('useConsoleActionQueue confirmOfflineAction and the overlay close time', () => {
+  const pressedAtMs = Date.parse('2026-01-01T00:00:00.400Z');
+  const serverClosedAtMs = Date.parse('2026-01-01T00:00:20.000Z');
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        PVTI_2: {
+          ts: pressedAtMs,
+          mode: 'prs',
+          done: true,
+          closedAtMs: pressedAtMs,
+        },
+      }),
+    );
+  });
+
+  it('stores the server close time of a confirmed held close on the overlay entry and discards the action', async () => {
+    const fetchMock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, closedAtMs: serverClosedAtMs }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.offlineActionsCreate({
+        payloads: [closeOfflinePayload],
+        message: 'Close — #866',
+        color: 'blue',
+      });
+    });
+    const [held] = result.current.offlineActions;
+    await act(async () => {
+      await result.current.confirmOfflineAction(held.id);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.offlineActions).toEqual([]);
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored.PVTI_2.closedAtMs).toBe(serverClosedAtMs);
+  });
+
+  it('leaves the stored overlay unchanged when a confirmed held comment answers a close time', async () => {
+    const fetchMock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ...COMMENT_SUCCESS_RESPONSE_BODY,
+        closedAtMs: serverClosedAtMs,
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const before = localStorage.getItem(overlayStorageKey('acme'));
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.offlineActionsCreate({
+        payloads: [commentOfflinePayload],
+        message: 'Comment — #866',
+        color: 'blue',
+      });
+    });
+    const [held] = result.current.offlineActions;
+    await act(async () => {
+      await result.current.confirmOfflineAction(held.id);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.offlineActions).toEqual([]);
+    expect(localStorage.getItem(overlayStorageKey('acme'))).toBe(before);
   });
 });
 

@@ -236,7 +236,7 @@ const installStoriesDetailFetch = (options?: {
         ok: !fails,
         status: fails ? 500 : 200,
         text: async () => JSON.stringify({ error: 'close failed' }),
-        json: async () => ({ body: '# body' }),
+        json: async () => ({ ok: true, closedAtMs: Date.now() }),
       };
     }
     return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -279,6 +279,7 @@ type StoriesCloseTimingControl = {
   respondToNextTriageRequest: (
     respondedAt: string,
     ok: boolean,
+    closedAtMs?: number,
   ) => Promise<void>;
   failNextTriageRequestWithNetworkError: (respondedAt: string) => Promise<void>;
   pendingTriageRequestCount: () => number;
@@ -290,7 +291,10 @@ const installStoriesCloseTimingFetch = (
   initialGeneratedAt: string,
 ): StoriesCloseTimingControl => {
   let storiesGeneratedAt = initialGeneratedAt;
-  const pendingTriageResponders: ((outcome: TriageOutcome) => void)[] = [];
+  const pendingTriageResponders: ((
+    outcome: TriageOutcome,
+    closedAtMs?: number,
+  ) => void)[] = [];
   const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
     const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
     if (listMatch !== null) {
@@ -317,19 +321,24 @@ const installStoriesCloseTimingFetch = (
     }
     if (url === '/api/triage' && init?.method === 'POST') {
       return new Promise((resolve, reject) => {
-        pendingTriageResponders.push((outcome: TriageOutcome) => {
-          if (outcome === 'networkError') {
-            reject(new TypeError('Failed to fetch'));
-            return;
-          }
-          const ok = outcome === 'ok';
-          resolve({
-            ok,
-            status: ok ? 200 : 500,
-            text: async () => JSON.stringify({ error: 'close failed' }),
-            json: async () => ({ body: '# body' }),
-          });
-        });
+        pendingTriageResponders.push(
+          (outcome: TriageOutcome, closedAtMs?: number) => {
+            if (outcome === 'networkError') {
+              reject(new TypeError('Failed to fetch'));
+              return;
+            }
+            const ok = outcome === 'ok';
+            resolve({
+              ok,
+              status: ok ? 200 : 500,
+              text: async () => JSON.stringify({ error: 'close failed' }),
+              json: async () =>
+                closedAtMs === undefined
+                  ? { body: '# body' }
+                  : { ok: true, closedAtMs },
+            });
+          },
+        );
       });
     }
     return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -338,6 +347,7 @@ const installStoriesCloseTimingFetch = (
   const settleNextTriageRequest = async (
     respondedAt: string,
     outcome: TriageOutcome,
+    closedAtMs?: number,
   ): Promise<void> => {
     const respond = pendingTriageResponders.shift();
     if (respond === undefined) {
@@ -345,12 +355,15 @@ const installStoriesCloseTimingFetch = (
     }
     await act(async () => {
       jest.setSystemTime(Date.parse(respondedAt));
-      respond(outcome);
+      respond(outcome, closedAtMs);
     });
   };
   return {
-    respondToNextTriageRequest: (respondedAt: string, ok: boolean) =>
-      settleNextTriageRequest(respondedAt, ok ? 'ok' : 'fail'),
+    respondToNextTriageRequest: (
+      respondedAt: string,
+      ok: boolean,
+      closedAtMs?: number,
+    ) => settleNextTriageRequest(respondedAt, ok ? 'ok' : 'fail', closedAtMs),
     failNextTriageRequestWithNetworkError: (respondedAt: string) =>
       settleNextTriageRequest(respondedAt, 'networkError'),
     pendingTriageRequestCount: (): number => pendingTriageResponders.length,
@@ -865,7 +878,11 @@ describe('ConsolePage', () => {
       await waitFor(() => {
         expect(triage.pendingTriageRequestCount()).toBe(1);
       });
-      await triage.respondToNextTriageRequest('2026-01-01T00:00:07.400Z', true);
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:07.400Z'),
+      );
       triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
       const storiesListRequestsBefore = triage.storiesListRequestCount();
       act(() => {
@@ -926,7 +943,11 @@ describe('ConsolePage', () => {
       await waitFor(() => {
         expect(triage.pendingTriageRequestCount()).toBe(1);
       });
-      await triage.respondToNextTriageRequest('2026-01-01T00:00:20.400Z', true);
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:20.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:20.400Z'),
+      );
       triage.setStoriesGeneratedAt('2026-01-01T00:00:10Z');
       const storiesListRequestsBefore = triage.storiesListRequestCount();
       act(() => {
@@ -943,6 +964,234 @@ describe('ConsolePage', () => {
       await waitFor(() => {
         expect(queryByText('Stories detail task')).toBeNull();
       });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a Stories row again when a snapshot stamped at the server close time still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:40.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:40Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden when the browser clock is behind the server close time and a snapshot stamped before that server time still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:40.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:30Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden in a ConsolePage mounted later when the close settles after the first page unmounted and a snapshot predates the server close time', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const first = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => first.getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(first.getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(first.getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => first.getByText('Close')));
+      first.unmount();
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.000Z',
+        true,
+        Date.parse('2026-01-01T00:00:07.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
+      const second = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => second.getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(second.queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after a held close is sent from the offline queue until a snapshot stamped at or after the server close time arrives', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.failNextTriageRequestWithNetworkError(
+        '2026-01-01T00:00:05.400Z',
+      );
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toHaveLength(1);
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
+      const storiesListRequestsBeforeSnapshot =
+        triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBeforeSnapshot,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      const heldSendButton = await waitFor(() => {
+        const heldItems = container.querySelectorAll(
+          '.console-offline-panel-item',
+        );
+        expect(heldItems).toHaveLength(1);
+        const sendButton = within(heldItems[0] as HTMLElement).getByText(
+          'Send',
+        );
+        expect(sendButton).toBeEnabled();
+        return sendButton;
+      });
+      fireEvent.click(heldSendButton);
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:21.000Z',
+        true,
+        Date.parse('2026-01-01T00:00:20.000Z'),
+      );
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toEqual([]);
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:10Z');
+      const storiesListRequestsBeforeLaterSnapshot =
+        triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBeforeLaterSnapshot,
+        );
+      });
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Hide tasks' })).toBeInTheDocument();
+      });
+      expect(queryByText('Stories detail task')).toBeNull();
     } finally {
       jest.useRealTimers();
     }

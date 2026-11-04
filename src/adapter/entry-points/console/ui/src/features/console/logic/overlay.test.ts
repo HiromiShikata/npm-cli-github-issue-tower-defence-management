@@ -3,6 +3,7 @@ import {
   countPendingItems,
   filterPendingItems,
   isOverlayEntryActed,
+  overlayCloseSuccessRead,
   overlayEntriesActedSinceSnapshot,
   overlayEntryClosedAtUpdate,
   overlayKeyForItem,
@@ -353,6 +354,118 @@ describe('writeOverlayEntry close time', () => {
     );
     expect(next.PVTI_1).toHaveProperty('closedAtMs', 5000);
     expect(next.PVTI_1.ts).toBe(9000);
+  });
+});
+
+describe('overlayCloseSuccessRead', () => {
+  const baseRequest: Record<string, unknown> = {
+    pjcode: 'acme',
+    action: 'close',
+    issueUrl: 'https://github.com/o/r/issues/1',
+    projectItemId: 'PVTI_1',
+  };
+  const withoutKey = (key: string): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(baseRequest).filter(([entryKey]) => entryKey !== key),
+    );
+  const withValue = (key: string, value: unknown): Record<string, unknown> => ({
+    ...baseRequest,
+    [key]: value,
+  });
+
+  it('reads the pjcode, the projectItemId as key and the finite server closedAtMs of a close, and reads nothing else', () => {
+    const validResponse = { ok: true, closedAtMs: 1767225640000 };
+    const cases: {
+      name: string;
+      request: Record<string, unknown>;
+      response: unknown;
+      expected: { pjcode: string; key: string; closedAtMs: number } | null;
+    }[] = [
+      {
+        name: 'valid request and response',
+        request: baseRequest,
+        response: validResponse,
+        expected: { pjcode: 'acme', key: 'PVTI_1', closedAtMs: 1767225640000 },
+      },
+      {
+        name: 'response is undefined',
+        request: baseRequest,
+        response: undefined,
+        expected: null,
+      },
+      {
+        name: 'response is null',
+        request: baseRequest,
+        response: null,
+        expected: null,
+      },
+      {
+        name: 'response is a string',
+        request: baseRequest,
+        response: 'ok',
+        expected: null,
+      },
+      {
+        name: 'response has no closedAtMs',
+        request: baseRequest,
+        response: { ok: true },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is NaN',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: Number.NaN },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is Infinity',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: Number.POSITIVE_INFINITY },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is a numeric string',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: '1767225640000' },
+        expected: null,
+      },
+      {
+        name: 'request has no pjcode',
+        request: withoutKey('pjcode'),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has an empty pjcode',
+        request: withValue('pjcode', ''),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has a non-string pjcode',
+        request: withValue('pjcode', 1),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has no projectItemId',
+        request: withoutKey('projectItemId'),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has an empty projectItemId',
+        request: withValue('projectItemId', ''),
+        response: validResponse,
+        expected: null,
+      },
+    ];
+    for (const testCase of cases) {
+      expect({
+        name: testCase.name,
+        actual: overlayCloseSuccessRead(testCase.request, testCase.response),
+      }).toEqual({ name: testCase.name, actual: testCase.expected });
+    }
   });
 });
 

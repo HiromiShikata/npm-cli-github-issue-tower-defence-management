@@ -400,6 +400,37 @@ describe('postConsoleOperation', () => {
     expect(init).toMatchObject({ method: 'POST' });
   });
 
+  it('resolves to the parsed JSON body of a successful response', async () => {
+    mockFetchOnce({ ok: true, closedAtMs: 1767225640000 });
+    await expect(
+      postConsoleOperation('/api/triage', {
+        pjcode: 'acme',
+        action: 'close',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_1',
+      }),
+    ).resolves.toEqual({ ok: true, closedAtMs: 1767225640000 });
+  });
+
+  it('rejects when the successful response body cannot be parsed', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+      text: async () => '',
+    }) as unknown as typeof fetch;
+    await expect(
+      postConsoleOperation('/api/triage', {
+        pjcode: 'acme',
+        action: 'close',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_1',
+      }),
+    ).rejects.toThrow('Unexpected end of JSON input');
+  });
+
   const failingReview = (): Promise<void> =>
     postConsoleOperation('/api/review', {
       pjcode: 'acme',
