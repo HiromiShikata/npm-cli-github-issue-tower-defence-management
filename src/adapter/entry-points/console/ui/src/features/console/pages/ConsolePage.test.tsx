@@ -144,6 +144,88 @@ const installFetch = (
   global.fetch = fetchMock as unknown as typeof fetch;
 };
 
+const storiesDetailItem = {
+  number: 901,
+  title: 'Stories detail task',
+  url: 'https://github.com/o/r/issues/901',
+  repo: 'o/r',
+  nameWithOwner: 'o/r',
+  projectItemId: 'PVTI_STORY_DETAIL',
+  itemId: 'PVTI_STORY_DETAIL',
+  isPr: false,
+  story: 'TDPM Console port',
+  status: 'In Progress',
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-06-18T00:00:00.000Z',
+  relatedOpenPullRequestUrls: [],
+  isClosed: false,
+};
+
+const storiesDetailPayload = (generatedAt = '2026-06-19T00:00:00.000Z') => {
+  const payload = listPayload('stories');
+  return {
+    ...payload,
+    generatedAt,
+    stories: [
+      {
+        ...payload.stories[0],
+        openItemCount: 1,
+        items: [storiesDetailItem],
+      },
+    ],
+    items: [storiesDetailItem],
+  };
+};
+
+const installStoriesDetailFetch = (options?: {
+  closeRequestOk?: boolean;
+  laterStoriesSnapshot?: boolean;
+}): void => {
+  let storiesRequestCount = 0;
+  const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
+    const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+    if (listMatch !== null) {
+      if (listMatch[1] === 'stories') {
+        const generatedAt =
+          options?.laterStoriesSnapshot === true && storiesRequestCount > 0
+            ? '2026-06-19T00:02:00.000Z'
+            : '2026-06-19T00:00:00.000Z';
+        storiesRequestCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => storiesDetailPayload(generatedAt),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => listPayload(listMatch[1]),
+      };
+    }
+    if (url === '/api/projects') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ pjcodes: ['acme'] }),
+      };
+    }
+    if (url === '/api/triage' && init?.method === 'POST') {
+      return {
+        ok: options?.closeRequestOk !== false,
+        status: options?.closeRequestOk === false ? 500 : 200,
+        json: async () => ({ body: '# body' }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+};
+
 describe('ConsolePage', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -226,6 +308,180 @@ describe('ConsolePage', () => {
         timeout: 1000,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('removes a task closed from a Stories detail view immediately when Done is off', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, queryByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    expect(getByRole('switch', { name: /Done/ })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    fireEvent.click(getByText('Stories detail task'));
+    fireEvent.click(await waitFor(() => getByText('Close')));
+    await waitFor(() => {
+      expect(queryByText('Stories detail task')).toBeNull();
+    });
+  });
+
+  it('removes a task closed from a Todo by human detail view from Stories immediately', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/todo-by-human?k=token',
+      );
+      installStoriesDetailFetch();
+      const { getByText, queryByText, getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      fireEvent.click(within(tabBar()).getByText('Stories'));
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores a Stories row when the close request fails', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ closeRequestOk: false });
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      expect(document.body.textContent).not.toContain('Stories detail task');
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores a Stories row when the queued close is undone', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Stories detail task'));
+    fireEvent.click(await waitFor(() => getByText('Close')));
+    expect(document.body.textContent).not.toContain('Stories detail task');
+    fireEvent.click(getByRole('button', { name: 'Undo' }));
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+  });
+
+  it('shows a Stories row again when a later open snapshot arrives after close', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ laterStoriesSnapshot: true });
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      expect(document.body.textContent).not.toContain('Stories detail task');
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('decrements the Stories badge immediately when a task is closed with Done off', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    const storiesTab = within(tabBar()).getByText('Stories').closest('a');
+    expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+      '1',
+    );
+    fireEvent.click(getByText('Stories detail task'));
+    fireEvent.click(await waitFor(() => getByText('Close')));
+    await waitFor(() => {
+      expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+        '0',
+      );
+    });
+  });
+
+  it('keeps a Stories row visible after a status change instead of closing it', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    fireEvent.change(getByRole('combobox', { name: 'Set status' }), {
+      target: { value: 's1' },
+    });
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
   });
 
   it('renders the tab bar with the active tab and the story-grouped list', async () => {
