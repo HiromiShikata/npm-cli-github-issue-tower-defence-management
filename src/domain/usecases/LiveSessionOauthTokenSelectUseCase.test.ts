@@ -314,7 +314,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       MAX_CONCURRENT_SESSION_COUNT,
     );
     expect(downWeighted?.hasConcurrencyHeadroom).toBe(true);
-    expect(result.selected?.name).toBe('lowerFreeRatioIdle');
+    expect(result.selected?.name).toBe('downWeighted');
   });
 
   it('honours a fleet supplied maximum concurrent session count', () => {
@@ -497,7 +497,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('nearlySpentBothWindows');
   });
 
-  it('selects the token with the least seven day budget among the tokens the API has not rejected when their seven day resets are equally distant', () => {
+  it('selects the first token in input order among the tokens the API has not rejected when their seven day resets and live sessions are equal', () => {
     const rejected = Array.from({ length: 7 }, (_unused, index) =>
       candidate(`rejected${index}`, snapshot({}), false, true),
     );
@@ -534,7 +534,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('dev9');
+    expect(result.selected?.name).toBe('dev2');
   });
 
   it('returns null selection when the only token is rejected by the API even though its seven day window is half free', () => {
@@ -1199,7 +1199,7 @@ describe('LiveSessionOauthTokenSelectUseCase five hour sustainable session limit
   });
 });
 
-describe('LiveSessionOauthTokenSelectUseCase drains the token with the least seven day budget first', () => {
+describe('LiveSessionOauthTokenSelectUseCase drains the token whose seven day reset is soonest first', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
   it('selects a 2% free token inside the 72-hour deadline window first', () => {
@@ -1304,38 +1304,38 @@ describe('LiveSessionOauthTokenSelectUseCase drains the token with the least sev
   );
 
   const concurrencyCapCases: [number, string][] = [
-    [0, 'leastBudget'],
-    [9, 'leastBudget'],
-    [10, 'moreBudget'],
+    [0, 'soonerReset'],
+    [9, 'laterReset'],
+    [10, 'laterReset'],
   ];
 
   it.each(concurrencyCapCases)(
-    'fills the least budget token up to its concurrent session limit of ten before moving to the next token (%i live sessions selects %s)',
-    (leastBudgetLiveSessionCount, expectedSelectedName) => {
+    'moves to the next token once the soonest reset token holds the sessions it needs to drain its seven day budget (%i live sessions selects %s)',
+    (soonerResetLiveSessionCount, expectedSelectedName) => {
       const result = useCase.run(
         [
           candidate(
-            'moreBudget',
+            'laterReset',
             snapshot({
               sevenDayUtilization: 0.6,
-              sevenDayReset: NOW + 5 * DAY,
+              sevenDayReset: NOW + 6 * DAY,
             }),
           ),
           candidate(
-            'leastBudget',
+            'soonerReset',
             snapshot({
               sevenDayUtilization: 0.9,
               sevenDayReset: NOW + 5 * DAY,
             }),
           ),
         ],
-        sessionsFor('leastBudget', leastBudgetLiveSessionCount),
+        sessionsFor('soonerReset', soonerResetLiveSessionCount),
         NOW,
         settingsWith({ fiveHourShareConsumedPerSessionHour: 0.02 }),
       );
 
-      const leastBudget = result.metrics.find((m) => m.name === 'leastBudget');
-      expect(leastBudget?.concurrentSessionLimit).toBe(
+      const soonerReset = result.metrics.find((m) => m.name === 'soonerReset');
+      expect(soonerReset?.concurrentSessionLimit).toBe(
         MAX_CONCURRENT_SESSION_COUNT,
       );
       expect(result.selected?.name).toBe(expectedSelectedName);

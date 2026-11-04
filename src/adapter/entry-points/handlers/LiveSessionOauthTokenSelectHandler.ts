@@ -124,7 +124,7 @@ export class LiveSessionOauthTokenSelectHandler {
       const status = metric.eligible
         ? 'eligible'
         : `excluded (${metric.exclusionReason})`;
-      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, 7d budget drainable by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset: ${metric.sevenDayBudgetUndrainableBeforeSpendDeadline ? 'no' : 'yes'}, weight ${metric.selectionWeight} -> ${status}`;
+      return `${metric.name}: ${metric.liveSessionCount}/${metric.concurrentSessionLimit} live session(s), 5h ${Math.round(metric.fiveHourFreeRatio * 100)}% free, 7d ${Math.round(metric.sevenDayFreeRatio * 100)}% free, 7d-end in ${secondsUntilSevenDayEnd}s, sessions needed to spend 7d by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset: ${metric.sessionCountNeededToDrainSevenDay}, weight ${metric.selectionWeight} -> ${status}`;
     });
 
     if (result.selected === null) {
@@ -143,7 +143,7 @@ export class LiveSessionOauthTokenSelectHandler {
         );
       } else {
         lines.push(
-          `Selected ${result.selected.name} (eligible tokens are ordered with the tokens whose remaining 7d budget cannot be spent by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before the 7d reset at maxConcurrentSessionCount (${settings.maxConcurrentSessionCount}) sessions, one fully spent 5h window consuming 14% of the 7d window, moved to the front, then by 7d free ratio ascending; the first token still under its concurrent session limit is chosen, or the token least over its limit when none is under it; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
+          `Selected ${result.selected.name} (eligible tokens are ordered by 7d reset soonest first, then by fewer live sessions; the first token with fewer live sessions than the lower of its concurrent session limit and the sessions needed to spend its 7d window by ${SEVEN_DAY_SPEND_DEADLINE_HOURS}h before reset is chosen; if none, the first token with a free concurrent session slot; if none, the token least over its limit after one more session. The sessions needed are its 7d free ratio divided by the hours left until that deadline, times ${settings.sevenDayShareConsumedPerSessionHour} of the 7d window per session-hour, rounded up, and equal its limit when that deadline has passed; each limit is the lower of the 5h free-share throttle and the number of sessions the free 5h share sustains until the window resets at ${settings.fiveHourShareConsumedPerSessionHour} of the window per session-hour).`,
         );
       }
     }

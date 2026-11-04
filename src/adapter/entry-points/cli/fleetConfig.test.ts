@@ -139,6 +139,8 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
       fiveHourShareConsumedPerSessionHour:
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
+      sevenDayShareConsumedPerSessionHour:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.sevenDayShareConsumedPerSessionHour,
     });
   });
 
