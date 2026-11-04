@@ -151,6 +151,83 @@ describe('ConsolePage', () => {
     installFetch();
   });
 
+  it('treats a closed Stories payload item as Done for the Stories list', async () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        PVTI_closed: {
+          ts: Date.parse('2026-06-19T00:01:00.000Z'),
+          mode: 'todo-by-human',
+          closed: true,
+        },
+      }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const payload = listPayload(listMatch[1]);
+        if (listMatch[1] === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...payload,
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  ...payload.stories[0],
+                  items: [
+                    {
+                      number: 54321,
+                      title: 'Example task for closed-state story',
+                      url: 'https://github.com/example/repository/issues/54321',
+                      repo: 'example/repository',
+                      nameWithOwner: 'example/repository',
+                      projectItemId: 'PVTI_closed',
+                      itemId: 'PVTI_closed',
+                      isPr: false,
+                      story: 'TDPM Console port',
+                      status: 'In Tmux by human',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                      relatedOpenPullRequestUrls: [],
+                    },
+                  ],
+                },
+              ],
+              items: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => payload };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const { queryByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByRole('switch', { name: /Done/ })).toBeInTheDocument();
+    });
+    expect(queryByText('Example task for closed-state story')).toBeNull();
+    fireEvent.click(getByRole('switch', { name: /Done/ }));
+    expect(
+      await waitFor(() => queryByText('Example task for closed-state story'), {
+        timeout: 1000,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the tab bar with the active tab and the story-grouped list', async () => {
     const { getByText } = render(<ConsolePage />);
     await waitFor(() => {

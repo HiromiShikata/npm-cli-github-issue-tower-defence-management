@@ -203,6 +203,37 @@ describe('consoleStoryStatusSelection', () => {
     },
   );
 
+  it.each([
+    {
+      label: 'closed item selected as Done',
+      item: { isClosed: true, status: 'In Tmux by human' },
+      selected: ['Done'],
+      expected: true,
+    },
+    {
+      label: 'closed item selected by its stale status',
+      item: { isClosed: true, status: 'In Tmux by human' },
+      selected: ['In Tmux by human'],
+      expected: false,
+    },
+    {
+      label: 'open item with Done status selected as Done',
+      item: { isClosed: false, status: 'Done' },
+      selected: ['Done'],
+      expected: true,
+    },
+  ])(
+    'uses Done as the status key for a $label',
+    ({ item, selected, expected }) => {
+      const story = makeStory('Closed-state story', [
+        { ...makeItem('closed-state task', item.status), ...item } as StoryItem,
+      ]);
+      expect(
+        filterConsoleStoryEntriesByStatusSelection([story], selected),
+      ).toHaveLength(expected ? 1 : 0);
+    },
+  );
+
   it('parses every status query parameter into status names, keeping order and skipping empty or repeated values', () => {
     const cases: { label: string; search: string; expected: string[] }[] = [
       { label: 'empty query', search: '', expected: [] },

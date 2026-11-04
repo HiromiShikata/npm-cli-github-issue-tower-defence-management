@@ -1530,6 +1530,7 @@ describe('ConsoleItemDetailContainer', () => {
       expect.objectContaining({
         kind: { type: 'close', action: 'close' },
         item: issueItem,
+        overlayPatch: { done: true, closed: true },
       }),
     );
   });
@@ -1609,6 +1610,7 @@ describe('ConsoleItemDetailContainer', () => {
         expect.objectContaining({
           kind: { type: 'ok_and_close' },
           item: issueItem,
+          overlayPatch: { done: true, closed: true },
         }),
       );
     });
