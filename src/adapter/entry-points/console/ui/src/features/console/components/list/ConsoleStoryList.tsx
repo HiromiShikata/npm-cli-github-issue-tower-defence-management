@@ -638,8 +638,6 @@ export const ConsoleStoryList = ({
               expandedTasksOptionId === entry.storyOptionId;
             const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
-            const hasClosedDoneItems =
-              showDone && (entry.items ?? []).some((item) => item.isClosed);
             const visibleTaskItems = hasStatusSelection
               ? (entry.items ?? [])
               : (entry.items ?? []).filter(
@@ -795,7 +793,7 @@ export const ConsoleStoryList = ({
                 {description !== '' && (
                   <p className="console-story-description">{description}</p>
                 )}
-                {(isTasksExpanded || hasClosedDoneItems) && (
+                {isTasksExpanded && (
                   <StoryTaskList
                     items={visibleTaskItems}
                     storyOptions={storyFieldOptions}

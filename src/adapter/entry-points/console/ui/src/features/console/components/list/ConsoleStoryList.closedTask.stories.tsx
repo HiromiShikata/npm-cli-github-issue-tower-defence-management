@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
 const closedTask = {
@@ -77,10 +78,19 @@ export default meta;
 
 type Story = StoryObj<typeof ConsoleStoryList>;
 
+const expandStoryTasks: NonNullable<Story['play']> = async ({
+  canvasElement,
+}) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole('button', { name: 'Show tasks' }));
+};
+
 export const DoneSwitchOff: Story = {
   args: { showDone: false },
+  play: expandStoryTasks,
 };
 
 export const DoneSwitchOn: Story = {
   args: { showDone: true },
+  play: expandStoryTasks,
 };

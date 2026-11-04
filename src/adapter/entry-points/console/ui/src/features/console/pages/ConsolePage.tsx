@@ -956,27 +956,17 @@ export const ConsolePage = () => {
       if (dependedIssueSubmission !== null) {
         dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
       }
-      const commit = async (sentStepCount: number): Promise<void> => {
-        try {
-          await input.commit(sentStepCount);
-        } catch (cause: unknown) {
-          if (overlayPatch?.closed === true) {
-            overlayState.revertOverlayEntry(actedKey);
-          }
-          throw cause;
-        }
-      };
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit:
           dependedIssueSubmission === null
-            ? commit
+            ? input.commit
             : (sentStepCount: number): Promise<void> => {
                 dependedIssueSubmissionsRef.current.delete(
                   dependedIssueSubmission,
                 );
-                return commit(sentStepCount);
+                return input.commit(sentStepCount);
               },
         offline: input.offline,
         revertAdvance:
@@ -1159,12 +1149,7 @@ export const ConsolePage = () => {
       return counts;
     }
     if (effectiveStoryStatuses.length === 0) {
-      const countedStories = storyEntriesWithClosedOverlay.filter(
-        (s, index) =>
-          s.color !== 'GRAY' &&
-          !(storyEntries[index].openItemCount > 0 && s.openItemCount === 0),
-      );
-      return { ...counts, stories: countedStories.length };
+      return counts;
     }
     return {
       ...counts,
@@ -1177,7 +1162,6 @@ export const ConsolePage = () => {
     counts,
     effectiveStoryStatuses,
     storiesSnapshot,
-    storyEntries,
     storyEntriesWithClosedOverlay,
   ]);
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
