@@ -326,6 +326,9 @@ describe('ConsolePage', () => {
     );
     fireEvent.click(getByText('Stories detail task'));
     fireEvent.click(await waitFor(() => getByText('Close')));
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
     await waitFor(() => {
       expect(queryByText('Stories detail task')).toBeNull();
     });
