@@ -310,7 +310,7 @@ const readOperationErrorReason = async (
 export const postConsoleOperation = async <T extends Record<string, unknown>>(
   apiPath: string,
   body: T,
-): Promise<void> => {
+): Promise<unknown> => {
   const response = await fetch(apiPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -319,6 +319,7 @@ export const postConsoleOperation = async <T extends Record<string, unknown>>(
   if (!response.ok) {
     throw new Error(await readOperationErrorReason(response));
   }
+  return await response.json();
 };
 
 export const COMMENT_OPERATION_PATH = '/api/comment';

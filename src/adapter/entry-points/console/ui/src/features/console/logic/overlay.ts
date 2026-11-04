@@ -108,6 +108,33 @@ export const overlayEntryClosedAtUpdate = (
   return { ...overlay, [key]: { ...existing, closedAtMs } };
 };
 
+export type OverlayCloseSuccess = {
+  pjcode: string;
+  key: string;
+  closedAtMs: number;
+};
+
+export const overlayCloseSuccessRead = (
+  request: Record<string, unknown>,
+  response: unknown,
+): OverlayCloseSuccess | null => {
+  const { pjcode, projectItemId } = request;
+  if (typeof pjcode !== 'string' || pjcode === '') {
+    return null;
+  }
+  if (typeof projectItemId !== 'string' || projectItemId === '') {
+    return null;
+  }
+  if (response === null || typeof response !== 'object') {
+    return null;
+  }
+  const { closedAtMs } = response as { closedAtMs?: unknown };
+  if (typeof closedAtMs !== 'number' || !Number.isFinite(closedAtMs)) {
+    return null;
+  }
+  return { pjcode, key: projectItemId, closedAtMs };
+};
+
 export const removeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,

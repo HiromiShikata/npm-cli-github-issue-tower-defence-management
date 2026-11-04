@@ -1,5 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  type OverlayCloseSuccess,
+  overlayCloseSuccessRead,
   overlayEntryClosedAtUpdate,
   overlayStorageKey,
   removeOverlayEntry,
@@ -44,6 +46,32 @@ const persistOverlay = (pjcode: string, overlay: ConsoleOverlay): void => {
   }
 };
 
+type OverlayCloseSuccessListener = (success: OverlayCloseSuccess) => void;
+
+const overlayCloseSuccessListeners = new Set<OverlayCloseSuccessListener>();
+
+export const overlayCloseSuccessRecord = (
+  request: Record<string, unknown>,
+  response: unknown,
+): void => {
+  const success = overlayCloseSuccessRead(request, response);
+  if (success === null) {
+    return;
+  }
+  const current = readOverlay(success.pjcode);
+  const next = overlayEntryClosedAtUpdate(
+    current,
+    success.key,
+    success.closedAtMs,
+  );
+  if (next !== current) {
+    persistOverlay(success.pjcode, next);
+  }
+  for (const listener of overlayCloseSuccessListeners) {
+    listener(success);
+  }
+};
+
 export type ConsoleOverlayState = {
   overlay: ConsoleOverlay;
   patchOverlay: (
@@ -52,7 +80,6 @@ export type ConsoleOverlayState = {
     mode: ConsoleTabName,
   ) => void;
   revertOverlayEntry: (key: string) => void;
-  overlayEntryClosedAtUpdateToNow: (key: string) => void;
 };
 
 export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
@@ -82,23 +109,32 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
     [pjcode],
   );
 
-  const overlayEntryClosedAtUpdateToNow = useCallback(
-    (key: string) => {
+  useEffect(() => {
+    const listener: OverlayCloseSuccessListener = (success) => {
+      if (success.pjcode !== pjcode) {
+        return;
+      }
       setOverlay((current) => {
-        const next = overlayEntryClosedAtUpdate(current, key, Date.now());
+        const next = overlayEntryClosedAtUpdate(
+          current,
+          success.key,
+          success.closedAtMs,
+        );
         if (next !== current) {
           persistOverlay(pjcode, next);
         }
         return next;
       });
-    },
-    [pjcode],
-  );
+    };
+    overlayCloseSuccessListeners.add(listener);
+    return () => {
+      overlayCloseSuccessListeners.delete(listener);
+    };
+  }, [pjcode]);
 
   return {
     overlay,
     patchOverlay,
     revertOverlayEntry,
-    overlayEntryClosedAtUpdateToNow,
   };
 };

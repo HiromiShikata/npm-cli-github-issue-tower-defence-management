@@ -646,9 +646,10 @@ export const handleTriage = async (
           action === 'close_not_planned' ? 'not_planned' : 'completed',
         );
     }
+    const closedAtMs = Date.now();
     recordDone(context, pjcodeResult, projectItemId);
     recordTaskClose(context, pjcodeResult);
-    return ok();
+    return { statusCode: 200, body: { ok: true, closedAtMs } };
   }
 
   const binding = await resolveBinding(context, body);
