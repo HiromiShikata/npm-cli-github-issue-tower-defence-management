@@ -1,3 +1,10 @@
+## [2.187.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.0...v2.187.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** throw a descriptive error when updateProjectField and addIssueToProject responses have no data ([#3683](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3683)) ([073572e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/073572e86d943ba68d6cb4ab370e5c8c8843c61f))
+
 # [2.187.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.186.0...v2.187.0) (2026-11-03)
 
 
