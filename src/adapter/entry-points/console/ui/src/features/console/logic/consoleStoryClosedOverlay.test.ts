@@ -88,6 +88,66 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
     },
   );
 
+  it('applies the closed mark by the whole-second generatedAt the server emits', () => {
+    const cases: {
+      label: string;
+      closedAtMs: number;
+      generatedAt: string;
+      isClosed: true | undefined;
+      openItemCount: number;
+    }[] = [
+      {
+        label: 'same wall-clock second, value earlier than the close',
+        closedAtMs: Date.parse('2026-10-05T00:00:00.400Z'),
+        generatedAt: '2026-10-05T00:00:00Z',
+        isClosed: true,
+        openItemCount: 0,
+      },
+      {
+        label: 'earlier second than the close',
+        closedAtMs: Date.parse('2026-10-05T00:00:00.400Z'),
+        generatedAt: '2026-10-04T23:59:59Z',
+        isClosed: true,
+        openItemCount: 0,
+      },
+      {
+        label: 'next second after the close',
+        closedAtMs: Date.parse('2026-10-05T00:00:00.400Z'),
+        generatedAt: '2026-10-05T00:00:01Z',
+        isClosed: undefined,
+        openItemCount: 1,
+      },
+      {
+        label: 'close exactly on a second, equal generatedAt',
+        closedAtMs: Date.parse('2026-10-05T00:00:00.000Z'),
+        generatedAt: '2026-10-05T00:00:00Z',
+        isClosed: undefined,
+        openItemCount: 1,
+      },
+    ];
+    const actual = cases.map(({ label, closedAtMs, generatedAt }) => {
+      const result = consoleStoryEntriesWithClosedOverlay(
+        makeStories(),
+        {
+          'item-1': { ts: closedAtMs, mode: 'todo-by-human', closedAtMs },
+        } as unknown as ConsoleOverlay,
+        generatedAt,
+      );
+      return {
+        label,
+        isClosed: result[0].items[0].isClosed,
+        openItemCount: result[0].openItemCount,
+      };
+    });
+    expect(actual).toEqual(
+      cases.map(({ label, isClosed, openItemCount }) => ({
+        label,
+        isClosed,
+        openItemCount,
+      })),
+    );
+  });
+
   it.each([
     {
       label: 'non-numeric close time',
