@@ -11,12 +11,22 @@ export const consoleStoryEntriesWithClosedOverlay = (
   return stories.map((story) => {
     let openItemCount = story.openItemCount;
     const items = (story.items ?? []).map((item) => {
-      const entry = overlay[overlayKeyForItem(item)];
+      const entry =
+        overlay[overlayKeyForItem(item)] ??
+        Object.values(overlay).find(
+          (candidate) => candidate.itemUrl === item.url,
+        ) ??
+        Object.values(overlay).find(
+          (candidate) => candidate.itemStoryName === story.storyName,
+        );
       const shouldApply =
         entry?.closed === true &&
         (storiesGeneratedAtMs === null ||
           (!Number.isNaN(storiesGeneratedAtMs) &&
-            entry.ts >= storiesGeneratedAtMs));
+            entry.ts >= storiesGeneratedAtMs &&
+            (entry.snapshotGeneratedAt === undefined ||
+              (storiesGeneratedAt !== null &&
+                storiesGeneratedAt <= entry.snapshotGeneratedAt))));
       if (!shouldApply || item.isClosed === true) {
         return { ...item, isClosed: item.isClosed };
       }

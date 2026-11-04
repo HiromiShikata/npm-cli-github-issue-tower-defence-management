@@ -18,7 +18,10 @@ import {
   ConsoleOfflinePendingActionsPanel,
 } from '../components/operations/ConsoleOfflinePendingActionsPanel';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
-import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
+import {
+  isNetworkError,
+  useConsoleActionQueue,
+} from '../hooks/useConsoleActionQueue';
 import { useConsoleAutomaticProjectNavigation } from '../hooks/useConsoleAutomaticProjectNavigation';
 import { useConsoleAwaitingOwnerListVisibilitySettings } from '../hooks/useConsoleAwaitingOwnerListVisibilitySettings';
 import { useConsoleBackgroundTabRefresh } from '../hooks/useConsoleBackgroundTabRefresh';
@@ -956,17 +959,31 @@ export const ConsolePage = () => {
       if (dependedIssueSubmission !== null) {
         dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
       }
+      const commit = async (sentStepCount: number): Promise<void> => {
+        try {
+          await input.commit(sentStepCount);
+        } catch (cause: unknown) {
+          if (
+            overlayPatch !== undefined &&
+            (input.kind.type === 'close' ||
+              !(isNetworkError(cause) && (input.offline?.length ?? 0) > 0))
+          ) {
+            overlayState.revertOverlayEntry(actedKey);
+          }
+          throw cause;
+        }
+      };
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit:
           dependedIssueSubmission === null
-            ? input.commit
+            ? commit
             : (sentStepCount: number): Promise<void> => {
                 dependedIssueSubmissionsRef.current.delete(
                   dependedIssueSubmission,
                 );
-                return input.commit(sentStepCount);
+                return commit(sentStepCount);
               },
         offline: input.offline,
         revertAdvance:
@@ -978,7 +995,17 @@ export const ConsolePage = () => {
               },
         optimistic:
           overlayPatch !== undefined
-            ? () => overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
+            ? () =>
+                overlayState.patchOverlay(
+                  actedKey,
+                  {
+                    ...overlayPatch,
+                    itemUrl: input.item.url,
+                    itemStoryName: input.item.story,
+                    snapshotGeneratedAt: snapshots.stories?.generatedAt,
+                  },
+                  activeTab,
+                )
             : undefined,
         revertOptimistic:
           overlayPatch !== undefined
@@ -1006,6 +1033,7 @@ export const ConsolePage = () => {
       overlayState,
       pjcode,
       returnToSubmittedTask,
+      snapshots.stories?.generatedAt,
     ],
   );
 
