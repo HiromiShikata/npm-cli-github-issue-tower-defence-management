@@ -12792,4 +12792,49 @@ describe('ConsolePage story status filter counts', () => {
     expect(storyRowCountText(container, 'Story One')).toBe('3');
     expect(storiesTabBadgeText(container)).toBe('2');
   });
+
+  it('updates the Stories tab badge at once when a task status is changed from an expanded row under the status filter', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Preparation"]');
+    installCountFixture('stories');
+
+    const { container, findByText } = render(<ConsolePage />);
+    expect(await findByText('Story One')).toBeInTheDocument();
+    expect(storiesTabBadgeText(container)).toBe('2');
+
+    const storyTwoRow = Array.from(
+      container.querySelectorAll<HTMLElement>('li.console-story-list-row'),
+    ).find(
+      (row) =>
+        row.querySelector('.console-storytag')?.textContent === 'Story Two',
+    );
+    if (storyTwoRow === undefined) {
+      throw new Error('story row not found: Story Two');
+    }
+    fireEvent.click(
+      within(storyTwoRow).getByRole('button', { name: 'Show tasks' }),
+    );
+    const taskFiveRow = await waitFor(() => {
+      const row = Array.from(
+        storyTwoRow.querySelectorAll<HTMLElement>('li.console-story-task-row'),
+      ).find(
+        (element) =>
+          element.querySelector('.console-story-task-title')?.textContent ===
+          'Task 5',
+      );
+      if (row === undefined) {
+        throw new Error('task row not found: Task 5');
+      }
+      return row;
+    });
+
+    fireEvent.change(
+      within(taskFiveRow).getByRole('combobox', { name: 'Set status' }),
+      { target: { value: 'dn' } },
+    );
+
+    await waitFor(() => {
+      expect(storyRowCountText(container, 'Story Two')).toBeUndefined();
+      expect(storiesTabBadgeText(container)).toBe('1');
+    });
+  });
 });
