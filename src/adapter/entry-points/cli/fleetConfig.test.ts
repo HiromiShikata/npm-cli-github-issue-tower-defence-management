@@ -89,6 +89,7 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         '  minFiveHourFreeRatio: 0.7',
         '  minSevenDayFreeRatio: 0.2',
         '  fiveHourShareConsumedPerSessionHour: 0.08',
+        '  sevenDayShareConsumedPerSessionHour: 0.005',
       ].join('\n'),
     );
 
@@ -100,7 +101,22 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
       minFiveHourFreeRatio: 0.7,
       minSevenDayFreeRatio: 0.2,
       fiveHourShareConsumedPerSessionHour: 0.08,
+      sevenDayShareConsumedPerSessionHour: 0.005,
     });
+  });
+
+  it('keeps the built-in 0.003 for sevenDayShareConsumedPerSessionHour when the fleet config omits it', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  maxConcurrentSessionCount: 16',
+      ].join('\n'),
+    );
+
+    expect(
+      loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath)
+        .sevenDayShareConsumedPerSessionHour,
+    ).toBe(0.003);
   });
 
   it('keeps the built-in value for a tuning number the fleet config omits', () => {
@@ -123,6 +139,8 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
       fiveHourShareConsumedPerSessionHour:
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
+      sevenDayShareConsumedPerSessionHour:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.sevenDayShareConsumedPerSessionHour,
     });
   });
 
@@ -131,6 +149,22 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
       DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fiveHourShareConsumedPerSessionHour,
     ).toBe(0.05);
   });
+
+  it.each([0, -0.003, 1.5])(
+    'throws naming sevenDayShareConsumedPerSessionHour when it is %p',
+    (sevenDayShareConsumedPerSessionHour) => {
+      const fleetConfigFilePath = writeFleetConfig(
+        [
+          'liveSessionOauthTokenSelection:',
+          `  sevenDayShareConsumedPerSessionHour: ${sevenDayShareConsumedPerSessionHour}`,
+        ].join('\n'),
+      );
+
+      expect(() =>
+        loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
+      ).toThrow('sevenDayShareConsumedPerSessionHour');
+    },
+  );
 
   it.each([0, -0.05, 1.5])(
     'throws naming fiveHourShareConsumedPerSessionHour when it is %p',
