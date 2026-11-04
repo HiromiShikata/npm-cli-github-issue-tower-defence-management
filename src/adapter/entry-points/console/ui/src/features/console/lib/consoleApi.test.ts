@@ -431,7 +431,7 @@ describe('postConsoleOperation', () => {
     ).rejects.toThrow('Unexpected end of JSON input');
   });
 
-  const failingReview = (): Promise<void> =>
+  const failingReview = (): Promise<unknown> =>
     postConsoleOperation('/api/review', {
       pjcode: 'acme',
       action: 'approve_and_merge',
