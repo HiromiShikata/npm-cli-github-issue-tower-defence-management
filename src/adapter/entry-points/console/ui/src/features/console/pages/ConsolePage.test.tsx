@@ -653,8 +653,13 @@ describe('ConsolePage', () => {
       fireEvent.click(getByText('Stories detail task'));
       fireEvent.click(await waitFor(() => getByText('Close')));
       expect(document.body.textContent).not.toContain('Stories detail task');
-      act(() => {
-        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      await act(async () => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(
+          CONSOLE_TAB_REFRESH_INTERVAL_MS - ACTION_TOAST_DELAY_MS,
+        );
       });
       fireEvent.click(
         await waitFor(() => getByRole('button', { name: 'Show tasks' })),
