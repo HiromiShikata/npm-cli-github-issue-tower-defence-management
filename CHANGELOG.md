@@ -1,3 +1,10 @@
+# [2.188.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.3...v2.188.0) (2026-11-04)
+
+
+### Features
+
+* **selectLiveSessionOauthToken:** select by seven day reset order and sessions needed to drain ([#3691](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3691)) ([02be40a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/02be40a7123d882f294e2a1009739f8c050d12d4))
+
 ## [2.187.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.2...v2.187.3) (2026-11-04)
 
 
