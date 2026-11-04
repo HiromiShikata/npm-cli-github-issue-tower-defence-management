@@ -38,6 +38,26 @@ const item = (number: number): ConsoleListItem => ({
 });
 
 describe('overlay helpers', () => {
+  it.each([
+    {
+      label: 'present done entry',
+      entry: { ts: 100, mode: 'prs' as const, done: true },
+      acted: true,
+    },
+    {
+      label: 'present non-done entry',
+      entry: {
+        ts: 100,
+        mode: 'prs' as const,
+        story: { name: 'Story', color: 'BLUE' as const },
+      },
+      acted: false,
+    },
+    { label: 'missing entry', entry: undefined, acted: false },
+  ])('classifies $label through the overlay helper', ({ entry, acted }) => {
+    expect(isOverlayEntryActed(entry)).toBe(acted);
+  });
+
   it('builds the per-project storage key', () => {
     expect(overlayStorageKey('acme')).toBe('pv_overlay_acme');
   });

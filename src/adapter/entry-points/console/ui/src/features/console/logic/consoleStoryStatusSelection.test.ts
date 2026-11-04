@@ -185,6 +185,24 @@ describe('consoleStoryStatusSelection', () => {
     }
   });
 
+  it.each([
+    {
+      label: 'selected status',
+      selected: ['Unread'],
+      expected: ['alpha unread'],
+    },
+    { label: 'unselected status', selected: ['Preparation'], expected: [] },
+  ])(
+    'keeps the current status filtering behavior for a $label',
+    ({ selected, expected }) => {
+      expect(
+        filterConsoleStoryEntriesByStatusSelection(stories, selected)
+          .flatMap((entry) => entry.items)
+          .map((item) => item.title),
+      ).toEqual(expected);
+    },
+  );
+
   it('parses every status query parameter into status names, keeping order and skipping empty or repeated values', () => {
     const cases: { label: string; search: string; expected: string[] }[] = [
       { label: 'empty query', search: '', expected: [] },
