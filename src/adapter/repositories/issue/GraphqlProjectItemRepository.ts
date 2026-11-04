@@ -1685,13 +1685,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     const overwriteBoundaryMs =
       Math.floor(requestStartedAtMs / 1000) * 1000 - 1000;
     const res = await postGithubGraphqlJson<{
-      data: {
+      data?: {
         updateProjectV2ItemFieldValue: {
           clientMutationId: string;
           projectV2Item: ProjectV2ItemFieldValuesOnlyNode | null;
         };
       };
-      errors: GraphqlError[];
+      errors?: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: graphqlQuery.query,
@@ -1715,6 +1715,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       throw new Error(
         `updateProjectField failed: projectId=${projectId}, fieldId=${fieldId}, itemId=${itemId}, value=${JSON.stringify(value)}\n${res.errors.map((e) => e.message).join('\n')}`,
+      );
+    }
+    if (!res.data) {
+      throw new Error(
+        'GitHub GraphQL API returned no data for updateProjectField: no data field in response',
       );
     }
     const intendedValueString = projectFieldValueToIntendedValueString(value);
@@ -1877,7 +1882,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       variables: { owner, repo, number: issueNumber },
     };
     const nodeIdRes = await postGithubGraphqlJson<{
-      data: {
+      data?: {
         repository: {
           issueOrPullRequest: {
             id: string;
@@ -1893,6 +1898,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     if (nodeIdRes.errors) {
       throw new Error(nodeIdRes.errors.map((e) => e.message).join('\n'));
     }
+    if (!nodeIdRes.data) {
+      throw new Error(
+        'GitHub GraphQL API returned no data for addIssueToProject: no data field in response',
+      );
+    }
     const contentId = nodeIdRes.data.repository.issueOrPullRequest?.id;
     if (!contentId) {
       throw new Error(`Content not found for url ${issueUrl}`);
@@ -1907,7 +1917,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       variables: { projectId, contentId },
     };
     const addRes = await postGithubGraphqlJson<{
-      data: {
+      data?: {
         addProjectV2ItemById: {
           item: { id: string };
         };
@@ -1937,6 +1947,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         return existingItemId;
       }
       throw new Error(addRes.errors.map((e) => e.message).join('\n'));
+    }
+    if (!addRes.data) {
+      throw new Error(
+        'GitHub GraphQL API returned no data for addIssueToProject: no data field in response',
+      );
     }
     return addRes.data.addProjectV2ItemById.item.id;
   };
