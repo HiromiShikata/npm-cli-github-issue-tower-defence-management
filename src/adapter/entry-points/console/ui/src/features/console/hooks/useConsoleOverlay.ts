@@ -7,6 +7,7 @@ import {
 import type {
   ConsoleOverlay,
   ConsoleOverlayEntry,
+  ConsoleOverlayPatch,
   ConsoleTabName,
 } from '../logic/types';
 
@@ -46,7 +47,7 @@ export type ConsoleOverlayState = {
   overlay: ConsoleOverlay;
   patchOverlay: (
     key: string,
-    patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
+    patch: ConsoleOverlayPatch,
     mode: ConsoleTabName,
   ) => void;
   revertOverlayEntry: (key: string) => void;
@@ -58,11 +59,7 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
   );
 
   const patchOverlay = useCallback(
-    (
-      key: string,
-      patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
-      mode: ConsoleTabName,
-    ) => {
+    (key: string, patch: ConsoleOverlayPatch, mode: ConsoleTabName) => {
       setOverlay((current) => {
         const next = writeOverlayEntry(current, key, patch, mode, Date.now());
         persistOverlay(pjcode, next);

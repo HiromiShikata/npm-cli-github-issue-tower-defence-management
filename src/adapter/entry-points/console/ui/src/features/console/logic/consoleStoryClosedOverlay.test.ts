@@ -97,27 +97,24 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
       label: 'missing close time',
       closedAtMs: undefined,
     },
-  ])(
-    'does not apply a legacy closed flag with a $label',
-    ({ closedAtMs }) => {
-      const stories = makeStories();
-      const overlay = {
-        'item-1': {
-          ts: Date.parse('2026-10-05T00:00:01.000Z'),
-          mode: 'todo-by-human',
-          closed: true,
-          closedAtMs,
-        },
-      } as unknown as ConsoleOverlay;
-      const result = consoleStoryEntriesWithClosedOverlay(
-        stories,
-        overlay,
-        '2026-10-05T00:00:00.000Z',
-      );
-      expect(result[0].items[0]).toHaveProperty('isClosed', undefined);
-      expect(result[0].openItemCount).toBe(1);
-    },
-  );
+  ])('does not apply a legacy closed flag with a $label', ({ closedAtMs }) => {
+    const stories = makeStories();
+    const overlay = {
+      'item-1': {
+        ts: Date.parse('2026-10-05T00:00:01.000Z'),
+        mode: 'todo-by-human',
+        closed: true,
+        closedAtMs,
+      },
+    } as unknown as ConsoleOverlay;
+    const result = consoleStoryEntriesWithClosedOverlay(
+      stories,
+      overlay,
+      '2026-10-05T00:00:00.000Z',
+    );
+    expect(result[0].items[0]).toHaveProperty('isClosed', undefined);
+    expect(result[0].openItemCount).toBe(1);
+  });
 
   it.each([
     {
@@ -207,7 +204,9 @@ describe('consoleStoryEntriesWithClosedOverlay', () => {
       stories[0].openItemCount = openItemCount;
       const result = consoleStoryEntriesWithClosedOverlay(
         stories,
-        { 'item-1': { ts: 1, mode: 'todo-by-human', closedAtMs: 1 } } as unknown as ConsoleOverlay,
+        {
+          'item-1': { ts: 1, mode: 'todo-by-human', closedAtMs: 1 },
+        } as unknown as ConsoleOverlay,
         null,
       );
       expect(result[0].openItemCount).toBe(expected);

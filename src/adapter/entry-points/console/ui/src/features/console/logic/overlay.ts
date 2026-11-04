@@ -2,6 +2,7 @@ import type {
   ConsoleListItem,
   ConsoleOverlay,
   ConsoleOverlayEntry,
+  ConsoleOverlayPatch,
   ConsoleOverlayStatus,
   ConsoleTabName,
 } from './types';
@@ -79,14 +80,16 @@ export const overlayStatusSinceSnapshot = (
 export const writeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,
-  patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
+  patch: ConsoleOverlayPatch,
   mode: ConsoleTabName,
   now: number,
 ): ConsoleOverlay => {
+  const { closed, ...fields } = patch;
   const existing = overlay[key];
   const next: ConsoleOverlayEntry = {
     ...(existing ?? {}),
-    ...patch,
+    ...fields,
+    ...(closed === true ? { closedAtMs: now } : {}),
     ts: now,
     mode,
   };

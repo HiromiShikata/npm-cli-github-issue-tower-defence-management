@@ -54,7 +54,7 @@ import type {
   ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
-  ConsoleOverlayEntry,
+  ConsoleOverlayPatch,
   ConsoleOverlayStatus,
   ConsoleStoryColorSource,
   ConsoleStoryEntry,
@@ -75,7 +75,7 @@ export type ConsoleQueueActionInput = {
   skipAdvance?: boolean;
   onAdvance?: () => void;
   revertAdvance?: () => void;
-  overlayPatch?: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>;
+  overlayPatch?: ConsoleOverlayPatch;
 };
 
 const itemOfflineBase = (item: ConsoleListItem) => ({
