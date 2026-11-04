@@ -73,6 +73,7 @@ import {
   toggleConsoleStoryRowField,
 } from '../logic/consoleStoryRowFields';
 import {
+  filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
@@ -1076,7 +1077,14 @@ export const ConsolePage = () => {
     () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
     [storiesSnapshot],
   );
-
+  const effectiveStoryStatuses = useMemo(
+    () =>
+      resolveEffectiveConsoleStoryStatusSelection(
+        selectedStoryStatuses,
+        storyStatusOptionNames,
+      ),
+    [selectedStoryStatuses, storyStatusOptionNames],
+  );
   useEffect(() => {
     const statusesFromPopState = statusesFromPopStateRef.current;
     if (
@@ -1126,6 +1134,19 @@ export const ConsolePage = () => {
     localStoryEntriesOverride.generatedAt === storiesSnapshot?.generatedAt
       ? localStoryEntriesOverride.stories
       : rawStoryEntries;
+  const storyTabBadgeCounts = useMemo(() => {
+    if (effectiveStoryStatuses.length === 0 || storiesSnapshot === null) {
+      return counts;
+    }
+    const nonArchivedStories = storyEntries.filter((s) => s.color !== 'GRAY');
+    return {
+      ...counts,
+      stories: filterConsoleStoryEntriesByStatusSelection(
+        nonArchivedStories,
+        effectiveStoryStatuses,
+      ).length,
+    };
+  }, [counts, effectiveStoryStatuses, storiesSnapshot, storyEntries]);
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
   const newIssueUrl =
     defaultNameWithOwner !== null
@@ -1681,6 +1702,7 @@ export const ConsolePage = () => {
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
+        badgeCounts={storyTabBadgeCounts}
         pjcode={pjcode}
         pjcodes={pjcodes}
         disabledPjcodes={disabledPjcodes}

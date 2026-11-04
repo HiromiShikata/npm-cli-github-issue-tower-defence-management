@@ -35,6 +35,51 @@ const baseProps = {
   now: NOW_30S_LATER,
 };
 
+describe('ConsoleTabList badge counts', () => {
+  it('shows the display badge count while the tab presence uses the unfiltered counts', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={{ ...counts, stories: 3 }}
+        badgeCounts={{ ...counts, stories: 1 }}
+      />,
+    );
+    const storiesBadge = getByText('Stories')
+      .closest('a')
+      ?.querySelector('.console-tab-badge');
+    expect(storiesBadge?.textContent).toBe('1');
+  });
+
+  it('keeps the Stories tab with badge 0 when the unfiltered count is positive', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={{ ...counts, stories: 3 }}
+        badgeCounts={{ ...counts, stories: 0 }}
+      />,
+    );
+    const storiesBadge = getByText('Stories')
+      .closest('a')
+      ?.querySelector('.console-tab-badge');
+    expect(storiesBadge?.textContent).toBe('0');
+    expect(storiesBadge).toHaveAttribute('data-zero', 'true');
+  });
+
+  it('hides the Stories tab when the unfiltered count is zero even if the badge count is positive', () => {
+    const { queryByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={{ ...counts, stories: 0 }}
+        badgeCounts={{ ...counts, stories: 2 }}
+      />,
+    );
+    expect(queryByText('Stories')).toBeNull();
+  });
+});
+
 describe('ConsoleTabList', () => {
   it('hides zero-count tabs while showing non-zero tabs', () => {
     const { queryByText } = render(

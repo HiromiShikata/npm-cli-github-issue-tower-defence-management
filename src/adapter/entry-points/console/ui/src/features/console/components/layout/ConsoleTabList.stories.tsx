@@ -180,6 +180,14 @@ export const WithProjectSwitcherOpen: Story = {
   render: (args) => <DropdownOpen {...args} />,
 };
 
+export const StoriesBadgeFollowsStatusFilter: Story = {
+  args: {
+    activeTab: 'stories',
+    counts,
+    badgeCounts: { ...counts, stories: 1 },
+  },
+};
+
 export const WithFleetTaskCreateButton: Story = {
   args: {
     activeTab: 'prs',
