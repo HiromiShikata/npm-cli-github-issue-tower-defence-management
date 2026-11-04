@@ -11,6 +11,7 @@ import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 export type ConsoleTabBarProps = {
   activeTab: ConsoleTabName;
   counts: Record<ConsoleTabName, number>;
+  badgeCounts?: Record<ConsoleTabName, number>;
   pjcode: string | null;
   pjcodes: string[];
   disabledPjcodes: string[];
@@ -37,6 +38,7 @@ export type ConsoleTabBarProps = {
 export const ConsoleTabList = ({
   activeTab,
   counts,
+  badgeCounts = counts,
   pjcode,
   pjcodes,
   disabledPjcodes,
@@ -224,7 +226,7 @@ export const ConsoleTabList = ({
           const count = counts[tab.name] ?? 0;
           return count > 0 || tab.name === activeTab;
         }).map((tab) => {
-          const count = counts[tab.name] ?? 0;
+          const count = badgeCounts[tab.name] ?? 0;
           const isActive = tab.name === activeTab;
           return (
             <a

@@ -73,6 +73,7 @@ import {
   toggleConsoleStoryRowField,
 } from '../logic/consoleStoryRowFields';
 import {
+  filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
@@ -1076,6 +1077,29 @@ export const ConsolePage = () => {
     () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
     [storiesSnapshot],
   );
+  const effectiveStoryStatuses = useMemo(
+    () =>
+      resolveEffectiveConsoleStoryStatusSelection(
+        selectedStoryStatuses,
+        storyStatusOptionNames,
+      ),
+    [selectedStoryStatuses, storyStatusOptionNames],
+  );
+  const storyTabBadgeCounts = useMemo(() => {
+    if (effectiveStoryStatuses.length === 0 || storiesSnapshot === null) {
+      return counts;
+    }
+    const nonArchivedStories = storiesSnapshot.stories.filter(
+      (s) => s.color !== 'GRAY',
+    );
+    return {
+      ...counts,
+      stories: filterConsoleStoryEntriesByStatusSelection(
+        nonArchivedStories,
+        effectiveStoryStatuses,
+      ).length,
+    };
+  }, [counts, effectiveStoryStatuses, storiesSnapshot]);
 
   useEffect(() => {
     const statusesFromPopState = statusesFromPopStateRef.current;
@@ -1681,6 +1705,7 @@ export const ConsolePage = () => {
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
+        badgeCounts={storyTabBadgeCounts}
         pjcode={pjcode}
         pjcodes={pjcodes}
         disabledPjcodes={disabledPjcodes}

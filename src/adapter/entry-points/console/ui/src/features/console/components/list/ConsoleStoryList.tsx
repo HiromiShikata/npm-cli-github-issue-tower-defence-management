@@ -667,7 +667,9 @@ export const ConsoleStoryList = ({
                     </span>
                   </button>
                   <span className="console-story-count">
-                    {entry.openItemCount}
+                    {hasStatusSelection
+                      ? visibleTaskItems.length
+                      : entry.openItemCount}
                   </span>
                   <button
                     type="button"

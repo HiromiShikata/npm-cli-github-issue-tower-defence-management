@@ -537,6 +537,18 @@ export const StatusFilterDoneSelectedWithDoneToggleOff: Story = {
   },
 };
 
+export const StatusFilterRowCountsFollowSelection: Story = {
+  args: {
+    stories: statusFilterStories,
+    isLoading: false,
+    error: null,
+    statusOptionNames: statusFilterOptionNames,
+    selectedStatuses: ['Unread'],
+    onToggleStatus: () => undefined,
+    onClearStatuses: () => undefined,
+  },
+};
+
 export const TasksExpandedWithRowFieldsHidden: Story = {
   args: {
     stories: storiesWithoutUrl,
