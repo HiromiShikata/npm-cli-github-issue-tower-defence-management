@@ -5239,41 +5239,48 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
-      const result =
-        await repository.getIssueBodyEditHistory(bodyEditHistoryIssueUrl);
+      const result = await repository.getIssueBodyEditHistory(
+        bodyEditHistoryIssueUrl,
+      );
 
       expect(result).toEqual(['first body', '']);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(fetchSpy.mock.calls[0][0]).toBe(bodyEditHistoryGraphqlApiUrl);
-      const firstRequest = JSON.parse(
-        String(fetchSpy.mock.calls[0][1]?.body),
-      ) as { query: string; variables: Record<string, unknown> };
-      expect(firstRequest.query).toContain('userContentEdits');
-      expect(firstRequest.variables).toEqual({
-        owner: 'HiromiShikata',
-        repo: 'test-repository',
-        issueNumber: 42,
-        after: null,
+      const readRequestBody = (init: RequestInit | undefined): string => {
+        if (typeof init?.body !== 'string') {
+          throw new Error('Expected a string GraphQL request body');
+        }
+        return init.body;
+      };
+      const firstRequestBody = readRequestBody(fetchSpy.mock.calls[0][1]);
+      expect(firstRequestBody).toContain('userContentEdits');
+      const firstRequest: unknown = JSON.parse(firstRequestBody);
+      expect(firstRequest).toMatchObject({
+        variables: {
+          owner: 'HiromiShikata',
+          repo: 'test-repository',
+          issueNumber: 42,
+          after: null,
+        },
       });
-      const secondRequest = JSON.parse(
-        String(fetchSpy.mock.calls[1][1]?.body),
-      ) as { variables: Record<string, unknown> };
-      expect(secondRequest.variables.after).toBe('cursor-1');
+      const secondRequest: unknown = JSON.parse(
+        readRequestBody(fetchSpy.mock.calls[1][1]),
+      );
+      expect(secondRequest).toMatchObject({ variables: { after: 'cursor-1' } });
     });
 
     it('returns an empty list when the issue has no recorded edits', async () => {
-      jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          buildUserContentEditsResponse([], {
-            hasNextPage: false,
-            endCursor: null,
-          }),
-        );
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        buildUserContentEditsResponse([], {
+          hasNextPage: false,
+          endCursor: null,
+        }),
+      );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
-      const result =
-        await repository.getIssueBodyEditHistory(bodyEditHistoryIssueUrl);
+      const result = await repository.getIssueBodyEditHistory(
+        bodyEditHistoryIssueUrl,
+      );
 
       expect(result).toEqual([]);
     });
