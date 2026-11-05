@@ -1,3 +1,10 @@
+## [2.189.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.0...v2.189.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **token-selection:** run a token at its normal concurrency when its weekly reset is near ([#3694](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3694)) ([dfb38d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dfb38d19c1028c35b20dd55cff3a131a5897bdab))
+
 # [2.189.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.188.2...v2.189.0) (2026-11-05)
 
 
