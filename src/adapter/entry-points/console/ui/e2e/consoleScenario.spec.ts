@@ -2371,7 +2371,7 @@ test('story tab task row shows the title on its own line, then trigger fields, a
 
     const statusSelect = taskRow.getByRole('combobox', { name: 'Set status' });
     const currentStatus = await statusSelect.inputValue();
-    const nextStatus = currentStatus === 'e9f6a726' ? 'e9931e57' : 'e9f6a726';
+    const nextStatus = currentStatus === 'c2d278b2' ? 'e9931e57' : 'c2d278b2';
     await statusSelect.selectOption(nextStatus);
     await expect(statusSelect).toHaveValue(nextStatus);
 
