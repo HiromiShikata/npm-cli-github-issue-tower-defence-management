@@ -1,3 +1,10 @@
+## [2.188.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.188.1...v2.188.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **notify-finished-issue-preparation:** reject empty Story body only after a body was written ([#3693](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3693)) ([b2af491](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2af4918272bdd6e2eeadcbf220e18e3564239a6))
+
 ## [2.188.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.188.0...v2.188.1) (2026-11-05)
 
 
