@@ -11199,6 +11199,78 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
   it('tapers from normalConcurrentLimit when utilization is above the threshold', () => {
     expect(useCase.getTokenConcurrentLimit(0.1, 0.9, undefined, 10)).toBe(5);
   });
+
+  const FIVE_HOUR_WINDOW_SECONDS = 5 * 60 * 60;
+  const sevenDayResetWindowCases: Array<{
+    name: string;
+    fiveHourUtilization: number;
+    sevenDayUtilization: number;
+    secondsUntilSevenDayReset: number;
+    expectedLimit: number;
+  }> = [
+    {
+      name: 'keeps the normal limit when the 7-day reset is 30 minutes away and 5-hour utilization is 0',
+      fiveHourUtilization: 0,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: 30 * 60,
+      expectedLimit: 6,
+    },
+    {
+      name: 'keeps the normal limit when the 7-day reset is exactly one 5-hour window away',
+      fiveHourUtilization: 0,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: FIVE_HOUR_WINDOW_SECONDS,
+      expectedLimit: 6,
+    },
+    {
+      name: 'keeps the 7-day taper when the 7-day reset is 6 hours away',
+      fiveHourUtilization: 0,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: 6 * 60 * 60,
+      expectedLimit: 1,
+    },
+    {
+      name: 'keeps the 7-day taper when no 7-day reset is known',
+      fiveHourUtilization: 0,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: Number.POSITIVE_INFINITY,
+      expectedLimit: 1,
+    },
+    {
+      name: 'keeps the 7-day taper when the 7-day reset has already passed',
+      fiveHourUtilization: 0,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: -60,
+      expectedLimit: 1,
+    },
+    {
+      name: 'still applies the 5-hour taper when the 7-day reset is 30 minutes away',
+      fiveHourUtilization: 0.95,
+      sevenDayUtilization: 0.98,
+      secondsUntilSevenDayReset: 30 * 60,
+      expectedLimit: 2,
+    },
+  ];
+
+  it.each(sevenDayResetWindowCases)(
+    '$name',
+    ({
+      fiveHourUtilization,
+      sevenDayUtilization,
+      secondsUntilSevenDayReset,
+      expectedLimit,
+    }) => {
+      expect(
+        useCase.getTokenConcurrentLimit(
+          fiveHourUtilization,
+          sevenDayUtilization,
+          undefined,
+          undefined,
+          secondsUntilSevenDayReset,
+        ),
+      ).toBe(expectedLimit);
+    },
+  );
 });
 
 describe('StartPreparationUseCase.run normalConcurrentLimit', () => {

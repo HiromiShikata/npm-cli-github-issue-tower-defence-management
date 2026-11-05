@@ -38,11 +38,13 @@ import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsP
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
 import {
   DEFAULT_SELECTION_WEIGHT,
+  FIVE_HOUR_WINDOW_HOURS,
   oauthTokenFillTargetSelect,
   windowFreeRatioOfUtilization,
 } from './OauthTokenSelectUseCase';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
+const FIVE_HOUR_WINDOW_SECONDS = FIVE_HOUR_WINDOW_HOURS * 60 * 60;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
@@ -213,12 +215,18 @@ export class StartPreparationUseCase {
     sevenDayUtilization: number,
     selectionWeight?: number,
     normalConcurrentLimit: number = NORMAL_CONCURRENT_LIMIT,
+    secondsUntilSevenDayReset: number = Number.POSITIVE_INFINITY,
   ): number => {
-    const sevenDayLimit = this.taperedConcurrentLimit(
-      sevenDayUtilization,
-      SEVEN_DAY_THROTTLE_START_THRESHOLD,
-      normalConcurrentLimit,
-    );
+    const sevenDayResetsWithinFiveHourWindow =
+      secondsUntilSevenDayReset > 0 &&
+      secondsUntilSevenDayReset <= FIVE_HOUR_WINDOW_SECONDS;
+    const sevenDayLimit = sevenDayResetsWithinFiveHourWindow
+      ? normalConcurrentLimit
+      : this.taperedConcurrentLimit(
+          sevenDayUtilization,
+          SEVEN_DAY_THROTTLE_START_THRESHOLD,
+          normalConcurrentLimit,
+        );
     const fiveHourLimit = this.taperedConcurrentLimit(
       fiveHourUtilization,
       FIVE_HOUR_THROTTLE_START_THRESHOLD,
@@ -411,6 +419,7 @@ export class StartPreparationUseCase {
         usage.sevenDayUtilization,
         usage.selectionWeight,
         normalConcurrentLimit,
+        this.secondsUntilSevenDayReset(usage, nowEpochSeconds),
       ),
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
