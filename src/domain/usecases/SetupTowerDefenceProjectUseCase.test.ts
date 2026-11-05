@@ -14,7 +14,6 @@ import {
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
@@ -84,7 +83,7 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 });
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 9 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 8 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
@@ -92,7 +91,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       { name: AWAITING_OWNER_STATUS_NAME, color: 'GREEN' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
       { name: IN_TMUX_STATUS_NAME, color: 'RED' },
-      { name: IN_TMUX_BY_AGENT_STATUS_NAME, color: 'YELLOW' },
       { name: DONE_STATUS_NAME, color: 'PURPLE' },
       { name: ICEBOX_STATUS_NAME, color: 'GRAY' },
     ]);
@@ -305,12 +303,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
-          name: IN_TMUX_BY_AGENT_STATUS_NAME,
-          color: 'YELLOW',
-          description: '',
-        },
-        {
-          id: null,
           name: DONE_STATUS_NAME,
           color: 'PURPLE',
           description: '',
@@ -379,7 +371,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
@@ -587,13 +578,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
   });
 
-  it('should create the "In Tmux by agent" status with yellow color when it is missing', async () => {
+  it('should remove "In Tmux by agent" from the status list when it is present', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
@@ -606,9 +596,62 @@ describe('SetupTowerDefenceProjectUseCase', () => {
           | 'removeIssueFromProjectCache'
         >
       >();
-    const statuses = buildCanonicalStatuses().filter(
-      (s) => s.name !== IN_TMUX_BY_AGENT_STATUS_NAME,
-    );
+    const statuses: FieldOption[] = [
+      {
+        id: 'awaiting-workspace-id',
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: '',
+      },
+      {
+        id: 'preparation-id',
+        name: PREPARATION_STATUS_NAME,
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'failed-preparation-id',
+        name: FAILED_PREPARATION_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'awaiting-owner-id',
+        name: AWAITING_OWNER_STATUS_NAME,
+        color: 'GREEN',
+        description: '',
+      },
+      {
+        id: 'todo-human-id',
+        name: TODO_STATUS_NAME,
+        color: 'PINK',
+        description: '',
+      },
+      {
+        id: 'in-tmux-human-id',
+        name: IN_TMUX_STATUS_NAME,
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'done-id',
+        name: DONE_STATUS_NAME,
+        color: 'PURPLE',
+        description: '',
+      },
+      {
+        id: 'icebox-id',
+        name: ICEBOX_STATUS_NAME,
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'in-tmux-agent-id',
+        name: 'In Tmux by agent',
+        color: 'YELLOW',
+        description: '',
+      },
+    ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
     mockProjectRepository.updateStatusList.mockResolvedValue([]);
@@ -629,68 +672,31 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const inTmuxByAgentEntry = payload.find(
-      (s) => s.name === IN_TMUX_BY_AGENT_STATUS_NAME,
-    );
-    expect(inTmuxByAgentEntry).toBeDefined();
-    expect(inTmuxByAgentEntry?.id).toBeNull();
-    expect(inTmuxByAgentEntry?.color).toBe('YELLOW');
-    const names = payload.map((s) => s.name);
-    expect(names.indexOf(IN_TMUX_BY_AGENT_STATUS_NAME)).toBe(
-      names.indexOf(IN_TMUX_STATUS_NAME) + 1,
-    );
-  });
+    expect(payload.map((s) => s.name)).toEqual([
+      'Awaiting Workspace',
+      'Preparation',
+      'Failed Preparation',
+      'Awaiting Owner',
+      'Todo by human',
+      'In Tmux by human',
+      'Done',
+      'Icebox',
+    ]);
+    expect(payload.some((s) => s.name === 'In Tmux by agent')).toBe(false);
 
-  it('should leave an already-present "In Tmux by agent" option unchanged by reusing its existing option ID', async () => {
-    const mockProjectRepository =
-      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
-    const mockIssueRepository =
-      mock<
-        Pick<
-          IssueRepository,
-          | 'getAllIssues'
-          | 'updateStatus'
-          | 'get'
-          | 'removeIssueFromProjectCache'
-        >
-      >();
-    const statuses = buildCanonicalStatuses().map((s) => {
-      if (s.name === IN_TMUX_BY_AGENT_STATUS_NAME) {
-        return { ...s, id: 'preexisting-agent-id' };
-      }
-      if (s.name === AWAITING_WORKSPACE_STATUS_NAME) {
-        return { ...s, description: 'stale description' };
-      }
-      return s;
-    });
-    const project = buildProject(statuses);
-    mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mock<Project>(),
-      issues: [],
-      cacheUsed: false,
-    });
-
-    const mockStatusDefaultRepository =
-      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
-    const useCase = new SetupTowerDefenceProjectUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockStatusDefaultRepository,
-    );
-    await useCase.run({ projectUrl: project.url });
-
-    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
-    const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const inTmuxByAgentEntry = payload.find(
-      (s) => s.name === IN_TMUX_BY_AGENT_STATUS_NAME,
-    );
-    expect(inTmuxByAgentEntry?.id).toBe('preexisting-agent-id');
-    expect(inTmuxByAgentEntry?.color).toBe('YELLOW');
-    expect(
-      payload.filter((s) => s.name === IN_TMUX_BY_AGENT_STATUS_NAME),
-    ).toHaveLength(1);
+    const preservedIds = [
+      ['Awaiting Workspace', 'awaiting-workspace-id'],
+      ['Preparation', 'preparation-id'],
+      ['Failed Preparation', 'failed-preparation-id'],
+      ['Awaiting Owner', 'awaiting-owner-id'],
+      ['Todo by human', 'todo-human-id'],
+      ['In Tmux by human', 'in-tmux-human-id'],
+      ['Done', 'done-id'],
+      ['Icebox', 'icebox-id'],
+    ] as const;
+    for (const [name, id] of preservedIds) {
+      expect(payload.find((s) => s.name === name)?.id).toBe(id);
+    }
   });
 
   it('should remove "PC Todo" from the status list and not include it in others', async () => {
@@ -820,7 +826,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
@@ -967,7 +972,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
@@ -1299,7 +1303,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
       DONE_STATUS_NAME,
       ICEBOX_STATUS_NAME,
     ]);
@@ -2046,7 +2049,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         snapshotIssue: snapshotNullStatusIssue,
         liveIssue: {
           ...snapshotNullStatusIssue,
-          status: IN_TMUX_BY_AGENT_STATUS_NAME,
+          status: IN_TMUX_STATUS_NAME,
         },
         expectedUpdateStatusCallCount: 0,
       },

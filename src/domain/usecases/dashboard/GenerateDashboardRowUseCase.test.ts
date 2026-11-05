@@ -210,8 +210,8 @@ describe('GenerateDashboardRowUseCase', () => {
     },
   );
 
-  it('excludes an In Tmux by agent status issue from both new actionable count fields', () => {
-    const issues = [makeIssue({ status: 'In Tmux by agent' })];
+  it('excludes an In Tmux by human status issue from both new actionable count fields', () => {
+    const issues = [makeIssue({ status: 'In Tmux by human' })];
 
     const result = usecase.run({
       issues,

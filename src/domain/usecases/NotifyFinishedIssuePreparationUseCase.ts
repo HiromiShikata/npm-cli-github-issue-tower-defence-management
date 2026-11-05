@@ -11,7 +11,6 @@ import {
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
@@ -377,14 +376,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Failed Preparation`,
       );
       return;
-    } else if (
-      issue.status !== PREPARATION_STATUS_NAME &&
-      issue.status !== IN_TMUX_BY_AGENT_STATUS_NAME
-    ) {
+    } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
-        `${PREPARATION_STATUS_NAME} or ${IN_TMUX_BY_AGENT_STATUS_NAME}`,
+        PREPARATION_STATUS_NAME,
       );
     }
 

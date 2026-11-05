@@ -268,7 +268,7 @@ describe('ReopenedDoneIssueRevertUseCase', () => {
       {
         label:
           'does not overwrite a Status an agent set after the snapshot was taken',
-        liveIssue: createMockIssue({ status: 'In Tmux by agent' }),
+        liveIssue: createMockIssue({ status: 'In Tmux by human' }),
         expectedUpdateStatusCallCount: 0,
       },
       {

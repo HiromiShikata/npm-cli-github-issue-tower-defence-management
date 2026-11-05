@@ -769,7 +769,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
         snapshotIssue: enabledStorySnapshotIssue,
         liveIssue: {
           ...enabledStorySnapshotIssue,
-          status: 'In Tmux by agent',
+          status: 'In Tmux by human',
         },
         expectedUpdateStatusCalls: [],
         expectedCreateCommentCalls: [],

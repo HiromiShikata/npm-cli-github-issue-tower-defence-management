@@ -9,10 +9,7 @@ import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase
 import { Issue } from '../entities/Issue';
 import { LiveTmuxSession } from '../entities/LiveTmuxSession';
 import { Project } from '../entities/Project';
-import {
-  IN_TMUX_STATUS_NAME,
-  IN_TMUX_BY_AGENT_STATUS_NAME,
-} from '../entities/WorkflowStatus';
+import { IN_TMUX_STATUS_NAME } from '../entities/WorkflowStatus';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -160,10 +157,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
   });
 
   it('exposes the excluded status names and idle threshold as named constants', () => {
-    expect(DEFAULT_EXCLUDED_STATUS_NAMES).toEqual([
-      IN_TMUX_STATUS_NAME,
-      IN_TMUX_BY_AGENT_STATUS_NAME,
-    ]);
+    expect(DEFAULT_EXCLUDED_STATUS_NAMES).toEqual([IN_TMUX_STATUS_NAME]);
     expect(DEFAULT_IDLE_THRESHOLD_SECONDS).toBe(86400);
   });
 
@@ -252,46 +246,6 @@ describe('StaleTmuxSessionKillUseCase', () => {
     },
     {
       row: 7,
-      name: 'In Tmux by agent, no trigger, recent activity -> not killed',
-      mappedToIssue: true,
-      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
-      nextActionDate: null,
-      nextActionHour: null,
-      idleAtOrBeyondThreshold: false,
-      expectedKilled: false,
-    },
-    {
-      row: 8,
-      name: 'In Tmux by agent, no trigger, idle -> not killed',
-      mappedToIssue: true,
-      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
-      nextActionDate: null,
-      nextActionHour: null,
-      idleAtOrBeyondThreshold: true,
-      expectedKilled: false,
-    },
-    {
-      row: 9,
-      name: 'In Tmux by agent, next action date set, recent activity -> killed',
-      mappedToIssue: true,
-      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
-      nextActionDate: new Date('2026-06-27T00:00:00Z'),
-      nextActionHour: null,
-      idleAtOrBeyondThreshold: false,
-      expectedKilled: true,
-    },
-    {
-      row: 10,
-      name: 'In Tmux by agent, next action hour set, recent activity -> killed',
-      mappedToIssue: true,
-      issueStatus: IN_TMUX_BY_AGENT_STATUS_NAME,
-      nextActionDate: null,
-      nextActionHour: 9,
-      idleAtOrBeyondThreshold: false,
-      expectedKilled: true,
-    },
-    {
-      row: 11,
       name: 'status not excluded (Awaiting Workspace), recent activity -> not killed',
       mappedToIssue: true,
       issueStatus: OTHER_STATUS_NAME,
@@ -301,7 +255,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
       expectedKilled: false,
     },
     {
-      row: 12,
+      row: 8,
       name: 'status not excluded (Awaiting Workspace), idle -> killed',
       mappedToIssue: true,
       issueStatus: OTHER_STATUS_NAME,
@@ -311,7 +265,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
       expectedKilled: true,
     },
     {
-      row: 13,
+      row: 9,
       name: 'null/unset status, recent activity -> not killed',
       mappedToIssue: true,
       issueStatus: null,
@@ -321,7 +275,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
       expectedKilled: false,
     },
     {
-      row: 14,
+      row: 10,
       name: 'null/unset status, idle -> killed',
       mappedToIssue: true,
       issueStatus: null,
@@ -488,12 +442,7 @@ describe('StaleTmuxSessionKillUseCase', () => {
       { nextActionDate: new Date('2030-01-01T00:00:00Z') },
       { nextActionHour: 0 },
     ]) {
-      for (const status of [
-        IN_TMUX_STATUS_NAME,
-        IN_TMUX_BY_AGENT_STATUS_NAME,
-        'Done',
-        null,
-      ]) {
+      for (const status of [IN_TMUX_STATUS_NAME, 'Done', null]) {
         mockTmuxSessionRepository.killSession.mockClear();
         const issue = createMockIssue({
           url: 'https://github.com/user/repo/issues/9',
