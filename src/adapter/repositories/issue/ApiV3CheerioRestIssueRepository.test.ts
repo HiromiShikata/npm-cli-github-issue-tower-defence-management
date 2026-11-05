@@ -5198,6 +5198,130 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getIssueBodyEditHistory', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const bodyEditHistoryIssueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/42';
+    const bodyEditHistoryGraphqlApiUrl = 'https://api.github.com/graphql';
+
+    const buildUserContentEditsResponse = (
+      nodes: { diff: string | null }[],
+      pageInfo: { hasNextPage: boolean; endCursor: string | null },
+    ): Response =>
+      new Response(
+        JSON.stringify({
+          data: {
+            repository: {
+              issue: { userContentEdits: { pageInfo, nodes } },
+            },
+          },
+        }),
+        { status: 200 },
+      );
+
+    it('returns the body text of every edit across all pages, requesting each page after the previous cursor', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          buildUserContentEditsResponse([{ diff: 'first body' }], {
+            hasNextPage: true,
+            endCursor: 'cursor-1',
+          }),
+        )
+        .mockResolvedValueOnce(
+          buildUserContentEditsResponse([{ diff: '' }], {
+            hasNextPage: false,
+            endCursor: null,
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result =
+        await repository.getIssueBodyEditHistory(bodyEditHistoryIssueUrl);
+
+      expect(result).toEqual(['first body', '']);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0]).toBe(bodyEditHistoryGraphqlApiUrl);
+      const firstRequest = JSON.parse(
+        String(fetchSpy.mock.calls[0][1]?.body),
+      ) as { query: string; variables: Record<string, unknown> };
+      expect(firstRequest.query).toContain('userContentEdits');
+      expect(firstRequest.variables).toEqual({
+        owner: 'HiromiShikata',
+        repo: 'test-repository',
+        issueNumber: 42,
+        after: null,
+      });
+      const secondRequest = JSON.parse(
+        String(fetchSpy.mock.calls[1][1]?.body),
+      ) as { variables: Record<string, unknown> };
+      expect(secondRequest.variables.after).toBe('cursor-1');
+    });
+
+    it('returns an empty list when the issue has no recorded edits', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          buildUserContentEditsResponse([], {
+            hasNextPage: false,
+            endCursor: null,
+          }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result =
+        await repository.getIssueBodyEditHistory(bodyEditHistoryIssueUrl);
+
+      expect(result).toEqual([]);
+    });
+
+    it.each([
+      {
+        name: 'an HTTP error status',
+        response: new Response('server error', { status: 500 }),
+      },
+      {
+        name: 'a GraphQL errors array',
+        response: new Response(
+          JSON.stringify({ errors: [{ message: 'Something failed' }] }),
+          { status: 200 },
+        ),
+      },
+      {
+        name: 'an edit without body text',
+        response: buildUserContentEditsResponse([{ diff: null }], {
+          hasNextPage: false,
+          endCursor: null,
+        }),
+      },
+      {
+        name: 'a missing issue',
+        response: new Response(
+          JSON.stringify({ data: { repository: { issue: null } } }),
+          { status: 200 },
+        ),
+      },
+      {
+        name: 'an unexpected response shape',
+        response: new Response(JSON.stringify({}), { status: 200 }),
+      },
+    ])(
+      'throws so the caller cannot treat the history as readable when the response has $name',
+      async (testCase) => {
+        jest.spyOn(global, 'fetch').mockResolvedValueOnce(testCase.response);
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+
+        await expect(
+          repository.getIssueBodyEditHistory(bodyEditHistoryIssueUrl),
+        ).rejects.toThrow(/body edit history/);
+      },
+    );
+  });
+
   describe('getLatestReopenedEventAt', () => {
     afterEach(() => {
       jest.restoreAllMocks();
