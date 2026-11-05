@@ -776,6 +776,7 @@ const createStubIssueRepository = (
   },
   reopenIssueByUrl: async (): Promise<void> => undefined,
   getLatestReopenedEventAt: async (): Promise<Date | null> => null,
+  getIssueBodyEditHistory: () => notImplemented('getIssueBodyEditHistory'),
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
   createCommentByUrl: async (
     url: string,
