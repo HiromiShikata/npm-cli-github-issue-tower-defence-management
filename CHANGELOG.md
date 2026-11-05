@@ -1,3 +1,10 @@
+## [2.188.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.188.0...v2.188.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **console:** remove closed tasks from Stories immediately ([#3692](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3692)) ([d3eae39](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d3eae394bb7d7051efb0c2ef690d915e098ea9c1))
+
 # [2.188.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.187.3...v2.188.0) (2026-11-04)
 
 
