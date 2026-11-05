@@ -566,12 +566,33 @@ describe('loadConfigFile unresolved YAML tag', () => {
 
 const YAML_SYNTAX_ERROR_CONFIG_CONTENT =
   'consoleProjects: {umino: https://example.com';
-const YAML_PARSER_ERROR_FIRST_LINE =
-  'Flow map in block collection must be sufficiently indented and end with a } at line 1, column 45:';
+const YAML_TOKEN_SYNTAX_ERROR_CONFIG_CONTENT =
+  'consoleGithubTokens:\n  umino: "FAKE_SECRET_VALUE_123\n';
+
+const readYamlSyntaxErrorPosition = (content: string) => {
+  const parseError = YAML.parseDocument(content).errors[0];
+  const start = parseError.linePos?.[0];
+  if (start === undefined) {
+    throw new Error('parser reported no position for the syntax error');
+  }
+  return { code: parseError.code, line: start.line, column: start.col };
+};
+
+const spyCallsText = (spy: jest.SpyInstance): string =>
+  spy.mock.calls.map(([chunk]) => String(chunk)).join('');
+
+const expectedYamlSyntaxErrorLogMessage = (
+  filePath: string,
+  position: { code: string; line: number; column: number },
+): string =>
+  `Failed to load configuration file "${filePath}": ${position.code} at line ${position.line}, column ${position.column}`;
 
 describe('loadConfigFile YAML syntax error', () => {
   let dir: string;
   let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+  let stdoutWriteSpy: jest.SpyInstance;
+  let stderrWriteSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -581,6 +602,15 @@ describe('loadConfigFile YAML syntax error', () => {
     consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
+    consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
+    stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    stderrWriteSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
     processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called');
     });
@@ -588,14 +618,20 @@ describe('loadConfigFile YAML syntax error', () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    stdoutWriteSpy.mockRestore();
+    stderrWriteSpy.mockRestore();
     processExitSpy.mockRestore();
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('throws for a YAML syntax error and leaves the existing error message contract unchanged', () => {
+  it('throws for a YAML syntax error and logs only the error code and position', () => {
     const filePath = path.join(dir, 'config.yml');
     fs.writeFileSync(filePath, YAML_SYNTAX_ERROR_CONFIG_CONTENT);
-    const expectedLogPrefix = `Failed to load configuration file "${filePath}": ${YAML_PARSER_ERROR_FIRST_LINE}`;
+    const expectedLogMessage = expectedYamlSyntaxErrorLogMessage(
+      filePath,
+      readYamlSyntaxErrorPosition(YAML_SYNTAX_ERROR_CONFIG_CONTENT),
+    );
 
     expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
 
@@ -604,8 +640,60 @@ describe('loadConfigFile YAML syntax error', () => {
       .join('');
     expect(processExitSpy).toHaveBeenCalledWith(1);
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    expect(loggedText.slice(0, expectedLogPrefix.length)).toBe(
-      expectedLogPrefix,
+    expect(loggedText).toBe(expectedLogMessage);
+  });
+
+  it('logs the error code and position for a syntax error on a token line without echoing the token or source text', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, YAML_TOKEN_SYNTAX_ERROR_CONFIG_CONTENT);
+    const expectedLogMessage = expectedYamlSyntaxErrorLogMessage(
+      filePath,
+      readYamlSyntaxErrorPosition(YAML_TOKEN_SYNTAX_ERROR_CONFIG_CONTENT),
+    );
+
+    expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+
+    const loggedText = consoleErrorSpy.mock.calls
+      .map(([message]) => String(message))
+      .join('');
+    const outputText = [
+      consoleErrorSpy,
+      consoleLogSpy,
+      stdoutWriteSpy,
+      stderrWriteSpy,
+    ]
+      .map(spyCallsText)
+      .join('');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(loggedText).toBe(expectedLogMessage);
+    expect(outputText).not.toContain('FAKE_SECRET_VALUE_123');
+    expect(outputText).not.toContain('umino: "FAKE_SECRET_VALUE_123');
+    expect(outputText).not.toContain('^');
+    expect(outputText).not.toContain('\n');
+  });
+
+  it('logs the error code alone for a YAML syntax error without a position', () => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, '{}\n');
+    const parsedDocument = YAML.parseDocument('{}\n');
+    parsedDocument.errors.push(
+      new YAML.YAMLParseError([0, 1], 'MISSING_CHAR', 'Unclosed quote'),
+    );
+    const parseDocumentSpy = jest
+      .spyOn(YAML, 'parseDocument')
+      .mockReturnValueOnce(parsedDocument);
+
+    try {
+      expect(() => loadConfigFile(filePath)).toThrow('process.exit called');
+    } finally {
+      parseDocumentSpy.mockRestore();
+    }
+
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      `Failed to load configuration file "${filePath}": MISSING_CHAR`,
     );
   });
 });
