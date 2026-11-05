@@ -1,3 +1,11 @@
+## [2.189.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.1...v2.189.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **config:** loadConfigFile prints a token-bearing config line to stderr when a YAML tag is unresolved ([#3619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3619)) ([dc19699](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dc19699774a2759c557786ae7231e033edb2adb4))
+* **console:** confirm issue-close outcomes after ambiguous failures ([#3564](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3564)) ([a0529d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a0529d10fd017041802a2fcb96a23b1f43ead165))
+
 ## [2.189.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.0...v2.189.1) (2026-11-05)
 
 
