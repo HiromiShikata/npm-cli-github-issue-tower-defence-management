@@ -378,6 +378,47 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
     ).toEqual(['2']);
   });
 
+  it('reserves the normal launch slot limit for a token whose 7-day window resets within the 5-hour window', async () => {
+    const sevenDayResetsAtEpochSeconds =
+      Math.floor(Date.now() / 1000) + 30 * 60;
+    const harness = harnessCreate(undefined, [
+      {
+        ...spawnTokenUsage,
+        sevenDayUtilization: 0.98,
+        modelWeeklyLimits: {
+          seven_day: {
+            rejected: false,
+            resetsAt: sevenDayResetsAtEpochSeconds,
+          },
+        },
+      },
+    ]);
+
+    await harness.useCase.run({
+      projectUrl: PROJECT_URL,
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(harness.reserveTokenLaunchSlot.mock.calls).toEqual([
+      [
+        {
+          token: SPAWN_TOKEN,
+          concurrentLimit: NORMAL_CONCURRENT_LIMIT,
+          issueUrl: CANDIDATE_ISSUE_URL,
+        },
+      ],
+    ]);
+  });
+
   it('starts a future Codex model when Claude tokens are unavailable', async () => {
     const harness = harnessCreate(['category:impl'], []);
 
