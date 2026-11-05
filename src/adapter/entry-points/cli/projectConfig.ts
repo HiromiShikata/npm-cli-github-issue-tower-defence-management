@@ -1,4 +1,4 @@
-import YAML from 'yaml';
+import YAML, { type YAMLError } from 'yaml';
 import * as fs from 'fs';
 import { fetchGithubGraphql } from '../../repositories/githubGraphqlClient';
 
@@ -183,20 +183,25 @@ const knownProjectReadmeConfigKeys = [
   'errorReportingRepository',
 ] as const;
 
+const formatYamlErrorLocation = (error: YAMLError): string => {
+  const start = error.linePos?.[0];
+  return start === undefined
+    ? ''
+    : ` at line ${start.line}, column ${start.col}`;
+};
+
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
   try {
     const content = fs.readFileSync(configFilePath, 'utf-8');
     const doc = YAML.parseDocument(content);
     for (const warning of doc.warnings) {
-      const start = warning.linePos?.[0];
-      const location =
-        start === undefined
-          ? ''
-          : ` at line ${start.line}, column ${start.col}`;
-      process.stderr.write(`Config file warning: ${warning.code}${location}\n`);
+      process.stderr.write(
+        `Config file warning: ${warning.code}${formatYamlErrorLocation(warning)}\n`,
+      );
     }
     if (doc.errors.length > 0) {
-      throw doc.errors[0];
+      const [error] = doc.errors;
+      throw new Error(`${error.code}${formatYamlErrorLocation(error)}`);
     }
     const parsed: unknown = doc.toJS();
     if (!isRecord(parsed)) {
