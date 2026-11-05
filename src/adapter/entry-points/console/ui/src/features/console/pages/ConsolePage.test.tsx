@@ -10,7 +10,7 @@ import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
 import { colorFromEnum } from '../logic/colors';
-import { overlayStorageKey } from '../logic/overlay';
+import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
 import {
   type AttachmentSubmissionProgress,
   attachmentSubmissionParamsChanged,
@@ -144,11 +144,1139 @@ const installFetch = (
   global.fetch = fetchMock as unknown as typeof fetch;
 };
 
+const storiesDetailItem = {
+  number: 901,
+  title: 'Stories detail task',
+  url: 'https://github.com/o/r/issues/901',
+  repo: 'o/r',
+  nameWithOwner: 'o/r',
+  projectItemId: 'PVTI_STORY_DETAIL',
+  itemId: 'PVTI_STORY_DETAIL',
+  isPr: false,
+  story: 'TDPM Console port',
+  status: 'In Progress',
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-06-18T00:00:00.000Z',
+  relatedOpenPullRequestUrls: [],
+  isClosed: false,
+};
+
+const storiesDetailPayload = (generatedAt = '2026-06-19T00:00:00.000Z') => {
+  const payload = listPayload('stories');
+  return {
+    ...payload,
+    generatedAt,
+    stories: [
+      {
+        ...payload.stories[0],
+        openItemCount: 1,
+        items: [storiesDetailItem],
+      },
+    ],
+    items: [storiesDetailItem],
+  };
+};
+
+const installStoriesDetailFetch = (options?: {
+  closeRequestOk?: boolean;
+  closeFailsOnce?: boolean;
+  closeRequestNetworkDown?: boolean;
+  laterStoriesSnapshot?: boolean;
+  storiesGeneratedAt?: string;
+}): void => {
+  let storiesRequestCount = 0;
+  let closeRequestCount = 0;
+  const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
+    const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+    if (listMatch !== null) {
+      if (listMatch[1] === 'stories') {
+        const generatedAt =
+          options?.storiesGeneratedAt ??
+          (options?.laterStoriesSnapshot === true && storiesRequestCount > 0
+            ? '2026-06-19T00:02:00.000Z'
+            : '2026-06-19T00:00:00.000Z');
+        storiesRequestCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => storiesDetailPayload(generatedAt),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => {
+          const payload = listPayload(listMatch[1]);
+          return listMatch[1] === 'todo-by-human'
+            ? { ...payload, items: [...payload.items, storiesDetailItem] }
+            : payload;
+        },
+      };
+    }
+    if (url === '/api/projects') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ pjcodes: ['acme'] }),
+      };
+    }
+    if (url === '/api/triage' && init?.method === 'POST') {
+      closeRequestCount += 1;
+      if (options?.closeRequestNetworkDown === true) {
+        throw new TypeError('Failed to fetch');
+      }
+      const fails =
+        options?.closeRequestOk === false ||
+        (options?.closeFailsOnce === true && closeRequestCount === 1);
+      return {
+        ok: !fails,
+        status: fails ? 500 : 200,
+        text: async () => JSON.stringify({ error: 'close failed' }),
+        json: async () => ({ ok: true, closedAtMs: Date.now() }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+};
+
+const installTriageCloseFailure = (
+  mode: 'fail' | 'failOnce' | 'networkDown',
+): void => {
+  const baseFetch = global.fetch as unknown as (
+    url: string,
+    init?: { method?: string },
+  ) => Promise<unknown>;
+  let closeRequestCount = 0;
+  const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
+    if (url === '/api/triage' && init?.method === 'POST') {
+      closeRequestCount += 1;
+      if (mode === 'networkDown') {
+        throw new TypeError('Failed to fetch');
+      }
+      const fails = mode === 'fail' || closeRequestCount === 1;
+      if (fails) {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => JSON.stringify({ error: 'close failed' }),
+          json: async () => ({ error: 'close failed' }),
+        };
+      }
+    }
+    return baseFetch(url, init);
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+};
+
+type TriageOutcome = 'ok' | 'fail' | 'networkError';
+
+type StoriesCloseTimingControl = {
+  respondToNextTriageRequest: (
+    respondedAt: string,
+    ok: boolean,
+    closedAtMs?: number,
+  ) => Promise<void>;
+  failNextTriageRequestWithNetworkError: (respondedAt: string) => Promise<void>;
+  pendingTriageRequestCount: () => number;
+  setStoriesGeneratedAt: (generatedAt: string) => void;
+  storiesListRequestCount: () => number;
+};
+
+const installStoriesCloseTimingFetch = (
+  initialGeneratedAt: string,
+): StoriesCloseTimingControl => {
+  let storiesGeneratedAt = initialGeneratedAt;
+  const pendingTriageResponders: ((
+    outcome: TriageOutcome,
+    closedAtMs?: number,
+  ) => void)[] = [];
+  const fetchMock = jest.fn(async (url: string, init?: { method?: string }) => {
+    const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+    if (listMatch !== null) {
+      if (listMatch[1] === 'stories') {
+        const generatedAt = storiesGeneratedAt;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => storiesDetailPayload(generatedAt),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => listPayload(listMatch[1]),
+      };
+    }
+    if (url === '/api/projects') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ pjcodes: ['acme'] }),
+      };
+    }
+    if (url === '/api/triage' && init?.method === 'POST') {
+      return new Promise((resolve, reject) => {
+        pendingTriageResponders.push(
+          (outcome: TriageOutcome, closedAtMs?: number) => {
+            if (outcome === 'networkError') {
+              reject(new TypeError('Failed to fetch'));
+              return;
+            }
+            const ok = outcome === 'ok';
+            resolve({
+              ok,
+              status: ok ? 200 : 500,
+              text: async () => JSON.stringify({ error: 'close failed' }),
+              json: async () =>
+                closedAtMs === undefined
+                  ? { body: '# body' }
+                  : { ok: true, closedAtMs },
+            });
+          },
+        );
+      });
+    }
+    return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+  });
+  global.fetch = fetchMock as unknown as typeof fetch;
+  const settleNextTriageRequest = async (
+    respondedAt: string,
+    outcome: TriageOutcome,
+    closedAtMs?: number,
+  ): Promise<void> => {
+    const respond = pendingTriageResponders.shift();
+    if (respond === undefined) {
+      throw new Error('no pending triage request');
+    }
+    await act(async () => {
+      jest.setSystemTime(Date.parse(respondedAt));
+      respond(outcome, closedAtMs);
+    });
+  };
+  return {
+    respondToNextTriageRequest: (
+      respondedAt: string,
+      ok: boolean,
+      closedAtMs?: number,
+    ) => settleNextTriageRequest(respondedAt, ok ? 'ok' : 'fail', closedAtMs),
+    failNextTriageRequestWithNetworkError: (respondedAt: string) =>
+      settleNextTriageRequest(respondedAt, 'networkError'),
+    pendingTriageRequestCount: (): number => pendingTriageResponders.length,
+    setStoriesGeneratedAt: (generatedAt: string): void => {
+      storiesGeneratedAt = generatedAt;
+    },
+    storiesListRequestCount: (): number =>
+      (global.fetch as unknown as jest.Mock).mock.calls.filter(
+        ([requestUrl]: [string]) =>
+          /\/projects\/[^/]+\/stories\/list\.json/.test(requestUrl),
+      ).length,
+  };
+};
+
 describe('ConsolePage', () => {
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     installFetch();
+  });
+
+  it('treats a closed Stories payload item as Done for the Stories list', async () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        PVTI_closed: {
+          ts: Date.parse('2026-06-19T00:01:00.000Z'),
+          mode: 'todo-by-human',
+          closed: true,
+        },
+      }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const payload = listPayload(listMatch[1]);
+        if (listMatch[1] === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...payload,
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  ...payload.stories[0],
+                  items: [
+                    {
+                      number: 54321,
+                      title: 'Example task for closed-state story',
+                      url: 'https://github.com/example/repository/issues/54321',
+                      repo: 'example/repository',
+                      nameWithOwner: 'example/repository',
+                      projectItemId: 'PVTI_closed',
+                      itemId: 'PVTI_closed',
+                      isPr: false,
+                      story: 'TDPM Console port',
+                      status: 'In Tmux by human',
+                      agent: null,
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                      relatedOpenPullRequestUrls: [],
+                    },
+                  ],
+                },
+              ],
+              items: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => payload };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const { queryByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByRole('switch', { name: /Done/ })).toBeInTheDocument();
+    });
+    expect(queryByText('Example task for closed-state story')).toBeNull();
+    fireEvent.click(getByRole('switch', { name: /Done/ }));
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    expect(
+      await waitFor(() => queryByText('Example task for closed-state story'), {
+        timeout: 1000,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('removes a task closed from a Stories detail view immediately when Done is off', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, queryByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    expect(getByRole('switch', { name: /Done/ })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    fireEvent.click(getByText('Stories detail task'));
+    fireEvent.click(await waitFor(() => getByText('Close')));
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(queryByText('Stories detail task')).toBeNull();
+    });
+  });
+
+  it('removes a task closed from a Todo by human detail view from Stories immediately', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/todo-by-human?k=token',
+      );
+      installStoriesDetailFetch();
+      const { getByText, queryByText, getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      fireEvent.click(within(tabBar()).getByText('Stories'));
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after the close request fails, as the status tabs do', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ closeRequestOk: false });
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-retry'),
+        ).not.toBeNull();
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      expect(queryByText('Stories detail task')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after a retry of the failed close succeeds', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ closeFailsOnce: true });
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      fireEvent.click(retryButton);
+      await waitFor(() => {
+        expect(container.querySelector('.console-error-toast')).toBeNull();
+      });
+      const closeCalls = (
+        global.fetch as unknown as jest.Mock
+      ).mock.calls.filter(
+        ([url, init]: [string, { method?: string } | undefined]) =>
+          url === '/api/triage' && init?.method === 'POST',
+      );
+      expect(closeCalls).toHaveLength(2);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      expect(queryByText('Stories detail task')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden while a close is held in the offline queue', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ closeRequestNetworkDown: true });
+      const { getByText, getByRole, queryByText } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        const queued = JSON.parse(
+          localStorage.getItem('console-offline-action-queue') ?? '[]',
+        ) as unknown[];
+        expect(queued).toHaveLength(1);
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      expect(queryByText('Stories detail task')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores a Stories row when the queued close is undone', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Stories detail task'));
+    fireEvent.click(await waitFor(() => getByText('Close')));
+    expect(document.body.textContent).not.toContain('Stories detail task');
+    fireEvent.click(getByRole('button', { name: 'Undo' }));
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+  });
+
+  it('shows a Stories row again when a later open snapshot arrives after close', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-06-19T00:01:00.000Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({ laterStoriesSnapshot: true });
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      expect(document.body.textContent).not.toContain('Stories detail task');
+      await act(async () => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(
+          CONSOLE_TAB_REFRESH_INTERVAL_MS - ACTION_TOAST_DELAY_MS,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a Stories row again when a snapshot stamped between the press and a later offline send still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.failNextTriageRequestWithNetworkError(
+        '2026-01-01T00:00:05.400Z',
+      );
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toHaveLength(1);
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:05Z');
+      const heldSendButton = await waitFor(() => {
+        const heldItems = container.querySelectorAll(
+          '.console-offline-panel-item',
+        );
+        expect(heldItems).toHaveLength(1);
+        const sendButton = within(heldItems[0] as HTMLElement).getByText(
+          'Send',
+        );
+        expect(sendButton).toBeEnabled();
+        return sendButton;
+      });
+      fireEvent.click(heldSendButton);
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest('2026-01-01T00:00:30.400Z', true);
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toEqual([]);
+      });
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      expect(queryByText('Stories detail task')).not.toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a Stories row again when a snapshot stamped after a successful close still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest('2026-01-01T00:00:07.400Z', true);
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:08Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a Stories row again when a snapshot stamped after a failed close still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, container } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:05.400Z',
+        false,
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-retry'),
+        ).not.toBeNull();
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:01Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after a successful close when a snapshot read started before the close landed still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:07.400Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after a retry of a failed close succeeds when a snapshot read started before the retry landed still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:05.400Z',
+        false,
+      );
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      act(() => {
+        jest.setSystemTime(Date.parse('2026-01-01T00:00:20.400Z'));
+      });
+      fireEvent.click(retryButton);
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:20.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:20.400Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:10Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a Stories row again when a snapshot stamped at the server close time still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:40.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:40Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden when the browser clock is behind the server close time and a snapshot stamped before that server time still lists it open', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.400Z',
+        true,
+        Date.parse('2026-01-01T00:00:40.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:30Z');
+      const storiesListRequestsBefore = triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBefore,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden in a ConsolePage mounted later when the close settles after the first page unmounted and a snapshot predates the server close time', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const first = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => first.getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(first.getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(first.getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => first.getByText('Close')));
+      first.unmount();
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:07.000Z',
+        true,
+        Date.parse('2026-01-01T00:00:07.000Z'),
+      );
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
+      const second = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => second.getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(second.queryByText('Stories detail task')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row hidden after a held close is sent from the offline queue until a snapshot stamped at or after the server close time arrives', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-01-01T00:00:00.400Z'));
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      const triage = installStoriesCloseTimingFetch('2026-01-01T00:00:00Z');
+      const { getByText, getByRole, queryByText, container } = render(
+        <ConsolePage />,
+      );
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS);
+      });
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.failNextTriageRequestWithNetworkError(
+        '2026-01-01T00:00:05.400Z',
+      );
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toHaveLength(1);
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:03Z');
+      const storiesListRequestsBeforeSnapshot =
+        triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBeforeSnapshot,
+        );
+      });
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      const heldSendButton = await waitFor(() => {
+        const heldItems = container.querySelectorAll(
+          '.console-offline-panel-item',
+        );
+        expect(heldItems).toHaveLength(1);
+        const sendButton = within(heldItems[0] as HTMLElement).getByText(
+          'Send',
+        );
+        expect(sendButton).toBeEnabled();
+        return sendButton;
+      });
+      fireEvent.click(heldSendButton);
+      await waitFor(() => {
+        expect(triage.pendingTriageRequestCount()).toBe(1);
+      });
+      await triage.respondToNextTriageRequest(
+        '2026-01-01T00:00:21.000Z',
+        true,
+        Date.parse('2026-01-01T00:00:20.000Z'),
+      );
+      await waitFor(() => {
+        expect(
+          JSON.parse(
+            localStorage.getItem('console-offline-action-queue') ?? '[]',
+          ),
+        ).toEqual([]);
+      });
+      triage.setStoriesGeneratedAt('2026-01-01T00:00:10Z');
+      const storiesListRequestsBeforeLaterSnapshot =
+        triage.storiesListRequestCount();
+      act(() => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+      await waitFor(() => {
+        expect(triage.storiesListRequestCount()).toBeGreaterThan(
+          storiesListRequestsBeforeLaterSnapshot,
+        );
+      });
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Hide tasks' })).toBeInTheDocument();
+      });
+      expect(queryByText('Stories detail task')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not keep a Stories row hidden past the first Stories snapshot generated after a close and a later status write', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse('2026-06-19T00:02:00.000Z'));
+    try {
+      const closed = writeOverlayEntry(
+        {},
+        'PVTI_STORY_DETAIL',
+        { done: true, closed: true },
+        'todo-by-human',
+        Date.parse('2026-06-19T00:01:00.000Z'),
+      );
+      const overlay = writeOverlayEntry(
+        closed,
+        'PVTI_STORY_DETAIL',
+        { status: { name: 'In Tmux by human', color: 'BLUE' } },
+        'todo-by-human',
+        Date.parse('2026-06-19T00:01:30.000Z'),
+      );
+      localStorage.setItem(overlayStorageKey('acme'), JSON.stringify(overlay));
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch({
+        storiesGeneratedAt: '2026-06-19T00:01:15.000Z',
+      });
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps the Stories badge at the story count after closing the last open task with Done off', async () => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+      installStoriesDetailFetch();
+      const { getByText, getByRole } = render(<ConsolePage />);
+      fireEvent.click(
+        await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+      );
+      await waitFor(() => {
+        expect(getByText('Stories detail task')).toBeInTheDocument();
+      });
+      const storiesTab = within(tabBar()).getByText('Stories').closest('a');
+      expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+        '1',
+      );
+      fireEvent.click(getByText('Stories detail task'));
+      fireEvent.click(await waitFor(() => getByText('Close')));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+        '1',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a Stories row visible after a status change instead of closing it', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installStoriesDetailFetch();
+    const { getByText, getByRole } = render(<ConsolePage />);
+    fireEvent.click(
+      await waitFor(() => getByRole('button', { name: 'Show tasks' })),
+    );
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
+    fireEvent.change(getByRole('combobox', { name: 'Set status' }), {
+      target: { value: 's1' },
+    });
+    await waitFor(() => {
+      expect(getByText('Stories detail task')).toBeInTheDocument();
+    });
   });
 
   it('renders the tab bar with the active tab and the story-grouped list', async () => {
@@ -582,6 +1710,117 @@ describe('ConsolePage', () => {
       await waitFor(() => {
         expect(within(tabBar()).queryByText('Todo by human')).toBeNull();
       });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden after the close request fails, and offers retry', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('fail');
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast-retry'),
+        ).not.toBeNull();
+      });
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden after a retry of the failed close succeeds', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('failOnce');
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      const retryButton = await waitFor(() => {
+        const button = container.querySelector('.console-error-toast-retry');
+        expect(button).not.toBeNull();
+        return button as HTMLElement;
+      });
+      fireEvent.click(retryButton);
+      await waitFor(() => {
+        expect(container.querySelector('.console-error-toast')).toBeNull();
+      });
+      const closeCalls = (
+        global.fetch as unknown as jest.Mock
+      ).mock.calls.filter(
+        ([url, init]: [string, { method?: string } | undefined]) =>
+          url === '/api/triage' && init?.method === 'POST',
+      );
+      expect(closeCalls).toHaveLength(2);
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a status-tab row hidden while a close is held in the offline queue', async () => {
+    jest.useFakeTimers();
+    try {
+      installTriageCloseFailure('networkDown');
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+      act(() => {
+        jest.advanceTimersByTime(ACTION_TOAST_DELAY_MS + 100);
+      });
+      await waitFor(() => {
+        const queued = JSON.parse(
+          localStorage.getItem('console-offline-action-queue') ?? '[]',
+        ) as unknown[];
+        expect(queued).toHaveLength(1);
+      });
+      expect(document.body.textContent).not.toContain(
+        'Notify finished issue preparation',
+      );
     } finally {
       jest.useRealTimers();
     }

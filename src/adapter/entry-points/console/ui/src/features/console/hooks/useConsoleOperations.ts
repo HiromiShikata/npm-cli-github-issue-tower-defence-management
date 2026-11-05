@@ -34,6 +34,7 @@ import type {
 } from '../logic/types';
 import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import type { ConsoleCaches } from './useConsoleCaches';
+import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
 export const TRIAGE_OPERATION_PATH = '/api/triage';
@@ -393,7 +394,11 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      const response = await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        request,
+      );
+      overlayCloseSuccessRecord(request, response);
       invalidateItemContent(item);
     },
     [pjcode, invalidateItemContent],

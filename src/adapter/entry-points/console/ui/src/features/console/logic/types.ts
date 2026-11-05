@@ -134,11 +134,16 @@ export type ConsoleOverlayStory = {
 
 export type ConsoleOverlayEntry = {
   done?: boolean;
+  closedAtMs?: number;
   status?: ConsoleOverlayStatus;
   story?: ConsoleOverlayStory;
   ts: number;
   mode: ConsoleTabName;
 };
+
+export type ConsoleOverlayPatch = Partial<
+  Omit<ConsoleOverlayEntry, 'ts' | 'mode' | 'closedAtMs'>
+> & { closed?: true };
 
 export type ConsoleOverlay = Record<string, ConsoleOverlayEntry>;
 

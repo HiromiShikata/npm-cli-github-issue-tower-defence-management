@@ -2,6 +2,7 @@ import type {
   ConsoleListItem,
   ConsoleOverlay,
   ConsoleOverlayEntry,
+  ConsoleOverlayPatch,
   ConsoleOverlayStatus,
   ConsoleTabName,
 } from './types';
@@ -79,18 +80,59 @@ export const overlayStatusSinceSnapshot = (
 export const writeOverlayEntry = (
   overlay: ConsoleOverlay,
   key: string,
-  patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
+  patch: ConsoleOverlayPatch,
   mode: ConsoleTabName,
   now: number,
 ): ConsoleOverlay => {
+  const { closed, ...fields } = patch;
   const existing = overlay[key];
   const next: ConsoleOverlayEntry = {
     ...(existing ?? {}),
-    ...patch,
+    ...fields,
+    ...(closed === true ? { closedAtMs: now } : {}),
     ts: now,
     mode,
   };
   return { ...overlay, [key]: next };
+};
+
+export const overlayEntryClosedAtUpdate = (
+  overlay: ConsoleOverlay,
+  key: string,
+  closedAtMs: number,
+): ConsoleOverlay => {
+  const existing = overlay[key];
+  if (existing === undefined || !Number.isFinite(existing.closedAtMs)) {
+    return overlay;
+  }
+  return { ...overlay, [key]: { ...existing, closedAtMs } };
+};
+
+export type OverlayCloseSuccess = {
+  pjcode: string;
+  key: string;
+  closedAtMs: number;
+};
+
+export const overlayCloseSuccessRead = (
+  request: Record<string, unknown>,
+  response: unknown,
+): OverlayCloseSuccess | null => {
+  const { pjcode, projectItemId } = request;
+  if (typeof pjcode !== 'string' || pjcode === '') {
+    return null;
+  }
+  if (typeof projectItemId !== 'string' || projectItemId === '') {
+    return null;
+  }
+  if (response === null || typeof response !== 'object') {
+    return null;
+  }
+  const { closedAtMs } = response as { closedAtMs?: unknown };
+  if (typeof closedAtMs !== 'number' || !Number.isFinite(closedAtMs)) {
+    return null;
+  }
+  return { pjcode, key: projectItemId, closedAtMs };
 };
 
 export const removeOverlayEntry = (

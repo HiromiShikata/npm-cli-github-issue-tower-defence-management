@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
+import { isConsoleListItemDone } from '../../logic/consoleListItemDone';
 import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
 import {
   filterConsoleStoryEntriesByStatusSelection,
@@ -640,7 +641,7 @@ export const ConsoleStoryList = ({
             const visibleTaskItems = hasStatusSelection
               ? (entry.items ?? [])
               : (entry.items ?? []).filter(
-                  (item) => showDone || item.status !== 'Done',
+                  (item) => showDone || !isConsoleListItemDone(item),
                 );
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">

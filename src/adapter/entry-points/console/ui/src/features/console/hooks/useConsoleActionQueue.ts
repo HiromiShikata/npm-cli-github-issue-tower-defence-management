@@ -10,6 +10,7 @@ import {
   type ConsoleToastColor,
 } from '../logic/actionToast';
 import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
+import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export type ConsoleOfflinePayload = {
   itemUrl: string;
@@ -439,7 +440,11 @@ export const useConsoleActionQueue = (
           });
           return;
         }
-        await postConsoleOperation(action.apiPath, action.requestBody);
+        const response = await postConsoleOperation(
+          action.apiPath,
+          action.requestBody,
+        );
+        overlayCloseSuccessRecord(action.requestBody, response);
         discardOfflineAction(id);
       } catch (cause: unknown) {
         if (isNetworkError(cause)) {

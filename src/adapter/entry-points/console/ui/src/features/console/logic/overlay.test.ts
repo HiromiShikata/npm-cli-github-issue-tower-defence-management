@@ -3,7 +3,9 @@ import {
   countPendingItems,
   filterPendingItems,
   isOverlayEntryActed,
+  overlayCloseSuccessRead,
   overlayEntriesActedSinceSnapshot,
+  overlayEntryClosedAtUpdate,
   overlayKeyForItem,
   overlayStatusSinceSnapshot,
   overlayStorageKey,
@@ -38,6 +40,26 @@ const item = (number: number): ConsoleListItem => ({
 });
 
 describe('overlay helpers', () => {
+  it.each([
+    {
+      label: 'present done entry',
+      entry: { ts: 100, mode: 'prs' as const, done: true },
+      acted: true,
+    },
+    {
+      label: 'present non-done entry',
+      entry: {
+        ts: 100,
+        mode: 'prs' as const,
+        story: { name: 'Story', color: 'BLUE' as const },
+      },
+      acted: false,
+    },
+    { label: 'missing entry', entry: undefined, acted: false },
+  ])('classifies $label through the overlay helper', ({ entry, acted }) => {
+    expect(isOverlayEntryActed(entry)).toBe(acted);
+  });
+
   it('builds the per-project storage key', () => {
     expect(overlayStorageKey('acme')).toBe('pv_overlay_acme');
   });
@@ -271,6 +293,254 @@ describe('writeOverlayEntry', () => {
       ts: 999,
       mode: 'todo-by-human',
     });
+  });
+});
+
+describe('writeOverlayEntry close time', () => {
+  it('records the close time in closedAtMs on a closing write', () => {
+    const next = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    expect(next.PVTI_1).toEqual({
+      done: true,
+      closedAtMs: 5000,
+      ts: 5000,
+      mode: 'todo-by-human',
+    });
+  });
+
+  it('keeps the close time unchanged through a later status write', () => {
+    const closed = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    const next = writeOverlayEntry(
+      closed,
+      'PVTI_1',
+      { status: { name: 'In Tmux by human', color: 'BLUE' } },
+      'todo-by-human',
+      9000,
+    );
+    expect(next.PVTI_1).toEqual({
+      done: true,
+      closedAtMs: 5000,
+      status: { name: 'In Tmux by human', color: 'BLUE' },
+      ts: 9000,
+      mode: 'todo-by-human',
+    });
+  });
+
+  it('keeps the close time unchanged through a later story write', () => {
+    const closed = writeOverlayEntry(
+      {},
+      'PVTI_1',
+      { done: true, closed: true },
+      'todo-by-human',
+      5000,
+    );
+    const next = writeOverlayEntry(
+      closed,
+      'PVTI_1',
+      { story: { name: 'New Story', color: 'GREEN' } },
+      'todo-by-human',
+      9000,
+    );
+    expect(next.PVTI_1).toHaveProperty('closedAtMs', 5000);
+    expect(next.PVTI_1.ts).toBe(9000);
+  });
+});
+
+describe('overlayCloseSuccessRead', () => {
+  const baseRequest: Record<string, unknown> = {
+    pjcode: 'acme',
+    action: 'close',
+    issueUrl: 'https://github.com/o/r/issues/1',
+    projectItemId: 'PVTI_1',
+  };
+  const withoutKey = (key: string): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(baseRequest).filter(([entryKey]) => entryKey !== key),
+    );
+  const withValue = (key: string, value: unknown): Record<string, unknown> => ({
+    ...baseRequest,
+    [key]: value,
+  });
+
+  it('reads the pjcode, the projectItemId as key and the finite server closedAtMs of a close, and reads nothing else', () => {
+    const validResponse = { ok: true, closedAtMs: 1767225640000 };
+    const cases: {
+      name: string;
+      request: Record<string, unknown>;
+      response: unknown;
+      expected: { pjcode: string; key: string; closedAtMs: number } | null;
+    }[] = [
+      {
+        name: 'valid request and response',
+        request: baseRequest,
+        response: validResponse,
+        expected: { pjcode: 'acme', key: 'PVTI_1', closedAtMs: 1767225640000 },
+      },
+      {
+        name: 'response is undefined',
+        request: baseRequest,
+        response: undefined,
+        expected: null,
+      },
+      {
+        name: 'response is null',
+        request: baseRequest,
+        response: null,
+        expected: null,
+      },
+      {
+        name: 'response is a string',
+        request: baseRequest,
+        response: 'ok',
+        expected: null,
+      },
+      {
+        name: 'response has no closedAtMs',
+        request: baseRequest,
+        response: { ok: true },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is NaN',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: Number.NaN },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is Infinity',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: Number.POSITIVE_INFINITY },
+        expected: null,
+      },
+      {
+        name: 'closedAtMs is a numeric string',
+        request: baseRequest,
+        response: { ok: true, closedAtMs: '1767225640000' },
+        expected: null,
+      },
+      {
+        name: 'request has no pjcode',
+        request: withoutKey('pjcode'),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has an empty pjcode',
+        request: withValue('pjcode', ''),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has a non-string pjcode',
+        request: withValue('pjcode', 1),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has no projectItemId',
+        request: withoutKey('projectItemId'),
+        response: validResponse,
+        expected: null,
+      },
+      {
+        name: 'request has an empty projectItemId',
+        request: withValue('projectItemId', ''),
+        response: validResponse,
+        expected: null,
+      },
+    ];
+    for (const testCase of cases) {
+      expect({
+        name: testCase.name,
+        actual: overlayCloseSuccessRead(testCase.request, testCase.response),
+      }).toEqual({ name: testCase.name, actual: testCase.expected });
+    }
+  });
+});
+
+describe('overlayEntryClosedAtUpdate', () => {
+  it('replaces only the closedAtMs of the entry at the key and returns the same object when no close time can be replaced', () => {
+    const closed: ConsoleOverlay = {
+      PVTI_1: {
+        done: true,
+        closedAtMs: 5000,
+        status: { name: 'In Tmux by human', color: 'BLUE' },
+        ts: 9000,
+        mode: 'todo-by-human',
+      },
+      PVTI_2: { done: true, closedAtMs: 6000, ts: 6000, mode: 'prs' },
+    };
+    const closedAtUpdatedTo12000: ConsoleOverlay = {
+      ...closed,
+      PVTI_1: { ...closed.PVTI_1, closedAtMs: 12000 },
+    };
+    const withoutCloseTime: ConsoleOverlay = {
+      PVTI_1: { done: true, ts: 9000, mode: 'todo-by-human' },
+    };
+    const withNaNCloseTime: ConsoleOverlay = {
+      PVTI_1: {
+        done: true,
+        closedAtMs: Number.NaN,
+        ts: 9000,
+        mode: 'todo-by-human',
+      },
+    };
+    const cases: {
+      label: string;
+      overlay: ConsoleOverlay;
+      key: string;
+      expected: ConsoleOverlay | null;
+    }[] = [
+      {
+        label: 'a finite closedAtMs is replaced and every other entry is kept',
+        overlay: closed,
+        key: 'PVTI_1',
+        expected: closedAtUpdatedTo12000,
+      },
+      {
+        label: 'no entry at the key returns the same object',
+        overlay: closed,
+        key: 'PVTI_missing',
+        expected: null,
+      },
+      {
+        label: 'an entry without closedAtMs returns the same object',
+        overlay: withoutCloseTime,
+        key: 'PVTI_1',
+        expected: null,
+      },
+      {
+        label: 'an entry whose closedAtMs is NaN returns the same object',
+        overlay: withNaNCloseTime,
+        key: 'PVTI_1',
+        expected: null,
+      },
+    ];
+    for (const testCase of cases) {
+      const actual = overlayEntryClosedAtUpdate(
+        testCase.overlay,
+        testCase.key,
+        12000,
+      );
+      if (testCase.expected === null) {
+        expect(actual).toBe(testCase.overlay);
+      } else {
+        expect(actual).not.toBe(testCase.overlay);
+        expect(actual).toEqual(testCase.expected);
+      }
+    }
+    expect(closed.PVTI_1.closedAtMs).toBe(5000);
   });
 });
 
