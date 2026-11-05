@@ -5285,6 +5285,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toEqual([]);
     });
 
+    it('maps an edit with a null diff to an empty body version, because GitHub returns a null diff when an edit leaves the body empty', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          buildUserContentEditsResponse(
+            [{ diff: null }, { diff: 'earlier text' }],
+            { hasNextPage: false, endCursor: null },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueBodyEditHistory(
+        bodyEditHistoryIssueUrl,
+      );
+
+      expect(result).toEqual(['', 'earlier text']);
+    });
+
     it.each([
       {
         name: 'an HTTP error status',
@@ -5296,13 +5314,6 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           JSON.stringify({ errors: [{ message: 'Something failed' }] }),
           { status: 200 },
         ),
-      },
-      {
-        name: 'an edit without body text',
-        response: buildUserContentEditsResponse([{ diff: null }], {
-          hasNextPage: false,
-          endCursor: null,
-        }),
       },
       {
         name: 'a missing issue',

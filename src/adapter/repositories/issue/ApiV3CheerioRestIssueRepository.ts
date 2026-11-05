@@ -4181,12 +4181,7 @@ export class ApiV3CheerioRestIssueRepository
       const { pageInfo, nodes } =
         responseBody.data.repository.issue.userContentEdits;
       for (const node of nodes) {
-        if (node.diff === null) {
-          throw new Error(
-            `GitHub GraphQL API returned a body edit history entry without body text for issue ${issueUrl}`,
-          );
-        }
-        bodies.push(node.diff);
+        bodies.push(node.diff ?? '');
       }
       if (pageInfo.hasNextPage && pageInfo.endCursor === null) {
         throw new Error(
