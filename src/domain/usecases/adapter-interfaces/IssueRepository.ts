@@ -228,6 +228,7 @@ export interface IssueRepository {
   ) => Promise<void>;
   reopenIssueByUrl: (issueUrl: string) => Promise<void>;
   getLatestReopenedEventAt: (issue: Issue) => Promise<Date | null>;
+  getIssueBodyEditHistory: (issueUrl: string) => Promise<string[]>;
   deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
   createCommentByUrl: (
     issueOrPrUrl: string,

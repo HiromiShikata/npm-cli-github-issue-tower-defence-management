@@ -138,6 +138,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     getIssueByUrl: jest.Mock;
     updateStoryByProjectItemId: jest.Mock;
     getLatestReopenedEventAt: jest.Mock;
+    getIssueBodyEditHistory: jest.Mock;
     closeIssueByUrl: jest.Mock;
   };
   let mockIssueCommentRepository: {
@@ -205,6 +206,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       getIssueByUrl: jest.fn().mockResolvedValue(null),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
       getLatestReopenedEventAt: jest.fn().mockResolvedValue(null),
+      getIssueBodyEditHistory: jest.fn().mockResolvedValue([]),
       closeIssueByUrl: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -10917,6 +10919,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
     it('rejects with STORY_SET_WITH_EMPTY_BODY when Story is set to an active value and body is empty', async () => {
+      mockIssueRepository.getIssueBodyEditHistory.mockResolvedValue([
+        'Earlier body text',
+        '',
+      ]);
       const issue = createMockIssue({
         url: issueUrl,
         status: 'Preparation',
@@ -10953,6 +10959,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('rejects with STORY_SET_WITH_EMPTY_BODY when Story is set to an active value and body is whitespace only', async () => {
+      mockIssueRepository.getIssueBodyEditHistory.mockResolvedValue([
+        'Earlier body text',
+      ]);
       const issue = createMockIssue({
         url: issueUrl,
         status: 'Preparation',
@@ -11100,6 +11109,150 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
       );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('STORY_SET_WITH_EMPTY_BODY edit history', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    const reportWithNoNextStepAgent = (): Comment =>
+      createMockComment({
+        author: 'test-user',
+        content:
+          'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner approval.',
+      });
+
+    const runWithIssue = async (
+      overrides: Parameters<typeof createMockIssue>[0],
+    ): Promise<void> => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        ...overrides,
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        reportWithNoNextStepAgent(),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+    };
+
+    it.each([
+      {
+        name: 'no edit is recorded',
+        body: '',
+        history: [],
+      },
+      {
+        name: 'every recorded version is empty or whitespace-only',
+        body: '',
+        history: ['', '   ', '\n\t'],
+      },
+      {
+        name: 'every recorded version is whitespace-only and the body is whitespace-only',
+        body: '  ',
+        history: ['  ', ''],
+      },
+    ])(
+      'does not reject when the body has been empty since creation: $name',
+      async ({ body, history }) => {
+        mockIssueRepository.getIssueBodyEditHistory.mockResolvedValue(history);
+
+        await runWithIssue({ story: 'regular / some story', body });
+
+        expect(
+          mockIssueRepository.getIssueBodyEditHistory,
+        ).toHaveBeenCalledWith(issueUrl);
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.stringContaining('STORY_SET_WITH_EMPTY_BODY'),
+        );
+      },
+    );
+
+    it.each([
+      {
+        name: 'the only earlier version has text',
+        history: ['Earlier body text'],
+      },
+      {
+        name: 'an earlier version has text among empty versions',
+        history: ['', 'Earlier body text', ''],
+      },
+    ])(
+      'rejects with STORY_SET_WITH_EMPTY_BODY when the body is empty now and $name',
+      async ({ history }) => {
+        mockIssueRepository.getIssueBodyEditHistory.mockResolvedValue(history);
+
+        await runWithIssue({ story: 'regular / some story', body: '' });
+
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          expect.objectContaining({ url: issueUrl }),
+          'Auto Status Check: REJECTED\n- STORY_SET_WITH_EMPTY_BODY',
+        );
+      },
+    );
+
+    it.each([
+      {
+        name: 'the body has content',
+        overrides: { body: 'Some real content' },
+      },
+      {
+        name: 'Story is unset',
+        overrides: { story: null, body: '' },
+      },
+      {
+        name: 'Story is the no-story value',
+        overrides: { story: NO_STORY_STORY_NAME, body: '' },
+      },
+      {
+        name: 'the item is a pull request',
+        overrides: { body: '', isPr: true },
+      },
+    ])(
+      'does not fetch the body edit history when $name',
+      async ({ overrides }) => {
+        await runWithIssue({ story: 'regular / some story', ...overrides });
+
+        expect(
+          mockIssueRepository.getIssueBodyEditHistory,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects with STORY_SET_WITH_EMPTY_BODY and logs the error when the body edit history cannot be fetched', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        mockIssueRepository.getIssueBodyEditHistory.mockRejectedValue(
+          new Error('GitHub GraphQL API unavailable'),
+        );
+
+        await runWithIssue({ story: 'regular / some story', body: '' });
+
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          expect.objectContaining({ url: issueUrl }),
+          'Auto Status Check: REJECTED\n- STORY_SET_WITH_EMPTY_BODY',
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(issueUrl),
+          expect.any(Error),
+        );
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
     });
   });
 

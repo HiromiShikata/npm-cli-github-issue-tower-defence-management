@@ -559,6 +559,45 @@ function isIssueLatestReopenedTimelineItemResponse(
   );
 }
 
+type IssueUserContentEditsResponse = {
+  data: {
+    repository: {
+      issue: {
+        userContentEdits: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          nodes: { diff: string | null }[];
+        };
+      };
+    };
+  };
+};
+
+function isIssueUserContentEditsResponse(
+  value: unknown,
+): value is IssueUserContentEditsResponse {
+  if (!isRecord(value)) return false;
+  const data: unknown = value.data;
+  if (!isRecord(data)) return false;
+  const repository: unknown = data.repository;
+  if (!isRecord(repository)) return false;
+  const issue: unknown = repository.issue;
+  if (!isRecord(issue)) return false;
+  const userContentEdits: unknown = issue.userContentEdits;
+  if (!isRecord(userContentEdits)) return false;
+  const pageInfo: unknown = userContentEdits.pageInfo;
+  if (!isRecord(pageInfo)) return false;
+  const nodes: unknown = userContentEdits.nodes;
+  return (
+    typeof pageInfo.hasNextPage === 'boolean' &&
+    (typeof pageInfo.endCursor === 'string' || pageInfo.endCursor === null) &&
+    Array.isArray(nodes) &&
+    nodes.every(
+      (node) =>
+        isRecord(node) && (typeof node.diff === 'string' || node.diff === null),
+    )
+  );
+}
+
 type IssueLatestReopenedTimelineItemListing =
   | {
       listingOutcome: 'listedEveryReopenedTimelineItem';
@@ -4089,6 +4128,70 @@ export class ApiV3CheerioRestIssueRepository
         response,
       );
     }
+  };
+
+  getIssueBodyEditHistory = async (issueUrl: string): Promise<string[]> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
+    const query = `
+      query IssueBodyEditHistory($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issueNumber) {
+            userContentEdits(first: 100, after: $after) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                diff
+              }
+            }
+          }
+        }
+      }
+    `;
+    const bodies: string[] = [];
+    let after: string | null = null;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: { owner, repo, issueNumber, after },
+        }),
+      );
+      if (!response.ok) {
+        await this.throwGitHubError(
+          `Failed to fetch body edit history of issue ${issueUrl} from GitHub GraphQL API`,
+          response,
+        );
+      }
+      const responseBody: unknown = await response.json();
+      const graphqlErrors = listGraphqlResponseErrors(responseBody);
+      if (graphqlErrors.length > 0) {
+        throw new Error(
+          `GitHub GraphQL API returned errors for the body edit history of issue ${issueUrl}: ${JSON.stringify(graphqlErrors)}`,
+        );
+      }
+      if (!isIssueUserContentEditsResponse(responseBody)) {
+        throw new Error(
+          `GitHub GraphQL API returned no body edit history for issue ${issueUrl}`,
+        );
+      }
+      const { pageInfo, nodes } =
+        responseBody.data.repository.issue.userContentEdits;
+      for (const node of nodes) {
+        bodies.push(node.diff ?? '');
+      }
+      if (pageInfo.hasNextPage && pageInfo.endCursor === null) {
+        throw new Error(
+          `GitHub GraphQL API returned a next page without a cursor for the body edit history of issue ${issueUrl}`,
+        );
+      }
+      hasNextPage = pageInfo.hasNextPage;
+      after = pageInfo.endCursor;
+    }
+    return bodies;
   };
 
   getLatestReopenedEventAt = async (issue: Issue): Promise<Date | null> => {

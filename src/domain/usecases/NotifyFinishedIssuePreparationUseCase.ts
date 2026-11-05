@@ -182,6 +182,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'getIssueByUrl'
       | 'updateStoryByProjectItemId'
       | 'getLatestReopenedEventAt'
+      | 'getIssueBodyEditHistory'
       | 'closeIssueByUrl'
     >,
     private readonly issueCommentRepository: Pick<
@@ -1289,6 +1290,22 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
   };
 
+  private hasNonEmptyBodyInEditHistory = async (
+    issueUrl: string,
+  ): Promise<boolean> => {
+    try {
+      const bodies =
+        await this.issueRepository.getIssueBodyEditHistory(issueUrl);
+      return bodies.some((body) => body.trim().length > 0);
+    } catch (error) {
+      console.error(
+        `notifyFinishedIssuePreparation: body edit history of ${issueUrl} could not be read, so STORY_SET_WITH_EMPTY_BODY is applied`,
+        error,
+      );
+      return true;
+    }
+  };
+
   private collectRejections = async (
     issue: {
       url: string;
@@ -1320,7 +1337,12 @@ export class NotifyFinishedIssuePreparationUseCase {
       issue.body === null || issue.body === undefined ? '' : issue.body.trim();
     const hasActiveStory =
       issue.story !== null && !issue.story.startsWith(NO_STORY_STORY_NAME);
-    if (!issue.isPr && hasActiveStory && trimmedBody.length === 0) {
+    if (
+      !issue.isPr &&
+      hasActiveStory &&
+      trimmedBody.length === 0 &&
+      (await this.hasNonEmptyBodyInEditHistory(issue.url))
+    ) {
       rejections.push({
         type: 'STORY_SET_WITH_EMPTY_BODY',
         detail: 'STORY_SET_WITH_EMPTY_BODY',
