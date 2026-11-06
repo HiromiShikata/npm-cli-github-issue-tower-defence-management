@@ -382,6 +382,11 @@ const updateStatusByName = async (
   return null;
 };
 
+const isMergeConflictRejectionError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message.includes('HTTP 405') &&
+  error.message.toLowerCase().includes('merge conflicts');
+
 const addChoreLabel = async (
   issueRepository: IssueRepository,
   issueUrl: string,
@@ -503,24 +508,28 @@ export const handleReview = async (
         'Cannot merge: pull request not found or already closed',
       );
     }
+    const routeConflictToAwaitingWorkspace =
+      async (): Promise<ConsoleOperationResponse> => {
+        await issueRepository.createCommentByUrl(
+          prUrl,
+          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+        );
+        const conflictFailure = await updateStatusByName(
+          issueRepository,
+          project,
+          prUrl,
+          projectItemId,
+          AWAITING_WORKSPACE_STATUS_NAME,
+          expectedStatusAtActionTime,
+        );
+        if (conflictFailure !== null) {
+          return conflictFailure;
+        }
+        recordDoneForStatusChange(context, pjcode, projectItemId);
+        return ok();
+      };
     if (prStatus.isConflicted) {
-      await issueRepository.createCommentByUrl(
-        prUrl,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
-      );
-      const conflictFailure = await updateStatusByName(
-        issueRepository,
-        project,
-        prUrl,
-        projectItemId,
-        AWAITING_WORKSPACE_STATUS_NAME,
-        expectedStatusAtActionTime,
-      );
-      if (conflictFailure !== null) {
-        return conflictFailure;
-      }
-      recordDoneForStatusChange(context, pjcode, projectItemId);
-      return ok();
+      return routeConflictToAwaitingWorkspace();
     }
     if (!prStatus.isPassedAllCiJob) {
       const missing = prStatus.missingRequiredCheckNames;
@@ -551,6 +560,9 @@ export const handleReview = async (
         return badRequest(
           `Cannot merge: this pull request modifies workflow files and the configured token lacks 'workflow' scope. Please merge this pull request manually.`,
         );
+      }
+      if (isMergeConflictRejectionError(error)) {
+        return routeConflictToAwaitingWorkspace();
       }
       throw error;
     }
