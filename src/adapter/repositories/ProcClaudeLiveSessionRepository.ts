@@ -9,6 +9,7 @@ const DEFAULT_PROC_DIRECTORY = '/proc';
 const OAUTH_TOKEN_ENVIRON_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';
 const SESSION_ID_ENVIRON_KEY = 'CLAUDE_CODE_SESSION_ID';
 const CONFIG_DIR_ENVIRON_KEY = 'CLAUDE_CONFIG_DIR';
+const REMOTE_LIVE_SESSION_KEY_ENVIRON_KEY = 'TDPM_REMOTE_LIVE_SESSION_KEY';
 
 const isClaudeProcessCommand = (command: string): boolean => {
   if (command.length === 0) {
@@ -57,6 +58,12 @@ export class ProcClaudeLiveSessionRepository implements ClaudeLiveSessionReposit
     const token = environ.get(OAUTH_TOKEN_ENVIRON_KEY);
     if (token === undefined || token.length === 0) {
       return null;
+    }
+    const remoteLiveSessionKey = environ.get(
+      REMOTE_LIVE_SESSION_KEY_ENVIRON_KEY,
+    );
+    if (remoteLiveSessionKey !== undefined && remoteLiveSessionKey.length > 0) {
+      return { token, sessionKey: `remote:${remoteLiveSessionKey}` };
     }
     if (!this.isClaudeProcess(processIdDirectory)) {
       return null;
