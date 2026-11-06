@@ -39,6 +39,28 @@ describe('ProcClaudeLiveSessionRepository', () => {
     fs.mkdirSync(path.join(procDirectory, name), { recursive: true });
   };
 
+  type ProcessFixture = {
+    pid: number;
+    cmdline?: string;
+    exe?: string;
+    environ: Record<string, string>;
+  };
+
+  const writeFixtureProcess = (root: string, fixture: ProcessFixture): void => {
+    const processDirectory = path.join(root, String(fixture.pid));
+    fs.mkdirSync(processDirectory, { recursive: true });
+    if (fixture.cmdline !== undefined) {
+      fs.writeFileSync(path.join(processDirectory, 'cmdline'), fixture.cmdline);
+    }
+    if (fixture.exe !== undefined) {
+      fs.symlinkSync(fixture.exe, path.join(processDirectory, 'exe'));
+    }
+    const environBuffer = Object.entries(fixture.environ)
+      .map(([key, value]) => `${key}=${value}\0`)
+      .join('');
+    fs.writeFileSync(path.join(processDirectory, 'environ'), environBuffer);
+  };
+
   it('uses the config dir as the session key when present', () => {
     writeProcess({
       pid: 101,
@@ -224,12 +246,6 @@ describe('ProcClaudeLiveSessionRepository', () => {
   });
 
   it('pins local claude detection and session key derivation across all cases', () => {
-    type ProcessFixture = {
-      pid: number;
-      cmdline?: string;
-      exe?: string;
-      environ: Record<string, string>;
-    };
     type PinningCase = {
       name: string;
       directory: 'present' | 'missing' | 'unreadable';
@@ -357,24 +373,6 @@ describe('ProcClaudeLiveSessionRepository', () => {
       },
     ];
 
-    const writeFixtureProcess = (root: string, fixture: ProcessFixture) => {
-      const processDirectory = path.join(root, String(fixture.pid));
-      fs.mkdirSync(processDirectory, { recursive: true });
-      if (fixture.cmdline !== undefined) {
-        fs.writeFileSync(
-          path.join(processDirectory, 'cmdline'),
-          fixture.cmdline,
-        );
-      }
-      if (fixture.exe !== undefined) {
-        fs.symlinkSync(fixture.exe, path.join(processDirectory, 'exe'));
-      }
-      const environBuffer = Object.entries(fixture.environ)
-        .map(([key, value]) => `${key}=${value}\0`)
-        .join('');
-      fs.writeFileSync(path.join(processDirectory, 'environ'), environBuffer);
-    };
-
     const mismatches: {
       name: string;
       actual: ClaudeLiveSession[];
@@ -399,6 +397,121 @@ describe('ProcClaudeLiveSessionRepository', () => {
       if (testCase.directory === 'unreadable') {
         fs.chmodSync(caseDirectory, 0o755);
       }
+      if (!isDeepStrictEqual(actual, testCase.expected)) {
+        mismatches.push({
+          name: testCase.name,
+          actual,
+          expected: testCase.expected,
+        });
+      }
+    });
+
+    expect(mismatches).toEqual([]);
+  });
+
+  it('counts a process carrying the remote live session marker as a live session of its token', () => {
+    type RemoteCase = {
+      name: string;
+      processes: ProcessFixture[];
+      expected: ClaudeLiveSession[];
+    };
+    const cases: RemoteCase[] = [
+      {
+        name: 'non-claude process with token and marker is counted as remote',
+        processes: [
+          {
+            pid: 301,
+            cmdline: 'ssh\0example-host\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-red-a',
+              TDPM_REMOTE_LIVE_SESSION_KEY: 'abc',
+            },
+          },
+        ],
+        expected: [{ token: 'token-red-a', sessionKey: 'remote:abc' }],
+      },
+      {
+        name: 'non-claude process with marker and no token is not counted',
+        processes: [
+          {
+            pid: 302,
+            cmdline: 'ssh\0example-host\0',
+            environ: { TDPM_REMOTE_LIVE_SESSION_KEY: 'abc' },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'non-claude process with token and no marker is not counted',
+        processes: [
+          {
+            pid: 303,
+            cmdline: 'ssh\0example-host\0',
+            environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-red-c' },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'non-claude process with token and empty marker is not counted',
+        processes: [
+          {
+            pid: 304,
+            cmdline: 'ssh\0example-host\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-red-d',
+              TDPM_REMOTE_LIVE_SESSION_KEY: '',
+            },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'claude process with token and marker takes the marker as its session key',
+        processes: [
+          {
+            pid: 305,
+            cmdline: 'claude\0--print\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-red-e',
+              CLAUDE_CONFIG_DIR: '/home/user/.config/red-e',
+              CLAUDE_CODE_SESSION_ID: 'session-red-e',
+              TDPM_REMOTE_LIVE_SESSION_KEY: 'key-red-e',
+            },
+          },
+        ],
+        expected: [{ token: 'token-red-e', sessionKey: 'remote:key-red-e' }],
+      },
+      {
+        name: 'non-claude process with empty token and marker is not counted',
+        processes: [
+          {
+            pid: 306,
+            cmdline: 'ssh\0example-host\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: '',
+              TDPM_REMOTE_LIVE_SESSION_KEY: 'abc',
+            },
+          },
+        ],
+        expected: [],
+      },
+    ];
+
+    const mismatches: {
+      name: string;
+      actual: ClaudeLiveSession[];
+      expected: ClaudeLiveSession[];
+    }[] = [];
+    cases.forEach((testCase, index) => {
+      const caseDirectory = path.join(procDirectory, `remote-case-${index}`);
+      fs.mkdirSync(caseDirectory);
+      for (const fixture of testCase.processes) {
+        writeFixtureProcess(caseDirectory, fixture);
+      }
+      const actual = new ProcClaudeLiveSessionRepository(
+        caseDirectory,
+      ).listLiveSessions();
       if (!isDeepStrictEqual(actual, testCase.expected)) {
         mismatches.push({
           name: testCase.name,
