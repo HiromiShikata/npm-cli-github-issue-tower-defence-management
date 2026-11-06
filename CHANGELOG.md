@@ -1,3 +1,10 @@
+## [2.189.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.2...v2.189.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* **console:** route approve_and_merge merge conflicts to Awaiting workspace ([#3697](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3697)) ([ecffdd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ecffdd633614ff9c3342a254c1844c44c223dab1))
+
 ## [2.189.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.1...v2.189.2) (2026-11-05)
 
 
