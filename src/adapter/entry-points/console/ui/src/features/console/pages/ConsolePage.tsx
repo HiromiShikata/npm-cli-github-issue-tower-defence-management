@@ -70,7 +70,6 @@ import { consoleStoryEntriesWithClosedOverlay } from '../logic/consoleStoryClose
 import {
   type ConsoleStoryPendingMove,
   consoleStoryEntriesWithPendingMoves,
-  consoleStoryPendingMovesRemaining,
   consoleStorySetAtMsRead,
   moveTaskToStory,
 } from '../logic/consoleStoryPendingMoves';
@@ -1474,15 +1473,6 @@ export const ConsolePage = () => {
       pendingAppliedStoryEntries,
     };
   });
-  useEffect(() => {
-    setPendingStoryMoves((previous) => {
-      const remaining = consoleStoryPendingMovesRemaining(
-        previous,
-        storiesGeneratedAt,
-      );
-      return remaining.length === previous.length ? previous : remaining;
-    });
-  }, [storiesGeneratedAt]);
 
   const handleSetTaskStory = useCallback(
     async (
