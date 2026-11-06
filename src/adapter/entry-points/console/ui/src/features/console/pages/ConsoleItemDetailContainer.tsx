@@ -371,7 +371,9 @@ export const ConsoleItemDetailContainer = ({
       onQueueAction({
         kind: { type: 'set_story', optionName: option.name },
         item,
-        commit: () => operations.setStory(item, option),
+        commit: async () => {
+          await operations.setStory(item, option);
+        },
         offline:
           pjcode != null
             ? [

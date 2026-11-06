@@ -68,6 +68,13 @@ import {
 } from '../logic/commentDraftStorage';
 import { consoleStoryEntriesWithClosedOverlay } from '../logic/consoleStoryClosedOverlay';
 import {
+  type ConsoleStoryPendingMove,
+  consoleStoryEntriesWithPendingMoves,
+  consoleStoryPendingMovesRemaining,
+  consoleStorySetAtMsRead,
+  moveTaskToStory,
+} from '../logic/consoleStoryPendingMoves';
+import {
   type ConsoleStoryRowField,
   formatHiddenConsoleStoryRowFieldsIntoSearch,
   parseHiddenConsoleStoryRowFieldsFromSearch,
@@ -155,53 +162,6 @@ const isSameNavigationPosition = (
   left.pjcode === right.pjcode &&
   left.tab === right.tab &&
   left.itemKey === right.itemKey;
-
-const countsAsOpenBadge = (item: ConsoleListItem): boolean => {
-  if (item.isClosed !== undefined) {
-    return !item.isClosed;
-  }
-  return item.status !== 'Done';
-};
-
-const moveTaskToStory = (
-  entries: ConsoleStoryEntry[],
-  projectItemId: string,
-  target: ConsoleFieldOption,
-): ConsoleStoryEntry[] => {
-  const sourceEntry = entries.find((entry) =>
-    (entry.items ?? []).some((item) => item.projectItemId === projectItemId),
-  );
-  const movingItem = (sourceEntry?.items ?? []).find(
-    (item) => item.projectItemId === projectItemId,
-  );
-  if (
-    sourceEntry === undefined ||
-    movingItem === undefined ||
-    sourceEntry.storyOptionId === target.id
-  ) {
-    return entries;
-  }
-  const countsAsOpen = countsAsOpenBadge(movingItem) ? 1 : 0;
-  return entries.map((entry) => {
-    if (entry.storyOptionId === sourceEntry.storyOptionId) {
-      return {
-        ...entry,
-        items: (entry.items ?? []).filter(
-          (item) => item.projectItemId !== projectItemId,
-        ),
-        openItemCount: Math.max(0, entry.openItemCount - countsAsOpen),
-      };
-    }
-    if (entry.storyOptionId === target.id) {
-      return {
-        ...entry,
-        items: [...(entry.items ?? []), { ...movingItem, story: target.name }],
-        openItemCount: entry.openItemCount + countsAsOpen,
-      };
-    }
-    return entry;
-  });
-};
 
 const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
   input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
@@ -728,6 +688,9 @@ export const ConsolePage = () => {
     generatedAt: string | undefined;
     stories: ConsoleStoryEntry[];
   } | null>(null);
+  const [pendingStoryMoves, setPendingStoryMoves] = useState<
+    ConsoleStoryPendingMove[]
+  >([]);
 
   const selectedItem = useMemo<ConsoleListItem | null>(() => {
     if (selectedItemKey === null || activeSnapshot === null) {
@@ -1130,12 +1093,21 @@ export const ConsolePage = () => {
     };
   }, []);
 
-  const rawStoryEntries = storiesSnapshot?.stories ?? [];
+  const storiesGeneratedAt = storiesSnapshot?.generatedAt ?? null;
+  const pendingAppliedStoryEntries = useMemo(
+    () =>
+      consoleStoryEntriesWithPendingMoves(
+        storiesSnapshot?.stories ?? [],
+        pendingStoryMoves,
+        storiesGeneratedAt,
+      ),
+    [storiesSnapshot?.stories, pendingStoryMoves, storiesGeneratedAt],
+  );
   const storyEntries =
     localStoryEntriesOverride !== null &&
     localStoryEntriesOverride.generatedAt === storiesSnapshot?.generatedAt
       ? localStoryEntriesOverride.stories
-      : rawStoryEntries;
+      : pendingAppliedStoryEntries;
   const storyEntriesWithClosedOverlay = useMemo(
     () =>
       consoleStoryEntriesWithClosedOverlay(
@@ -1494,27 +1466,48 @@ export const ConsolePage = () => {
 
   const latestStorySnapshotRef = useRef({
     generatedAt: storiesSnapshot?.generatedAt,
-    rawStoryEntries,
+    pendingAppliedStoryEntries,
   });
   useEffect(() => {
     latestStorySnapshotRef.current = {
       generatedAt: storiesSnapshot?.generatedAt,
-      rawStoryEntries,
+      pendingAppliedStoryEntries,
     };
   });
+  useEffect(() => {
+    setPendingStoryMoves((previous) => {
+      const remaining = consoleStoryPendingMovesRemaining(
+        previous,
+        storiesGeneratedAt,
+      );
+      return remaining.length === previous.length ? previous : remaining;
+    });
+  }, [storiesGeneratedAt]);
 
   const handleSetTaskStory = useCallback(
     async (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
     ): Promise<void> => {
-      await operations.setStory(item, option);
+      const storySetAtMs = consoleStorySetAtMsRead(
+        await operations.setStory(item, option),
+      );
+      if (storySetAtMs !== undefined) {
+        setPendingStoryMoves((previous) => [
+          ...previous,
+          {
+            projectItemId: item.projectItemId,
+            target: option,
+            storySetAtMs,
+          },
+        ]);
+      }
       setLocalStoryEntriesOverride((previous) => {
         const latest = latestStorySnapshotRef.current;
         const baseEntries =
           previous !== null && previous.generatedAt === latest.generatedAt
             ? previous.stories
-            : latest.rawStoryEntries;
+            : latest.pendingAppliedStoryEntries;
         return {
           generatedAt: latest.generatedAt,
           stories: moveTaskToStory(baseEntries, item.projectItemId, option),
@@ -1531,7 +1524,7 @@ export const ConsolePage = () => {
         const baseEntries =
           previous !== null && previous.generatedAt === latest.generatedAt
             ? previous.stories
-            : latest.rawStoryEntries;
+            : latest.pendingAppliedStoryEntries;
         return {
           generatedAt: latest.generatedAt,
           stories: patchTaskInStories(baseEntries, projectItemId, patch),
