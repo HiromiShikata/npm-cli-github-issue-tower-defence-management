@@ -11,7 +11,6 @@ import {
   AGENT_FIELD_NAME,
   NO_STORY_STORY_NAME,
 } from '../entities/RequiredProjectField';
-import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -632,7 +631,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: '```json\n{"nextStepAgent": "chore"}\n```',
+        content: '```json\n{}\n```',
         createdAt: new Date('2026-09-23T23:32:00Z'),
       }),
       createMockComment({
@@ -882,7 +881,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }),
       createMockComment({
         author: 'test-user',
-        content: `From: :robot: developer (model)\n\n\`\`\`json\n{"nextStepAgent": "developer"}\n\`\`\`\n\nReport.`,
+        content: `From: :robot: developer (model)\n\n\`\`\`json\n{}\n\`\`\`\n\nReport.`,
         createdAt: new Date(Date.now() - 60 * 60 * 1000),
       }),
     ]);
@@ -919,7 +918,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }),
       createMockComment({
         author: 'test-user',
-        content: `From: :robot: developer (model)\n\n\`\`\`json\n{"nextStepAgent": null}\n\`\`\`\n\nReport.`,
+        content: `From: :robot: developer (model)\n\n\`\`\`json\n{}\n\`\`\`\n\nReport.`,
         createdAt: new Date(Date.now() - 70 * 60 * 1000),
       }),
       createMockComment({
@@ -1392,382 +1391,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalled();
   });
 
-  it('should set agent custom field and return to Awaiting Workspace when report has nextStepAgent', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      org: 'user',
-      repo: 'repo',
-      labels: [],
-      story: 'regular / some story',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:chore", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-  });
-
-  it('should comment the repeated dispatch when the declared nextStepAgent is already the agent field value', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'accounting',
-      story: 'regular / some story',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'awaiting-workspace-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Auto Status Check: DISPATCH_AGAIN accounting'),
-    );
-  });
-
-  it('should post storyUnset comment and set Awaiting Workspace when story is null and designated agent is already dispatched', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'developer',
-      story: null,
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'awaiting-workspace-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('developer'),
-    );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('crashed'),
-    );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('silently'),
-    );
-  });
-
-  it('should not create a second, additional STORY_UNSET comment when a repeat dispatch for the same agent happens shortly after one was already posted', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'developer',
-      story: null,
-    });
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        id: 'story-unset-comment-id',
-        content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
-        createdAt: fiveMinutesAgo,
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
-      expect.anything(),
-      'story-unset-comment-id',
-      expect.stringContaining('Auto Status Check: STORY_UNSET developer'),
-    );
-  });
-
-  it('should edit the existing STORY_UNSET comment in place, naming the new agent, when the reported next-step-agent changes between story-unset cycles', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'developer',
-      story: null,
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        id: 'story-unset-comment-id',
-        content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead.',
-      }),
-      createMockComment({
-        content:
-          'From: :robot: developer\n```json\n{"nextStepAgent": "code-reviewer", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    expect(mockIssueCommentRepository.updateComment).toHaveBeenCalledWith(
-      expect.anything(),
-      'story-unset-comment-id',
-      expect.stringContaining('Auto Status Check: STORY_UNSET code-reviewer'),
-    );
-  });
-
-  it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'accounting',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        content:
-          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe report declared that this task needs no pull request.',
-      }),
-      createMockComment({
-        content:
-          '```json\n{ "nextStep": null }\n```\n\nFrom: :robot: accounting (model)\n\n## Result\nDone.',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'Awaiting Workspace',
-      }),
-      mockProject,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'awaiting-workspace-id',
-    );
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Auto Status Check: DISPATCH_AGAIN accounting'),
-    );
-  });
-
-  it('should escalate to Failed Preparation when the declared nextStepAgent was already dispatched up to the threshold without a report', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'accounting',
-      story: 'regular / some story',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-    expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
-      ),
-    );
-  });
-
-  it('should not escalate to Failed Preparation when story is unset and triager keeps dispatching the same agent', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      story: 'regular / NO STORY',
-      agent: 'developer',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN developer',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN developer',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-  });
-
-  it('should escalate to Failed Preparation when agent has been reporting but cannot advance past threshold', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'accounting',
-      story: 'regular / some story',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-      createMockComment({
-        content:
-          'From: :robot: accounting\n```json\n{"nextStepAgent": "accounting"}\n```',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining(
-        'This task has been marked as Failed Preparation',
-      ),
-    );
-  });
-
   it('escalates to Failed Preparation when a dispatch that posts zero comments pushes a self-referencing agent to the silent-redispatch threshold', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -1811,431 +1434,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining(' null'),
-    );
-  });
-
-  it('should escalate to Failed Preparation when story stays unset and the same agent keeps being dispatched up to the dispatch loop threshold', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'developer',
-      story: null,
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        id: 'story-unset-comment-id',
-        content:
-          'Auto Status Check: STORY_UNSET developer\n\nThe story field is not set on this issue. The designated agent "developer" cannot be started until a story is assigned; the default agent is being dispatched instead. (2/3)',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      thresholdForDispatchLoop: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('developer'),
-    );
-  });
-
-  it('escalates to Failed Preparation by the thresholdForDispatchLoop-th consecutive story-unset dispatch cycle even when every cycle happens minutes apart within the comment dedup window', async () => {
-    const thresholdForDispatchLoop = 3;
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'developer',
-      story: null,
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    const triagerReport = createMockComment({
-      content:
-        'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-      createdAt: new Date(Date.now() - 60 * 60 * 1000),
-    });
-    let commentHistory: Comment[] = [triagerReport];
-    let escalatedOnThisCycle = false;
-    let updateCommentCalledAtLeastOnce = false;
-    const storyUnsetCommentId = 'story-unset-comment-id';
-    const requireStringValue = (
-      value: unknown,
-      describedSubject: string,
-    ): string => {
-      if (typeof value !== 'string') {
-        throw new Error(`Expected ${describedSubject} to be a string.`);
-      }
-      return value;
-    };
-
-    for (let cycle = 1; cycle <= thresholdForDispatchLoop; cycle += 1) {
-      issue.status = 'Preparation';
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ...commentHistory,
-      ]);
-      mockIssueCommentRepository.createComment.mockClear();
-      mockIssueCommentRepository.updateComment.mockClear();
-      mockIssueRepository.updateStatus.mockClear();
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 10,
-        thresholdForDispatchLoop,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      const dispatchCreatedAt = new Date(
-        Date.now() - (thresholdForDispatchLoop - cycle) * 5 * 60 * 1000,
-      );
-      for (const [, createdCommentContent] of mockIssueCommentRepository
-        .createComment.mock.calls) {
-        commentHistory = [
-          ...commentHistory,
-          createMockComment({
-            id: storyUnsetCommentId,
-            content: requireStringValue(
-              createdCommentContent,
-              'a createComment call body',
-            ),
-            createdAt: dispatchCreatedAt,
-          }),
-        ];
-      }
-
-      if (mockIssueCommentRepository.updateComment.mock.calls.length > 0) {
-        updateCommentCalledAtLeastOnce = true;
-      }
-      for (const [
-        ,
-        updatedCommentId,
-        updatedCommentContent,
-      ] of mockIssueCommentRepository.updateComment.mock.calls) {
-        const targetCommentId = requireStringValue(
-          updatedCommentId,
-          'an updateComment call id',
-        );
-        const targetCommentContent = requireStringValue(
-          updatedCommentContent,
-          'an updateComment call body',
-        );
-        commentHistory = commentHistory.map((comment) =>
-          comment.id === targetCommentId
-            ? {
-                ...comment,
-                content: targetCommentContent,
-                createdAt: dispatchCreatedAt,
-              }
-            : comment,
-        );
-      }
-
-      escalatedOnThisCycle = mockIssueRepository.updateStatus.mock.calls.some(
-        ([, , statusOptionId]) => statusOptionId === 'failed-preparation-id',
-      );
-    }
-
-    expect(escalatedOnThisCycle).toBe(true);
-    expect(updateCommentCalledAtLeastOnce).toBe(true);
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('Auto Status Check: STORY_UNSET_ESCALATED'),
-    );
-  });
-
-  it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'systems-analyst',
-      story: 'regular / some story',
-    });
-    const namesReviewer = createMockComment({
-      content:
-        'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
-    });
-    const namesAnalyst = createMockComment({
-      content:
-        'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      namesReviewer,
-      namesAnalyst,
-      namesReviewer,
-      namesAnalyst,
-      namesReviewer,
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      thresholdForDispatchLoop: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining(
-        'dispatched 3 times since the last human comment',
-      ),
-    );
-  });
-
-  it('should keep dispatching when a human comment separates the repeated dispatches', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'systems-analyst',
-      story: 'regular / some story',
-    });
-    const namesReviewer = createMockComment({
-      content:
-        'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
-    });
-    const namesAnalyst = createMockComment({
-      content:
-        'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      namesReviewer,
-      namesAnalyst,
-      createMockComment({ content: 'Please take the second option.' }),
-      namesReviewer,
-      namesAnalyst,
-      namesReviewer,
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      thresholdForDispatchLoop: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'failed-preparation-id',
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      mockProject,
-      expect.anything(),
-      'awaiting-workspace-id',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('(2/3)'),
-    );
-  });
-
-  it('should not modify labels when nextStepAgent is specified', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      org: 'user',
-      repo: 'repo',
-      labels: ['existing-label'],
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
-  });
-
-  it('should not add nextStepAgent label when nextStepAgent is null', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": null, "nextStep": null}\n```',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
-      mockProject,
-    );
-  });
-
-  it('should not create label when nextStepAgent is specified', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      org: 'user',
-      repo: 'repo',
-      labels: [],
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:new-agent", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-  });
-
-  it('should not modify or remove labels when nextStepAgent is specified', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      org: 'user',
-      repo: 'repo',
-      labels: ['llm-agent:chore', 'chore', 'feature-flag'],
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
-      }),
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-      labelsAsLlmAgentName: ['chore', 'accounting'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
-  });
-
-  it('should not add nextStepAgent label when nextStepAgent is an empty string', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "", "nextStep": null}\n```',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
-      mockProject,
     );
   });
 
@@ -3318,6 +2516,178 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).not.toHaveBeenCalled();
   });
 
+  it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'From: :robot: triager\n```json\n{"nextStep": null}\n```',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe report declared that this task needs no pull request.',
+      }),
+      createMockComment({
+        content:
+          '```json\n{ "nextStep": null }\n```\n\nFrom: :robot: accounting (model)\n\n## Result\nDone.',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'Awaiting Workspace',
+      }),
+      mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: DISPATCH_AGAIN accounting'),
+    );
+  });
+
+  it('should escalate to Failed Preparation when the assigned agent was already dispatched up to the threshold without a report', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+      story: 'regular / some story',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(
+        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
+      ),
+    );
+  });
+
+  it('should not escalate to Failed Preparation when triager keeps dispatching the same agent', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      story: 'regular / NO STORY',
+      agent: 'developer',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'From: :robot: triager\n```json\n{"nextStep": null}\n```',
+      }),
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
+      }),
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+  });
+
+  it('should escalate to Failed Preparation when agent has been reporting but cannot advance past threshold', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+      story: 'regular / some story',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+      createMockComment({
+        content: 'From: :robot: accounting\n```json\n{}\n```',
+      }),
+      createMockComment({
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+      dispatchStartedAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(
+        'This task has been marked as Failed Preparation',
+      ),
+    );
+  });
+
   describe('setDependedIssueUrl for open PRs', () => {
     it('should call setDependedIssueUrl for a non-approved PR', async () => {
       const issue = createMockIssue({
@@ -4125,46 +3495,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should advance to Awaiting Workspace when last comment has non-null nextStep in JSON', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStep": "fix the bug", "nextStepAgent": "developer"}\n```',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-  });
-
   describe('author verification (allowedIssueAuthors)', () => {
     it('should treat From: comment from untrusted author as NO_REPORT_FROM_AGENT_BOT', async () => {
       const issue = createMockIssue({
@@ -4772,208 +4102,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('nextStepAgent handling', () => {
-    const makeProjectWithAgent = () =>
-      createMockProject({
-        agent: {
-          name: 'Agent',
-          fieldId: 'agent-field-id',
-          options: [
-            { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
-          ],
-        },
-      });
-
-    it('calls setIssueAgentField with existing option ID when nextStepAgent is in last comment', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      const projectWithAgent = makeProjectWithAgent();
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStep": null, "nextStepAgent": "impl"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithAgent,
-        'opt-impl',
-      );
-    });
-
-    it('does not call setIssueAgentField when the latest bot report carries no declaration of its own', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      const projectWithAgent = makeProjectWithAgent();
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStep": null, "nextStepAgent": "impl"}\n```',
-        }),
-        createMockComment({
-          content:
-            '```json\n{"nextStep": null}\n```\n\n## PR URL\nhttps://github.com/user/repo/pull/2\n',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-    });
-
-    it('creates a new agent option and calls setIssueAgentField when nextStepAgent is not an existing option', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      const projectWithAgent = makeProjectWithAgent();
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStep": null, "nextStepAgent": "chore"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-      mockProjectRepository.updateAgentList.mockResolvedValue([
-        { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
-        { id: 'opt-chore-new', name: 'chore', color: 'GRAY', description: '' },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockProjectRepository.updateAgentList).toHaveBeenCalledWith(
-        projectWithAgent,
-        expect.arrayContaining([
-          expect.objectContaining({ name: 'impl' }),
-          expect.objectContaining({ id: null, name: 'chore', color: 'GRAY' }),
-        ]),
-      );
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithAgent,
-        'opt-chore-new',
-      );
-    });
-
-    it('does not call setIssueAgentField when nextStepAgent is absent from the last comment', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      const projectWithAgent = makeProjectWithAgent();
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockProjectRepository.updateAgentList).not.toHaveBeenCalled();
-    });
-
-    it('creates agent field via createField and does not call setIssueAgentField when project has no agent field and re-fetch also returns no agent', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      const projectWithoutAgent = createMockProject({ agent: null });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStep": null, "nextStepAgent": "impl"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockProjectRepository.createField).toHaveBeenCalledWith(
-        projectWithoutAgent,
-        {
-          name: AGENT_FIELD_NAME,
-          dataType: 'SINGLE_SELECT',
-          options: [{ name: 'impl', color: 'GRAY', description: '' }],
-        },
-      );
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-    });
-
-    it("does not call setIssueAgentField when the only report's self-declared posting agent does not match the issue agent field", async () => {
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      const projectWithAgent = makeProjectWithAgent();
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: pr-reviewer (model)\n```json\n{"nextStep": null, "nextStepAgent": "impl"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
 
@@ -6431,1009 +5559,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
-  describe('nextStepAgent validation against agents list', () => {
-    const requireSecondCallArgument = (mockCalls: unknown): unknown => {
-      if (!Array.isArray(mockCalls) || mockCalls.length === 0) {
-        throw new Error('Expected at least one recorded mock call.');
-      }
-      const firstCall: unknown = mockCalls[0];
-      if (!Array.isArray(firstCall) || firstCall.length < 2) {
-        throw new Error(
-          'Expected the first mock call to have at least two arguments.',
-        );
-      }
-      return firstCall[1];
-    };
-
-    it('creates a workflow blocker issue and returns original task to Awaiting Workspace when nextStepAgent is not in configured agents list', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'user',
-        'repo',
-        expect.stringContaining('unknown-agent'),
-        expect.stringContaining(issueUrl),
-        [],
-        [],
-      );
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
-        'user',
-        'repo',
-        expect.stringContaining('unknown-agent'),
-        expect.stringContaining('From: :robot:'),
-        [],
-        [],
-      );
-      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-        issueUrl,
-        mockProject,
-        blockerIssueUrl,
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        'awaiting-workspace-id',
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
-        expect.stringContaining(blockerIssueUrl),
-      );
-    });
-
-    it('sets workflow blocker story on the created blocker issue when project has a matching story', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
-      const blockerStoryId = 'blocker-story-id';
-      const blockerProjectItemId = 'blocker-project-item-id';
-      const projectWithStory = createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: blockerStoryId,
-              name: 'workflow blocker',
-              color: 'RED',
-              description: '',
-            },
-            {
-              id: 'regular-story-id',
-              name: 'regular / workflow improvement',
-              color: 'BLUE',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-      mockIssueRepository.addIssueToProject.mockResolvedValue(
-        blockerProjectItemId,
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.addIssueToProject).toHaveBeenCalledWith(
-        projectWithStory,
-        blockerIssueUrl,
-      );
-      expect(
-        mockIssueRepository.updateStoryByProjectItemId,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({ story: projectWithStory.story }),
-        blockerProjectItemId,
-        blockerStoryId,
-      );
-    });
-
-    it('sets workflow blocker story via project item id returned by addIssueToProject, not via getIssueByUrl', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerStoryId = 'blocker-story-id';
-      const returnedProjectItemId = 'returned-project-item-id';
-      const projectWithStory = createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: blockerStoryId,
-              name: 'workflow blocker',
-              color: 'RED',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-      mockIssueRepository.addIssueToProject.mockResolvedValue(
-        returnedProjectItemId,
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(
-        mockIssueRepository.updateStoryByProjectItemId,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({ story: projectWithStory.story }),
-        returnedProjectItemId,
-        blockerStoryId,
-      );
-      expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
-    });
-
-    it('logs via console.warn and still runs setDependedIssueUrl when updateStoryByProjectItemId rejects with StaleProjectItemError', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      try {
-        const issueUrl = 'https://github.com/user/repo/issues/1';
-        const blockerStoryId = 'blocker-story-id';
-        const existingBlockerUrl = 'https://github.com/user/repo/issues/99';
-        const returnedProjectItemId = 'returned-project-item-id';
-        const projectWithStory = createMockProject({
-          dependedIssueUrlSeparatedByComma: {
-            name: 'Depended Issue URL',
-            fieldId: 'depended-field-id',
-          },
-          story: {
-            name: 'Story',
-            fieldId: 'story-field-id',
-            databaseId: 1,
-            stories: [
-              {
-                id: blockerStoryId,
-                name: 'workflow blocker',
-                color: 'RED',
-                description: '',
-              },
-            ],
-            workflowManagementStory: {
-              id: 'wms-id',
-              name: 'workflow management',
-            },
-          },
-        });
-        const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-        mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
-        mockIssueRepository.get.mockResolvedValue(issue);
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          createMockComment({
-            content:
-              'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-          }),
-        ]);
-        mockIssueRepository.searchIssue.mockResolvedValue([
-          {
-            url: existingBlockerUrl,
-            title:
-              'Unregistered agent in workflow configuration: unknown-agent',
-            number: '99',
-          },
-        ]);
-        mockIssueRepository.addIssueToProject.mockResolvedValue(
-          returnedProjectItemId,
-        );
-        mockIssueRepository.updateStoryByProjectItemId.mockRejectedValueOnce(
-          new StaleProjectItemError('item-abc'),
-        );
-
-        await expect(
-          useCase.run({
-            projectUrl: 'https://github.com/users/user/projects/1',
-            issueUrl,
-            thresholdForAutoReject: 3,
-            workflowBlockerResolvedWebhookUrl: null,
-            allowedIssueAuthors: ['test-user'],
-            agents: ['developer', 'triager'],
-          }),
-        ).resolves.toBeUndefined();
-
-        expect(warnSpy).toHaveBeenCalled();
-        expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-          issueUrl,
-          projectWithStory,
-          existingBlockerUrl,
-        );
-      } finally {
-        warnSpy.mockRestore();
-      }
-    });
-
-    it('rejects and does not run setDependedIssueUrl when updateStoryByProjectItemId rejects with an unrelated error', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerStoryId = 'blocker-story-id';
-      const existingBlockerUrl = 'https://github.com/user/repo/issues/99';
-      const returnedProjectItemId = 'returned-project-item-id';
-      const projectWithStory = createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: blockerStoryId,
-              name: 'workflow blocker',
-              color: 'RED',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([
-        {
-          url: existingBlockerUrl,
-          title: 'Unregistered agent in workflow configuration: unknown-agent',
-          number: '99',
-        },
-      ]);
-      mockIssueRepository.addIssueToProject.mockResolvedValue(
-        returnedProjectItemId,
-      );
-      mockIssueRepository.updateStoryByProjectItemId.mockRejectedValueOnce(
-        new Error('unrelated-failure-xyz'),
-      );
-
-      await expect(
-        useCase.run({
-          projectUrl: 'https://github.com/users/user/projects/1',
-          issueUrl,
-          thresholdForAutoReject: 3,
-          workflowBlockerResolvedWebhookUrl: null,
-          allowedIssueAuthors: ['test-user'],
-          agents: ['developer', 'triager'],
-        }),
-      ).rejects.toThrow('unrelated-failure-xyz');
-
-      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
-    });
-
-    it('reuses an existing open blocker issue instead of creating a new one', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const existingBlockerUrl = 'https://github.com/user/repo/issues/99';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([
-        {
-          url: existingBlockerUrl,
-          title: 'Unregistered agent in workflow configuration: unknown-agent',
-          number: '99',
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-        issueUrl,
-        mockProject,
-        existingBlockerUrl,
-      );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
-        expect.stringContaining(existingBlockerUrl),
-      );
-    });
-
-    it('skips story assignment when project has no story field', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const projectWithoutStory = createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        story: null,
-      });
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutStory);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        projectWithoutStory,
-      );
-    });
-
-    it('skips story assignment when no workflow blocker story option exists in project', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const projectWithNoBlockerStory = createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: 'regular-story-id',
-              name: 'regular / workflow improvement',
-              color: 'BLUE',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(
-        projectWithNoBlockerStory,
-      );
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        projectWithNoBlockerStory,
-      );
-    });
-
-    it('creates the blocker issue in tdpmReportingRepository when configured', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(99);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        tdpmReportingRepository: 'tdpm-owner/tdpm-repo',
-      });
-
-      expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith({
-        owner: 'tdpm-owner',
-        repositoryName: 'tdpm-repo',
-        type: 'issue',
-        state: 'open',
-        title: 'Unregistered agent in workflow configuration: unknown-agent',
-      });
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'tdpm-owner',
-        'tdpm-repo',
-        expect.stringContaining('unknown-agent'),
-        expect.stringContaining(issueUrl),
-        [],
-        [],
-      );
-      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-        issueUrl,
-        mockProject,
-        'https://github.com/tdpm-owner/tdpm-repo/issues/99',
-      );
-    });
-
-    it('falls back to product repo when tdpmReportingRepository is not configured', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'user',
-        'repo',
-        expect.stringContaining('unknown-agent'),
-        expect.any(String),
-        [],
-        [],
-      );
-    });
-
-    it('falls back to product repo and warns when tdpmReportingRepository is malformed', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        tdpmReportingRepository: 'owner/repo/extra',
-      });
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('owner/repo/extra'),
-      );
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'user',
-        'repo',
-        expect.stringContaining('unknown-agent'),
-        expect.any(String),
-        [],
-        [],
-      );
-
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('includes projectName in the blocker issue body when provided', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(99);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        projectName: 'my-tdpm-project',
-      });
-
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.any(String),
-        expect.stringContaining('TDPM project: my-tdpm-project'),
-        [],
-        [],
-      );
-    });
-
-    it('omits the TDPM project line from the blocker issue body when projectName is null', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        projectName: null,
-      });
-
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.any(String),
-        expect.not.stringContaining('TDPM project'),
-        [],
-        [],
-      );
-    });
-
-    it('should dispatch normally when nextStepAgent is in the configured agents list', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "developer"}\n```',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        mockProject,
-      );
-    });
-
-    it('should skip nextStepAgent validation when agents list is null', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "any-arbitrary-agent"}\n```',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: null,
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        mockProject,
-      );
-    });
-
-    it('should skip nextStepAgent validation when agents list is empty', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "any-arbitrary-agent"}\n```',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: [],
-      });
-
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        mockProject,
-      );
-    });
-
-    it('dispatches normally when nextStepAgent is in the configured agents list even though fleetBannedAgents contains a different, unrelated agent name', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "developer"}\n```',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        fleetBannedAgents: ['urgent-taskforce-leader'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        mockProject,
-      );
-    });
-
-    it('does not create a blocker issue and instead posts one informational comment then falls through to Awaiting Workspace when nextStepAgent matches fleetBannedAgents and no owner confirmation is pending', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({
-        url: issueUrl,
-        status: 'Preparation',
-        agent: 'triager',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "urgent-taskforce-leader"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        fleetBannedAgents: ['urgent-taskforce-leader'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
-      const informationalCommentBody: unknown = requireSecondCallArgument(
-        mockIssueCommentRepository.createComment.mock.calls,
-      );
-      expect(informationalCommentBody).toContain('urgent-taskforce-leader');
-      expect(informationalCommentBody).toMatch(
-        /excluded from automatic dispatch|will not be re-dispatched/,
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        'awaiting-workspace-id',
-      );
-    });
-
-    it('does not create a blocker issue and routes to Awaiting Owner via the existing unanswered-owner-confirmation branch when nextStepAgent matches fleetBannedAgents', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "urgent-taskforce-leader", "needOwnerConfirmationOrApproval": true}\n```',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        fleetBannedAgents: ['urgent-taskforce-leader'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
-      const informationalCommentBody: unknown = requireSecondCallArgument(
-        mockIssueCommentRepository.createComment.mock.calls,
-      );
-      expect(informationalCommentBody).toContain('urgent-taskforce-leader');
-      expect(informationalCommentBody).toMatch(
-        /excluded from automatic dispatch|will not be re-dispatched/,
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        'awaiting-owner-id',
-      );
-    });
-
-    it('does not post an exclusion comment and runs only the existing null handling when the latest report has no nextStepAgent at all, even though fleetBannedAgents is configured', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const issue = createMockIssue({
-        url: issueUrl,
-        status: 'Preparation',
-        agent: 'triager',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner approval.',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['triager', 'developer'],
-        fleetBannedAgents: ['urgent-taskforce-leader'],
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringMatching(
-          /excluded from automatic dispatch|will not be re-dispatched/,
-        ),
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({
-          url: issueUrl,
-          status: 'Awaiting Workspace',
-        }),
-        'awaiting-workspace-id',
-      );
-    });
-
-    it('creates a workflow blocker issue for an agent name that would otherwise be fleet-banned when fleetBannedAgents is unset, preserving backward compatibility', async () => {
-      const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "urgent-taskforce-leader"}\n```',
-        }),
-      ]);
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(42);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        agents: ['developer', 'triager'],
-        fleetBannedAgents: null,
-      });
-
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'user',
-        'repo',
-        expect.stringContaining('urgent-taskforce-leader'),
-        expect.stringContaining(issueUrl),
-        [],
-        [],
-      );
-      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-        issueUrl,
-        mockProject,
-        blockerIssueUrl,
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        mockProject,
-      );
-    });
-  });
-
   describe('allowedIssueAuthors fail-closed behavior', () => {
     it('should reject agent reports from any author when allowedIssueAuthors is null (fail-closed)', async () => {
       const issue = createMockIssue({
@@ -7610,36 +5735,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
         agents: ['triager', 'developer'],
-      });
-
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-      );
-    });
-
-    it('preserves existing nextStepAgent:triager filter when triager is the next step agent and no PR exists', async () => {
-      const issue = createMockIssue({
-        url: issueUrl,
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "triager"}\n```\n\nRouting back to triager.',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
@@ -8301,1132 +6396,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
-  describe('routing a finished preparation by the designated next step agent', () => {
-    const projectWithAgent = () =>
-      createMockProject({
-        agent: {
-          name: AGENT_FIELD_NAME,
-          fieldId: 'agent-field-id',
-          options: [
-            { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
-          ],
-        },
-      });
 
-    it('should move the issue to Awaiting Owner without touching the agent field when no next step agent is designated', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        expect.anything(),
-      );
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-    });
-
-    it('should set the agent field and return the issue to Awaiting Workspace when a next step agent is designated', async () => {
-      const project = projectWithAgent();
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "impl"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        project,
-        'opt-impl',
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        project,
-      );
-    });
-
-    it('should waive the missing pull request rejection when the designated next step agent is the triager', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "triager"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        expect.anything(),
-      );
-    });
-
-    it('should keep the missing pull request rejection when the designated next step agent is not the triager', async () => {
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: developer (model)\n```json\n{"nextStepAgent": "impl"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        developerAgentNames: ['developer'],
-      });
-
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
-    });
-
-    it('should waive PULL_REQUEST_NOT_FOUND when defaultAgentName matches the next step agent in the report', async () => {
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "custom-triage"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        defaultAgentName: 'custom-triage',
-        developerAgentNames: ['developer'],
-      });
-
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-      );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        expect.anything(),
-      );
-    });
-  });
-
-  describe('workflow issue reporting for silent redispatch', () => {
-    const silentRedispatchComments = () => [
-      createMockComment({
-        content:
-          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-      createMockComment({
-        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
-      }),
-    ];
-
-    it('should create a new workflow issue when workflowIssueReporterSettings is provided and no existing issue found', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'accounting',
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        silentRedispatchComments(),
-      );
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(99);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: {
-          owner: 'workflow-owner',
-          repo: 'workflow-repo',
-        },
-      });
-
-      expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: 'workflow-owner',
-          repositoryName: 'workflow-repo',
-          title: 'TDPM agent not reporting: accounting',
-          state: 'open',
-        }),
-      );
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
-        'workflow-owner',
-        'workflow-repo',
-        'TDPM agent not reporting: accounting',
-        expect.stringContaining('accounting'),
-        [],
-        [],
-      );
-    });
-
-    it('should comment on existing workflow issue when one is found', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'accounting',
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        silentRedispatchComments(),
-      );
-      mockIssueRepository.searchIssue.mockResolvedValue([
-        {
-          url: 'https://github.com/workflow-owner/workflow-repo/issues/5',
-          title: 'TDPM agent not reporting: accounting',
-          number: '5',
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: {
-          owner: 'workflow-owner',
-          repo: 'workflow-repo',
-        },
-      });
-
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-        'https://github.com/workflow-owner/workflow-repo/issues/5',
-        expect.stringContaining('accounting'),
-      );
-    });
-
-    it('should NOT create a workflow issue for dispatch loop escalation', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'systems-analyst',
-        story: 'regular / some story',
-      });
-      const namesReviewer = createMockComment({
-        content:
-          'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
-      });
-      const namesAnalyst = createMockComment({
-        content:
-          'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        namesReviewer,
-        namesAnalyst,
-        namesReviewer,
-        namesAnalyst,
-        namesReviewer,
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: {
-          owner: 'workflow-owner',
-          repo: 'workflow-repo',
-        },
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalledWith(
-        expect.objectContaining({ owner: 'workflow-owner' }),
-      );
-      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
-        'workflow-owner',
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-      );
-    });
-
-    it('should NOT create a workflow issue when workflowIssueReporterSettings is null', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'accounting',
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        silentRedispatchComments(),
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: null,
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.anything(),
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
-    });
-
-    it('should add new workflow issue to project and set workflow blocker story when projectUrl is provided', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'accounting',
-        story: 'regular / some story',
-      });
-      const workflowProjectItemId = 'workflow-project-item-id';
-      const reporterProject = createMockProject({
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 123,
-          stories: [
-            {
-              id: 'workflow-blocker-story-id',
-              name: 'regular / workflow blocker',
-              color: 'RED',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wm-story-id',
-            name: 'regular / workflow management',
-          },
-        },
-      });
-
-      mockProjectRepository.getByUrl
-        .mockResolvedValueOnce(mockProject)
-        .mockResolvedValueOnce(reporterProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        silentRedispatchComments(),
-      );
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(99);
-      mockIssueRepository.addIssueToProject.mockResolvedValue(
-        workflowProjectItemId,
-      );
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: {
-          owner: 'workflow-owner',
-          repo: 'workflow-repo',
-          projectUrl: 'https://github.com/orgs/workflow-owner/projects/5',
-        },
-      });
-
-      expect(mockIssueRepository.addIssueToProject).toHaveBeenCalledWith(
-        reporterProject,
-        'https://github.com/workflow-owner/workflow-repo/issues/99',
-      );
-      expect(
-        mockIssueRepository.updateStoryByProjectItemId,
-      ).toHaveBeenCalledWith(
-        { ...reporterProject, story: reporterProject.story },
-        workflowProjectItemId,
-        'workflow-blocker-story-id',
-      );
-    });
-
-    it('should NOT call addIssueToProject when projectUrl is not set', async () => {
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: 'accounting',
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-        silentRedispatchComments(),
-      );
-      mockIssueRepository.searchIssue.mockResolvedValue([]);
-      mockIssueRepository.createNewIssue.mockResolvedValue(99);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-        workflowIssueReporterSettings: {
-          owner: 'workflow-owner',
-          repo: 'workflow-repo',
-        },
-      });
-
-      expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'workflow-blocker-story-id',
-      );
-    });
-  });
-
-  describe('story field update from result JSON', () => {
-    const projectWithStoryAndAgent = () =>
-      createMockProject({
-        agent: {
-          name: AGENT_FIELD_NAME,
-          fieldId: 'agent-field-id',
-          options: [
-            {
-              id: 'opt-tdpm',
-              name: 'tdpm-workflow-improver',
-              color: 'GRAY',
-              description: '',
-            },
-          ],
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: 'story-opt-wf',
-              name: 'regular / workflow improvement',
-              color: 'BLUE',
-              description: '',
-            },
-            {
-              id: 'story-opt-other',
-              name: 'regular / other',
-              color: 'GREEN',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-
-    it('calls updateStory with the resolved storyOptionId when the result JSON contains a story key matching a project story', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'triager',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver", "story": "regular / workflow improvement"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-wf',
-      );
-    });
-
-    it('does not call updateStory when the result JSON has no story key', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'triager',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-    });
-
-    it('does not call updateStory when the project has no story field', async () => {
-      const project = createMockProject({ story: null });
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'triager',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-    });
-
-    it('creates the missing Story option via updateStoryList and calls updateStory with the created option id when the story name does not match any project story option', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'triager',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockProjectRepository.updateStoryList.mockResolvedValue([
-        {
-          id: 'story-opt-wf',
-          name: 'regular / workflow improvement',
-          color: 'BLUE',
-          description: '',
-        },
-        {
-          id: 'story-opt-other',
-          name: 'regular / other',
-          color: 'GREEN',
-          description: '',
-        },
-        {
-          id: 'story-opt-nonexistent',
-          name: 'nonexistent story',
-          color: 'RED',
-          description: '',
-        },
-      ]);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver", "story": "nonexistent story"}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockProjectRepository.updateStoryList).toHaveBeenCalledWith(
-        project,
-        [
-          {
-            id: 'story-opt-wf',
-            name: 'regular / workflow improvement',
-            color: 'BLUE',
-            description: '',
-          },
-          {
-            id: 'story-opt-other',
-            name: 'regular / other',
-            color: 'GREEN',
-            description: '',
-          },
-          {
-            id: null,
-            name: 'nonexistent story',
-            color: 'RED',
-            description: '',
-          },
-        ],
-      );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-nonexistent',
-      );
-    });
-
-    it('does not call updateStory when reporting agent does not match issue agent field', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-    });
-
-    it('does not call updateStory when last report has no From: :robot: prefix', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'developer',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            '```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-    });
-
-    it('calls updateStory when reporting agent matches issue agent field', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: 'triager',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-wf',
-      );
-    });
-
-    it('calls updateStory when issue agent field is null and triager posts story as default agent on no-story issue', async () => {
-      const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({
-        status: 'Preparation',
-        agent: null,
-        story: null,
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-wf',
-      );
-    });
-
-    describe('story application scoped by dispatchStartedAt', () => {
-      const DISPATCH_STARTED_AT = new Date('2024-01-01T00:00:00Z');
-      const REPORT_POSTED_AT = new Date('2024-01-02T00:00:00Z');
-
-      const buildReportContent = (
-        reportHasFromRobotPrefix: boolean,
-        storyKeyPresent: boolean,
-      ): string => {
-        const prefix = reportHasFromRobotPrefix
-          ? 'From: :robot: triager (model)\n'
-          : '';
-        const storyPart = storyKeyPresent
-          ? ', "story": "regular / workflow improvement"'
-          : '';
-        return (
-          prefix +
-          '```json\n{"nextStepAgent": "developer"' +
-          storyPart +
-          '}\n```'
-        );
-      };
-
-      type StoryApplicationTestCase = {
-        description: string;
-        dispatchStartedAt: Date | null;
-        issueAgent: string | null;
-        reportHasFromRobotPrefix: boolean;
-        storyKeyPresent: boolean;
-        hasAgentReportAtAll: boolean;
-        expectUpdateStoryCalled: boolean;
-      };
-
-      const testCases: StoryApplicationTestCase[] = [
-        {
-          description:
-            'dispatchStartedAt supplied, agent field null, story key present -> updateStory called',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: null,
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: true,
-        },
-        {
-          description:
-            'dispatchStartedAt supplied, agent field matches reporter, story key present -> updateStory called',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: 'triager',
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: true,
-        },
-        {
-          description:
-            'dispatchStartedAt supplied, agent field differs from reporter, story key present -> updateStory not called (corrected protection applies on every dispatch)',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: 'chore',
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: false,
-        },
-        {
-          description:
-            'dispatchStartedAt omitted, agent field differs from reporter, story key present -> updateStory not called (existing protection unchanged)',
-          dispatchStartedAt: null,
-          issueAgent: 'chore',
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: false,
-        },
-        {
-          description:
-            'dispatchStartedAt omitted, agent field null, story key present -> updateStory called',
-          dispatchStartedAt: null,
-          issueAgent: null,
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: true,
-        },
-        {
-          description:
-            'dispatchStartedAt supplied, agent field differs from reporter, no story key -> updateStory not called',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: 'chore',
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: false,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: false,
-        },
-        {
-          description:
-            'dispatchStartedAt supplied, agent field differs from reporter, report has no From: :robot: prefix -> updateStory not called',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: 'chore',
-          reportHasFromRobotPrefix: false,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: true,
-          expectUpdateStoryCalled: false,
-        },
-        {
-          description:
-            'dispatchStartedAt supplied, agent field differs from reporter, no agent report at all -> updateStory not called',
-          dispatchStartedAt: DISPATCH_STARTED_AT,
-          issueAgent: 'chore',
-          reportHasFromRobotPrefix: true,
-          storyKeyPresent: true,
-          hasAgentReportAtAll: false,
-          expectUpdateStoryCalled: false,
-        },
-      ];
-
-      it.each(testCases)(
-        '$description',
-        async ({
-          dispatchStartedAt,
-          issueAgent,
-          reportHasFromRobotPrefix,
-          storyKeyPresent,
-          hasAgentReportAtAll,
-          expectUpdateStoryCalled,
-        }) => {
-          const project = projectWithStoryAndAgent();
-          const issue = createMockIssue({
-            status: 'Preparation',
-            agent: issueAgent,
-          });
-          mockProjectRepository.getByUrl.mockResolvedValue(project);
-          mockIssueRepository.get.mockResolvedValue(issue);
-          mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-          mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
-            hasAgentReportAtAll
-              ? [
-                  createMockComment({
-                    content: buildReportContent(
-                      reportHasFromRobotPrefix,
-                      storyKeyPresent,
-                    ),
-                    createdAt: REPORT_POSTED_AT,
-                    updatedAt: REPORT_POSTED_AT,
-                  }),
-                ]
-              : [],
-          );
-
-          await useCase.run({
-            projectUrl: 'https://github.com/users/user/projects/1',
-            issueUrl: 'https://github.com/user/repo/issues/1',
-            thresholdForAutoReject: 3,
-            workflowBlockerResolvedWebhookUrl: null,
-            allowedIssueAuthors: ['test-user'],
-            ...(dispatchStartedAt !== null ? { dispatchStartedAt } : {}),
-          });
-
-          if (expectUpdateStoryCalled) {
-            expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-              expect.objectContaining({ story: project.story }),
-              issue,
-              'story-opt-wf',
-            );
-          } else {
-            expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-          }
-        },
-      );
-    });
-  });
-
-  describe('isNoStory determination ordering against a newly supplied story', () => {
-    const buildProjectWithStories = () =>
-      createMockProject({
-        dependedIssueUrlSeparatedByComma: {
-          name: 'Depended Issue URL',
-          fieldId: 'depended-field-id',
-        },
-        agent: {
-          name: AGENT_FIELD_NAME,
-          fieldId: 'agent-field-id',
-          options: [
-            {
-              id: 'opt-developer',
-              name: 'developer',
-              color: 'GRAY',
-              description: '',
-            },
-          ],
-        },
-        story: {
-          name: 'Story',
-          fieldId: 'story-field-id',
-          databaseId: 1,
-          stories: [
-            {
-              id: 'story-opt-some',
-              name: 'regular / some story',
-              color: 'BLUE',
-              description: '',
-            },
-            {
-              id: 'story-opt-other',
-              name: 'regular / other story',
-              color: 'GREEN',
-              description: '',
-            },
-          ],
-          workflowManagementStory: {
-            id: 'wms-id',
-            name: 'workflow management',
-          },
-        },
-      });
-
-    it('★ writes the newly supplied story and posts no STORY_UNSET comment when the issue had no story before this cycle (regression: today this incorrectly posts STORY_UNSET)', async () => {
-      const project = buildProjectWithStories();
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: null,
-        story: null,
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / some story", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-some',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('STORY_UNSET'),
-      );
-      expect(mockIssueCommentRepository.updateComment).not.toHaveBeenCalled();
-    });
-
-    it('does not call updateStory and posts no STORY_UNSET comment when the issue already has a story and the report supplies no story key', async () => {
-      const project = buildProjectWithStories();
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: null,
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('STORY_UNSET'),
-      );
-    });
-
-    it('writes the differently supplied story and posts no STORY_UNSET comment when the issue already has a story and the report supplies a different valid story', async () => {
-      const project = buildProjectWithStories();
-      const issue = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-        agent: null,
-        story: 'regular / some story',
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / other story", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: project.story }),
-        issue,
-        'story-opt-other',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('STORY_UNSET'),
-      );
-    });
-  });
-
-  describe('null nextStepAgent dispatch loop detection', () => {
-    it('should escalate to Failed Preparation when a task with no nextStepAgent has been re-dispatched up to the dispatch loop threshold', async () => {
+  describe('null routing field dispatch loop detection', () => {
+    it('should escalate to Failed Preparation when a task with no routing field has been re-dispatched up to the dispatch loop threshold', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -9467,7 +6439,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('no-next-step-agent'),
+        expect.stringContaining(
+          'This no-next-step-agent task has been dispatched',
+        ),
       );
     });
 
@@ -9821,51 +6795,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('does not route to Failed Preparation via workflowError when nextStepAgent is also set (nextStepAgent takes priority)', async () => {
-      const project = createMockProject({
-        ...projectWithAwaitingOwner(),
-        agent: {
-          name: 'Agent',
-          fieldId: 'agent-field-id',
-          options: [
-            {
-              id: 'opt-developer',
-              name: 'developer',
-              color: 'GRAY',
-              description: '',
-            },
-          ],
-        },
-      });
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "developer", "workflowError": "should be ignored", "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        expect.anything(),
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        expect.anything(),
-      );
-    });
-
     it("does not route to Failed Preparation when the only report's self-declared posting agent does not match the issue agent field", async () => {
       const issue = createMockIssue({
         status: 'Preparation',
@@ -10129,51 +7058,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('does not route to Awaiting Owner via needOwnerConfirmationOrApproval when nextStepAgent is also set (nextStepAgent takes priority)', async () => {
-      const project = createMockProject({
-        ...projectWithAwaitingOwner(),
-        agent: {
-          name: 'Agent',
-          fieldId: 'agent-field-id',
-          options: [
-            {
-              id: 'opt-developer',
-              name: 'developer',
-              color: 'GRAY',
-              description: '',
-            },
-          ],
-        },
-      });
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "developer", "needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        expect.anything(),
-      );
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        expect.anything(),
-      );
-    });
-
     it("does not move the issue to Awaiting Owner when the only report's self-declared posting agent does not match the issue agent field", async () => {
       const issue = createMockIssue({
         status: 'Preparation',
@@ -10268,7 +7152,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('no-next-step-agent'),
+        expect.stringContaining(
+          'This no-next-step-agent task has been dispatched',
+        ),
       );
     });
 
@@ -10307,7 +7193,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('no-next-step-agent'),
+        expect.stringContaining(
+          'This no-next-step-agent task has been dispatched',
+        ),
       );
     });
 
@@ -10352,7 +7240,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('no-next-step-agent'),
+        expect.stringContaining(
+          'This no-next-step-agent task has been dispatched',
+        ),
       );
     });
   });
@@ -10830,7 +7720,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   describe('STORY_SET_WITH_EMPTY_BODY rejection', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
-    const reportWithNoNextStepAgent = (): Comment =>
+    const reportWithNoDeclaredAgent = (): Comment =>
       createMockComment({
         author: 'test-user',
         content:
@@ -10852,7 +7742,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -10891,7 +7781,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -10927,7 +7817,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -10955,7 +7845,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -10983,7 +7873,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -11012,7 +7902,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -11181,7 +8071,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       'Some issue instructions.\n\n<!-- TDPM_SILENT_DISPATCH_ALLOWED -->';
     const normalBody = 'Test issue body content';
 
-    const reportWithNoNextStepAgent = (): Comment =>
+    const reportWithNoDeclaredAgent = (): Comment =>
       createMockComment({
         author: 'test-user',
         content:
@@ -11198,7 +8088,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -11225,7 +8115,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        reportWithNoNextStepAgent(),
+        reportWithNoDeclaredAgent(),
       ]);
 
       await useCase.run({
@@ -11290,6 +8180,53 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ url: issueUrl }),
         'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
       );
+    });
+  });
+
+  describe('routing a finished preparation without a designated agent', () => {
+    const projectWithAgent = () =>
+      createMockProject({
+        agent: {
+          name: AGENT_FIELD_NAME,
+          fieldId: 'agent-field-id',
+          options: [
+            { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
+          ],
+        },
+      });
+
+    it('should move the issue to Awaiting Owner without touching the agent field when the report designates no agent', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
 
@@ -11384,7 +8321,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         createdAt,
       });
 
-    const fiveEarlierReportsWithoutNextStepAgent = (): Comment[] =>
+    const fiveEarlierReportsWithoutDeclaredAgent = (): Comment[] =>
       [0, 1, 2, 3, 4].map((hourOffset) =>
         agentReportEndingWith(
           '{"nextStep": null}',
@@ -11498,31 +8435,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       },
     );
 
-    it('keeps nextStepAgent routing and does not close the issue when the same block also sets nextStepAgent (closeIssueAs criterion 3)', async () => {
-      const project = projectWithDoneStatus();
-
-      await runScenario({
-        project,
-        comments: [
-          agentReportEndingWith(
-            '{"closeIssueAs": "completed", "nextStepAgent": "developer"}',
-          ),
-        ],
-        openPullRequests: [],
-        runOverrides: { agents: ['developer'] },
-      });
-
-      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        issueUrl,
-        project,
-        'opt-developer',
-      );
-      expect(statusIdsPassedToUpdateStatus()).toEqual([
-        'awaiting-workspace-id',
-      ]);
-    });
-
     it('keeps workflowError routing and does not close the issue when the same block also sets a non-empty workflowError (closeIssueAs criterion 4)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
@@ -11633,7 +8545,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
-          ...fiveEarlierReportsWithoutNextStepAgent(),
+          ...fiveEarlierReportsWithoutDeclaredAgent(),
           agentReportEndingWith(
             '{"closeIssueAs": "not planned"}',
             sixthReportCreatedAt,
@@ -11722,7 +8634,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await runScenario({
         project,
         comments: [
-          ...fiveEarlierReportsWithoutNextStepAgent(),
+          ...fiveEarlierReportsWithoutDeclaredAgent(),
           agentReportEndingWith(
             '{"closeIssueAs": "completed"}',
             sixthReportCreatedAt,
@@ -11752,7 +8664,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       await runScenario({
         project: projectWithDoneStatus(),
         comments: [
-          ...fiveEarlierReportsWithoutNextStepAgent(),
+          ...fiveEarlierReportsWithoutDeclaredAgent(),
           agentReportEndingWith('{}', sixthReportCreatedAt),
         ],
         openPullRequests: [],
@@ -11910,28 +8822,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('keeps nextStepAgent routing and does not close the issue when closeIssueAs is combined with nextStepAgent on investigation-type title/body (closeIssueAs criterion 16)', async () => {
-      await runScenario({
-        project: projectWithDoneStatus(),
-        comments: [
-          agentReportEndingWith(
-            '{"closeIssueAs": "completed", "nextStepAgent": "developer"}',
-          ),
-        ],
-        openPullRequests: [],
-        issueOverrides: {
-          title: investigationTaskTitle,
-          body: investigationTaskBody,
-        },
-        runOverrides: { agents: ['developer'] },
-      });
-
-      expect(mockIssueRepository.closeIssueByUrl).not.toHaveBeenCalled();
-      expect(statusIdsPassedToUpdateStatus()).toEqual([
-        'awaiting-workspace-id',
-      ]);
-    });
-
     it('keeps workflowError routing and does not close the issue when closeIssueAs is combined with workflowError on investigation-type title/body (closeIssueAs criterion 17)', async () => {
       await runScenario({
         project: projectWithDoneStatus(),
@@ -12074,7 +8964,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
-        expect.stringContaining('no-next-step-agent'),
+        expect.stringContaining(
+          'This no-next-step-agent task has been dispatched',
+        ),
       );
     });
   });

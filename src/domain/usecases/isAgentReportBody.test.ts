@@ -43,9 +43,7 @@ describe('extractAgentNameFromReportBody', () => {
 
 describe('isAgentReportBody', () => {
   it('accepts a body containing only a fenced json block with a JSON object', () => {
-    expect(
-      isAgentReportBody('```json\n{ "nextStepAgent": "developer" }\n```\n'),
-    ).toBe(true);
+    expect(isAgentReportBody('```json\n{ }\n```\n')).toBe(true);
   });
 
   it('accepts a body containing a fenced json block with nextStep null', () => {
@@ -55,11 +53,7 @@ describe('isAgentReportBody', () => {
   });
 
   it('accepts a body where the json block appears after prose text', () => {
-    expect(
-      isAgentReportBody(
-        'Some text\n\n```json\n{ "nextStepAgent": "developer" }\n```\n',
-      ),
-    ).toBe(true);
+    expect(isAgentReportBody('Some text\n\n```json\n{ }\n```\n')).toBe(true);
   });
 
   it('accepts a body with multiple json blocks where the first is a valid object', () => {
@@ -111,7 +105,7 @@ describe('isAgentReportBodyFromAgent', () => {
   it('accepts when body has json block and agentFieldValue matches agentName', () => {
     expect(
       isAgentReportBodyFromAgent(
-        '```json\n{ "nextStepAgent": "developer" }\n```\nSome content',
+        '```json\n{ }\n```\nSome content',
         'triager',
         'triager',
       ),

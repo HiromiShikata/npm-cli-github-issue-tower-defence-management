@@ -5,7 +5,6 @@ import {
   SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE,
 } from './autoStatusCheckComments';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
-import { extractNextStepAgent } from './extractNextStepAgent';
 import {
   extractAgentNameFromReportBody,
   isAgentReportBody,
@@ -22,19 +21,14 @@ const REPORTING_LOOP_ESCALATION_PHRASE_LEGACY =
   'Owner judgment is required to break the loop';
 export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
-export const STORY_UNSET_ESCALATION_PHRASE =
-  'the story field must be set by the owner before dispatch can continue';
-
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 
-export type NextStepAgentDispatchRepetition =
+export type DispatchRepetition =
   | { type: 'notRepeated' }
   | { type: 'dispatchAgain'; comment: string }
   | { type: 'escalateSilentRedispatch'; comment: string }
   | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
-  | { type: 'storyUnset'; comment: string; existingCommentId: string | null }
-  | { type: 'escalateStoryUnsetLoop'; comment: string }
   | { type: 'sessionInterruptedBeforeCompletion'; comment: string };
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
@@ -44,19 +38,12 @@ const DISPATCH_AGAIN_KEYWORD = 'DISPATCH_AGAIN';
 const SILENT_REDISPATCH_ESCALATED_KEYWORD = 'SILENT_REDISPATCH_ESCALATED';
 const REPORTING_LOOP_ESCALATED_KEYWORD = 'REPORTING_LOOP_ESCALATED';
 const DISPATCH_LOOP_ESCALATED_KEYWORD = 'DISPATCH_LOOP_ESCALATED';
-const STORY_UNSET_KEYWORD = 'STORY_UNSET';
-const STORY_UNSET_ESCALATED_KEYWORD = 'STORY_UNSET_ESCALATED';
 
 const DISPATCH_REPETITION_KEYWORDS = new Set([
   DISPATCH_AGAIN_KEYWORD,
   SILENT_REDISPATCH_ESCALATED_KEYWORD,
   REPORTING_LOOP_ESCALATED_KEYWORD,
   DISPATCH_LOOP_ESCALATED_KEYWORD,
-]);
-
-const STORY_UNSET_DISPATCH_REPETITION_KEYWORDS = new Set([
-  STORY_UNSET_KEYWORD,
-  STORY_UNSET_ESCALATED_KEYWORD,
 ]);
 
 const findLastHumanCommentIndex = <
@@ -245,7 +232,7 @@ export const countConsecutiveNoReportDispatches = <
 
 const isSilentRedispatchCommentForAgent = (
   content: string,
-  nextStepAgent: string,
+  targetAgentName: string,
 ): boolean => {
   if (!content.startsWith(DISPATCH_REPETITION_PREFIX)) {
     return false;
@@ -259,18 +246,8 @@ const isSilentRedispatchCommentForAgent = (
   const agentNameInComment = parts.slice(1).join(' ').trim();
   return (
     normalizeProjectFieldName(agentNameInComment) ===
-    normalizeProjectFieldName(nextStepAgent)
+    normalizeProjectFieldName(targetAgentName)
   );
-};
-
-const isStoryUnsetMarkerComment = (content: string): boolean => {
-  if (!content.startsWith(DISPATCH_REPETITION_PREFIX)) {
-    return false;
-  }
-  const afterHead = content.slice(DISPATCH_REPETITION_PREFIX.length);
-  const firstLine = afterHead.split('\n')[0];
-  const parts = firstLine.split(' ');
-  return STORY_UNSET_DISPATCH_REPETITION_KEYWORDS.has(parts[0]);
 };
 
 const isEscalationDispatchComment = (content: string): boolean =>
@@ -283,19 +260,19 @@ const countSilentRedispatches = <
   CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   agentFieldValue: string | null;
-  nextStepAgent: string | null;
+  targetAgentName: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   latestReopenedAt: Date | null;
 }): SilentRedispatch | null => {
-  if (params.nextStepAgent === null) {
+  if (params.targetAgentName === null) {
     return null;
   }
-  const nextStepAgent = params.nextStepAgent;
+  const targetAgentName = params.targetAgentName;
   if (
     params.agentFieldValue === null ||
     normalizeProjectFieldName(params.agentFieldValue) !==
-      normalizeProjectFieldName(nextStepAgent)
+      normalizeProjectFieldName(targetAgentName)
   ) {
     return null;
   }
@@ -320,7 +297,7 @@ const countSilentRedispatches = <
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
-      isSilentRedispatchCommentForAgent(comment.content, nextStepAgent) &&
+      isSilentRedispatchCommentForAgent(comment.content, targetAgentName) &&
       isEscalationDispatchComment(comment.content)
         ? index
         : found,
@@ -334,12 +311,12 @@ const countSilentRedispatches = <
     commentsAfterLastEscalation.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
-        isSilentRedispatchCommentForAgent(comment.content, nextStepAgent),
+        isSilentRedispatchCommentForAgent(comment.content, targetAgentName),
     ).length + 1;
   const firstRedispatchIndex = commentsAfterLastEscalation.findIndex(
     (comment) =>
       params.isTrustedAuthor(comment.author) &&
-      isSilentRedispatchCommentForAgent(comment.content, nextStepAgent),
+      isSilentRedispatchCommentForAgent(comment.content, targetAgentName),
   );
   const hasReportsAfterFirstRedispatch =
     firstRedispatchIndex >= 0 &&
@@ -358,7 +335,7 @@ const countSilentRedispatches = <
         }
         return (
           normalizeProjectFieldName(reportAgentName) ===
-          normalizeProjectFieldName(nextStepAgent)
+          normalizeProjectFieldName(targetAgentName)
         );
       });
   const agentSelfReported =
@@ -379,7 +356,7 @@ const countSilentRedispatches = <
       return (
         reportAgentName !== null &&
         normalizeProjectFieldName(reportAgentName) ===
-          normalizeProjectFieldName(nextStepAgent)
+          normalizeProjectFieldName(targetAgentName)
       );
     })();
   const hasReportsInCycle = agentSelfReported || hasReportsAfterFirstRedispatch;
@@ -389,7 +366,6 @@ const countSilentRedispatches = <
 const countDispatchesInCurrentCycle = <
   CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
-  nextStepAgent: string | null;
   agentFieldValue: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
@@ -445,172 +421,50 @@ const countDispatchesInCurrentCycle = <
     );
   return (
     reportsInCurrentCycle.slice(0, -1).filter((comment) => {
-      const declared = extractNextStepAgent(comment.content);
-      if (params.nextStepAgent === null) {
-        if (declared !== null) {
-          return false;
-        }
-        if (params.agentFieldValue === null) {
-          return true;
-        }
-        const reportAgentName = extractAgentNameFromReportBody(comment.content);
-        if (reportAgentName === null) {
-          return true;
-        }
-        return (
-          normalizeProjectFieldName(reportAgentName) ===
-          normalizeProjectFieldName(params.agentFieldValue)
-        );
+      if (params.agentFieldValue === null) {
+        return true;
+      }
+      const reportAgentName = extractAgentNameFromReportBody(comment.content);
+      if (reportAgentName === null) {
+        return true;
       }
       return (
-        declared !== null &&
-        normalizeProjectFieldName(declared) ===
-          normalizeProjectFieldName(params.nextStepAgent)
+        normalizeProjectFieldName(reportAgentName) ===
+        normalizeProjectFieldName(params.agentFieldValue)
       );
     }).length + 1
   );
 };
 
-type StoryUnsetDispatchState = {
-  count: number;
-  existingCommentId: string | null;
-};
-
-const parseEmbeddedStoryUnsetDispatchCount = (content: string): number => {
-  const match = content.match(/\((\d+)\/\d+\)\s*$/);
-  if (!match) return 0;
-  const parsed = Number(match[1]);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const resolveStoryUnsetDispatchState = <
-  StoryUnsetCommentLike extends {
-    author: string;
-    content: string;
-    id?: string;
-    createdAt: Date;
-  },
->(params: {
-  comments: StoryUnsetCommentLike[];
-  isTrustedAuthor: (author: string) => boolean;
-  latestReopenedAt: Date | null;
-}): StoryUnsetDispatchState => {
-  const lastHumanCommentIndex = findLastHumanCommentIndex(
-    params.comments,
-    params.isTrustedAuthor,
-  );
-  const reopenedEventBoundaryIndex = findReopenedEventBoundaryIndex(
-    params.comments,
-    params.latestReopenedAt,
-  );
-  const cycleStart = Math.max(
-    lastHumanCommentIndex,
-    reopenedEventBoundaryIndex,
-  );
-  const commentsInCurrentCycle = params.comments.slice(cycleStart + 1);
-  const lastEscalationIndex = commentsInCurrentCycle.reduce(
-    (found, comment, index) => {
-      if (!params.isTrustedAuthor(comment.author)) return found;
-      if (!isStoryUnsetMarkerComment(comment.content)) {
-        return found;
-      }
-      const afterHead = comment.content.slice(
-        DISPATCH_REPETITION_PREFIX.length,
-      );
-      const keyword = afterHead.split(/[ \n]/)[0];
-      if (keyword !== STORY_UNSET_ESCALATED_KEYWORD) return found;
-      return index;
-    },
-    -1,
-  );
-  const commentsAfterLastEscalation =
-    lastEscalationIndex >= 0
-      ? commentsInCurrentCycle.slice(lastEscalationIndex + 1)
-      : commentsInCurrentCycle;
-  const lastStoryUnsetComment =
-    [...commentsAfterLastEscalation]
-      .reverse()
-      .find(
-        (comment) =>
-          params.isTrustedAuthor(comment.author) &&
-          isStoryUnsetMarkerComment(comment.content),
-      ) ?? null;
-  if (lastStoryUnsetComment === null) {
-    return { count: 1, existingCommentId: null };
-  }
-  return {
-    count:
-      parseEmbeddedStoryUnsetDispatchCount(lastStoryUnsetComment.content) + 1,
-    existingCommentId: lastStoryUnsetComment.id ?? null,
-  };
-};
-
-export const resolveNextStepAgentDispatchRepetition = <
+export const resolveDispatchRepetition = <
   CommentLike extends { author: string; content: string; createdAt: Date },
 >(params: {
   agentFieldValue: string | null;
-  nextStepAgent: string | null;
   currentDispatchHasNoReportRejection: boolean;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
-  isNoStory: boolean;
   dependedIssueUrls: string[];
   latestReopenedAt?: Date | null;
   sessionEndedWithoutCompletingTurn?: boolean;
-}): NextStepAgentDispatchRepetition => {
+}): DispatchRepetition => {
   if (params.dependedIssueUrls.length > 0) {
     return { type: 'notRepeated' };
   }
-  const effectiveNextStepAgent =
-    params.nextStepAgent ??
-    (params.currentDispatchHasNoReportRejection
-      ? params.agentFieldValue
-      : null);
+  const effectiveAgentName = params.currentDispatchHasNoReportRejection
+    ? params.agentFieldValue
+    : null;
   const isSelfReference =
-    effectiveNextStepAgent !== null &&
+    effectiveAgentName !== null &&
     params.agentFieldValue !== null &&
     normalizeProjectFieldName(params.agentFieldValue) ===
-      normalizeProjectFieldName(effectiveNextStepAgent);
+      normalizeProjectFieldName(effectiveAgentName);
   const silentRedispatches = countSilentRedispatches({
     ...params,
-    nextStepAgent: effectiveNextStepAgent,
+    targetAgentName: effectiveAgentName,
     latestReopenedAt: params.latestReopenedAt ?? null,
   });
-  if (params.isNoStory) {
-    if (params.nextStepAgent !== null) {
-      const storyUnsetDispatchState = resolveStoryUnsetDispatchState({
-        comments: params.comments,
-        isTrustedAuthor: params.isTrustedAuthor,
-        latestReopenedAt: params.latestReopenedAt ?? null,
-      });
-      if (
-        storyUnsetDispatchState.count >= params.thresholdForDispatchLoop &&
-        !isRateLimitSilentFailureExclusionActive({
-          comments: params.comments,
-          isTrustedAuthor: params.isTrustedAuthor,
-          latestReopenedAt: params.latestReopenedAt ?? null,
-          targetAgentName: params.agentFieldValue,
-        })
-      ) {
-        return {
-          type: 'escalateStoryUnsetLoop',
-          comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_ESCALATED_KEYWORD} ${params.nextStepAgent}
-
-This issue's story field has been unset for ${params.thresholdForDispatchLoop} consecutive dispatches since the last human comment, so ${STORY_UNSET_ESCALATION_PHRASE} instead of being dispatched again.`,
-        };
-      }
-      return {
-        type: 'storyUnset',
-        comment: `${DISPATCH_REPETITION_PREFIX}${STORY_UNSET_KEYWORD} ${params.nextStepAgent}
-
-The story field is not set on this issue. The designated agent "${params.nextStepAgent}" will be dispatched again once a story is assigned. (${storyUnsetDispatchState.count}/${params.thresholdForDispatchLoop})`,
-        existingCommentId: storyUnsetDispatchState.existingCommentId,
-      };
-    }
-    return { type: 'notRepeated' };
-  }
   if (
     silentRedispatches !== null &&
     silentRedispatches.count >= params.thresholdForAutoReject
@@ -618,7 +472,7 @@ The story field is not set on this issue. The designated agent "${params.nextSte
     if (silentRedispatches.hasReportsInCycle) {
       return {
         type: 'escalateReportingLoop',
-        comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${effectiveNextStepAgent}
+        comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${effectiveAgentName}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
       };
@@ -634,14 +488,14 @@ The agent has been reporting every cycle but cannot advance — it has been disp
       ) {
         return {
           type: 'dispatchAgain',
-          comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+          comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`,
         };
       }
       return {
         type: 'escalateSilentRedispatch',
-        comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${effectiveNextStepAgent}
+        comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${effectiveAgentName}
 
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
       };
@@ -649,7 +503,7 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
   }
   if (
     params.sessionEndedWithoutCompletingTurn === true &&
-    effectiveNextStepAgent === null
+    effectiveAgentName === null
   ) {
     return {
       type: 'sessionInterruptedBeforeCompletion',
@@ -658,16 +512,15 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle({
     ...params,
-    nextStepAgent: effectiveNextStepAgent,
     latestReopenedAt: params.latestReopenedAt ?? null,
   });
   if (
     !isSelfReference &&
     dispatchesInCycle >= params.thresholdForDispatchLoop
   ) {
-    const agentLabel = effectiveNextStepAgent ?? '(no next-step agent)';
+    const agentLabel = effectiveAgentName ?? '(no next-step agent)';
     const dispatchLoopBody =
-      effectiveNextStepAgent === null
+      effectiveAgentName === null
         ? `This no-next-step-agent task has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`
         : `This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`;
     return {
@@ -677,15 +530,15 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
 ${dispatchLoopBody}`,
     };
   }
-  if (effectiveNextStepAgent === null) {
+  if (effectiveAgentName === null) {
     return { type: 'notRepeated' };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
     const comment = silentRedispatches.hasReportsInCycle
-      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
-The agent completed its session and nominated itself to continue the task in the next session. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+The agent completed its session with work remaining. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
+      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
     return { type: 'dispatchAgain', comment };
@@ -693,17 +546,17 @@ No report has been received from the dispatched agent since the last human comme
   if (dispatchesInCycle > 1) {
     return {
       type: 'dispatchAgain',
-      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
-The latest agent report names this agent as the next step and it has already been dispatched on this issue since the last human comment. Dispatching it again (${dispatchesInCycle}/${params.thresholdForDispatchLoop}).`,
+This agent has already been dispatched on this issue since the last human comment. Dispatching it again (${dispatchesInCycle}/${params.thresholdForDispatchLoop}).`,
     };
   }
   if (silentRedispatches !== null) {
     const comment = silentRedispatches.hasReportsInCycle
-      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
-The agent completed its session and nominated itself to continue the task in the next session. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveNextStepAgent}
+The agent completed its session with work remaining. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
+      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${effectiveAgentName}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
     return { type: 'dispatchAgain', comment };

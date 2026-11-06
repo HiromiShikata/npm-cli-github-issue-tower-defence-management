@@ -84,11 +84,6 @@ const STORY_ISSUE_URL_BY_OPTION_NAME: Record<string, string> =
     ]),
   );
 
-const ROUTING_JSON = {
-  nextStepAgent: 'triage-agent',
-  returnToAgent: 'developer-agent',
-};
-
 const DEFAULT_INPUT: StoryGateCheckInput = {
   issue: issueReference(ASSIGNED),
   agentName: 'developer-agent',
@@ -159,17 +154,6 @@ const agentBodyLinking = (...numbers: number[]): string =>
     '',
     'Related tasks:',
     ...numbers.map((number) => `- ${issueUrl(number)}`),
-  ].join('\n');
-
-const specificationRoutingComment = (nextStepAgent: string): string =>
-  [
-    AGENT_PREFIX_LINE,
-    '',
-    '承認済み仕様: なし',
-    '',
-    '```json',
-    JSON.stringify({ nextStepAgent, returnToAgent: 'developer-agent' }),
-    '```',
   ].join('\n');
 
 type IssueFixture = {
@@ -415,8 +399,6 @@ describe('StoryGateCheckUseCase', () => {
           'reason',
           'story',
           'storyAdoption',
-          'routingJson',
-          'specificationMissingRoutingJson',
           'activeStoryOptions',
           'storyIssues',
           'assignedIssue',
@@ -520,7 +502,6 @@ describe('StoryGateCheckUseCase', () => {
 
         expect(result.action).toBe('PROCEED');
         expect(result.reason).toBe('NOT_ON_ANY_BOARD');
-        expect(result.routingJson).toBeNull();
         expect(scenario.repository.updates).toEqual([]);
       },
     );
@@ -646,7 +627,7 @@ describe('StoryGateCheckUseCase', () => {
     ];
 
     it.each(noUniqueCases)(
-      'writes nothing and reports NO_UNIQUE_LINKED_STORY when $name',
+      'writes nothing, reports NO_UNIQUE_LINKED_STORY and resolves itself when $name',
       async ({ body, linked }) => {
         const scenario = new StoryGateScenario({ story: null, body });
         linked.forEach(({ number, story }) =>
@@ -657,9 +638,8 @@ describe('StoryGateCheckUseCase', () => {
 
         expect(scenario.repository.updates).toEqual([]);
         expect(result.storyAdoption.outcome).toBe('NO_UNIQUE_LINKED_STORY');
-        expect(result.action).toBe('ROUTE');
+        expect(result.action).toBe('SELF_RESOLVE_STORY');
         expect(result.reason).toBe('STORY_NOT_ADOPTABLE');
-        expect(result.routingJson).toEqual(ROUTING_JSON);
       },
     );
 
@@ -815,7 +795,7 @@ describe('StoryGateCheckUseCase', () => {
       expect(result.reason).toBe('STORY_ISSUE_READ');
     });
 
-    it('reports READ_BACK_MISMATCH and routes when the read-back differs', async () => {
+    it('reports READ_BACK_MISMATCH and resolves itself when the read-back differs', async () => {
       const scenario = adoptionScenario('feature A');
       scenario.repository.appliesUpdates = false;
 
@@ -823,9 +803,8 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(scenario.repository.updates).toHaveLength(1);
       expect(result.storyAdoption.outcome).toBe('READ_BACK_MISMATCH');
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
       expect(result.reason).toBe('STORY_NOT_ADOPTABLE');
-      expect(result.routingJson).toEqual(ROUTING_JSON);
     });
   });
 
@@ -839,9 +818,8 @@ describe('StoryGateCheckUseCase', () => {
 
       const { result } = await scenario.run();
 
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('ISSUE_NOT_IN_BOARD_CACHE');
-      expect(result.routingJson).toEqual(ROUTING_JSON);
     });
 
     const notAdoptableCases: {
@@ -878,7 +856,7 @@ describe('StoryGateCheckUseCase', () => {
     ];
 
     it.each(notAdoptableCases)(
-      'routes with STORY_NOT_ADOPTABLE when $name',
+      'resolves itself with STORY_NOT_ADOPTABLE when $name',
       async ({ configs, closingPullRequests }) => {
         const scenario = new StoryGateScenario({
           story: null,
@@ -889,9 +867,8 @@ describe('StoryGateCheckUseCase', () => {
         const { result } = await scenario.run();
 
         expect(result.storyAdoption.outcome).toBe('NO_UNIQUE_LINKED_STORY');
-        expect(result.action).toBe('ROUTE');
+        expect(result.action).toBe('SELF_RESOLVE_STORY');
         expect(result.reason).toBe('STORY_NOT_ADOPTABLE');
-        expect(result.routingJson).toEqual(ROUTING_JSON);
       },
     );
 
@@ -992,7 +969,6 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe(reason);
         if (reason === 'STORY_LABELED_ISSUE_OWN_STORY_UNRESOLVED') {
           expect(result.story.value).toBeNull();
-          expect(result.routingJson).toBeNull();
         }
       },
     );
@@ -1007,7 +983,7 @@ describe('StoryGateCheckUseCase', () => {
 
       const { result } = await scenario.run();
 
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('SELF_RESOLVE_STORY');
       expect(result.reason).toBe('STORY_NOT_ADOPTABLE');
     });
   });
@@ -1027,7 +1003,6 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
-      expect(result.routingJson).toBeNull();
     });
 
     it('resolves itself instead of routing to itself when STORY_NOT_ADOPTABLE would otherwise apply', async () => {
@@ -1041,7 +1016,6 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(result.action).toBe('SELF_RESOLVE_STORY');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
-      expect(result.routingJson).toBeNull();
     });
 
     it('proceeds instead of routing to itself when STORY_ISSUE_NOT_FOUND would otherwise apply', async () => {
@@ -1057,7 +1031,6 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
-      expect(result.routingJson).toBeNull();
     });
 
     it('proceeds instead of routing to itself when STORY_ISSUES_NOT_READABLE would otherwise apply', async () => {
@@ -1073,7 +1046,6 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('TRIAGE_AGENT_CANNOT_ROUTE_TO_SELF');
-      expect(result.routingJson).toBeNull();
     });
   });
 
@@ -1100,7 +1072,7 @@ describe('StoryGateCheckUseCase', () => {
       const { result } = await scenario.run();
 
       expect(result.storyIssues).toEqual([]);
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('STORY_ISSUE_NOT_FOUND');
     });
 
@@ -1187,9 +1159,8 @@ describe('StoryGateCheckUseCase', () => {
         const { result } = await scenario.run();
 
         expect(result.storyIssues).toEqual([]);
-        expect(result.action).toBe('ROUTE');
+        expect(result.action).toBe('PROCEED');
         expect(result.reason).toBe('STORY_ISSUE_NOT_FOUND');
-        expect(result.routingJson).toEqual(ROUTING_JSON);
       },
     );
 
@@ -1267,9 +1238,8 @@ describe('StoryGateCheckUseCase', () => {
 
       const { result } = await scenario.run();
 
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('STORY_ISSUE_NOT_FOUND');
-      expect(result.routingJson).toEqual(ROUTING_JSON);
     });
 
     it('routes with STORY_ISSUES_NOT_READABLE when every story issue URL is not found', async () => {
@@ -1280,9 +1250,8 @@ describe('StoryGateCheckUseCase', () => {
 
       const { result } = await scenario.run();
 
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('STORY_ISSUES_NOT_READABLE');
-      expect(result.routingJson).toEqual(ROUTING_JSON);
       expect(result.facts.storyIssueUrlsNotFound).toEqual([issueUrl(108)]);
     });
 
@@ -1304,7 +1273,7 @@ describe('StoryGateCheckUseCase', () => {
 
       expect(result.storyIssues).toEqual([]);
       expect(result.facts.storyIssueUrlsNotFound).toEqual([issueUrl(108)]);
-      expect(result.action).toBe('ROUTE');
+      expect(result.action).toBe('PROCEED');
       expect(result.reason).toBe('STORY_ISSUES_NOT_READABLE');
     });
 
@@ -1501,84 +1470,6 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe('ISSUE_CLOSED');
       },
     );
-
-    it.each([
-      {
-        name: 'the newest comment routes to the specification agent',
-        comments: ['owner question', specificationRoutingComment('spec-agent')],
-        action: 'STOP_SILENT',
-        reason: 'SPECIFICATION_ROUTING_ALREADY_POSTED',
-      },
-      {
-        name: 'the newest comment routes to another agent',
-        comments: [
-          'owner question',
-          specificationRoutingComment('other-agent'),
-        ],
-        action: 'PROCEED',
-        reason: 'REGULAR_STORY',
-      },
-      {
-        name: 'a newer comment follows the specification routing comment',
-        comments: [
-          specificationRoutingComment('spec-agent'),
-          'owner follow-up',
-        ],
-        action: 'PROCEED',
-        reason: 'REGULAR_STORY',
-      },
-    ])(
-      'returns $action with $reason when $name',
-      async ({ comments, action, reason }) => {
-        const scenario = new StoryGateScenario({
-          story: 'regular / chores',
-          comments,
-        });
-
-        const { result } = await scenario.run();
-
-        expect(result.action).toBe(action);
-        expect(result.reason).toBe(reason);
-      },
-    );
-
-    it.each([
-      {
-        name: 'stops silently when another agent meets the posted routing to the specification agent',
-        agentName: 'developer',
-        action: 'STOP_SILENT',
-        reason: 'SPECIFICATION_ROUTING_ALREADY_POSTED',
-      },
-      {
-        name: 'proceeds when the specification agent itself meets the posted routing to it',
-        agentName: 'spec-creator',
-        action: 'PROCEED',
-        reason: 'REGULAR_STORY',
-      },
-    ])('$name', async ({ agentName, action, reason }) => {
-      const scenario = new StoryGateScenario({
-        story: 'regular / chores',
-        body: [
-          '## Requirements',
-          '1. Show the list',
-          '',
-          '## Acceptance Criteria',
-          '1. The list is shown',
-        ].join('\n'),
-        comments: [
-          'owner question',
-          specificationRoutingComment('spec-creator'),
-        ],
-      });
-
-      const { result } = await scenario.run({
-        agentName,
-        specificationAgentName: 'spec-creator',
-      });
-
-      expect(result.action).toBe(action);
-      expect(result.reason).toBe(reason);
-    });
 
     it.each([
       {
@@ -1929,7 +1820,6 @@ describe('StoryGateCheckUseCase', () => {
         expect(result.reason).toBe(
           'WORK_MERGED_WITHOUT_APPROVED_SPECIFICATION',
         );
-        expect(result.routingJson).toBeNull();
         expect(result.specification?.detectedUrl).toBeNull();
         expect(result.facts.mergedClosingPullRequestUrls).toEqual([
           pullRequestUrl(9),
@@ -1975,14 +1865,6 @@ describe('StoryGateCheckUseCase', () => {
         options: { state: 'CLOSED' },
         action: 'STOP_SILENT',
         reason: 'ISSUE_CLOSED',
-      },
-      {
-        name: 'the specification routing is already posted',
-        options: {
-          comments: [namingComment, specificationRoutingComment('spec-agent')],
-        },
-        action: 'STOP_SILENT',
-        reason: 'SPECIFICATION_ROUTING_ALREADY_POSTED',
       },
     ];
 

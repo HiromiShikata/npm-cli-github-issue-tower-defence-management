@@ -51,7 +51,6 @@ import { ClosedStoryIssueReopenUseCase } from './ClosedStoryIssueReopenUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { OwnerRepliedIssueRevertUseCase } from './OwnerRepliedIssueRevertUseCase';
 import { ClosedAwaitingOwnerIssueRevertUseCase } from './ClosedAwaitingOwnerIssueRevertUseCase';
-import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 import {
   commentCreateWithDedupRetry,
   realSleep,
@@ -204,7 +203,6 @@ export class HandleScheduledEventUseCase {
     queryToAddProject?: string | null;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
-    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
     allowedDependencyRepoNameWithOwner?: string | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
@@ -717,8 +715,6 @@ ${JSON.stringify(e)}
         this.conflictedIssueRevertUseCase.run({
           projectUrl: input.projectUrl,
           allowedIssueAuthors,
-          thresholdForAutoReject: input.thresholdForAutoReject,
-          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
         }),
       failures,
     );
@@ -734,8 +730,6 @@ ${JSON.stringify(e)}
           allowedIssueAuthors,
           developerAgentNames: input.developerAgentNames,
           evaluatedAt: now,
-          thresholdForAutoReject: input.thresholdForAutoReject,
-          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
         }),
       failures,
     );
@@ -783,8 +777,6 @@ ${JSON.stringify(e)}
               allowedIssueAuthors,
               agents: input.agents ?? null,
               developerAgentNames: input.developerAgentNames ?? null,
-              workflowIssueReporterSettings:
-                input.workflowIssueReporterSettings ?? null,
             }),
           failures,
         );

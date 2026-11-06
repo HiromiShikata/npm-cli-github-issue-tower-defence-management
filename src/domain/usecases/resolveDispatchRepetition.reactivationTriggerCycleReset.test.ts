@@ -1,10 +1,10 @@
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-  resolveNextStepAgentDispatchRepetition,
-} from './resolveNextStepAgentDispatchRepetition';
+  resolveDispatchRepetition,
+} from './resolveDispatchRepetition';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 
-describe('resolveNextStepAgentDispatchRepetition - recurring periodic check must not over-count toward the dispatch loop threshold', () => {
+describe('resolveDispatchRepetition - recurring periodic check must not over-count toward the dispatch loop threshold', () => {
   const trustAll = (): boolean => true;
 
   const TEST_COMMENT_CREATED_AT = new Date('2024-01-01T00:00:00Z');
@@ -12,14 +12,14 @@ describe('resolveNextStepAgentDispatchRepetition - recurring periodic check must
   type TestComment = { author: string; content: string; createdAt: Date };
 
   const periodicCheckReport = (
-    nextStepAgent: string,
+    agentName: string,
     author = 'bot',
   ): TestComment => ({
     author,
-    content: `From: :robot: ${nextStepAgent} (model)
+    content: `From: :robot: ${agentName} (model)
 
 \`\`\`json
-{ "nextStepAgent": "${nextStepAgent}" }
+{}
 \`\`\`
 
 Hourly check: no actionable change found this cycle, rescheduled for the next hour.`,
@@ -40,15 +40,13 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
       () => periodicCheckReport('media-patrol'),
     );
 
-    const result = resolveNextStepAgentDispatchRepetition({
+    const result = resolveDispatchRepetition({
       agentFieldValue: null,
-      nextStepAgent: 'media-patrol',
       currentDispatchHasNoReportRejection: false,
       comments,
       isTrustedAuthor: trustAll,
       thresholdForAutoReject: 99,
       thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-      isNoStory: false,
       dependedIssueUrls: [],
     });
 
@@ -64,15 +62,13 @@ Hourly check: no actionable change found this cycle, rescheduled for the next ho
       }
     }
 
-    const result = resolveNextStepAgentDispatchRepetition({
+    const result = resolveDispatchRepetition({
       agentFieldValue: null,
-      nextStepAgent: 'media-patrol',
       currentDispatchHasNoReportRejection: false,
       comments,
       isTrustedAuthor: trustAll,
       thresholdForAutoReject: 99,
       thresholdForDispatchLoop: DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-      isNoStory: false,
       dependedIssueUrls: [],
     });
 

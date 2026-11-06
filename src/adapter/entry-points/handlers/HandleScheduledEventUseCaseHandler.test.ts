@@ -148,7 +148,6 @@ jest.mock('../cli/fleetConfig', () => ({
   resolveFleetConfigFilePath: jest.fn(),
   loadStartPreparationFleetSettings: jest.fn(),
   loadWorkflowImprovementIssueUrl: jest.fn(),
-  loadWorkflowIssueReporterSettings: jest.fn(),
   loadSilentNotificationEnabled: jest.fn(),
 }));
 jest.mock('./notifySilentTmuxSessions', () => ({
@@ -184,7 +183,6 @@ import {
   loadSilentNotificationEnabled,
   loadWorkflowImprovementIssueUrl,
   loadStartPreparationFleetSettings,
-  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
 import { notifySilentTmuxSessions } from './notifySilentTmuxSessions';
@@ -197,9 +195,6 @@ const mockLoadWorkflowImprovementIssueUrl = jest.mocked(
 );
 const mockLoadStartPreparationFleetSettings = jest.mocked(
   loadStartPreparationFleetSettings,
-);
-const mockLoadWorkflowIssueReporterSettings = jest.mocked(
-  loadWorkflowIssueReporterSettings,
 );
 const mockResolveFleetConfigFilePath = jest.mocked(resolveFleetConfigFilePath);
 const mockNotifySilentTmuxSessions = jest.mocked(notifySilentTmuxSessions);
@@ -289,7 +284,6 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       maximumPreparingIssuesCount: 80,
     });
     mockLoadWorkflowImprovementIssueUrl.mockReturnValue(null);
-    mockLoadWorkflowIssueReporterSettings.mockReturnValue(null);
   });
 
   it('should throw when required credential fields are missing from config', async () => {
