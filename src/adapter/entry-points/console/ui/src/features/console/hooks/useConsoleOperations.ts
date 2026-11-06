@@ -54,7 +54,7 @@ export type ConsoleOperationsApi = {
   setStory: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   setAgent: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
@@ -323,8 +323,12 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      const response = await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        request,
+      );
       invalidateItemContent(item);
+      return response;
     },
     [pjcode, invalidateItemContent],
   );

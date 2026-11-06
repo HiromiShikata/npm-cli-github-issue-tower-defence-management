@@ -13834,6 +13834,311 @@ describe('ConsolePage story task row story pulldown', () => {
   );
 });
 
+describe('ConsolePage story move kept across a stories list reload', () => {
+  const alphaStoryName = 'Story Alpha';
+  const betaStoryName = 'Story Beta';
+  const gammaStoryName = 'Story Gamma';
+  const movedTaskTitle = 'Reload task moved to beta';
+  const movedTaskNumber = 201;
+  const movedTaskProjectItemId = 'PVTI_RELOAD_MOVED';
+  const movedTaskUrl = `https://github.com/demo/repo/issues/${movedTaskNumber}`;
+  const moveSavedAt = '2026-06-19T00:02:00.000Z';
+  const initialGeneratedAt = '2026-06-19T00:00:00.000Z';
+  const fiveMinutesMs = 5 * 60_000;
+
+  const storyOptions = [
+    { id: 'opt-reload-alpha', name: alphaStoryName, color: 'BLUE' },
+    { id: 'opt-reload-beta', name: betaStoryName, color: 'BLUE' },
+    { id: 'opt-reload-gamma', name: gammaStoryName, color: 'BLUE' },
+  ];
+  const storyOptionIdOf = (storyName: string): string =>
+    storyOptions.find((option) => option.name === storyName)?.id ?? '';
+
+  const storiesPayloadListing = (
+    generatedAt: string,
+    listedStoryName: string,
+  ) => ({
+    generatedAt,
+    statusOptions: [
+      { id: 'status-todo', name: 'Todo by human', color: 'BLUE' },
+    ],
+    agentOptions: [],
+    storyOptions,
+    storyColors: {},
+    items: [],
+    defaultNameWithOwner: 'demo/repo',
+    storyOrder: [],
+    stories: storyOptions.map((option) => ({
+      storyName: option.name,
+      storyOptionId: option.id,
+      color: 'BLUE',
+      description: '',
+      openItemCount: option.name === listedStoryName ? 1 : 0,
+      storyViewUrl: null,
+      items:
+        option.name === listedStoryName
+          ? [
+              {
+                number: movedTaskNumber,
+                title: movedTaskTitle,
+                url: movedTaskUrl,
+                repo: 'demo/repo',
+                nameWithOwner: 'demo/repo',
+                projectItemId: movedTaskProjectItemId,
+                itemId: movedTaskProjectItemId,
+                isPr: false,
+                relatedOpenPullRequestUrls: [],
+                story: option.name,
+                status: 'Todo by human',
+                agent: null,
+                nextActionDate: null,
+                nextActionHour: null,
+                dependedIssueUrls: [],
+                labels: [],
+                createdAt: '2026-06-18T00:00:00.000Z',
+              },
+            ]
+          : [],
+    })),
+  });
+
+  let storiesResponse = storiesPayloadListing(
+    initialGeneratedAt,
+    alphaStoryName,
+  );
+
+  const installReloadFetch = (): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesResponse : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.endsWith('/api/triage') && init.method === 'POST') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            storySetAtMs: Date.parse(moveSavedAt),
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const triagePostCount = (fetchMock: jest.Mock): number =>
+    fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        String(url).endsWith('/api/triage') &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    ).length;
+
+  const storyRowNamed = (
+    container: HTMLElement,
+    storyName: string,
+  ): HTMLElement => {
+    const row = Array.from(
+      container.querySelectorAll<HTMLElement>('li.console-story-list-row'),
+    ).find(
+      (element) =>
+        element.querySelector('.console-storytag')?.textContent === storyName,
+    );
+    if (row === undefined) {
+      throw new Error(`story row not found: ${storyName}`);
+    }
+    return row;
+  };
+
+  const expandStoryGroup = async (
+    container: HTMLElement,
+    storyName: string,
+  ): Promise<void> => {
+    const chevron = await waitFor(() =>
+      within(storyRowNamed(container, storyName)).getByRole('button', {
+        name: /^(Show|Hide) tasks$/,
+      }),
+    );
+    if (chevron.getAttribute('aria-label') === 'Show tasks') {
+      fireEvent.click(chevron);
+    }
+    await waitFor(() => {
+      expect(
+        within(storyRowNamed(container, storyName)).getByRole('button', {
+          name: 'Hide tasks',
+        }),
+      ).toBeInTheDocument();
+    });
+  };
+
+  const expectMovedTaskOnlyUnder = async (
+    container: HTMLElement,
+    expectedStoryName: string,
+  ): Promise<void> => {
+    for (const option of storyOptions) {
+      await expandStoryGroup(container, option.name);
+      await waitFor(() => {
+        const titles = Array.from(
+          storyRowNamed(container, option.name).querySelectorAll<HTMLElement>(
+            '.console-story-task-title',
+          ),
+        ).map((element) => element.textContent);
+        expect(titles).toEqual(
+          option.name === expectedStoryName ? [movedTaskTitle] : [],
+        );
+      });
+    }
+  };
+
+  const reloadCases = [
+    {
+      name: 'an older list still listing the task under its original story',
+      listGeneratedAt: '2026-06-19T00:01:30.000Z',
+      listedStoryName: alphaStoryName,
+      expectedStoryName: betaStoryName,
+    },
+    {
+      name: 'a newer list listing the chosen story',
+      listGeneratedAt: '2026-06-19T00:02:30.000Z',
+      listedStoryName: betaStoryName,
+      expectedStoryName: betaStoryName,
+    },
+    {
+      name: 'a newer list listing a third story',
+      listGeneratedAt: '2026-06-19T00:02:30.000Z',
+      listedStoryName: gammaStoryName,
+      expectedStoryName: gammaStoryName,
+    },
+  ];
+  const browserClockOffsets = [
+    { label: 'in sync with the server clock', offsetMs: 0 },
+    { label: '5 minutes behind the server clock', offsetMs: -fiveMinutesMs },
+    { label: '5 minutes ahead of the server clock', offsetMs: fiveMinutesMs },
+  ];
+  const cases = reloadCases.flatMap((reloadCase) =>
+    browserClockOffsets.map((clock) => ({
+      ...reloadCase,
+      offsetMs: clock.offsetMs,
+      name: `${reloadCase.name} when the browser clock is ${clock.label}`,
+    })),
+  );
+
+  beforeEach(() => {
+    localStorage.clear();
+    storiesResponse = storiesPayloadListing(initialGeneratedAt, alphaStoryName);
+  });
+
+  it.each(cases)(
+    'shows the moved task under its expected story after $name',
+    async ({
+      listGeneratedAt,
+      listedStoryName,
+      expectedStoryName,
+      offsetMs,
+    }) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(Date.parse(moveSavedAt) + offsetMs);
+      try {
+        window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+        const fetchMock = installReloadFetch();
+        const view = render(<ConsolePage />);
+        await expandStoryGroup(view.container, alphaStoryName);
+
+        fireEvent.change(
+          within(storyRowNamed(view.container, alphaStoryName)).getByRole(
+            'combobox',
+            { name: 'Set story' },
+          ),
+          { target: { value: storyOptionIdOf(betaStoryName) } },
+        );
+        await waitFor(() => {
+          expect(triagePostCount(fetchMock)).toBe(1);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+
+        storiesResponse = storiesPayloadListing(
+          listGeneratedAt,
+          listedStoryName,
+        );
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+        await expectMovedTaskOnlyUnder(view.container, expectedStoryName);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it.each(browserClockOffsets)(
+    'keeps the moved task under its chosen story when a newer list is applied before an older list when the browser clock $label',
+    async ({ offsetMs }) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(Date.parse(moveSavedAt) + offsetMs);
+      try {
+        window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+        const fetchMock = installReloadFetch();
+        const view = render(<ConsolePage />);
+        await expandStoryGroup(view.container, alphaStoryName);
+
+        fireEvent.change(
+          within(storyRowNamed(view.container, alphaStoryName)).getByRole(
+            'combobox',
+            { name: 'Set story' },
+          ),
+          { target: { value: storyOptionIdOf(betaStoryName) } },
+        );
+        await waitFor(() => {
+          expect(triagePostCount(fetchMock)).toBe(1);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+
+        storiesResponse = storiesPayloadListing(
+          '2026-06-19T00:02:30.000Z',
+          betaStoryName,
+        );
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+
+        storiesResponse = storiesPayloadListing(
+          '2026-06-19T00:01:30.000Z',
+          alphaStoryName,
+        );
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+});
+
 describe('ConsolePage story status filter counts', () => {
   const storyTaskItem = (number: number, story: string, status: string) => ({
     number,

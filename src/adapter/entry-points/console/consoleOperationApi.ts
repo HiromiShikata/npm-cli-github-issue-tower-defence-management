@@ -756,8 +756,9 @@ export const handleTriage = async (
       );
       context.updateProjectCacheEntry?.(pjcode, freshProject);
     }
+    const storySetAtMs = Date.now();
     recordDoneForStoryChange(context, pjcode, projectItemId);
-    return ok();
+    return { statusCode: 200, body: { ok: true, storySetAtMs } };
   }
 
   if (action === 'set_agent') {

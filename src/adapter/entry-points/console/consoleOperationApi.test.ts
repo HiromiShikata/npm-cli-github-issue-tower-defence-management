@@ -54,6 +54,18 @@ const hasErrorMessage = (body: unknown): body is { error: string } =>
   'error' in body &&
   typeof body.error === 'string';
 
+const storySetAtMsOf = (body: unknown): number | null => {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('storySetAtMs' in body) ||
+    typeof body.storySetAtMs !== 'number'
+  ) {
+    return null;
+  }
+  return body.storySetAtMs;
+};
+
 const errorMessageOf = (body: unknown): string => {
   if (!hasErrorMessage(body)) {
     throw new Error('response body does not carry a string error message');
@@ -1199,6 +1211,39 @@ describe('consoleOperationApi', () => {
         'PVTI_story_only',
         CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
       );
+    });
+
+    it('returns storySetAtMs between the times before and after a successful set_story', async () => {
+      const beforeMs = Date.now();
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_story_set_at',
+        storyOptionId: 'story_opt_1',
+      });
+      const afterMs = Date.now();
+      expect(response.statusCode).toBe(200);
+      const storySetAtMs = storySetAtMsOf(response.body);
+      expect(storySetAtMs).not.toBeNull();
+      expect(response.body).toStrictEqual({ ok: true, storySetAtMs });
+      expect(storySetAtMs).toBeGreaterThanOrEqual(beforeMs);
+      expect(storySetAtMs).toBeLessThanOrEqual(afterMs);
+    });
+
+    it('does not return storySetAtMs when set_story fails with a non-stale error', async () => {
+      issueRepository.updateStory.mockRejectedValueOnce(
+        new Error('Network timeout'),
+      );
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_story',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_story_set_fail',
+          storyOptionId: 'story_opt_1',
+        }),
+      ).rejects.toThrow('Network timeout');
     });
 
     it('rejects an unknown status name', async () => {
