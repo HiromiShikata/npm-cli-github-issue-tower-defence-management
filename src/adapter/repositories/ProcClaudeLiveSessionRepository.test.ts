@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { isDeepStrictEqual } from 'util';
+import { ClaudeLiveSession } from '../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import { ProcClaudeLiveSessionRepository } from './ProcClaudeLiveSessionRepository';
 
 type FakeProcess = {
@@ -219,5 +221,193 @@ describe('ProcClaudeLiveSessionRepository', () => {
     );
 
     expect(repository.listLiveSessions()).toEqual([]);
+  });
+
+  it('pins local claude detection and session key derivation across all cases', () => {
+    type ProcessFixture = {
+      pid: number;
+      cmdline?: string;
+      exe?: string;
+      environ: Record<string, string>;
+    };
+    type PinningCase = {
+      name: string;
+      directory: 'present' | 'missing' | 'unreadable';
+      processes: ProcessFixture[];
+      expected: ClaudeLiveSession[];
+    };
+    const claudeExe = '/home/user/.local/share/claude/versions/2.1.0';
+    const cases: PinningCase[] = [
+      {
+        name: 'claude process keys by config dir when present',
+        directory: 'present',
+        processes: [
+          {
+            pid: 201,
+            cmdline: 'claude\0--print\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-a',
+              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-a',
+              CLAUDE_CODE_SESSION_ID: 'session-pin-a',
+            },
+          },
+        ],
+        expected: [
+          { token: 'token-pin-a', sessionKey: '/home/user/.config/pin-a' },
+        ],
+      },
+      {
+        name: 'claude process keys by session id without config dir',
+        directory: 'present',
+        processes: [
+          {
+            pid: 202,
+            cmdline: 'claude\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-b',
+              CLAUDE_CODE_SESSION_ID: 'session-pin-b',
+            },
+          },
+        ],
+        expected: [{ token: 'token-pin-b', sessionKey: 'session-pin-b' }],
+      },
+      {
+        name: 'claude process keys by pid without config dir or session id',
+        directory: 'present',
+        processes: [
+          {
+            pid: 203,
+            cmdline: 'claude\0',
+            environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-c' },
+          },
+        ],
+        expected: [{ token: 'token-pin-c', sessionKey: 'pid:203' }],
+      },
+      {
+        name: 'non-claude process with token and no marker is not counted',
+        directory: 'present',
+        processes: [
+          {
+            pid: 204,
+            cmdline: 'ssh\0example-host\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-d',
+              CLAUDE_CODE_SESSION_ID: 'session-pin-d',
+            },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'claude process without token is not counted',
+        directory: 'present',
+        processes: [
+          {
+            pid: 205,
+            cmdline: 'claude\0',
+            environ: { CLAUDE_CODE_SESSION_ID: 'session-pin-e' },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'claude process with empty token is not counted',
+        directory: 'present',
+        processes: [
+          {
+            pid: 206,
+            cmdline: 'claude\0',
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: '',
+              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-f',
+            },
+          },
+        ],
+        expected: [],
+      },
+      {
+        name: 'process detected only by exe symlink is counted by config dir',
+        directory: 'present',
+        processes: [
+          {
+            pid: 207,
+            cmdline: 'node\0/opt/app.js\0',
+            exe: claudeExe,
+            environ: {
+              CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-g1',
+              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-g1',
+            },
+          },
+        ],
+        expected: [
+          { token: 'token-pin-g1', sessionKey: '/home/user/.config/pin-g1' },
+        ],
+      },
+      {
+        name: 'missing proc directory yields no sessions',
+        directory: 'missing',
+        processes: [],
+        expected: [],
+      },
+      {
+        name: 'unreadable proc directory yields no sessions',
+        directory: 'unreadable',
+        processes: [],
+        expected: [],
+      },
+    ];
+
+    const writeFixtureProcess = (root: string, fixture: ProcessFixture) => {
+      const processDirectory = path.join(root, String(fixture.pid));
+      fs.mkdirSync(processDirectory, { recursive: true });
+      if (fixture.cmdline !== undefined) {
+        fs.writeFileSync(
+          path.join(processDirectory, 'cmdline'),
+          fixture.cmdline,
+        );
+      }
+      if (fixture.exe !== undefined) {
+        fs.symlinkSync(fixture.exe, path.join(processDirectory, 'exe'));
+      }
+      const environBuffer = Object.entries(fixture.environ)
+        .map(([key, value]) => `${key}=${value}\0`)
+        .join('');
+      fs.writeFileSync(path.join(processDirectory, 'environ'), environBuffer);
+    };
+
+    const mismatches: {
+      name: string;
+      actual: ClaudeLiveSession[];
+      expected: ClaudeLiveSession[];
+    }[] = [];
+    cases.forEach((testCase, index) => {
+      const caseDirectory = path.join(procDirectory, `case-${index}`);
+      fs.mkdirSync(caseDirectory);
+      for (const fixture of testCase.processes) {
+        writeFixtureProcess(caseDirectory, fixture);
+      }
+      if (testCase.directory === 'unreadable') {
+        fs.chmodSync(caseDirectory, 0o000);
+      }
+      const repositoryDirectory =
+        testCase.directory === 'missing'
+          ? path.join(caseDirectory, 'missing')
+          : caseDirectory;
+      const actual = new ProcClaudeLiveSessionRepository(
+        repositoryDirectory,
+      ).listLiveSessions();
+      if (testCase.directory === 'unreadable') {
+        fs.chmodSync(caseDirectory, 0o755);
+      }
+      if (!isDeepStrictEqual(actual, testCase.expected)) {
+        mismatches.push({
+          name: testCase.name,
+          actual,
+          expected: testCase.expected,
+        });
+      }
+    });
+
+    expect(mismatches).toEqual([]);
   });
 });
