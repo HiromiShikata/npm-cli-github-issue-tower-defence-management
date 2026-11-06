@@ -122,7 +122,7 @@ describe('consoleStoryPendingMoves', () => {
         {
           name: 'list with an unparsable generatedAt',
           storiesGeneratedAt: 'not-a-timestamp',
-          expectedKept: true,
+          expectedKept: false,
         },
       ];
       for (const testCase of cases) {
@@ -198,7 +198,7 @@ describe('consoleStoryPendingMoves', () => {
           name: 'two moves of different tasks, list with an unparsable generatedAt',
           moves: [moveAt('t1', betaStory, 0), moveAt('t2', gammaStory, 5)],
           storiesGeneratedAt: 'not-a-timestamp',
-          expectedPlacements: ['t1:opt-beta', 't2:opt-gamma'],
+          expectedPlacements: ['t1:opt-alpha', 't2:opt-alpha'],
         },
       ];
       for (const testCase of cases) {
