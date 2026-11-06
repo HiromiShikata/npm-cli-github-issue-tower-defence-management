@@ -648,6 +648,24 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
+    it('re-throws merge errors that are neither the 403 workflow scope error nor a merge conflict', async () => {
+      issueRepository.mergePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to merge PR https://github.com/o/r/pull/1: HTTP 500 Internal Server Error',
+        ),
+      );
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'approve_and_merge',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_merge500',
+        }),
+      ).rejects.toThrow('HTTP 500');
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
     it('posts a conflict comment, moves to Awaiting workspace, and returns 200 when the pull request has a merge conflict', async () => {
       issueRepository.getOpenPullRequest.mockResolvedValue({
         url: 'https://github.com/o/r/pull/1',
