@@ -1,3 +1,10 @@
+# [2.190.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.4...v2.190.0) (2026-11-06)
+
+
+### Features
+
+* **live-session:** count remote worker sessions per OAuth token ([#3698](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3698)) ([ec85ac2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec85ac235187e7078fad503368665f0e355fa49e))
+
 ## [2.189.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.3...v2.189.4) (2026-11-06)
 
 
