@@ -13859,7 +13859,9 @@ describe('ConsolePage story move kept across a stories list reload', () => {
     listedStoryName: string,
   ) => ({
     generatedAt,
-    statusOptions: [{ id: 'status-todo', name: 'Todo by human', color: 'BLUE' }],
+    statusOptions: [
+      { id: 'status-todo', name: 'Todo by human', color: 'BLUE' },
+    ],
     agentOptions: [],
     storyOptions,
     storyColors: {},
@@ -13913,7 +13915,8 @@ describe('ConsolePage story move kept across a stories list reload', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => (tab === 'stories' ? storiesResponse : listPayload(tab)),
+          json: async () =>
+            tab === 'stories' ? storiesResponse : listPayload(tab),
         };
       }
       if (url === '/api/projects') {
@@ -13934,7 +13937,10 @@ describe('ConsolePage story move kept across a stories list reload', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ ok: true, storySetAtMs: Date.parse(moveSavedAt) }),
+          json: async () => ({
+            ok: true,
+            storySetAtMs: Date.parse(moveSavedAt),
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -14046,7 +14052,12 @@ describe('ConsolePage story move kept across a stories list reload', () => {
 
   it.each(cases)(
     'shows the moved task under its expected story after $name',
-    async ({ listGeneratedAt, listedStoryName, expectedStoryName, offsetMs }) => {
+    async ({
+      listGeneratedAt,
+      listedStoryName,
+      expectedStoryName,
+      offsetMs,
+    }) => {
       jest.useFakeTimers();
       jest.setSystemTime(Date.parse(moveSavedAt) + offsetMs);
       try {
@@ -14067,7 +14078,10 @@ describe('ConsolePage story move kept across a stories list reload', () => {
         });
         await expectMovedTaskOnlyUnder(view.container, betaStoryName);
 
-        storiesResponse = storiesPayloadListing(listGeneratedAt, listedStoryName);
+        storiesResponse = storiesPayloadListing(
+          listGeneratedAt,
+          listedStoryName,
+        );
         await act(async () => {
           jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
         });

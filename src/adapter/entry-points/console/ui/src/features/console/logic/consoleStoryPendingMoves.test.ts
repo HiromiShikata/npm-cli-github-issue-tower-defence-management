@@ -219,59 +219,62 @@ describe('consoleStoryPendingMoves', () => {
 
   describe('consoleStorySetAtMsRead', () => {
     it('returns storySetAtMs only when it is a finite number', () => {
-      const cases: { name: string; response: unknown; expected: number | undefined }[] =
-        [
-          {
-            name: 'finite number',
-            response: { ok: true, storySetAtMs: 1793975484000 },
-            expected: 1793975484000,
-          },
-          {
-            name: 'zero',
-            response: { ok: true, storySetAtMs: 0 },
-            expected: 0,
-          },
-          {
-            name: 'missing storySetAtMs',
-            response: { ok: true },
-            expected: undefined,
-          },
-          {
-            name: 'numeric string',
-            response: { ok: true, storySetAtMs: '1793975484000' },
-            expected: undefined,
-          },
-          {
-            name: 'NaN',
-            response: { ok: true, storySetAtMs: Number.NaN },
-            expected: undefined,
-          },
-          {
-            name: 'Infinity',
-            response: { ok: true, storySetAtMs: Number.POSITIVE_INFINITY },
-            expected: undefined,
-          },
-          {
-            name: 'null storySetAtMs',
-            response: { ok: true, storySetAtMs: null },
-            expected: undefined,
-          },
-          {
-            name: 'null body',
-            response: null,
-            expected: undefined,
-          },
-          {
-            name: 'undefined body',
-            response: undefined,
-            expected: undefined,
-          },
-          {
-            name: 'bare number body',
-            response: 1793975484000,
-            expected: undefined,
-          },
-        ];
+      const cases: {
+        name: string;
+        response: unknown;
+        expected: number | undefined;
+      }[] = [
+        {
+          name: 'finite number',
+          response: { ok: true, storySetAtMs: 1793975484000 },
+          expected: 1793975484000,
+        },
+        {
+          name: 'zero',
+          response: { ok: true, storySetAtMs: 0 },
+          expected: 0,
+        },
+        {
+          name: 'missing storySetAtMs',
+          response: { ok: true },
+          expected: undefined,
+        },
+        {
+          name: 'numeric string',
+          response: { ok: true, storySetAtMs: '1793975484000' },
+          expected: undefined,
+        },
+        {
+          name: 'NaN',
+          response: { ok: true, storySetAtMs: Number.NaN },
+          expected: undefined,
+        },
+        {
+          name: 'Infinity',
+          response: { ok: true, storySetAtMs: Number.POSITIVE_INFINITY },
+          expected: undefined,
+        },
+        {
+          name: 'null storySetAtMs',
+          response: { ok: true, storySetAtMs: null },
+          expected: undefined,
+        },
+        {
+          name: 'null body',
+          response: null,
+          expected: undefined,
+        },
+        {
+          name: 'undefined body',
+          response: undefined,
+          expected: undefined,
+        },
+        {
+          name: 'bare number body',
+          response: 1793975484000,
+          expected: undefined,
+        },
+      ];
       for (const testCase of cases) {
         const actual = consoleStorySetAtMsRead(testCase.response);
         expect({ name: testCase.name, actual }).toEqual({
@@ -321,7 +324,9 @@ describe('consoleStoryPendingMoves', () => {
             moved,
             listItem('other', 'Todo by human', false),
           ]),
-          storyEntry(betaStory, [listItem('beta-task', 'Todo by human', false)]),
+          storyEntry(betaStory, [
+            listItem('beta-task', 'Todo by human', false),
+          ]),
           storyEntry(gammaStory, []),
         ];
         const sourceBefore = entries[0].openItemCount;

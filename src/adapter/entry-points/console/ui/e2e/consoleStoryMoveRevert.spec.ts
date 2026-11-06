@@ -21,7 +21,11 @@ const WORKFLOW_BLOCKER = {
   name: 'regular / WORKFLOW BLOCKER',
   optionId: 'a3b9c4d2',
 };
-const STORY_GROUPS = [TDPM_CONSOLE_PORT, PUBLISH_PRODUCT_DOCS, WORKFLOW_BLOCKER];
+const STORY_GROUPS = [
+  TDPM_CONSOLE_PORT,
+  PUBLISH_PRODUCT_DOCS,
+  WORKFLOW_BLOCKER,
+];
 
 const TASK_ONE = 921;
 const TASK_TWO = 922;
@@ -43,7 +47,10 @@ const wholeSecondAtOrAfter = (ms: number): string =>
 const BROWSER_CLOCK_CASES = [
   { label: 'matches the server clock', offsetMs: 0 },
   { label: 'is 5 minutes behind the server clock', offsetMs: -FIVE_MINUTES_MS },
-  { label: 'is 5 minutes ahead of the server clock', offsetMs: FIVE_MINUTES_MS },
+  {
+    label: 'is 5 minutes ahead of the server clock',
+    offsetMs: FIVE_MINUTES_MS,
+  },
 ];
 
 const ALL_TASKS_IN_TDPM: ConsoleE2eStoryPlacement[] = [
@@ -85,9 +92,12 @@ const activeTabLabel = (page: Page) =>
 
 const storyRow = (page: Page, storyName: string) =>
   page.locator('.console-story-list-row').filter({
-    has: page.locator('.console-story-list-row-main > .console-story-name-toggle', {
-      hasText: storyName,
-    }),
+    has: page.locator(
+      '.console-story-list-row-main > .console-story-name-toggle',
+      {
+        hasText: storyName,
+      },
+    ),
   });
 
 const openStoryTasks = async (page: Page, storyName: string): Promise<void> => {
@@ -134,7 +144,9 @@ const expectStoryPlacement = async (
 
 const refreshStoriesList = async (page: Page): Promise<void> => {
   const storiesListResponse = page.waitForResponse((response) =>
-    response.url().includes(`/projects/${CONSOLE_E2E_PJCODE}/stories/list.json`),
+    response
+      .url()
+      .includes(`/projects/${CONSOLE_E2E_PJCODE}/stories/list.json`),
   );
   await page.clock.fastForward(60_000);
   await storiesListResponse;
