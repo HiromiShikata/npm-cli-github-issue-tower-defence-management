@@ -54,6 +54,18 @@ const hasErrorMessage = (body: unknown): body is { error: string } =>
   'error' in body &&
   typeof body.error === 'string';
 
+const storySetAtMsOf = (body: unknown): number | null => {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('storySetAtMs' in body) ||
+    typeof body.storySetAtMs !== 'number'
+  ) {
+    return null;
+  }
+  return body.storySetAtMs;
+};
+
 const errorMessageOf = (body: unknown): string => {
   if (!hasErrorMessage(body)) {
     throw new Error('response body does not carry a string error message');
@@ -1212,11 +1224,9 @@ describe('consoleOperationApi', () => {
       });
       const afterMs = Date.now();
       expect(response.statusCode).toBe(200);
-      expect(response.body).toEqual({
-        ok: true,
-        storySetAtMs: expect.any(Number),
-      });
-      const { storySetAtMs } = response.body as { storySetAtMs: number };
+      const storySetAtMs = storySetAtMsOf(response.body);
+      expect(storySetAtMs).not.toBeNull();
+      expect(response.body).toStrictEqual({ ok: true, storySetAtMs });
       expect(storySetAtMs).toBeGreaterThanOrEqual(beforeMs);
       expect(storySetAtMs).toBeLessThanOrEqual(afterMs);
     });
