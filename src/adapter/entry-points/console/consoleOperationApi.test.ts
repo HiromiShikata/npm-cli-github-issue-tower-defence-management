@@ -707,6 +707,72 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('posts a conflict comment, moves to Awaiting workspace, and returns 200 when GitHub rejects the merge with a merge conflict after the pre-check passed', async () => {
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+      });
+      issueRepository.mergePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405 Pull Request has merge conflicts',
+        ),
+      );
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_merge405',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({
+          itemId: 'PVTI_merge405',
+          url: 'https://github.com/o/r/pull/1',
+        }),
+        'status_aw',
+      );
+      expectRecordedOnlyIn(
+        'PVTI_merge405',
+        CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+      );
+    });
+
+    it('re-throws an HTTP 405 merge error that does not report merge conflicts', async () => {
+      issueRepository.mergePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405 Required status check is expected',
+        ),
+      );
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'approve_and_merge',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_merge405other',
+        }),
+      ).rejects.toThrow('HTTP 405 Required status check is expected');
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
     it('returns 400 with check names when required checks are not green', async () => {
       issueRepository.getOpenPullRequest.mockResolvedValue({
         url: 'https://github.com/o/r/pull/1',
