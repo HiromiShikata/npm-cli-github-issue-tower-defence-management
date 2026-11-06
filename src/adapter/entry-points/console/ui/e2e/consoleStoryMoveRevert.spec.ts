@@ -178,24 +178,10 @@ const moveTaskToStory = async (
   ).toHaveCount(1);
 };
 
-const runMoveThenListSequence = async (
+const performMoves = async (
   page: Page,
   storyHarness: ConsoleE2eHarness,
-  offsetMs: number,
-  newerPlacements: ConsoleE2eStoryPlacement[],
-  olderListFirst: boolean,
-): Promise<void> => {
-  writeConsoleE2eStoriesSnapshot(
-    storyHarness.consoleDataOutputDir,
-    INITIAL_GENERATED_AT,
-    ALL_TASKS_IN_TDPM,
-  );
-  await page.clock.install({ time: new Date(Date.now() + offsetMs) });
-  await page.goto(storyHarness.appRootUrl);
-  await tabByLabel(page, 'Stories').click();
-  await expect(activeTabLabel(page)).toHaveText('Stories');
-  await expectStoryPlacement(page, ALL_TASKS_IN_TDPM);
-
+): Promise<{ firstMoveStartedMs: number; lastSetStoryObservedMs: number }> => {
   const firstMoveStartedMs = Date.now();
   for (const [index, move] of MOVES.entries()) {
     await moveTaskToStory(
@@ -224,6 +210,31 @@ const runMoveThenListSequence = async (
     ]);
   await expectStoryPlacement(page, MOVED_PLACEMENTS);
   const lastSetStoryObservedMs = Date.now();
+  return { firstMoveStartedMs, lastSetStoryObservedMs };
+};
+
+const runMoveThenListSequence = async (
+  page: Page,
+  storyHarness: ConsoleE2eHarness,
+  offsetMs: number,
+  newerPlacements: ConsoleE2eStoryPlacement[],
+  olderListFirst: boolean,
+): Promise<void> => {
+  writeConsoleE2eStoriesSnapshot(
+    storyHarness.consoleDataOutputDir,
+    INITIAL_GENERATED_AT,
+    ALL_TASKS_IN_TDPM,
+  );
+  await page.clock.install({ time: new Date(Date.now() + offsetMs) });
+  await page.goto(storyHarness.appRootUrl);
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
+  await expectStoryPlacement(page, ALL_TASKS_IN_TDPM);
+
+  const { firstMoveStartedMs, lastSetStoryObservedMs } = await performMoves(
+    page,
+    storyHarness,
+  );
 
   if (olderListFirst) {
     writeConsoleE2eStoriesSnapshot(
@@ -242,6 +253,44 @@ const runMoveThenListSequence = async (
   );
   await refreshStoriesList(page);
   await expectStoryPlacement(page, newerPlacements);
+};
+
+const runNewerThenOlderListSequence = async (
+  page: Page,
+  storyHarness: ConsoleE2eHarness,
+  offsetMs: number,
+): Promise<void> => {
+  writeConsoleE2eStoriesSnapshot(
+    storyHarness.consoleDataOutputDir,
+    INITIAL_GENERATED_AT,
+    ALL_TASKS_IN_TDPM,
+  );
+  await page.clock.install({ time: new Date(Date.now() + offsetMs) });
+  await page.goto(storyHarness.appRootUrl);
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
+  await expectStoryPlacement(page, ALL_TASKS_IN_TDPM);
+
+  const { firstMoveStartedMs, lastSetStoryObservedMs } = await performMoves(
+    page,
+    storyHarness,
+  );
+
+  writeConsoleE2eStoriesSnapshot(
+    storyHarness.consoleDataOutputDir,
+    wholeSecondAtOrAfter(lastSetStoryObservedMs + NEWER_LIST_MIN_AGE_MS),
+    MOVED_PLACEMENTS,
+  );
+  await refreshStoriesList(page);
+  await expectStoryPlacement(page, MOVED_PLACEMENTS);
+
+  writeConsoleE2eStoriesSnapshot(
+    storyHarness.consoleDataOutputDir,
+    wholeSecondAtOrBefore(firstMoveStartedMs - OLDER_LIST_MIN_AGE_MS),
+    ALL_TASKS_IN_TDPM,
+  );
+  await refreshStoriesList(page);
+  await expectStoryPlacement(page, MOVED_PLACEMENTS);
 };
 
 for (const clockCase of BROWSER_CLOCK_CASES) {
@@ -290,6 +339,20 @@ for (const clockCase of BROWSER_CLOCK_CASES) {
         clockCase.offsetMs,
         CHANGED_ELSEWHERE_PLACEMENTS,
         false,
+      );
+    } finally {
+      await storyHarness.stop();
+    }
+  });
+  test(`keeps every moved task under its chosen story when a newer list is applied before an older list when the browser clock ${clockCase.label}`, async ({
+    page,
+  }) => {
+    const storyHarness = await startConsoleE2eHarness();
+    try {
+      await runNewerThenOlderListSequence(
+        page,
+        storyHarness,
+        clockCase.offsetMs,
       );
     } finally {
       await storyHarness.stop();

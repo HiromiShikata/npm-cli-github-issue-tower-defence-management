@@ -14091,6 +14091,52 @@ describe('ConsolePage story move kept across a stories list reload', () => {
       }
     },
   );
+
+  it.each(browserClockOffsets)(
+    'keeps the moved task under its chosen story when a newer list is applied before an older list when the browser clock $label',
+    async ({ offsetMs }) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(Date.parse(moveSavedAt) + offsetMs);
+      try {
+        window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+        const fetchMock = installReloadFetch();
+        const view = render(<ConsolePage />);
+        await expandStoryGroup(view.container, alphaStoryName);
+
+        fireEvent.change(
+          within(storyRowNamed(view.container, alphaStoryName)).getByRole(
+            'combobox',
+            { name: 'Set story' },
+          ),
+          { target: { value: storyOptionIdOf(betaStoryName) } },
+        );
+        await waitFor(() => {
+          expect(triagePostCount(fetchMock)).toBe(1);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+
+        storiesResponse = storiesPayloadListing(
+          '2026-06-19T00:02:30.000Z',
+          betaStoryName,
+        );
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+
+        storiesResponse = storiesPayloadListing(
+          '2026-06-19T00:01:30.000Z',
+          alphaStoryName,
+        );
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+        await expectMovedTaskOnlyUnder(view.container, betaStoryName);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
 });
 
 describe('ConsolePage story status filter counts', () => {
