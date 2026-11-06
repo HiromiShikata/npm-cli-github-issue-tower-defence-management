@@ -1,3 +1,10 @@
+## [2.190.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.0...v2.190.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **console:** keep story pulldown moves when an older stories list arrives ([#3699](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3699)) ([6d57460](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d574607eb8891650e9870583136992add8ace52))
+
 # [2.190.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.4...v2.190.0) (2026-11-06)
 
 
