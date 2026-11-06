@@ -1,3 +1,10 @@
+## [2.189.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.3...v2.189.4) (2026-11-06)
+
+
+### Bug Fixes
+
+* **notify-finished:** remove nextStepAgent result routing ([#3674](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3674)) ([4af46e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4af46e0a2eeec8d813a48086d6edf2c56323f276))
+
 ## [2.189.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.189.2...v2.189.3) (2026-11-06)
 
 
