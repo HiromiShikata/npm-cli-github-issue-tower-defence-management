@@ -485,6 +485,69 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
   );
 };
 
+export const CONSOLE_E2E_STORY_MOVE_TASK_TITLES: Record<number, string> = {
+  921: 'Story move fixture task one',
+  922: 'Story move fixture task two',
+  923: 'Story move fixture task three',
+  924: 'Story move fixture task four',
+};
+
+export type ConsoleE2eStoryPlacement = {
+  issueNumber: number;
+  storyOptionId: string;
+};
+
+export const writeConsoleE2eStoriesSnapshot = (
+  consoleDataOutputDir: string,
+  generatedAt: string,
+  placements: ConsoleE2eStoryPlacement[],
+): void => {
+  const stories = STORY_OPTIONS.map((option) => {
+    const items = placements
+      .filter((placement) => placement.storyOptionId === option.id)
+      .map((placement) => ({
+        number: placement.issueNumber,
+        title: CONSOLE_E2E_STORY_MOVE_TASK_TITLES[placement.issueNumber],
+        url: `https://github.com/${REPO_NAME_WITH_OWNER}/issues/${placement.issueNumber}`,
+        repo: REPO_NAME_WITH_OWNER,
+        nameWithOwner: REPO_NAME_WITH_OWNER,
+        projectItemId: `PVTI_lADOABCD1234zgMOVE${placement.issueNumber}`,
+        itemId: `PVTI_lADOABCD1234zgMOVE${placement.issueNumber}`,
+        isPr: false,
+        story: option.name,
+        status: null,
+        agent: null,
+        nextActionDate: null,
+        nextActionHour: null,
+        dependedIssueUrls: [],
+        labels: [],
+        createdAt: '2026-06-18T00:14:51.000Z',
+        relatedOpenPullRequestUrls: [],
+      }));
+    return {
+      storyName: option.name,
+      storyOptionId: option.id,
+      color: option.color,
+      openItemCount: items.length,
+      storyViewUrl: null,
+      items,
+    };
+  });
+  fs.writeFileSync(
+    path.join(consoleDataOutputDir, CONSOLE_E2E_PJCODE, 'stories', 'list.json'),
+    JSON.stringify({
+      pjcode: CONSOLE_E2E_PJCODE,
+      generatedAt,
+      agentOptions: AGENT_OPTIONS,
+      statusOptions: STATUS_OPTIONS,
+      stories,
+      storyOrder: STORY_OPTIONS.map((option) => option.name),
+      storyColors: STORY_COLORS,
+      defaultNameWithOwner: REPO_NAME_WITH_OWNER,
+    }),
+  );
+};
+
 const buildE2eProject = (): Project => ({
   id: 'PVT_console_e2e',
   url: `https://github.com/orgs/HiromiShikata/projects/1`,
