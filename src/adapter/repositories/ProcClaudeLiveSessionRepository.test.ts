@@ -64,10 +64,10 @@ describe('ProcClaudeLiveSessionRepository', () => {
   it('uses the config dir as the session key when present', () => {
     writeProcess({
       pid: 101,
-      cmdline: '/home/user/.local/share/claude/cli.js\0--print\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0--print\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
-        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-a',
+        CLAUDE_CONFIG_DIR: '/fixture/.config/claude-a',
         CLAUDE_CODE_SESSION_ID: 'session-a',
       },
     });
@@ -75,7 +75,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
     expect(repository.listLiveSessions()).toEqual([
-      { token: 'token-a', sessionKey: '/home/user/.config/claude-a' },
+      { token: 'token-a', sessionKey: '/fixture/.config/claude-a' },
     ]);
   });
 
@@ -99,10 +99,10 @@ describe('ProcClaudeLiveSessionRepository', () => {
   it('counts a resumed session with an empty session id by its config dir', () => {
     writeProcess({
       pid: 110,
-      cmdline: '/home/user/.local/share/claude/cli.js\0--resume\0abc\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0--resume\0abc\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-resumed',
-        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-resumed',
+        CLAUDE_CONFIG_DIR: '/fixture/.config/claude-resumed',
         CLAUDE_CODE_SESSION_ID: '',
       },
     });
@@ -112,7 +112,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     expect(repository.listLiveSessions()).toEqual([
       {
         token: 'token-resumed',
-        sessionKey: '/home/user/.config/claude-resumed',
+        sessionKey: '/fixture/.config/claude-resumed',
       },
     ]);
   });
@@ -120,26 +120,26 @@ describe('ProcClaudeLiveSessionRepository', () => {
   it('returns one entry per process sharing a config dir so the use case can dedupe to one session', () => {
     writeProcess({
       pid: 111,
-      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-shared',
-        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-shared',
+        CLAUDE_CONFIG_DIR: '/fixture/.config/claude-shared',
       },
     });
     writeProcess({
       pid: 112,
-      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-shared',
-        CLAUDE_CONFIG_DIR: '/home/user/.config/claude-shared',
+        CLAUDE_CONFIG_DIR: '/fixture/.config/claude-shared',
       },
     });
 
     const repository = new ProcClaudeLiveSessionRepository(procDirectory);
 
     expect(repository.listLiveSessions()).toEqual([
-      { token: 'token-shared', sessionKey: '/home/user/.config/claude-shared' },
-      { token: 'token-shared', sessionKey: '/home/user/.config/claude-shared' },
+      { token: 'token-shared', sessionKey: '/fixture/.config/claude-shared' },
+      { token: 'token-shared', sessionKey: '/fixture/.config/claude-shared' },
     ]);
   });
 
@@ -153,7 +153,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     });
     writeProcess({
       pid: 114,
-      cmdline: '/home/user/.local/share/claude/versions/2.1.0\0-p\0',
+      cmdline: '/fixture/.local/share/claude/versions/2.1.0\0-p\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-no-key',
         CLAUDE_CONFIG_DIR: '',
@@ -205,7 +205,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
   it('returns one entry per child process sharing a session id so the use case can dedupe', () => {
     writeProcess({
       pid: 105,
-      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-e',
         CLAUDE_CODE_SESSION_ID: 'session-e',
@@ -213,7 +213,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
     });
     writeProcess({
       pid: 106,
-      cmdline: '/home/user/.local/share/claude/cli.js\0',
+      cmdline: '/fixture/.local/share/claude/cli.js\0',
       environ: {
         CLAUDE_CODE_OAUTH_TOKEN: 'token-e',
         CLAUDE_CODE_SESSION_ID: 'session-e',
@@ -252,7 +252,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
       processes: ProcessFixture[];
       expected: ClaudeLiveSession[];
     };
-    const claudeExe = '/home/user/.local/share/claude/versions/2.1.0';
+    const claudeExe = '/fixture/.local/share/claude/versions/2.1.0';
     const cases: PinningCase[] = [
       {
         name: 'claude process keys by config dir when present',
@@ -263,13 +263,13 @@ describe('ProcClaudeLiveSessionRepository', () => {
             cmdline: 'claude\0--print\0',
             environ: {
               CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-a',
-              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-a',
+              CLAUDE_CONFIG_DIR: '/fixture/.config/pin-a',
               CLAUDE_CODE_SESSION_ID: 'session-pin-a',
             },
           },
         ],
         expected: [
-          { token: 'token-pin-a', sessionKey: '/home/user/.config/pin-a' },
+          { token: 'token-pin-a', sessionKey: '/fixture/.config/pin-a' },
         ],
       },
       {
@@ -335,7 +335,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
             cmdline: 'claude\0',
             environ: {
               CLAUDE_CODE_OAUTH_TOKEN: '',
-              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-f',
+              CLAUDE_CONFIG_DIR: '/fixture/.config/pin-f',
             },
           },
         ],
@@ -351,12 +351,12 @@ describe('ProcClaudeLiveSessionRepository', () => {
             exe: claudeExe,
             environ: {
               CLAUDE_CODE_OAUTH_TOKEN: 'token-pin-g1',
-              CLAUDE_CONFIG_DIR: '/home/user/.config/pin-g1',
+              CLAUDE_CONFIG_DIR: '/fixture/.config/pin-g1',
             },
           },
         ],
         expected: [
-          { token: 'token-pin-g1', sessionKey: '/home/user/.config/pin-g1' },
+          { token: 'token-pin-g1', sessionKey: '/fixture/.config/pin-g1' },
         ],
       },
       {
@@ -474,7 +474,7 @@ describe('ProcClaudeLiveSessionRepository', () => {
             cmdline: 'claude\0--print\0',
             environ: {
               CLAUDE_CODE_OAUTH_TOKEN: 'token-red-e',
-              CLAUDE_CONFIG_DIR: '/home/user/.config/red-e',
+              CLAUDE_CONFIG_DIR: '/fixture/.config/red-e',
               CLAUDE_CODE_SESSION_ID: 'session-red-e',
               TDPM_REMOTE_LIVE_SESSION_KEY: 'key-red-e',
             },
