@@ -600,7 +600,7 @@ const hideToggleStories: ConsoleStoryEntry[] = [
     storyOptionId: 'office-relocation',
     color: 'BLUE',
     description: '',
-    openItemCount: 4,
+    openItemCount: 3,
     storyViewUrl: null,
     items: [
       hideToggleItem(201, {
