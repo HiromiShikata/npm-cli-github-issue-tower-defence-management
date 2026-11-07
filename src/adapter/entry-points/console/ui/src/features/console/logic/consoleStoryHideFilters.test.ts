@@ -118,7 +118,8 @@ describe('isConsoleListItemTriggered', () => {
 describe('buildConsoleStoryRenderEntries', () => {
   it.each([
     {
-      label: 'no toggle is on and no status is selected, showing done tasks off',
+      label:
+        'no toggle is on and no status is selected, showing done tasks off',
       input: {
         effectiveStatusSelection: [],
         showDone: false,
@@ -451,18 +452,15 @@ describe('buildConsoleStoryRenderEntries', () => {
       },
       expected: [],
     },
-  ])(
-    'returns the rendered entries when $label',
-    ({ input, expected }) => {
-      const actual: RenderEntrySummary[] = buildConsoleStoryRenderEntries({
-        stories,
-        ...input,
-      }).map((renderEntry) => ({
-        storyName: renderEntry.entry.storyName,
-        visibleNumbers: renderEntry.visibleItems.map((item) => item.number),
-        badgeCount: renderEntry.badgeCount,
-      }));
-      expect(actual).toEqual(expected);
-    },
-  );
+  ])('returns the rendered entries when $label', ({ input, expected }) => {
+    const actual: RenderEntrySummary[] = buildConsoleStoryRenderEntries({
+      stories,
+      ...input,
+    }).map((renderEntry) => ({
+      storyName: renderEntry.entry.storyName,
+      visibleNumbers: renderEntry.visibleItems.map((item) => item.number),
+      badgeCount: renderEntry.badgeCount,
+    }));
+    expect(actual).toEqual(expected);
+  });
 });

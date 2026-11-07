@@ -682,9 +682,7 @@ export const ConsoleStoryList = ({
                       {entry.storyName}
                     </span>
                   </button>
-                  <span className="console-story-count">
-                    {badgeCount}
-                  </span>
+                  <span className="console-story-count">{badgeCount}</span>
                   <button
                     type="button"
                     className="console-story-chevron"

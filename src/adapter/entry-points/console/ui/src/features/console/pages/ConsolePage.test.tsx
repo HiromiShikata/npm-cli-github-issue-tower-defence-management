@@ -14430,10 +14430,9 @@ describe('ConsolePage hide triggered and hide empty switches', () => {
   it('shows Hide triggered and Hide empty switches off by default when nothing is stored', async () => {
     stubStoriesTabFetch();
     const { findByRole } = render(<ConsolePage />);
-    expect(await findByRole('switch', { name: 'Hide triggered' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
+    expect(
+      await findByRole('switch', { name: 'Hide triggered' }),
+    ).toHaveAttribute('aria-checked', 'false');
     expect(await findByRole('switch', { name: 'Hide empty' })).toHaveAttribute(
       'aria-checked',
       'false',
@@ -14445,10 +14444,9 @@ describe('ConsolePage hide triggered and hide empty switches', () => {
     localStorage.setItem('console-story-hide-empty', 'true');
     stubStoriesTabFetch();
     const { findByRole } = render(<ConsolePage />);
-    expect(await findByRole('switch', { name: 'Hide triggered' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(
+      await findByRole('switch', { name: 'Hide triggered' }),
+    ).toHaveAttribute('aria-checked', 'true');
     expect(await findByRole('switch', { name: 'Hide empty' })).toHaveAttribute(
       'aria-checked',
       'true',

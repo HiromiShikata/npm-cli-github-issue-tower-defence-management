@@ -223,8 +223,12 @@ describe('ConsoleStoryList hide toggles', () => {
   it('keeps today behaviour when both toggles are off: the badge shows openItemCount and triggered tasks stay visible', () => {
     const rendered = renderWithExpanded({}, 'Console port');
     expect(badgeText(rendered.container, 'Console port')).toBe('2');
-    expect(rendered.queryByText('Confirm Reactivation Trigger display')).toBeInTheDocument();
-    expect(rendered.queryByText('Write status filter tests')).toBeInTheDocument();
+    expect(
+      rendered.queryByText('Confirm Reactivation Trigger display'),
+    ).toBeInTheDocument();
+    expect(
+      rendered.queryByText('Write status filter tests'),
+    ).toBeInTheDocument();
   });
 
   it('hides triggered tasks from expanded rows and drops them from the badge when Hide triggered is on', () => {
@@ -255,7 +259,9 @@ describe('ConsoleStoryList hide toggles', () => {
     const rendered = render(
       <ConsoleStoryList {...baseProps} hideEmptyStories={true} />,
     );
-    expect(storyRow(rendered.container, 'Empty planning story')).toBeUndefined();
+    expect(
+      storyRow(rendered.container, 'Empty planning story'),
+    ).toBeUndefined();
     expect(storyRow(rendered.container, 'Console port')).toBeDefined();
   });
 
