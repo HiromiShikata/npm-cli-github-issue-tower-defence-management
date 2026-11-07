@@ -5951,7 +5951,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
       });
 
-    it('should return issue to Awaiting Workspace and reassign to developer when chore agent has exactly one linked PR with failing CI', async () => {
+    it('should return issue to Awaiting Workspace and keep its chore agent when chore agent has exactly one linked PR with failing CI', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -5988,11 +5988,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithDeveloper,
-        'opt-developer',
-      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({
           url: 'https://github.com/user/repo/issues/1',
@@ -6120,7 +6116,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should reassign to the first configured developerAgentNames when chore agent has a failing CI PR', async () => {
+    it('should keep the chore agent and not write the Agent field when chore agent has a failing CI PR with developerAgentNames configured', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -6156,11 +6152,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         developerAgentNames: ['custom-developer'],
       });
 
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithCustomDeveloper,
-        'opt-developer',
-      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
     it('should not trigger the new path when agent is null', async () => {
@@ -6237,6 +6229,67 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('pins the CI-failing routing of a chore agent issue with unset, null or empty developerAgentNames: no Agent field write and no CI-failure comment', async () => {
+      const cases: { developerAgentNames: string[] | null | undefined }[] = [
+        { developerAgentNames: undefined },
+        { developerAgentNames: null },
+        { developerAgentNames: [] },
+      ];
+      for (const { developerAgentNames } of cases) {
+        jest.clearAllMocks();
+        const issue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/1',
+          status: 'Preparation',
+          agent: 'chore',
+        });
+        const project = makeProjectWithDeveloper();
+        mockProjectRepository.getByUrl.mockResolvedValue(project);
+        mockIssueRepository.get.mockResolvedValue(issue);
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+        ]);
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          {
+            url: 'https://github.com/user/repo/pull/99',
+            isConflicted: false,
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+          },
+        ]);
+
+        await useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          issueUrl: 'https://github.com/user/repo/issues/1',
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: null,
+          developerAgentNames,
+        });
+
+        expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+        expect(mockIssueRepository.update).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.update).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'Awaiting Workspace' }),
+          expect.anything(),
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'awaiting-workspace-id',
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+        );
+      }
+    });
+
     it('should not reject issue when developerAgentNames is null even when agent has a failing CI PR', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
@@ -6277,7 +6330,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should trigger CI failure path and reassign to developer when pr-reviewer agent has a failing CI PR and developerAgentNames is set', async () => {
+    it('should keep the pr-reviewer agent and not write the Agent field when pr-reviewer agent has a failing CI PR and developerAgentNames is set', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -6314,11 +6367,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Awaiting Workspace' }),
         projectWithDeveloper,
       );
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithDeveloper,
-        'opt-developer',
-      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({
           url: 'https://github.com/user/repo/issues/1',
