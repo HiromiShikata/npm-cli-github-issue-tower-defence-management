@@ -2310,6 +2310,54 @@ test('phone viewport keeps each story tab task row inside the screen width with 
   }
 });
 
+test('phone viewport keeps the Archived, Done, Hide triggered and Hide empty switches and their labels inside the screen width', async ({
+  browser,
+}) => {
+  const phoneWidth = 412;
+  const phoneContext = await browser.newContext({
+    viewport: { width: phoneWidth, height: 915 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await phoneContext.newPage();
+  try {
+    await page.goto(harness.appRootUrl);
+    await tabByLabel(page, 'Stories').click();
+    await expect(activeTabLabel(page)).toHaveText('Stories');
+
+    const toggleLabels = [
+      'Archived',
+      'Done',
+      'Hide triggered',
+      'Hide empty',
+    ] as const;
+
+    for (const label of toggleLabels) {
+      const toggleSwitch = page.getByRole('switch', {
+        name: label,
+        exact: true,
+      });
+      const toggleLabel = page.getByText(label, { exact: true });
+      await expect(toggleSwitch).toBeVisible();
+      await expect(toggleLabel).toBeVisible();
+
+      const switchBox = await toggleSwitch.boundingBox();
+      const labelBox = await toggleLabel.boundingBox();
+      expect(switchBox).not.toBeNull();
+      expect(labelBox).not.toBeNull();
+      if (switchBox === null || labelBox === null) {
+        throw new Error(`${label} switch or label has no bounding box`);
+      }
+      expect(switchBox.x).toBeGreaterThanOrEqual(0);
+      expect(switchBox.x + switchBox.width).toBeLessThanOrEqual(phoneWidth);
+      expect(labelBox.x).toBeGreaterThanOrEqual(0);
+      expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(phoneWidth);
+    }
+  } finally {
+    await phoneContext.close();
+  }
+});
+
 test('story tab task row shows the title on its own line, then trigger fields, agent, story and status, and Display items hides each control on its own', async ({
   page,
 }) => {
