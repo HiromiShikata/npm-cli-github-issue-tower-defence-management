@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
-import { isConsoleListItemDone } from '../../logic/consoleListItemDone';
+import { buildConsoleStoryRenderEntries } from '../../logic/consoleStoryHideFilters';
 import type { ConsoleStoryRowField } from '../../logic/consoleStoryRowFields';
-import {
-  filterConsoleStoryEntriesByStatusSelection,
-  resolveEffectiveConsoleStoryStatusSelection,
-} from '../../logic/consoleStoryStatusSelection';
+import { resolveEffectiveConsoleStoryStatusSelection } from '../../logic/consoleStoryStatusSelection';
 import { parseDependedIssueUrlsInput } from '../../logic/consoleStoryTaskPatch';
 import type {
   ConsoleColor,
@@ -357,6 +354,10 @@ export type ConsoleStoryListProps = {
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
   onToggleArchived: () => void;
   onToggleDone: () => void;
+  hideTriggered: boolean;
+  hideEmptyStories: boolean;
+  onToggleHideTriggered: () => void;
+  onToggleHideEmptyStories: () => void;
   onReorderStory: (
     storyOptionId: string,
     direction: 'up' | 'down',
@@ -402,6 +403,10 @@ export const ConsoleStoryList = ({
   onSelectColor,
   onToggleArchived,
   onToggleDone,
+  hideTriggered,
+  hideEmptyStories,
+  onToggleHideTriggered,
+  onToggleHideEmptyStories,
   onReorderStory,
   onDeleteStory,
   onRenameStory,
@@ -542,10 +547,13 @@ export const ConsoleStoryList = ({
   const archiveVisibleStories = stories.filter(
     (entry) => showArchived || entry.color !== 'GRAY',
   );
-  const visibleStories = filterConsoleStoryEntriesByStatusSelection(
-    archiveVisibleStories,
+  const visibleStories = buildConsoleStoryRenderEntries({
+    stories: archiveVisibleStories,
     effectiveStatusSelection,
-  );
+    showDone,
+    hideTriggered,
+    hideEmptyStories,
+  });
 
   const taskCreateEntry =
     taskCreateDialogId !== null
@@ -606,7 +614,9 @@ export const ConsoleStoryList = ({
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
+          flexWrap: 'wrap',
           gap: 16,
+          rowGap: 8,
         }}
       >
         <StoryVisibilityToggle
@@ -619,12 +629,22 @@ export const ConsoleStoryList = ({
           checked={showDone}
           onChange={onToggleDone}
         />
+        <StoryVisibilityToggle
+          label="Hide triggered"
+          checked={hideTriggered}
+          onChange={onToggleHideTriggered}
+        />
+        <StoryVisibilityToggle
+          label="Hide empty"
+          checked={hideEmptyStories}
+          onChange={onToggleHideEmptyStories}
+        />
       </div>
       {visibleStories.length === 0 ? (
         <p className="console-list-empty">No active stories</p>
       ) : (
         <ul className="console-story-list">
-          {visibleStories.map((entry, index) => {
+          {visibleStories.map(({ entry, visibleItems, badgeCount }, index) => {
             const displayColor: ConsoleColor =
               optimisticColors[entry.storyOptionId] ?? entry.color;
             const palette = colorFromEnum(displayColor);
@@ -638,11 +658,6 @@ export const ConsoleStoryList = ({
               expandedTasksOptionId === entry.storyOptionId;
             const isOverflowOpen = overflowMenuOpenId === entry.storyOptionId;
             const description = entry.description ?? '';
-            const visibleTaskItems = hasStatusSelection
-              ? (entry.items ?? [])
-              : (entry.items ?? []).filter(
-                  (item) => showDone || !isConsoleListItemDone(item),
-                );
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -667,11 +682,7 @@ export const ConsoleStoryList = ({
                       {entry.storyName}
                     </span>
                   </button>
-                  <span className="console-story-count">
-                    {hasStatusSelection
-                      ? visibleTaskItems.length
-                      : entry.openItemCount}
-                  </span>
+                  <span className="console-story-count">{badgeCount}</span>
                   <button
                     type="button"
                     className="console-story-chevron"
@@ -795,7 +806,7 @@ export const ConsoleStoryList = ({
                 )}
                 {isTasksExpanded && (
                   <StoryTaskList
-                    items={visibleTaskItems}
+                    items={visibleItems}
                     storyOptions={storyFieldOptions}
                     currentStoryOptionId={entry.storyOptionId}
                     agentOptions={agentOptions}
