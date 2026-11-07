@@ -1,3 +1,10 @@
+## [2.191.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.0...v2.191.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **notify-finished:** stop rewriting the Agent field for CI-failing pull requests ([#3705](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3705)) ([ff3c839](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff3c839876babf5183bbcb8ce1cc188ab44ef670))
+
 # [2.191.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.3...v2.191.0) (2026-11-07)
 
 
