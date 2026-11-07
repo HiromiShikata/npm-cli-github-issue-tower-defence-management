@@ -1,3 +1,10 @@
+## [2.190.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.1...v2.190.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* **scheduler:** fill oauth tokens from the soonest 7d reset ([#3702](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3702)) ([1092854](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1092854f3086c1fe3ac2dad8cde36eb8661f4d18))
+
 ## [2.190.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.0...v2.190.1) (2026-11-06)
 
 
