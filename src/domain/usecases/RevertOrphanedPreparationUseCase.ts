@@ -24,7 +24,6 @@ import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfir
 import { issueHasUnansweredOwnerConfirmationRequest } from './issueHasUnansweredOwnerConfirmationRequest';
 import { findLastAgentReport, TRIAGER_AGENT_NAME } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
-import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveDispatchRepetition,
@@ -44,7 +43,7 @@ type OrphanedPreparationOutcome =
   | 'advanceClosedIssueToQualityCheck'
   | 'advanceToWorkspace'
   | 'reject'
-  | 'reassignToDeveloper'
+  | 'returnCiFailingPullRequestToWorkspace'
   | 'skip';
 
 const isGitHubCommentFetchForbiddenError = (error: unknown): boolean =>
@@ -60,11 +59,7 @@ export class RevertOrphanedPreparationUseCase {
   constructor(
     readonly projectRepository: Pick<
       ProjectRepository,
-      | 'findProjectIdByUrl'
-      | 'getProject'
-      | 'createField'
-      | 'getByUrl'
-      | 'updateAgentList'
+      'findProjectIdByUrl' | 'getProject'
     >,
     readonly issueRepository: Pick<
       IssueRepository,
@@ -72,7 +67,6 @@ export class RevertOrphanedPreparationUseCase {
       | 'updateStatus'
       | 'findRelatedOpenPRs'
       | 'get'
-      | 'setIssueAgentField'
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
@@ -303,27 +297,10 @@ export class RevertOrphanedPreparationUseCase {
           await this.createCommentWithDedup(issue, repetition.comment);
           continue;
         }
-        if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
-          const firstDeveloperAgentName =
-            params.developerAgentNames?.length != null &&
-            params.developerAgentNames.length > 0
-              ? params.developerAgentNames[0]
-              : null;
-          const agentOptionId =
-            firstDeveloperAgentName !== null
-              ? await ensureAgentOptionAndGetId(
-                  this.projectRepository,
-                  project,
-                  firstDeveloperAgentName,
-                )
-              : null;
-          if (agentOptionId !== null) {
-            await this.issueRepository.setIssueAgentField(
-              issue.url,
-              project,
-              agentOptionId,
-            );
-          }
+        if (
+          outcome === 'returnCiFailingPullRequestToWorkspace' &&
+          ciFailingPrUrl
+        ) {
           await this.issueRepository.updateStatus(
             project,
             issue,
@@ -533,7 +510,7 @@ export class RevertOrphanedPreparationUseCase {
       if (isNonDeveloperAgent && effectiveDeveloperAgentNames.length > 0) {
         if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
           return {
-            outcome: 'reassignToDeveloper',
+            outcome: 'returnCiFailingPullRequestToWorkspace',
             comments,
             ciFailingPrUrl: prsToCheck[0].url,
             latestReopenedAt,

@@ -26,7 +26,6 @@ import {
 } from './console/GenerateConsoleListsUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
-import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import {
   CloseIssueAsRequest,
   extractCloseIssueAs,
@@ -144,7 +143,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
-      'getByUrl' | 'updateAgentList' | 'createField' | 'updateStoryList'
+      'getByUrl' | 'updateStoryList'
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
@@ -160,7 +159,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
       | 'setDependedIssueUrl'
-      | 'setIssueAgentField'
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
@@ -504,25 +502,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.developerAgentNames ?? null,
     );
     if (ciFailingPrUrl !== null) {
-      const firstDeveloperAgentName =
-        params.developerAgentNames?.length != null &&
-        params.developerAgentNames.length > 0
-          ? params.developerAgentNames[0]
-          : null;
-      const agentOptionId =
-        firstDeveloperAgentName !== null
-          ? await this.ensureAgentOptionAndGetId(
-              project,
-              firstDeveloperAgentName,
-            )
-          : null;
-      if (agentOptionId !== null) {
-        await this.issueRepository.setIssueAgentField(
-          params.issueUrl,
-          project,
-          agentOptionId,
-        );
-      }
       issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -1218,12 +1197,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return 'failed-preparation';
     return null;
   };
-
-  private ensureAgentOptionAndGetId = async (
-    project: Project,
-    agentName: string,
-  ): Promise<string | null> =>
-    ensureAgentOptionAndGetId(this.projectRepository, project, agentName);
 
   private patchConsoleTab = async (issue: Issue): Promise<void> => {
     if (!this.consoleTabsRepository) return;
