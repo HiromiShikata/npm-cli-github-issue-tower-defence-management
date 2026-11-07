@@ -42,11 +42,6 @@ export type ConfigFile = {
   errorReportingRepository?: string;
 };
 
-/**
- * Config keys that only the local config file and CLI arguments may set.
- * A project README MUST NOT set these, because anyone who can edit a
- * project README could otherwise control what the scheduler runs or trusts.
- */
 export type LocalOnlyConfigKey =
   | 'preparationProcessCheckCommand'
   | 'allowedIssueAuthors'
