@@ -1,3 +1,10 @@
+## [2.190.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.2...v2.190.3) (2026-11-07)
+
+
+### Bug Fixes
+
+* **projectConfig:** fail a README read that finds a project with an invalid README field or beside an unexpected GraphQL error ([#3668](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3668)) ([8b3d388](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b3d388403ada1b52b043d8f8ae01eee171582a1))
+
 ## [2.190.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.1...v2.190.2) (2026-11-07)
 
 
