@@ -830,7 +830,8 @@ defaultAgentName: 'case-test-agent'
       expect(result.defaultAgentName).toBe('case-test-agent');
     });
 
-    it('should parse codexHomeCandidates string array from README config', () => {
+    it('should not return codexHomeCandidates from README config and should warn that it is unknown', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const readme = `<details>
 <summary>config</summary>
 codexHomeCandidates:
@@ -839,13 +840,13 @@ codexHomeCandidates:
   - .codex-main
 </details>`;
 
-      const result = parseProjectReadmeConfig(readme);
+      const result = parseProjectReadmeConfig(readme, 'https://example.com/p');
 
-      expect(result.codexHomeCandidates).toEqual([
-        '.codex-dev1',
-        '.codex-dev2',
-        '.codex-main',
-      ]);
+      expect(result.codexHomeCandidates).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Unknown key "codexHomeCandidates" in project README config section (project URL: https://example.com/p)',
+      );
+      warnSpy.mockRestore();
     });
 
     it('should parse changeTargetPathAliases map from README config', () => {
@@ -1854,7 +1855,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       );
     });
 
-    it('should pass codexHomeCandidates from README config', async () => {
+    it('should not pass codexHomeCandidates from README config', async () => {
       const readmeContent = [
         '# Project',
         '<details>',
@@ -1888,7 +1889,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
 
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
-          codexHomeCandidates: ['.codex-readme1', '.codex-readme2'],
+          codexHomeCandidates: null,
         }),
       );
     });
