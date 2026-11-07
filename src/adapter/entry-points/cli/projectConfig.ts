@@ -42,6 +42,20 @@ export type ConfigFile = {
   errorReportingRepository?: string;
 };
 
+export type LocalOnlyConfigKey =
+  | 'preparationProcessCheckCommand'
+  | 'allowedIssueAuthors'
+  | 'autoAssignManagerAuthors'
+  | 'workflowBlockerResolvedWebhookUrl'
+  | 'errorReportingRepository'
+  | 'codexHomeCandidates'
+  | 'claudeCodeOauthTokenListJsonPath'
+  | 'awLogDirectoryPath'
+  | 'agentDefinitionsDirectoryPath'
+  | 'consoleDataOutputDir';
+
+export type ProjectReadmeConfig = Omit<ConfigFile, LocalOnlyConfigKey>;
+
 export type DiskConfig = {
   title: string;
   mountpoint: string;
@@ -165,22 +179,12 @@ const knownProjectReadmeConfigKeys = [
   'defaultLlmAgentName',
   'maximumPreparingIssuesCount',
   'utilizationPercentageThreshold',
-  'allowedIssueAuthors',
-  'autoAssignManagerAuthors',
   'thresholdForAutoReject',
-  'workflowBlockerResolvedWebhookUrl',
-  'preparationProcessCheckCommand',
-  'codexHomeCandidates',
-  'claudeCodeOauthTokenListJsonPath',
-  'awLogDirectoryPath',
-  'agentDefinitionsDirectoryPath',
   'awLogStaleThresholdMinutes',
   'labelsAsLlmAgentName',
   'labelsNotRequiringPullRequest',
   'agentDesignationLabelsToKeep',
   'changeTargetPathAliases',
-  'consoleDataOutputDir',
-  'errorReportingRepository',
 ] as const;
 
 const formatYamlErrorLocation = (error: YAMLError): string => {
@@ -319,7 +323,7 @@ const createProjectReadmeConfigParseError = (
 export const parseProjectReadmeConfig = (
   readme: string,
   projectUrl?: string,
-): ConfigFile => {
+): ProjectReadmeConfig => {
   const detailsRegex =
     /<details>\s*<summary>config<\/summary>([\s\S]*?)<\/details>/i;
   const match = detailsRegex.exec(readme);
@@ -357,30 +361,7 @@ export const parseProjectReadmeConfig = (
         parsed,
         'utilizationPercentageThreshold',
       ),
-      allowedIssueAuthors: getStringValue(parsed, 'allowedIssueAuthors'),
-      autoAssignManagerAuthors: getStringValue(
-        parsed,
-        'autoAssignManagerAuthors',
-      ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
-      workflowBlockerResolvedWebhookUrl: getStringValue(
-        parsed,
-        'workflowBlockerResolvedWebhookUrl',
-      ),
-      preparationProcessCheckCommand: getStringValue(
-        parsed,
-        'preparationProcessCheckCommand',
-      ),
-      codexHomeCandidates: getStringArrayValue(parsed, 'codexHomeCandidates'),
-      claudeCodeOauthTokenListJsonPath: getStringValue(
-        parsed,
-        'claudeCodeOauthTokenListJsonPath',
-      ),
-      awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
-      agentDefinitionsDirectoryPath: getStringValue(
-        parsed,
-        'agentDefinitionsDirectoryPath',
-      ),
       awLogStaleThresholdMinutes: getNumberValue(
         parsed,
         'awLogStaleThresholdMinutes',
@@ -398,11 +379,6 @@ export const parseProjectReadmeConfig = (
         parsed,
         'changeTargetPathAliases',
       ),
-      consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
-      errorReportingRepository: getStringValue(
-        parsed,
-        'errorReportingRepository',
-      ),
     };
   } catch (error) {
     throw createProjectReadmeConfigParseError(error, projectUrl);
@@ -412,7 +388,7 @@ export const parseProjectReadmeConfig = (
 export const mergeConfigs = (
   configFile: ConfigFile,
   cliOverrides: ConfigFile,
-  readmeOverrides: ConfigFile,
+  readmeOverrides: ProjectReadmeConfig,
 ): ConfigFile => ({
   projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
   manager: cliOverrides.manager ?? configFile.manager,
@@ -441,11 +417,8 @@ export const mergeConfigs = (
     cliOverrides.utilizationPercentageThreshold ??
     configFile.utilizationPercentageThreshold,
   allowedIssueAuthors:
-    readmeOverrides.allowedIssueAuthors ??
-    cliOverrides.allowedIssueAuthors ??
-    configFile.allowedIssueAuthors,
+    cliOverrides.allowedIssueAuthors ?? configFile.allowedIssueAuthors,
   autoAssignManagerAuthors:
-    readmeOverrides.autoAssignManagerAuthors ??
     cliOverrides.autoAssignManagerAuthors ??
     configFile.autoAssignManagerAuthors,
   thresholdForAutoReject:
@@ -453,28 +426,20 @@ export const mergeConfigs = (
     cliOverrides.thresholdForAutoReject ??
     configFile.thresholdForAutoReject,
   workflowBlockerResolvedWebhookUrl:
-    readmeOverrides.workflowBlockerResolvedWebhookUrl ??
     cliOverrides.workflowBlockerResolvedWebhookUrl ??
     configFile.workflowBlockerResolvedWebhookUrl,
   projectName: configFile.projectName,
   preparationProcessCheckCommand:
-    readmeOverrides.preparationProcessCheckCommand ??
     cliOverrides.preparationProcessCheckCommand ??
     configFile.preparationProcessCheckCommand,
   codexHomeCandidates:
-    readmeOverrides.codexHomeCandidates ??
-    cliOverrides.codexHomeCandidates ??
-    configFile.codexHomeCandidates,
+    cliOverrides.codexHomeCandidates ?? configFile.codexHomeCandidates,
   claudeCodeOauthTokenListJsonPath:
-    readmeOverrides.claudeCodeOauthTokenListJsonPath ??
     cliOverrides.claudeCodeOauthTokenListJsonPath ??
     configFile.claudeCodeOauthTokenListJsonPath,
   awLogDirectoryPath:
-    readmeOverrides.awLogDirectoryPath ??
-    cliOverrides.awLogDirectoryPath ??
-    configFile.awLogDirectoryPath,
+    cliOverrides.awLogDirectoryPath ?? configFile.awLogDirectoryPath,
   agentDefinitionsDirectoryPath:
-    readmeOverrides.agentDefinitionsDirectoryPath ??
     cliOverrides.agentDefinitionsDirectoryPath ??
     configFile.agentDefinitionsDirectoryPath,
   awLogStaleThresholdMinutes:
@@ -499,9 +464,7 @@ export const mergeConfigs = (
     configFile.changeTargetPathAliases,
   agents: cliOverrides.agents ?? configFile.agents,
   consoleDataOutputDir:
-    readmeOverrides.consoleDataOutputDir ??
-    cliOverrides.consoleDataOutputDir ??
-    configFile.consoleDataOutputDir,
+    cliOverrides.consoleDataOutputDir ?? configFile.consoleDataOutputDir,
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
@@ -518,7 +481,6 @@ export const mergeConfigs = (
     configFile.githubAppPrivateKeyPaths,
   disks: cliOverrides.disks ?? configFile.disks,
   errorReportingRepository:
-    readmeOverrides.errorReportingRepository ??
     cliOverrides.errorReportingRepository ??
     configFile.errorReportingRepository,
 });

@@ -506,7 +506,20 @@ codexHomeCandidates:
 
 #### README-based Config Overrides
 
-For `startDaemon`, `schedule`, and `notifyFinishedIssuePreparation`, the GitHub project README can override config file values. Add a `<details><summary>config</summary>...</details>` section with YAML content to the project README. This takes highest priority over both the config file and CLI arguments. Any top-level YAML key inside the `config` block that is not a recognized override (for example a typo such as `maximumPreparingIssueCount` missing the trailing `s`) is ignored and logged via `console.warn` together with the project URL, so misspelled keys do not silently disable an intended override.
+For `startDaemon`, `schedule`, and `notifyFinishedIssuePreparation`, the GitHub project README can override config file values. Add a `<details><summary>config</summary>...</details>` section with YAML content to the project README. This takes highest priority over both the config file and CLI arguments, for every key except the local-only keys listed below. Any top-level YAML key inside the `config` block that is not a recognized override (for example a typo such as `maximumPreparingIssueCount` missing the trailing `s`, or a local-only key listed below) is ignored and logged via `console.warn` together with the project URL, so misspelled keys do not silently disable an intended override.
+
+The project README is editable by anyone who can edit the project, so the following keys are NOT read from the project README. They are taken only from the config file or from CLI arguments, and a README `config` block that sets one of them is ignored with the `console.warn` described above:
+
+- `preparationProcessCheckCommand`
+- `allowedIssueAuthors`
+- `autoAssignManagerAuthors`
+- `workflowBlockerResolvedWebhookUrl`
+- `errorReportingRepository`
+- `codexHomeCandidates`
+- `claudeCodeOauthTokenListJsonPath`
+- `awLogDirectoryPath`
+- `agentDefinitionsDirectoryPath`
+- `consoleDataOutputDir`
 
 ### Claude OAuth Token Rotation
 
