@@ -1502,7 +1502,7 @@ describe('fetchProjectReadmeWithCache', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores a fresh disk entry written under the pre-v2 key and writes the fetched README under the v2 key', async () => {
+  it('ignores a fresh disk entry written under the pre-v2 key and writes the fetched README under the v3 key', async () => {
     const readme =
       '<details><summary>config</summary>maximumPreparingIssuesCount: 6</details>';
     mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
@@ -1528,10 +1528,10 @@ describe('fetchProjectReadmeWithCache', () => {
     expect(result).toBe(readme);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(mockCacheRepo.getSingle).toHaveBeenCalledWith(
-      'projectReadme/v2/TestOrg/1',
+      'projectReadme/v3/TestOrg/1',
     );
     expect(mockCacheRepo.setSingle).toHaveBeenCalledWith(
-      'projectReadme/v2/TestOrg/1',
+      'projectReadme/v3/TestOrg/1',
       { fetchedAtMs: baseNowMs, readme },
     );
   });
@@ -1597,5 +1597,264 @@ describe('fetchProjectReadme failure classification', () => {
 
     expect(error.message).toBe('GraphQL request failed: HTTP 404');
     expect(isTransientApiError(error)).toBe(false);
+  });
+});
+
+describe('fetchProjectReadme on a response with a resolved project', () => {
+  const projectUrl = 'https://github.com/users/TestOrg/projects/1';
+  const token = 'test-token';
+  const baseNowMs = new Date('2026-01-01T00:00:00.000Z').getTime();
+
+  const organizationNotFound = {
+    type: 'NOT_FOUND',
+    path: ['organization'],
+    message:
+      "Could not resolve to an Organization with the login of 'TestOrg'.",
+  };
+  const userNotFound = {
+    type: 'NOT_FOUND',
+    path: ['user'],
+    message: "Could not resolve to a User with the login of 'TestOrg'.",
+  };
+  const jsonResponse = (body: unknown): Response =>
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  const captureError = async (promise: Promise<unknown>): Promise<Error> => {
+    try {
+      await promise;
+    } catch (error) {
+      if (error instanceof Error) {
+        return error;
+      }
+    }
+    throw new Error('Expected the promise to reject with an Error');
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('resolves the README text or null from the real GitHub response shapes', async () => {
+    const cases: {
+      name: string;
+      body: unknown;
+      expected: string | null;
+    }[] = [
+      {
+        name: 'user-owned project with text beside the organization NOT_FOUND entry',
+        body: {
+          data: { organization: null, user: { projectV2: { readme: 'text' } } },
+          errors: [organizationNotFound],
+        },
+        expected: 'text',
+      },
+      {
+        name: 'user-owned project with an empty README beside the organization NOT_FOUND entry',
+        body: {
+          data: { organization: null, user: { projectV2: { readme: null } } },
+          errors: [organizationNotFound],
+        },
+        expected: null,
+      },
+      {
+        name: 'organization-owned project with an empty README beside the user NOT_FOUND entry',
+        body: {
+          data: { organization: { projectV2: { readme: null } }, user: null },
+          errors: [userNotFound],
+        },
+        expected: null,
+      },
+      {
+        name: 'text README beside an unexpected error',
+        body: {
+          data: { organization: null, user: { projectV2: { readme: 'text' } } },
+          errors: [organizationNotFound, { type: 'FORBIDDEN', message: 'x' }],
+        },
+        expected: 'text',
+      },
+    ];
+    for (const readmeCase of cases) {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(jsonResponse(readmeCase.body));
+
+      const result = await fetchProjectReadme(projectUrl, token);
+
+      expect(`${readmeCase.name}: ${String(result)}`).toBe(
+        `${readmeCase.name}: ${String(readmeCase.expected)}`,
+      );
+    }
+  });
+
+  it('throws for a resolved project whose README is missing, not text, or not null', async () => {
+    const cases: { name: string; body: unknown }[] = [
+      {
+        name: 'readme field missing',
+        body: { data: { organization: null, user: { projectV2: {} } } },
+      },
+      {
+        name: 'readme is a number',
+        body: {
+          data: { organization: null, user: { projectV2: { readme: 5 } } },
+        },
+      },
+      {
+        name: 'readme is an object',
+        body: {
+          data: { organization: { projectV2: { readme: {} } }, user: null },
+        },
+      },
+    ];
+    for (const invalidCase of cases) {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(jsonResponse(invalidCase.body));
+
+      const error = await captureError(fetchProjectReadme(projectUrl, token));
+
+      expect(`${invalidCase.name}: ${error.message}`).toBe(
+        `${invalidCase.name}: GitHub GraphQL response has an invalid README for the project`,
+      );
+    }
+  });
+
+  it('throws with the error type and message for an empty README beside an unexpected error and does not cache it', async () => {
+    const cases: {
+      name: string;
+      errors: unknown[];
+      expectedMessage: string;
+      transient: boolean;
+    }[] = [
+      {
+        name: 'rate limit error on the README field',
+        errors: [
+          organizationNotFound,
+          {
+            type: 'RATE_LIMITED',
+            path: ['user', 'projectV2', 'readme'],
+            message: 'API rate limit exceeded',
+          },
+        ],
+        expectedMessage:
+          'GitHub GraphQL response has errors for the project README: RATE_LIMITED: API rate limit exceeded',
+        transient: true,
+      },
+      {
+        name: 'error without a path',
+        errors: [{ type: 'INTERNAL', message: 'Something went wrong' }],
+        expectedMessage:
+          'GitHub GraphQL response has errors for the project README: INTERNAL: Something went wrong',
+        transient: false,
+      },
+      {
+        name: 'NOT_FOUND error for the project itself',
+        errors: [
+          organizationNotFound,
+          {
+            type: 'NOT_FOUND',
+            path: ['user', 'projectV2'],
+            message: 'Could not resolve to a ProjectV2 with the number 1.',
+          },
+        ],
+        expectedMessage:
+          'GitHub GraphQL response has errors for the project README: NOT_FOUND: Could not resolve to a ProjectV2 with the number 1.',
+        transient: false,
+      },
+    ];
+    const cacheRepository = {
+      getSingle: jest.fn<Promise<unknown>, [string]>().mockResolvedValue(null),
+      setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+    };
+    for (const unexpectedCase of cases) {
+      resetProjectReadmeInMemoryCacheForTesting();
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        jsonResponse({
+          data: { organization: null, user: { projectV2: { readme: null } } },
+          errors: unexpectedCase.errors,
+        }),
+      );
+
+      const error = await captureError(
+        fetchProjectReadmeWithCache(
+          projectUrl,
+          token,
+          cacheRepository,
+          baseNowMs,
+        ),
+      );
+
+      expect(`${unexpectedCase.name}: ${error.message}`).toBe(
+        `${unexpectedCase.name}: ${unexpectedCase.expectedMessage}`,
+      );
+      expect(isTransientApiError(error)).toBe(unexpectedCase.transient);
+    }
+    expect(cacheRepository.setSingle).not.toHaveBeenCalled();
+  });
+
+  it('still caches an empty README that arrives beside only the expected NOT_FOUND entry', async () => {
+    resetProjectReadmeInMemoryCacheForTesting();
+    const cacheRepository = {
+      getSingle: jest.fn<Promise<unknown>, [string]>().mockResolvedValue(null),
+      setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+    };
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        data: { organization: null, user: { projectV2: { readme: null } } },
+        errors: [organizationNotFound],
+      }),
+    );
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      cacheRepository,
+      baseNowMs,
+    );
+
+    expect(result).toBeNull();
+    expect(cacheRepository.setSingle).toHaveBeenCalledWith(
+      'projectReadme/v3/TestOrg/1',
+      { fetchedAtMs: baseNowMs, readme: null },
+    );
+  });
+
+  it('never reads a README disk cache entry written under the pre-change v2 key and fetches the README instead', async () => {
+    resetProjectReadmeInMemoryCacheForTesting();
+    const cacheRepository = {
+      getSingle: jest
+        .fn<Promise<unknown>, [string]>()
+        .mockImplementation(async (key: string) => {
+          if (key === 'projectReadme/v2/TestOrg/1') {
+            return { fetchedAtMs: baseNowMs, readme: null };
+          }
+          return null;
+        }),
+      setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+    };
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          organization: null,
+          user: { projectV2: { readme: 'fresh readme' } },
+        },
+        errors: [organizationNotFound],
+      }),
+    );
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      cacheRepository,
+      baseNowMs,
+    );
+
+    expect(result).toBe('fresh readme');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(cacheRepository.getSingle).not.toHaveBeenCalledWith(
+      'projectReadme/v2/TestOrg/1',
+    );
   });
 });
