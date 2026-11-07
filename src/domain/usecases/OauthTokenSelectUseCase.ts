@@ -68,22 +68,9 @@ export const SEVEN_DAY_SPEND_WINDOW_HOURS =
 export const FIVE_HOUR_SPEND_DEADLINE_HOURS = 1;
 const SECONDS_PER_HOUR = 3600;
 export const FIVE_HOUR_WINDOW_HOURS = 5;
-export const SEVEN_DAY_FREE_RATIO_SPENT_PER_FULLY_SPENT_FIVE_HOUR_WINDOW = 0.14;
 
 export const windowFreeRatioOfUtilization = (utilization: number): number =>
   1 - Math.min(Math.max(utilization, 0), 1);
-
-export const sevenDayFreeRatioSpendableBeforeSpendDeadlineOf = (
-  secondsUntilSevenDayReset: number,
-): number => {
-  const hoursUntilSpendDeadline =
-    secondsUntilSevenDayReset / SECONDS_PER_HOUR -
-    SEVEN_DAY_SPEND_DEADLINE_HOURS;
-  return (
-    (Math.max(0, hoursUntilSpendDeadline) / FIVE_HOUR_WINDOW_HOURS) *
-    SEVEN_DAY_FREE_RATIO_SPENT_PER_FULLY_SPENT_FIVE_HOUR_WINDOW
-  );
-};
 
 export type OauthTokenSevenDayBudget = {
   sevenDayFreeRatio: number;
@@ -95,37 +82,17 @@ export type OauthTokenSevenDayBudgetWithRemainingConcurrentSlots =
     remainingConcurrentSlotCount: number;
   };
 
-export const isSevenDayBudgetUnspendableBeforeSpendDeadline = (
-  budget: OauthTokenSevenDayBudget,
-): boolean =>
-  budget.sevenDayFreeRatio >
-  sevenDayFreeRatioSpendableBeforeSpendDeadlineOf(
-    budget.secondsUntilSevenDayReset,
-  );
-
 const drainOrderComparison = (
   first: OauthTokenSevenDayBudget,
   second: OauthTokenSevenDayBudget,
 ): number => {
-  const firstPromoted = isSevenDayBudgetUnspendableBeforeSpendDeadline(first);
-  const secondPromoted = isSevenDayBudgetUnspendableBeforeSpendDeadline(second);
-  if (firstPromoted !== secondPromoted) {
-    return firstPromoted ? -1 : 1;
-  }
-  if (!firstPromoted && !secondPromoted) {
-    if (first.secondsUntilSevenDayReset !== second.secondsUntilSevenDayReset) {
-      return first.secondsUntilSevenDayReset < second.secondsUntilSevenDayReset
-        ? -1
-        : 1;
-    }
-  }
-  if (first.sevenDayFreeRatio !== second.sevenDayFreeRatio) {
-    return first.sevenDayFreeRatio < second.sevenDayFreeRatio ? -1 : 1;
-  }
   if (first.secondsUntilSevenDayReset !== second.secondsUntilSevenDayReset) {
     return first.secondsUntilSevenDayReset < second.secondsUntilSevenDayReset
       ? -1
       : 1;
+  }
+  if (first.sevenDayFreeRatio !== second.sevenDayFreeRatio) {
+    return first.sevenDayFreeRatio < second.sevenDayFreeRatio ? -1 : 1;
   }
   return 0;
 };
