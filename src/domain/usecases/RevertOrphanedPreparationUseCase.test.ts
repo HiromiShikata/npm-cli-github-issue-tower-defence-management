@@ -2831,9 +2831,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           mockIssueCommentRepository.createComment.mock.calls.map(
             (call) => call[1],
           ),
-        ).not.toContainEqual(
-          expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
-        );
+        ).toEqual([]);
       }
     });
 

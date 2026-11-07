@@ -6270,6 +6270,17 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         });
 
         expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+        expect(mockIssueRepository.update).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.update).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'Awaiting Workspace' }),
+          expect.anything(),
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'awaiting-workspace-id',
+        );
         expect(
           mockIssueCommentRepository.createComment,
         ).not.toHaveBeenCalledWith(
