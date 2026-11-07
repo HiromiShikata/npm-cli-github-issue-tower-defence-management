@@ -2528,7 +2528,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       return project;
     };
 
-    it('should return to Awaiting Workspace and reassign to developer when chore agent has exactly one linked PR with failing CI', async () => {
+    it('should return to Awaiting Workspace and keep the chore agent when chore agent has exactly one linked PR with failing CI', async () => {
       const projectWithDeveloper = makeProjectWithDeveloper();
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(projectWithDeveloper);
@@ -2580,9 +2580,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        [stuckIssue.url, projectWithDeveloper, 'opt-developer'],
-      ]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
       expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
@@ -2763,7 +2761,83 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('should reassign to developer when pr-reviewer agent has a single failing CI PR and developerAgentNames is set', async () => {
+    it('pins the CI-failing routing of a chore agent issue with unset, null or empty developerAgentNames: Awaiting Workspace with no Agent field write and no CI-failure comment', async () => {
+      const cases: { developerAgentNames: string[] | null | undefined }[] = [
+        { developerAgentNames: undefined },
+        { developerAgentNames: null },
+        { developerAgentNames: [] },
+      ];
+      for (const { developerAgentNames } of cases) {
+        jest.clearAllMocks();
+        const projectWithDeveloper = makeProjectWithDeveloper();
+        mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+        mockProjectRepository.getProject.mockResolvedValue(
+          projectWithDeveloper,
+        );
+        mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+        const stuckIssue = createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+          labels: [],
+          agent: 'chore',
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: projectWithDeveloper,
+          issues: [stuckIssue],
+          cacheUsed: false,
+        });
+        mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+          createMockIssue({
+            url: issueUrl,
+            status: 'Preparation',
+            agent: 'chore',
+          }),
+        );
+        mockLocalCommandRunner.runCommand.mockResolvedValue({
+          stdout: '',
+          stderr: '',
+          exitCode: 1,
+        });
+        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+          {
+            author: 'bot',
+            content: '```json\n{"nextStep": null}\n```',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ]);
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          {
+            ...createPassingPr(),
+            url: 'https://github.com/user/repo/pull/99',
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+          },
+        ]);
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+          thresholdForAutoReject: 3,
+          developerAgentNames,
+        });
+
+        expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(
+          0,
+        );
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+        expect(
+          mockIssueCommentRepository.createComment.mock.calls.map(
+            (call) => call[1],
+          ),
+        ).not.toContainEqual(
+          expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+        );
+      }
+    });
+
+    it('should keep the pr-reviewer agent and not write the Agent field when it has a single failing CI PR and developerAgentNames is set', async () => {
       const projectWithDeveloper = makeProjectWithDeveloper();
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
       mockProjectRepository.getProject.mockResolvedValue(projectWithDeveloper);
@@ -2815,9 +2889,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        [stuckIssue.url, projectWithDeveloper, 'opt-developer'],
-      ]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
       expect(
@@ -2918,7 +2990,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('should reassign to the configured developerAgentNames when chore agent has a failing CI PR', async () => {
+    it('should keep the chore agent and not write the Agent field when chore agent has a failing CI PR with developerAgentNames configured', async () => {
       const projectWithCustomDeveloper =
         makeProjectWithDeveloper('custom-developer');
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
@@ -2975,9 +3047,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         developerAgentNames: ['custom-developer'],
       });
 
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        [stuckIssue.url, projectWithCustomDeveloper, 'opt-developer'],
-      ]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
     });
   });
 
