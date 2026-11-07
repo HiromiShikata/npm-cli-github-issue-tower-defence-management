@@ -840,7 +840,7 @@ autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]'
       expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(null);
     });
 
-    it('should let README claudeCodeOauthTokenListJsonPath override the YAML value', async () => {
+    it('should ignore README claudeCodeOauthTokenListJsonPath and use the YAML value', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 claudeCodeOauthTokenListJsonPath: /readme/tokens.json
@@ -863,7 +863,7 @@ claudeCodeOauthTokenListJsonPath: /readme/tokens.json
       await handler.handle('config.yml', false);
 
       expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(
-        '/readme/tokens.json',
+        '/yaml/tokens.json',
       );
     });
   });

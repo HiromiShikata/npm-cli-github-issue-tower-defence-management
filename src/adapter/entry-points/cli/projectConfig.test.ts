@@ -203,9 +203,9 @@ describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
 
   it('yields undefined consoleDataOutputDir when the key is absent', () => {
     const readme = makeReadme('defaultAgentName: impl\n');
-    expect(
-      parseProjectReadmeConfig(readme).consoleDataOutputDir,
-    ).toBeUndefined();
+    expect(parseProjectReadmeConfig(readme)).not.toHaveProperty(
+      'consoleDataOutputDir',
+    );
   });
 });
 
@@ -1613,49 +1613,56 @@ describe('parseProjectReadmeConfig and mergeConfigs keep README precedence for t
     key: keyof ConfigFile;
     readmeYaml: string;
     readmeValue: unknown;
-    configValue: unknown;
+    configFile: ConfigFile;
+    cliOverrides: ConfigFile;
     cliValue: unknown;
   }> = [
     {
       key: 'maximumPreparingIssuesCount',
       readmeYaml: 'maximumPreparingIssuesCount: 7',
       readmeValue: 7,
-      configValue: 2,
+      configFile: { maximumPreparingIssuesCount: 2 },
+      cliOverrides: { maximumPreparingIssuesCount: 3 },
       cliValue: 3,
     },
     {
       key: 'utilizationPercentageThreshold',
       readmeYaml: 'utilizationPercentageThreshold: 55',
       readmeValue: 55,
-      configValue: 40,
+      configFile: { utilizationPercentageThreshold: 40 },
+      cliOverrides: { utilizationPercentageThreshold: 45 },
       cliValue: 45,
     },
     {
       key: 'defaultAgentName',
       readmeYaml: 'defaultAgentName: readme-agent',
       readmeValue: 'readme-agent',
-      configValue: 'config-agent',
+      configFile: { defaultAgentName: 'config-agent' },
+      cliOverrides: { defaultAgentName: 'cli-agent' },
       cliValue: 'cli-agent',
     },
     {
       key: 'defaultLlmAgentName',
       readmeYaml: 'defaultLlmAgentName: readme-llm-agent',
       readmeValue: 'readme-llm-agent',
-      configValue: 'config-llm-agent',
+      configFile: { defaultLlmAgentName: 'config-llm-agent' },
+      cliOverrides: { defaultLlmAgentName: 'cli-llm-agent' },
       cliValue: 'cli-llm-agent',
     },
     {
       key: 'developerAgentNames',
       readmeYaml: 'developerAgentNames:\n  - readme-dev',
       readmeValue: ['readme-dev'],
-      configValue: ['config-dev'],
+      configFile: { developerAgentNames: ['config-dev'] },
+      cliOverrides: { developerAgentNames: ['cli-dev'] },
       cliValue: ['cli-dev'],
     },
     {
       key: 'labelsAsLlmAgentName',
       readmeYaml: 'labelsAsLlmAgentName:\n  - readme-label',
       readmeValue: ['readme-label'],
-      configValue: ['config-label'],
+      configFile: { labelsAsLlmAgentName: ['config-label'] },
+      cliOverrides: { labelsAsLlmAgentName: ['cli-label'] },
       cliValue: ['cli-label'],
     },
   ];
@@ -1665,19 +1672,26 @@ describe('parseProjectReadmeConfig and mergeConfigs keep README precedence for t
       const readmeOverrides = parseProjectReadmeConfig(
         makeReadme(testCase.readmeYaml),
       );
-      const configFile = { [testCase.key]: testCase.configValue } as ConfigFile;
-      const cliOverrides = { [testCase.key]: testCase.cliValue } as ConfigFile;
 
-      const withReadme = mergeConfigs(configFile, cliOverrides, readmeOverrides);
+      const withReadme = mergeConfigs(
+        testCase.configFile,
+        testCase.cliOverrides,
+        readmeOverrides,
+      );
       expect({ key: testCase.key, value: withReadme[testCase.key] }).toEqual({
         key: testCase.key,
         value: testCase.readmeValue,
       });
 
-      const withoutReadme = mergeConfigs(configFile, cliOverrides, {});
-      expect({ key: testCase.key, value: withoutReadme[testCase.key] }).toEqual(
-        { key: testCase.key, value: testCase.cliValue },
+      const withoutReadme = mergeConfigs(
+        testCase.configFile,
+        testCase.cliOverrides,
+        {},
       );
+      expect({
+        key: testCase.key,
+        value: withoutReadme[testCase.key],
+      }).toEqual({ key: testCase.key, value: testCase.cliValue });
     }
   });
 });
@@ -1687,45 +1701,44 @@ describe('README keys that the project README must not set', () => {
     `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
   const projectUrl = 'https://example.com/project';
 
-  const localOnlyCases: ReadonlyArray<{ key: keyof ConfigFile; yaml: string }> =
-    [
-      {
-        key: 'preparationProcessCheckCommand',
-        yaml: "preparationProcessCheckCommand: 'readme-command {URL}'",
-      },
-      { key: 'allowedIssueAuthors', yaml: "allowedIssueAuthors: 'readme-user'" },
-      {
-        key: 'autoAssignManagerAuthors',
-        yaml: "autoAssignManagerAuthors: 'readme-bot'",
-      },
-      {
-        key: 'workflowBlockerResolvedWebhookUrl',
-        yaml: "workflowBlockerResolvedWebhookUrl: 'https://example.com/readme-hook'",
-      },
-      {
-        key: 'errorReportingRepository',
-        yaml: 'errorReportingRepository: example-org/readme-repo',
-      },
-      {
-        key: 'codexHomeCandidates',
-        yaml: 'codexHomeCandidates:\n  - .codex-readme',
-      },
-      {
-        key: 'claudeCodeOauthTokenListJsonPath',
-        yaml: 'claudeCodeOauthTokenListJsonPath: /readme/tokens.json',
-      },
-      { key: 'awLogDirectoryPath', yaml: 'awLogDirectoryPath: /readme/aw-logs' },
-      {
-        key: 'agentDefinitionsDirectoryPath',
-        yaml: 'agentDefinitionsDirectoryPath: /readme/agents',
-      },
-      {
-        key: 'consoleDataOutputDir',
-        yaml: 'consoleDataOutputDir: /readme/console-data',
-      },
-    ];
+  const localOnlyCases: ReadonlyArray<{ key: string; yaml: string }> = [
+    {
+      key: 'preparationProcessCheckCommand',
+      yaml: "preparationProcessCheckCommand: 'readme-command {URL}'",
+    },
+    { key: 'allowedIssueAuthors', yaml: "allowedIssueAuthors: 'readme-user'" },
+    {
+      key: 'autoAssignManagerAuthors',
+      yaml: "autoAssignManagerAuthors: 'readme-bot'",
+    },
+    {
+      key: 'workflowBlockerResolvedWebhookUrl',
+      yaml: "workflowBlockerResolvedWebhookUrl: 'https://example.com/readme-hook'",
+    },
+    {
+      key: 'errorReportingRepository',
+      yaml: 'errorReportingRepository: example-org/readme-repo',
+    },
+    {
+      key: 'codexHomeCandidates',
+      yaml: 'codexHomeCandidates:\n  - .codex-readme',
+    },
+    {
+      key: 'claudeCodeOauthTokenListJsonPath',
+      yaml: 'claudeCodeOauthTokenListJsonPath: /readme/tokens.json',
+    },
+    { key: 'awLogDirectoryPath', yaml: 'awLogDirectoryPath: /readme/aw-logs' },
+    {
+      key: 'agentDefinitionsDirectoryPath',
+      yaml: 'agentDefinitionsDirectoryPath: /readme/agents',
+    },
+    {
+      key: 'consoleDataOutputDir',
+      yaml: 'consoleDataOutputDir: /readme/console-data',
+    },
+  ];
 
-  it('does not return any of the ten local-only keys, and warns naming each key and the project URL', () => {
+  it('does not return any of the ten local-only keys, and warns once naming each key and the project URL', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     for (const testCase of localOnlyCases) {
       warnSpy.mockClear();
@@ -1733,17 +1746,11 @@ describe('README keys that the project README must not set', () => {
         makeReadme(testCase.yaml),
         projectUrl,
       );
-      expect({ key: testCase.key, returned: Object.keys(result) }).toEqual({
-        key: testCase.key,
-        returned: expect.not.arrayContaining([testCase.key]),
-      });
-      expect({ key: testCase.key, warned: warnSpy.mock.calls.map((c) => c[0]) })
-        .toEqual({
-          key: testCase.key,
-          warned: [
-            `Unknown key "${testCase.key}" in project README config section (project URL: ${projectUrl})`,
-          ],
-        });
+      expect(Object.keys(result)).not.toContain(testCase.key);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Unknown key "${testCase.key}" in project README config section (project URL: ${projectUrl})`,
+      );
     }
     warnSpy.mockRestore();
   });
@@ -1754,16 +1761,19 @@ describe('README keys that the project README must not set', () => {
         "preparationProcessCheckCommand: 'readme-command {URL}'\nallowedIssueAuthors: 'readme-user'",
       ),
     );
-    const configFile: ConfigFile = {
-      preparationProcessCheckCommand: 'config-command {URL}',
-      allowedIssueAuthors: 'config-user',
-    };
-    const merged = mergeConfigs(configFile, {}, readmeOverrides);
+    const merged = mergeConfigs(
+      {
+        preparationProcessCheckCommand: 'config-command {URL}',
+        allowedIssueAuthors: 'config-user',
+      },
+      {},
+      readmeOverrides,
+    );
     expect(merged.preparationProcessCheckCommand).toBe('config-command {URL}');
     expect(merged.allowedIssueAuthors).toBe('config-user');
   });
 
-  it('resolves each local-only key to the CLI value over the config file value when the README sets it', () => {
+  it('resolves preparationProcessCheckCommand to the CLI value over the config file value when the README sets it', () => {
     const readmeOverrides = parseProjectReadmeConfig(
       makeReadme("preparationProcessCheckCommand: 'readme-command {URL}'"),
     );
