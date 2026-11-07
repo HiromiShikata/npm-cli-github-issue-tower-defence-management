@@ -1,3 +1,10 @@
+# [2.191.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.3...v2.191.0) (2026-11-07)
+
+
+### Features
+
+* add Hide triggered and Hide empty toggles to console stories ([#3704](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3704)) ([7c60be5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c60be500bf99afcdd1a3f9d68e66a6b51fb5e1f))
+
 ## [2.190.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.190.2...v2.190.3) (2026-11-07)
 
 
