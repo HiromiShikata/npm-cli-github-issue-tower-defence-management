@@ -842,7 +842,7 @@ codexHomeCandidates:
 
       const result = parseProjectReadmeConfig(readme, 'https://example.com/p');
 
-      expect(result.codexHomeCandidates).toBeUndefined();
+      expect(result).not.toHaveProperty('codexHomeCandidates');
       expect(warnSpy).toHaveBeenCalledWith(
         'Unknown key "codexHomeCandidates" in project README config section (project URL: https://example.com/p)',
       );
