@@ -556,6 +556,21 @@ const describeGraphqlErrors = (errors: unknown): string => {
   return descriptions.length > 0 ? `: ${descriptions.join('; ')}` : '';
 };
 
+const isExpectedProjectReadmeError = (value: unknown): boolean => {
+  if (!isRecord(value) || value['type'] !== 'NOT_FOUND') return false;
+  const path = value['path'];
+  return (
+    Array.isArray(path) &&
+    path.length === 1 &&
+    (path[0] === 'organization' || path[0] === 'user')
+  );
+};
+
+const graphqlUnexpectedProjectReadmeErrorsOf = (errors: unknown): unknown[] =>
+  Array.isArray(errors)
+    ? errors.filter((error: unknown) => !isExpectedProjectReadmeError(error))
+    : [];
+
 const FAILED_RESPONSE_BODY_MAX_LENGTH = 200;
 
 const parseJsonText = (text: string): unknown => {
@@ -644,6 +659,19 @@ export const fetchProjectReadme = async (
   }
   if (typeof userReadme === 'string') {
     return userReadme;
+  }
+  if (organizationReadme !== null && userReadme !== null) {
+    throw new Error(
+      `GitHub GraphQL response has an invalid README for the project${errorsDescription}`,
+    );
+  }
+  const unexpectedErrors = graphqlUnexpectedProjectReadmeErrorsOf(
+    responseData.errors,
+  );
+  if (unexpectedErrors.length > 0) {
+    throw new Error(
+      `GitHub GraphQL response has errors for the project README${describeGraphqlErrors(unexpectedErrors)}`,
+    );
   }
   return null;
 };
