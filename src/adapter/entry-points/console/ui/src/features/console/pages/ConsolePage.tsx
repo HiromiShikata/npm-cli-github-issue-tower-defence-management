@@ -1014,6 +1014,30 @@ export const ConsolePage = () => {
     });
   }, []);
 
+  const [hideTriggered, setHideTriggered] = useState(
+    () => localStorage.getItem('console-story-hide-triggered') === 'true',
+  );
+
+  const handleToggleHideTriggered = useCallback((): void => {
+    setHideTriggered((prev) => {
+      const next = !prev;
+      localStorage.setItem('console-story-hide-triggered', String(next));
+      return next;
+    });
+  }, []);
+
+  const [hideEmptyStories, setHideEmptyStories] = useState(
+    () => localStorage.getItem('console-story-hide-empty') === 'true',
+  );
+
+  const handleToggleHideEmptyStories = useCallback((): void => {
+    setHideEmptyStories((prev) => {
+      const next = !prev;
+      localStorage.setItem('console-story-hide-empty', String(next));
+      return next;
+    });
+  }, []);
+
   const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
     resolveStoryStatusSelectionFromLocation,
   );
@@ -1868,6 +1892,10 @@ export const ConsolePage = () => {
             onSelectColor={handleSelectColor}
             onToggleArchived={handleToggleArchived}
             onToggleDone={handleToggleDone}
+            hideTriggered={hideTriggered}
+            hideEmptyStories={hideEmptyStories}
+            onToggleHideTriggered={handleToggleHideTriggered}
+            onToggleHideEmptyStories={handleToggleHideEmptyStories}
             selectedStatuses={selectedStoryStatuses}
             statusOptionNames={storyStatusOptionNames}
             onToggleStatus={handleToggleStoryStatus}

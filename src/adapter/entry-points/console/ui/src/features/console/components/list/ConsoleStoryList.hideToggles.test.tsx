@@ -65,7 +65,7 @@ const stories: ConsoleStoryEntry[] = [
   {
     storyName: 'Empty planning story',
     storyOptionId: 'empty-planning',
-    color: 'GRAY',
+    color: 'PURPLE',
     description: '',
     openItemCount: 0,
     storyViewUrl: null,

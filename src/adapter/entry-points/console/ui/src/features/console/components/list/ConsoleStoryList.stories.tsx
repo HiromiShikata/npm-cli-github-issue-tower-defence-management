@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { userEvent, within } from 'storybook/test';
+import type { ConsoleListItem, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
 const sampleItems = [
@@ -163,6 +164,10 @@ const meta: Meta<typeof ConsoleStoryList> = {
     onSelectColor: () => undefined,
     onToggleArchived: () => undefined,
     onToggleDone: () => undefined,
+    hideTriggered: false,
+    hideEmptyStories: false,
+    onToggleHideTriggered: () => undefined,
+    onToggleHideEmptyStories: () => undefined,
     onReorderStory: () => Promise.resolve(),
     onDeleteStory: () => Promise.resolve(),
     onRenameStory: () => Promise.resolve(),
@@ -562,5 +567,134 @@ export const TasksExpandedWithRowFieldsHidden: Story = {
       name: 'Show tasks',
     });
     await userEvent.click(firstChevron);
+  },
+};
+
+const hideToggleItem = (
+  number: number,
+  overrides: Partial<ConsoleListItem>,
+): ConsoleListItem => ({
+  number,
+  title: `Task ${number}`,
+  url: `https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/${number}`,
+  repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+  nameWithOwner: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+  projectItemId: `PVTI_hideToggle${number}`,
+  itemId: `PVTI_hideToggle${number}`,
+  isPr: false,
+  story: 'Office relocation',
+  status: 'Preparation',
+  agent: 'developer',
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-09-01T00:00:00.000Z',
+  relatedOpenPullRequestUrls: [],
+  ...overrides,
+});
+
+const hideToggleStories: ConsoleStoryEntry[] = [
+  {
+    storyName: 'Office relocation',
+    storyOptionId: 'office-relocation',
+    color: 'BLUE',
+    description: '',
+    openItemCount: 4,
+    storyViewUrl: null,
+    items: [
+      hideToggleItem(201, {
+        title: 'Compare moving quotes from two vendors',
+      }),
+      hideToggleItem(202, {
+        title: 'Confirm electricity contract start date',
+        status: 'Awaiting Owner',
+        nextActionDate: '2026-11-20',
+        nextActionHour: 10,
+      }),
+      hideToggleItem(203, {
+        title: 'Draft floor plan for the new desk layout',
+      }),
+      hideToggleItem(204, {
+        title: 'Archive the old office internet order form',
+        status: 'Done',
+      }),
+    ],
+  },
+  {
+    storyName: 'Invoice automation',
+    storyOptionId: 'invoice-automation',
+    color: 'PURPLE',
+    description: '',
+    openItemCount: 2,
+    storyViewUrl: null,
+    items: [
+      hideToggleItem(205, {
+        title: 'Wait for the accounting firm to confirm the invoice format',
+        status: 'Awaiting Owner',
+        dependedIssueUrls: [
+          'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/900',
+        ],
+      }),
+      hideToggleItem(206, {
+        title: 'Map client tax codes to the export template',
+      }),
+    ],
+  },
+  {
+    storyName: 'Quarterly planning',
+    storyOptionId: 'quarterly-planning',
+    color: 'GREEN',
+    description: '',
+    openItemCount: 0,
+    storyViewUrl: null,
+    items: [],
+  },
+];
+
+const hideToggleBaseArgs = {
+  stories: hideToggleStories,
+  isLoading: false,
+  error: null,
+  showArchived: false,
+  showDone: false,
+};
+
+export const HideToggleBothOff: Story = {
+  args: {
+    ...hideToggleBaseArgs,
+    hideTriggered: false,
+    hideEmptyStories: false,
+  },
+};
+
+export const HideToggleBothOn: Story = {
+  args: {
+    ...hideToggleBaseArgs,
+    hideTriggered: true,
+    hideEmptyStories: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [firstChevron] = canvas.getAllByRole('button', {
+      name: 'Show tasks',
+    });
+    await userEvent.click(firstChevron);
+  },
+};
+
+export const HideTriggeredOnly: Story = {
+  args: {
+    ...hideToggleBaseArgs,
+    hideTriggered: true,
+    hideEmptyStories: false,
+  },
+};
+
+export const HideEmptyOnly: Story = {
+  args: {
+    ...hideToggleBaseArgs,
+    hideTriggered: false,
+    hideEmptyStories: true,
   },
 };
