@@ -14382,3 +14382,93 @@ describe('ConsolePage story status filter counts', () => {
     });
   });
 });
+
+describe('ConsolePage hide triggered and hide empty switches', () => {
+  const stubStoriesTabFetch = (): void => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+  });
+
+  it('shows Hide triggered and Hide empty switches off by default when nothing is stored', async () => {
+    stubStoriesTabFetch();
+    const { findByRole } = render(<ConsolePage />);
+    expect(await findByRole('switch', { name: 'Hide triggered' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(await findByRole('switch', { name: 'Hide empty' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
+
+  it('reads console-story-hide-triggered and console-story-hide-empty from localStorage and shows the switches on when true', async () => {
+    localStorage.setItem('console-story-hide-triggered', 'true');
+    localStorage.setItem('console-story-hide-empty', 'true');
+    stubStoriesTabFetch();
+    const { findByRole } = render(<ConsolePage />);
+    expect(await findByRole('switch', { name: 'Hide triggered' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(await findByRole('switch', { name: 'Hide empty' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+
+  it('writes true to console-story-hide-triggered when the Hide triggered switch is clicked, then false when clicked again', async () => {
+    stubStoriesTabFetch();
+    const { findByRole } = render(<ConsolePage />);
+    const toggle = await findByRole('switch', { name: 'Hide triggered' });
+    fireEvent.click(toggle);
+    expect(localStorage.getItem('console-story-hide-triggered')).toBe('true');
+    fireEvent.click(toggle);
+    expect(localStorage.getItem('console-story-hide-triggered')).toBe('false');
+  });
+
+  it('writes true to console-story-hide-empty when the Hide empty switch is clicked', async () => {
+    stubStoriesTabFetch();
+    const { findByRole } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('switch', { name: 'Hide empty' }));
+    expect(localStorage.getItem('console-story-hide-empty')).toBe('true');
+  });
+});
