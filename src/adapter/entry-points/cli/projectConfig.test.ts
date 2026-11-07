@@ -1502,7 +1502,7 @@ describe('fetchProjectReadmeWithCache', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores a fresh disk entry written under the pre-v2 key and writes the fetched README under the v2 key', async () => {
+  it('ignores a fresh disk entry written under the pre-v2 key and writes the fetched README under the v3 key', async () => {
     const readme =
       '<details><summary>config</summary>maximumPreparingIssuesCount: 6</details>';
     mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
@@ -1528,10 +1528,10 @@ describe('fetchProjectReadmeWithCache', () => {
     expect(result).toBe(readme);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(mockCacheRepo.getSingle).toHaveBeenCalledWith(
-      'projectReadme/v2/TestOrg/1',
+      'projectReadme/v3/TestOrg/1',
     );
     expect(mockCacheRepo.setSingle).toHaveBeenCalledWith(
-      'projectReadme/v2/TestOrg/1',
+      'projectReadme/v3/TestOrg/1',
       { fetchedAtMs: baseNowMs, readme },
     );
   });
@@ -1816,8 +1816,45 @@ describe('fetchProjectReadme on a response with a resolved project', () => {
 
     expect(result).toBeNull();
     expect(cacheRepository.setSingle).toHaveBeenCalledWith(
-      'projectReadme/v2/TestOrg/1',
+      'projectReadme/v3/TestOrg/1',
       { fetchedAtMs: baseNowMs, readme: null },
+    );
+  });
+
+  it('never reads a README disk cache entry written under the pre-change v2 key and fetches the README instead', async () => {
+    resetProjectReadmeInMemoryCacheForTesting();
+    const cacheRepository = {
+      getSingle: jest
+        .fn<Promise<unknown>, [string]>()
+        .mockImplementation(async (key: string) => {
+          if (key === 'projectReadme/v2/TestOrg/1') {
+            return { fetchedAtMs: baseNowMs, readme: null };
+          }
+          return null;
+        }),
+      setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+    };
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          organization: null,
+          user: { projectV2: { readme: 'fresh readme' } },
+        },
+        errors: [organizationNotFound],
+      }),
+    );
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      cacheRepository,
+      baseNowMs,
+    );
+
+    expect(result).toBe('fresh readme');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(cacheRepository.getSingle).not.toHaveBeenCalledWith(
+      'projectReadme/v2/TestOrg/1',
     );
   });
 });
