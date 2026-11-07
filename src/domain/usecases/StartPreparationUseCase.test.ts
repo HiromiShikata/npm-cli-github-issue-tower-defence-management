@@ -5750,7 +5750,7 @@ describe('StartPreparationUseCase', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('should drain the least-7-day-budget token among the tokens promoted by the spend deadline first across spawns until its remaining capacity is exhausted', async () => {
+  it('should keep filling the token whose 7-day window resets soonest across spawns while it has remaining capacity', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -5854,17 +5854,17 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-mid-reset' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-mid-reset' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-mid-reset' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
     });
   });
 
-  it('should pick the token with the sooner 7-day reset first when no token is promoted by the spend deadline', async () => {
+  it('should pick the token with the sooner 7-day reset first', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 1 }, (_, i) =>
       createMockIssue({
         url: `url${i + 1}`,
@@ -5940,7 +5940,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should move a token whose 7-day budget cannot be spent by 72 hours before its reset at its concurrent limit ahead of a token with less budget and a sooner reset', async () => {
+  it('should fill the token whose 7-day window resets sooner first, even when another token has more free 7-day budget and cannot be drained before its deadline', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 1 }, (_, i) =>
       createMockIssue({
         url: `url${i + 1}`,
@@ -6012,7 +6012,7 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-undrainable-before-deadline' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-least-budget-sooner-reset' },
     });
   });
 
