@@ -1,3 +1,10 @@
+## [2.191.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.3...v2.191.4) (2026-11-08)
+
+
+### Bug Fixes
+
+* **token-select:** break equal 7d resets by the larger free ratio in fill order ([#3707](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3707)) ([0b7c1cf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b7c1cfe1f8cc4a9848c5441bafe4c0376c3a45b))
+
 ## [2.191.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.2...v2.191.3) (2026-11-08)
 
 
