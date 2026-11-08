@@ -92,7 +92,7 @@ const drainOrderComparison = (
       : 1;
   }
   if (first.sevenDayFreeRatio !== second.sevenDayFreeRatio) {
-    return first.sevenDayFreeRatio < second.sevenDayFreeRatio ? -1 : 1;
+    return first.sevenDayFreeRatio > second.sevenDayFreeRatio ? -1 : 1;
   }
   return 0;
 };

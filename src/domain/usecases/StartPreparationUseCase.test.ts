@@ -6016,7 +6016,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should fill the least-7-day-budget token to its concurrent limit before moving to the token with more budget', async () => {
+  it('should fill the more-7-day-budget token to its concurrent limit before moving to the token with less budget when both 7-day resets are equal', async () => {
     const awaitingIssues: Issue[] = Array.from({ length: 3 }, (_, i) =>
       createMockIssue({
         url: `url${i + 1}`,
@@ -6037,7 +6037,7 @@ describe('StartPreparationUseCase', () => {
       exitCode: 0,
     });
     mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-      'token-least-budget': 4,
+      'token-more-budget': 4,
     });
     mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
       {
@@ -6080,13 +6080,13 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-least-budget' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-more-budget' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-least-budget' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-more-budget' },
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-more-budget' },
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-least-budget' },
     });
   });
 
@@ -7959,7 +7959,7 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
     });
 
-    it('should pick the token with the least 7-day budget while it still has remaining capacity even when another token has more remaining capacity', async () => {
+    it('should pick the token with the most 7-day remaining budget when both 7-day resets are equal', async () => {
       const awaitingIssues: Issue[] = [
         createMockIssue({
           url: 'url1',
@@ -8025,7 +8025,7 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
         env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-b',
           ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
         },
       });

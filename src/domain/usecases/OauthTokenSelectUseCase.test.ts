@@ -1032,6 +1032,30 @@ describe('oauthTokenDrainOrderSort', () => {
     ]);
   });
 
+  it('orders the sooner 7d reset first even when it has the lower 7d free ratio', () => {
+    const sorted = oauthTokenDrainOrderSort([
+      drainCandidate('laterResetHigherFreeRatio', 0.8, 300 * HOUR),
+      drainCandidate('soonerResetLowerFreeRatio', 0.3, 200 * HOUR),
+    ]);
+
+    expect(sorted.map((candidate) => candidate.name)).toEqual([
+      'soonerResetLowerFreeRatio',
+      'laterResetHigherFreeRatio',
+    ]);
+  });
+
+  it('orders an equal 7d reset by the larger 7d free ratio first, so the token with more remaining comes first', () => {
+    const sorted = oauthTokenDrainOrderSort([
+      drainCandidate('smallerFreeRatio', 0.3, 200 * HOUR),
+      drainCandidate('largerFreeRatio', 0.8, 200 * HOUR),
+    ]);
+
+    expect(sorted.map((candidate) => candidate.name)).toEqual([
+      'largerFreeRatio',
+      'smallerFreeRatio',
+    ]);
+  });
+
   it('returns a new array and leaves the input order unchanged', () => {
     const candidates = [
       drainCandidate('moreBudget', 0.9, 300 * HOUR),
@@ -1041,8 +1065,8 @@ describe('oauthTokenDrainOrderSort', () => {
     const sorted = oauthTokenDrainOrderSort(candidates);
 
     expect(sorted.map((candidate) => candidate.name)).toEqual([
-      'lessBudget',
       'moreBudget',
+      'lessBudget',
     ]);
     expect(candidates.map((candidate) => candidate.name)).toEqual([
       'moreBudget',
@@ -1060,12 +1084,12 @@ describe('oauthTokenFillTargetSelect', () => {
     }> = [
       {
         description:
-          'the least-budget token while it still has a slot, even with fewer slots than another token',
+          'the token with more 7d budget at an equal 7d reset while it still has a slot, even when another token has only one slot left',
         candidates: [
           drainCandidate('moreBudgetIdle', 0.9, 300 * HOUR, 6),
           drainCandidate('leastBudgetOneSlotLeft', 0.1, 300 * HOUR, 1),
         ],
-        expectedName: 'leastBudgetOneSlotLeft',
+        expectedName: 'moreBudgetIdle',
       },
       {
         description: 'the next token once the least-budget token is at its cap',
@@ -1114,6 +1138,24 @@ describe('oauthTokenFillTargetSelect', () => {
           ),
         ],
         expectedName: 'soonerResetHigherFreeRatio',
+      },
+      {
+        description:
+          'the sooner-7d-reset token with a free slot fills before a later-7d-reset token with a higher free ratio and a free slot',
+        candidates: [
+          drainCandidate('laterResetHigherFreeRatio', 0.8, 300 * HOUR, 6),
+          drainCandidate('soonerResetLowerFreeRatio', 0.3, 200 * HOUR, 6),
+        ],
+        expectedName: 'soonerResetLowerFreeRatio',
+      },
+      {
+        description:
+          'the larger-7d-free-ratio token fills first when both 7d resets are equal and both have a free slot',
+        candidates: [
+          drainCandidate('smallerFreeRatio', 0.3, 200 * HOUR, 6),
+          drainCandidate('largerFreeRatio', 0.8, 200 * HOUR, 6),
+        ],
+        expectedName: 'largerFreeRatio',
       },
     ];
 
