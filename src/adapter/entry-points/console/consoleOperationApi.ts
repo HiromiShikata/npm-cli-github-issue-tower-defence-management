@@ -364,6 +364,9 @@ const updateStatusByName = async (
       return badGateway(`issue "${issueUrl}" could not be loaded`);
     }
     const liveStatusName = liveIssue.status;
+    if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
+      return null;
+    }
     if (liveStatusName !== expectedStatusAtActionTime.statusName) {
       return badRequest(
         `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
