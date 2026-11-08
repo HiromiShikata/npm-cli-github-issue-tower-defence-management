@@ -1,3 +1,10 @@
+# [2.192.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.4...v2.192.0) (2026-11-08)
+
+
+### Features
+
+* **start-preparation:** run work sessions on the calling machine for the run-on:main-machine label ([#3708](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3708)) ([2304eba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2304eba2ad57a751ad430677ecfb83666df4b4bb))
+
 ## [2.191.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.3...v2.191.4) (2026-11-08)
 
 
