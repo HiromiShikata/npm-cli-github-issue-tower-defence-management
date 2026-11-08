@@ -214,6 +214,7 @@ The `schedule` command (trigger `schedule`) supports a `startPreparation` mappin
   - The `startPreparation.llmModelNameByAgentName` value must be a mapping.
   - Each entry's value must be a non-empty string. An entry whose value is null is ignored.
   - The model of a work session is chosen in this order: the `llm-model:` label, then `llmModelNameByAgentName`, then the token-routed model, then the agent definition `model:` line, then `defaultLlmModelName`.
+- The `run-on:main-machine` label (set per issue, like the `llm-model:` and `llm-agent:` labels; it has no config key): an issue carrying this exact label is launched with the environment variable `AW_RUN_LOCAL_ONLY=1`, so `aw` runs the work session on the machine that calls it instead of on the remote worker host. Issues without the label are launched exactly as before.
 
 A key the file omits keeps its built-in value; a `maximumPreparingIssuesCount` value that is not an integer of at least 1 is reported as an error. Example:
 
