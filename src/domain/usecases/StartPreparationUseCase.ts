@@ -48,6 +48,7 @@ const FIVE_HOUR_WINDOW_SECONDS = FIVE_HOUR_WINDOW_HOURS * 60 * 60;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
+const RUN_ON_MAIN_MACHINE_LABEL = 'run-on:main-machine';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 export const DEFAULT_MINIMUM_ISSUE_AGE_MS = 5 * 60 * 1000;
 
@@ -1282,6 +1283,9 @@ export class StartPreparationUseCase {
             startedInThisRunCount % params.codexHomeCandidates.length
           ];
         awArgs.push('--codexHome', codexHome);
+      }
+      if (issue.labels.includes(RUN_ON_MAIN_MACHINE_LABEL)) {
+        spawnEnv = { ...spawnEnv, AW_RUN_LOCAL_ONLY: '1' };
       }
       const spawnResult = await this.localCommandRunner.runCommand(
         'aw',
