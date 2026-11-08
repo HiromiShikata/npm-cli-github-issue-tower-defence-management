@@ -1,3 +1,10 @@
+## [2.191.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.1...v2.191.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* **console:** do not fail status set when issue is already at the target status ([#3706](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3706)) ([7799e5d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7799e5d25b8c37fb4309ce39313d93021e7930ca))
+
 ## [2.191.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.0...v2.191.1) (2026-11-07)
 
 
