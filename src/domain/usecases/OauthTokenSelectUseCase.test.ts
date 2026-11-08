@@ -1065,8 +1065,8 @@ describe('oauthTokenDrainOrderSort', () => {
     const sorted = oauthTokenDrainOrderSort(candidates);
 
     expect(sorted.map((candidate) => candidate.name)).toEqual([
-      'lessBudget',
       'moreBudget',
+      'lessBudget',
     ]);
     expect(candidates.map((candidate) => candidate.name)).toEqual([
       'moreBudget',
@@ -1084,12 +1084,12 @@ describe('oauthTokenFillTargetSelect', () => {
     }> = [
       {
         description:
-          'the least-budget token while it still has a slot, even with fewer slots than another token',
+          'the token with more 7d budget at an equal 7d reset while it still has a slot, even when another token has only one slot left',
         candidates: [
           drainCandidate('moreBudgetIdle', 0.9, 300 * HOUR, 6),
           drainCandidate('leastBudgetOneSlotLeft', 0.1, 300 * HOUR, 1),
         ],
-        expectedName: 'leastBudgetOneSlotLeft',
+        expectedName: 'moreBudgetIdle',
       },
       {
         description: 'the next token once the least-budget token is at its cap',
