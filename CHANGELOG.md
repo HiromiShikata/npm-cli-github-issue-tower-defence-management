@@ -1,3 +1,10 @@
+## [2.191.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.2...v2.191.3) (2026-11-08)
+
+
+### Bug Fixes
+
+* **config:** stop reading ten local-only keys from the project README ([#3703](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3703)) ([4ec2e8e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ec2e8e24bd1de2c6af4541013f6c00e9fb645e4))
+
 ## [2.191.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.1...v2.191.2) (2026-11-08)
 
 
