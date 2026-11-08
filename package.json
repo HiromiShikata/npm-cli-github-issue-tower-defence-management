@@ -112,7 +112,7 @@
     "tailwindcss": "^4.3.3",
     "ts-jest": "^29.4.15",
     "typescript": "file:./lib/typescript-compat",
-    "typescript-eslint": "^8.72.1",
+    "typescript-eslint": "^8.65.0",
     "vite": "^8.3.5"
   },
   "dependencies": {
