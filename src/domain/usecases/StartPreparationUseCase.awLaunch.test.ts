@@ -574,3 +574,103 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
     expect(harness.localCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 });
+
+describe('StartPreparationUseCase.run aw spawn environment for the run-on:main-machine label', () => {
+  let consoleSpies: jest.SpyInstance[];
+
+  const runParameters = {
+    projectUrl: PROJECT_URL,
+    defaultAgentName: 'agent1',
+    defaultLlmModelName: 'claude-opus',
+    defaultLlmAgentName: null,
+    configFilePath: '/path/to/config.yml',
+    maximumPreparingIssuesCount: null,
+    utilizationPercentageThreshold: 90,
+    allowedIssueAuthors: ['testuser'],
+    manager: 'manager-user',
+    codexHomeCandidates: null,
+    labelsAsLlmAgentName: null,
+  };
+
+  beforeEach(() => {
+    consoleSpies = [
+      jest.spyOn(console, 'log').mockImplementation(() => undefined),
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined),
+      jest.spyOn(console, 'error').mockImplementation(() => undefined),
+    ];
+  });
+
+  afterEach(() => {
+    consoleSpies.forEach((spy) => spy.mockRestore());
+  });
+
+  it('passes no spawn environment to aw for an unlabelled Codex candidate', async () => {
+    const harness = harnessCreate([
+      'category:impl',
+      'llm-model:zz-future-model-1',
+    ]);
+
+    await harness.useCase.run(runParameters);
+
+    const calls = harness.localCommandRunner.runCommand.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('aw');
+    expect(calls[0][2]).toBeUndefined();
+  });
+
+  it('passes AW_RUN_LOCAL_ONLY=1 alongside the token environment for a labelled Claude candidate', async () => {
+    const harness = harnessCreate(['category:impl', 'run-on:main-machine']);
+
+    await harness.useCase.run(runParameters);
+
+    const calls = harness.localCommandRunner.runCommand.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('aw');
+    expect(calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: SPAWN_TOKEN,
+        ANTHROPIC_BASE_URL: PROXY_BASE_URL,
+        AW_RUN_LOCAL_ONLY: '1',
+      },
+    });
+  });
+
+  it('passes only AW_RUN_LOCAL_ONLY=1 as the spawn environment for a labelled Codex candidate', async () => {
+    const harness = harnessCreate([
+      'category:impl',
+      'llm-model:zz-future-model-1',
+      'run-on:main-machine',
+    ]);
+
+    await harness.useCase.run(runParameters);
+
+    const calls = harness.localCommandRunner.runCommand.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('aw');
+    expect(calls[0][2]).toEqual({ env: { AW_RUN_LOCAL_ONLY: '1' } });
+  });
+
+  it('does not set AW_RUN_LOCAL_ONLY for a label that is not exactly run-on:main-machine', async () => {
+    const nonMatchingLabels = [
+      'run-on:main-machine-old',
+      'Run-On:Main-Machine',
+      'run-on: main-machine',
+    ];
+    for (const label of nonMatchingLabels) {
+      const harness = harnessCreate([
+        'category:impl',
+        'llm-model:zz-future-model-1',
+        label,
+      ]);
+
+      await harness.useCase.run(runParameters);
+
+      const calls = harness.localCommandRunner.runCommand.mock.calls;
+      expect({ label, calls: calls.length, options: calls[0]?.[2] }).toEqual({
+        label,
+        calls: 1,
+        options: undefined,
+      });
+    }
+  });
+});
