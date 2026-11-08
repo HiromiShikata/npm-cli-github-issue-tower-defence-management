@@ -395,6 +395,34 @@ describe('consoleOperationApi', () => {
       expect(errorMessage).toContain('Done');
     });
 
+    it('updateStatusByName treats a review close with a linked issue as success without writing the Status when the live Status already equals Awaiting workspace, and still closes the pull request, comments and records done', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/9',
+        itemId: 'PVTI_review_already_target',
+        status: 'Awaiting workspace',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/9',
+        projectItemId: 'PVTI_review_already_target',
+        commentBody: 'closing',
+        expectedStatusName: 'Awaiting Owner',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        'closing',
+      );
+      expectRecordedAcrossTabs('PVTI_review_already_target');
+    });
+
     it('marks a pull request unnecessary by closing it, labelling the item chore and moving it to Awaiting workspace', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
@@ -1406,6 +1434,76 @@ describe('consoleOperationApi', () => {
           }
         }
       }
+    });
+
+    it('updateStatusByName treats a set_status write as success without writing when the live Status already equals the requested Status', async () => {
+      const testCases: {
+        projectItemId: string;
+        expectedStatusName: string | null;
+        liveStatus: string;
+        requestedStatusName: string;
+      }[] = [
+        {
+          projectItemId: 'PVTI_already_target_moved_by_worker',
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: 'Awaiting Workspace',
+          requestedStatusName: 'Awaiting Workspace',
+        },
+        {
+          projectItemId: 'PVTI_already_target_all_equal',
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Awaiting Workspace',
+          requestedStatusName: 'Awaiting Workspace',
+        },
+        {
+          projectItemId: 'PVTI_already_target_expected_unset',
+          expectedStatusName: null,
+          liveStatus: 'Awaiting Workspace',
+          requestedStatusName: 'Awaiting Workspace',
+        },
+      ];
+      for (const testCase of testCases) {
+        issueRepository.updateStatus.mockClear();
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: 'https://github.com/o/r/issues/1',
+          itemId: testCase.projectItemId,
+          status: testCase.liveStatus,
+        });
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: testCase.projectItemId,
+          statusName: testCase.requestedStatusName,
+          expectedStatusName: testCase.expectedStatusName,
+        });
+        expect(response.body).not.toHaveProperty('error');
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      }
+    });
+
+    it('updateStatusByName keeps rejecting a set_status write when the live Status differs from both the expected Status and the requested Status', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        itemId: 'PVTI_differs_from_expected_and_target',
+        status: 'Todo',
+      });
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_differs_from_expected_and_target',
+        statusName: 'Awaiting Workspace',
+        expectedStatusName: 'Awaiting Owner',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(errorMessageOf(response.body)).toContain(
+        'Status changed since this action was queued',
+      );
     });
 
     it('updateStatusByName rejects a set_status write with a bad-gateway error naming the issue when the live issue cannot be loaded', async () => {
@@ -3043,6 +3141,24 @@ describe('consoleOperationApi', () => {
           expect(errorMessage).toContain(testCase.liveStatus);
         }
       }
+    });
+
+    it('updateStatusByName treats a set_intmux write as success without writing when the live Status already equals In Tmux by human', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        itemId: 'PVTI_intmux_already_target',
+        status: 'In Tmux by human',
+      });
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_already_target',
+        expectedStatusName: 'Awaiting Workspace',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
 
