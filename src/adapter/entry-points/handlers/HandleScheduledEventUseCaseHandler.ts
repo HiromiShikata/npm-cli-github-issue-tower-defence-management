@@ -23,6 +23,7 @@ import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadmeWithCache,
   parseProjectReadmeConfig,
+  type ProjectReadmeConfig,
 } from '../cli/projectConfig';
 import {
   loadSilentNotificationEnabled,
@@ -352,7 +353,7 @@ export class HandleScheduledEventUseCaseHandler {
       managerToken,
       localStorageCacheRepository,
     );
-    const readmeConfig = readme
+    const readmeConfig: ProjectReadmeConfig = readme
       ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
 
@@ -390,13 +391,9 @@ export class HandleScheduledEventUseCaseHandler {
         input.allowedIssueAuthors,
       ),
       autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
-        readmeConfig.autoAssignManagerAuthors ??
-          input.autoAssignManagerAuthors ??
-          input.allowedIssueAuthors,
+        input.autoAssignManagerAuthors ?? input.allowedIssueAuthors,
       ),
-      claudeCodeOauthTokenListJsonPath:
-        readmeConfig.claudeCodeOauthTokenListJsonPath ??
-        input.claudeCodeOauthTokenListJsonPath,
+      claudeCodeOauthTokenListJsonPath: input.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
         readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
       thresholdForDispatchLoop:
@@ -422,18 +419,10 @@ export class HandleScheduledEventUseCaseHandler {
             utilizationPercentageThreshold:
               readmeConfig.utilizationPercentageThreshold ??
               input.startPreparation.utilizationPercentageThreshold,
-            allowedIssueAuthors: readmeConfig.allowedIssueAuthors
-              ? readmeConfig.allowedIssueAuthors
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : input.startPreparation.allowedIssueAuthors,
+            allowedIssueAuthors: input.startPreparation.allowedIssueAuthors,
             preparationProcessCheckCommand:
-              readmeConfig.preparationProcessCheckCommand ??
               input.startPreparation.preparationProcessCheckCommand,
-            codexHomeCandidates:
-              readmeConfig.codexHomeCandidates ??
-              input.startPreparation.codexHomeCandidates,
+            codexHomeCandidates: input.startPreparation.codexHomeCandidates,
           }
         : input.startPreparation,
     };

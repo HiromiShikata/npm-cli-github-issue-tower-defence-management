@@ -8,6 +8,7 @@ export {
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
+  type ProjectReadmeConfig,
 } from './projectConfig';
 
 import * as path from 'path';
@@ -114,6 +115,7 @@ import {
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
+  type ProjectReadmeConfig,
 } from './projectConfig';
 import { sanitizeErrorForLogging } from '../../repositories/errorSanitizer';
 import { redactSecrets } from '../../../domain/services/secretRedaction';
@@ -536,7 +538,7 @@ program
     const tempProjectUrl =
       cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-    let readmeOverrides: ConfigFile = {};
+    let readmeOverrides: ProjectReadmeConfig = {};
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {
@@ -877,7 +879,7 @@ program
     const tempProjectUrl =
       cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-    let readmeOverrides: ConfigFile = {};
+    let readmeOverrides: ProjectReadmeConfig = {};
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {
@@ -1101,7 +1103,7 @@ program
     const tempProjectUrl =
       cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-    let readmeOverrides: ConfigFile = {};
+    let readmeOverrides: ProjectReadmeConfig = {};
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {
@@ -1639,7 +1641,7 @@ program
     const tempProjectUrl =
       cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-    let readmeOverrides: ConfigFile = {};
+    let readmeOverrides: ProjectReadmeConfig = {};
     if (tempProjectUrl) {
       const readme = await fetchProjectReadme(tempProjectUrl, token);
       if (readme) {

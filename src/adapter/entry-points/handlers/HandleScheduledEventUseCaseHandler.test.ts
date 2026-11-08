@@ -545,7 +545,7 @@ utilizationPercentageThreshold: 80
       expect(capturedRunInputs).toHaveLength(0);
     });
 
-    it('should split comma-separated allowedIssueAuthors from README config', async () => {
+    it('should ignore allowedIssueAuthors set in the README config and keep the config file value', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 allowedIssueAuthors: 'user1, user2, user3'
@@ -558,10 +558,36 @@ allowedIssueAuthors: 'user1, user2, user3'
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle('config.yml', false);
 
-      expect(capturedRunInputs[0][0]).toMatchObject({
-        startPreparation: {
-          allowedIssueAuthors: ['user1', 'user2', 'user3'],
-        },
+      expect(capturedRunInputs[0][0].allowedIssueAuthors).toBeNull();
+      expect(
+        capturedRunInputs[0][0].startPreparation?.allowedIssueAuthors,
+      ).toBeUndefined();
+    });
+
+    it('should use the config file values for preparationProcessCheckCommand and allowedIssueAuthors when the README sets them', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+preparationProcessCheckCommand: 'readme-command {URL}'
+allowedIssueAuthors: 'readme-user'
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...configWithStartPreparation,
+          startPreparation: {
+            ...configWithStartPreparation.startPreparation,
+            preparationProcessCheckCommand: 'config-command {URL}',
+            allowedIssueAuthors: ['config-user'],
+          },
+        }),
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0].startPreparation).toMatchObject({
+        preparationProcessCheckCommand: 'config-command {URL}',
+        allowedIssueAuthors: ['config-user'],
       });
     });
 
@@ -745,7 +771,7 @@ allowedIssueAuthors: 'user1, user2, user3'
       });
     });
 
-    it('should split comma-separated autoAssignManagerAuthors from README config', async () => {
+    it('should ignore autoAssignManagerAuthors set in the README config and default to null', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]'
@@ -757,7 +783,7 @@ autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]'
       await handler.handle('config.yml', false);
 
       expect(capturedRunInputs[0][0]).toMatchObject({
-        autoAssignManagerAuthors: ['renovate[bot]', 'dependabot[bot]'],
+        autoAssignManagerAuthors: null,
       });
     });
   });
@@ -814,7 +840,7 @@ autoAssignManagerAuthors: 'renovate[bot], dependabot[bot]'
       expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(null);
     });
 
-    it('should let README claudeCodeOauthTokenListJsonPath override the YAML value', async () => {
+    it('should ignore README claudeCodeOauthTokenListJsonPath and use the YAML value', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 claudeCodeOauthTokenListJsonPath: /readme/tokens.json
@@ -837,7 +863,7 @@ claudeCodeOauthTokenListJsonPath: /readme/tokens.json
       await handler.handle('config.yml', false);
 
       expect(MockedProxyClaudeTokenUsageRepository).toHaveBeenCalledWith(
-        '/readme/tokens.json',
+        '/yaml/tokens.json',
       );
     });
   });
