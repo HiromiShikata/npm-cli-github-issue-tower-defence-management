@@ -213,7 +213,7 @@ describe('OpenAiLiveSessionRepository', () => {
     expect(result).toEqual({
       type: 'openAiFailed',
       status: 502,
-      message: expect.any(String),
+      message: 'OpenAI live session response has no transport.sdp',
     });
     expect(logError).toHaveBeenCalledWith(expect.stringContaining('502'));
     expect(logError.mock.calls.flat().join('\n')).not.toContain(
@@ -236,7 +236,7 @@ describe('OpenAiLiveSessionRepository', () => {
     expect(result).toEqual({
       type: 'openAiFailed',
       status: 502,
-      message: expect.stringContaining('socket hang up'),
+      message: 'socket hang up',
     });
     expect(logError).toHaveBeenCalledWith(expect.stringContaining('502'));
     expect(logError.mock.calls.flat().join('\n')).not.toContain(

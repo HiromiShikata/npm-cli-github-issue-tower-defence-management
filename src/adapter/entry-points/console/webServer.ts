@@ -5,6 +5,7 @@ import * as zlib from 'zlib';
 import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -263,6 +264,7 @@ export type WebServerOptions = {
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
+  liveSessionRepository?: LiveSessionRepository | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
@@ -1024,6 +1026,42 @@ const resolveAirplaneSyncDeps = (
   };
 };
 
+const LIVE_SESSIONS_REQUEST_PATH = '/api/live/sessions';
+
+const handleLiveSessionCreate = async (
+  liveSessionRepository: LiveSessionRepository,
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+): Promise<void> => {
+  const mediaType = (request.headers['content-type'] ?? '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const sdpOffer = await readRequestBody(request);
+  if (mediaType !== 'application/sdp' || sdpOffer.trim() === '') {
+    sendJson(response, 400, { error: 'sdp_offer_required' });
+    return;
+  }
+  const result = await liveSessionRepository.createFromSdpOffer(sdpOffer);
+  if (result.type === 'created') {
+    response.writeHead(201, {
+      'Content-Type': 'application/sdp',
+      'Cache-Control': 'no-store',
+    });
+    response.end(result.sdpAnswer);
+    return;
+  }
+  if (result.type === 'apiKeyMissing') {
+    sendJson(response, 503, { error: 'openai_api_key_missing' });
+    return;
+  }
+  sendJson(response, 502, {
+    error: 'openai_live_session_failed',
+    status: result.status,
+    message: result.message,
+  });
+};
+
 const handleTokenedRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -1034,6 +1072,18 @@ const handleTokenedRequest = async (
   const method = (request.method ?? 'GET').toUpperCase();
 
   if (requestPath.startsWith('/api/')) {
+    if (requestPath === LIVE_SESSIONS_REQUEST_PATH && method === 'POST') {
+      if (options.liveSessionRepository == null) {
+        sendNotFound(response);
+        return;
+      }
+      await handleLiveSessionCreate(
+        options.liveSessionRepository,
+        request,
+        response,
+      );
+      return;
+    }
     if (method === 'GET') {
       if (requestPath === IMAGE_PROXY_REQUEST_PATH) {
         await handleImageProxy(options, response, searchParams);

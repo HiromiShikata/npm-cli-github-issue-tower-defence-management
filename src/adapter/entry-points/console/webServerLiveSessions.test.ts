@@ -26,7 +26,7 @@ const requestServer = (
   requestPath: string,
   body: string | undefined,
   contentType: string | undefined,
-  token: string | undefined = testToken,
+  token: string | null = testToken,
 ): Promise<{
   statusCode: number;
   body: string;
@@ -45,7 +45,7 @@ const requestServer = (
         path: requestPath,
         method,
         headers: {
-          ...(token === undefined ? {} : { 'x-pv-token': token }),
+          ...(token === null ? {} : { 'x-pv-token': token }),
           ...(contentType === undefined ? {} : { 'Content-Type': contentType }),
           ...(method === 'POST'
             ? { 'Content-Length': Buffer.byteLength(payload) }
@@ -147,7 +147,7 @@ describe('webServer live sessions route', () => {
         undefined,
       );
       expect(response.statusCode).toBe(503);
-      expect(response.contentType).toBe('application/json');
+      expect(response.contentType).toBe('application/json; charset=utf-8');
       expect(response.body).toBe('{"error":"openai_api_key_missing"}');
       expect(features.statusCode).toBe(200);
     } finally {
@@ -172,7 +172,7 @@ describe('webServer live sessions route', () => {
         'application/sdp',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.contentType).toBe('application/json');
+      expect(response.contentType).toBe('application/json; charset=utf-8');
       expect(response.body).toBe(
         '{"error":"openai_live_session_failed","status":429,"message":"rate limited"}',
       );
@@ -231,7 +231,7 @@ describe('webServer live sessions route', () => {
         '/api/live/sessions',
         'OFFER-SDP',
         'application/sdp',
-        undefined,
+        null,
       );
       expect(badToken.statusCode).toBe(401);
       expect(missingToken.statusCode).toBe(401);
