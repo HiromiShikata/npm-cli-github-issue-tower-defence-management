@@ -28,6 +28,7 @@ import { WorkerSessionEndClassifyUseCase } from '../../../domain/usecases/Worker
 import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/services/iso8601UtcDateTimePattern';
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { OpenAiLiveSessionRepository } from '../../repositories/OpenAiLiveSessionRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
@@ -1461,6 +1462,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     fleetTaskCreateUrl,
     resolveGithubToken,
     issueRepository,
+    liveSessionRepository: new OpenAiLiveSessionRepository(),
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
