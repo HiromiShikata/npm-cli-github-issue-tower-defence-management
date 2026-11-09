@@ -1,3 +1,10 @@
+# [2.193.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.192.0...v2.193.0) (2026-11-09)
+
+
+### Features
+
+* **start-preparation:** select tokens by 7-day deadline and default per-token limit to 30 ([#3711](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3711)) ([3c4a115](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c4a1154510d4250d87ca4639491132411a4be93))
+
 # [2.192.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.191.4...v2.192.0) (2026-11-08)
 
 
