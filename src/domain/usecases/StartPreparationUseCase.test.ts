@@ -12199,3 +12199,192 @@ describe('StartPreparationUseCase rotation without a 5-hour exclusion threshold'
     ]);
   });
 });
+
+const createPreparationRunUseCase = (
+  tokenUsages: ClaudeTokenUsage[],
+): {
+  useCase: StartPreparationUseCase;
+  mockIssueRepository: MockProxy<IssueRepository>;
+  mockLocalCommandRunner: Mocked<LocalCommandRunner>;
+} => {
+  const mockIssueRepository = mock<IssueRepository>();
+  mockIssueRepository.getAllOpened.mockResolvedValue([]);
+  mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+  mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
+  mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+  mockIssueRepository.setIssueAgentField.mockResolvedValue('applied');
+  mockIssueRepository.removeIssueFromProjectCache.mockResolvedValue(undefined);
+  mockIssueRepository.appendIssueToProjectCache.mockResolvedValue(undefined);
+  mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+  mockIssueRepository.get.mockImplementation((issueUrl: string) =>
+    Promise.resolve(
+      buildMockIssue({
+        url: issueUrl,
+        status: 'Awaiting Workspace',
+        dependedIssueUrls: [],
+      }),
+    ),
+  );
+  const mockLocalCommandRunner: Mocked<LocalCommandRunner> = {
+    runCommand: jest
+      .fn()
+      .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+    spawnInteractive: jest.fn(),
+  };
+  const useCase = new StartPreparationUseCase(
+    {
+      getByUrl: jest.fn().mockResolvedValue(createMockProject()),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
+    },
+    mockIssueRepository,
+    mockLocalCommandRunner,
+    {
+      ensureObservable: jest.fn().mockResolvedValue(undefined),
+      getAvailableTokenUsages: jest.fn().mockResolvedValue(tokenUsages),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+      proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+      reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
+    },
+    {
+      listSpawns: jest.fn().mockReturnValue([]),
+      listRunningIssueUrls: jest.fn().mockReturnValue([]),
+    },
+    { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+    new InMemoryIssueLatestSessionBranchRepository(new Map()),
+  );
+  return { useCase, mockIssueRepository, mockLocalCommandRunner };
+};
+
+const createUnlimitedRunTokenUsage = (name: string): ClaudeTokenUsage => ({
+  name,
+  token: name,
+  fiveHourUtilization: 0,
+  sevenDayUtilization: 0,
+  blocked: false,
+  rejected: false,
+  fiveHourRejected: false,
+  blockedUntilEpoch: 0,
+  modelWeeklyLimits: {},
+});
+
+const createAwaitingRunIssues = (count: number): Issue[] =>
+  Array.from({ length: count }, (_, i) =>
+    createMockIssue({
+      url: `https://github.com/user/repo/issues/${i + 1}`,
+      number: i + 1,
+      title: `Issue ${i + 1}`,
+      labels: [],
+      status: 'Awaiting Workspace',
+      story: 'Default Story',
+      itemId: `item-${i + 1}`,
+    }),
+  );
+
+const runAndCountSpawnsPerToken = async (params: {
+  tokenNames: string[];
+  awaitingIssueCount: number;
+  maximumPreparingIssuesCount: number | null;
+}): Promise<Record<string, number>> => {
+  const { useCase, mockIssueRepository, mockLocalCommandRunner } =
+    createPreparationRunUseCase(
+      params.tokenNames.map(createUnlimitedRunTokenUsage),
+    );
+  const awaitingIssues = createAwaitingRunIssues(params.awaitingIssueCount);
+  mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+    createMockStoryObjectMap(awaitingIssues),
+  );
+  await useCase.run({
+    projectUrl: 'https://github.com/users/user/projects/1',
+    defaultAgentName: 'agent1',
+    defaultLlmModelName: 'claude-sonnet-4-6',
+    defaultLlmAgentName: null,
+    configFilePath: '/path/to/config.yml',
+    maximumPreparingIssuesCount: params.maximumPreparingIssuesCount,
+    utilizationPercentageThreshold: 90,
+    allowedIssueAuthors: ['testuser'],
+    manager: 'manager-user',
+    codexHomeCandidates: null,
+    labelsAsLlmAgentName: null,
+  });
+  const spawnedCountByToken: Record<string, number> = {};
+  for (const name of params.tokenNames) {
+    spawnedCountByToken[name] = 0;
+  }
+  for (const call of mockLocalCommandRunner.runCommand.mock.calls) {
+    const spawnedToken = call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN;
+    if (spawnedToken !== undefined && spawnedToken in spawnedCountByToken) {
+      spawnedCountByToken[spawnedToken] += 1;
+    }
+  }
+  return spawnedCountByToken;
+};
+
+describe('StartPreparationUseCase.run maximumPreparingIssuesCount fallback pinned at six', () => {
+  it.each([
+    { tokenNames: ['token-a'], awaitingIssueCount: 20 },
+    { tokenNames: ['token-a', 'token-b'], awaitingIssueCount: 20 },
+  ])(
+    'caps total spawns at 6 when maximumPreparingIssuesCount is null and $tokenNames.length token(s) are available',
+    async ({ tokenNames, awaitingIssueCount }) => {
+      const spawnedCountByToken = await runAndCountSpawnsPerToken({
+        tokenNames,
+        awaitingIssueCount,
+        maximumPreparingIssuesCount: null,
+      });
+      const totalSpawns = Object.values(spawnedCountByToken).reduce(
+        (sum, count) => sum + count,
+        0,
+      );
+
+      expect(totalSpawns).toBe(6);
+    },
+  );
+});
+
+describe('StartPreparationUseCase default per-token normal concurrent limit of 30', () => {
+  const FULL_LIMIT_NORMAL_CONCURRENT_LIMIT = 30;
+
+  it.each([
+    {
+      name: 'one token at low utilization gets 30 slots',
+      tokenNames: ['token-a'],
+      awaitingIssueCount: 40,
+      expectedSpawnsPerToken: { 'token-a': FULL_LIMIT_NORMAL_CONCURRENT_LIMIT },
+    },
+    {
+      name: 'two tokens at low utilization each get 30 slots',
+      tokenNames: ['token-a', 'token-b'],
+      awaitingIssueCount: 70,
+      expectedSpawnsPerToken: {
+        'token-a': FULL_LIMIT_NORMAL_CONCURRENT_LIMIT,
+        'token-b': FULL_LIMIT_NORMAL_CONCURRENT_LIMIT,
+      },
+    },
+  ])(
+    'run without normalConcurrentLimit: $name',
+    async ({ tokenNames, awaitingIssueCount, expectedSpawnsPerToken }) => {
+      const spawnedCountByToken = await runAndCountSpawnsPerToken({
+        tokenNames,
+        awaitingIssueCount,
+        maximumPreparingIssuesCount: awaitingIssueCount,
+      });
+
+      expect(spawnedCountByToken).toEqual(expectedSpawnsPerToken);
+    },
+  );
+
+  it.each([
+    { sevenDayUtilization: 0.1, expectedLimit: 30 },
+    { sevenDayUtilization: 0.9, expectedLimit: 15 },
+  ])(
+    'getTokenConcurrentLimit with no normalConcurrentLimit gives $expectedLimit at 7-day utilization $sevenDayUtilization',
+    ({ sevenDayUtilization, expectedLimit }) => {
+      const { useCase } = createPreparationRunUseCase([]);
+
+      expect(useCase.getTokenConcurrentLimit(0.1, sevenDayUtilization)).toBe(
+        expectedLimit,
+      );
+    },
+  );
+});
