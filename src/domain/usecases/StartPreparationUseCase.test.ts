@@ -11882,3 +11882,320 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
     expect(findRelatedOpenPRs).not.toHaveBeenCalledWith(issueWithoutPr);
   });
 });
+
+const createRotationTestUseCase = (): StartPreparationUseCase =>
+  new StartPreparationUseCase(
+    {
+      getByUrl: jest.fn(),
+      createField: jest.fn(),
+      updateAgentList: jest.fn(),
+    },
+    mock<IssueRepository>(),
+    { runCommand: jest.fn(), spawnInteractive: jest.fn() },
+    {
+      ensureObservable: jest.fn(),
+      getAvailableTokenUsages: jest.fn(),
+      getTokenInFlightCounts: jest.fn(),
+      proxyBaseUrl: jest.fn(),
+      reserveTokenLaunchSlot: jest.fn().mockResolvedValue(true),
+    },
+    {
+      listSpawns: jest.fn().mockReturnValue([]),
+      listRunningIssueUrls: jest.fn().mockReturnValue([]),
+    },
+    { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+    new InMemoryIssueLatestSessionBranchRepository(new Map()),
+  );
+
+const createRotationTokenUsage = (
+  overrides: Partial<ClaudeTokenUsage> &
+    Pick<ClaudeTokenUsage, 'name' | 'token'>,
+): ClaudeTokenUsage => ({
+  fiveHourUtilization: 0.1,
+  sevenDayUtilization: 0,
+  blocked: false,
+  rejected: false,
+  fiveHourRejected: false,
+  blockedUntilEpoch: 0,
+  modelWeeklyLimits: {},
+  ...overrides,
+});
+
+describe('StartPreparationUseCase token limit pinned by the 7-day taper', () => {
+  const useCase = createRotationTestUseCase();
+
+  it.each([
+    { sevenDayUtilization: 0.1, expectedLimit: 6 },
+    { sevenDayUtilization: 0.8, expectedLimit: 6 },
+    { sevenDayUtilization: 0.85, expectedLimit: 5 },
+    { sevenDayUtilization: 0.9, expectedLimit: 3 },
+    { sevenDayUtilization: 0.95, expectedLimit: 2 },
+    { sevenDayUtilization: 0.98, expectedLimit: 1 },
+    { sevenDayUtilization: 0.99, expectedLimit: 1 },
+  ])(
+    'tapers the limit to $expectedLimit when 7-day utilization is $sevenDayUtilization and 5-hour utilization is 0.1',
+    ({ sevenDayUtilization, expectedLimit }) => {
+      expect(useCase.getTokenConcurrentLimit(0.1, sevenDayUtilization)).toBe(
+        expectedLimit,
+      );
+    },
+  );
+
+  const FIVE_HOUR_WINDOW_SECONDS = 5 * 60 * 60;
+  it.each([
+    {
+      name: 'the 7-day reset is 30 minutes away',
+      secondsUntilSevenDayReset: 30 * 60,
+      expectedLimit: 6,
+    },
+    {
+      name: 'the 7-day reset is exactly one 5-hour window away',
+      secondsUntilSevenDayReset: FIVE_HOUR_WINDOW_SECONDS,
+      expectedLimit: 6,
+    },
+    {
+      name: 'the 7-day reset is 6 hours away',
+      secondsUntilSevenDayReset: 6 * 60 * 60,
+      expectedLimit: 1,
+    },
+  ])(
+    'gives expected limit $expectedLimit at 7-day utilization 0.98 when $name',
+    ({ secondsUntilSevenDayReset, expectedLimit }) => {
+      expect(
+        useCase.getTokenConcurrentLimit(
+          0.1,
+          0.98,
+          undefined,
+          undefined,
+          secondsUntilSevenDayReset,
+        ),
+      ).toBe(expectedLimit);
+    },
+  );
+
+  it.each([
+    { selectionWeight: undefined, expectedLimit: 6 },
+    { selectionWeight: 1, expectedLimit: 6 },
+    { selectionWeight: 0.5, expectedLimit: 3 },
+    { selectionWeight: 0.01, expectedLimit: 1 },
+  ])(
+    'multiplies the limit by selectionWeight $selectionWeight with a minimum of one slot',
+    ({ selectionWeight, expectedLimit }) => {
+      expect(useCase.getTokenConcurrentLimit(0.1, 0.1, selectionWeight)).toBe(
+        expectedLimit,
+      );
+    },
+  );
+
+  it('applies selectionWeight to the 7-day taper result', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.9, 0.5)).toBe(1);
+  });
+
+  it.each([
+    { sevenDayUtilization: 0.1, expectedLimit: 10 },
+    { sevenDayUtilization: 0.9, expectedLimit: 5 },
+    { sevenDayUtilization: 0.95, expectedLimit: 3 },
+  ])(
+    'tapers from normalConcurrentLimit 10 to $expectedLimit at 7-day utilization $sevenDayUtilization',
+    ({ sevenDayUtilization, expectedLimit }) => {
+      expect(
+        useCase.getTokenConcurrentLimit(
+          0.1,
+          sevenDayUtilization,
+          undefined,
+          10,
+        ),
+      ).toBe(expectedLimit);
+    },
+  );
+});
+
+describe('StartPreparationUseCase rotation exclusion and order pinned by the 5-hour-independent filters', () => {
+  const useCase = createRotationTestUseCase();
+  const nowEpochSeconds = Math.floor(Date.now() / 1000);
+  const goodToken = createRotationTokenUsage({
+    name: 'good',
+    token: 'sk-ant-good',
+    fiveHourUtilization: 0.1,
+  });
+
+  it.each([
+    {
+      label: 'blocked',
+      override: { blocked: true },
+      expected: {
+        blocked: true,
+        rejected: false,
+        cooldownExcluded: false,
+      },
+    },
+    {
+      label: 'fiveHourRejected',
+      override: { fiveHourRejected: true },
+      expected: {
+        blocked: false,
+        rejected: true,
+        cooldownExcluded: false,
+      },
+    },
+    {
+      label: 'in cooldown',
+      override: { blockedUntilEpoch: nowEpochSeconds + 90 },
+      expected: {
+        blocked: false,
+        rejected: false,
+        cooldownExcluded: true,
+      },
+    },
+    {
+      label: 'weekly-limit rejected',
+      override: {
+        modelWeeklyLimits: {
+          seven_day: {
+            rejected: true,
+            resetsAt: nowEpochSeconds + 100 * 3600,
+          },
+        },
+      },
+      expected: {
+        blocked: false,
+        rejected: true,
+        cooldownExcluded: false,
+      },
+    },
+  ])(
+    'excludes the $label token at low 5-hour utilization and keeps the other token first',
+    ({ override, expected }) => {
+      const excludedToken = createRotationTokenUsage({
+        name: 'excluded',
+        token: 'sk-ant-excluded',
+        fiveHourUtilization: 0.1,
+        ...override,
+      });
+      const result = useCase.buildRotationOrder([excludedToken, goodToken], 90);
+
+      expect(result[0]).toMatchObject({ name: 'good', blocked: false });
+      expect(result).toHaveLength(2);
+      expect(result[1]).toMatchObject({
+        name: 'excluded',
+        ...expected,
+        thresholdExcluded: false,
+      });
+    },
+  );
+
+  it('sorts tokens with distinct 7-day resets soonest first regardless of 5-hour utilization', () => {
+    const tokenUsages = [
+      createRotationTokenUsage({
+        name: 'reset-in-100h',
+        token: 'sk-ant-100h',
+        fiveHourUtilization: 0.1,
+        modelWeeklyLimits: {
+          seven_day: {
+            rejected: false,
+            resetsAt: nowEpochSeconds + 100 * 3600,
+          },
+        },
+      }),
+      createRotationTokenUsage({
+        name: 'reset-in-20h',
+        token: 'sk-ant-20h',
+        fiveHourUtilization: 0.2,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: nowEpochSeconds + 20 * 3600 },
+        },
+      }),
+      createRotationTokenUsage({
+        name: 'reset-in-50h',
+        token: 'sk-ant-50h',
+        fiveHourUtilization: 0.3,
+        modelWeeklyLimits: {
+          seven_day: { rejected: false, resetsAt: nowEpochSeconds + 50 * 3600 },
+        },
+      }),
+    ];
+    const result = useCase.buildRotationOrder(tokenUsages, 90);
+
+    expect(result.map((entry) => entry.name)).toEqual([
+      'reset-in-20h',
+      'reset-in-50h',
+      'reset-in-100h',
+    ]);
+  });
+});
+
+describe('StartPreparationUseCase token limit without a 5-hour taper', () => {
+  const useCase = createRotationTestUseCase();
+
+  it.each([
+    { fiveHourUtilization: 0.95, expectedLimit: 6 },
+    { fiveHourUtilization: 0.99, expectedLimit: 6 },
+  ])(
+    'keeps the normal limit 6 at 5-hour utilization $fiveHourUtilization when 7-day utilization is 0.1',
+    ({ fiveHourUtilization, expectedLimit }) => {
+      expect(useCase.getTokenConcurrentLimit(fiveHourUtilization, 0.1)).toBe(
+        expectedLimit,
+      );
+    },
+  );
+});
+
+describe('StartPreparationUseCase rotation without a 5-hour exclusion threshold', () => {
+  const useCase = createRotationTestUseCase();
+
+  it.each([
+    { fiveHourUtilization: 0.9 },
+    { fiveHourUtilization: 0.95 },
+    { fiveHourUtilization: 0.99 },
+  ])(
+    'does not exclude a token at 5-hour utilization $fiveHourUtilization with thresholdExcluded false',
+    ({ fiveHourUtilization }) => {
+      const result = useCase.buildRotationOrder(
+        [
+          createRotationTokenUsage({
+            name: 'high-5h',
+            token: 'sk-ant-high-5h',
+            fiveHourUtilization,
+          }),
+        ],
+        90,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'high-5h',
+        blocked: false,
+        rejected: false,
+        cooldownExcluded: false,
+        thresholdExcluded: false,
+      });
+    },
+  );
+
+  it('orders equal 7-day resets by larger 7-day free ratio even when 5-hour utilization orders them the other way', () => {
+    const resetsAt = Math.floor(Date.now() / 1000) + 50 * 3600;
+    const lowFreeLowFiveHour = createRotationTokenUsage({
+      name: 'low-free-7d-low-5h',
+      token: 'sk-ant-low-free',
+      fiveHourUtilization: 0.1,
+      sevenDayUtilization: 0.6,
+      modelWeeklyLimits: { seven_day: { rejected: false, resetsAt } },
+    });
+    const highFreeHighFiveHour = createRotationTokenUsage({
+      name: 'high-free-7d-high-5h',
+      token: 'sk-ant-high-free',
+      fiveHourUtilization: 0.7,
+      sevenDayUtilization: 0.1,
+      modelWeeklyLimits: { seven_day: { rejected: false, resetsAt } },
+    });
+    const result = useCase.buildRotationOrder(
+      [lowFreeLowFiveHour, highFreeHighFiveHour],
+      90,
+    );
+
+    expect(result.map((entry) => entry.name)).toEqual([
+      'high-free-7d-high-5h',
+      'low-free-7d-low-5h',
+    ]);
+  });
+});
