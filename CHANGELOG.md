@@ -1,3 +1,10 @@
+# [2.194.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.193.0...v2.194.0) (2026-11-09)
+
+
+### Features
+
+* **console:** relay SDP offers to GPT-Live sessions ([#3712](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3712)) ([0c757ec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0c757ece984ea4df3ad5f4c23a73fb1b6ab9897f))
+
 # [2.193.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.192.0...v2.193.0) (2026-11-09)
 
 
