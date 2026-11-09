@@ -492,11 +492,11 @@ program
   .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
   .option(
     '--maximumPreparingIssuesCount <count>',
-    'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)',
+    'Maximum number of issues in preparation status (default: 6)',
   )
   .option(
     '--utilizationPercentageThreshold <percent>',
-    'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)',
+    'Accepted for compatibility only; no longer affects Claude token selection (tokens are not excluded by their 5h utilization). It is still reported in the situation file (default: 90)',
   )
   .option(
     '--allowedIssueAuthors <authors>',
@@ -610,7 +610,7 @@ program
     }
 
     console.log(
-      `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
+      `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6)'}`,
     );
 
     let preparationWorkerSettings: ReturnType<
@@ -776,8 +776,6 @@ program
       defaultLlmAgentName: config.defaultLlmAgentName ?? null,
       configFilePath: options.configFilePath,
       maximumPreparingIssuesCount,
-      utilizationPercentageThreshold:
-        config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
       manager,
       codexHomeCandidates,

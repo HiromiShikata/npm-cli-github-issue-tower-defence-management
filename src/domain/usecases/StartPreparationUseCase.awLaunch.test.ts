@@ -10,10 +10,7 @@ import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 import type { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import type { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
-import {
-  NORMAL_CONCURRENT_LIMIT,
-  StartPreparationUseCase,
-} from './StartPreparationUseCase';
+import { StartPreparationUseCase } from './StartPreparationUseCase';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -229,11 +226,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     const runFinishedAtMilliseconds = Date.now();
 
@@ -282,10 +279,9 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
         {
           token: SPAWN_TOKEN,
           concurrentLimit: harness.useCase.getTokenConcurrentLimit(
-            spawnTokenUsage.fiveHourUtilization,
             spawnTokenUsage.sevenDayUtilization,
             spawnTokenUsage.selectionWeight,
-            NORMAL_CONCURRENT_LIMIT,
+            6,
           ),
           issueUrl: CANDIDATE_ISSUE_URL,
         },
@@ -314,11 +310,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
@@ -346,11 +342,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(harness.localCommandRunner.runCommand.mock.calls).toEqual([
@@ -401,18 +397,18 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(harness.reserveTokenLaunchSlot.mock.calls).toEqual([
       [
         {
           token: SPAWN_TOKEN,
-          concurrentLimit: NORMAL_CONCURRENT_LIMIT,
+          concurrentLimit: 6,
           issueUrl: CANDIDATE_ISSUE_URL,
         },
       ],
@@ -429,11 +425,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(harness.reserveTokenLaunchSlot).not.toHaveBeenCalled();
@@ -481,11 +477,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 4,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -532,11 +528,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 2,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -564,11 +560,11 @@ describe('StartPreparationUseCase.run aw launch with the seven constructor argum
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(harness.localCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -585,7 +581,6 @@ describe('StartPreparationUseCase.run aw spawn environment for the run-on:main-m
     defaultLlmAgentName: null,
     configFilePath: '/path/to/config.yml',
     maximumPreparingIssuesCount: null,
-    utilizationPercentageThreshold: 90,
     allowedIssueAuthors: ['testuser'],
     manager: 'manager-user',
     codexHomeCandidates: null,

@@ -834,8 +834,6 @@ ${JSON.stringify(e)}
         configFilePath: startPreparation.configFilePath,
         maximumPreparingIssuesCount:
           startPreparation.maximumPreparingIssuesCount,
-        utilizationPercentageThreshold:
-          startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
         manager: input.manager,
         codexHomeCandidates: startPreparation.codexHomeCandidates ?? null,

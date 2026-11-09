@@ -245,11 +245,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -293,11 +293,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -341,11 +341,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -390,11 +390,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -439,11 +439,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(consoleErrorSpy).not.toHaveBeenCalledWith(
@@ -512,11 +512,11 @@ describe('StartPreparationUseCase agent-definition model resolution', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
