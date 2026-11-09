@@ -245,11 +245,11 @@ describe('StartPreparationUseCase.run launch order across several stories with t
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 1,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(

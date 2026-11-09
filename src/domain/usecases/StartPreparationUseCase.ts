@@ -43,10 +43,10 @@ import {
   windowFreeRatioOfUtilization,
 } from './OauthTokenSelectUseCase';
 
-export const NORMAL_CONCURRENT_LIMIT = 6;
+export const NORMAL_CONCURRENT_LIMIT = 30;
+export const DEFAULT_MAXIMUM_PREPARING_ISSUES_COUNT = 6;
 const FIVE_HOUR_WINDOW_SECONDS = FIVE_HOUR_WINDOW_HOURS * 60 * 60;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
-const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
 const RUN_ON_MAIN_MACHINE_LABEL = 'run-on:main-machine';
 export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
@@ -180,7 +180,7 @@ export class StartPreparationUseCase {
     return Number.POSITIVE_INFINITY;
   };
 
-  private compareBySevenDayDeadlineThenUtilization = (
+  private compareBySevenDayResetThenLargerSevenDayFreeRatio = (
     a: ClaudeTokenUsage,
     b: ClaudeTokenUsage,
     nowEpochSeconds: number,
@@ -196,7 +196,10 @@ export class StartPreparationUseCase {
     if (aSecondsUntilReset !== bSecondsUntilReset) {
       return aSecondsUntilReset - bSecondsUntilReset;
     }
-    return a.fiveHourUtilization - b.fiveHourUtilization;
+    return (
+      windowFreeRatioOfUtilization(b.sevenDayUtilization) -
+      windowFreeRatioOfUtilization(a.sevenDayUtilization)
+    );
   };
 
   private taperedConcurrentLimit = (
@@ -212,7 +215,6 @@ export class StartPreparationUseCase {
   };
 
   getTokenConcurrentLimit = (
-    fiveHourUtilization: number,
     sevenDayUtilization: number,
     selectionWeight?: number,
     normalConcurrentLimit: number = NORMAL_CONCURRENT_LIMIT,
@@ -228,16 +230,8 @@ export class StartPreparationUseCase {
           SEVEN_DAY_THROTTLE_START_THRESHOLD,
           normalConcurrentLimit,
         );
-    const fiveHourLimit = this.taperedConcurrentLimit(
-      fiveHourUtilization,
-      FIVE_HOUR_THROTTLE_START_THRESHOLD,
-      normalConcurrentLimit,
-    );
     const weight = selectionWeight ?? DEFAULT_SELECTION_WEIGHT;
-    return Math.max(
-      1,
-      Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight),
-    );
+    return Math.max(1, Math.floor(sevenDayLimit * weight));
   };
 
   spawnCandidateExclusionReasonOf = (
@@ -373,7 +367,6 @@ export class StartPreparationUseCase {
 
   private selectRotationTokens = (
     tokenUsages: ClaudeTokenUsage[],
-    utilizationPercentageThreshold: number,
     defaultModelName: string | null,
     normalConcurrentLimit: number,
   ): {
@@ -391,17 +384,13 @@ export class StartPreparationUseCase {
       .filter((usage) => !usage.blocked)
       .filter((usage) => !usage.fiveHourRejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
-      .filter(
-        (usage) =>
-          usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
-      )
       .flatMap((usage) => {
         const model = this.selectModelForToken(usage, defaultModelName);
         if (model === null || !isValidModelId(model)) return [];
         return [{ usage, model }];
       })
       .sort((a, b) =>
-        this.compareBySevenDayDeadlineThenUtilization(
+        this.compareBySevenDayResetThenLargerSevenDayFreeRatio(
           a.usage,
           b.usage,
           nowEpochSeconds,
@@ -416,7 +405,6 @@ export class StartPreparationUseCase {
       token: usage.token,
       model,
       limit: this.getTokenConcurrentLimit(
-        usage.fiveHourUtilization,
         usage.sevenDayUtilization,
         usage.selectionWeight,
         normalConcurrentLimit,
@@ -446,7 +434,6 @@ export class StartPreparationUseCase {
 
   buildRotationOrder = (
     tokenUsages: ClaudeTokenUsage[],
-    utilizationPercentageThreshold: number,
   ): RotationOrderEntry[] => {
     const nowEpochSeconds = Date.now() / 1000;
     const selectedTokens = tokenUsages
@@ -454,12 +441,12 @@ export class StartPreparationUseCase {
       .filter((usage) => !usage.fiveHourRejected)
       .filter((usage) => !this.isWithinCooldown(usage, nowEpochSeconds))
       .filter((usage) => !this.isModelWeeklyLimitRejected(usage))
-      .filter(
-        (usage) =>
-          usage.fiveHourUtilization * 100 < utilizationPercentageThreshold,
-      )
       .sort((a, b) =>
-        this.compareBySevenDayDeadlineThenUtilization(a, b, nowEpochSeconds),
+        this.compareBySevenDayResetThenLargerSevenDayFreeRatio(
+          a,
+          b,
+          nowEpochSeconds,
+        ),
       );
     const selectedTokenValues = new Set(selectedTokens.map((u) => u.token));
     const excluded: RotationOrderEntry[] = tokenUsages
@@ -470,12 +457,7 @@ export class StartPreparationUseCase {
         blocked: usage.blocked,
         rejected:
           usage.fiveHourRejected || this.isModelWeeklyLimitRejected(usage),
-        thresholdExcluded:
-          !usage.blocked &&
-          !usage.fiveHourRejected &&
-          !this.isWithinCooldown(usage, nowEpochSeconds) &&
-          !this.isModelWeeklyLimitRejected(usage) &&
-          usage.fiveHourUtilization * 100 >= utilizationPercentageThreshold,
+        thresholdExcluded: false,
         cooldownExcluded:
           !usage.blocked &&
           !usage.fiveHourRejected &&
@@ -538,7 +520,6 @@ export class StartPreparationUseCase {
     defaultLlmAgentName: string | null;
     configFilePath: string;
     maximumPreparingIssuesCount: number | null;
-    utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
     manager: string;
     codexHomeCandidates: string[] | null;
@@ -568,14 +549,10 @@ export class StartPreparationUseCase {
     let claudeRotationUnavailable = false;
     let claudeSlotsExhausted = false;
     const rotationOrder: RotationOrderEntry[] | null =
-      tokenUsages.length > 0
-        ? this.buildRotationOrder(
-            tokenUsages,
-            params.utilizationPercentageThreshold,
-          )
-        : null;
+      tokenUsages.length > 0 ? this.buildRotationOrder(tokenUsages) : null;
     const maximumPreparingIssuesCount =
-      params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
+      params.maximumPreparingIssuesCount ??
+      DEFAULT_MAXIMUM_PREPARING_ISSUES_COUNT;
     const effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
     const llmModelNameByAgentName = params.llmModelNameByAgentName ?? null;
     const mappedModelNameOf = (agentName: string): string | null =>
@@ -589,13 +566,12 @@ export class StartPreparationUseCase {
         tokensWithLimits: selectedTokensWithLimitsLocal,
       } = this.selectRotationTokens(
         tokenUsages,
-        params.utilizationPercentageThreshold,
         params.defaultLlmModelName,
         normalConcurrentLimit,
       );
       if (selectedTokens.length === 0) {
         console.warn(
-          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, weekly limits for every candidate model exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Claude tasks will be skipped; Codex tasks can continue.`,
+          `All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, or weekly limits for every candidate model exhausted). Claude tasks will be skipped; Codex tasks can continue.`,
         );
         claudeRotationUnavailable = true;
       } else {

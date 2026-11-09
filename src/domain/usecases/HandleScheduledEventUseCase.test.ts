@@ -1324,7 +1324,6 @@ describe('HandleScheduledEventUseCase', () => {
             defaultLlmAgentName: 'llm-agent',
             configFilePath: '/path/to/config.yml',
             maximumPreparingIssuesCount: 12,
-            utilizationPercentageThreshold: 75,
             codexHomeCandidates: ['/codex/home-a', '/codex/home-b'],
             agents: ['agent1', 'agent2'],
           }),

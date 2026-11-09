@@ -196,11 +196,11 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockReserveTokenLaunchSlot).toHaveBeenCalled();
@@ -331,11 +331,11 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockReserveTokenLaunchSlot).toHaveBeenCalledWith(
@@ -475,11 +475,11 @@ describe('StartPreparationUseCase.run per-process launch reservation', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockReserveTokenLaunchSlot.mock.calls).toHaveLength(2);

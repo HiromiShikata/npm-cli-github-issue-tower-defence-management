@@ -226,11 +226,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
@@ -276,11 +276,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       }),
     ).rejects.toThrow(error);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -301,11 +301,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       }),
     ).rejects.toThrow(error);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -338,11 +338,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     const afterDispatch = Date.now();
 
@@ -414,11 +414,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -458,11 +458,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -529,11 +529,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -582,11 +582,11 @@ describe('StartPreparationUseCase', () => {
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
+          normalConcurrentLimit: 6,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -628,11 +628,11 @@ describe('StartPreparationUseCase', () => {
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
+          normalConcurrentLimit: 6,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -669,11 +669,11 @@ describe('StartPreparationUseCase', () => {
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
+          normalConcurrentLimit: 6,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -722,11 +722,11 @@ describe('StartPreparationUseCase', () => {
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
+          normalConcurrentLimit: 6,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -759,12 +759,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents,
+        normalConcurrentLimit: 6,
       });
     };
     const arrangeIssue = (project: Project, labels: string[]): void => {
@@ -982,12 +982,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -1029,12 +1029,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -1085,12 +1085,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -1123,12 +1123,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -1161,11 +1161,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -1204,11 +1204,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1245,12 +1245,12 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
       maxConcurrentWorkers: 2,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1292,12 +1292,12 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
       maxConcurrentWorkers: 1,
+      normalConcurrentLimit: 6,
     });
 
     const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
@@ -1329,12 +1329,12 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
       graphqlRateLimitFloor: 500,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1372,12 +1372,12 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
       graphqlRateLimitFloor: 500,
+      normalConcurrentLimit: 6,
     });
 
     const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
@@ -1415,12 +1415,12 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
       graphqlRateLimitFloor: 500,
+      normalConcurrentLimit: 6,
     });
 
     const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
@@ -1476,11 +1476,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -1524,11 +1524,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1581,11 +1581,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(
       mockLocalCommandRunner.runCommand.mock.calls.some(
@@ -1650,11 +1650,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -1734,11 +1734,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       newerPR.url,
@@ -1848,7 +1848,6 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
@@ -2034,11 +2033,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
     expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
@@ -2102,11 +2101,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
     expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
@@ -2187,11 +2186,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -2280,11 +2279,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
     expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
@@ -2378,11 +2377,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       newerPR.url,
@@ -2504,7 +2503,6 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
@@ -2644,7 +2642,6 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
@@ -2757,11 +2754,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       newerPrUrl,
@@ -2815,11 +2812,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -2859,11 +2856,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -2916,11 +2913,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     // Loop doesn't run because we're already at max (6 >= 6)
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -2951,11 +2948,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -2998,11 +2995,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -3045,11 +3042,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -3092,11 +3089,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -3139,11 +3136,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: 'default-llm-agent',
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -3186,11 +3183,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -3236,11 +3233,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -3285,11 +3282,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -3336,11 +3333,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
@@ -3388,11 +3385,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     // No issues are in 'Awaiting Workspace' status, so no updates should happen
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -3423,11 +3420,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 3,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -3457,11 +3454,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
@@ -3518,11 +3515,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 12,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
@@ -3588,11 +3585,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 20,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
@@ -3654,11 +3651,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -3702,11 +3699,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -3757,11 +3754,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -3815,11 +3812,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -3863,11 +3860,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -3911,11 +3908,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -3959,11 +3956,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4013,11 +4010,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4061,11 +4058,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4098,11 +4095,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: [],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4135,11 +4132,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['dependabot[bot]'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4172,11 +4169,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['owner'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4218,11 +4215,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1', 'user2'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4258,11 +4255,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['user1'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4296,11 +4293,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
@@ -4337,11 +4334,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -4374,11 +4371,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -4411,11 +4408,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4460,11 +4457,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
@@ -4499,11 +4496,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4549,11 +4546,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: [],
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4599,11 +4596,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1'],
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -4669,11 +4666,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -4734,11 +4731,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4793,11 +4790,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4821,11 +4818,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
@@ -4867,11 +4864,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -4919,11 +4916,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -5009,11 +5006,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -5066,11 +5063,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5141,11 +5138,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5219,11 +5216,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5296,11 +5293,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5370,11 +5367,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5457,11 +5454,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5523,11 +5520,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5590,11 +5587,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -5659,11 +5656,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -5678,7 +5675,7 @@ describe('StartPreparationUseCase', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('should skip preparation when every configured token is at or above 95 percent 5h utilization', async () => {
+  it('should still spawn on a token at or above 95 percent 5h utilization because 5h utilization no longer excludes a token', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -5731,20 +5728,21 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl.mock.calls.length).toBeGreaterThan(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
+        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
+      },
+    });
+    expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('5h utilization >= 90%'),
     );
     consoleWarnSpy.mockRestore();
@@ -5845,11 +5843,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -5927,11 +5925,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6003,11 +6001,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6071,11 +6069,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -6153,11 +6151,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6232,11 +6230,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -6292,11 +6290,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -6358,11 +6356,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6424,11 +6422,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6490,11 +6488,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6559,11 +6557,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -6607,11 +6605,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(
@@ -6676,11 +6674,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6745,11 +6743,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6814,11 +6812,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6891,11 +6889,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -6968,11 +6966,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -7050,11 +7048,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
@@ -7161,11 +7159,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
@@ -7180,7 +7178,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should fall back to 5-hour utilization ascending as tiebreaker when only the generic seven_day weekly limit (as bridged by the proxy) is present and deadlines tie', async () => {
+  it('should order tied 7-day deadlines by the larger 7-day free ratio when only the generic seven_day weekly limit (as bridged by the proxy) is present, ignoring 5-hour utilization', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -7205,7 +7203,7 @@ describe('StartPreparationUseCase', () => {
         name: 'token-busy-5h',
         token: 'token-busy-5h',
         fiveHourUtilization: 0.6,
-        sevenDayUtilization: 0.1,
+        sevenDayUtilization: 0.5,
         blocked: false,
         rejected: false,
         fiveHourRejected: false,
@@ -7236,11 +7234,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -7252,7 +7250,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  it('should fall back to 5-hour utilization ascending as tiebreaker when 7-day reset deadlines are identical', async () => {
+  it('should order identical 7-day reset deadlines by the larger 7-day free ratio, ignoring 5-hour utilization', async () => {
     const awaitingIssue = createMockIssue({
       url: 'url1',
       title: 'Issue 1',
@@ -7277,7 +7275,7 @@ describe('StartPreparationUseCase', () => {
         name: 'token-busy-5h',
         token: 'token-busy-5h',
         fiveHourUtilization: 0.6,
-        sevenDayUtilization: 0.1,
+        sevenDayUtilization: 0.5,
         blocked: false,
         rejected: false,
         fiveHourRejected: false,
@@ -7308,11 +7306,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -7364,11 +7362,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: params.defaultLlmAgentName,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: params.labelsAsLlmAgentName,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
       const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
@@ -7538,12 +7536,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -7652,12 +7650,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -7697,12 +7695,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
@@ -7740,12 +7738,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -7780,12 +7778,12 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: [],
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -7837,11 +7835,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -7895,11 +7893,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -7949,11 +7947,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
@@ -8015,11 +8013,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -8099,11 +8097,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
       String(call[0]).includes('Spawn candidate exclusion summary'),
@@ -8148,11 +8146,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
       String(call[0]).includes('Spawn candidate exclusion summary'),
@@ -8200,11 +8198,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
@@ -8263,11 +8261,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
@@ -8295,11 +8293,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
@@ -8349,11 +8347,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: null,
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
@@ -8405,11 +8403,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
@@ -8473,7 +8471,6 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
@@ -8536,7 +8533,6 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
@@ -8788,11 +8784,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
@@ -8862,11 +8858,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
     const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
       String(call[0]).includes('Story is unset'),
@@ -8943,11 +8939,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9010,11 +9006,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 3,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9088,11 +9084,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 3,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
       [0, 1, 2].forEach((slotIndex) => {
@@ -9171,11 +9167,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 2,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9264,11 +9260,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 3,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9367,11 +9363,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 2,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9456,11 +9452,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: 3,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
@@ -9551,11 +9547,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(
@@ -9601,11 +9597,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -9655,11 +9651,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(
@@ -9705,11 +9701,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(
@@ -9755,11 +9751,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -9819,11 +9815,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 2,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
@@ -9865,11 +9861,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 2,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -9912,11 +9908,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(originalIssue.status).toBe('Preparation');
@@ -9948,11 +9944,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -10009,11 +10005,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -10051,11 +10047,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -10128,11 +10124,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 1,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -10210,11 +10206,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 1,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -10252,11 +10248,11 @@ describe('StartPreparationUseCase', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(mockIssueRepository.get.mock.calls).toEqual([
@@ -10308,11 +10304,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -10352,11 +10348,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
@@ -10390,11 +10386,11 @@ describe('StartPreparationUseCase', () => {
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
+          normalConcurrentLimit: 6,
         }),
       ).rejects.toThrow('GitHub API rate limit exceeded');
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
@@ -10429,11 +10425,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
@@ -10474,11 +10470,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
@@ -10558,11 +10554,11 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: freePreparationSlotCount,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
     };
 
@@ -10866,7 +10862,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result[0].name).toBe('soon-7d-reset');
     expect(result[1].name).toBe('far-7d-reset');
@@ -10889,56 +10885,11 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
         modelWeeklyLimits: {},
       },
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
     const serialized = JSON.stringify(result);
 
     expect(serialized).not.toContain('sk-ant-secret-value');
     expect(result[0].name).toBe('my-token');
-  });
-
-  it('marks thresholdExcluded true when token 5h utilization meets or exceeds the threshold', () => {
-    const tokenUsages = [
-      {
-        name: 'over-threshold',
-        token: 'sk-ant-over',
-        fiveHourUtilization: 0.95,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].thresholdExcluded).toBe(true);
-    expect(result[0].blocked).toBe(false);
-    expect(result[0].rejected).toBe(false);
-  });
-
-  it('marks thresholdExcluded true for tokens at or above the 5h utilization threshold', () => {
-    const tokenUsages = [
-      {
-        name: 'at-threshold',
-        token: 'sk-ant-at',
-        fiveHourUtilization: 0.9,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].thresholdExcluded).toBe(true);
-    expect(result[0].blocked).toBe(false);
-    expect(result[0].rejected).toBe(false);
-    expect(result[0].fiveHourUtilization).toBe(0.9);
   });
 
   it('excludes a token whose blockedUntilEpoch is in the future and marks it cooldownExcluded', () => {
@@ -10968,7 +10919,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result[0].name).toBe('available');
     const cooling = result.find((entry) => entry.name === 'cooling-down');
@@ -10994,7 +10945,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('lapsed-cooldown');
@@ -11023,7 +10974,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('overall-rejected-seven-day-ok');
@@ -11058,7 +11009,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result[0].name).toBe('available');
     const excluded = result.find(
@@ -11101,7 +11052,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       },
     ];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result[0].name).toBe('available');
     const excluded = result.find((entry) => entry.name === 'weekly-rejected');
@@ -11156,116 +11107,80 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
   });
 
   it('returns the full limit when both 5-hour and 7-day utilization are low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1)).toBe(6);
-  });
-
-  it('tapers down on high 5-hour utilization even when 7-day utilization is low', () => {
-    const limit = useCase.getTokenConcurrentLimit(0.94, 0.1);
-    expect(limit).toBeLessThan(6);
-    expect(limit).toBe(2);
+    expect(useCase.getTokenConcurrentLimit(0.1, undefined, 6)).toBe(6);
   });
 
   it('preserves the existing 7-day taper when 5-hour utilization is low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.9)).toBe(3);
-  });
-
-  it('takes the more restrictive window and floors at 1 when both are high', () => {
-    expect(useCase.getTokenConcurrentLimit(0.99, 0.95)).toBe(1);
-  });
-
-  it('takes the minimum of the two windows when both taper', () => {
-    const fiveHourDominant = useCase.getTokenConcurrentLimit(0.94, 0.85);
-    expect(fiveHourDominant).toBe(2);
-    const sevenDayDominant = useCase.getTokenConcurrentLimit(0.85, 0.94);
-    expect(sevenDayDominant).toBe(2);
+    expect(useCase.getTokenConcurrentLimit(0.9, undefined, 6)).toBe(3);
   });
 
   it('scales the limit down by the token selection weight', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.5)).toBe(3);
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.5, 6)).toBe(3);
   });
 
   it('keeps the full limit when the token carries no selection weight', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined)).toBe(6);
+    expect(useCase.getTokenConcurrentLimit(0.1, undefined, 6)).toBe(6);
   });
 
   it('never lets a selection weight take the limit below one slot', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.01, 6)).toBe(1);
   });
 
   it('uses normalConcurrentLimit as the full-speed ceiling when both utilizations are low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined, 10)).toBe(10);
+    expect(useCase.getTokenConcurrentLimit(0.1, undefined, 10)).toBe(10);
   });
 
   it('tapers from normalConcurrentLimit when utilization is above the threshold', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.9, undefined, 10)).toBe(5);
+    expect(useCase.getTokenConcurrentLimit(0.9, undefined, 10)).toBe(5);
   });
 
   const FIVE_HOUR_WINDOW_SECONDS = 5 * 60 * 60;
   const sevenDayResetWindowCases: Array<{
     name: string;
-    fiveHourUtilization: number;
     sevenDayUtilization: number;
     secondsUntilSevenDayReset: number;
     expectedLimit: number;
   }> = [
     {
       name: 'keeps the normal limit when the 7-day reset is 30 minutes away and 5-hour utilization is 0',
-      fiveHourUtilization: 0,
       sevenDayUtilization: 0.98,
       secondsUntilSevenDayReset: 30 * 60,
       expectedLimit: 6,
     },
     {
       name: 'keeps the normal limit when the 7-day reset is exactly one 5-hour window away',
-      fiveHourUtilization: 0,
       sevenDayUtilization: 0.98,
       secondsUntilSevenDayReset: FIVE_HOUR_WINDOW_SECONDS,
       expectedLimit: 6,
     },
     {
       name: 'keeps the 7-day taper when the 7-day reset is 6 hours away',
-      fiveHourUtilization: 0,
       sevenDayUtilization: 0.98,
       secondsUntilSevenDayReset: 6 * 60 * 60,
       expectedLimit: 1,
     },
     {
       name: 'keeps the 7-day taper when no 7-day reset is known',
-      fiveHourUtilization: 0,
       sevenDayUtilization: 0.98,
       secondsUntilSevenDayReset: Number.POSITIVE_INFINITY,
       expectedLimit: 1,
     },
     {
       name: 'keeps the 7-day taper when the 7-day reset has already passed',
-      fiveHourUtilization: 0,
       sevenDayUtilization: 0.98,
       secondsUntilSevenDayReset: -60,
       expectedLimit: 1,
-    },
-    {
-      name: 'still applies the 5-hour taper when the 7-day reset is 30 minutes away',
-      fiveHourUtilization: 0.95,
-      sevenDayUtilization: 0.98,
-      secondsUntilSevenDayReset: 30 * 60,
-      expectedLimit: 2,
     },
   ];
 
   it.each(sevenDayResetWindowCases)(
     '$name',
-    ({
-      fiveHourUtilization,
-      sevenDayUtilization,
-      secondsUntilSevenDayReset,
-      expectedLimit,
-    }) => {
+    ({ sevenDayUtilization, secondsUntilSevenDayReset, expectedLimit }) => {
       expect(
         useCase.getTokenConcurrentLimit(
-          fiveHourUtilization,
           sevenDayUtilization,
           undefined,
-          undefined,
+          6,
           secondsUntilSevenDayReset,
         ),
       ).toBe(expectedLimit);
@@ -11356,7 +11271,6 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: 20,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
@@ -11443,11 +11357,11 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -11531,11 +11445,11 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -11622,11 +11536,11 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
       maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 6,
     });
 
     expect(findRelatedOpenPRs).toHaveBeenCalledWith(awaitingIssue.url);
@@ -11744,11 +11658,11 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
         defaultLlmAgentName: null,
         configFilePath: '/path/to/config.yml',
         maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
         allowedIssueAuthors: ['testuser'],
         manager: 'manager-user',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        normalConcurrentLimit: 6,
       });
 
       expect(findRelatedOpenPRs).toHaveBeenCalledTimes(expectedCallCount);
@@ -11935,9 +11849,9 @@ describe('StartPreparationUseCase token limit pinned by the 7-day taper', () => 
   ])(
     'tapers the limit to $expectedLimit when 7-day utilization is $sevenDayUtilization and 5-hour utilization is 0.1',
     ({ sevenDayUtilization, expectedLimit }) => {
-      expect(useCase.getTokenConcurrentLimit(0.1, sevenDayUtilization)).toBe(
-        expectedLimit,
-      );
+      expect(
+        useCase.getTokenConcurrentLimit(sevenDayUtilization, undefined, 6),
+      ).toBe(expectedLimit);
     },
   );
 
@@ -11963,10 +11877,9 @@ describe('StartPreparationUseCase token limit pinned by the 7-day taper', () => 
     ({ secondsUntilSevenDayReset, expectedLimit }) => {
       expect(
         useCase.getTokenConcurrentLimit(
-          0.1,
           0.98,
           undefined,
-          undefined,
+          6,
           secondsUntilSevenDayReset,
         ),
       ).toBe(expectedLimit);
@@ -11981,14 +11894,14 @@ describe('StartPreparationUseCase token limit pinned by the 7-day taper', () => 
   ])(
     'multiplies the limit by selectionWeight $selectionWeight with a minimum of one slot',
     ({ selectionWeight, expectedLimit }) => {
-      expect(useCase.getTokenConcurrentLimit(0.1, 0.1, selectionWeight)).toBe(
+      expect(useCase.getTokenConcurrentLimit(0.1, selectionWeight, 6)).toBe(
         expectedLimit,
       );
     },
   );
 
   it('applies selectionWeight to the 7-day taper result', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.9, 0.5)).toBe(1);
+    expect(useCase.getTokenConcurrentLimit(0.9, 0.5, 6)).toBe(1);
   });
 
   it.each([
@@ -11999,12 +11912,7 @@ describe('StartPreparationUseCase token limit pinned by the 7-day taper', () => 
     'tapers from normalConcurrentLimit 10 to $expectedLimit at 7-day utilization $sevenDayUtilization',
     ({ sevenDayUtilization, expectedLimit }) => {
       expect(
-        useCase.getTokenConcurrentLimit(
-          0.1,
-          sevenDayUtilization,
-          undefined,
-          10,
-        ),
+        useCase.getTokenConcurrentLimit(sevenDayUtilization, undefined, 10),
       ).toBe(expectedLimit);
     },
   );
@@ -12072,7 +11980,7 @@ describe('StartPreparationUseCase rotation exclusion and order pinned by the 5-h
         fiveHourUtilization: 0.1,
         ...override,
       });
-      const result = useCase.buildRotationOrder([excludedToken, goodToken], 90);
+      const result = useCase.buildRotationOrder([excludedToken, goodToken]);
 
       expect(result[0]).toMatchObject({ name: 'good', blocked: false });
       expect(result).toHaveLength(2);
@@ -12114,7 +12022,7 @@ describe('StartPreparationUseCase rotation exclusion and order pinned by the 5-h
         },
       }),
     ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90);
+    const result = useCase.buildRotationOrder(tokenUsages);
 
     expect(result.map((entry) => entry.name)).toEqual([
       'reset-in-20h',
@@ -12132,8 +12040,8 @@ describe('StartPreparationUseCase token limit without a 5-hour taper', () => {
     { fiveHourUtilization: 0.99, expectedLimit: 6 },
   ])(
     'keeps the normal limit 6 at 5-hour utilization $fiveHourUtilization when 7-day utilization is 0.1',
-    ({ fiveHourUtilization, expectedLimit }) => {
-      expect(useCase.getTokenConcurrentLimit(fiveHourUtilization, 0.1)).toBe(
+    ({ expectedLimit }) => {
+      expect(useCase.getTokenConcurrentLimit(0.1, undefined, 6)).toBe(
         expectedLimit,
       );
     },
@@ -12150,16 +12058,13 @@ describe('StartPreparationUseCase rotation without a 5-hour exclusion threshold'
   ])(
     'does not exclude a token at 5-hour utilization $fiveHourUtilization with thresholdExcluded false',
     ({ fiveHourUtilization }) => {
-      const result = useCase.buildRotationOrder(
-        [
-          createRotationTokenUsage({
-            name: 'high-5h',
-            token: 'sk-ant-high-5h',
-            fiveHourUtilization,
-          }),
-        ],
-        90,
-      );
+      const result = useCase.buildRotationOrder([
+        createRotationTokenUsage({
+          name: 'high-5h',
+          token: 'sk-ant-high-5h',
+          fiveHourUtilization,
+        }),
+      ]);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -12188,10 +12093,10 @@ describe('StartPreparationUseCase rotation without a 5-hour exclusion threshold'
       sevenDayUtilization: 0.1,
       modelWeeklyLimits: { seven_day: { rejected: false, resetsAt } },
     });
-    const result = useCase.buildRotationOrder(
-      [lowFreeLowFiveHour, highFreeHighFiveHour],
-      90,
-    );
+    const result = useCase.buildRotationOrder([
+      lowFreeLowFiveHour,
+      highFreeHighFiveHour,
+    ]);
 
     expect(result.map((entry) => entry.name)).toEqual([
       'high-free-7d-high-5h',
@@ -12301,7 +12206,6 @@ const runAndCountSpawnsPerToken = async (params: {
     defaultLlmAgentName: null,
     configFilePath: '/path/to/config.yml',
     maximumPreparingIssuesCount: params.maximumPreparingIssuesCount,
-    utilizationPercentageThreshold: 90,
     allowedIssueAuthors: ['testuser'],
     manager: 'manager-user',
     codexHomeCandidates: null,
@@ -12382,7 +12286,7 @@ describe('StartPreparationUseCase default per-token normal concurrent limit of 3
     ({ sevenDayUtilization, expectedLimit }) => {
       const { useCase } = createPreparationRunUseCase([]);
 
-      expect(useCase.getTokenConcurrentLimit(0.1, sevenDayUtilization)).toBe(
+      expect(useCase.getTokenConcurrentLimit(sevenDayUtilization)).toBe(
         expectedLimit,
       );
     },

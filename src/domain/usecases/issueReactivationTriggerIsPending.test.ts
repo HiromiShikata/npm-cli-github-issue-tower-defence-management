@@ -537,7 +537,6 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           defaultLlmAgentName: null,
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
           manager: 'manager-user',
           codexHomeCandidates: null,
