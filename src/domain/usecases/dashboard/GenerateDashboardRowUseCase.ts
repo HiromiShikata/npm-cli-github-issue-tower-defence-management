@@ -18,7 +18,6 @@ export type DashboardRow = {
   blocker: number;
   humanPendingRed: number;
   humanPendingYellow: number;
-  humanPendingBlue: number;
   consoleTodoByHumanCount: number;
   consoleAwaitingOwnerCount: number;
 };
@@ -94,7 +93,6 @@ export class GenerateDashboardRowUseCase {
       ).length,
       humanPendingRed: countHumanPendingByStoryColor('RED'),
       humanPendingYellow: countHumanPendingByStoryColor('YELLOW'),
-      humanPendingBlue: countHumanPendingByStoryColor('BLUE'),
       consoleTodoByHumanCount: issues.filter(consoleTodoByHuman).length,
       consoleAwaitingOwnerCount: issues.filter(consoleAwaitingOwner).length,
     };

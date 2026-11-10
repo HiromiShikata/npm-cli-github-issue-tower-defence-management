@@ -62,7 +62,6 @@ describe('GenerateDashboardRowUseCase', () => {
       blocker: 0,
       humanPendingRed: 0,
       humanPendingYellow: 0,
-      humanPendingBlue: 0,
       consoleTodoByHumanCount: 0,
       consoleAwaitingOwnerCount: 0,
     });
@@ -91,7 +90,6 @@ describe('GenerateDashboardRowUseCase', () => {
       blocker: 0,
       humanPendingRed: 0,
       humanPendingYellow: 0,
-      humanPendingBlue: 0,
       consoleTodoByHumanCount: 1,
       consoleAwaitingOwnerCount: 1,
     });
@@ -123,7 +121,6 @@ describe('GenerateDashboardRowUseCase', () => {
       blocker: 0,
       humanPendingRed: 0,
       humanPendingYellow: 0,
-      humanPendingBlue: 0,
       consoleTodoByHumanCount: 0,
       consoleAwaitingOwnerCount: 0,
     });
@@ -156,7 +153,6 @@ describe('GenerateDashboardRowUseCase', () => {
       blocker: 0,
       humanPendingRed: 0,
       humanPendingYellow: 0,
-      humanPendingBlue: 0,
       consoleTodoByHumanCount: 0,
       consoleAwaitingOwnerCount: 0,
     });
@@ -331,7 +327,6 @@ describe('GenerateDashboardRowUseCase', () => {
     });
     expect(result.humanPendingRed).toBe(2);
     expect(result.humanPendingYellow).toBe(1);
-    expect(result.humanPendingBlue).toBe(1);
   });
 
   it('returns zero for story color counts when story color map is empty', () => {
@@ -355,7 +350,6 @@ describe('GenerateDashboardRowUseCase', () => {
     });
     expect(result.humanPendingRed).toBe(0);
     expect(result.humanPendingYellow).toBe(0);
-    expect(result.humanPendingBlue).toBe(0);
   });
 
   it('excludes closed issues from story color counts', () => {
@@ -447,7 +441,6 @@ describe('GenerateDashboardRowUseCase', () => {
       ).toMatchObject({
         humanPendingRed: 2,
         humanPendingYellow: 1,
-        humanPendingBlue: 1,
       });
     });
 
@@ -483,7 +476,6 @@ describe('GenerateDashboardRowUseCase', () => {
       ).toMatchObject({
         humanPendingRed: 1,
         humanPendingYellow: 0,
-        humanPendingBlue: 2,
       });
     });
 
@@ -515,7 +507,6 @@ describe('GenerateDashboardRowUseCase', () => {
         ).toMatchObject({
           humanPendingRed: 0,
           humanPendingYellow: 0,
-          humanPendingBlue: 0,
         });
       },
     );

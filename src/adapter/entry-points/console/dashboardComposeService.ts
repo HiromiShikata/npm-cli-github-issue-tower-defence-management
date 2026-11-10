@@ -98,7 +98,6 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
     blocker,
     humanPendingRed: asFiniteNumber(value.humanPendingRed) ?? 0,
     humanPendingYellow: asFiniteNumber(value.humanPendingYellow) ?? 0,
-    humanPendingBlue: asFiniteNumber(value.humanPendingBlue) ?? 0,
     consoleTodoByHumanCount,
     consoleAwaitingOwnerCount,
   };
@@ -107,7 +106,6 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
 export type ProjectRowData = {
   row: DashboardRow | null;
   capturedAt: string | null;
-  isFallback: boolean;
 };
 
 const isIssueArray = (value: unknown): value is Issue[] =>
@@ -155,12 +153,12 @@ export const readProjectRowWithFreshness = (
     path.join(dashboardDataDir, 'projects', `${projectName}.json`),
   );
   if (!isRecord(raw)) {
-    return { row: null, capturedAt: null, isFallback: false };
+    return { row: null, capturedAt: null };
   }
   const capturedAt = typeof raw.capturedAt === 'string' ? raw.capturedAt : null;
   const row = parseDashboardRow(raw);
   if (row === null) {
-    return { row: null, capturedAt, isFallback: false };
+    return { row: null, capturedAt };
   }
   const assigneeLogin =
     typeof raw.assigneeLogin === 'string' ? raw.assigneeLogin : null;
@@ -183,12 +181,11 @@ export const readProjectRowWithFreshness = (
       return {
         row: freshRow,
         capturedAt: cacheData.lastFetchedAt,
-        isFallback: false,
       };
     }
-    return { row, capturedAt, isFallback: true };
+    return { row, capturedAt };
   }
-  return { row, capturedAt: null, isFallback: false };
+  return { row, capturedAt: null };
 };
 
 const parseLoad = (value: unknown): [number, number, number] | null => {
@@ -330,7 +327,7 @@ export const buildComposeDashboardInput = (
   const nowMs = options.nowMs ?? Date.now();
   const projects: ComposeDashboardProject[] = options.projectNames.map(
     (projectName) => {
-      const { row, capturedAt, isFallback } = readProjectRowWithFreshness(
+      const { row, capturedAt } = readProjectRowWithFreshness(
         options.dashboardDataDir,
         projectName,
       );
@@ -343,7 +340,6 @@ export const buildComposeDashboardInput = (
           nowMs,
         ),
         rowCapturedAt: capturedAt,
-        isFallback,
       };
     },
   );

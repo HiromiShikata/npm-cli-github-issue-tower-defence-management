@@ -169,22 +169,22 @@ describe('dashboard emitter filename matches composer lookup key', () => {
     const expected =
       [
         wrap('M55% C62% 🔴D93% cy13 🔴LA 16 23 40'),
-        wrap('      1  1  2  1  1  0  0  0  0  0  0  0'),
-        wrap('  pj td ao fl pp ws dp 🔴 🟡 🔵 1h 3h 5h'),
+        wrap('      1  1  2  1  1  0  0  0  0  0  0'),
+        wrap('  pj td ao fl pp ws dp 🔴 🟡 1h 3h 5h'),
         wrap(
-          `🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('initech')}  0  0  0  0  1  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('initech')}  0  0  0  0  1  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('umbrella')}  1  0  0  0  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('umbrella')}  1  0  0  0  0  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('soylent')}  0  0  0  1  0  0  0  0  0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('soylent')}  0  0  0  1  0  0  0  0  0  0  0`,
         ),
         wrap(''),
       ].join('\n') + '\n';
