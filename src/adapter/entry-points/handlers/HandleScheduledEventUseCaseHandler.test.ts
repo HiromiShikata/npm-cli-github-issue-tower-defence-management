@@ -1805,14 +1805,12 @@ llmModelNameByAgentName: claude-haiku-5-5
 
   describe('console visible assignee logins wiring', () => {
     it('passes consoleVisibleAssigneeLogins from the config file to writeConsoleLists', async () => {
-      jest
-        .mocked(fs.readFileSync)
-        .mockReturnValue(
-          YAML.stringify({
-            ...validConfig,
-            consoleVisibleAssigneeLogins: ['owner-login'],
-          }),
-        );
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          consoleVisibleAssigneeLogins: ['owner-login'],
+        }),
+      );
 
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle('config.yml', false);

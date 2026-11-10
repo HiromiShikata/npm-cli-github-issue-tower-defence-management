@@ -23,6 +23,7 @@ export type ConsoleListsWriterParams = {
   project: Project;
   issues: Issue[];
   workflowBlockerStoryName?: string | null | undefined;
+  consoleVisibleAssigneeLogins?: string[] | null;
   urlOfStoryView?: string | null;
   generatedAt?: string;
   nowMs?: number;
@@ -165,6 +166,7 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
     assigneeLogin,
     generatedAt,
     workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
+    visibleAssigneeLogins: params.consoleVisibleAssigneeLogins ?? null,
     urlOfStoryView: params.urlOfStoryView ?? null,
     now: new Date(nowMs),
     defaultTaskNameWithOwner: params.defaultTaskNameWithOwner ?? null,

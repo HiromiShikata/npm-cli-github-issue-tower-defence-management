@@ -1621,7 +1621,8 @@ describe('GenerateConsoleListsUseCase visibleAssigneeLogins restriction', () => 
     );
     expect(storyAlpha?.openItemCount).toBe(2);
     expect(
-      storyAlpha?.items.find((item) => item.url === closedVisible.url)?.isClosed,
+      storyAlpha?.items.find((item) => item.url === closedVisible.url)
+        ?.isClosed,
     ).toBe(true);
   });
 

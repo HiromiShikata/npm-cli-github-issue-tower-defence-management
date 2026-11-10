@@ -113,6 +113,7 @@ export type GenerateConsoleListsInput = {
   urlOfStoryView: string | null;
   now: Date;
   defaultTaskNameWithOwner?: string | null;
+  visibleAssigneeLogins?: string[] | null;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
@@ -121,7 +122,7 @@ export class GenerateConsoleListsUseCase {
   run = (input: GenerateConsoleListsInput): ConsoleLists => {
     const {
       project,
-      issues,
+      issues: allIssues,
       pjcode,
       assigneeLogin,
       generatedAt,
@@ -129,7 +130,12 @@ export class GenerateConsoleListsUseCase {
       urlOfStoryView,
       now,
       defaultTaskNameWithOwner,
+      visibleAssigneeLogins,
     } = input;
+    const issues = this.restrictToVisibleAssignees(
+      allIssues,
+      visibleAssigneeLogins,
+    );
 
     const storyOptions = project.story ? project.story.stories : [];
     const storyOrder = storyOptions.map((option) => option.name);
@@ -205,8 +211,8 @@ export class GenerateConsoleListsUseCase {
     const defaultNameWithOwner =
       defaultTaskNameWithOwner != null
         ? defaultTaskNameWithOwner
-        : (issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ??
-          null);
+        : (allIssues.find((issue) => issue.nameWithOwner !== '')
+            ?.nameWithOwner ?? null);
 
     const storyEntries: ConsoleStoryEntry[] = storyOptions.map((option) => ({
       storyName: option.name,
@@ -301,6 +307,18 @@ export class GenerateConsoleListsUseCase {
         defaultNameWithOwner,
       },
     };
+  };
+
+  private restrictToVisibleAssignees = (
+    issues: Issue[],
+    visibleAssigneeLogins: string[] | null | undefined,
+  ): Issue[] => {
+    if (visibleAssigneeLogins == null || visibleAssigneeLogins.length === 0) {
+      return issues;
+    }
+    return issues.filter((issue) =>
+      issue.assignees.some((login) => visibleAssigneeLogins.includes(login)),
+    );
   };
 
   private isActionable = (issue: Issue, assigneeLogin: string): boolean =>

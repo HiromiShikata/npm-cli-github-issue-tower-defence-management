@@ -22,6 +22,7 @@ import {
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
   fetchProjectReadmeWithCache,
+  loadConfigFile,
   parseProjectReadmeConfig,
   type ProjectReadmeConfig,
 } from '../cli/projectConfig';
@@ -713,6 +714,8 @@ export class HandleScheduledEventUseCaseHandler {
           generatedAt: formatConsoleGeneratedAt(new Date(issuesFetchedAt)),
           workflowBlockerStoryName:
             mergedInput.workflowBlockerStoryName ?? null,
+          consoleVisibleAssigneeLogins:
+            loadConfigFile(configFilePath).consoleVisibleAssigneeLogins ?? null,
           urlOfStoryView: mergedInput.urlOfStoryView,
           defaultTaskNameWithOwner:
             mergedInput.defaultTaskNameWithOwner ?? null,

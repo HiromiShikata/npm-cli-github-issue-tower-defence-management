@@ -2064,35 +2064,40 @@ describe('loadConfigFile consoleVisibleAssigneeLogins', () => {
     return filePath;
   };
 
-  const cases: { name: string; content: string; expected: string[] | undefined }[] =
-    [
-      {
-        name: 'parses a list of logins',
-        content:
-          "projectName: 'demo'\nconsoleVisibleAssigneeLogins: ['owner-login', 'second-login']\n",
-        expected: ['owner-login', 'second-login'],
-      },
-      {
-        name: 'parses an empty list as an empty list',
-        content: "projectName: 'demo'\nconsoleVisibleAssigneeLogins: []\n",
-        expected: [],
-      },
-      {
-        name: 'yields undefined when the key is absent',
-        content: "projectName: 'demo'\n",
-        expected: undefined,
-      },
-      {
-        name: 'yields undefined when the value is a plain string',
-        content: "projectName: 'demo'\nconsoleVisibleAssigneeLogins: 'owner-login'\n",
-        expected: undefined,
-      },
-      {
-        name: 'yields undefined when a list entry is not a string',
-        content: 'projectName: demo\nconsoleVisibleAssigneeLogins: [owner-login, 42]\n',
-        expected: undefined,
-      },
-    ];
+  const cases: {
+    name: string;
+    content: string;
+    expected: string[] | undefined;
+  }[] = [
+    {
+      name: 'parses a list of logins',
+      content:
+        "projectName: 'demo'\nconsoleVisibleAssigneeLogins: ['owner-login', 'second-login']\n",
+      expected: ['owner-login', 'second-login'],
+    },
+    {
+      name: 'parses an empty list as an empty list',
+      content: "projectName: 'demo'\nconsoleVisibleAssigneeLogins: []\n",
+      expected: [],
+    },
+    {
+      name: 'yields undefined when the key is absent',
+      content: "projectName: 'demo'\n",
+      expected: undefined,
+    },
+    {
+      name: 'yields undefined when the value is a plain string',
+      content:
+        "projectName: 'demo'\nconsoleVisibleAssigneeLogins: 'owner-login'\n",
+      expected: undefined,
+    },
+    {
+      name: 'yields undefined when a list entry is not a string',
+      content:
+        'projectName: demo\nconsoleVisibleAssigneeLogins: [owner-login, 42]\n',
+      expected: undefined,
+    },
+  ];
 
   it('parses or rejects consoleVisibleAssigneeLogins by its declared shape', () => {
     for (const { name, content, expected } of cases) {

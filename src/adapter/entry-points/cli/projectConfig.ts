@@ -37,6 +37,7 @@ export type ConfigFile = {
   consoleGithubAppPrivateKeyPaths?: Record<string, string[]>;
   consoleGithubTokenFileDir?: string;
   consoleProjectConfigDirectory?: string;
+  consoleVisibleAssigneeLogins?: string[];
   githubAppPrivateKeyPaths?: string[];
   disks?: DiskConfig[];
   errorReportingRepository?: string;
@@ -290,6 +291,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'consoleProjectConfigDirectory',
       ),
+      consoleVisibleAssigneeLogins: getStringArrayValue(
+        parsed,
+        'consoleVisibleAssigneeLogins',
+      ),
       githubAppPrivateKeyPaths: getStringArrayValue(
         parsed,
         'githubAppPrivateKeyPaths',
@@ -463,6 +468,9 @@ export const mergeConfigs = (
     cliOverrides.changeTargetPathAliases ??
     configFile.changeTargetPathAliases,
   agents: cliOverrides.agents ?? configFile.agents,
+  consoleVisibleAssigneeLogins:
+    cliOverrides.consoleVisibleAssigneeLogins ??
+    configFile.consoleVisibleAssigneeLogins,
   consoleDataOutputDir:
     cliOverrides.consoleDataOutputDir ?? configFile.consoleDataOutputDir,
   consoleAccessToken:

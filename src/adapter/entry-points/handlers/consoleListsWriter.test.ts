@@ -710,7 +710,10 @@ describe('writeConsoleLists consoleVisibleAssigneeLogins', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 
-  const readJsonUrls = (filePath: string, key: 'items' | 'stories'): string[] => {
+  const readJsonUrls = (
+    filePath: string,
+    key: 'items' | 'stories',
+  ): string[] => {
     const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     if (!isRecord(parsed) || !isUnknownArray(parsed[key])) return [];
     return parsed[key].flatMap((entry) => {
@@ -757,17 +760,24 @@ describe('writeConsoleLists consoleVisibleAssigneeLogins', () => {
   it('lists only items assigned to a visible login in workflow-blocker and stories', () => {
     writeWith([ASSIGNEE], sharedFixtures());
     expect(
-      readJsonUrls(path.join(outDir, 'demo', 'workflow-blocker', 'list.json'), 'items'),
+      readJsonUrls(
+        path.join(outDir, 'demo', 'workflow-blocker', 'list.json'),
+        'items',
+      ),
     ).toEqual(['https://github.com/demo/repo/issues/101']);
     expect(
-      readJsonUrls(path.join(outDir, 'demo', 'stories', 'list.json'), 'stories'),
+      readJsonUrls(
+        path.join(outDir, 'demo', 'stories', 'list.json'),
+        'stories',
+      ),
     ).toEqual(['https://github.com/demo/repo/issues/101']);
   });
 
+  const NO_LOGINS: string[] = [];
   it.each([
     { name: 'absent', value: undefined },
     { name: 'null', value: null },
-    { name: 'an empty list', value: [] as string[] },
+    { name: 'an empty list', value: NO_LOGINS },
   ])(
     'lists items of every assignee when consoleVisibleAssigneeLogins is $name',
     ({ value }) => {
