@@ -1424,3 +1424,234 @@ describe('GenerateConsoleListsUseCase', () => {
     });
   });
 });
+
+describe('GenerateConsoleListsUseCase without a visible assignee restriction', () => {
+  const usecase = new GenerateConsoleListsUseCase();
+  const generatedAt = '2026-06-14T07:22:33Z';
+  const NOW = new Date('2026-06-14T10:00:00Z');
+  const OTHER_LOGIN = 'other-login';
+
+  beforeEach(() => {
+    issueCounter = 0;
+  });
+
+  const runWithoutRestriction = (issues: Issue[]) =>
+    usecase.run({
+      project: projectWithStory,
+      issues,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      generatedAt,
+      workflowBlockerStoryName: 'regular / WORKFLOW BLOCKER',
+      urlOfStoryView: null,
+      now: NOW,
+    });
+
+  it('lists workflow-blocker items assigned only to another login', () => {
+    const otherAssigned = makeIssue({
+      story: 'regular / WORKFLOW BLOCKER',
+      assignees: [OTHER_LOGIN],
+    });
+    const result = runWithoutRestriction([otherAssigned]);
+    expect(result['workflow-blocker'].items.map((i) => i.url)).toEqual([
+      otherAssigned.url,
+    ]);
+  });
+
+  it('lists story items and counts open items assigned only to another login', () => {
+    const openOther = makeIssue({
+      storyOptionId: 's2',
+      assignees: [OTHER_LOGIN],
+    });
+    const closedOther = makeIssue({
+      storyOptionId: 's2',
+      assignees: [OTHER_LOGIN],
+      isClosed: true,
+    });
+    const result = runWithoutRestriction([openOther, closedOther]);
+    const storyAlpha = result.stories.stories.find(
+      (story) => story.storyOptionId === 's2',
+    );
+    expect(storyAlpha?.items.map((i) => i.url)).toEqual([
+      openOther.url,
+      closedOther.url,
+    ]);
+    expect(storyAlpha?.openItemCount).toBe(1);
+  });
+
+  it('keeps the prs tab limited to the assignee login', () => {
+    const result = runWithoutRestriction([
+      makeIssue({ status: 'Awaiting Owner', assignees: [OTHER_LOGIN] }),
+    ]);
+    expect(result.prs.items).toHaveLength(0);
+  });
+});
+
+describe('GenerateConsoleListsUseCase visibleAssigneeLogins restriction', () => {
+  const usecase = new GenerateConsoleListsUseCase();
+  const generatedAt = '2026-06-14T07:22:33Z';
+  const NOW = new Date('2026-06-14T10:00:00Z');
+  const OTHER_LOGIN = 'other-login';
+  const WORKFLOW_BLOCKER_STORY = 'regular / WORKFLOW BLOCKER';
+  const STORY_ALPHA_OPTION_ID = 's2';
+
+  type TabCase = {
+    tab: string;
+    fixture: Partial<Issue>;
+    items: (result: ReturnType<GenerateConsoleListsUseCase['run']>) => {
+      url: string;
+    }[];
+  };
+
+  const tabCases: TabCase[] = [
+    {
+      tab: 'workflow-blocker',
+      fixture: { story: WORKFLOW_BLOCKER_STORY },
+      items: (result) => result['workflow-blocker'].items,
+    },
+    {
+      tab: 'prs',
+      fixture: { status: 'Awaiting Owner' },
+      items: (result) => result.prs.items,
+    },
+    {
+      tab: 'failed-preparation',
+      fixture: { status: 'Failed Preparation' },
+      items: (result) => result['failed-preparation'].items,
+    },
+    {
+      tab: 'todo-by-human',
+      fixture: { status: 'Todo by human' },
+      items: (result) => result['todo-by-human'].items,
+    },
+    {
+      tab: 'queued',
+      fixture: { status: 'Awaiting Workspace' },
+      items: (result) => result.queued.items,
+    },
+    {
+      tab: 'stories',
+      fixture: { storyOptionId: STORY_ALPHA_OPTION_ID },
+      items: (result) =>
+        result.stories.stories.find(
+          (story) => story.storyOptionId === STORY_ALPHA_OPTION_ID,
+        )?.items ?? [],
+    },
+  ];
+
+  beforeEach(() => {
+    issueCounter = 0;
+  });
+
+  const run = (
+    issues: Issue[],
+    visibleAssigneeLogins?: string[] | null,
+  ): ReturnType<GenerateConsoleListsUseCase['run']> =>
+    usecase.run({
+      project: projectWithStory,
+      issues,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      generatedAt,
+      workflowBlockerStoryName: WORKFLOW_BLOCKER_STORY,
+      urlOfStoryView: null,
+      now: NOW,
+      visibleAssigneeLogins,
+    });
+
+  it('keeps only items whose assignees include a visible login on every tab', () => {
+    const cases = tabCases.map((tabCase) => {
+      const visible = makeIssue({
+        ...tabCase.fixture,
+        assignees: [ASSIGNEE],
+      });
+      const shared = makeIssue({
+        ...tabCase.fixture,
+        assignees: [OTHER_LOGIN, ASSIGNEE],
+      });
+      const other = makeIssue({
+        ...tabCase.fixture,
+        assignees: [OTHER_LOGIN],
+      });
+      const unassigned = makeIssue({ ...tabCase.fixture, assignees: [] });
+      const result = run([visible, shared, other, unassigned], [ASSIGNEE]);
+      return {
+        tab: tabCase.tab,
+        urls: tabCase.items(result).map((item) => item.url),
+        expected: [visible.url, shared.url].sort(),
+      };
+    });
+    for (const { tab, urls, expected } of cases) {
+      expect({ tab, urls: [...urls].sort() }).toEqual({ tab, urls: expected });
+    }
+  });
+
+  it('counts only visible open items in each story and lists visible closed items', () => {
+    const openVisible = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [ASSIGNEE],
+    });
+    const openShared = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [OTHER_LOGIN, ASSIGNEE],
+    });
+    const openOther = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [OTHER_LOGIN],
+    });
+    const closedVisible = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [ASSIGNEE],
+      isClosed: true,
+    });
+    const closedOther = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [OTHER_LOGIN],
+      isClosed: true,
+    });
+    const result = run(
+      [openVisible, openShared, openOther, closedVisible, closedOther],
+      [ASSIGNEE],
+    );
+    const storyAlpha = result.stories.stories.find(
+      (story) => story.storyOptionId === STORY_ALPHA_OPTION_ID,
+    );
+    expect(storyAlpha?.items.map((item) => item.url).sort()).toEqual(
+      [openVisible.url, openShared.url, closedVisible.url].sort(),
+    );
+    expect(storyAlpha?.openItemCount).toBe(2);
+    expect(
+      storyAlpha?.items.find((item) => item.url === closedVisible.url)?.isClosed,
+    ).toBe(true);
+  });
+
+  it('keeps an item visible when any one of several listed logins is an assignee', () => {
+    const assignedToSecondLogin = makeIssue({
+      storyOptionId: STORY_ALPHA_OPTION_ID,
+      assignees: [OTHER_LOGIN],
+    });
+    const result = run([assignedToSecondLogin], [ASSIGNEE, OTHER_LOGIN]);
+    const storyAlpha = result.stories.stories.find(
+      (story) => story.storyOptionId === STORY_ALPHA_OPTION_ID,
+    );
+    expect(storyAlpha?.items.map((item) => item.url)).toEqual([
+      assignedToSecondLogin.url,
+    ]);
+    expect(storyAlpha?.openItemCount).toBe(1);
+  });
+
+  it('applies no restriction when visibleAssigneeLogins is null or an empty list', () => {
+    const issues = [
+      makeIssue({ story: WORKFLOW_BLOCKER_STORY, assignees: [OTHER_LOGIN] }),
+      makeIssue({ storyOptionId: STORY_ALPHA_OPTION_ID, assignees: [] }),
+    ];
+    const baseline = run(issues);
+    const restrictions: (string[] | null)[] = [null, []];
+    for (const restriction of restrictions) {
+      expect({
+        restriction,
+        result: run(issues, restriction),
+      }).toEqual({ restriction, result: baseline });
+    }
+  });
+});

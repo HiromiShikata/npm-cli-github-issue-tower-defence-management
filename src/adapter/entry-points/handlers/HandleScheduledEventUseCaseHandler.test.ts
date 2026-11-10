@@ -1802,4 +1802,37 @@ llmModelNameByAgentName: claude-haiku-5-5
       );
     });
   });
+
+  describe('console visible assignee logins wiring', () => {
+    it('passes consoleVisibleAssigneeLogins from the config file to writeConsoleLists', async () => {
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(
+          YAML.stringify({
+            ...validConfig,
+            consoleVisibleAssigneeLogins: ['owner-login'],
+          }),
+        );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(jest.mocked(writeConsoleLists)).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(writeConsoleLists).mock.calls[0][0]
+          .consoleVisibleAssigneeLogins,
+      ).toEqual(['owner-login']);
+    });
+
+    it('passes null to writeConsoleLists when the config file omits consoleVisibleAssigneeLogins', async () => {
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(jest.mocked(writeConsoleLists)).toHaveBeenCalledTimes(1);
+      expect(
+        jest.mocked(writeConsoleLists).mock.calls[0][0]
+          .consoleVisibleAssigneeLogins,
+      ).toBeNull();
+    });
+  });
 });
