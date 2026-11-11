@@ -140,6 +140,10 @@ describe('handleAirplaneSync', () => {
     expect(itemData?.relatedPrs?.[0].url).toBe(prUrl1);
     expect(itemData?.relatedPrs?.[1].url).toBe(prUrl2);
     expect(itemData?.relatedPrs?.[0].isResolvedAllReviewComments).toBe(false);
+    expect(itemData?.relatedPrs?.map((pr) => pr.ciStatusAvailability)).toEqual([
+      'AVAILABLE',
+      'AVAILABLE',
+    ]);
   });
 
   it('excludes related PRs where getOpenPullRequestCiStatus returns null', async () => {

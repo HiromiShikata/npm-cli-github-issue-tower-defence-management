@@ -77,6 +77,7 @@ export const ConsolePullRequestDetail = ({
           mergeableStatus={pullRequest.mergeableStatus}
         />
         <ConsolePullRequestStatusBadges
+          ciStatusAvailability={pullRequest.ciStatusAvailability}
           isPassedAllCiJob={pullRequest.isPassedAllCiJob}
           isCiStateSuccess={pullRequest.isCiStateSuccess}
           isBranchOutOfDate={pullRequest.isBranchOutOfDate}

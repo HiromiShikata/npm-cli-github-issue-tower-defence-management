@@ -205,6 +205,17 @@ const parseMergeableStatus = (value: unknown): ConsoleMergeableStatus => {
   return 'UNKNOWN';
 };
 
+const parseCiStatusAvailability = (
+  value: unknown,
+): ConsoleRelatedPullRequest['ciStatusAvailability'] => {
+  if (value === 'AVAILABLE' || value === 'UNAVAILABLE') {
+    return value;
+  }
+  throw new Error(
+    `ciStatusAvailability must be 'AVAILABLE' or 'UNAVAILABLE', received ${JSON.stringify(value)}`,
+  );
+};
+
 const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
   if (!isRecord(payload) || !Array.isArray(payload.relatedPullRequests)) {
     return [];
@@ -221,6 +232,7 @@ const parseRelatedPrs = (payload: unknown): ConsoleRelatedPullRequest[] => {
     isResolvedAllReviewComments: getBoolean(pr.isResolvedAllReviewComments),
     isBranchOutOfDate: getBoolean(pr.isBranchOutOfDate),
     missingRequiredCheckNames: parseStringArray(pr.missingRequiredCheckNames),
+    ciStatusAvailability: parseCiStatusAvailability(pr.ciStatusAvailability),
     summary: parseSummary(pr.summary),
   }));
 };

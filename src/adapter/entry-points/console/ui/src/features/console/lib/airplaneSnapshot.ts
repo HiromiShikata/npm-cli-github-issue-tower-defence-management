@@ -291,6 +291,17 @@ const parsePrStatus = (item: unknown): ConsolePullRequestStatus => {
   };
 };
 
+const parseCiStatusAvailability = (
+  value: unknown,
+): ConsoleRelatedPullRequest['ciStatusAvailability'] => {
+  if (value === 'AVAILABLE' || value === 'UNAVAILABLE') {
+    return value;
+  }
+  throw new Error(
+    `ciStatusAvailability must be 'AVAILABLE' or 'UNAVAILABLE', received ${JSON.stringify(value)}`,
+  );
+};
+
 const parseRelatedPr = (item: unknown): ConsoleRelatedPullRequest | null => {
   if (!isRecord(item)) {
     return null;
@@ -316,6 +327,7 @@ const parseRelatedPr = (item: unknown): ConsoleRelatedPullRequest | null => {
     isResolvedAllReviewComments: getBoolean(item.isResolvedAllReviewComments),
     isBranchOutOfDate: getBoolean(item.isBranchOutOfDate),
     missingRequiredCheckNames: parseStringArray(item.missingRequiredCheckNames),
+    ciStatusAvailability: parseCiStatusAvailability(item.ciStatusAvailability),
     summary,
   };
 };

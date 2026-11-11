@@ -12746,6 +12746,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
         reviewDecision: null,
+        ciStatusAvailability: 'AVAILABLE',
       });
       expect(
         countCallsMatching(
@@ -13549,6 +13550,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             isResolvedAllReviewComments: true,
             isBranchOutOfDate: false,
             missingRequiredCheckNames: [],
+            ciStatusAvailability: 'AVAILABLE',
           },
         ],
       };
@@ -13666,6 +13668,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             isResolvedAllReviewComments: true,
             isBranchOutOfDate: false,
             missingRequiredCheckNames: [],
+            ciStatusAvailability: 'AVAILABLE',
           },
         ],
       };
@@ -13690,6 +13693,200 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resultWithExplicitFalse[0].url).toBe(prUrl);
       expect(resultWithExplicitFalse[0].isPassedAllCiJob).toBe(false);
     });
+  });
+
+  describe('findRelatedOpenPRs CI status pinning', () => {
+    const ISSUE_URL =
+      'https://github.com/HiromiShikata/test-repository/issues/100';
+    const PR_URL = 'https://github.com/HiromiShikata/test-repository/pull/31';
+
+    beforeEach(() => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildTimelineResponse = (mergeable: string) => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [
+                {
+                  __typename: 'CrossReferencedEvent',
+                  willCloseTarget: true,
+                  source: {
+                    __typename: 'PullRequest',
+                    url: PR_URL,
+                    number: 31,
+                    body: null,
+                    state: 'OPEN',
+                    createdAt: '2024-01-01T00:00:00Z',
+                    isDraft: false,
+                    mergeable,
+                    headRefName: 'feature-branch',
+                    baseRefName: 'main',
+                    baseRef: { name: 'main' },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const passingCheckRuns = () => ({
+      total_count: 1,
+      check_runs: [{ id: 1, name: 'unit-test', conclusion: 'success' }],
+    });
+
+    const forbiddenCheckRuns = () =>
+      new Response(
+        JSON.stringify({ message: 'Resource not accessible by integration' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+
+    const failedBranchRules = () =>
+      new Response(JSON.stringify({ message: 'Server Error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    const requiredUnitTestRules = () => [
+      {
+        type: 'required_status_checks',
+        parameters: { required_status_checks: [{ context: 'unit-test' }] },
+      },
+    ];
+
+    it.each([
+      {
+        name: 'a passing check run and no required checks',
+        routes: { checkRuns: passingCheckRuns },
+        expected: {
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          missingRequiredCheckNames: [],
+        },
+      },
+      {
+        name: 'a failing check run',
+        routes: {
+          checkRuns: () => ({
+            total_count: 1,
+            check_runs: [{ id: 1, name: 'unit-test', conclusion: 'failure' }],
+          }),
+        },
+        expected: {
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          missingRequiredCheckNames: [],
+        },
+      },
+      {
+        name: 'a required check that has not reported',
+        routes: {
+          branchRules: requiredUnitTestRules,
+          checkRuns: () => ({ total_count: 0, check_runs: [] }),
+        },
+        expected: {
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          missingRequiredCheckNames: ['unit-test'],
+        },
+      },
+      {
+        name: 'a passing check run that satisfies the required check',
+        routes: {
+          branchRules: requiredUnitTestRules,
+          checkRuns: passingCheckRuns,
+        },
+        expected: {
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          missingRequiredCheckNames: [],
+        },
+      },
+    ])(
+      'returns an open related pull request with CI fields computed from $name',
+      async ({ routes, expected }) => {
+        mockFetchRoutes({
+          timeline: () => buildTimelineResponse('MERGEABLE'),
+          slimPullRequest: () => buildSlimPullRequestResponse({ url: PR_URL }),
+          ...routes,
+        });
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.findRelatedOpenPRs(ISSUE_URL);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({ url: PR_URL, ...expected });
+      },
+    );
+
+    it.each([
+      {
+        name: 'the mergeability GraphQL resolution throws',
+        routes: {
+          timeline: () => buildTimelineResponse('UNKNOWN'),
+          mergeability: () => ({ data: null, errors: [{ message: 'boom' }] }),
+        },
+      },
+      {
+        name: 'the slim pull request fetch throws',
+        routes: {
+          slimPullRequest: () => new Response('boom', { status: 500 }),
+        },
+      },
+      {
+        name: 'the slim pull request state is not OPEN',
+        routes: {
+          slimPullRequest: () =>
+            buildSlimPullRequestResponse({ url: PR_URL, state: 'CLOSED' }),
+        },
+      },
+    ])('excludes the related pull request when $name', async ({ routes }) => {
+      mockFetchRoutes({
+        timeline: () => buildTimelineResponse('MERGEABLE'),
+        slimPullRequest: () => buildSlimPullRequestResponse({ url: PR_URL }),
+        ...routes,
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(ISSUE_URL);
+
+      expect(result).toEqual([]);
+    });
+
+    it.each([
+      {
+        name: 'the check runs request is forbidden',
+        routes: { checkRuns: forbiddenCheckRuns },
+      },
+      {
+        name: 'the required check names request fails',
+        routes: { branchRules: failedBranchRules },
+      },
+    ])(
+      'excludes the related pull request when $name and no options are given',
+      async ({ routes }) => {
+        mockFetchRoutes({
+          timeline: () => buildTimelineResponse('MERGEABLE'),
+          slimPullRequest: () => buildSlimPullRequestResponse({ url: PR_URL }),
+          ...routes,
+        });
+
+        const { repository } = createApiV3CheerioRestIssueRepository();
+        const result = await repository.findRelatedOpenPRs(ISSUE_URL);
+
+        expect(result).toEqual([]);
+      },
+    );
   });
 
   describe('getOpenPullRequestCiStatus', () => {

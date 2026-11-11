@@ -1030,6 +1030,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           isResolvedAllReviewComments: true,
           isBranchOutOfDate: false,
           missingRequiredCheckNames: [],
+          ciStatusAvailability: 'AVAILABLE',
           reviewDecision: null,
         };
         mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([readyPr]);

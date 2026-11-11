@@ -12,6 +12,7 @@ type Story = StoryObj<typeof ConsolePullRequestStatusBadges>;
 
 export const Passing: Story = {
   args: {
+    ciStatusAvailability: 'AVAILABLE',
     isPassedAllCiJob: true,
     isCiStateSuccess: true,
     isBranchOutOfDate: false,
@@ -19,8 +20,19 @@ export const Passing: Story = {
   },
 };
 
+export const CiStatusUnknown: Story = {
+  args: {
+    ciStatusAvailability: 'UNAVAILABLE',
+    isPassedAllCiJob: false,
+    isCiStateSuccess: false,
+    isBranchOutOfDate: false,
+    missingRequiredCheckNames: [],
+  },
+};
+
 export const FailingWithMissingChecks: Story = {
   args: {
+    ciStatusAvailability: 'AVAILABLE',
     isPassedAllCiJob: false,
     isCiStateSuccess: false,
     isBranchOutOfDate: false,
@@ -30,6 +42,7 @@ export const FailingWithMissingChecks: Story = {
 
 export const FailingAndOutOfDate: Story = {
   args: {
+    ciStatusAvailability: 'AVAILABLE',
     isPassedAllCiJob: false,
     isCiStateSuccess: false,
     isBranchOutOfDate: true,

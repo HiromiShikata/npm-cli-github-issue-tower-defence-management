@@ -231,6 +231,7 @@ describe('airplaneSnapshot', () => {
                 isResolvedAllReviewComments: true,
                 isBranchOutOfDate: false,
                 missingRequiredCheckNames: [],
+                ciStatusAvailability: 'AVAILABLE',
                 summary: null,
               },
             ],

@@ -648,6 +648,7 @@ const inlineCommentRelatedPullRequest: RelatedPullRequest = {
   isBranchOutOfDate: true,
   missingRequiredCheckNames: ['build', 'test'],
   reviewDecision: null,
+  ciStatusAvailability: 'AVAILABLE',
 };
 
 const awaitingOwnerPullRequest: RelatedPullRequest = {
@@ -663,6 +664,7 @@ const awaitingOwnerPullRequest: RelatedPullRequest = {
   isBranchOutOfDate: true,
   missingRequiredCheckNames: ['build', 'test'],
   reviewDecision: null,
+  ciStatusAvailability: 'AVAILABLE',
 };
 
 const awaitingOwnerPullRequestMergeReady: RelatedPullRequest = {

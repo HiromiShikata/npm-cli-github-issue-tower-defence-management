@@ -112,6 +112,7 @@ export type ConsoleRelatedPullRequest = {
   isResolvedAllReviewComments: boolean;
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
+  ciStatusAvailability: 'AVAILABLE' | 'UNAVAILABLE';
   summary: {
     title: string;
     body: string;

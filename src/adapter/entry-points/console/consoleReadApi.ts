@@ -1,6 +1,7 @@
 import {
   IssueRepository,
   IssueComment,
+  PullRequestCiStatusAvailability,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
@@ -157,6 +158,7 @@ export type RelatedPullRequestWithSummary = {
   isResolvedAllReviewComments: boolean;
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
+  ciStatusAvailability: PullRequestCiStatusAvailability;
   summary: {
     title: string;
     body: string;
@@ -275,7 +277,9 @@ export const handleRelatedPrs = async (
     return badRequest('url must be an issue URL, not a pull request URL');
   }
   try {
-    const relatedPullRequests = await issueRepository.findRelatedOpenPRs(url);
+    const relatedPullRequests = await issueRepository.findRelatedOpenPRs(url, {
+      includeCiStatusUnavailable: true,
+    });
     const withSummaries: RelatedPullRequestWithSummary[] = await Promise.all(
       relatedPullRequests.map(async (relatedPullRequest) => {
         const summary = await issueRepository.getPullRequestSummary(
@@ -295,6 +299,7 @@ export const handleRelatedPrs = async (
           isBranchOutOfDate: relatedPullRequest.isBranchOutOfDate,
           missingRequiredCheckNames:
             relatedPullRequest.missingRequiredCheckNames,
+          ciStatusAvailability: relatedPullRequest.ciStatusAvailability,
           summary,
         };
       }),
