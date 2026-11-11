@@ -1,3 +1,10 @@
+## [2.195.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.0...v2.195.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **session-archive:** archive conversation records of sessions stopped by model safeguards ([#3716](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3716)) ([238cc60](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/238cc6013c557e59c263e7d446eb9170b3ce2ffe))
+
 # [2.195.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.194.0...v2.195.0) (2026-11-11)
 
 
