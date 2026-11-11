@@ -1,0 +1,14 @@
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2026-12-10
+reason = "deepmerge 4.3.1 is the newest release and the advisory lists no patched version. The CVE record CVE-2026-93753 was rejected on 2026-11-02 because it does not describe a security vulnerability, and withdrawal requests are open at the GitHub Advisory Database."
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2026-12-10
+reason = "glob 13.0.6 remains only as the copy bundled inside npm in package-lock.json. npm overrides cannot replace packages bundled with npm, and npm 12.2.2, the newest npm release, still bundles glob 13.0.6. Every other glob copy in this lockfile is 14.0.2, the first fixed version."
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2026-12-10
+reason = "minimatch 10.2.5 remains as the copy bundled inside npm, which npm overrides cannot replace and which npm 12.2.2, the newest npm release, still bundles, and as the copy used by eslint, @eslint/config-array, @typescript-eslint/typescript-estree and test-exclude, whose newest releases declare minimatch ^10. eslint-plugin-import-x 4.17.1 imports makeRe, which minimatch 11 does not export, and its 4.18 releases that accept minimatch 11 are still inside the repository's min-release-age window."
