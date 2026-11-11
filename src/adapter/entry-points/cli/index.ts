@@ -1887,7 +1887,7 @@ program
 program
   .command('archive-unresumable-session')
   .description(
-    'Move aside the conversation record of a session that ended because its prompt exceeded the model context limit, so the next launch for that task starts a fresh conversation instead of resuming a record that can never load. Reads the finished run stream-json log, and acts only when it holds a terminal result record whose is_error is true and whose result is "Prompt is too long"; a usage limit termination does not match. Writes "no-op" to stdout and changes nothing when no such record is present, and "archived <destination path>" when the record is moved. The conversation record is moved, never deleted, so it stays recoverable. Exits 1 naming the expected source path when the record the log points at is absent.',
+    'Move aside the conversation record of a session that ended because its prompt exceeded the model context limit or because the model safeguards stopped it, so the next launch for that task starts a fresh conversation instead of resuming a record that can never load. Reads the finished run stream-json log, and acts only when it holds a terminal result record whose is_error is true and either whose result is "Prompt is too long" or whose safety_stops is a number greater than 0; a result with safety_stops 0 and a usage limit termination do not match. Writes "no-op" to stdout and changes nothing when no such record is present, and "archived <destination path>" when the record is moved. The conversation record is moved, never deleted, so it stays recoverable. Exits 1 naming the expected source path when the record the log points at is absent.',
   )
   .requiredOption(
     '--log-file <path>',
