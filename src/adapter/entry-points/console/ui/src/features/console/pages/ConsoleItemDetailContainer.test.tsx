@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from '../hooks/consoleActionDelivery';
 import {
   ConsoleActionPartiallySentError,
   type ConsoleOfflinePayload,
@@ -8,7 +9,9 @@ import {
   buildTriageRequest,
   type ConsoleOperationsApi,
   TRIAGE_OPERATION_PATH,
+  useConsoleOperations,
 } from '../hooks/useConsoleOperations';
+import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import {
   COMMENT_OPERATION_PATH,
   SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
@@ -36,9 +39,6 @@ import {
   ConsoleItemDetailContainer,
   type ConsoleItemDetailContainerProps,
 } from './ConsoleItemDetailContainer';
-import { useConsoleOperations } from '../hooks/useConsoleOperations';
-import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
-import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from '../hooks/consoleActionDelivery';
 
 jest.mock('../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
