@@ -404,6 +404,7 @@ export const consoleRelatedPullRequestsFixture: ConsoleRelatedPullRequest[] = [
     isResolvedAllReviewComments: true,
     isBranchOutOfDate: false,
     missingRequiredCheckNames: [],
+    ciStatusAvailability: 'AVAILABLE',
     summary: {
       title: 'Scaffold React console UI under entry-points with build bundling',
       body: 'Adds the React + Vite + Tailwind scaffold and the committed `ui-dist` single artifact.',

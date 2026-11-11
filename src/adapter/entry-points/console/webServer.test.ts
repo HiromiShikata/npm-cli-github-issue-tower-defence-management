@@ -990,6 +990,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -1069,6 +1070,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue(null);
@@ -1135,6 +1137,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -1211,6 +1214,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -1427,6 +1431,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -1508,6 +1513,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -1589,6 +1595,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({

@@ -101,6 +101,7 @@ describe('consoleOperationApi', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
@@ -719,6 +720,7 @@ describe('consoleOperationApi', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
         reviewDecision: null,
       });
       const response = await handleReview(context, {
@@ -760,6 +762,7 @@ describe('consoleOperationApi', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
         reviewDecision: null,
       });
       issueRepository.mergePullRequest.mockRejectedValue(
@@ -826,6 +829,7 @@ describe('consoleOperationApi', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: ['test', 'lint'],
+        ciStatusAvailability: 'AVAILABLE',
         reviewDecision: null,
       });
       const response = await handleReview(context, {

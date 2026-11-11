@@ -180,14 +180,32 @@ function isRequiredCheckNamesDiskCache(
   );
 }
 
+function isCachedRelatedOpenPr(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  return (
+    'ciStatusAvailability' in value &&
+    (value.ciStatusAvailability === 'AVAILABLE' ||
+      value.ciStatusAvailability === 'UNAVAILABLE')
+  );
+}
+
 function isCachedRelatedOpenPrs(value: unknown): value is CachedRelatedOpenPrs {
   if (typeof value !== 'object' || value === null) return false;
   return (
     'fetchedAtMs' in value &&
     typeof value.fetchedAtMs === 'number' &&
     'prs' in value &&
-    Array.isArray(value.prs)
+    Array.isArray(value.prs) &&
+    value.prs.every(isCachedRelatedOpenPr)
   );
+}
+
+function filterRelatedOpenPrsByCiStatusAvailability(
+  prs: RelatedPullRequest[],
+  includeCiStatusUnavailable: boolean,
+): RelatedPullRequest[] {
+  if (includeCiStatusUnavailable) return prs;
+  return prs.filter((pr) => pr.ciStatusAvailability !== 'UNAVAILABLE');
 }
 
 const SELF_AUTHORED_REVIEW_REFUSAL =
@@ -2513,6 +2531,7 @@ export class ApiV3CheerioRestIssueRepository
       isBranchOutOfDate: false,
       missingRequiredCheckNames,
       reviewDecision: data.reviewDecision ?? null,
+      ciStatusAvailability: 'AVAILABLE',
     };
   };
 
@@ -3214,6 +3233,23 @@ export class ApiV3CheerioRestIssueRepository
     );
   };
 
+  private buildRelatedPullRequestWithUnknownCiStatus = (
+    slimPullRequest: SlimPullRequest,
+  ): RelatedPullRequest => ({
+    ...this.computePrStatus(slimPullRequest.url, slimPullRequest.headRefName, {
+      isDraft: slimPullRequest.isDraft,
+      mergeable: slimPullRequest.mergeable,
+      reviewDecision: slimPullRequest.reviewDecision,
+      requiredCheckNames: [],
+      ciContexts: [],
+      reviewThreads: slimPullRequest.reviewThreads,
+    }),
+    isPassedAllCiJob: false,
+    isCiStateSuccess: false,
+    missingRequiredCheckNames: [],
+    ciStatusAvailability: 'UNAVAILABLE',
+  });
+
   private resolveMergeabilityWithRetry = async (
     owner: string,
     repo: string,
@@ -3292,7 +3328,7 @@ export class ApiV3CheerioRestIssueRepository
 
   findRelatedOpenPRs = async (
     issueUrl: string,
-    options?: { bypassCache?: boolean },
+    options?: { bypassCache?: boolean; includeCiStatusUnavailable?: boolean },
   ): Promise<RelatedPullRequest[]> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issueUrl);
     if (isPr) {
@@ -3300,6 +3336,8 @@ export class ApiV3CheerioRestIssueRepository
         'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
       );
     }
+    const includeCiStatusUnavailable =
+      options?.includeCiStatusUnavailable === true;
 
     const nowMs = (await this.dateRepository.now()).getTime();
     const cacheKey = `related-open-prs/${owner}/${repo}/${issueNumber}`;
@@ -3310,10 +3348,13 @@ export class ApiV3CheerioRestIssueRepository
       isCachedRelatedOpenPrs(cachedRaw) &&
       nowMs - cachedRaw.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS
     ) {
-      return cachedRaw.prs.map((pr) => ({
-        ...pr,
-        createdAt: new Date(pr.createdAt),
-      }));
+      return filterRelatedOpenPrsByCiStatusAvailability(
+        cachedRaw.prs.map((pr) => ({
+          ...pr,
+          createdAt: new Date(pr.createdAt),
+        })),
+        includeCiStatusUnavailable,
+      );
     }
 
     const query = `
@@ -3448,31 +3489,23 @@ export class ApiV3CheerioRestIssueRepository
 
         if (pr.number === undefined) continue;
 
-        let prStatus: RelatedPullRequest;
+        let slimPullRequest: SlimPullRequest;
         try {
-          const slimPullRequest = await this.fetchSlimPullRequest(
+          const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
             prOwner,
             prRepo,
             pr.number,
           );
-          if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
+          if (
+            !fetchedSlimPullRequest ||
+            fetchedSlimPullRequest.state !== 'OPEN'
+          ) {
             console.info(
               `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
             );
             continue;
           }
-          const baseRefName =
-            slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-          prStatus = await this.buildRelatedPullRequestFromSlim(
-            prOwner,
-            prRepo,
-            {
-              ...slimPullRequest,
-              url: slimPullRequest.url || prUrl,
-              headRefName: slimPullRequest.headRefName ?? pr.headRefName,
-              baseRefName,
-            },
-          );
+          slimPullRequest = fetchedSlimPullRequest;
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
@@ -3480,6 +3513,31 @@ export class ApiV3CheerioRestIssueRepository
             `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
           );
           continue;
+        }
+        const baseRefName =
+          slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
+        const slimPullRequestWithRefs: SlimPullRequest = {
+          ...slimPullRequest,
+          url: slimPullRequest.url || prUrl,
+          headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+          baseRefName,
+        };
+        let prStatus: RelatedPullRequest;
+        try {
+          prStatus = await this.buildRelatedPullRequestFromSlim(
+            prOwner,
+            prRepo,
+            slimPullRequestWithRefs,
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: fetching pull request CI status failed, keeping PR with unknown CI status. prUrl: ${prUrl} error: ${errorMessage}`,
+          );
+          prStatus = this.buildRelatedPullRequestWithUnknownCiStatus(
+            slimPullRequestWithRefs,
+          );
         }
 
         relatedPRsMap.set(prUrl, {
@@ -3499,7 +3557,10 @@ export class ApiV3CheerioRestIssueRepository
       fetchedAtMs: nowMs,
       prs: prs.map((pr) => ({ ...pr, createdAt: pr.createdAt.toISOString() })),
     });
-    return prs;
+    return filterRelatedOpenPrsByCiStatusAvailability(
+      prs,
+      includeCiStatusUnavailable,
+    );
   };
 
   private isRelatedOpenPullRequestTimelineItem = (

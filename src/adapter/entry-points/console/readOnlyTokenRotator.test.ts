@@ -1029,6 +1029,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const ownTokenCiStatus: OpenPullRequestCiStatus = {

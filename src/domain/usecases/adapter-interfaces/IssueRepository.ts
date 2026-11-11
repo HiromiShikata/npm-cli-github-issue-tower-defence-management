@@ -6,6 +6,8 @@ import { SearchedIssue } from '../../entities/SearchedIssue';
 import { StoryObjectMap } from '../../entities/StoryObjectMap';
 import { ProjectFieldWriteOutcome } from '../../entities/ProjectFieldWriteOutcome';
 
+export type PullRequestCiStatusAvailability = 'AVAILABLE' | 'UNAVAILABLE';
+
 export type RelatedPullRequest = {
   url: string;
   branchName: string | null;
@@ -20,6 +22,7 @@ export type RelatedPullRequest = {
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
   reviewDecision: string | null;
+  ciStatusAvailability: PullRequestCiStatusAvailability;
 };
 
 export type OpenPullRequestCiStatus = {
@@ -192,7 +195,10 @@ export interface IssueRepository {
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (
     issueUrl: string,
-    options?: { bypassCache?: boolean },
+    options?: {
+      bypassCache?: boolean;
+      includeCiStatusUnavailable?: boolean;
+    },
   ) => Promise<RelatedPullRequest[]>;
   findRelatedOpenPrUrls: (
     issueUrls: string[],

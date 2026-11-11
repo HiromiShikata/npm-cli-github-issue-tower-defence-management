@@ -5,6 +5,7 @@ describe('ConsolePullRequestStatusBadges', () => {
   it('renders a passing CI badge when all CI jobs passed and the CI state is success', () => {
     const { getByText, queryByText } = render(
       <ConsolePullRequestStatusBadges
+        ciStatusAvailability="AVAILABLE"
         isPassedAllCiJob={true}
         isCiStateSuccess={true}
         isBranchOutOfDate={false}
@@ -18,6 +19,7 @@ describe('ConsolePullRequestStatusBadges', () => {
   it('renders a failing CI badge with missing required checks', () => {
     const { getByText } = render(
       <ConsolePullRequestStatusBadges
+        ciStatusAvailability="AVAILABLE"
         isPassedAllCiJob={false}
         isCiStateSuccess={true}
         isBranchOutOfDate={false}
@@ -31,6 +33,7 @@ describe('ConsolePullRequestStatusBadges', () => {
   it('renders the out-of-date badge when the branch is behind the base branch', () => {
     const { getByText } = render(
       <ConsolePullRequestStatusBadges
+        ciStatusAvailability="AVAILABLE"
         isPassedAllCiJob={true}
         isCiStateSuccess={true}
         isBranchOutOfDate={true}
@@ -43,6 +46,7 @@ describe('ConsolePullRequestStatusBadges', () => {
   it('treats a successful CI state but unfinished jobs as failing', () => {
     const { getByText } = render(
       <ConsolePullRequestStatusBadges
+        ciStatusAvailability="AVAILABLE"
         isPassedAllCiJob={false}
         isCiStateSuccess={true}
         isBranchOutOfDate={false}

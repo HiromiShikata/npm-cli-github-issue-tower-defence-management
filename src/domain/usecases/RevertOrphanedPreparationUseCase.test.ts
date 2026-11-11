@@ -122,6 +122,7 @@ const createPassingPr = () => ({
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
   reviewDecision: null,
+  ciStatusAvailability: 'AVAILABLE' as const,
 });
 
 describe('RevertOrphanedPreparationUseCase', () => {

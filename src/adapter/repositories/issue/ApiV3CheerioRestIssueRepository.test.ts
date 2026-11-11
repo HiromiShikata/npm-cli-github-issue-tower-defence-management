@@ -12746,6 +12746,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
         reviewDecision: null,
+        ciStatusAvailability: 'AVAILABLE',
       });
       expect(
         countCallsMatching(
@@ -13549,6 +13550,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             isResolvedAllReviewComments: true,
             isBranchOutOfDate: false,
             missingRequiredCheckNames: [],
+            ciStatusAvailability: 'AVAILABLE',
           },
         ],
       };
@@ -13666,6 +13668,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             isResolvedAllReviewComments: true,
             isBranchOutOfDate: false,
             missingRequiredCheckNames: [],
+            ciStatusAvailability: 'AVAILABLE',
           },
         ],
       };

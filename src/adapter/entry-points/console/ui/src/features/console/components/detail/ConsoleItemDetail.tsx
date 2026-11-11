@@ -266,6 +266,7 @@ export const ConsoleItemDetail = ({
           )}
           {item.isPr && pullRequestStatus?.found && (
             <ConsolePullRequestStatusBadges
+              ciStatusAvailability="AVAILABLE"
               isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
               isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
               isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
@@ -286,6 +287,9 @@ export const ConsoleItemDetail = ({
                   </span>
                 )}
                 <ConsolePullRequestStatusBadges
+                  ciStatusAvailability={
+                    related.pullRequest.ciStatusAvailability
+                  }
                   isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
                   isCiStateSuccess={related.pullRequest.isCiStateSuccess}
                   isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}

@@ -2,6 +2,7 @@ import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleColor } from '../../logic/types';
 
 export type ConsolePullRequestStatusBadgesProps = {
+  ciStatusAvailability: 'AVAILABLE' | 'UNAVAILABLE';
   isPassedAllCiJob: boolean;
   isCiStateSuccess: boolean;
   isBranchOutOfDate: boolean;
@@ -18,16 +19,26 @@ const badgeStyle = (color: ConsoleColor) => {
 };
 
 export const ConsolePullRequestStatusBadges = ({
+  ciStatusAvailability,
   isPassedAllCiJob,
   isCiStateSuccess,
   isBranchOutOfDate,
   missingRequiredCheckNames,
 }: ConsolePullRequestStatusBadgesProps) => {
-  const ciPassing = isPassedAllCiJob && isCiStateSuccess;
-  const ciColor: ConsoleColor = ciPassing ? 'GREEN' : 'RED';
-  const ciLabel = ciPassing ? 'CI passing' : 'CI failing';
+  const isCiStatusUnknown = ciStatusAvailability === 'UNAVAILABLE';
+  const ciPassing = !isCiStatusUnknown && isPassedAllCiJob && isCiStateSuccess;
+  const ciColor: ConsoleColor = ciPassing
+    ? 'GREEN'
+    : isCiStatusUnknown
+      ? 'GRAY'
+      : 'RED';
+  const ciLabel = ciPassing
+    ? 'CI passing'
+    : isCiStatusUnknown
+      ? 'CI unknown'
+      : 'CI failing';
   const missingChecksLabel =
-    !ciPassing && missingRequiredCheckNames.length > 0
+    !ciPassing && !isCiStatusUnknown && missingRequiredCheckNames.length > 0
       ? `missing: ${missingRequiredCheckNames.join(', ')}`
       : null;
 

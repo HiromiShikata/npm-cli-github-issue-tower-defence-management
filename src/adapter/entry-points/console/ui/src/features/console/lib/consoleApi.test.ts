@@ -246,6 +246,7 @@ describe('createConsoleApiClient', () => {
           isResolvedAllReviewComments: true,
           isBranchOutOfDate: false,
           missingRequiredCheckNames: ['build'],
+          ciStatusAvailability: 'AVAILABLE',
           summary: {
             title: 'Linked',
             body: 'body',

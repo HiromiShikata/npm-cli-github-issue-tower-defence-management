@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import type {
+  IssueRepository,
+  PullRequestCiStatusAvailability,
+} from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
 import {
   IssueTitleStateCache,
@@ -66,6 +69,7 @@ export type AirplaneRelatedPrItem = {
   isResolvedAllReviewComments: boolean;
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
+  ciStatusAvailability: PullRequestCiStatusAvailability;
   summary: {
     title: string;
     body: string;
@@ -466,6 +470,7 @@ export const handleAirplaneSync = async (
                   isResolvedAllReviewComments: false,
                   isBranchOutOfDate: ciStatus.isBranchOutOfDate,
                   missingRequiredCheckNames: ciStatus.missingRequiredCheckNames,
+                  ciStatusAvailability: 'AVAILABLE',
                   summary,
                 };
               },

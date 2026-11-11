@@ -1450,6 +1450,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const relatedPrIssue = createMockIssue({
@@ -1566,6 +1567,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     });
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1624,6 +1626,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const prIssueWithUnsafeBranch = createMockIssue({
@@ -1684,6 +1687,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
@@ -1698,6 +1702,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const olderPrIssue = createMockIssue({
@@ -1787,6 +1792,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
       ...overrides,
     });
@@ -1975,6 +1981,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const crossRepoPR: RelatedPullRequest = {
@@ -1989,6 +1996,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const sameRepoPrIssue = createMockIssue({
@@ -2075,6 +2083,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const crossRepoPrIssue = createMockIssue({
@@ -2152,6 +2161,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const crossRepoPrIssueWithNullBranch = createMockIssue({
@@ -2225,6 +2235,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const secondCrossRepoPR: RelatedPullRequest = {
@@ -2239,6 +2250,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const firstCrossRepoPrIssue = createMockIssue({
@@ -2325,6 +2337,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
@@ -2339,6 +2352,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const olderPrIssueNullBranch = createMockIssue({
@@ -2423,6 +2437,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
@@ -2437,6 +2452,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const olderPrIssueNullBranch = createMockIssue({
@@ -2545,6 +2561,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
@@ -2559,6 +2576,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const olderPrIssueNullBranch = createMockIssue({
@@ -2687,6 +2705,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
@@ -2701,6 +2720,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const olderPrIssue = createMockIssue({
@@ -2786,6 +2806,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      ciStatusAvailability: 'AVAILABLE',
       reviewDecision: null,
     };
     const prIssueWithNullBranch = createMockIssue({
@@ -11684,6 +11705,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
     isResolvedAllReviewComments: true,
     isBranchOutOfDate: false,
     missingRequiredCheckNames: [],
+    ciStatusAvailability: 'AVAILABLE',
     reviewDecision: null,
   });
 
