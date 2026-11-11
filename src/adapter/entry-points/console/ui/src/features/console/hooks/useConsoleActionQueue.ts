@@ -676,13 +676,14 @@ export const useConsoleActionQueue = (
           if (action !== undefined) {
             if (deliveredActionIdsRef.current.has(action.id)) continue;
             deliveredActionIdsRef.current.add(action.id);
-            void deliverPersistedConsoleAction(action, true).catch(
-              (cause: unknown) =>
+            void deliverPersistedConsoleAction(action, true)
+              .then(() => removeOfflineQueueAction(action.id))
+              .catch((cause: unknown) =>
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
                 }),
-            );
+              );
           }
         }
       }
