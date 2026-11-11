@@ -1335,7 +1335,6 @@ defaultAgentName: readme-agent
       expect(dashboardRow).toMatchObject({
         humanPendingRed: 2,
         humanPendingYellow: 1,
-        humanPendingBlue: 1,
       });
     });
 
@@ -1370,7 +1369,6 @@ defaultAgentName: readme-agent
       expect(dashboardRow).toMatchObject({
         humanPendingRed: 1,
         humanPendingYellow: 0,
-        humanPendingBlue: 2,
       });
     });
 
@@ -1394,7 +1392,6 @@ defaultAgentName: readme-agent
         expect(dashboardRow).toMatchObject({
           humanPendingRed: 0,
           humanPendingYellow: 0,
-          humanPendingBlue: 0,
         });
       },
     );

@@ -18,7 +18,6 @@ export type ComposeDashboardProject = {
   row: DashboardRow | null;
   closeEventCounts: CloseEventCounts;
   rowCapturedAt?: string | null;
-  isFallback?: boolean;
 };
 
 export type ComposeDashboardDisk = {
@@ -66,7 +65,6 @@ const PROJECT_COLUMN_WIDTH = 2;
 const STORY_COLOR_COLUMNS: ProjectColumn[] = [
   { header: '🔴', key: 'humanPendingRed' },
   { header: '🟡', key: 'humanPendingYellow' },
-  { header: '🔵', key: 'humanPendingBlue' },
 ];
 
 const STORY_COLOR_COLUMN_VALUE_WIDTH = 2;
@@ -322,7 +320,7 @@ export const formatProjectRowLine = (
           const elapsed = nowMs - new Date(capturedAt).getTime();
           if (isNaN(elapsed) || elapsed < 0) return '';
           const age = formatElapsedMinutes(elapsed);
-          return project.isFallback === true ? ` ~${age}` : ` ${age}`;
+          return ` ${age}`;
         })()
       : '';
   return (

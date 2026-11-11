@@ -35,7 +35,6 @@ const projectRow = (overrides: Partial<DashboardRow>): DashboardRow => ({
   blocker: 0,
   humanPendingRed: 0,
   humanPendingYellow: 0,
-  humanPendingBlue: 0,
   consoleTodoByHumanCount: 0,
   consoleAwaitingOwnerCount: 0,
   ...overrides,
@@ -344,7 +343,7 @@ describe('formatMachineStatusLines', () => {
 describe('formatProjectHeaderLine', () => {
   it('renders the project grid header with story color signal and close count columns', () => {
     expect(formatProjectHeaderLine()).toBe(
-      '  pj td ao fl pp ws dp 🔴 🟡 🔵 1h 3h 5h',
+      '  pj td ao fl pp ws dp 🔴 🟡 1h 3h 5h',
     );
   });
 
@@ -352,6 +351,27 @@ describe('formatProjectHeaderLine', () => {
     expect(codePointLength(formatProjectHeaderLine())).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
+  });
+  it('renders the same 11 value columns in the header, project rows, and totals, with no blue column', () => {
+    const noCloseEvents = { h1: 0, h3: 0, h5: 0 };
+    const row = formatProjectRowLine({
+      code: 'ac',
+      row: projectRow({ todo: 1 }),
+      closeEventCounts: noCloseEvents,
+    });
+    const total = formatProjectTotalLine([
+      {
+        code: 'ac',
+        row: projectRow({ todo: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
+    ]);
+    const header = formatProjectHeaderLine();
+    expect(header.split(/\s+/).filter((t) => t !== '')).toHaveLength(12);
+    expect(row.split(/\s+/).filter((t) => t !== '')).toHaveLength(12);
+    expect(total.split(/\s+/).filter((t) => t !== '')).toHaveLength(11);
+    expect(header).not.toContain('🔵');
+    expect(row).not.toContain('🔵');
   });
 });
 
@@ -363,7 +383,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0  0  0  0');
+    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0  0  0');
   });
 
   it('renders non-zero story color counts in the color columns', () => {
@@ -373,7 +393,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ humanPendingRed: 8, humanPendingYellow: 3 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0  0  0  0');
+    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0  0  0');
   });
 
   it('caps a story color count above 99 at 99', () => {
@@ -393,7 +413,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('  in -- -- -- -- -- -- -- -- --  0  0  0');
+    ).toBe('  in -- -- -- -- -- -- -- --  0  0  0');
   });
 
   it('caps a count above 99 at 99', () => {
@@ -403,7 +423,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ todo: 1500 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0  0  0  0');
+    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0  0  0');
   });
 
   it('renders close event counts in the h1, h3, h5 columns', () => {
@@ -413,7 +433,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: { h1: 5, h3: 8, h5: 12 },
       }),
-    ).toBe('  ac -- -- -- -- -- -- -- -- --  5  8 12');
+    ).toBe('  ac -- -- -- -- -- -- -- --  5  8 12');
   });
 
   it('caps close event counts above 99 at 99', () => {
@@ -423,7 +443,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: { h1: 100, h3: 100, h5: 100 },
       }),
-    ).toBe('  ac -- -- -- -- -- -- -- -- -- 99 99 99');
+    ).toBe('  ac -- -- -- -- -- -- -- -- 99 99 99');
   });
 
   it('applies the four level severity dot rules in descending order', () => {
@@ -490,7 +510,6 @@ describe('formatProjectRowLine', () => {
         dep: 999,
         humanPendingRed: 99,
         humanPendingYellow: 99,
-        humanPendingBlue: 99,
       }),
       closeEventCounts: { h1: 99, h3: 99, h5: 99 },
     });
@@ -517,14 +536,13 @@ describe('formatProjectRowLine', () => {
           row: projectRow({}),
           closeEventCounts: noCloseEvents,
           rowCapturedAt: capturedAt,
-          isFallback: false,
         },
         nowMs,
       ),
     ).toMatch(/ 5m$/);
   });
 
-  it('prefixes the age with ~ for a fallback row', () => {
+  it('shows the age without a ~ prefix for a stale row', () => {
     const capturedAt = '2026-06-26T12:00:00.000Z';
     const nowMs = new Date('2026-06-26T12:05:30.000Z').getTime();
     expect(
@@ -534,11 +552,21 @@ describe('formatProjectRowLine', () => {
           row: projectRow({}),
           closeEventCounts: noCloseEvents,
           rowCapturedAt: capturedAt,
-          isFallback: true,
         },
         nowMs,
       ),
-    ).toMatch(/ ~5m$/);
+    ).toMatch(/ 5m$/);
+    expect(
+      formatProjectRowLine(
+        {
+          code: 'ac',
+          row: projectRow({}),
+          closeEventCounts: noCloseEvents,
+          rowCapturedAt: capturedAt,
+        },
+        nowMs,
+      ),
+    ).not.toContain('~');
   });
 
   it('omits elapsed time when rowCapturedAt is null', () => {
@@ -550,11 +578,10 @@ describe('formatProjectRowLine', () => {
           row: projectRow({}),
           closeEventCounts: noCloseEvents,
           rowCapturedAt: null,
-          isFallback: false,
         },
         nowMs,
       ),
-    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0  0');
+    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0');
   });
 
   it('omits elapsed time when nowMs is not provided', () => {
@@ -564,9 +591,8 @@ describe('formatProjectRowLine', () => {
         row: projectRow({}),
         closeEventCounts: noCloseEvents,
         rowCapturedAt: '2026-06-26T12:00:00.000Z',
-        isFallback: false,
       }),
-    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0  0');
+    ).toBe('🟢ac  0  0  0  0  0  0  0  0  0  0  0');
   });
 });
 
@@ -585,7 +611,7 @@ describe('formatProjectTotalLine', () => {
           closeEventCounts: noCloseEvents,
         },
       ]),
-    ).toBe('      1 18  6  1  4  1  0  0  0  0  0  0');
+    ).toBe('      1 18  6  1  4  1  0  0  0  0  0');
   });
 
   it('excludes null rows from project column totals but includes their close counts', () => {
@@ -602,7 +628,7 @@ describe('formatProjectTotalLine', () => {
           closeEventCounts: { h1: 3, h3: 0, h5: 0 },
         },
       ]),
-    ).toBe('      5  0  0  0  0  0  0  0  0  5  0  0');
+    ).toBe('      5  0  0  0  0  0  0  0  5  0  0');
   });
 
   it('caps totals above 99 at 99', () => {
@@ -634,7 +660,6 @@ describe('formatProjectTotalLine', () => {
           dep: 999,
           humanPendingRed: 99,
           humanPendingYellow: 99,
-          humanPendingBlue: 99,
         }),
         closeEventCounts: { h1: 99, h3: 99, h5: 99 },
       },
@@ -653,7 +678,7 @@ describe('formatProjectTotalLine', () => {
       },
     ]);
     const header = formatProjectHeaderLine();
-    expect(total.length).toBe(header.replace(/🔴|🟡|🔵/g, '  ').length);
+    expect(total.length).toBe(header.replace(/🔴|🟡/g, '  ').length);
   });
 });
 
@@ -805,12 +830,12 @@ describe('ComposeDashboardUseCase', () => {
 
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14&nbsp;🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;18&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;18&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
@@ -982,7 +1007,6 @@ describe('ComposeDashboardUseCase', () => {
             dep: 999,
             humanPendingRed: 99,
             humanPendingYellow: 99,
-            humanPendingBlue: 99,
           }),
           closeEventCounts: { h1: 99, h3: 99, h5: 99 },
         },

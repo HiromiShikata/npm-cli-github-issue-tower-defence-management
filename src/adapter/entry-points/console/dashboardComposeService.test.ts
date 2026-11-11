@@ -49,20 +49,17 @@ describe('buildComposeDashboardInput', () => {
             blocker: 0,
             humanPendingRed: 0,
             humanPendingYellow: 0,
-            humanPendingBlue: 0,
             consoleTodoByHumanCount: 0,
             consoleAwaitingOwnerCount: 0,
           },
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
           rowCapturedAt: null,
-          isFallback: false,
         },
         {
           code: 'in',
           row: null,
           closeEventCounts: { h1: 0, h3: 0, h5: 0 },
           rowCapturedAt: null,
-          isFallback: false,
         },
       ]);
     } finally {
@@ -84,6 +81,36 @@ describe('buildComposeDashboardInput', () => {
     }
   });
 
+  it('parses a project file that still carries a legacy humanPendingBlue value and drops the field', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeProject(dataDir, 'acme', {
+        capturedAt: '2026-06-26T12:00:00.000Z',
+        todo: 1,
+        qc: 2,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+        humanPendingRed: 3,
+        humanPendingYellow: 4,
+        humanPendingBlue: 7,
+        consoleTodoByHumanCount: 0,
+        consoleAwaitingOwnerCount: 0,
+      });
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      const row = input.projects[0].row;
+      expect(row?.humanPendingRed).toBe(3);
+      expect(row?.humanPendingYellow).toBe(4);
+      expect(row).not.toHaveProperty('humanPendingBlue');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
   it('treats malformed JSON as an absent row', () => {
     const dataDir = makeDataDir();
     try {
@@ -549,7 +576,6 @@ describe('buildComposeDashboardInput', () => {
         blocker: 0,
         humanPendingRed: 0,
         humanPendingYellow: 0,
-        humanPendingBlue: 0,
         consoleTodoByHumanCount: 0,
         consoleAwaitingOwnerCount: 0,
       });
@@ -595,7 +621,6 @@ describe('buildComposeDashboardInput', () => {
       });
       expect(input.projects[0].row?.ws).toBe(1);
       expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:05:00.000Z');
-      expect(input.projects[0].isFallback).toBe(false);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
       fs.rmSync(cacheDir, { recursive: true, force: true });
@@ -619,7 +644,6 @@ describe('buildComposeDashboardInput', () => {
         blocker: 0,
         humanPendingRed: 0,
         humanPendingYellow: 0,
-        humanPendingBlue: 0,
         consoleTodoByHumanCount: 0,
         consoleAwaitingOwnerCount: 0,
       });
@@ -629,7 +653,6 @@ describe('buildComposeDashboardInput', () => {
       });
       expect(input.projects[0].row?.ws).toBe(1);
       expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:00:00.000Z');
-      expect(input.projects[0].isFallback).toBe(true);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
@@ -653,7 +676,6 @@ describe('buildComposeDashboardInput', () => {
         blocker: 0,
         humanPendingRed: 0,
         humanPendingYellow: 0,
-        humanPendingBlue: 0,
         consoleTodoByHumanCount: 0,
         consoleAwaitingOwnerCount: 0,
       });
@@ -670,7 +692,6 @@ describe('buildComposeDashboardInput', () => {
       });
       expect(input.projects[0].row?.ws).toBe(1);
       expect(input.projects[0].rowCapturedAt).toBe('2026-06-26T12:05:00.000Z');
-      expect(input.projects[0].isFallback).toBe(true);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
       fs.rmSync(cacheDir, { recursive: true, force: true });
@@ -743,7 +764,6 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
         blocker: 0,
         humanPendingRed: 9,
         humanPendingYellow: 9,
-        humanPendingBlue: 9,
         consoleTodoByHumanCount: 0,
         consoleAwaitingOwnerCount: 0,
       });
@@ -770,7 +790,6 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
         rowCapturedAt: project.rowCapturedAt,
         humanPendingRed: project.row?.humanPendingRed,
         humanPendingYellow: project.row?.humanPendingYellow,
-        humanPendingBlue: project.row?.humanPendingBlue,
       };
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
@@ -823,7 +842,6 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
       rowCapturedAt: '2026-06-26T12:05:00.000Z',
       humanPendingRed: 2,
       humanPendingYellow: 1,
-      humanPendingBlue: 1,
     });
   });
 
@@ -859,7 +877,6 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
       rowCapturedAt: '2026-06-26T12:05:00.000Z',
       humanPendingRed: 1,
       humanPendingYellow: 0,
-      humanPendingBlue: 2,
     });
   });
 
@@ -894,7 +911,6 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
         rowCapturedAt: '2026-06-26T12:05:00.000Z',
         humanPendingRed: 0,
         humanPendingYellow: 0,
-        humanPendingBlue: 0,
       });
     },
   );
