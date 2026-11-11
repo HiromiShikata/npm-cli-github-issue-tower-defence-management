@@ -1276,6 +1276,51 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).toHaveBeenCalledTimes(2);
     });
 
+    it('shares the in-flight result when identical set_status requests overlap', async () => {
+      let releaseComment!: () => void;
+      const commentReleased = new Promise<void>((resolve) => {
+        releaseComment = resolve;
+      });
+      issueRepository.createCommentByUrl.mockImplementation(async () => {
+        await commentReleased;
+        return {
+          id: 91,
+          author: 'HiromiShikata',
+          body: 'overlap once',
+          createdAt: new Date('2026-06-19T12:00:00.000Z'),
+        };
+      });
+      const body = {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-overlap-action',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_overlap',
+        statusName: 'Todo',
+        commentBody: 'overlap once',
+      };
+
+      const firstResponsePromise = handleTriage(context, body);
+      await Promise.resolve();
+      const secondResponsePromise = handleTriage(context, body);
+      releaseComment();
+      const [firstResponse, secondResponse] = await Promise.all([
+        firstResponsePromise,
+        secondResponsePromise,
+      ]);
+
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(firstResponse.body).toMatchObject({
+        commentPosted: true,
+        statusSet: true,
+      });
+      expect(secondResponse.body).toMatchObject({
+        duplicate: true,
+        commentPosted: true,
+        statusSet: true,
+      });
+    });
+
     it('logs the upstream error when the combined comment step fails', async () => {
       const commentError = new Error('comment upstream failed');
       issueRepository.createCommentByUrl.mockRejectedValueOnce(commentError);
