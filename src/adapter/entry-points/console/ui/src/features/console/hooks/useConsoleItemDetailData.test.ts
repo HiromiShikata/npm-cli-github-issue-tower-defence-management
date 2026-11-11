@@ -178,6 +178,7 @@ describe('useConsoleItemDetailData', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
         summary: {
           title: 'Linked PR',
           body: 'body',
