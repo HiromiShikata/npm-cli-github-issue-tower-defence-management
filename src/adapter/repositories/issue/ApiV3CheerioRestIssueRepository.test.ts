@@ -10502,7 +10502,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.get(issueUrlOf(1))).toEqual([]);
     });
 
-    it('includes a cross-repo pull request whose body carries the closing keyword for the issue', async () => {
+    it('includes a cross-repo pull request whose body carries the closing keyword for the issue and excludes one that only mentions it', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10529,7 +10529,77 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(resolved.get(issueUrlOf(1))).toEqual([
         'https://github.com/HiromiShikata/other-repo/pull/5',
-        'https://github.com/HiromiShikata/other-repo/pull/6',
+      ]);
+    });
+
+    it('excludes a cross-repo pull request whose body only mentions the issue in a bullet list', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/other-owner/other-repo/pull/6',
+                  willCloseTarget: false,
+                  prBody: `- ${issueUrlOf(1)}`,
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('excludes a cross-repo pull request whose body only names the issue on a Relates to line', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/other-owner/other-repo/pull/6',
+                  willCloseTarget: false,
+                  prBody: `Relates to ${issueUrlOf(1)}`,
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('includes a cross-repo pull request whose Ref line names the issue', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/other-owner/other-repo/pull/6',
+                  willCloseTarget: false,
+                  prBody: `Ref ${issueUrlOf(1)}`,
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([
+        'https://github.com/other-owner/other-repo/pull/6',
       ]);
     });
 
@@ -10667,6 +10737,31 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
       expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(100)]);
+    });
+
+    it('includes a cross-repo pull request marked to close the target issue even when its body has no keyword', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/other-owner/other-repo/pull/21',
+                  willCloseTarget: true,
+                  prBody: 'No closing keyword in this body',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([
+        'https://github.com/other-owner/other-repo/pull/21',
+      ]);
     });
 
     it('excludes a timeline item that is not a CrossReferencedEvent', async () => {
@@ -10821,7 +10916,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(1)]);
     });
 
-    it('includes a same-repo pull request referenced by the timeline', async () => {
+    it('excludes a same-repo pull request whose closing keyword names a different issue', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10841,12 +10936,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([
-        'https://github.com/HiromiShikata/test-repository/pull/10',
-      ]);
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
     });
 
-    it('includes a cross-repo pull request referenced by the timeline', async () => {
+    it('excludes a cross-repo pull request that uses the same-repo shorthand closing keyword', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10867,9 +10960,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([
-        'https://github.com/HiromiShikata/another-repository/pull/55',
-      ]);
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
     });
   });
 
@@ -12916,7 +13007,60 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('includes the PR when willCloseTarget is false and the PR body has no closing keyword', async () => {
+    it('returns a cross-repo PR when willCloseTarget is true', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: true,
+              prUrl: 'https://github.com/other-owner/other-repo/pull/9',
+              prState: 'OPEN',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/other-owner/other-repo/pull/9',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/owner/repo/issues/5',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/other-owner/other-repo/pull/9',
+      );
+    });
+
+    it('returns a same-repo PR whose body has the shorthand closing keyword when willCloseTarget is false', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl: 'https://github.com/owner/repo/pull/100',
+              prState: 'OPEN',
+              prBody: 'Fixes #5',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/owner/repo/pull/100',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/owner/repo/issues/5',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe('https://github.com/owner/repo/pull/100');
+    });
+
+    it('excludes the PR when willCloseTarget is false and the PR body has no closing keyword', async () => {
       mockFetchRoutes({
         timeline: () =>
           buildTimelineResponse([
@@ -12939,7 +13083,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/secretary/issues/2380',
       );
 
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(0);
     });
 
     it('includes the cross-repo PR when willCloseTarget is false but the PR body contains "Closes {issueUrl}"', async () => {
@@ -13032,7 +13176,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
     });
 
-    it('includes the PR when willCloseTarget is false, regardless of closing-keyword text', async () => {
+    it('excludes the PR when willCloseTarget is false and its closing keyword names a different issue', async () => {
       mockFetchRoutes({
         timeline: () =>
           buildTimelineResponse([
@@ -13056,7 +13200,84 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/secretary/issues/2380',
       );
 
+      expect(result).toHaveLength(0);
+    });
+
+    it('excludes the PR when willCloseTarget is false and the issue is only named in a bullet-list URL', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl: 'https://github.com/owner/repo/pull/100',
+              prState: 'OPEN',
+              prBody: '- https://github.com/owner/repo/issues/5',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/owner/repo/pull/100',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/owner/repo/issues/5',
+      );
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('excludes the PR when willCloseTarget is false and the body only quotes an issue comment of the issue', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl: 'https://github.com/owner/repo/pull/100',
+              prState: 'OPEN',
+              prBody:
+                'Discussed in https://github.com/owner/repo/issues/5#issuecomment-1234567',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/owner/repo/pull/100',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/owner/repo/issues/5',
+      );
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('includes the same-repo PR whose Ref line names the issue when willCloseTarget is false', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: false,
+              prUrl: 'https://github.com/owner/repo/pull/100',
+              prState: 'OPEN',
+              prBody: 'Summary\nRef https://github.com/owner/repo/issues/5',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/owner/repo/pull/100',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/owner/repo/issues/5',
+      );
+
       expect(result).toHaveLength(1);
+      expect(result[0].url).toBe('https://github.com/owner/repo/pull/100');
     });
 
     it('excludes the cross-repo PR when it is not in OPEN state even if the body contains a closing keyword', async () => {

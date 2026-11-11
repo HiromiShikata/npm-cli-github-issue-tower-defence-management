@@ -1297,14 +1297,14 @@ describe('GraphqlProjectItemRepository', () => {
         expected: string[];
       }[] = [
         {
-          name: 'extracts a bare-text cross-repo issue URL from the body',
+          name: 'excludes a bare-text cross-repo issue URL that is not on a Ref line',
           body: 'See https://github.com/other/repo/issues/99 for details',
-          expected: ['https://github.com/other/repo/issues/99'],
+          expected: [],
         },
         {
-          name: 'extracts a cross-repo issue URL embedded in markdown link syntax',
+          name: 'excludes a cross-repo issue URL embedded in markdown link syntax outside a Ref line',
           body: 'See [this](https://github.com/other/repo/issues/99) for details',
-          expected: ['https://github.com/other/repo/issues/99'],
+          expected: [],
         },
         {
           name: 'excludes a same-repository URL',
@@ -1317,8 +1317,13 @@ describe('GraphqlProjectItemRepository', () => {
           expected: ['https://github.com/owner/repo/issues/5'],
         },
         {
-          name: 'de-duplicates the same cross-repo URL appearing twice',
-          body: 'https://github.com/other/repo/issues/99 and again https://github.com/other/repo/issues/99',
+          name: 'de-duplicates the same URL named by two Ref lines',
+          body: 'Ref https://github.com/other/repo/issues/99\nRef https://github.com/other/repo/issues/99',
+          expected: ['https://github.com/other/repo/issues/99'],
+        },
+        {
+          name: 'returns only the Ref line URL when a bullet names another cross-repo issue',
+          body: 'Ref https://github.com/other/repo/issues/99\n- https://github.com/other/repo/issues/100',
           expected: ['https://github.com/other/repo/issues/99'],
         },
         {
@@ -1332,9 +1337,19 @@ describe('GraphqlProjectItemRepository', () => {
           expected: [],
         },
         {
-          name: 'extracts a cross-repo pull request URL',
+          name: 'excludes a cross-repo pull request URL that is not on a Ref line',
           body: 'See https://github.com/other/repo/pull/7',
-          expected: ['https://github.com/other/repo/pull/7'],
+          expected: [],
+        },
+        {
+          name: 'excludes a cross-repo pull request URL named by a Ref line',
+          body: 'Ref https://github.com/other/repo/pull/7',
+          expected: [],
+        },
+        {
+          name: 'extracts a cross-repo issue URL named by a Ref line',
+          body: 'Ref https://github.com/other/repo/issues/99',
+          expected: ['https://github.com/other/repo/issues/99'],
         },
       ];
       it.each(extractionTestCases)('$name', async ({ body, expected }) => {
