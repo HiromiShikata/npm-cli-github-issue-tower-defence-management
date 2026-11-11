@@ -348,7 +348,7 @@ describe('ApiV3CheerioRestIssueRepository CI status availability', () => {
       expect(
         warningMessages(warnSpy).some(
           (message) =>
-            message.split(/\s+/).includes(PR_URL) &&
+            message.split(/\s+/).some((token) => token === PR_URL) &&
             message.includes(warningFragment),
         ),
       ).toBe(true);
