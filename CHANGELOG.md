@@ -1,3 +1,10 @@
+## [2.195.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.3...v2.195.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* **console:** keep related pull requests whose CI status cannot be read ([#3719](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3719)) ([1ba1381](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1ba1381f6640372143df50a58cc17ff6eb5b4fab))
+
 ## [2.195.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.2...v2.195.3) (2026-11-11)
 
 
