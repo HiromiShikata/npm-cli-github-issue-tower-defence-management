@@ -763,6 +763,7 @@ describe('useConsoleOperations', () => {
       statusName: option.name,
       commentBody: 'ok',
       actionId: expect.any(String),
+      setStatusWhenCommentFails: true,
     });
   });
 
@@ -796,7 +797,8 @@ describe('useConsoleOperations', () => {
         caughtMessage = e instanceof Error ? e.message : String(e);
       }
     });
-    expect(caughtMessage).toContain('upstream refused');
+    expect(caughtMessage).toContain('Re-post: ok');
+    expect(caughtMessage).toContain('Status was changed');
     expect(calledUrls).toEqual(['/api/triage']);
   });
 
@@ -830,7 +832,8 @@ describe('useConsoleOperations', () => {
         caughtMessage = e instanceof Error ? e.message : String(e);
       }
     });
-    expect(caughtMessage).toContain('rate limit exceeded');
+    expect(caughtMessage).toContain('Re-post: ok');
+    expect(caughtMessage).toContain('Status was changed');
     expect(calledUrls).toEqual(['/api/triage']);
   });
 

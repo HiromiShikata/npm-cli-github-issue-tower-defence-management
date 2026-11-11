@@ -1,22 +1,24 @@
-import * as fs from 'fs';
-import * as http from 'http';
+import * as fs from 'node:fs';
+import * as http from 'node:http';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { mock } from 'jest-mock-extended';
-import * as os from 'os';
-import * as path from 'path';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
 import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import * as projectConfig from '../cli/projectConfig';
+import { countCloseEvents } from './consoleCloseEventStore';
 import {
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
   CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
   CONSOLE_DONE_TAB_NAMES,
   readDoneProjectItemIds,
 } from './consoleDoneStore';
-import { countCloseEvents } from './consoleCloseEventStore';
-import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
-import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import {
   type ConsoleOperationContext,
   type ConsoleProjectBinding,
@@ -42,10 +44,8 @@ import {
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
-import * as projectConfig from '../cli/projectConfig';
-import { readProjectTimer } from './consoleProjectTimerStore';
-import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { createConsoleProjectResolver } from './consoleProjectResolver';
+import { readProjectTimer } from './consoleProjectTimerStore';
 import { createWebServer } from './webServer';
 
 const hasErrorMessage = (body: unknown): body is { error: string } =>
@@ -1223,7 +1223,48 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
     });
 
-    it('returns commentPosted false and does not set status when the combined comment step fails', async () => {
+    it('sets the status when the combined comment step fails and the request opts in', async () => {
+      const commentError = new Error('comment rejected with opt-in');
+      issueRepository.createCommentByUrl.mockRejectedValueOnce(commentError);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          actionId: 'triage-action-comment-failure-status-change',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_atomic_comment_failure_status_change',
+          expectedStatusName: 'Awaiting Workspace',
+          statusName: 'Preparation',
+          commentBody: 'retry me after status change',
+          setStatusWhenCommentFails: true,
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+          ok: false,
+          commentPosted: false,
+          statusSet: true,
+          error: 'comment rejected with opt-in',
+        });
+        expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+        expect(consoleError).toHaveBeenCalledWith(
+          '[handleTriage] upstream comment post failed:',
+          expect.objectContaining({
+            pjcode: 'acme',
+            url: 'https://github.com/o/r/issues/1',
+          }),
+          commentError,
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
+    it('returns commentPosted false and does not set status when the comment failure flag is absent', async () => {
       issueRepository.createCommentByUrl.mockRejectedValueOnce(
         new Error('comment rejected'),
       );
