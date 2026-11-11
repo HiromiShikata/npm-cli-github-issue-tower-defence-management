@@ -348,7 +348,8 @@ describe('ApiV3CheerioRestIssueRepository CI status availability', () => {
       expect(
         warningMessages(warnSpy).some(
           (message) =>
-            message.includes(PR_URL) && message.includes(warningFragment),
+            message.split(/\s+/).includes(PR_URL) &&
+            message.includes(warningFragment),
         ),
       ).toBe(true);
     },
