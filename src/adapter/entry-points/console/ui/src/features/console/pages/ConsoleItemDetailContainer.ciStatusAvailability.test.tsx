@@ -26,7 +26,9 @@ const withCiStatusAvailability = (
   ciStatusAvailability: 'AVAILABLE' | 'UNAVAILABLE',
 ) => ({ ...pullRequest, ciStatusAvailability });
 
-const buildCaches = (relatedPrs: ConsoleRelatedPullRequest[]): ConsoleCaches => {
+const buildCaches = (
+  relatedPrs: ConsoleRelatedPullRequest[],
+): ConsoleCaches => {
   const client = {
     fetchItemBody: async () => '# body',
     fetchComments: async () => [],

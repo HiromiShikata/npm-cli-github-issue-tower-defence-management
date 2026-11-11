@@ -68,7 +68,13 @@ describe('ConsolePullRequestDetail CI status availability', () => {
     },
   ])(
     'shows the "$shownLabel" label and hides the other CI labels for $name',
-    ({ ciStatusAvailability, isPassedAllCiJob, isCiStateSuccess, shownLabel, hiddenLabels }) => {
+    ({
+      ciStatusAvailability,
+      isPassedAllCiJob,
+      isCiStateSuccess,
+      shownLabel,
+      hiddenLabels,
+    }) => {
       const pullRequest = withCiStatus(basePullRequest, {
         ciStatusAvailability,
         isPassedAllCiJob,
@@ -98,9 +104,7 @@ describe('ConsolePullRequestDetail CI status availability', () => {
         renderPullRequest(pullRequest);
 
       expect(getByText('Description')).toBeInTheDocument();
-      expect(
-        getByText('Changed files', { exact: false }),
-      ).toBeInTheDocument();
+      expect(getByText('Changed files', { exact: false })).toBeInTheDocument();
       expect(getAllByText(changedFileName ?? '').length).toBeGreaterThan(0);
       expect(getByRole('link', { name: 'open' })).toHaveAttribute(
         'href',
