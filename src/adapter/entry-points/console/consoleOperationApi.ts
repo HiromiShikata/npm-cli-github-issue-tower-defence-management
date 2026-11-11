@@ -93,6 +93,35 @@ const ok = (): ConsoleOperationResponse => ({
   body: { ok: true },
 });
 
+const actionResults = new Map<string, Record<string, unknown>>();
+const pendingActionResults = new Map<
+  string,
+  Promise<ConsoleOperationResponse>
+>();
+const ACTION_RESULT_LIMIT = 1000;
+
+const storedActionResult = (
+  actionId: unknown,
+): ConsoleOperationResponse | null => {
+  if (!isNonEmptyString(actionId)) return null;
+  const body = actionResults.get(actionId);
+  return body === undefined
+    ? null
+    : { statusCode: 200, body: { ...body, duplicate: true } };
+};
+
+const rememberActionResult = (
+  actionId: unknown,
+  body: Record<string, unknown>,
+): void => {
+  if (!isNonEmptyString(actionId)) return;
+  if (actionResults.size >= ACTION_RESULT_LIMIT) {
+    const first = actionResults.keys().next().value;
+    if (typeof first === 'string') actionResults.delete(first);
+  }
+  actionResults.set(actionId, body);
+};
+
 const badRequest = (message: string): ConsoleOperationResponse => ({
   statusCode: 400,
   body: { error: message },
@@ -625,7 +654,7 @@ export const handleReview = async (
   return badRequest(`unknown review action "${action}"`);
 };
 
-export const handleTriage = async (
+const handleTriageImpl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
@@ -675,9 +704,46 @@ export const handleTriage = async (
   const { project, pjcode } = binding;
 
   if (action === 'set_status') {
+    const previousResult = isNonEmptyString(body.actionId)
+      ? actionResults.get(body.actionId)
+      : undefined;
+    if (previousResult?.statusSet === true) {
+      return { statusCode: 200, body: { ...previousResult, duplicate: true } };
+    }
     const statusName = body.statusName;
-    if (!isNonEmptyString(statusName)) {
+    if (!isNonEmptyString(statusName))
       return badRequest('statusName is required for set_status');
+    const commentBody = body.commentBody;
+    let commentPosted = previousResult?.commentPosted === true;
+    let commentFailure: string | null = null;
+    if (
+      isNonEmptyString(commentBody) &&
+      previousResult?.commentPosted !== true
+    ) {
+      try {
+        await context
+          .resolveIssueRepository(issueUrl)
+          .createCommentByUrl(issueUrl, commentBody);
+        commentPosted = true;
+      } catch (error) {
+        console.error(
+          '[handleTriage] upstream comment post failed:',
+          { pjcode, url: issueUrl },
+          error,
+        );
+        commentFailure = error instanceof Error ? error.message : String(error);
+        if (body.setStatusWhenCommentFails !== true) {
+          return {
+            statusCode: 200,
+            body: {
+              ok: false,
+              commentPosted: false,
+              statusSet: false,
+              error: commentFailure,
+            },
+          };
+        }
+      }
     }
     let failure: ConsoleOperationResponse | null;
     try {
@@ -696,7 +762,17 @@ export const handleTriage = async (
       );
     }
     if (failure !== null) {
-      return failure;
+      const failureBody =
+        typeof failure.body === 'object' && failure.body !== null
+          ? failure.body
+          : {};
+      const resultBody = {
+        ...failureBody,
+        commentPosted,
+        statusSet: false,
+      };
+      if (commentPosted) rememberActionResult(body.actionId, resultBody);
+      return { ...failure, body: resultBody };
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     const lowerStatus = statusName.toLowerCase();
@@ -714,7 +790,25 @@ export const handleTriage = async (
         canonicalStatusName,
       );
     }
-    return ok();
+    const resultBody =
+      commentFailure === null
+        ? commentPosted
+          ? { ok: true, commentPosted: true, statusSet: true }
+          : { ok: true }
+        : {
+            ok: false,
+            commentPosted: false,
+            statusSet: true,
+            error: commentFailure,
+          };
+    rememberActionResult(body.actionId, resultBody);
+    return {
+      statusCode: 200,
+      body:
+        previousResult === undefined
+          ? resultBody
+          : { ...resultBody, duplicate: true },
+    };
   }
 
   if (action === 'set_story') {
@@ -989,7 +1083,7 @@ export const handleTriage = async (
   return badRequest(`unknown triage action "${action}"`);
 };
 
-export const handleComment = async (
+const handleCommentImpl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
@@ -1001,6 +1095,8 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
+  const duplicate = storedActionResult(body.actionId);
+  if (duplicate !== null) return duplicate;
   const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
   if (pjcode === null) {
     console.warn('[handleComment] pjcode absent in request body', { url });
@@ -1009,18 +1105,17 @@ export const handleComment = async (
     const posted = await context
       .resolveIssueRepository(url)
       .createCommentByUrl(url, commentBody);
-    return {
-      statusCode: 200,
-      body: {
-        ok: true,
-        comment: {
-          id: posted.id,
-          author: posted.author,
-          body: posted.body,
-          createdAt: posted.createdAt.toISOString(),
-        },
+    const resultBody = {
+      ok: true,
+      comment: {
+        id: posted.id,
+        author: posted.author,
+        body: posted.body,
+        createdAt: posted.createdAt.toISOString(),
       },
     };
+    rememberActionResult(body.actionId, resultBody);
+    return { statusCode: 200, body: resultBody };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(
@@ -1044,6 +1139,52 @@ export const handleComment = async (
     };
   }
 };
+
+const duplicateResponse = (
+  response: ConsoleOperationResponse,
+): ConsoleOperationResponse => {
+  const body =
+    typeof response.body === 'object' && response.body !== null
+      ? response.body
+      : {};
+  return { ...response, body: { ...body, duplicate: true } };
+};
+
+const runWithPendingAction = async (
+  actionId: unknown,
+  operation: () => Promise<ConsoleOperationResponse>,
+): Promise<ConsoleOperationResponse> => {
+  if (!isNonEmptyString(actionId)) return operation();
+  const pending = pendingActionResults.get(actionId);
+  if (pending !== undefined) return duplicateResponse(await pending);
+  if (pendingActionResults.size >= ACTION_RESULT_LIMIT) {
+    const first = pendingActionResults.keys().next().value;
+    if (typeof first === 'string') pendingActionResults.delete(first);
+  }
+  const promise = operation();
+  pendingActionResults.set(actionId, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingActionResults.get(actionId) === promise) {
+      pendingActionResults.delete(actionId);
+    }
+  }
+};
+
+export const handleTriage = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> =>
+  body.action === 'set_status'
+    ? runWithPendingAction(body.actionId, () => handleTriageImpl(context, body))
+    : handleTriageImpl(context, body);
+
+export const handleComment = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> =>
+  runWithPendingAction(body.actionId, () => handleCommentImpl(context, body));
 
 export const handleAttachmentUpload = async (
   context: ConsoleOperationContext,

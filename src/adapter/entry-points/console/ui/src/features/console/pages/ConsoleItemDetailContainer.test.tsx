@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from '../hooks/consoleActionDelivery';
 import {
   ConsoleActionPartiallySentError,
   type ConsoleOfflinePayload,
@@ -8,7 +9,9 @@ import {
   buildTriageRequest,
   type ConsoleOperationsApi,
   TRIAGE_OPERATION_PATH,
+  useConsoleOperations,
 } from '../hooks/useConsoleOperations';
+import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import {
   COMMENT_OPERATION_PATH,
   SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
@@ -3491,6 +3494,33 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       />,
     );
 
+  const renderIssueDetailWithNetworkOperations = () => {
+    const NetworkOperationsDetail = () => {
+      useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme');
+      return (
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={jest.fn()}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
+          pjcode="acme"
+        />
+      );
+    };
+    return render(<NetworkOperationsDetail />);
+  };
+
   it('posts a composer comment once through operations.addComment with the item and the draft, without queuing an action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
@@ -3536,6 +3566,90 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     ).toBe('Rejected by the host.');
   });
 
+  it.each([
+    {
+      result: 'success',
+      response: {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          comment: {
+            id: 91,
+            author: 'HiromiShikata',
+            body: 'Persist before posting.',
+            createdAt: '2026-06-19T12:00:00.000Z',
+          },
+        }),
+      },
+    },
+    {
+      result: 'failure',
+      response: {
+        ok: false,
+        status: 400,
+        json: async () => ({ ok: false, error: 'HTTP 400.' }),
+      },
+    },
+  ])(
+    'persists the plain add-comment descriptor before the network resolves and keeps it only on $result',
+    async ({ result, response }) => {
+      localStorage.clear();
+      let releaseRequest!: () => void;
+      const requestReleased = new Promise<void>((resolve) => {
+        releaseRequest = resolve;
+      });
+      let storageAtFetch: string | null = null;
+      const fetchMock = jest.fn(async () => {
+        storageAtFetch = localStorage.getItem(
+          CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        );
+        await requestReleased;
+        return response;
+      });
+      const originalFetch = global.fetch;
+      global.fetch = fetchMock as unknown as typeof fetch;
+      try {
+        const { getByPlaceholderText, getByText, findByRole } =
+          renderIssueDetailWithNetworkOperations();
+        fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'Persist before posting.' },
+        });
+        fireEvent.click(getByText('Comment'));
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        const persisted = JSON.parse(storageAtFetch ?? 'null') as Array<{
+          id?: unknown;
+        }> | null;
+        expect(persisted).toHaveLength(1);
+        expect(typeof persisted?.[0]?.id).toBe('string');
+
+        releaseRequest();
+        if (result === 'failure') {
+          const alert = await findByRole('alert');
+          expect(alert.textContent).toContain('Failed: HTTP 400.');
+          expect(
+            JSON.parse(
+              localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ??
+                'null',
+            ),
+          ).toHaveLength(1);
+        } else {
+          await waitFor(() => {
+            expect(
+              JSON.parse(
+                localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ??
+                  'null',
+              ),
+            ).toHaveLength(0);
+          });
+        }
+      } finally {
+        global.fetch = originalFetch;
+      }
+    },
+  );
+
   const offlinePayloadBaseFor = (item: ConsoleListItem) => ({
     itemUrl: item.url,
     projectItemId: item.projectItemId,
@@ -3557,7 +3671,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   const triageOfflinePayloadFor = (
     item: ConsoleListItem,
     action: 'close' | 'set_status',
-    extra?: { statusName: string },
+    extra?: { statusName: string; commentBody?: string },
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
@@ -3683,9 +3797,9 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'ok & Awaiting Workspace',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, 'ok'),
         triageOfflinePayloadFor(issueItem, 'set_status', {
           statusName: AWAITING_WORKSPACE_NAME,
+          commentBody: 'ok',
         }),
       ],
     },
@@ -3699,9 +3813,9 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
         triageOfflinePayloadFor(issueItem, 'set_status', {
           statusName: AWAITING_WORKSPACE_NAME,
+          commentBody: draftWrittenBeforeClosing,
         }),
       ],
     },

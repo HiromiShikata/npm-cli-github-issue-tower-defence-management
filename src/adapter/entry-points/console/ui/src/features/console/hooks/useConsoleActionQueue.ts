@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   COMMENT_OPERATION_PATH,
   type ConsoleCommentRequest,
@@ -10,6 +16,12 @@ import {
   type ConsoleToastColor,
 } from '../logic/actionToast';
 import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
+import {
+  deliverPersistedConsoleAction,
+  loadPersistedConsoleActions,
+  persistConsoleAction,
+  removePersistedConsoleAction,
+} from './consoleActionDelivery';
 import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export type ConsoleOfflinePayload = {
@@ -21,10 +33,12 @@ export type ConsoleOfflinePayload = {
   isPr: boolean;
   apiPath: string;
   requestBody: Record<string, unknown>;
+  id?: string;
 };
 
 export type ConsoleOfflineQueuedAction = {
   id: string;
+  actionId?: string;
   message: string;
   color: ConsoleToastColor;
   enqueuedAt: number;
@@ -34,6 +48,10 @@ export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
   commit: (sentStepCount: number) => Promise<void>;
+  commitWithActionId?: (
+    sentStepCount: number,
+    actionId: string,
+  ) => Promise<void>;
   advance: () => void;
   revertAdvance?: () => void;
   optimistic?: () => void;
@@ -49,6 +67,7 @@ export type ConsoleOfflineActionsCreateRequest = {
 
 export type ConsoleActionQueueOptions = {
   isAirplaneModeOn: boolean;
+  projectCode?: string | null;
 };
 
 export type ConsolePendingActionView = {
@@ -111,7 +130,14 @@ const loadOfflineQueue = (): ConsoleOfflineQueuedAction[] => {
     if (raw === null) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isConsoleOfflineQueuedAction);
+    const deliveryIds = new Set(
+      loadPersistedConsoleActions().map((action) => action.id),
+    );
+    return parsed.filter(
+      (item) =>
+        isConsoleOfflineQueuedAction(item) &&
+        !deliveryIds.has((item as ConsoleOfflineQueuedAction).id),
+    );
   } catch {
     return [];
   }
@@ -119,6 +145,24 @@ const loadOfflineQueue = (): ConsoleOfflineQueuedAction[] => {
 
 const saveOfflineQueue = (actions: ConsoleOfflineQueuedAction[]): void => {
   localStorage.setItem(OFFLINE_QUEUE_STORAGE_KEY, JSON.stringify(actions));
+};
+
+const removeOfflineQueueAction = (id: string): void => {
+  try {
+    const raw = localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY);
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+    const actions = Array.isArray(parsed) ? parsed : [];
+    saveOfflineQueue(
+      actions.filter(
+        (action) =>
+          typeof action !== 'object' ||
+          action === null ||
+          (action as { id?: unknown }).id !== id,
+      ) as ConsoleOfflineQueuedAction[],
+    );
+  } catch {
+    saveOfflineQueue([]);
+  }
 };
 
 const generateId = (): string => {
@@ -208,6 +252,20 @@ export const useConsoleActionQueue = (
 ): ConsoleActionQueue => {
   const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
   isAirplaneModeOnRef.current = options.isAirplaneModeOn;
+  const projectCodeRef = useRef(options.projectCode);
+  const deliveredActionIdsRef = useRef<Set<string>>(new Set());
+  const legacyPersistedAtMountRef = useRef(
+    (() => {
+      const actions = loadOfflineQueue();
+      return actions.length === 1
+        ? actions.filter(
+            (action) =>
+              action.actionId === undefined &&
+              action.apiPath !== COMMENT_OPERATION_PATH,
+          )
+        : [];
+    })(),
+  );
   const [pending, setPending] = useState<ConsolePendingActionView[]>([]);
   const [error, setError] = useState<ConsoleActionError[]>([]);
   const [offlineActions, setOfflineActions] =
@@ -254,13 +312,20 @@ export const useConsoleActionQueue = (
       color,
     }: ConsoleOfflineActionsCreateRequest): void => {
       const enqueuedAt = Date.now();
-      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => ({
-        id: generateId(),
-        message,
-        color,
-        enqueuedAt,
-        ...payload,
-      }));
+      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => {
+        const offlinePayload = { ...payload } as ConsoleOfflinePayload & {
+          actionId?: string;
+        };
+        delete offlinePayload.actionId;
+        return {
+          id: generateId(),
+          message,
+          color,
+          enqueuedAt,
+          ...offlinePayload,
+        };
+      });
+      saveOfflineQueue([...loadOfflineQueue(), ...created]);
       setOfflineActions((prev) => {
         const next = [...prev, ...created];
         saveOfflineQueue(next);
@@ -301,6 +366,12 @@ export const useConsoleActionQueue = (
       const actionHoldOffline = (
         unsentOfflinePayloads: ConsoleOfflinePayload[],
       ): void => {
+        for (const payload of offlinePayloads) {
+          if (payload.id !== undefined) {
+            removePersistedConsoleAction(payload.id);
+            removeOfflineQueueAction(payload.id);
+          }
+        }
         offlineActionsCreate({
           payloads: unsentOfflinePayloads,
           message: action.message,
@@ -324,9 +395,19 @@ export const useConsoleActionQueue = (
         return;
       }
       setWriteState({ status: 'unconfirmed', attempt });
-      action
-        .commit(sentStepCount)
+      (action.commitWithActionId === undefined
+        ? action.commit(sentStepCount)
+        : action.commitWithActionId(
+            sentStepCount,
+            String(offlinePayloads[0]?.id ?? ''),
+          )
+      )
         .then(() => {
+          for (const payload of offlinePayloads) {
+            const id = payload.id ?? '';
+            removePersistedConsoleAction(id);
+            removeOfflineQueueAction(id);
+          }
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
@@ -345,6 +426,12 @@ export const useConsoleActionQueue = (
           ) {
             actionHoldOffline(unsentOfflinePayloads);
           } else {
+            for (const payload of offlinePayloads) {
+              if (payload.id !== undefined) {
+                removePersistedConsoleAction(payload.id);
+                removeOfflineQueueAction(payload.id);
+              }
+            }
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
@@ -362,6 +449,26 @@ export const useConsoleActionQueue = (
     [offlineActionsCreate],
   );
   runCommitRef.current = runCommit;
+
+  useEffect(() => {
+    if (
+      projectCodeRef.current === undefined ||
+      projectCodeRef.current === options.projectCode
+    ) {
+      projectCodeRef.current = options.projectCode;
+      return;
+    }
+    projectCodeRef.current = options.projectCode;
+    const entries = Array.from(pendingEntriesRef.current.values());
+    for (const entry of entries) {
+      if (entry.timer !== null) {
+        clearInterval(entry.timer);
+      }
+      pendingEntriesRef.current.delete(entry.id);
+      setPending((prev) => prev.filter((pending) => pending.id !== entry.id));
+      runCommit(entry.action, 0);
+    }
+  }, [options.projectCode, runCommit]);
 
   const commitEntry = useCallback(
     (id: string): void => {
@@ -386,6 +493,11 @@ export const useConsoleActionQueue = (
     }
     pendingEntriesRef.current.delete(id);
     setPending((prev) => prev.filter((p) => p.id !== id));
+    for (const payload of entry.action.offline ?? []) {
+      const payloadId = payload.id ?? '';
+      removePersistedConsoleAction(payloadId);
+      removeOfflineQueueAction(payloadId);
+    }
     entry.action.revertAdvance?.();
     entry.action.revertOptimistic?.();
   }, []);
@@ -437,6 +549,7 @@ export const useConsoleActionQueue = (
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,
+            retry: () => void confirmOfflineAction(id),
           });
           return;
         }
@@ -473,7 +586,29 @@ export const useConsoleActionQueue = (
         startedAt: createdAt,
         timer: null,
       };
-      pendingEntriesRef.current.set(id, entry);
+      const persisted = (action.offline ?? []).map((payload) => {
+        const persistedId =
+          typeof payload.requestBody.actionId === 'string'
+            ? payload.requestBody.actionId
+            : generateId();
+        const descriptor: ConsoleOfflineQueuedAction = {
+          id: persistedId,
+          actionId: persistedId,
+          message: action.message,
+          color: action.color,
+          enqueuedAt: createdAt,
+          ...payload,
+        };
+        persistConsoleAction(descriptor);
+        return descriptor;
+      });
+      const entryAction =
+        persisted.length > 0 ? { ...action, offline: persisted } : action;
+      if (persisted.length > 0) {
+        saveOfflineQueue([...loadOfflineQueue(), ...persisted]);
+      }
+      const entryWithAction = { ...entry, action: entryAction };
+      pendingEntriesRef.current.set(id, entryWithAction);
       setPending((prev) => [
         ...prev,
         {
@@ -495,13 +630,76 @@ export const useConsoleActionQueue = (
     [commitEntry],
   );
 
-  useEffect(() => {
-    return () => {
-      for (const id of Array.from(pendingEntriesRef.current.keys())) {
-        commitEntry(id);
+  useLayoutEffect(() => {
+    const replay = (): void => {
+      const persistedActions = loadPersistedConsoleActions();
+      const actions =
+        persistedActions.length === 0 &&
+        legacyPersistedAtMountRef.current.length === 1
+          ? legacyPersistedAtMountRef.current
+          : persistedActions;
+      for (const action of actions) {
+        if (deliveredActionIdsRef.current.has(action.id)) continue;
+        deliveredActionIdsRef.current.add(action.id);
+        void deliverPersistedConsoleAction(action)
+          .then(() => removeOfflineQueueAction(action.id))
+          .catch((cause: unknown) => {
+            appendError({
+              message: action.message,
+              reason: errorReason(cause),
+              retry: () => void replay(),
+            });
+          });
       }
     };
-  }, [commitEntry]);
+    const deliverPending = (): void => {
+      const entries = Array.from(pendingEntriesRef.current.values());
+      for (const entry of entries) {
+        if (entry.timer !== null) {
+          clearInterval(entry.timer);
+        }
+        pendingEntriesRef.current.delete(entry.id);
+        setPending((prev) => prev.filter((pending) => pending.id !== entry.id));
+        const offlinePayloads = entry.action.offline ?? [];
+        if (offlinePayloads.length === 0) {
+          void entry.action.commit(0).catch((cause: unknown) =>
+            appendError({
+              message: entry.action.message,
+              reason: errorReason(cause),
+            }),
+          );
+        }
+        for (const payload of offlinePayloads) {
+          const action = loadPersistedConsoleActions().find(
+            (candidate) => candidate.id === payload.id,
+          );
+          if (action !== undefined) {
+            if (deliveredActionIdsRef.current.has(action.id)) continue;
+            deliveredActionIdsRef.current.add(action.id);
+            void deliverPersistedConsoleAction(action, true)
+              .then(() => removeOfflineQueueAction(action.id))
+              .catch((cause: unknown) =>
+                appendError({
+                  message: entry.action.message,
+                  reason: errorReason(cause),
+                }),
+              );
+          }
+        }
+      }
+    };
+    replay();
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') deliverPending();
+    };
+    window.addEventListener('pagehide', deliverPending);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', deliverPending);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      deliverPending();
+    };
+  }, [appendError]);
 
   return {
     pending,

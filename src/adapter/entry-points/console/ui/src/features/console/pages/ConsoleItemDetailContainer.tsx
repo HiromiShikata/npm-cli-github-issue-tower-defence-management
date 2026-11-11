@@ -8,9 +8,14 @@ import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import {
+  persistConsoleAction,
+  removePersistedConsoleAction,
+} from '../hooks/consoleActionDelivery';
+import {
   ConsoleActionPartiallySentError,
   type ConsoleActionQueue,
   type ConsoleOfflinePayload,
+  type ConsoleOfflineQueuedAction,
   consoleActionStepsRun,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
@@ -71,6 +76,10 @@ export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
   commit: (sentStepCount: number) => Promise<void>;
+  commitWithActionId?: (
+    sentStepCount: number,
+    actionId: string,
+  ) => Promise<void>;
   offline?: ConsoleOfflinePayload[];
   skipAdvance?: boolean;
   onAdvance?: () => void;
@@ -118,6 +127,7 @@ export const buildTriageOfflinePayload = (
     statusName?: string;
     storyOptionId?: string;
     agentOptionId?: string;
+    commentBody?: string;
   },
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
@@ -172,9 +182,9 @@ export const okAndAwaitingWorkspaceOfflinePayloadsBuild = (
   item: ConsoleListItem,
   option: ConsoleFieldOption,
 ): ConsoleOfflinePayload[] => [
-  commentOfflinePayloadBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
   buildTriageOfflinePayload(pjcode, item, 'set_status', {
     statusName: option.name,
+    commentBody: AWAITING_WORKSPACE_COMMENT_BODY,
   }),
 ];
 
@@ -182,6 +192,11 @@ const COMMENT_HELD_OFFLINE_TOAST_COLOR = 'blue';
 
 const commentHeldOfflineToastMessage = (item: ConsoleListItem): string =>
   `Commented — ${itemToastLabel(item)}`;
+
+const generateCommentActionId = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
 const OK_AND_CLOSE_COMMENT_BODY = 'ok';
 
@@ -313,8 +328,21 @@ export const ConsoleItemDetailContainer = ({
       if (isAirplaneModeOn && pjcode != null) {
         return commentHoldOffline(pjcode);
       }
+      const actionId = generateCommentActionId();
+      if (pjcode != null) {
+        const descriptor: ConsoleOfflineQueuedAction = {
+          id: actionId,
+          actionId,
+          message: commentHeldOfflineToastMessage(item),
+          color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
+          enqueuedAt: Date.now(),
+          ...commentOfflinePayloadBuild(pjcode, item, body),
+        };
+        persistConsoleAction(descriptor);
+      }
       try {
         const comment = await operations.addComment(item, body);
+        if (pjcode != null) removePersistedConsoleAction(actionId);
         setPostedComments((previous) => [...previous, comment]);
         return comment;
       } catch (cause) {
@@ -409,6 +437,8 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'set_status', optionName: option.name },
         item,
         commit: () => operations.setStatus(item, option),
+        commitWithActionId: (_sentStepCount, actionId) =>
+          operations.setStatus(item, option, actionId),
         offline:
           pjcode != null
             ? [
@@ -454,8 +484,14 @@ export const ConsoleItemDetailContainer = ({
       onQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: (sentStepCount) =>
-          operations.okAndMoveToAwaitingWorkspace(item, option, sentStepCount),
+        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commitWithActionId: (sentStepCount, actionId) =>
+          operations.okAndMoveToAwaitingWorkspace(
+            item,
+            option,
+            sentStepCount,
+            actionId,
+          ),
         offline:
           pjcode != null
             ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
@@ -680,12 +716,28 @@ export const ConsoleItemDetailContainer = ({
                     );
                   }
                 },
+                commitWithActionId: async (sentStepCount, actionId) => {
+                  if (sentStepCount > 0) {
+                    await operations.setStatus(
+                      item,
+                      awaitingWorkspaceOption,
+                      actionId,
+                    );
+                    return;
+                  }
+                  await operations.addCommentAndMoveToAwaitingWorkspace(
+                    item,
+                    body,
+                    awaitingWorkspaceOption,
+                    actionId,
+                  );
+                },
                 offline:
                   pjcode != null
                     ? [
-                        commentOfflinePayloadBuild(pjcode, item, body),
                         buildTriageOfflinePayload(pjcode, item, 'set_status', {
                           statusName: awaitingWorkspaceOption.name,
+                          commentBody: body,
                         }),
                       ]
                     : undefined,

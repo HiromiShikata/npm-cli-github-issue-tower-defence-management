@@ -460,6 +460,7 @@ export const ConsolePage = () => {
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
+    projectCode: pjcode,
   });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -918,6 +919,7 @@ export const ConsolePage = () => {
       if (dependedIssueSubmission !== null) {
         dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
       }
+      const commitWithActionId = input.commitWithActionId;
       const commitAction =
         dependedIssueSubmission === null
           ? input.commit
@@ -931,6 +933,11 @@ export const ConsolePage = () => {
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: commitAction,
+        commitWithActionId:
+          commitWithActionId === undefined
+            ? undefined
+            : (sentStepCount, actionId) =>
+                commitWithActionId(sentStepCount, actionId),
         offline: input.offline,
         revertAdvance:
           dependedIssueSubmission === null

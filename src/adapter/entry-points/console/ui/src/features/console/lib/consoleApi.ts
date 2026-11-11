@@ -33,6 +33,7 @@ export type ConsoleReviewRequest = {
   line?: number;
   side?: ConsoleReviewCommentSide;
   expectedStatusName?: string | null;
+  actionId?: string;
 };
 
 export type ConsoleTriageRequest = {
@@ -46,7 +47,9 @@ export type ConsoleTriageRequest = {
   nextActionDate?: string;
   nextActionHour?: number | null;
   commentBody?: string;
+  setStatusWhenCommentFails?: boolean;
   expectedStatusName?: string | null;
+  actionId?: string;
 };
 
 export type ConsoleIntmuxRequest = {
@@ -66,6 +69,7 @@ export type ConsoleReviewCommentRequest = {
   line: number;
   side: ConsoleReviewCommentSide;
   body: string;
+  actionId?: string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -304,7 +308,12 @@ export const createConsoleApiClient = (): ConsoleApiClient => ({
 const readOperationErrorReason = async (
   response: Response,
 ): Promise<string> => {
-  const raw = await response.text().catch(() => '');
+  const raw =
+    typeof response.text === 'function'
+      ? await response.text().catch(() => '')
+      : typeof response.json === 'function'
+        ? JSON.stringify(await response.json().catch(() => ({})))
+        : '';
   if (raw.length === 0) {
     return `HTTP ${response.status}`;
   }
