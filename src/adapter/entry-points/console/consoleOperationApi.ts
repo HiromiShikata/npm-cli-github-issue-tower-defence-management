@@ -94,6 +94,10 @@ const ok = (): ConsoleOperationResponse => ({
 });
 
 const actionResults = new Map<string, Record<string, unknown>>();
+const pendingActionResults = new Map<
+  string,
+  Promise<ConsoleOperationResponse>
+>();
 const ACTION_RESULT_LIMIT = 1000;
 
 const storedActionResult = (
@@ -650,7 +654,7 @@ export const handleReview = async (
   return badRequest(`unknown review action "${action}"`);
 };
 
-export const handleTriage = async (
+const handleTriageImpl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
@@ -1067,7 +1071,7 @@ export const handleTriage = async (
   return badRequest(`unknown triage action "${action}"`);
 };
 
-export const handleComment = async (
+const handleCommentImpl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
@@ -1123,6 +1127,52 @@ export const handleComment = async (
     };
   }
 };
+
+const duplicateResponse = (
+  response: ConsoleOperationResponse,
+): ConsoleOperationResponse => {
+  const body =
+    typeof response.body === 'object' && response.body !== null
+      ? response.body
+      : {};
+  return { ...response, body: { ...body, duplicate: true } };
+};
+
+const runWithPendingAction = async (
+  actionId: unknown,
+  operation: () => Promise<ConsoleOperationResponse>,
+): Promise<ConsoleOperationResponse> => {
+  if (!isNonEmptyString(actionId)) return operation();
+  const pending = pendingActionResults.get(actionId);
+  if (pending !== undefined) return duplicateResponse(await pending);
+  if (pendingActionResults.size >= ACTION_RESULT_LIMIT) {
+    const first = pendingActionResults.keys().next().value;
+    if (typeof first === 'string') pendingActionResults.delete(first);
+  }
+  const promise = operation();
+  pendingActionResults.set(actionId, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingActionResults.get(actionId) === promise) {
+      pendingActionResults.delete(actionId);
+    }
+  }
+};
+
+export const handleTriage = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> =>
+  body.action === 'set_status'
+    ? runWithPendingAction(body.actionId, () => handleTriageImpl(context, body))
+    : handleTriageImpl(context, body);
+
+export const handleComment = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> =>
+  runWithPendingAction(body.actionId, () => handleCommentImpl(context, body));
 
 export const handleAttachmentUpload = async (
   context: ConsoleOperationContext,

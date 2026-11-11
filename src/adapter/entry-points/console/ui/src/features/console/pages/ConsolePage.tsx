@@ -919,6 +919,7 @@ export const ConsolePage = () => {
       if (dependedIssueSubmission !== null) {
         dependedIssueSubmissionsRef.current.add(dependedIssueSubmission);
       }
+      const commitWithActionId = input.commitWithActionId;
       const commitAction =
         dependedIssueSubmission === null
           ? input.commit
@@ -933,10 +934,10 @@ export const ConsolePage = () => {
         color: actionToastColor(input.kind),
         commit: commitAction,
         commitWithActionId:
-          input.commitWithActionId === undefined
+          commitWithActionId === undefined
             ? undefined
             : (sentStepCount, actionId) =>
-                input.commitWithActionId!(sentStepCount, actionId),
+                commitWithActionId(sentStepCount, actionId),
         offline: input.offline,
         revertAdvance:
           dependedIssueSubmission === null

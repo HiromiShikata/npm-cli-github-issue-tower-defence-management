@@ -8,9 +8,14 @@ import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import {
+  persistConsoleAction,
+  removePersistedConsoleAction,
+} from '../hooks/consoleActionDelivery';
+import {
   ConsoleActionPartiallySentError,
   type ConsoleActionQueue,
   type ConsoleOfflinePayload,
+  type ConsoleOfflineQueuedAction,
   consoleActionStepsRun,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
@@ -188,6 +193,11 @@ const COMMENT_HELD_OFFLINE_TOAST_COLOR = 'blue';
 const commentHeldOfflineToastMessage = (item: ConsoleListItem): string =>
   `Commented — ${itemToastLabel(item)}`;
 
+const generateCommentActionId = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
 const OK_AND_CLOSE_COMMENT_BODY = 'ok';
 
 const notifyCommentError = (
@@ -318,8 +328,21 @@ export const ConsoleItemDetailContainer = ({
       if (isAirplaneModeOn && pjcode != null) {
         return commentHoldOffline(pjcode);
       }
+      const actionId = generateCommentActionId();
+      if (pjcode != null) {
+        const descriptor: ConsoleOfflineQueuedAction = {
+          id: actionId,
+          actionId,
+          message: commentHeldOfflineToastMessage(item),
+          color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
+          enqueuedAt: Date.now(),
+          ...commentOfflinePayloadBuild(pjcode, item, body),
+        };
+        persistConsoleAction(descriptor);
+      }
       try {
         const comment = await operations.addComment(item, body);
+        if (pjcode != null) removePersistedConsoleAction(actionId);
         setPostedComments((previous) => [...previous, comment]);
         return comment;
       } catch (cause) {

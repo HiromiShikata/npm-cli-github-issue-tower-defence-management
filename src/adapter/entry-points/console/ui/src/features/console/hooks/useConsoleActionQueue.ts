@@ -16,13 +16,13 @@ import {
   type ConsoleToastColor,
 } from '../logic/actionToast';
 import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
-import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 import {
   deliverPersistedConsoleAction,
   loadPersistedConsoleActions,
   persistConsoleAction,
   removePersistedConsoleAction,
 } from './consoleActionDelivery';
+import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export type ConsoleOfflinePayload = {
   itemUrl: string;
