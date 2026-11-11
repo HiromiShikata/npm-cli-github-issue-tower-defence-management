@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   type ConsoleCommentRequest,
   type ConsoleDeleteAllCommentsRequest,
@@ -269,6 +269,7 @@ export const useConsoleOperations = (
     },
     [caches],
   );
+  const combinedActionIdsRef = useRef<Set<string>>(new Set());
 
   const reviewPullRequest = useCallback(
     async (
@@ -504,6 +505,9 @@ export const useConsoleOperations = (
     ) => {
       if (pjcode === null) throw missingPjcodeError();
       const resolvedActionId = actionId ?? generateActionId();
+      const hasAttemptedAction =
+        combinedActionIdsRef.current.has(resolvedActionId);
+      combinedActionIdsRef.current.add(resolvedActionId);
       const request = buildTriageRequest(pjcode, item, 'set_status', {
         statusName: option.name,
         commentBody: body,
@@ -513,6 +517,20 @@ export const useConsoleOperations = (
         TRIAGE_OPERATION_PATH,
         request,
       );
+      if (
+        !hasAttemptedAction &&
+        isRecord(response) &&
+        Object.keys(response).length === 0
+      ) {
+        const commentResult = await postConsoleComment(
+          commentRequestBuild(pjcode, item, body),
+        );
+        if (!commentResult.posted) {
+          throw new Error(commentResult.error);
+        }
+        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
+        return commentResult.comment;
+      }
       if (
         !isRecord(response) ||
         response.ok !== true ||
@@ -536,7 +554,12 @@ export const useConsoleOperations = (
       };
       return comment;
     },
-    [pjcode, invalidateItemContent],
+    [
+      pjcode,
+      invalidateItemContent,
+      awaitingWorkspaceStatusMoveAfterCommentPosted,
+      onAfterMoveToAwaitingWorkspace,
+    ],
   );
 
   const uploadAttachment = useCallback(

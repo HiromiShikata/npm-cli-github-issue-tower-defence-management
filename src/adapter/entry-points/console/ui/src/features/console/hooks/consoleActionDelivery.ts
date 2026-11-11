@@ -2,8 +2,8 @@ import type {
   ConsoleOfflinePayload,
   ConsoleOfflineQueuedAction,
 } from './useConsoleActionQueue';
+import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
-export const CONSOLE_ACTION_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
 export const CONSOLE_ACTION_DELIVERY_STORAGE_KEY =
   'console-action-delivery-queue';
 const inFlightActionIds = new Set<string>();
@@ -17,34 +17,7 @@ export const loadPersistedConsoleActions = (): ConsoleOfflineQueuedAction[] => {
         ? (parsed as ConsoleOfflineQueuedAction[])
         : [];
     }
-    const legacyRaw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
-    if (legacyRaw === null) return [];
-    const legacyParsed: unknown = JSON.parse(legacyRaw);
-    if (
-      !Array.isArray(legacyParsed) ||
-      legacyParsed.length !== 1 ||
-      typeof legacyParsed[0] !== 'object' ||
-      legacyParsed[0] === null
-    ) {
-      return [];
-    }
-    const legacyAction = legacyParsed[0] as Record<string, unknown>;
-    if (
-      typeof legacyAction.id !== 'string' ||
-      typeof legacyAction.message !== 'string' ||
-      typeof legacyAction.color !== 'string' ||
-      typeof legacyAction.enqueuedAt !== 'number' ||
-      typeof legacyAction.apiPath !== 'string' ||
-      legacyAction.apiPath === '/api/comment' ||
-      typeof legacyAction.requestBody !== 'object' ||
-      legacyAction.requestBody === null
-    ) {
-      return [];
-    }
-    const action = legacyAction as unknown as ConsoleOfflineQueuedAction;
-    savePersistedConsoleActions([action]);
-    localStorage.setItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY, '[]');
-    return [action];
+    return [];
   } catch {
     return [];
   }
@@ -63,37 +36,12 @@ export const persistConsoleAction = (
   action: ConsoleOfflineQueuedAction,
 ): void => {
   savePersistedConsoleActions([...loadPersistedConsoleActions(), action]);
-  const raw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
-  const existing: unknown = raw === null ? [] : JSON.parse(raw);
-  const actions = Array.isArray(existing) ? existing : [];
-  localStorage.setItem(
-    CONSOLE_ACTION_QUEUE_STORAGE_KEY,
-    JSON.stringify([...actions, action]),
-  );
 };
 
 export const removePersistedConsoleAction = (id: string): void => {
   savePersistedConsoleActions(
     loadPersistedConsoleActions().filter((action) => action.id !== id),
   );
-  try {
-    const raw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
-    const parsed: unknown = raw === null ? [] : JSON.parse(raw);
-    const actions = Array.isArray(parsed) ? parsed : [];
-    localStorage.setItem(
-      CONSOLE_ACTION_QUEUE_STORAGE_KEY,
-      JSON.stringify(
-        actions.filter(
-          (action) =>
-            typeof action !== 'object' ||
-            action === null ||
-            (action as { id?: unknown }).id !== id,
-        ),
-      ),
-    );
-  } catch {
-    localStorage.setItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY, '[]');
-  }
 };
 
 export const deliverConsoleAction = async (
@@ -137,6 +85,7 @@ export const deliverConsoleAction = async (
         : 'Action failed',
     );
   }
+  overlayCloseSuccessRecord(action.requestBody, payload);
   return payload;
 };
 

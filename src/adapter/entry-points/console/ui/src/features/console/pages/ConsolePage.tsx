@@ -460,6 +460,7 @@ export const ConsolePage = () => {
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
+    projectCode: pjcode,
   });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
