@@ -13,7 +13,6 @@ import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
 import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 import {
   deliverPersistedConsoleAction,
-  deliverPersistedConsoleActions,
   loadPersistedConsoleActions,
   persistConsoleAction,
   removePersistedConsoleAction,
@@ -229,9 +228,6 @@ export const useConsoleActionQueue = (
   const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
   isAirplaneModeOnRef.current = options.isAirplaneModeOn;
   const deliveredActionIdsRef = useRef<Set<string>>(new Set());
-  const legacyPersistedAtMountRef = useRef(
-    loadOfflineQueue().filter((action) => action.actionId === undefined),
-  );
   const [pending, setPending] = useState<ConsolePendingActionView[]>([]);
   const [error, setError] = useState<ConsoleActionError[]>([]);
   const [offlineActions, setOfflineActions] =
@@ -278,13 +274,19 @@ export const useConsoleActionQueue = (
       color,
     }: ConsoleOfflineActionsCreateRequest): void => {
       const enqueuedAt = Date.now();
-      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => ({
-        id: generateId(),
-        message,
-        color,
-        enqueuedAt,
-        ...payload,
-      }));
+      const created: ConsoleOfflineQueuedAction[] = payloads.map((payload) => {
+        const offlinePayload = { ...payload } as ConsoleOfflinePayload & {
+          actionId?: string;
+        };
+        delete offlinePayload.actionId;
+        return {
+          id: generateId(),
+          message,
+          color,
+          enqueuedAt,
+          ...offlinePayload,
+        };
+      });
       setOfflineActions((prev) => {
         const next = [...prev, ...created];
         saveOfflineQueue(next);
@@ -480,6 +482,7 @@ export const useConsoleActionQueue = (
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,
+            retry: () => void confirmOfflineAction(id),
           });
           return;
         }
@@ -560,12 +563,7 @@ export const useConsoleActionQueue = (
   useLayoutEffect(() => {
     const replay = (): void => {
       const persistedActions = loadPersistedConsoleActions();
-      const actions =
-        persistedActions.length === 0 &&
-        legacyPersistedAtMountRef.current.length === 1
-          ? legacyPersistedAtMountRef.current
-          : persistedActions;
-      for (const action of actions) {
+      for (const action of persistedActions) {
         if (deliveredActionIdsRef.current.has(action.id)) continue;
         deliveredActionIdsRef.current.add(action.id);
         void deliverPersistedConsoleAction(action).catch((cause: unknown) => {
@@ -616,15 +614,10 @@ export const useConsoleActionQueue = (
     const onVisibilityChange = (): void => {
       if (document.visibilityState === 'hidden') deliverPending();
     };
-    const onNavigation = (): void => {
-      void deliverPersistedConsoleActions();
-    };
     window.addEventListener('pagehide', deliverPending);
-    window.addEventListener('popstate', onNavigation);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('pagehide', deliverPending);
-      window.removeEventListener('popstate', onNavigation);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       deliverPending();
     };

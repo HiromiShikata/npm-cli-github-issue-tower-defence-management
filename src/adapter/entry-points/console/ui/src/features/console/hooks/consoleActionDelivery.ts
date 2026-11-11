@@ -11,11 +11,40 @@ const inFlightActionIds = new Set<string>();
 export const loadPersistedConsoleActions = (): ConsoleOfflineQueuedAction[] => {
   try {
     const raw = localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY);
-    if (raw === null) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? (parsed as ConsoleOfflineQueuedAction[])
-      : [];
+    if (raw !== null) {
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? (parsed as ConsoleOfflineQueuedAction[])
+        : [];
+    }
+    const legacyRaw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
+    if (legacyRaw === null) return [];
+    const legacyParsed: unknown = JSON.parse(legacyRaw);
+    if (
+      !Array.isArray(legacyParsed) ||
+      legacyParsed.length !== 1 ||
+      typeof legacyParsed[0] !== 'object' ||
+      legacyParsed[0] === null
+    ) {
+      return [];
+    }
+    const legacyAction = legacyParsed[0] as Record<string, unknown>;
+    if (
+      typeof legacyAction.id !== 'string' ||
+      typeof legacyAction.message !== 'string' ||
+      typeof legacyAction.color !== 'string' ||
+      typeof legacyAction.enqueuedAt !== 'number' ||
+      typeof legacyAction.apiPath !== 'string' ||
+      legacyAction.apiPath === '/api/comment' ||
+      typeof legacyAction.requestBody !== 'object' ||
+      legacyAction.requestBody === null
+    ) {
+      return [];
+    }
+    const action = legacyAction as unknown as ConsoleOfflineQueuedAction;
+    savePersistedConsoleActions([action]);
+    localStorage.setItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY, '[]');
+    return [action];
   } catch {
     return [];
   }
