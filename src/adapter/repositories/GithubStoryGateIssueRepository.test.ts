@@ -660,7 +660,69 @@ describe('GithubStoryGateIssueRepository', () => {
   });
 
   describe('listClosingPullRequests', () => {
-    it('maps referenced pull requests once each', async () => {
+    it('keeps a pull request whose body carries a closing keyword for the issue when willCloseTarget is false', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        jsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                timelineItems: {
+                  nodes: [
+                    {
+                      willCloseTarget: false,
+                      source: {
+                        url: 'https://github.com/owner/repo/pull/12',
+                        state: 'OPEN',
+                        body: 'Closes https://github.com/owner/repo/issues/3',
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const pullRequests =
+        await repositoryCreate().listClosingPullRequests(ISSUE);
+
+      expect(pullRequests).toEqual([
+        { url: 'https://github.com/owner/repo/pull/12', state: 'OPEN' },
+      ]);
+    });
+
+    it('excludes a pull request whose body only mentions the issue', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        jsonResponse({
+          data: {
+            repository: {
+              issueOrPullRequest: {
+                timelineItems: {
+                  nodes: [
+                    {
+                      willCloseTarget: false,
+                      source: {
+                        url: 'https://github.com/owner/repo/pull/13',
+                        state: 'OPEN',
+                        body: '- https://github.com/owner/repo/issues/3',
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      const pullRequests =
+        await repositoryCreate().listClosingPullRequests(ISSUE);
+
+      expect(pullRequests).toEqual([]);
+    });
+
+    it('maps related pull requests once each', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         jsonResponse({
           data: {
@@ -711,7 +773,6 @@ describe('GithubStoryGateIssueRepository', () => {
       expect(pullRequests).toEqual([
         { url: 'https://github.com/owner/repo/pull/9', state: 'OPEN' },
         { url: 'https://github.com/owner/repo/pull/10', state: 'MERGED' },
-        { url: 'https://github.com/owner/repo/pull/11', state: 'OPEN' },
       ]);
       expect(requestOf(fetchSpy, 0)).toEqual({
         url: GRAPHQL_URL,

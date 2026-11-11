@@ -14,6 +14,7 @@ import {
   StoryGateIssueRepository,
   StoryGateIssueState,
 } from '../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
+import { isPullRequestRelatedToIssue } from '../../domain/services/pullRequestIssueRelation';
 import { githubRateLimitSignalOf } from './githubRateLimitSignalOf';
 
 export const GITHUB_API_BASE_URL = 'https://api.github.com';
@@ -182,7 +183,7 @@ export const CLOSING_PULL_REQUESTS_QUERY = `query StoryGateClosingPullRequests($
     issueOrPullRequest(number: $number) {
       ... on Issue {
         timelineItems(first: 100, itemTypes: [CROSS_REFERENCED_EVENT]) {
-          nodes { ... on CrossReferencedEvent { willCloseTarget source { ... on PullRequest { url state } } } }
+          nodes { ... on CrossReferencedEvent { willCloseTarget source { ... on PullRequest { url state body } } } }
         }
       }
     }
@@ -332,7 +333,13 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
       if (
         url !== null &&
         state !== null &&
-        !closingPullRequests.some((pullRequest) => pullRequest.url === url)
+        !closingPullRequests.some((pullRequest) => pullRequest.url === url) &&
+        isPullRequestRelatedToIssue({
+          willCloseTarget: fieldOf(node, 'willCloseTarget') === true,
+          prBody: stringFieldOf(source, 'body'),
+          prUrl: url,
+          issueUrl: issue.url,
+        })
       ) {
         closingPullRequests.push({ url, state });
       }
