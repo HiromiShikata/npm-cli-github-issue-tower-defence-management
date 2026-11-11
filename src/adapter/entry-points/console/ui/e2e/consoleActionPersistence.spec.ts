@@ -1,6 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
-  CONSOLE_E2E_PJCODE,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
 } from './consoleTestHarness';
@@ -9,10 +8,16 @@ const ITEM_TITLE =
   'Resolve the shared GitHub token rate-limit exhaustion blocker';
 const QUEUE_KEY = 'console-offline-action-queue';
 
+const tabByLabel = (page: Page, label: string) =>
+  page.locator('.console-tab', { hasText: label });
+
+const itemRowByText = (page: Page, text: string) =>
+  page.locator('.console-item-row', { hasText: text });
+
 const openFixtureItem = async (page: Page, harness: ConsoleE2eHarness) => {
   await page.goto(harness.appRootUrl);
-  await page.locator('.console-tab', { hasText: 'Workflow Blocker' }).click();
-  await page.locator('.console-item-row', { hasText: ITEM_TITLE }).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(page, ITEM_TITLE).click();
 };
 
 const pressCommentAndAwaitingWorkspace = async (page: Page): Promise<void> => {
