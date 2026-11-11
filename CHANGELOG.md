@@ -1,3 +1,15 @@
+# [2.195.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.194.0...v2.195.0) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** ignore daily scan advisories without an installable fix until 2026-12-10 ([#3715](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3715)) ([af71b26](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/af71b26a03b48739ac9940ef27d48a42eb6ab8b1))
+
+
+### Features
+
+* **console:** restrict console lists to configured assignee logins ([#3714](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3714)) ([423d767](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/423d767272685558510e2dbdc3bea140aea2b108))
+
 # [2.194.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.193.0...v2.194.0) (2026-11-09)
 
 
