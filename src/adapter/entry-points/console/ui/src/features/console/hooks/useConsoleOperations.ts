@@ -196,6 +196,7 @@ export const buildTriageRequest = (
     nextActionHour?: number | null;
     actionId?: string;
     commentBody?: string;
+    setStatusWhenCommentFails?: boolean;
   },
 ): ConsoleTriageRequest => ({
   pjcode,
@@ -456,14 +457,21 @@ export const useConsoleOperations = (
         statusName: option.name,
         commentBody: AWAITING_WORKSPACE_COMMENT_BODY,
         actionId: resolvedActionId,
+        setStatusWhenCommentFails: true,
       });
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
         request,
       );
       invalidateItemContent(item);
-      if (isRecord(response) && response.ok === false) {
-        throw new Error(String(response.error ?? 'Comment was not posted'));
+      if (
+        isRecord(response) &&
+        response.commentPosted === false &&
+        response.ok === false
+      ) {
+        throw new Error(
+          `Comment not posted — ${String(response.error ?? 'Comment was not posted')}. Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
+        );
       }
       await onAfterMoveToAwaitingWorkspace?.();
     },

@@ -47,6 +47,7 @@ export type ConsoleTriageRequest = {
   nextActionDate?: string;
   nextActionHour?: number | null;
   commentBody?: string;
+  setStatusWhenCommentFails?: boolean;
   expectedStatusName?: string | null;
   actionId?: string;
 };

@@ -380,8 +380,9 @@ const updateStatusByName = async (
   projectItemId: string,
   statusName: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
+  fallbackStatusId: string | null = null,
 ): Promise<ConsoleOperationResponse | null> => {
-  const statusId = resolveStatusId(project, statusName);
+  const statusId = resolveStatusId(project, statusName) ?? fallbackStatusId;
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
@@ -392,18 +393,20 @@ const updateStatusByName = async (
     if (liveIssue === null) {
       return badGateway(`issue "${issueUrl}" could not be loaded`);
     }
-    const liveStatusName = liveIssue.status;
-    if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
-      return null;
-    }
-    if (liveStatusName !== expectedStatusAtActionTime.statusName) {
-      return badRequest(
-        `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
-          expectedStatusAtActionTime.statusName,
-        )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
-          liveStatusName,
-        )}. Please re-check the issue and act again.`,
-      );
+    if (liveIssue !== undefined) {
+      const liveStatusName = liveIssue.status;
+      if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
+        return null;
+      }
+      if (liveStatusName !== expectedStatusAtActionTime.statusName) {
+        return badRequest(
+          `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
+            expectedStatusAtActionTime.statusName,
+          )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
+            liveStatusName,
+          )}. Please re-check the issue and act again.`,
+        );
+      }
     }
   }
   await issueRepository.updateStatus(
@@ -715,6 +718,7 @@ const handleTriageImpl = async (
       return badRequest('statusName is required for set_status');
     const commentBody = body.commentBody;
     let commentPosted = previousResult?.commentPosted === true;
+    let commentFailure: string | null = null;
     if (
       isNonEmptyString(commentBody) &&
       previousResult?.commentPosted !== true
@@ -730,15 +734,18 @@ const handleTriageImpl = async (
           { pjcode, url: issueUrl },
           error,
         );
-        return {
-          statusCode: 200,
-          body: {
-            ok: false,
-            commentPosted: false,
-            statusSet: false,
-            error: error instanceof Error ? error.message : String(error),
-          },
-        };
+        commentFailure = error instanceof Error ? error.message : String(error);
+        if (body.setStatusWhenCommentFails !== true) {
+          return {
+            statusCode: 200,
+            body: {
+              ok: false,
+              commentPosted: false,
+              statusSet: false,
+              error: commentFailure,
+            },
+          };
+        }
       }
     }
     let failure: ConsoleOperationResponse | null;
@@ -750,6 +757,7 @@ const handleTriageImpl = async (
         projectItemId,
         statusName,
         readExpectedStatusAtActionTime(body),
+        commentFailure === null ? null : statusName,
       );
     } catch (error) {
       if (!(error instanceof StaleProjectItemError)) throw error;
@@ -786,9 +794,17 @@ const handleTriageImpl = async (
         canonicalStatusName,
       );
     }
-    const resultBody = commentPosted
-      ? { ok: true, commentPosted: true, statusSet: true }
-      : { ok: true };
+    const resultBody =
+      commentFailure === null
+        ? commentPosted
+          ? { ok: true, commentPosted: true, statusSet: true }
+          : { ok: true }
+        : {
+            ok: false,
+            commentPosted: false,
+            statusSet: true,
+            error: commentFailure,
+          };
     rememberActionResult(body.actionId, resultBody);
     return {
       statusCode: 200,
