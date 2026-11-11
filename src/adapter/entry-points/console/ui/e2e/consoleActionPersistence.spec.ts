@@ -131,7 +131,14 @@ test.describe('console action persistence acceptance scenarios', () => {
       )
       .toBe(0);
     await expect
-      .poll(() => page.evaluate((key) => localStorage.getItem(key), QUEUE_KEY))
-      .toBe('[]');
+      .poll(async () =>
+        JSON.parse(
+          (await page.evaluate(
+            (key) => localStorage.getItem(key),
+            QUEUE_KEY,
+          )) ?? '[]',
+        ),
+      )
+      .toEqual([]);
   });
 });
