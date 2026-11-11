@@ -39,14 +39,16 @@ const LIVE_SESSION_TOOLS = [
 
 const buildLiveSessionRequestBody = (sdpOffer: string): string =>
   JSON.stringify({
-    model: 'gpt-live-1',
-    instructions: LIVE_SESSION_INSTRUCTIONS,
-    audio: { output: { voice: 'harema' } },
-    delegation: {
-      type: 'responses',
-      responses: {
-        model: 'gpt-6-luna',
-        tools: LIVE_SESSION_TOOLS,
+    session: {
+      model: 'gpt-live-1',
+      instructions: LIVE_SESSION_INSTRUCTIONS,
+      audio: { output: { voice: 'harema' } },
+      delegation: {
+        type: 'responses',
+        responses: {
+          model: 'gpt-6-luna',
+          tools: LIVE_SESSION_TOOLS,
+        },
       },
     },
     transport: { type: 'webrtc', sdp: sdpOffer },

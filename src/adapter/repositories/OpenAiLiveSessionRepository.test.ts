@@ -40,47 +40,62 @@ describe('OpenAiLiveSessionRepository', () => {
       throw new Error('request body was not serialized as JSON');
     }
     expect(JSON.parse(requestBody)).toEqual({
-      model: 'gpt-live-1',
-      instructions,
-      audio: { output: { voice: 'harema' } },
-      delegation: {
-        type: 'responses',
-        responses: {
-          model: 'gpt-6-luna',
-          tools: [
-            {
-              type: 'function',
-              name: 'session_reply_send',
-              parameters: {
-                type: 'object',
-                properties: { replyText: { type: 'string' } },
-                required: ['replyText'],
-                additionalProperties: false,
+      session: {
+        model: 'gpt-live-1',
+        instructions,
+        audio: { output: { voice: 'harema' } },
+        delegation: {
+          type: 'responses',
+          responses: {
+            model: 'gpt-6-luna',
+            tools: [
+              {
+                type: 'function',
+                name: 'session_reply_send',
+                parameters: {
+                  type: 'object',
+                  properties: { replyText: { type: 'string' } },
+                  required: ['replyText'],
+                  additionalProperties: false,
+                },
               },
-            },
-            {
-              type: 'function',
-              name: 'session_skip',
-              parameters: {
-                type: 'object',
-                properties: {},
-                additionalProperties: false,
+              {
+                type: 'function',
+                name: 'session_skip',
+                parameters: {
+                  type: 'object',
+                  properties: {},
+                  additionalProperties: false,
+                },
               },
-            },
-            {
-              type: 'function',
-              name: 'owner_call_repeat',
-              parameters: {
-                type: 'object',
-                properties: {},
-                additionalProperties: false,
+              {
+                type: 'function',
+                name: 'owner_call_repeat',
+                parameters: {
+                  type: 'object',
+                  properties: {},
+                  additionalProperties: false,
+                },
               },
-            },
-          ],
+            ],
+          },
         },
       },
       transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
     });
+    const parsedRequestBody: unknown = JSON.parse(requestBody);
+    if (
+      typeof parsedRequestBody !== 'object' ||
+      parsedRequestBody === null ||
+      Array.isArray(parsedRequestBody)
+    ) {
+      throw new Error('request body is not a JSON object');
+    }
+    expect(Object.keys(parsedRequestBody).sort()).toEqual([
+      'session',
+      'transport',
+    ]);
+    expect(parsedRequestBody).not.toHaveProperty('model');
     expect(logError.mock.calls.flat().join('\n')).not.toContain(
       'secret-api-key',
     );
