@@ -16,6 +16,7 @@ import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
+import { isPullRequestRelatedToIssue } from '../../../domain/services/pullRequestIssueRelation';
 import {
   StoryObjectMap,
   buildStoryObjectMap,
@@ -3503,7 +3504,7 @@ export class ApiV3CheerioRestIssueRepository
 
   private isRelatedOpenPullRequestTimelineItem = (
     item: TimelineItem | null,
-    _issueUrl: string,
+    issueUrl: string,
   ): item is TimelineItem & {
     source: NonNullable<TimelineItem['source']>;
   } => {
@@ -3511,7 +3512,12 @@ export class ApiV3CheerioRestIssueRepository
     if (item.__typename !== 'CrossReferencedEvent') return false;
     if (!item.source || item.source.__typename !== 'PullRequest') return false;
     if (item.source.state !== 'OPEN') return false;
-    return true;
+    return isPullRequestRelatedToIssue({
+      willCloseTarget: item.willCloseTarget === true,
+      prBody: item.source.body ?? null,
+      prUrl: item.source.url ?? '',
+      issueUrl,
+    });
   };
 
   findRelatedOpenPrUrls = async (

@@ -4,6 +4,7 @@ import { postGithubGraphqlJson } from '../githubGraphqlClient';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
+import { pullRequestRefLineIssueUrls } from '../../../domain/services/pullRequestIssueRelation';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import {
   GraphqlRateLimitError,
@@ -829,23 +830,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
   };
   private extractPlainCrossRepoIssueReferenceUrls = (
     body: string | null,
-    ownRepoNameWithOwner: string,
-  ): string[] => {
-    if (!body) {
-      return [];
-    }
-    const githubIssueOrPullUrlPattern =
-      /https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/(?:issues|pull)\/\d+/g;
-    const crossRepoUrls = Array.from(body.matchAll(githubIssueOrPullUrlPattern))
-      .filter((match) => `${match[1]}/${match[2]}` !== ownRepoNameWithOwner)
-      .map((match) => match[0]);
-    const sameRepoReferenceUrls = body
-      .split(/\r?\n/)
-      .filter((line) => /^\s*(?:ref|relates to)\s+/i.test(line))
-      .flatMap((line) => Array.from(line.matchAll(githubIssueOrPullUrlPattern)))
-      .map((match) => match[0]);
-    return Array.from(new Set([...crossRepoUrls, ...sameRepoReferenceUrls]));
-  };
+  ): string[] => pullRequestRefLineIssueUrls(body);
   private mapProjectV2ItemNodeToProjectItem = (
     item: ProjectV2ItemNode | null,
   ): ProjectItem | null => {
@@ -883,10 +868,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       plainCrossRepoIssueReferenceUrls:
-        this.extractPlainCrossRepoIssueReferenceUrls(
-          item.content.body ?? null,
-          item.content.repository.nameWithOwner,
-        ),
+        this.extractPlainCrossRepoIssueReferenceUrls(item.content.body ?? null),
       isRepoArchived: item.content.repository.isArchived ?? false,
       isArchivedFromProject: item.isArchived,
       stateReason: toStateReason(item.content.stateReason),
@@ -1602,10 +1584,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       plainCrossRepoIssueReferenceUrls:
-        this.extractPlainCrossRepoIssueReferenceUrls(
-          content.body,
-          content.repository.nameWithOwner,
-        ),
+        this.extractPlainCrossRepoIssueReferenceUrls(content.body),
       isRepoArchived: content.repository.isArchived ?? false,
       isArchivedFromProject,
       stateReason: toStateReason(content.stateReason),
