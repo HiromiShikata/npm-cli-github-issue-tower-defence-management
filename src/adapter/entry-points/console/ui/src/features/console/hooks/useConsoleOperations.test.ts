@@ -16,7 +16,6 @@ import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
-import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOperationsApi } from './useConsoleOperations';
 import { useConsoleOperations } from './useConsoleOperations';
@@ -731,26 +730,19 @@ describe('useConsoleOperations', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('posts an ok comment then sets status to awaiting workspace in order', async () => {
-    let callCount = 0;
+  it('posts the ok comment and Awaiting Workspace status in one triage request', async () => {
     const calls: Array<[string, unknown]> = [];
     global.fetch = jest.fn(async (url: unknown, opts: unknown) => {
       calls.push([url as string, opts]);
-      callCount += 1;
-      if (callCount === 1) {
-        return {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
           ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              author: 'bot',
-              body: 'ok',
-              createdAt: '2026-01-01T00:00:00Z',
-            },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+          commentPosted: true,
+          statusSet: true,
+        }),
+      };
     }) as unknown as typeof fetch;
     const { result } = setup();
     const [option] = consoleStatusOptionsFixture.filter(
@@ -762,29 +754,32 @@ describe('useConsoleOperations', () => {
         option,
       );
     });
-    expect(calls[0][0]).toBe('/api/comment');
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('/api/triage');
     expect(JSON.parse((calls[0][1] as { body: string }).body)).toMatchObject({
-      pjcode: 'acme',
-      url: issueItem.url,
-      body: 'ok',
-    });
-    expect(calls[1][0]).toBe('/api/triage');
-    expect(JSON.parse((calls[1][1] as { body: string }).body)).toMatchObject({
       pjcode: 'acme',
       action: 'set_status',
       issueUrl: issueItem.url,
       statusName: option.name,
+      commentBody: 'ok',
+      actionId: expect.any(String),
     });
   });
 
-  it('still calls the status endpoint when the comment post fails and then throws with the comment text', async () => {
+  it('reports a combined triage comment failure without issuing a second request', async () => {
     const calledUrls: string[] = [];
     global.fetch = jest.fn(async (url: unknown) => {
       calledUrls.push(url as string);
-      if ((url as string).includes('/api/comment')) {
-        return { ok: false, status: 500, text: async () => 'upstream refused' };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: false,
+          commentPosted: false,
+          statusSet: false,
+          error: 'upstream refused',
+        }),
+      };
     }) as unknown as typeof fetch;
     const { result } = setup();
     const [option] = consoleStatusOptionsFixture.filter(
@@ -801,23 +796,24 @@ describe('useConsoleOperations', () => {
         caughtMessage = e instanceof Error ? e.message : String(e);
       }
     });
-    expect(caughtMessage).toContain('Re-post: ok');
-    expect(calledUrls).toContain('/api/comment');
-    expect(calledUrls).toContain('/api/triage');
+    expect(caughtMessage).toContain('upstream refused');
+    expect(calledUrls).toEqual(['/api/triage']);
   });
 
   it('throws with ok: false error from backend when comment soft-fails', async () => {
     const calledUrls: string[] = [];
     global.fetch = jest.fn(async (url: unknown) => {
       calledUrls.push(url as string);
-      if ((url as string).includes('/api/comment')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ ok: false, error: 'rate limit exceeded' }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: false,
+          commentPosted: false,
+          statusSet: false,
+          error: 'rate limit exceeded',
+        }),
+      };
     }) as unknown as typeof fetch;
     const { result } = setup();
     const [option] = consoleStatusOptionsFixture.filter(
@@ -835,26 +831,23 @@ describe('useConsoleOperations', () => {
       }
     });
     expect(caughtMessage).toContain('rate limit exceeded');
-    expect(calledUrls).toContain('/api/comment');
-    expect(calledUrls).toContain('/api/triage');
+    expect(calledUrls).toEqual(['/api/triage']);
   });
 
   it('includes the rate-limit reset time in the error message when rateLimitResetAt is returned', async () => {
     const calledUrls: string[] = [];
     global.fetch = jest.fn(async (url: unknown) => {
       calledUrls.push(url as string);
-      if ((url as string).includes('/api/comment')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            ok: false,
-            error: 'HTTP 403 GitHub API rate limit exceeded',
-            rateLimitResetAt: '2026-09-05T15:20:00.000Z',
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: false,
+          commentPosted: false,
+          statusSet: false,
+          error: 'HTTP 403 GitHub API rate limit exceeded; Rate limit resets at 2026-09-05T15:20:00.000Z.',
+        }),
+      };
     }) as unknown as typeof fetch;
     const { result } = setup();
     const [option] = consoleStatusOptionsFixture.filter(
@@ -874,8 +867,7 @@ describe('useConsoleOperations', () => {
     expect(caughtMessage).toContain(
       'Rate limit resets at 2026-09-05T15:20:00.000Z',
     );
-    expect(caughtMessage).toContain('Re-post: ok');
-    expect(calledUrls).toContain('/api/triage');
+    expect(calledUrls).toEqual(['/api/triage']);
   });
 
   it('calls onAfterMoveToAwaitingWorkspace after the triage API call completes', async () => {
@@ -883,20 +875,11 @@ describe('useConsoleOperations', () => {
     let callbackCalledAfterTriageCount = 0;
     global.fetch = jest.fn(async (url: string) => {
       apiCallUrls.push(url as string);
-      if ((url as string).includes('/api/comment')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              author: 'bot',
-              body: 'ok',
-              createdAt: '2026-01-01T00:00:00Z',
-            },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+      };
     }) as unknown as typeof fetch;
     const onAfterMoveToAwaitingWorkspace = jest.fn(async () => {
       callbackCalledAfterTriageCount = apiCallUrls.filter((u) =>
@@ -927,25 +910,15 @@ describe('useConsoleOperations', () => {
     expect(callbackCalledAfterTriageCount).toBe(1);
   });
 
-  it('posts the comment then sets the status to Awaiting Workspace in order, resolving with the posted comment', async () => {
+  it('posts the comment and Awaiting Workspace status in one triage request', async () => {
     const calls: Array<[string, unknown]> = [];
     global.fetch = jest.fn(async (url: unknown, opts: unknown) => {
       calls.push([url as string, opts]);
-      if ((url as string) === '/api/comment') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              id: 12,
-              author: 'HiromiShikata',
-              body: 'moving to workspace',
-              createdAt: '2026-06-19T11:58:00.000Z',
-            },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+      };
     }) as unknown as typeof fetch;
     const { result } = setup();
     const [option] = consoleStatusOptionsFixture.filter(
@@ -961,25 +934,23 @@ describe('useConsoleOperations', () => {
         option,
       );
     });
-    expect(calls[0][0]).toBe('/api/comment');
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('/api/triage');
     expect(JSON.parse((calls[0][1] as { body: string }).body)).toMatchObject({
-      pjcode: 'acme',
-      url: issueItem.url,
-      body: 'moving to workspace',
-    });
-    expect(calls[1][0]).toBe('/api/triage');
-    expect(JSON.parse((calls[1][1] as { body: string }).body)).toMatchObject({
       pjcode: 'acme',
       action: 'set_status',
       issueUrl: issueItem.url,
       projectItemId: issueItem.projectItemId,
       statusName: option.name,
+      expectedStatusName: issueItem.status,
+      commentBody: 'moving to workspace',
+      actionId: expect.any(String),
     });
     expect(resolved).toEqual({
-      id: 12,
-      author: 'HiromiShikata',
+      id: 0,
+      author: '',
       body: 'moving to workspace',
-      createdAt: '2026-06-19T11:58:00.000Z',
+      createdAt: expect.any(String),
     });
   });
 
@@ -1007,15 +978,12 @@ describe('useConsoleOperations', () => {
       }),
     ],
   ])(
-    'rejects without ever calling the status endpoint when the comment POST returns %s',
+    'rejects and sends only the combined triage request when it returns %s',
     async (_label, buildCommentResponse) => {
       const calledUrls: string[] = [];
       global.fetch = jest.fn(async (url: unknown) => {
         calledUrls.push(url as string);
-        if ((url as string) === '/api/comment') {
-          return buildCommentResponse();
-        }
-        return { ok: true, status: 200, json: async () => ({ ok: true }) };
+        return buildCommentResponse();
       }) as unknown as typeof fetch;
       const { result } = setup();
       const [option] = consoleStatusOptionsFixture.filter(
@@ -1030,8 +998,7 @@ describe('useConsoleOperations', () => {
           option,
         ),
       ).rejects.toThrow();
-      expect(calledUrls).toContain('/api/comment');
-      expect(calledUrls).not.toContain('/api/triage');
+      expect(calledUrls).toEqual(['/api/triage']);
     },
   );
 
@@ -1039,23 +1006,15 @@ describe('useConsoleOperations', () => {
     const calledUrls: string[] = [];
     global.fetch = jest.fn(async (url: unknown) => {
       calledUrls.push(url as string);
-      if ((url as string) === '/api/comment') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              author: 'HiromiShikata',
-              body: 'test comment body',
-              createdAt: '2026-06-19T11:58:00.000Z',
-            },
-          }),
-        };
-      }
       return {
-        ok: false,
-        status: 500,
-        text: async () => 'triage service down',
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: false,
+          commentPosted: true,
+          statusSet: false,
+          error: 'triage service down',
+        }),
       };
     }) as unknown as typeof fetch;
     const { result } = setup();
@@ -1071,22 +1030,16 @@ describe('useConsoleOperations', () => {
         option,
       ),
     ).rejects.toThrow();
-    expect(calledUrls).toContain('/api/comment');
-    expect(calledUrls).toContain('/api/triage');
+    expect(calledUrls).toEqual(['/api/triage']);
   });
 
   it('invalidates the operated item cache after the atomic operation succeeds', async () => {
-    global.fetch = jest.fn(async (url: unknown) => {
-      if ((url as string) === '/api/comment') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: { author: 'a', body: 'b', createdAt: 'c' },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    global.fetch = jest.fn(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+      };
     }) as unknown as typeof fetch;
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
@@ -1115,20 +1068,11 @@ describe('useConsoleOperations', () => {
     let callbackCalledAfterTriageCount = 0;
     global.fetch = jest.fn(async (url: string) => {
       apiCallUrls.push(url as string);
-      if ((url as string).includes('/api/comment')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              author: 'bot',
-              body: 'test comment body',
-              createdAt: '2026-01-01T00:00:00Z',
-            },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+      };
     }) as unknown as typeof fetch;
     const onAfterMoveToAwaitingWorkspace = jest.fn(async () => {
       callbackCalledAfterTriageCount = apiCallUrls.filter((u) =>
@@ -1216,57 +1160,40 @@ describe('useConsoleOperations', () => {
       },
     );
 
-    const respondWithPostedComment = async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        comment: {
-          author: 'HiromiShikata',
-          body: 'ok',
-          createdAt: '2026-06-19T11:58:00.000Z',
-        },
-      }),
-    });
-
-    const statusFailures = [
+    const triageFailures = [
       {
-        statusFailureKind: 'fails because the network is unavailable',
-        respondToStatus: async (): Promise<never> => {
+        failureKind: 'fails because the network is unavailable',
+        respond: async (): Promise<never> => {
           throw new TypeError('Failed to fetch');
         },
-        isNetworkFailureExpectedAsCause: true,
       },
       {
-        statusFailureKind: 'answers HTTP 500',
-        respondToStatus: async () => ({
+        failureKind: 'answers HTTP 500',
+        respond: async () => ({
           ok: false,
           status: 500,
           text: async () => 'triage service down',
         }),
-        isNetworkFailureExpectedAsCause: false,
       },
     ];
 
     it.each(
       commentThenStatusOperations.flatMap((operation) =>
-        statusFailures.map((statusFailure) => ({
+        triageFailures.map((triageFailure) => ({
           ...operation,
-          ...statusFailure,
+          ...triageFailure,
         })),
       ),
     )(
-      'rejects $operationName with a partially sent error counting the posted comment when the comment is posted and the status request $statusFailureKind',
+      'rejects $operationName from the single triage request when it $failureKind',
       async ({
         runOperation,
-        respondToStatus,
-        isNetworkFailureExpectedAsCause,
+        respond,
       }) => {
         const calledUrls: string[] = [];
         global.fetch = jest.fn(async (url: unknown) => {
           calledUrls.push(url as string);
-          return (url as string) === '/api/comment'
-            ? respondWithPostedComment()
-            : respondToStatus();
+          return respond();
         }) as unknown as typeof fetch;
         const { result } = setup();
 
@@ -1274,21 +1201,11 @@ describe('useConsoleOperations', () => {
           runOperation(result.current.operations, awaitingWorkspaceOption()),
         );
 
-        expect(rejection).toBeInstanceOf(ConsoleActionPartiallySentError);
-        const partiallySentError = rejection as ConsoleActionPartiallySentError;
-        expect(partiallySentError.sentStepCount).toBe(1);
-        expect(partiallySentError.cause).toBeInstanceOf(Error);
-        expect(partiallySentError.cause instanceof TypeError).toBe(
-          isNetworkFailureExpectedAsCause,
+        expect(rejection).toBeInstanceOf(Error);
+        expect((rejection as Error).message).toMatch(
+          /Failed to fetch|triage service down/,
         );
-        expect(partiallySentError.message).toBe(
-          (partiallySentError.cause as Error).message,
-        );
-        expect(
-          calledUrls.filter(
-            (url) => url === '/api/comment' || url === '/api/triage',
-          ),
-        ).toEqual(['/api/comment', '/api/triage']);
+        expect(calledUrls).toEqual(['/api/triage']);
       },
     );
   });

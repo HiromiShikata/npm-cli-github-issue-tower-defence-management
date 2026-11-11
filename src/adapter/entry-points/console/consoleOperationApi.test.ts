@@ -1195,14 +1195,18 @@ describe('consoleOperationApi', () => {
 
   describe('handleTriage', () => {
     it('handles set_status with commentBody as one request and reports both completed steps', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Todo',
+      });
       const response = await handleTriage(context, {
         pjcode: 'acme',
         action: 'set_status',
         actionId: 'triage-action-1',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_atomic',
-        expectedStatusName: 'Awaiting Workspace',
-        statusName: 'Preparation',
+        expectedStatusName: 'Todo',
+        statusName: 'Awaiting workspace',
         commentBody: 'handoff details',
       });
 
