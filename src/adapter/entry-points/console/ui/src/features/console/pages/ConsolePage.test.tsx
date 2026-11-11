@@ -6543,14 +6543,9 @@ describe('ConsolePage airplane mode write guard', () => {
     await dismissUndoToast(view.container);
 
     await waitFor(() => {
-      expect(readStoredOfflineQueue()).toHaveLength(2);
+      expect(readStoredOfflineQueue()).toHaveLength(1);
     });
     expect(readStoredOfflineQueue()).toEqual([
-      expect.objectContaining({
-        itemUrl: prItem.url,
-        apiPath: '/api/comment',
-        requestBody: { pjcode: 'acme', url: prItem.url, body: 'ok' },
-      }),
       expect.objectContaining({
         itemUrl: prItem.url,
         apiPath: '/api/triage',
@@ -6561,6 +6556,7 @@ describe('ConsolePage airplane mode write guard', () => {
           projectItemId: prItem.projectItemId,
           statusName: 'Awaiting Workspace',
           expectedStatusName: 'Awaiting Owner',
+          commentBody: 'ok',
         },
       }),
     ]);
@@ -9915,7 +9911,7 @@ describe('ConsolePage offline action queue', () => {
   });
 
   it('holds the ok comment before the move to Awaiting Workspace when ok & Awaiting Workspace from the list fails because the network is unavailable', async () => {
-    installOfflineQueueFetch(respondWithNetworkFailure);
+    const fetchMock = installOfflineQueueFetch(respondWithNetworkFailure);
     const view = render(<ConsolePage />);
     const [okAndAwaitingWorkspaceButton] = await view.findAllByRole('button', {
       name: 'ok & Awaiting Workspace',
@@ -9925,27 +9921,16 @@ describe('ConsolePage offline action queue', () => {
     await dismissUndoToast(view.container);
 
     await waitFor(() => {
-      expect(readStoredOfflineQueue()).toHaveLength(2);
+      expect(
+        view.getByText('ok → Awaiting Workspace — PR o/r#851'),
+      ).toBeInTheDocument();
     });
-    expect(readStoredOfflineQueue()).toEqual([
-      expect.objectContaining({
-        itemUrl: pullRequestUrl,
-        apiPath: '/api/comment',
-        requestBody: { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
-      }),
-      expect.objectContaining({
-        itemUrl: pullRequestUrl,
-        apiPath: '/api/triage',
-        requestBody: {
-          pjcode: 'acme',
-          action: 'set_status',
-          issueUrl: pullRequestUrl,
-          projectItemId: 'PVTI_1',
-          statusName: 'Awaiting Workspace',
-          expectedStatusName: 'Awaiting Owner',
-        },
-      }),
-    ]);
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([]);
+    expect(postedRequestBodies(fetchMock, '/api/triage')[0]).toMatchObject({
+      action: 'set_status',
+      statusName: 'Awaiting Workspace',
+      commentBody: 'ok',
+    });
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
   });
 
@@ -10175,26 +10160,12 @@ describe('ConsolePage offline action queue', () => {
     await dismissUndoToast(view.container);
 
     await waitFor(() => {
-      expect(readStoredOfflineQueue()).not.toEqual([]);
+      expect(
+        view.getByText('ok → Awaiting Workspace — PR o/r#851'),
+      ).toBeInTheDocument();
     });
-    expect(readStoredOfflineQueue()).toEqual([
-      expect.objectContaining({
-        itemUrl: pullRequestUrl,
-        apiPath: '/api/triage',
-        requestBody: {
-          pjcode: 'acme',
-          action: 'set_status',
-          issueUrl: pullRequestUrl,
-          projectItemId: 'PVTI_1',
-          statusName: 'Awaiting Workspace',
-          expectedStatusName: 'Awaiting Owner',
-        },
-      }),
-    ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
-    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-      { pjcode: 'acme', url: pullRequestUrl, body: 'ok' },
-    ]);
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([]);
   });
 
   const awaitingWorkspaceRequestBodyForPullRequest = {
@@ -10235,7 +10206,7 @@ describe('ConsolePage offline action queue', () => {
     actionName: string;
     startAction: (view: ReturnType<typeof render>) => Promise<void>;
     expectedCommentBody: string;
-    expectedSecondRequestBody: Record<string, string>;
+    expectedSecondRequestBody: Record<string, unknown>;
     expectedSecondRequestOfflinePayload: Record<string, string>;
   };
 
@@ -10274,9 +10245,15 @@ describe('ConsolePage offline action queue', () => {
         );
       },
       expectedCommentBody: 'ok',
-      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
-      expectedSecondRequestOfflinePayload:
-        awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestBody: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'ok',
+        actionId: expect.any(String),
+      },
+      expectedSecondRequestOfflinePayload: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'ok',
+      },
     },
     {
       actionName: 'Comment & Awaiting Workspace from the detail',
@@ -10288,9 +10265,15 @@ describe('ConsolePage offline action queue', () => {
         fireEvent.click(view.getByText('Comment & Awaiting Workspace'));
       },
       expectedCommentBody: 'Moving after the outage.',
-      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
-      expectedSecondRequestOfflinePayload:
-        awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestBody: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'Moving after the outage.',
+        actionId: expect.any(String),
+      },
+      expectedSecondRequestOfflinePayload: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'Moving after the outage.',
+      },
     },
     {
       actionName: 'ok & Awaiting Workspace from the list',
@@ -10302,14 +10285,20 @@ describe('ConsolePage offline action queue', () => {
         fireEvent.click(okAndAwaitingWorkspaceButton);
       },
       expectedCommentBody: 'ok',
-      expectedSecondRequestBody: awaitingWorkspaceRequestBodyForPullRequest,
-      expectedSecondRequestOfflinePayload:
-        awaitingWorkspaceRequestBodyForPullRequest,
+      expectedSecondRequestBody: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'ok',
+        actionId: expect.any(String),
+      },
+      expectedSecondRequestOfflinePayload: {
+        ...awaitingWorkspaceRequestBodyForPullRequest,
+        commentBody: 'ok',
+      },
     },
   ];
 
   it.each(commentThenSecondRequestActions)(
-    'retries $actionName by sending only its second request again, never the comment, when the comment was posted and the second request answered HTTP 500 online',
+    'retries $actionName without duplicating its comment when its request answered HTTP 500 online',
     async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
@@ -10321,18 +10310,35 @@ describe('ConsolePage offline action queue', () => {
       await startAction(view);
       await dismissUndoToast(view.container);
       const retryButton = await findErrorToastRetryButton(view.container);
-      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
-      ]);
+      const isCombined = 'commentBody' in expectedSecondRequestBody;
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
+        isCombined
+          ? []
+          : [
+              {
+                pjcode: 'acme',
+                url: pullRequestUrl,
+                body: expectedCommentBody,
+              },
+            ],
+      );
 
       fireEvent.click(retryButton);
 
       await waitFor(() => {
         expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(2);
       });
-      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
-      ]);
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
+        isCombined
+          ? []
+          : [
+              {
+                pjcode: 'acme',
+                url: pullRequestUrl,
+                body: expectedCommentBody,
+              },
+            ],
+      );
       expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
         expectedSecondRequestBody,
         expectedSecondRequestBody,
@@ -10343,7 +10349,7 @@ describe('ConsolePage offline action queue', () => {
   );
 
   it.each(commentThenSecondRequestActions)(
-    'holds only the second request of $actionName without an error toast and posts the comment only once when the comment was posted, the second request answered HTTP 500 online and its retry fails because the network is unavailable',
+    'holds the failed request of $actionName without an error toast and does not duplicate its comment when its retry fails because the network is unavailable',
     async ({
       startAction,
       expectedCommentBody,
@@ -10374,9 +10380,18 @@ describe('ConsolePage offline action queue', () => {
         }),
       ]);
       expect(view.container.querySelector('.console-error-toast')).toBeNull();
-      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-        { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
-      ]);
+      const isCombined = 'commentBody' in expectedSecondRequestBody;
+      expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
+        isCombined
+          ? []
+          : [
+              {
+                pjcode: 'acme',
+                url: pullRequestUrl,
+                body: expectedCommentBody,
+              },
+            ],
+      );
       expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
         expectedSecondRequestBody,
         expectedSecondRequestBody,
@@ -10457,7 +10472,7 @@ describe('ConsolePage offline action queue', () => {
   };
 
   it.each(commentThenSecondRequestActions)(
-    'holds only the second request of $actionName without sending anything or showing an airplane mode error when the comment was posted, the second request answered HTTP 500 online and airplane mode is turned on before the retry',
+    'holds the failed request of $actionName without sending anything or showing an airplane mode error when airplane mode is turned on before the retry',
     async ({
       startAction,
       expectedCommentBody,
@@ -10493,10 +10508,21 @@ describe('ConsolePage offline action queue', () => {
             requestBody: expectedSecondRequestOfflinePayload,
           }),
         ]);
-        expect(postCount(fetchMock)).toBe(2);
-        expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-          { pjcode: 'acme', url: pullRequestUrl, body: expectedCommentBody },
-        ]);
+        expect(postCount(fetchMock)).toBe(
+          'commentBody' in expectedSecondRequestBody ? 1 : 2,
+        );
+        const isCombined = 'commentBody' in expectedSecondRequestBody;
+        expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
+          isCombined
+            ? []
+            : [
+                {
+                  pjcode: 'acme',
+                  url: pullRequestUrl,
+                  body: expectedCommentBody,
+                },
+              ],
+        );
         expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
           expectedSecondRequestBody,
         ]);

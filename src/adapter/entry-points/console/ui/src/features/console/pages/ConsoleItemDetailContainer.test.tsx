@@ -3557,7 +3557,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   const triageOfflinePayloadFor = (
     item: ConsoleListItem,
     action: 'close' | 'set_status',
-    extra?: { statusName: string },
+    extra?: { statusName: string; commentBody?: string },
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
@@ -3683,9 +3683,9 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'ok & Awaiting Workspace',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, 'ok'),
         triageOfflinePayloadFor(issueItem, 'set_status', {
           statusName: AWAITING_WORKSPACE_NAME,
+          commentBody: 'ok',
         }),
       ],
     },
@@ -3699,9 +3699,9 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
         triageOfflinePayloadFor(issueItem, 'set_status', {
           statusName: AWAITING_WORKSPACE_NAME,
+          commentBody: draftWrittenBeforeClosing,
         }),
       ],
     },
