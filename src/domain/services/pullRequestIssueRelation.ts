@@ -31,7 +31,7 @@ const REF_LINE_REGEX = new RegExp(
 );
 
 const CLOSING_REFERENCE_REGEX = new RegExp(
-  String.raw`(?<![A-Za-z0-9_])(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:${ISSUE_URL_PATTERN}(?![\w#/-])|(${REPOSITORY_NAME_PATTERN})\/(${REPOSITORY_NAME_PATTERN})#(\d+)(?!\d)|#(\d+)(?!\d))`,
+  String.raw`(?<![A-Za-z0-9_])(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:${ISSUE_URL_PATTERN}\/?(?![\w#/-])|(${REPOSITORY_NAME_PATTERN})\/(${REPOSITORY_NAME_PATTERN})#(\d+)(?!\d)|#(\d+)(?!\d))`,
   'gi',
 );
 
