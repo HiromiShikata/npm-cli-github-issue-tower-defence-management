@@ -845,7 +845,8 @@ describe('useConsoleOperations', () => {
           ok: false,
           commentPosted: false,
           statusSet: false,
-          error: 'HTTP 403 GitHub API rate limit exceeded; Rate limit resets at 2026-09-05T15:20:00.000Z.',
+          error:
+            'HTTP 403 GitHub API rate limit exceeded; Rate limit resets at 2026-09-05T15:20:00.000Z.',
         }),
       };
     }) as unknown as typeof fetch;
@@ -1186,10 +1187,7 @@ describe('useConsoleOperations', () => {
       ),
     )(
       'rejects $operationName from the single triage request when it $failureKind',
-      async ({
-        runOperation,
-        respond,
-      }) => {
+      async ({ runOperation, respond }) => {
         const calledUrls: string[] = [];
         global.fetch = jest.fn(async (url: unknown) => {
           calledUrls.push(url as string);
