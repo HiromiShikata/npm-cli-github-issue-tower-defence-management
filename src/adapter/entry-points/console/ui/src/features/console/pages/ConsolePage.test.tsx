@@ -10248,6 +10248,7 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestBody: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'ok',
+        setStatusWhenCommentFails: true,
         actionId: expect.any(String),
       },
       expectedSecondRequestOfflinePayload: {
@@ -10288,6 +10289,7 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestBody: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'ok',
+        setStatusWhenCommentFails: true,
         actionId: expect.any(String),
       },
       expectedSecondRequestOfflinePayload: {
