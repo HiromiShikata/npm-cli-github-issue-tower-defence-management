@@ -700,20 +700,32 @@ export const handleTriage = async (
   const { project, pjcode } = binding;
 
   if (action === 'set_status') {
-    const duplicate = storedActionResult(body.actionId);
-    if (duplicate !== null) return duplicate;
+    const previousResult = isNonEmptyString(body.actionId)
+      ? actionResults.get(body.actionId)
+      : undefined;
+    if (previousResult?.statusSet === true) {
+      return { statusCode: 200, body: { ...previousResult, duplicate: true } };
+    }
     const statusName = body.statusName;
     if (!isNonEmptyString(statusName))
       return badRequest('statusName is required for set_status');
     const commentBody = body.commentBody;
-    let commentPosted = false;
-    if (isNonEmptyString(commentBody)) {
+    let commentPosted = previousResult?.commentPosted === true;
+    if (
+      isNonEmptyString(commentBody) &&
+      previousResult?.commentPosted !== true
+    ) {
       try {
         await context
           .resolveIssueRepository(issueUrl)
           .createCommentByUrl(issueUrl, commentBody);
         commentPosted = true;
       } catch (error) {
+        console.error(
+          '[handleTriage] upstream comment post failed:',
+          { pjcode, url: issueUrl },
+          error,
+        );
         return {
           statusCode: 200,
           body: {
@@ -741,7 +753,19 @@ export const handleTriage = async (
         `project item "${projectItemId}" no longer exists in GitHub`,
       );
     }
-    if (failure !== null) return failure;
+    if (failure !== null) {
+      const failureBody =
+        typeof failure.body === 'object' && failure.body !== null
+          ? failure.body
+          : {};
+      const resultBody = {
+        ...failureBody,
+        commentPosted,
+        statusSet: false,
+      };
+      if (commentPosted) rememberActionResult(body.actionId, resultBody);
+      return { ...failure, body: resultBody };
+    }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     const lowerStatus = statusName.toLowerCase();
     if (
@@ -762,7 +786,13 @@ export const handleTriage = async (
       ? { ok: true, commentPosted: true, statusSet: true }
       : { ok: true };
     rememberActionResult(body.actionId, resultBody);
-    return { statusCode: 200, body: resultBody };
+    return {
+      statusCode: 200,
+      body:
+        previousResult === undefined
+          ? resultBody
+          : { ...resultBody, duplicate: true },
+    };
   }
 
   if (action === 'set_story') {

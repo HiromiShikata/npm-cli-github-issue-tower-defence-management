@@ -460,6 +460,7 @@ export const useConsoleOperations = (
         TRIAGE_OPERATION_PATH,
         request,
       );
+      invalidateItemContent(item);
       if (isRecord(response) && response.ok === false) {
         throw new Error(String(response.error ?? 'Comment was not posted'));
       }
@@ -467,6 +468,7 @@ export const useConsoleOperations = (
     },
     [
       pjcode,
+      invalidateItemContent,
       onAfterMoveToAwaitingWorkspace,
       awaitingWorkspaceStatusMoveAfterCommentPosted,
     ],
@@ -524,6 +526,8 @@ export const useConsoleOperations = (
           ),
         );
       }
+      invalidateItemContent(item);
+      await onAfterMoveToAwaitingWorkspace?.();
       const comment: ConsoleComment = {
         id: 0,
         author: '',
@@ -532,7 +536,7 @@ export const useConsoleOperations = (
       };
       return comment;
     },
-    [pjcode],
+    [pjcode, invalidateItemContent],
   );
 
   const uploadAttachment = useCallback(

@@ -4,10 +4,13 @@ import type {
 } from './useConsoleActionQueue';
 
 export const CONSOLE_ACTION_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+export const CONSOLE_ACTION_DELIVERY_STORAGE_KEY =
+  'console-action-delivery-queue';
+const inFlightActionIds = new Set<string>();
 
 export const loadPersistedConsoleActions = (): ConsoleOfflineQueuedAction[] => {
   try {
-    const raw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
+    const raw = localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY);
     if (raw === null) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed)
@@ -22,7 +25,7 @@ export const savePersistedConsoleActions = (
   actions: ConsoleOfflineQueuedAction[],
 ): void => {
   localStorage.setItem(
-    CONSOLE_ACTION_QUEUE_STORAGE_KEY,
+    CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
     JSON.stringify(actions),
   );
 };
@@ -31,12 +34,37 @@ export const persistConsoleAction = (
   action: ConsoleOfflineQueuedAction,
 ): void => {
   savePersistedConsoleActions([...loadPersistedConsoleActions(), action]);
+  const raw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
+  const existing: unknown = raw === null ? [] : JSON.parse(raw);
+  const actions = Array.isArray(existing) ? existing : [];
+  localStorage.setItem(
+    CONSOLE_ACTION_QUEUE_STORAGE_KEY,
+    JSON.stringify([...actions, action]),
+  );
 };
 
 export const removePersistedConsoleAction = (id: string): void => {
   savePersistedConsoleActions(
     loadPersistedConsoleActions().filter((action) => action.id !== id),
   );
+  try {
+    const raw = localStorage.getItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY);
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+    const actions = Array.isArray(parsed) ? parsed : [];
+    localStorage.setItem(
+      CONSOLE_ACTION_QUEUE_STORAGE_KEY,
+      JSON.stringify(
+        actions.filter(
+          (action) =>
+            typeof action !== 'object' ||
+            action === null ||
+            (action as { id?: unknown }).id !== id,
+        ),
+      ),
+    );
+  } catch {
+    localStorage.setItem(CONSOLE_ACTION_QUEUE_STORAGE_KEY, '[]');
+  }
 };
 
 export const deliverConsoleAction = async (
@@ -81,6 +109,30 @@ export const deliverConsoleAction = async (
     );
   }
   return payload;
+};
+
+export const deliverPersistedConsoleAction = async (
+  action: ConsoleOfflineQueuedAction,
+  keepalive = false,
+): Promise<unknown> => {
+  if (inFlightActionIds.has(action.id)) return undefined;
+  inFlightActionIds.add(action.id);
+  try {
+    const result = await deliverConsoleAction(action, keepalive);
+    removePersistedConsoleAction(action.id);
+    return result;
+  } catch (error) {
+    inFlightActionIds.delete(action.id);
+    throw error;
+  }
+};
+
+export const deliverPersistedConsoleActions = async (): Promise<void> => {
+  await Promise.all(
+    loadPersistedConsoleActions().map((action) =>
+      deliverPersistedConsoleAction(action).catch(() => undefined),
+    ),
+  );
 };
 
 export const payloadWithActionId = (

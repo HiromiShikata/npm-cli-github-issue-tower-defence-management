@@ -48,6 +48,7 @@ export type ConsoleTriageRequest = {
   nextActionHour?: number | null;
   commentBody?: string;
   expectedStatusName?: string | null;
+  actionId?: string;
 };
 
 export type ConsoleIntmuxRequest = {
