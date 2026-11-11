@@ -17,6 +17,7 @@ const seedCommentExpandedState = (): void => {
 };
 
 const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+const DELIVERY_QUEUE_STORAGE_KEY = 'console-action-delivery-queue';
 
 const offlinePayload = {
   itemUrl: 'https://github.com/o/r/pull/851',
@@ -199,6 +200,57 @@ describe('useConsoleActionQueue', () => {
         '/api/triage',
         expect.objectContaining({ keepalive: true }),
       );
+    },
+  );
+
+  it.each([
+    [
+      'succeeds',
+      { ok: true, status: 200, json: async () => ({}) },
+      false,
+      false,
+      false,
+    ],
+    [
+      'fails with a server error',
+      { ok: false, status: 500, json: async () => ({}) },
+      true,
+      true,
+      true,
+    ],
+  ])(
+    'handles pagehide keepalive delivery when an offline payload %s',
+    async (
+      _outcome,
+      response,
+      offlineEntryRemains,
+      errorVisible,
+      deliveryEntryRemains,
+    ) => {
+      global.fetch = jest.fn(async () => response) as unknown as typeof fetch;
+      const { result } = renderHook(() => useConsoleActionQueue());
+      act(() => {
+        result.current.enqueue(makeAction({ offline: [offlinePayload] }));
+      });
+      const [descriptor] = readStoredOfflineQueue();
+      const id = String(descriptor.id);
+
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'));
+      });
+      await act(async () => {
+        await flushMicrotasks();
+      });
+
+      expect(
+        readStoredOfflineQueue().some((entry) => entry.id === id),
+      ).toBe(offlineEntryRemains);
+      expect(
+        JSON.parse(
+          localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]',
+        ).some((entry: { id?: unknown }) => entry.id === id),
+      ).toBe(deliveryEntryRemains);
+      expect(result.current.error.length > 0).toBe(errorVisible);
     },
   );
 
