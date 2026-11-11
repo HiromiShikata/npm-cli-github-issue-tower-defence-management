@@ -1,3 +1,10 @@
+## [2.195.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.4...v2.195.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* **console:** persist console actions at press time and deliver them independently of the view ([#3720](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3720)) ([732d877](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/732d8772d0683a566c27aa00ffd813775bb27b7f))
+
 ## [2.195.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.3...v2.195.4) (2026-11-11)
 
 
