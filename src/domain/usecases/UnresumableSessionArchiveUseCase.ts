@@ -14,6 +14,9 @@ export type UnresumableSessionArchiveInput = {
 
 const PROMPT_TOO_LONG_RESULT = 'Prompt is too long';
 
+const isSafetyStopCount = (safetyStops: unknown): boolean =>
+  typeof safetyStops === 'number' && safetyStops > 0;
+
 const unresumableSessionIdInLine = (line: string): string | null => {
   let parsed: unknown;
   try {
@@ -27,7 +30,8 @@ const unresumableSessionIdInLine = (line: string): string | null => {
   if (
     parsed.type !== 'result' ||
     parsed.is_error !== true ||
-    parsed.result !== PROMPT_TOO_LONG_RESULT
+    (parsed.result !== PROMPT_TOO_LONG_RESULT &&
+      !isSafetyStopCount(parsed.safety_stops))
   ) {
     return null;
   }
