@@ -227,6 +227,68 @@ describe('useConsoleActionQueue', () => {
     expect(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY)).toBe('[]');
   });
 
+  it('sends a pending action once when hidden twice and does not resend it after the grace timer', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+
+    const hide = (): void => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    act(() => {
+      hide();
+      hide();
+      jest.advanceTimersByTime(6000);
+    });
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(action.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends one comment and one status change when hidden during the grace and visible again before the timer elapses', async () => {
+    const fetchMock = installOperationFetch();
+    const action = makeAction({
+      offline: [commentOfflinePayload, closeOfflinePayload],
+      commit: jest.fn(async () => {
+        await fetch('/api/comment', { method: 'POST' });
+        await fetch('/api/triage', { method: 'POST' });
+      }),
+    });
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.enqueue(action);
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+      jest.advanceTimersByTime(6000);
+    });
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === '/api/comment'),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === '/api/triage'),
+    ).toHaveLength(1);
+  });
+
   it('keeps a persisted action and exposes a retryable error after a 4xx response', async () => {
     const descriptor = {
       ...commentOfflinePayload,

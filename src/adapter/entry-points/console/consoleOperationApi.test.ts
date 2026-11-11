@@ -1249,6 +1249,64 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
+    it('remembers a posted comment when status update fails so retrying the action only retries status', async () => {
+      const actionId = 'triage-action-status-failure-after-comment';
+      issueRepository.updateStatus.mockRejectedValueOnce(
+        new StaleProjectItemError('PVTI_status_failure_after_comment'),
+      );
+      const body = {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId,
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_status_failure_after_comment',
+        statusName: 'Todo',
+        commentBody: 'retry status only',
+      };
+
+      const firstResponse = await handleTriage(context, body);
+      const secondResponse = await handleTriage(context, body);
+
+      expect(firstResponse.body).toMatchObject({ commentPosted: true });
+      expect(secondResponse.body).toMatchObject({
+        duplicate: true,
+        commentPosted: true,
+      });
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs the upstream error when the combined comment step fails', async () => {
+      const commentError = new Error('comment upstream failed');
+      issueRepository.createCommentByUrl.mockRejectedValueOnce(commentError);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          actionId: 'triage-action-comment-error-log',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_comment_error_log',
+          statusName: 'Todo',
+          commentBody: 'log this failure',
+        });
+
+        expect(consoleError).toHaveBeenCalledWith(
+          '[handleTriage] upstream comment post failed:',
+          expect.objectContaining({
+            pjcode: 'acme',
+            url: 'https://github.com/o/r/issues/1',
+          }),
+          commentError,
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
     it('sets the status by name', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
