@@ -1,3 +1,10 @@
+## [2.195.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.2...v2.195.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* relate pull requests only by closing keyword, willCloseTarget, or Ref line ([#3718](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3718)) ([cc3cdd9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cc3cdd90d99af46d0e614a31eb9d6734d3ca3990))
+
 ## [2.195.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.1...v2.195.2) (2026-11-11)
 
 
