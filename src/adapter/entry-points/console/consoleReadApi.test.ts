@@ -333,6 +333,7 @@ describe('consoleReadApi', () => {
             isResolvedAllReviewComments: true,
             isBranchOutOfDate: false,
             missingRequiredCheckNames: [],
+            ciStatusAvailability: 'AVAILABLE',
             summary: {
               title: 'summary title',
               body: 'summary body',
