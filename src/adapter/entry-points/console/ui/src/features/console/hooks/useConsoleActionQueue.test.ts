@@ -242,9 +242,9 @@ describe('useConsoleActionQueue', () => {
         await flushMicrotasks();
       });
 
-      expect(
-        readStoredOfflineQueue().some((entry) => entry.id === id),
-      ).toBe(offlineEntryRemains);
+      expect(readStoredOfflineQueue().some((entry) => entry.id === id)).toBe(
+        offlineEntryRemains,
+      );
       expect(
         JSON.parse(
           localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]',
