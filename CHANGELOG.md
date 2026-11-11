@@ -1,3 +1,10 @@
+## [2.195.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.1...v2.195.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **console:** nest GPT-Live session config under session ([#3717](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3717)) ([bb90357](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb90357396239e972ef574049234c7ee32d84bf1))
+
 ## [2.195.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.0...v2.195.1) (2026-11-11)
 
 
