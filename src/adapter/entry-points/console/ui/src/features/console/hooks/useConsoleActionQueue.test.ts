@@ -145,6 +145,115 @@ describe('useConsoleActionQueue', () => {
     expect(result.current.pending).toHaveLength(0);
   });
 
+  it.each([
+    ['set status', closeOfflinePayload],
+    ['add comment', commentOfflinePayload],
+  ])(
+    'persists the %s descriptor at press time, before the five second grace expires',
+    (_name, payload) => {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      act(() => {
+        result.current.enqueue(makeAction({ offline: [payload] }));
+      });
+
+      expect(readStoredOfflineQueue()).toEqual([
+        expect.objectContaining({
+          ...payload,
+          id: expect.any(String),
+          enqueuedAt: expect.any(Number),
+        }),
+      ]);
+    },
+  );
+
+  it.each([
+    ['pagehide', () => window.dispatchEvent(new Event('pagehide'))],
+    [
+      'visibilitychange to hidden',
+      () => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          value: 'hidden',
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+      },
+    ],
+  ])(
+    'sends pending actions immediately with keepalive on %s',
+    async (_name, dispatch) => {
+      const fetchMock = installOperationFetch();
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        commit: jest.fn(async () => {
+          await fetch('/api/triage', { method: 'POST', keepalive: true });
+        }),
+      });
+      act(() => {
+        result.current.enqueue(action);
+        dispatch();
+      });
+      await act(async () => {
+        await flushMicrotasks();
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/triage',
+        expect.objectContaining({ keepalive: true }),
+      );
+    },
+  );
+
+  it('resends an unconfirmed descriptor on the next load and removes it only after a confirming response', async () => {
+    const descriptor = {
+      ...closeOfflinePayload,
+      id: 'action-reload-1',
+      message: 'Move to Awaiting Workspace',
+      color: 'green',
+      enqueuedAt: Date.now(),
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([descriptor]),
+    );
+    const fetchMock = installOperationFetch();
+    renderHook(() => useConsoleActionQueue());
+
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/triage',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY)).toBe('[]');
+  });
+
+  it('keeps a persisted action and exposes a retryable error after a 4xx response', async () => {
+    const descriptor = {
+      ...commentOfflinePayload,
+      id: 'action-4xx-1',
+      message: 'Add comment',
+      color: 'green',
+      enqueuedAt: Date.now(),
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([descriptor]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 422,
+      text: async () => 'comment rejected',
+    })) as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    await act(async () => {
+      await result.current.confirmOfflineAction(descriptor.id);
+    });
+
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(result.current.error[0]?.reason).toContain('comment rejected');
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+  });
+
   it('cancels the command when undo is called within the window', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const action = makeAction();

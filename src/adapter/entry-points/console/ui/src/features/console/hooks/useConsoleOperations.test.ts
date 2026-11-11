@@ -79,6 +79,58 @@ const setup = () => {
 };
 
 describe('useConsoleOperations', () => {
+  it('sends Comment & Awaiting Workspace as one atomic triage request', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.addCommentAndMoveToAwaitingWorkspace(
+        issueItem,
+        'handoff details',
+        consoleStatusOptionsFixture[0],
+      );
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/triage',
+      expect.objectContaining({
+        body: expect.stringContaining('"commentBody":"handoff details"'),
+      }),
+    );
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        action: 'set_status',
+        commentBody: 'handoff details',
+        actionId: expect.any(String),
+      }),
+    );
+  });
+
+  it('does not apply status when the combined triage request reports comment failure', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        commentPosted: false,
+        statusSet: false,
+        error: 'comment rejected',
+      }),
+    })) as unknown as typeof fetch;
+    const { result } = setup();
+
+    await expect(
+      act(async () =>
+        result.current.operations.addCommentAndMoveToAwaitingWorkspace(
+          issueItem,
+          'retry me',
+          consoleStatusOptionsFixture[0],
+        ),
+      ),
+    ).rejects.toThrow('comment rejected');
+  });
+
   it('posts a totally wrong review as a close with the totally wrong comment body', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();

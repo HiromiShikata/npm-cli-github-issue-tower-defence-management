@@ -1194,6 +1194,57 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleTriage', () => {
+    it('handles set_status with commentBody as one request and reports both completed steps', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-action-1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_atomic',
+        expectedStatusName: 'Awaiting Workspace',
+        statusName: 'Preparation',
+        commentBody: 'handoff details',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: true,
+        commentPosted: true,
+        statusSet: true,
+      });
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'handoff details',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns commentPosted false and does not set status when the combined comment step fails', async () => {
+      issueRepository.createCommentByUrl.mockRejectedValueOnce(
+        new Error('comment rejected'),
+      );
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-action-comment-failure',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_atomic_comment_failure',
+        expectedStatusName: 'Awaiting Workspace',
+        statusName: 'Preparation',
+        commentBody: 'retry me',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: false,
+        commentPosted: false,
+        statusSet: false,
+        error: 'comment rejected',
+      });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
     it('sets the status by name', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
