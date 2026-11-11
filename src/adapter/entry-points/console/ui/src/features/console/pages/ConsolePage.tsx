@@ -931,6 +931,11 @@ export const ConsolePage = () => {
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: commitAction,
+        commitWithActionId:
+          input.commitWithActionId === undefined
+            ? undefined
+            : (sentStepCount, actionId) =>
+                input.commitWithActionId!(sentStepCount, actionId),
         offline: input.offline,
         revertAdvance:
           dependedIssueSubmission === null

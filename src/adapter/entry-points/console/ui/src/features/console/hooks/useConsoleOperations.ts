@@ -62,6 +62,7 @@ export type ConsoleOperationsApi = {
   setStatus: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    actionId?: string,
   ) => Promise<void>;
   setNextActionDateValue: (
     item: ConsoleListItem,
@@ -83,12 +84,14 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     sentStepCount?: number,
+    actionId?: string,
   ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
   addCommentAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     body: string,
     option: ConsoleFieldOption,
+    actionId?: string,
   ) => Promise<ConsoleComment>;
   uploadAttachment: (item: ConsoleListItem, file: File) => Promise<string>;
   addInlineReviewComment: (
@@ -191,6 +194,8 @@ export const buildTriageRequest = (
     agentOptionId?: string;
     nextActionDate?: string;
     nextActionHour?: number | null;
+    actionId?: string;
+    commentBody?: string;
   },
 ): ConsoleTriageRequest => ({
   pjcode,
@@ -227,6 +232,14 @@ export const deleteAllCommentsRequestBuild = (
 ): ConsoleDeleteAllCommentsRequest => ({
   issueUrl: item.url,
 });
+
+const generateActionId = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
@@ -334,12 +347,17 @@ export const useConsoleOperations = (
   );
 
   const setStatus = useCallback(
-    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       const request = buildTriageRequest(pjcode, item, 'set_status', {
         statusName: option.name,
+        actionId: actionId ?? generateActionId(),
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -425,34 +443,30 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
       sentStepCount = 0,
+      actionId?: string,
     ) => {
-      if (pjcode === null) {
-        throw missingPjcodeError();
-      }
+      if (pjcode === null) throw missingPjcodeError();
+      const resolvedActionId = actionId ?? generateActionId();
       if (sentStepCount > 0) {
         await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
         return;
       }
-      const commentResult = await postConsoleComment(
-        commentRequestBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
+      const request = buildTriageRequest(pjcode, item, 'set_status', {
+        statusName: option.name,
+        commentBody: AWAITING_WORKSPACE_COMMENT_BODY,
+        actionId: resolvedActionId,
+      });
+      const response = await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        request,
       );
-      if (commentResult.posted) {
-        await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
-        return;
+      if (isRecord(response) && response.ok === false) {
+        throw new Error(String(response.error ?? 'Comment was not posted'));
       }
-      await setStatus(item, option);
       await onAfterMoveToAwaitingWorkspace?.();
-      const resetInfo =
-        commentResult.rateLimitResetAt !== null
-          ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
-          : '';
-      throw new Error(
-        `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
-      );
     },
     [
       pjcode,
-      setStatus,
       onAfterMoveToAwaitingWorkspace,
       awaitingWorkspaceStatusMoveAfterCommentPosted,
     ],
@@ -480,24 +494,45 @@ export const useConsoleOperations = (
   );
 
   const addCommentAndMoveToAwaitingWorkspace = useCallback(
-    async (item: ConsoleListItem, body: string, option: ConsoleFieldOption) => {
-      if (pjcode === null) {
-        throw missingPjcodeError();
-      }
-      const commentResult = await postConsoleComment(
-        commentRequestBuild(pjcode, item, body),
+    async (
+      item: ConsoleListItem,
+      body: string,
+      option: ConsoleFieldOption,
+      actionId?: string,
+    ) => {
+      if (pjcode === null) throw missingPjcodeError();
+      const resolvedActionId = actionId ?? generateActionId();
+      const request = buildTriageRequest(pjcode, item, 'set_status', {
+        statusName: option.name,
+        commentBody: body,
+        actionId: resolvedActionId,
+      });
+      const response = await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        request,
       );
-      if (!commentResult.posted) {
-        const resetInfo =
-          commentResult.rateLimitResetAt !== null
-            ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
-            : '';
-        throw new Error(`${commentResult.error}.${resetInfo}`);
+      if (
+        !isRecord(response) ||
+        response.ok !== true ||
+        response.commentPosted === false
+      ) {
+        throw new Error(
+          String(
+            isRecord(response)
+              ? (response.error ?? 'Comment was not posted')
+              : 'Comment was not posted',
+          ),
+        );
       }
-      await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
-      return commentResult.comment;
+      const comment: ConsoleComment = {
+        id: 0,
+        author: '',
+        body,
+        createdAt: new Date().toISOString(),
+      };
+      return comment;
     },
-    [pjcode, awaitingWorkspaceStatusMoveAfterCommentPosted],
+    [pjcode],
   );
 
   const uploadAttachment = useCallback(

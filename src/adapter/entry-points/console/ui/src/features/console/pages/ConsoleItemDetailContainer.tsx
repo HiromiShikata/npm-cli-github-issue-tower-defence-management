@@ -71,6 +71,10 @@ export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
   commit: (sentStepCount: number) => Promise<void>;
+  commitWithActionId?: (
+    sentStepCount: number,
+    actionId: string,
+  ) => Promise<void>;
   offline?: ConsoleOfflinePayload[];
   skipAdvance?: boolean;
   onAdvance?: () => void;
@@ -118,6 +122,7 @@ export const buildTriageOfflinePayload = (
     statusName?: string;
     storyOptionId?: string;
     agentOptionId?: string;
+    commentBody?: string;
   },
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
@@ -172,9 +177,9 @@ export const okAndAwaitingWorkspaceOfflinePayloadsBuild = (
   item: ConsoleListItem,
   option: ConsoleFieldOption,
 ): ConsoleOfflinePayload[] => [
-  commentOfflinePayloadBuild(pjcode, item, AWAITING_WORKSPACE_COMMENT_BODY),
   buildTriageOfflinePayload(pjcode, item, 'set_status', {
     statusName: option.name,
+    commentBody: AWAITING_WORKSPACE_COMMENT_BODY,
   }),
 ];
 
@@ -409,6 +414,8 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'set_status', optionName: option.name },
         item,
         commit: () => operations.setStatus(item, option),
+        commitWithActionId: (_sentStepCount, actionId) =>
+          operations.setStatus(item, option, actionId),
         offline:
           pjcode != null
             ? [
@@ -454,8 +461,14 @@ export const ConsoleItemDetailContainer = ({
       onQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: (sentStepCount) =>
-          operations.okAndMoveToAwaitingWorkspace(item, option, sentStepCount),
+        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commitWithActionId: (sentStepCount, actionId) =>
+          operations.okAndMoveToAwaitingWorkspace(
+            item,
+            option,
+            sentStepCount,
+            actionId,
+          ),
         offline:
           pjcode != null
             ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
@@ -680,12 +693,28 @@ export const ConsoleItemDetailContainer = ({
                     );
                   }
                 },
+                commitWithActionId: async (sentStepCount, actionId) => {
+                  if (sentStepCount > 0) {
+                    await operations.setStatus(
+                      item,
+                      awaitingWorkspaceOption,
+                      actionId,
+                    );
+                    return;
+                  }
+                  await operations.addCommentAndMoveToAwaitingWorkspace(
+                    item,
+                    body,
+                    awaitingWorkspaceOption,
+                    actionId,
+                  );
+                },
                 offline:
                   pjcode != null
                     ? [
-                        commentOfflinePayloadBuild(pjcode, item, body),
                         buildTriageOfflinePayload(pjcode, item, 'set_status', {
                           statusName: awaitingWorkspaceOption.name,
+                          commentBody: body,
                         }),
                       ]
                     : undefined,

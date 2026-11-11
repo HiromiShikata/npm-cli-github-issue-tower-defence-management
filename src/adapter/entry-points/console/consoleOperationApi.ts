@@ -93,6 +93,31 @@ const ok = (): ConsoleOperationResponse => ({
   body: { ok: true },
 });
 
+const actionResults = new Map<string, Record<string, unknown>>();
+const ACTION_RESULT_LIMIT = 1000;
+
+const storedActionResult = (
+  actionId: unknown,
+): ConsoleOperationResponse | null => {
+  if (!isNonEmptyString(actionId)) return null;
+  const body = actionResults.get(actionId);
+  return body === undefined
+    ? null
+    : { statusCode: 200, body: { ...body, duplicate: true } };
+};
+
+const rememberActionResult = (
+  actionId: unknown,
+  body: Record<string, unknown>,
+): void => {
+  if (!isNonEmptyString(actionId)) return;
+  if (actionResults.size >= ACTION_RESULT_LIMIT) {
+    const first = actionResults.keys().next().value;
+    if (typeof first === 'string') actionResults.delete(first);
+  }
+  actionResults.set(actionId, body);
+};
+
 const badRequest = (message: string): ConsoleOperationResponse => ({
   statusCode: 400,
   body: { error: message },
@@ -675,9 +700,30 @@ export const handleTriage = async (
   const { project, pjcode } = binding;
 
   if (action === 'set_status') {
+    const duplicate = storedActionResult(body.actionId);
+    if (duplicate !== null) return duplicate;
     const statusName = body.statusName;
-    if (!isNonEmptyString(statusName)) {
+    if (!isNonEmptyString(statusName))
       return badRequest('statusName is required for set_status');
+    const commentBody = body.commentBody;
+    let commentPosted = false;
+    if (isNonEmptyString(commentBody)) {
+      try {
+        await context
+          .resolveIssueRepository(issueUrl)
+          .createCommentByUrl(issueUrl, commentBody);
+        commentPosted = true;
+      } catch (error) {
+        return {
+          statusCode: 200,
+          body: {
+            ok: false,
+            commentPosted: false,
+            statusSet: false,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
     }
     let failure: ConsoleOperationResponse | null;
     try {
@@ -695,9 +741,7 @@ export const handleTriage = async (
         `project item "${projectItemId}" no longer exists in GitHub`,
       );
     }
-    if (failure !== null) {
-      return failure;
-    }
+    if (failure !== null) return failure;
     recordDoneForStatusChange(context, pjcode, projectItemId);
     const lowerStatus = statusName.toLowerCase();
     if (
@@ -714,7 +758,11 @@ export const handleTriage = async (
         canonicalStatusName,
       );
     }
-    return ok();
+    const resultBody = commentPosted
+      ? { ok: true, commentPosted: true, statusSet: true }
+      : { ok: true };
+    rememberActionResult(body.actionId, resultBody);
+    return { statusCode: 200, body: resultBody };
   }
 
   if (action === 'set_story') {
@@ -1001,6 +1049,8 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
+  const duplicate = storedActionResult(body.actionId);
+  if (duplicate !== null) return duplicate;
   const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
   if (pjcode === null) {
     console.warn('[handleComment] pjcode absent in request body', { url });
@@ -1009,18 +1059,17 @@ export const handleComment = async (
     const posted = await context
       .resolveIssueRepository(url)
       .createCommentByUrl(url, commentBody);
-    return {
-      statusCode: 200,
-      body: {
-        ok: true,
-        comment: {
-          id: posted.id,
-          author: posted.author,
-          body: posted.body,
-          createdAt: posted.createdAt.toISOString(),
-        },
+    const resultBody = {
+      ok: true,
+      comment: {
+        id: posted.id,
+        author: posted.author,
+        body: posted.body,
+        createdAt: posted.createdAt.toISOString(),
       },
     };
+    rememberActionResult(body.actionId, resultBody);
+    return { statusCode: 200, body: resultBody };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(

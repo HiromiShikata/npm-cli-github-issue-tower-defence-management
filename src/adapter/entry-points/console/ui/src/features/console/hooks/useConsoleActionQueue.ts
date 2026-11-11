@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import {
   COMMENT_OPERATION_PATH,
   type ConsoleCommentRequest,
@@ -11,6 +11,13 @@ import {
 } from '../logic/actionToast';
 import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
 import { overlayCloseSuccessRecord } from './useConsoleOverlay';
+import {
+  CONSOLE_ACTION_QUEUE_STORAGE_KEY,
+  deliverConsoleAction,
+  loadPersistedConsoleActions,
+  persistConsoleAction,
+  removePersistedConsoleAction,
+} from './consoleActionDelivery';
 
 export type ConsoleOfflinePayload = {
   itemUrl: string;
@@ -21,10 +28,12 @@ export type ConsoleOfflinePayload = {
   isPr: boolean;
   apiPath: string;
   requestBody: Record<string, unknown>;
+  id?: string;
 };
 
 export type ConsoleOfflineQueuedAction = {
   id: string;
+  actionId?: string;
   message: string;
   color: ConsoleToastColor;
   enqueuedAt: number;
@@ -34,6 +43,10 @@ export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
   commit: (sentStepCount: number) => Promise<void>;
+  commitWithActionId?: (
+    sentStepCount: number,
+    actionId: string,
+  ) => Promise<void>;
   advance: () => void;
   revertAdvance?: () => void;
   optimistic?: () => void;
@@ -74,7 +87,7 @@ export type ConsoleActionWriteState = {
   attempt: number;
 };
 
-const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+const OFFLINE_QUEUE_STORAGE_KEY = CONSOLE_ACTION_QUEUE_STORAGE_KEY;
 
 const isConsoleOfflineQueuedAction = (
   item: unknown,
@@ -208,6 +221,8 @@ export const useConsoleActionQueue = (
 ): ConsoleActionQueue => {
   const isAirplaneModeOnRef = useRef<boolean>(options.isAirplaneModeOn);
   isAirplaneModeOnRef.current = options.isAirplaneModeOn;
+  const persistedAtMountRef =
+    useRef<ConsoleOfflineQueuedAction[]>(loadOfflineQueue());
   const [pending, setPending] = useState<ConsolePendingActionView[]>([]);
   const [error, setError] = useState<ConsoleActionError[]>([]);
   const [offlineActions, setOfflineActions] =
@@ -301,6 +316,10 @@ export const useConsoleActionQueue = (
       const actionHoldOffline = (
         unsentOfflinePayloads: ConsoleOfflinePayload[],
       ): void => {
+        for (const payload of unsentOfflinePayloads) {
+          if (payload.id !== undefined)
+            removePersistedConsoleAction(payload.id);
+        }
         offlineActionsCreate({
           payloads: unsentOfflinePayloads,
           message: action.message,
@@ -324,9 +343,17 @@ export const useConsoleActionQueue = (
         return;
       }
       setWriteState({ status: 'unconfirmed', attempt });
-      action
-        .commit(sentStepCount)
+      (action.commitWithActionId === undefined
+        ? action.commit(sentStepCount)
+        : action.commitWithActionId(
+            sentStepCount,
+            String(offlinePayloads[0]?.id ?? ''),
+          )
+      )
         .then(() => {
+          for (const payload of offlinePayloads) {
+            removePersistedConsoleAction(payload.id ?? '');
+          }
           setWriteState({ status: 'succeeded', attempt });
         })
         .catch((cause: unknown) => {
@@ -345,6 +372,10 @@ export const useConsoleActionQueue = (
           ) {
             actionHoldOffline(unsentOfflinePayloads);
           } else {
+            for (const payload of offlinePayloads) {
+              if (payload.id !== undefined)
+                removePersistedConsoleAction(payload.id);
+            }
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
@@ -386,6 +417,9 @@ export const useConsoleActionQueue = (
     }
     pendingEntriesRef.current.delete(id);
     setPending((prev) => prev.filter((p) => p.id !== id));
+    for (const payload of entry.action.offline ?? []) {
+      removePersistedConsoleAction(payload.id ?? '');
+    }
     entry.action.revertAdvance?.();
     entry.action.revertOptimistic?.();
   }, []);
@@ -473,7 +507,26 @@ export const useConsoleActionQueue = (
         startedAt: createdAt,
         timer: null,
       };
-      pendingEntriesRef.current.set(id, entry);
+      const persisted = (action.offline ?? []).map((payload) => {
+        const persistedId =
+          typeof payload.requestBody.actionId === 'string'
+            ? payload.requestBody.actionId
+            : generateId();
+        const descriptor: ConsoleOfflineQueuedAction = {
+          id: persistedId,
+          actionId: persistedId,
+          message: action.message,
+          color: action.color,
+          enqueuedAt: createdAt,
+          ...payload,
+        };
+        persistConsoleAction(descriptor);
+        return descriptor;
+      });
+      const entryAction =
+        persisted.length > 0 ? { ...action, offline: persisted } : action;
+      const entryWithAction = { ...entry, action: entryAction };
+      pendingEntriesRef.current.set(id, entryWithAction);
       setPending((prev) => [
         ...prev,
         {
@@ -495,13 +548,62 @@ export const useConsoleActionQueue = (
     [commitEntry],
   );
 
-  useEffect(() => {
-    return () => {
-      for (const id of Array.from(pendingEntriesRef.current.keys())) {
-        commitEntry(id);
+  useLayoutEffect(() => {
+    const replay = (): void => {
+      for (const action of persistedAtMountRef.current) {
+        void deliverConsoleAction(action)
+          .then(() => removePersistedConsoleAction(action.id))
+          .catch((cause: unknown) => {
+            appendError({
+              message: action.message,
+              reason: errorReason(cause),
+              retry: () => void replay(),
+            });
+          });
       }
     };
-  }, [commitEntry]);
+    const deliverPending = (): void => {
+      for (const entry of pendingEntriesRef.current.values()) {
+        const offlinePayloads = entry.action.offline ?? [];
+        if (offlinePayloads.length === 0) {
+          void entry.action.commit(0).catch((cause: unknown) =>
+            appendError({
+              message: entry.action.message,
+              reason: errorReason(cause),
+            }),
+          );
+        }
+        for (const payload of offlinePayloads) {
+          const action = loadPersistedConsoleActions().find(
+            (candidate) => candidate.id === payload.id,
+          );
+          if (action !== undefined) {
+            void deliverConsoleAction(action, true)
+              .then(() => removePersistedConsoleAction(action.id))
+              .catch((cause: unknown) =>
+                appendError({
+                  message: entry.action.message,
+                  reason: errorReason(cause),
+                }),
+              );
+          }
+        }
+      }
+    };
+    replay();
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') deliverPending();
+    };
+    window.addEventListener('pagehide', deliverPending);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', deliverPending);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      deliverPending();
+      for (const id of Array.from(pendingEntriesRef.current.keys()))
+        commitEntry(id);
+    };
+  }, [appendError, commitEntry]);
 
   return {
     pending,

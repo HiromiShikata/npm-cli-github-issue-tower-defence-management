@@ -33,6 +33,7 @@ export type ConsoleReviewRequest = {
   line?: number;
   side?: ConsoleReviewCommentSide;
   expectedStatusName?: string | null;
+  actionId?: string;
 };
 
 export type ConsoleTriageRequest = {
@@ -66,6 +67,7 @@ export type ConsoleReviewCommentRequest = {
   line: number;
   side: ConsoleReviewCommentSide;
   body: string;
+  actionId?: string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
