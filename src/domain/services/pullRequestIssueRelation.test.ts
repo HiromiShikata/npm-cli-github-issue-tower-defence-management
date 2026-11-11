@@ -182,9 +182,19 @@ const relationCases: RelationCase[] = [
   relationCase('Ref line naming a pull request URL is not related', false, {
     prBody: 'Ref https://github.com/owner/repo/pull/5',
   }),
-  relationCase('Ref line with a different issue number is not related', false, {
-    prBody: 'Ref https://github.com/owner/repo/issues/50',
-  }),
+  relationCase(
+    'Ref line whose number is followed by a digit is not related to issue 5',
+    false,
+    { prBody: 'Ref https://github.com/owner/repo/issues/50' },
+  ),
+  relationCase(
+    'Ref line whose number is followed by a digit is related to issue 50',
+    true,
+    {
+      prBody: 'Ref https://github.com/owner/repo/issues/50',
+      issueUrl: 'https://github.com/owner/repo/issues/50',
+    },
+  ),
   relationCase('Ref line on another repository is not related', false, {
     prBody: 'Ref https://github.com/other-owner/repo/issues/5',
   }),
@@ -309,11 +319,6 @@ const refLineCases: RefLineCase[] = [
   {
     name: 'a Ref line with shorthand yields no issue URL',
     prBody: 'Ref #5',
-    expected: [],
-  },
-  {
-    name: 'a Ref line whose number is followed by a digit yields no issue URL',
-    prBody: 'Ref https://github.com/owner/repo/issues/50',
     expected: [],
   },
   {

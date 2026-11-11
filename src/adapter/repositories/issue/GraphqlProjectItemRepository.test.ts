@@ -3381,7 +3381,7 @@ describe('GraphqlProjectItemRepository', () => {
       }
     });
 
-    it('extracts plainCrossRepoIssueReferenceUrls for a cross-repo URL in the body via fetchProjectItemByUrl', async () => {
+    it('does not extract plainCrossRepoIssueReferenceUrls for a prose cross-repo URL in the body via fetchProjectItemByUrl', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -3428,9 +3428,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       expect(result).not.toBeNull();
-      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([
-        'https://github.com/other/repo/issues/99',
-      ]);
+      expect(result?.plainCrossRepoIssueReferenceUrls).toEqual([]);
     });
 
     it('maps isArchived true from the ProjectV2Item node to isArchivedFromProject true on the issue branch', async () => {
