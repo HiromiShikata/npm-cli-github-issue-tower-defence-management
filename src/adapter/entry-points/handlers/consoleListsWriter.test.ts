@@ -696,3 +696,101 @@ describe('formatConsoleGeneratedAt', () => {
     );
   });
 });
+
+describe('writeConsoleLists consoleVisibleAssigneeLogins', () => {
+  let outDir: string;
+  const OTHER_LOGIN = 'other-login';
+  const WORKFLOW_BLOCKER_STORY = 'regular / WORKFLOW BLOCKER';
+
+  beforeEach(() => {
+    outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-visible-out-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  });
+
+  const readJsonUrls = (
+    filePath: string,
+    key: 'items' | 'stories',
+  ): string[] => {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (!isRecord(parsed) || !isUnknownArray(parsed[key])) return [];
+    return parsed[key].flatMap((entry) => {
+      if (!isRecord(entry)) return [];
+      if (key === 'items') return [String(entry.url)];
+      const items: unknown = entry.items;
+      return isUnknownArray(items)
+        ? items.map((item) => (isRecord(item) ? String(item.url) : ''))
+        : [];
+    });
+  };
+
+  const writeWith = (
+    visibleAssigneeLogins: string[] | null | undefined,
+    issues: Issue[],
+  ): void => {
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues,
+      workflowBlockerStoryName: WORKFLOW_BLOCKER_STORY,
+      generatedAt: '2026-06-14T07:22:33Z',
+      consoleVisibleAssigneeLogins: visibleAssigneeLogins,
+    });
+  };
+
+  const sharedFixtures = (): Issue[] => [
+    makeIssue({
+      url: 'https://github.com/demo/repo/issues/101',
+      story: WORKFLOW_BLOCKER_STORY,
+      storyOptionId: 's1',
+      assignees: [ASSIGNEE],
+    }),
+    makeIssue({
+      url: 'https://github.com/demo/repo/issues/102',
+      story: WORKFLOW_BLOCKER_STORY,
+      storyOptionId: 's1',
+      assignees: [OTHER_LOGIN],
+    }),
+  ];
+
+  it('lists only items assigned to a visible login in workflow-blocker and stories', () => {
+    writeWith([ASSIGNEE], sharedFixtures());
+    expect(
+      readJsonUrls(
+        path.join(outDir, 'demo', 'workflow-blocker', 'list.json'),
+        'items',
+      ),
+    ).toEqual(['https://github.com/demo/repo/issues/101']);
+    expect(
+      readJsonUrls(
+        path.join(outDir, 'demo', 'stories', 'list.json'),
+        'stories',
+      ),
+    ).toEqual(['https://github.com/demo/repo/issues/101']);
+  });
+
+  const NO_LOGINS: string[] = [];
+  it.each([
+    { name: 'absent', value: undefined },
+    { name: 'null', value: null },
+    { name: 'an empty list', value: NO_LOGINS },
+  ])(
+    'lists items of every assignee when consoleVisibleAssigneeLogins is $name',
+    ({ value }) => {
+      writeWith(value, sharedFixtures());
+      expect(
+        readJsonUrls(
+          path.join(outDir, 'demo', 'workflow-blocker', 'list.json'),
+          'items',
+        ),
+      ).toEqual([
+        'https://github.com/demo/repo/issues/101',
+        'https://github.com/demo/repo/issues/102',
+      ]);
+    },
+  );
+});

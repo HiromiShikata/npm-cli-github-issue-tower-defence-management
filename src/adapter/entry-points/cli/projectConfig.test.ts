@@ -2044,3 +2044,84 @@ describe('README keys that the project README must not set', () => {
     expect(merged.preparationProcessCheckCommand).toBe('cli-command {URL}');
   });
 });
+
+describe('loadConfigFile consoleVisibleAssigneeLogins', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-visible-assignee-logins-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  const cases: {
+    name: string;
+    content: string;
+    expected: string[] | undefined;
+  }[] = [
+    {
+      name: 'parses a list of logins',
+      content:
+        "projectName: 'demo'\nconsoleVisibleAssigneeLogins: ['owner-login', 'second-login']\n",
+      expected: ['owner-login', 'second-login'],
+    },
+    {
+      name: 'parses an empty list as an empty list',
+      content: "projectName: 'demo'\nconsoleVisibleAssigneeLogins: []\n",
+      expected: [],
+    },
+    {
+      name: 'yields undefined when the key is absent',
+      content: "projectName: 'demo'\n",
+      expected: undefined,
+    },
+    {
+      name: 'yields undefined when the value is a plain string',
+      content:
+        "projectName: 'demo'\nconsoleVisibleAssigneeLogins: 'owner-login'\n",
+      expected: undefined,
+    },
+    {
+      name: 'yields undefined when a list entry is not a string',
+      content:
+        'projectName: demo\nconsoleVisibleAssigneeLogins: [owner-login, 42]\n',
+      expected: undefined,
+    },
+  ];
+
+  it('parses or rejects consoleVisibleAssigneeLogins by its declared shape', () => {
+    for (const { name, content, expected } of cases) {
+      const filePath = writeConfig(content);
+      expect({
+        name,
+        value: loadConfigFile(filePath).consoleVisibleAssigneeLogins,
+      }).toEqual({ name, value: expected });
+    }
+  });
+});
+
+describe('mergeConfigs consoleVisibleAssigneeLogins', () => {
+  it('carries the config file value through to the merged config', () => {
+    const merged = mergeConfigs(
+      { consoleVisibleAssigneeLogins: ['owner-login'] },
+      {},
+      {},
+    );
+    expect(merged.consoleVisibleAssigneeLogins).toEqual(['owner-login']);
+  });
+
+  it('leaves the merged value undefined when the config file omits it', () => {
+    const merged = mergeConfigs({}, {}, {});
+    expect(merged.consoleVisibleAssigneeLogins).toBeUndefined();
+  });
+});
