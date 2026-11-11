@@ -380,9 +380,8 @@ const updateStatusByName = async (
   projectItemId: string,
   statusName: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
-  fallbackStatusId: string | null = null,
 ): Promise<ConsoleOperationResponse | null> => {
-  const statusId = resolveStatusId(project, statusName) ?? fallbackStatusId;
+  const statusId = resolveStatusId(project, statusName);
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
@@ -393,20 +392,18 @@ const updateStatusByName = async (
     if (liveIssue === null) {
       return badGateway(`issue "${issueUrl}" could not be loaded`);
     }
-    if (liveIssue !== undefined) {
-      const liveStatusName = liveIssue.status;
-      if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
-        return null;
-      }
-      if (liveStatusName !== expectedStatusAtActionTime.statusName) {
-        return badRequest(
-          `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
-            expectedStatusAtActionTime.statusName,
-          )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
-            liveStatusName,
-          )}. Please re-check the issue and act again.`,
-        );
-      }
+    const liveStatusName = liveIssue.status;
+    if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
+      return null;
+    }
+    if (liveStatusName !== expectedStatusAtActionTime.statusName) {
+      return badRequest(
+        `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
+          expectedStatusAtActionTime.statusName,
+        )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
+          liveStatusName,
+        )}. Please re-check the issue and act again.`,
+      );
     }
   }
   await issueRepository.updateStatus(
@@ -757,7 +754,6 @@ const handleTriageImpl = async (
         projectItemId,
         statusName,
         readExpectedStatusAtActionTime(body),
-        commentFailure === null ? null : statusName,
       );
     } catch (error) {
       if (!(error instanceof StaleProjectItemError)) throw error;

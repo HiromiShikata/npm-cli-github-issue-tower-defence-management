@@ -1224,6 +1224,22 @@ describe('consoleOperationApi', () => {
     });
 
     it('sets the status when the combined comment step fails and the request opts in', async () => {
+      project.status = {
+        ...project.status,
+        statuses: [
+          ...project.status.statuses,
+          {
+            id: 'status_prep',
+            name: 'Preparation',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Awaiting Workspace',
+      });
       const commentError = new Error('comment rejected with opt-in');
       issueRepository.createCommentByUrl.mockRejectedValueOnce(commentError);
       const consoleError = jest
@@ -1265,6 +1281,22 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns commentPosted false and does not set status when the comment failure flag is absent', async () => {
+      project.status = {
+        ...project.status,
+        statuses: [
+          ...project.status.statuses,
+          {
+            id: 'status_prep',
+            name: 'Preparation',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Awaiting Workspace',
+      });
       issueRepository.createCommentByUrl.mockRejectedValueOnce(
         new Error('comment rejected'),
       );
