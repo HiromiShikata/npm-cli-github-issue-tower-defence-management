@@ -304,6 +304,7 @@ describe('consoleReadApi', () => {
           isBranchOutOfDate: false,
           missingRequiredCheckNames: [],
           reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
         },
       ]);
       issueRepository.getPullRequestSummary.mockResolvedValue({
@@ -349,6 +350,57 @@ describe('consoleReadApi', () => {
       const response = await handleRelatedPrs(issueRepository, null);
       expect(response.statusCode).toBe(400);
     });
+
+    it.each([
+      { ciStatusAvailability: 'AVAILABLE' as const },
+      { ciStatusAvailability: 'UNAVAILABLE' as const },
+    ])(
+      'asks the repository to include unknown CI status and maps ciStatusAvailability $ciStatusAvailability into each item',
+      async ({ ciStatusAvailability }) => {
+        const issueRepository = mock<IssueRepository>();
+        issueRepository.findRelatedOpenPRs.mockResolvedValue([
+          {
+            url: 'https://github.com/o/r/pull/2',
+            branchName: 'feature',
+            createdAt: new Date('2026-01-02T03:04:05Z'),
+            isDraft: false,
+            isConflicted: false,
+            mergeable: 'MERGEABLE',
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+            reviewDecision: null,
+            ciStatusAvailability,
+          },
+        ]);
+        issueRepository.getPullRequestSummary.mockResolvedValue({
+          title: 'summary title',
+          body: 'summary body',
+          additions: 3,
+          deletions: 1,
+          changedFiles: 2,
+        });
+        const response = await handleRelatedPrs(
+          issueRepository,
+          'https://github.com/o/r/issues/1',
+        );
+        expect(issueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          'https://github.com/o/r/issues/1',
+          { includeCiStatusUnavailable: true },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+          relatedPullRequests: [
+            expect.objectContaining({
+              url: 'https://github.com/o/r/pull/2',
+              ciStatusAvailability,
+            }),
+          ],
+        });
+      },
+    );
 
     it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
       const issueRepository = mock<IssueRepository>();
