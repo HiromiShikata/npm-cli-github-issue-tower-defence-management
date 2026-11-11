@@ -202,6 +202,36 @@ describe('useConsoleActionQueue', () => {
     },
   );
 
+  it('does not deliver a queued comment when navigation occurs during the grace window', async () => {
+    const fetchMock = installCommentSuccessFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({ offline: [commentOfflinePayload] });
+
+    act(() => {
+      result.current.enqueue(action);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        ['/api/comment', '/api/triage'].includes(String(url)),
+      ),
+    ).toHaveLength(0);
+
+    act(() => {
+      result.current.undo(result.current.pending[0].id);
+      jest.advanceTimersByTime(6000);
+    });
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        ['/api/comment', '/api/triage'].includes(String(url)),
+      ),
+    ).toHaveLength(0);
+  });
+
   it('resends an unconfirmed descriptor on the next load and removes it only after a confirming response', async () => {
     const descriptor = {
       ...closeOfflinePayload,
@@ -225,6 +255,33 @@ describe('useConsoleActionQueue', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY)).toBe('[]');
+  });
+
+  it('keeps a legacy offline comment entry pending instead of replaying it on mount', async () => {
+    const descriptor = {
+      ...commentOfflinePayload,
+      id: 'legacy-comment-1',
+      message: 'Add comment',
+      color: 'green',
+      enqueuedAt: Date.now(),
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([descriptor]),
+    );
+    const fetchMock = installCommentSuccessFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        ['/api/comment', '/api/triage'].includes(String(url)),
+      ),
+    ).toHaveLength(0);
+    expect(result.current.offlineActions).toEqual([descriptor]);
   });
 
   it('sends a pending action once when hidden twice and does not resend it after the grace timer', async () => {
