@@ -46,18 +46,22 @@ export type ConsoleOperationsApi = {
     prUrl: string,
     action: ConsoleReviewAction,
     pendingReviewComments?: ConsolePendingReviewComment[],
+    actionId?: string,
   ) => Promise<void>;
   setNextActionDate: (
     item: ConsoleListItem,
     action: ConsoleNextActionDateAction,
+    actionId?: string,
   ) => Promise<void>;
   setStory: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    actionId?: string,
   ) => Promise<unknown>;
   setAgent: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    actionId?: string,
   ) => Promise<void>;
   setStatus: (
     item: ConsoleListItem,
@@ -67,14 +71,17 @@ export type ConsoleOperationsApi = {
   setNextActionDateValue: (
     item: ConsoleListItem,
     nextActionDate: string,
+    actionId?: string,
   ) => Promise<void>;
   setNextActionHourValue: (
     item: ConsoleListItem,
     nextActionHour: number | null,
+    actionId?: string,
   ) => Promise<void>;
   setInTmuxByHuman: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
+    actionId?: string,
   ) => Promise<void>;
   closeIssue: (
     item: ConsoleListItem,
@@ -113,7 +120,10 @@ export type ConsoleOperationsApi = {
     commentId: number,
     newBody: string,
   ) => Promise<void>;
-  deleteAllComments: (item: ConsoleListItem) => Promise<void>;
+  deleteAllComments: (
+    item: ConsoleListItem,
+    actionId?: string,
+  ) => Promise<void>;
   setDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
@@ -131,6 +141,7 @@ export const reviewRequest = (
   prUrl: string,
   action: ConsoleReviewAction,
   pendingReviewComments: ConsolePendingReviewComment[],
+  actionId?: string,
 ): ConsoleReviewRequest => {
   if (action === 'approve_and_merge') {
     return {
@@ -139,6 +150,7 @@ export const reviewRequest = (
       prUrl,
       projectItemId: item.projectItemId,
       expectedStatusName: item.status,
+      ...(actionId === undefined ? {} : { actionId }),
     };
   }
   if (action === 'request_changes') {
@@ -150,6 +162,7 @@ export const reviewRequest = (
       projectItemId: item.projectItemId,
       commentBody: buildRequestChangesBody(pendingReviewComments),
       expectedStatusName: item.status,
+      ...(actionId === undefined ? {} : { actionId }),
       ...(firstComment === undefined
         ? {}
         : {
@@ -168,6 +181,7 @@ export const reviewRequest = (
       projectItemId: item.projectItemId,
       commentBody: TOTALLY_WRONG_COMMENT_BODY,
       expectedStatusName: item.status,
+      ...(actionId === undefined ? {} : { actionId }),
     };
   }
   return {
@@ -179,6 +193,7 @@ export const reviewRequest = (
     commentBody: UNNECESSARY_COMMENT_BODY,
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
     expectedStatusName: item.status,
+    ...(actionId === undefined ? {} : { actionId }),
   };
 };
 
@@ -219,12 +234,14 @@ export const buildTriageRequest = (
 export const buildIntmuxRequest = (
   pjcode: string,
   item: ConsoleListItem,
+  actionId?: string,
 ): ConsoleIntmuxRequest => ({
   pjcode,
   action: 'set_intmux',
   issueUrl: item.url,
   projectItemId: item.projectItemId,
   expectedStatusName: item.status,
+  ...(actionId === undefined ? {} : { actionId }),
 });
 
 export const commentRequestBuild = (
@@ -241,8 +258,10 @@ export const commentRequestBuild = (
 
 export const deleteAllCommentsRequestBuild = (
   item: ConsoleListItem,
+  actionId?: string,
 ): ConsoleDeleteAllCommentsRequest => ({
   issueUrl: item.url,
+  ...(actionId === undefined ? {} : { actionId }),
 });
 
 const generateActionId = (): string =>
@@ -289,13 +308,21 @@ export const useConsoleOperations = (
       prUrl: string,
       action: ConsoleReviewAction,
       pendingReviewComments: ConsolePendingReviewComment[] = [],
+      actionId?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       await postConsoleOperation(
         REVIEW_OPERATION_PATH,
-        reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
+        reviewRequest(
+          pjcode,
+          item,
+          prUrl,
+          action,
+          pendingReviewComments,
+          actionId,
+        ),
       );
       invalidateItemContent(item);
     },
@@ -303,7 +330,11 @@ export const useConsoleOperations = (
   );
 
   const setNextActionDate = useCallback(
-    async (item: ConsoleListItem, action: ConsoleNextActionDateAction) => {
+    async (
+      item: ConsoleListItem,
+      action: ConsoleNextActionDateAction,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -312,6 +343,7 @@ export const useConsoleOperations = (
         action,
         issueUrl: item.url,
         projectItemId: item.projectItemId,
+        ...(actionId === undefined ? {} : { actionId }),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -320,7 +352,11 @@ export const useConsoleOperations = (
   );
 
   const setAgent = useCallback(
-    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -330,6 +366,7 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         agentOptionId: option.id,
+        ...(actionId === undefined ? {} : { actionId }),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -338,7 +375,11 @@ export const useConsoleOperations = (
   );
 
   const setStory = useCallback(
-    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+    async (
+      item: ConsoleListItem,
+      option: ConsoleFieldOption,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -348,6 +389,7 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
+        ...(actionId === undefined ? {} : { actionId }),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -379,12 +421,17 @@ export const useConsoleOperations = (
   );
 
   const setNextActionDateValue = useCallback(
-    async (item: ConsoleListItem, nextActionDate: string) => {
+    async (
+      item: ConsoleListItem,
+      nextActionDate: string,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       const request = buildTriageRequest(pjcode, item, 'set_next_action_date', {
         nextActionDate,
+        actionId,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -393,12 +440,17 @@ export const useConsoleOperations = (
   );
 
   const setNextActionHourValue = useCallback(
-    async (item: ConsoleListItem, nextActionHour: number | null) => {
+    async (
+      item: ConsoleListItem,
+      nextActionHour: number | null,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       const request = buildTriageRequest(pjcode, item, 'set_next_action_hour', {
         nextActionHour,
+        actionId,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -407,11 +459,15 @@ export const useConsoleOperations = (
   );
 
   const setInTmuxByHuman = useCallback(
-    async (item: ConsoleListItem, _option: ConsoleFieldOption) => {
+    async (
+      item: ConsoleListItem,
+      _option: ConsoleFieldOption,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request = buildIntmuxRequest(pjcode, item);
+      const request = buildIntmuxRequest(pjcode, item, actionId);
       await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
@@ -661,8 +717,10 @@ export const useConsoleOperations = (
   );
 
   const deleteAllComments = useCallback(
-    async (item: ConsoleListItem) => {
-      await postConsoleDeleteAllComments(deleteAllCommentsRequestBuild(item));
+    async (item: ConsoleListItem, actionId?: string) => {
+      await postConsoleDeleteAllComments(
+        deleteAllCommentsRequestBuild(item, actionId),
+      );
       invalidateItemContent(item);
     },
     [invalidateItemContent],

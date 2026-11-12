@@ -58,6 +58,7 @@ export type ConsoleIntmuxRequest = {
   issueUrl: string;
   projectItemId: string;
   expectedStatusName?: string | null;
+  actionId?: string;
 };
 
 export type ConsoleReviewCommentSide = 'LEFT' | 'RIGHT';
@@ -567,6 +568,7 @@ export const DELETE_ALL_COMMENTS_OPERATION_PATH = '/api/deleteallcomments';
 
 export type ConsoleDeleteAllCommentsRequest = {
   issueUrl: string;
+  actionId?: string;
 };
 
 export const postConsoleDeleteAllComments = async (

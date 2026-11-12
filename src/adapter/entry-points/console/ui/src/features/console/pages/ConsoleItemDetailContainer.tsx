@@ -102,6 +102,7 @@ const buildReviewOfflinePayload = (
   prUrl: string,
   action: ConsoleReviewAction,
   pendingComments: ConsolePendingReviewComment[],
+  actionId?: string,
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: REVIEW_OPERATION_PATH,
@@ -111,6 +112,7 @@ const buildReviewOfflinePayload = (
     prUrl,
     action,
     pendingComments,
+    actionId,
   ) as unknown as Record<string, unknown>,
 });
 
@@ -144,10 +146,11 @@ export const buildTriageOfflinePayload = (
 export const buildIntmuxOfflinePayload = (
   pjcode: string,
   item: ConsoleListItem,
+  actionId?: string,
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: INTMUX_OPERATION_PATH,
-  requestBody: buildIntmuxRequest(pjcode, item),
+  requestBody: buildIntmuxRequest(pjcode, item, actionId),
 });
 
 const commentOfflinePayloadBuild = (
@@ -173,10 +176,11 @@ const dependedIssueUrlOfflinePayloadBuild = (
 
 const deleteAllCommentsOfflinePayloadBuild = (
   item: ConsoleListItem,
+  actionId?: string,
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: DELETE_ALL_COMMENTS_OPERATION_PATH,
-  requestBody: deleteAllCommentsRequestBuild(item),
+  requestBody: deleteAllCommentsRequestBuild(item, actionId),
 });
 
 export const okAndAwaitingWorkspaceOfflinePayloadsBuild = (
@@ -317,11 +321,14 @@ export const ConsoleItemDetailContainer = ({
   const commentCheckboxConfirmedRef = useRef<Record<string, boolean>>({});
   const addComment = useCallback(
     async (body: string): Promise<ConsoleCommentSubmitResult> => {
+      const actionId = generateCommentActionId();
       const commentHoldOffline = (
         projectCode: string,
       ): ConsoleCommentSubmitResult => {
         onOfflineActionsCreate({
-          payloads: [commentOfflinePayloadBuild(projectCode, item, body)],
+          payloads: [
+            commentOfflinePayloadBuild(projectCode, item, body, actionId),
+          ],
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
         });
@@ -330,7 +337,6 @@ export const ConsoleItemDetailContainer = ({
       if (isAirplaneModeOn && pjcode != null) {
         return commentHoldOffline(pjcode);
       }
-      const actionId = generateCommentActionId();
       if (pjcode != null) {
         const descriptor: ConsoleOfflineQueuedAction = {
           id: actionId,
@@ -338,12 +344,12 @@ export const ConsoleItemDetailContainer = ({
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
           enqueuedAt: Date.now(),
-          ...commentOfflinePayloadBuild(pjcode, item, body),
+          ...commentOfflinePayloadBuild(pjcode, item, body, actionId),
         };
         persistConsoleAction(descriptor);
       }
       try {
-        const comment = await operations.addComment(item, body);
+        const comment = await operations.addComment(item, body, actionId);
         if (pjcode != null) removePersistedConsoleAction(actionId);
         setPostedComments((previous) => [...previous, comment]);
         return comment;
@@ -358,6 +364,7 @@ export const ConsoleItemDetailContainer = ({
   );
   const handlers: ConsoleOperationHandlers = {
     onReview: (action) => {
+      const actionId = generateCommentActionId();
       const prUrl = item.isPr
         ? item.url
         : (detail.relatedPullRequests[0]?.pullRequest.url ??
@@ -369,7 +376,13 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'review', action },
         item,
         commit: () =>
-          operations.reviewPullRequest(item, prUrl, action, reviewComments),
+          operations.reviewPullRequest(
+            item,
+            prUrl,
+            action,
+            reviewComments,
+            actionId,
+          ),
         offline:
           pjcode != null
             ? [
@@ -379,6 +392,7 @@ export const ConsoleItemDetailContainer = ({
                   prUrl,
                   action,
                   reviewComments,
+                  actionId,
                 ),
               ]
             : undefined,
@@ -386,29 +400,32 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onSetNextActionDate: (action) => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,
-        commit: () => operations.setNextActionDate(item, action),
+        commit: () => operations.setNextActionDate(item, action, actionId),
         offline:
           pjcode != null
-            ? [buildTriageOfflinePayload(pjcode, item, action)]
+            ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
             : undefined,
         overlayPatch: { done: true },
       });
     },
     onSetStory: (option: ConsoleFieldOption) => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'set_story', optionName: option.name },
         item,
         commit: async () => {
-          await operations.setStory(item, option);
+          await operations.setStory(item, option, actionId);
         },
         offline:
           pjcode != null
             ? [
                 buildTriageOfflinePayload(pjcode, item, 'set_story', {
                   storyOptionId: option.id,
+                  actionId,
                 }),
               ]
             : undefined,
@@ -419,15 +436,17 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onSetAgent: (option: ConsoleFieldOption) => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'set_agent', optionName: option.name },
         item,
-        commit: () => operations.setAgent(item, option),
+        commit: () => operations.setAgent(item, option, actionId),
         offline:
           pjcode != null
             ? [
                 buildTriageOfflinePayload(pjcode, item, 'set_agent', {
                   agentOptionId: option.id,
+                  actionId,
                 }),
               ]
             : undefined,
@@ -456,13 +475,14 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'set_in_tmux_by_human', optionName: option.name },
         item,
-        commit: () => operations.setInTmuxByHuman(item, option),
+        commit: () => operations.setInTmuxByHuman(item, option, actionId),
         offline:
           pjcode != null
-            ? [buildIntmuxOfflinePayload(pjcode, item)]
+            ? [buildIntmuxOfflinePayload(pjcode, item, actionId)]
             : undefined,
         overlayPatch: {
           done: true,
@@ -471,13 +491,14 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onClose: (action) => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'close', action },
         item,
-        commit: () => operations.closeIssue(item, action),
+        commit: () => operations.closeIssue(item, action, actionId),
         offline:
           pjcode != null
-            ? [buildTriageOfflinePayload(pjcode, item, action)]
+            ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
             : undefined,
         overlayPatch: { done: true, closed: true },
       });
@@ -505,11 +526,12 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onDeleteAllComments: () => {
+      const actionId = generateCommentActionId();
       onQueueAction({
         kind: { type: 'delete_all_comments' },
         item,
-        commit: () => operations.deleteAllComments(item),
-        offline: [deleteAllCommentsOfflinePayloadBuild(item)],
+        commit: () => operations.deleteAllComments(item, actionId),
+        offline: [deleteAllCommentsOfflinePayloadBuild(item, actionId)],
       });
     },
     onDeleteStory: onDeleteStory ?? null,
