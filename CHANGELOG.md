@@ -1,3 +1,10 @@
+## [2.195.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.5...v2.195.6) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** update bundled npm to 12.2.2 so installed undici and ip-address match the lockfile ([#3721](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3721)) ([2f5431a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f5431a56d18d537a6dc08e8102833f1d8fb5181))
+
 ## [2.195.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.4...v2.195.5) (2026-11-11)
 
 
