@@ -128,6 +128,7 @@ export const buildTriageOfflinePayload = (
     storyOptionId?: string;
     agentOptionId?: string;
     commentBody?: string;
+    actionId?: string;
   },
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
@@ -153,10 +154,11 @@ const commentOfflinePayloadBuild = (
   pjcode: string,
   item: ConsoleListItem,
   body: string,
+  actionId?: string,
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: COMMENT_OPERATION_PATH,
-  requestBody: commentRequestBuild(pjcode, item, body),
+  requestBody: commentRequestBuild(pjcode, item, body, actionId),
 });
 
 const dependedIssueUrlOfflinePayloadBuild = (
@@ -780,6 +782,8 @@ export const ConsoleItemDetailContainer = ({
       handlers.onClose('close');
       return;
     }
+    const commentActionId = generateCommentActionId();
+    const closeActionId = generateCommentActionId();
     onQueueAction({
       kind: { type: 'close', action: 'close' },
       item,
@@ -787,16 +791,22 @@ export const ConsoleItemDetailContainer = ({
         consoleActionStepsRun(
           [
             async () => {
-              const comment = await operations.addComment(item, body);
+              const comment = await operations.addComment(
+                item,
+                body,
+                commentActionId,
+              );
               setPostedComments((previous) => [...previous, comment]);
             },
-            () => operations.closeIssue(item, 'close'),
+            () => operations.closeIssue(item, 'close', closeActionId),
           ],
           sentStepCount,
         ),
       offline: [
-        commentOfflinePayloadBuild(pjcode, item, body),
-        buildTriageOfflinePayload(pjcode, item, 'close'),
+        commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+        buildTriageOfflinePayload(pjcode, item, 'close', {
+          actionId: closeActionId,
+        }),
       ],
       overlayPatch: { done: true, closed: true },
     });
@@ -809,6 +819,8 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const okAndClose = async (): Promise<void> => {
+    const commentActionId = generateCommentActionId();
+    const closeActionId = generateCommentActionId();
     onQueueAction({
       kind: { type: 'ok_and_close' },
       item,
@@ -816,9 +828,13 @@ export const ConsoleItemDetailContainer = ({
         consoleActionStepsRun(
           [
             async () => {
-              await operations.addComment(item, OK_AND_CLOSE_COMMENT_BODY);
+              await operations.addComment(
+                item,
+                OK_AND_CLOSE_COMMENT_BODY,
+                commentActionId,
+              );
             },
-            () => operations.closeIssue(item, 'close'),
+            () => operations.closeIssue(item, 'close', closeActionId),
           ],
           sentStepCount,
         ),
@@ -829,8 +845,11 @@ export const ConsoleItemDetailContainer = ({
                 pjcode,
                 item,
                 OK_AND_CLOSE_COMMENT_BODY,
+                commentActionId,
               ),
-              buildTriageOfflinePayload(pjcode, item, 'close'),
+              buildTriageOfflinePayload(pjcode, item, 'close', {
+                actionId: closeActionId,
+              }),
             ]
           : undefined,
       overlayPatch: { done: true, closed: true },

@@ -79,6 +79,7 @@ export type ConsoleOperationsApi = {
   closeIssue: (
     item: ConsoleListItem,
     action: ConsoleCloseAction,
+    actionId?: string,
   ) => Promise<void>;
   okAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
@@ -86,7 +87,11 @@ export type ConsoleOperationsApi = {
     sentStepCount?: number,
     actionId?: string,
   ) => Promise<void>;
-  addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
+  addComment: (
+    item: ConsoleListItem,
+    body: string,
+    actionId?: string,
+  ) => Promise<ConsoleComment>;
   addCommentAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     body: string,
@@ -198,14 +203,18 @@ export const buildTriageRequest = (
     commentBody?: string;
     setStatusWhenCommentFails?: boolean;
   },
-): ConsoleTriageRequest => ({
-  pjcode,
-  action,
-  issueUrl: item.url,
-  projectItemId: item.projectItemId,
-  expectedStatusName: item.status,
-  ...(extra ?? {}),
-});
+): ConsoleTriageRequest => {
+  const { actionId, ...requestExtra } = extra ?? {};
+  return {
+    pjcode,
+    action,
+    issueUrl: item.url,
+    projectItemId: item.projectItemId,
+    expectedStatusName: item.status,
+    ...requestExtra,
+    ...(actionId === undefined ? {} : { actionId }),
+  };
+};
 
 export const buildIntmuxRequest = (
   pjcode: string,
@@ -222,10 +231,12 @@ export const commentRequestBuild = (
   pjcode: string,
   item: ConsoleListItem,
   body: string,
+  actionId?: string,
 ): ConsoleCommentRequest => ({
   pjcode,
   url: item.url,
   body,
+  ...(actionId === undefined ? {} : { actionId }),
 });
 
 export const deleteAllCommentsRequestBuild = (
@@ -408,7 +419,11 @@ export const useConsoleOperations = (
   );
 
   const closeIssue = useCallback(
-    async (item: ConsoleListItem, action: ConsoleCloseAction) => {
+    async (
+      item: ConsoleListItem,
+      action: ConsoleCloseAction,
+      actionId?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -417,6 +432,7 @@ export const useConsoleOperations = (
         action,
         issueUrl: item.url,
         projectItemId: item.projectItemId,
+        ...(actionId === undefined ? {} : { actionId }),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -484,12 +500,12 @@ export const useConsoleOperations = (
   );
 
   const addComment = useCallback(
-    async (item: ConsoleListItem, body: string) => {
+    async (item: ConsoleListItem, body: string, actionId?: string) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       const result = await postConsoleComment(
-        commentRequestBuild(pjcode, item, body),
+        commentRequestBuild(pjcode, item, body, actionId),
       );
       if (!result.posted) {
         const resetInfo =

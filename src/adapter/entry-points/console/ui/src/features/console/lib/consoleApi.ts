@@ -349,6 +349,7 @@ export type ConsoleCommentRequest = {
   pjcode: string;
   url: string;
   body: string;
+  actionId?: string;
 };
 
 export type ConsoleCommentResult =
