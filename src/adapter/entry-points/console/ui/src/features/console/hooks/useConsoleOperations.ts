@@ -343,7 +343,7 @@ export const useConsoleOperations = (
         action,
         issueUrl: item.url,
         projectItemId: item.projectItemId,
-        ...(actionId === undefined ? {} : { actionId }),
+        actionId: actionId ?? generateActionId(),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -366,7 +366,7 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         agentOptionId: option.id,
-        ...(actionId === undefined ? {} : { actionId }),
+        actionId: actionId ?? generateActionId(),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -389,7 +389,7 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
-        ...(actionId === undefined ? {} : { actionId }),
+        actionId: actionId ?? generateActionId(),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -431,7 +431,7 @@ export const useConsoleOperations = (
       }
       const request = buildTriageRequest(pjcode, item, 'set_next_action_date', {
         nextActionDate,
-        actionId,
+        actionId: actionId ?? generateActionId(),
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -450,7 +450,7 @@ export const useConsoleOperations = (
       }
       const request = buildTriageRequest(pjcode, item, 'set_next_action_hour', {
         nextActionHour,
-        actionId,
+        actionId: actionId ?? generateActionId(),
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -467,7 +467,11 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request = buildIntmuxRequest(pjcode, item, actionId);
+      const request = buildIntmuxRequest(
+        pjcode,
+        item,
+        actionId ?? generateActionId(),
+      );
       await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
@@ -488,7 +492,7 @@ export const useConsoleOperations = (
         action,
         issueUrl: item.url,
         projectItemId: item.projectItemId,
-        ...(actionId === undefined ? {} : { actionId }),
+        actionId: actionId ?? generateActionId(),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
