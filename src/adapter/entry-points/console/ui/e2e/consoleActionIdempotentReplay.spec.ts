@@ -33,6 +33,7 @@ test.describe('console action replay', () => {
     });
     let held = false;
     let triagePostCount = 0;
+    let handledTriageCount = 0;
 
     page.on('request', (request) => {
       if (
@@ -51,6 +52,7 @@ test.describe('console action replay', () => {
         await responseReleased;
       }
       await route.fulfill({ response });
+      handledTriageCount += 1;
     });
 
     await page.goto(harness.appRootUrl);
@@ -72,5 +74,6 @@ test.describe('console action replay', () => {
       )
       .toBe(1);
     await expect.poll(() => harness.closeIssueCalls.length).toBe(1);
+    await expect.poll(() => handledTriageCount).toBeGreaterThanOrEqual(2);
   });
 });
