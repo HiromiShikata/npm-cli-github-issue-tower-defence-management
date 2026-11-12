@@ -3,6 +3,7 @@ import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from '../hooks/consoleActionDeliv
 import {
   ConsoleActionPartiallySentError,
   type ConsoleOfflinePayload,
+  useConsoleActionQueue,
 } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import {
@@ -4080,6 +4081,270 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(onCommentError).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      name: 'standalone composer comment add-comment submit',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'Persisted action comment.' },
+        });
+        fireEvent.click(view.getByText('Comment'));
+      },
+    },
+    {
+      name: 'set story',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: consoleStoryOptionsFixture,
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByTitle('Change agent or story'));
+        fireEvent.change(view.getByRole('combobox', { name: 'Set story' }), {
+          target: { value: consoleStoryOptionsFixture[0].id },
+        });
+      },
+    },
+    {
+      name: 'set agent',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: consoleAgentOptionsFixture,
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByTitle('Change agent or story'));
+        fireEvent.change(view.getByRole('combobox', { name: 'Set agent' }), {
+          target: { value: consoleAgentOptionsFixture[0].id },
+        });
+      },
+    },
+    {
+      name: 'set next action date',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('+1d'));
+      },
+    },
+    {
+      name: 'set next action hour',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('+3h'));
+      },
+    },
+    {
+      name: 'set in-tmux-by-human',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('In Tmux by human'));
+      },
+    },
+    {
+      name: 'plain close',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('Close', { exact: true }));
+      },
+    },
+    {
+      name: 'close not planned',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('Close as not planned'));
+      },
+    },
+    {
+      name: 'review approve and merge',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Approve & Merge');
+        fireEvent.click(view.getByText('Approve & Merge'));
+      },
+    },
+    {
+      name: 'review mark unnecessary',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Unnecessary');
+        fireEvent.click(view.getByText('Unnecessary'));
+      },
+    },
+    {
+      name: 'review mark totally wrong',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Totally wrong');
+        fireEvent.click(view.getByText('Totally wrong'));
+      },
+    },
+    {
+      name: 'review request changes',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        const fileRow = await view.findByRole('button', {
+          name: new RegExp(
+            consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
+          ),
+        });
+        fireEvent.click(fileRow);
+        fireEvent.click(
+          view.getAllByRole('button', { name: /^Comment on line/ })[0],
+        );
+        fireEvent.change(
+          view.getByPlaceholderText('Leave a review comment on this line…'),
+          { target: { value: 'Please address this.' } },
+        );
+        fireEvent.click(
+          view.container.querySelector(
+            '.console-diff-composer-submit',
+          ) as Element,
+        );
+        await waitFor(() =>
+          expect(view.getByText('Reject')).not.toBeDisabled(),
+        );
+        fireEvent.click(view.getByText('Reject'));
+      },
+    },
+    {
+      name: 'delete all comments',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('⚠'));
+        fireEvent.click(view.getByText('Delete All Comments'));
+      },
+    },
+  ])(
+    'requires the live request to carry the persisted actionId for $name',
+    async ({ name: _name, tab, item, storyOptions, agentOptions, perform }) => {
+      jest.useFakeTimers();
+      localStorage.clear();
+      const originalFetch = global.fetch;
+      let descriptorAtFetch: string | null = null;
+      const fetchMock = jest.fn(async () => {
+        descriptorAtFetch = localStorage.getItem(
+          CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        );
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            comment: {
+              id: 91,
+              author: 'HiromiShikata',
+              body: 'Persisted action comment.',
+              createdAt: '2026-06-19T12:00:00.000Z',
+            },
+          }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const QueueHarness = () => {
+        const actionQueue = useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+        });
+        const operations = useConsoleOperations('acme');
+        return (
+          <ConsoleItemDetailContainer
+            tab={tab}
+            item={item}
+            caches={buildCaches({
+              prFiles: tab === 'prs' ? consoleChangedFilesFixture : [],
+            })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={storyOptions}
+            agentOptions={agentOptions}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={(input) => {
+              actionQueue.enqueue({
+                message: 'test action',
+                color: 'blue',
+                commit: input.commit,
+                commitWithActionId: input.commitWithActionId,
+                offline: input.offline,
+                advance: () => {},
+              });
+            }}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={actionQueue.offlineActionsCreate}
+            pjcode="acme"
+          />
+        );
+      };
+      try {
+        const view = render(<QueueHarness />);
+        await perform(view);
+        await waitFor(() => {
+          expect(
+            JSON.parse(
+              localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ??
+                'null',
+            ),
+          ).not.toHaveLength(0);
+        });
+        await act(async () => {
+          jest.advanceTimersByTime(5000);
+          await Promise.resolve();
+        });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const descriptor = JSON.parse(descriptorAtFetch ?? 'null')[0] as {
+          requestBody: { actionId?: unknown };
+        };
+        const firstRequest = fetchMock.mock.calls[0] as unknown as [
+          string,
+          RequestInit,
+        ];
+        const requestBody = JSON.parse(firstRequest[1].body as string) as {
+          actionId?: unknown;
+        };
+        expect(typeof descriptor.requestBody.actionId).toBe('string');
+        expect(descriptor.requestBody.actionId).toBe(requestBody.actionId);
+      } finally {
+        global.fetch = originalFetch;
+        jest.useRealTimers();
+        localStorage.clear();
+      }
+    },
+  );
 });
 
 describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaiting Workspace status', () => {
