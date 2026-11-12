@@ -191,6 +191,7 @@ describe('ConsoleItemDetailContainer', () => {
       prItem.url,
       'approve_and_merge',
       [],
+      expect.any(String),
     );
   });
 
@@ -405,6 +406,7 @@ describe('ConsoleItemDetailContainer', () => {
       bakedPullRequestUrl,
       'approve_and_merge',
       [],
+      expect.any(String),
     );
   });
 
@@ -1215,7 +1217,10 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.deleteAllComments).not.toHaveBeenCalled();
 
     await input.commit();
-    expect(operations.deleteAllComments).toHaveBeenCalledWith(issueItem);
+    expect(operations.deleteAllComments).toHaveBeenCalledWith(
+      issueItem,
+      expect.any(String),
+    );
   });
 
   it('surfaces errors from deleteAllComments via the queue rather than swallowing them', async () => {
@@ -1286,11 +1291,15 @@ describe('ConsoleItemDetailContainer', () => {
     expect(input.item).toBe(issueItem);
     expect(operations.setStory).not.toHaveBeenCalled();
     input.commit();
-    expect(operations.setStory).toHaveBeenCalledWith(issueItem, {
-      id: '28415d6c',
-      name: 'regular / workflow improvement',
-      color: 'GRAY',
-    });
+    expect(operations.setStory).toHaveBeenCalledWith(
+      issueItem,
+      {
+        id: '28415d6c',
+        name: 'regular / workflow improvement',
+        color: 'GRAY',
+      },
+      expect.any(String),
+    );
   });
 
   it('queues the set_story action with an overlayPatch that carries the selected story option id alongside its name and color', () => {
@@ -1423,11 +1432,15 @@ describe('ConsoleItemDetailContainer', () => {
     expect(input.item).toBe(issueItem);
     expect(operations.setAgent).not.toHaveBeenCalled();
     input.commit();
-    expect(operations.setAgent).toHaveBeenCalledWith(issueItem, {
-      id: '95c55dd3',
-      name: 'developer',
-      color: 'GRAY',
-    });
+    expect(operations.setAgent).toHaveBeenCalledWith(
+      issueItem,
+      {
+        id: '95c55dd3',
+        name: 'developer',
+        color: 'GRAY',
+      },
+      expect.any(String),
+    );
   });
 
   it('pre-selects the agent dropdown by the item agentOptionId rather than by the agent display name', () => {
@@ -1528,6 +1541,7 @@ describe('ConsoleItemDetailContainer', () => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
         'closing comment',
+        expect.any(String),
       );
     });
     expect(onQueueAction).toHaveBeenCalledWith(
@@ -3547,6 +3561,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     expect(operations.addComment).toHaveBeenCalledWith(
       issueItem,
       'Reviewed on the train.',
+      expect.any(String),
     );
     expect(onQueueAction).not.toHaveBeenCalled();
   });
@@ -3710,23 +3725,27 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
       ],
     },
     {
       condition: 'the comment request fails because the network is unavailable',
       isAirplaneModeOn: false,
       addCommentResult: 'network failure' as const,
-      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedAddCommentCalls: [
+        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+      ],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
       ],
     },
     {
       condition: 'airplane mode is off and the network is available',
       isAirplaneModeOn: false,
       addCommentResult: 'posted' as const,
-      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedAddCommentCalls: [
+        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+      ],
       expectedHeldPayloadsPerCall: [],
     },
   ])(

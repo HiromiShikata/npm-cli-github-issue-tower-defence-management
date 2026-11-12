@@ -6432,6 +6432,7 @@ describe('ConsolePage airplane mode write guard', () => {
             pjcode: 'acme',
             url: prItem.url,
             body: 'Written above the clouds.',
+            actionId: expect.any(String),
           },
         }),
       ]);
@@ -6453,6 +6454,7 @@ describe('ConsolePage airplane mode write guard', () => {
           pjcode: 'acme',
           url: prItem.url,
           body: 'Written above the clouds.',
+          actionId: expect.any(String),
         },
       }),
     ]);
@@ -9705,7 +9707,12 @@ describe('ConsolePage offline action queue', () => {
       expect(view.getByText('Looks good from here.')).toBeInTheDocument();
     });
     expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual([
-      { pjcode: 'acme', url: pullRequestUrl, body: 'Looks good from here.' },
+      {
+        pjcode: 'acme',
+        url: pullRequestUrl,
+        body: 'Looks good from here.',
+        actionId: expect.any(String),
+      },
     ]);
     expect(readStoredOfflineQueue()).toEqual([]);
   });
@@ -9879,6 +9886,7 @@ describe('ConsolePage offline action queue', () => {
             pjcode: 'acme',
             url: pullRequestUrl,
             body: 'Written in a tunnel.',
+            actionId: expect.any(String),
           },
         }),
       ]);
@@ -9901,24 +9909,24 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/comment',
-        requestBody: expect.objectContaining({
+        requestBody: {
           pjcode: 'acme',
           url: pullRequestUrl,
           body: 'ok',
           actionId: expect.any(String),
-        }),
+        },
       }),
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/triage',
-        requestBody: expect.objectContaining({
+        requestBody: {
           pjcode: 'acme',
           action: 'close',
           issueUrl: pullRequestUrl,
           projectItemId: 'PVTI_1',
           expectedStatusName: 'Awaiting Owner',
           actionId: expect.any(String),
-        }),
+        },
       }),
     ]);
     expect(view.container.querySelector('.console-error-toast')).toBeNull();
@@ -10058,12 +10066,12 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/comment',
-        requestBody: expect.objectContaining({
+        requestBody: {
           pjcode: 'acme',
           url: pullRequestUrl,
           body: 'Closing in a tunnel.',
           actionId: expect.any(String),
-        }),
+        },
       }),
       expect.objectContaining({
         itemUrl: pullRequestUrl,
@@ -10650,12 +10658,12 @@ describe('ConsolePage offline action queue', () => {
       expect.objectContaining({
         itemUrl: pullRequestUrl,
         apiPath: '/api/comment',
-        requestBody: expect.objectContaining({
+        requestBody: {
           pjcode: 'acme',
           url: pullRequestUrl,
           body: 'ok',
           actionId: expect.any(String),
-        }),
+        },
       }),
       expect.objectContaining({
         itemUrl: pullRequestUrl,
