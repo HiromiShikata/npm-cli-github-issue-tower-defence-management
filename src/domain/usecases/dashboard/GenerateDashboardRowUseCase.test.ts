@@ -359,7 +359,7 @@ describe('GenerateDashboardRowUseCase', () => {
       assigneeLogin: ASSIGNEE,
       storyColorMap,
     });
-    expect(result.humanPendingRed).toBe(2);
+    expect(result.humanPendingRed).toBe(3);
     expect(result.humanPendingYellow).toBe(1);
   });
 
@@ -779,6 +779,231 @@ describe('GenerateDashboardRowUseCase', () => {
           makeIssue({ status: 'Todo by human', storyOptionId: 'opt-green' }),
         ],
         expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+    ];
+
+    for (const { scenario, issues, expected } of cases) {
+      const result = usecase.run({
+        issues,
+        assigneeLogin: ASSIGNEE,
+        storyColorMap,
+      });
+      expect({
+        scenario,
+        counts: {
+          humanPendingRed: result.humanPendingRed,
+          humanPendingYellow: result.humanPendingYellow,
+        },
+      }).toEqual({ scenario, counts: expected });
+    }
+  });
+
+  it('counts open untriggered red and yellow issues in every non-Done status, matching the Story tab badge rule', () => {
+    const storyColorMap = new Map([
+      ['opt-red', 'RED'],
+      ['opt-yellow', 'YELLOW'],
+      ['opt-blue', 'BLUE'],
+      ['opt-green', 'GREEN'],
+    ]);
+    const nonDoneStatuses: (string | null)[] = [
+      'Todo by human',
+      'Awaiting Owner',
+      'Awaiting Workspace',
+      'Preparation',
+      'Failed Preparation',
+      'Todo',
+      'In Tmux by human',
+      null,
+    ];
+    const triggers: { trigger: string; overrides: Partial<Issue> }[] = [
+      {
+        trigger: 'dependedIssueUrls',
+        overrides: {
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
+        },
+      },
+      {
+        trigger: 'nextActionDate',
+        overrides: { nextActionDate: new Date('2026-07-01T00:00:00.000Z') },
+      },
+      { trigger: 'nextActionHour', overrides: { nextActionHour: 10 } },
+    ];
+    const cases: {
+      scenario: string;
+      issues: Issue[];
+      expected: { humanPendingRed: number; humanPendingYellow: number };
+    }[] = [
+      ...nonDoneStatuses.flatMap((status) => [
+        {
+          scenario: `open red issue with status ${status ?? 'null'}`,
+          issues: [makeIssue({ status, storyOptionId: 'opt-red' })],
+          expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+        },
+        {
+          scenario: `open yellow issue with status ${status ?? 'null'}`,
+          issues: [makeIssue({ status, storyOptionId: 'opt-yellow' })],
+          expected: { humanPendingRed: 0, humanPendingYellow: 1 },
+        },
+      ]),
+      {
+        scenario: 'open red issue with status Done',
+        issues: [makeIssue({ status: 'Done', storyOptionId: 'opt-red' })],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'open yellow issue with status Done',
+        issues: [makeIssue({ status: 'Done', storyOptionId: 'opt-yellow' })],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'closed red issue with status Awaiting Owner',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            isClosed: true,
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'closed yellow issue with null status',
+        issues: [
+          makeIssue({
+            status: null,
+            storyOptionId: 'opt-yellow',
+            isClosed: true,
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      ...triggers.flatMap(({ trigger, overrides }) => [
+        {
+          scenario: `open red Todo by human issue with ${trigger} set`,
+          issues: [
+            makeIssue({
+              status: 'Todo by human',
+              storyOptionId: 'opt-red',
+              ...overrides,
+            }),
+          ],
+          expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+        },
+        {
+          scenario: `open yellow Awaiting Owner issue with ${trigger} set`,
+          issues: [
+            makeIssue({
+              status: 'Awaiting Owner',
+              storyOptionId: 'opt-yellow',
+              ...overrides,
+            }),
+          ],
+          expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+        },
+        {
+          scenario: `open red Awaiting Workspace issue with ${trigger} set`,
+          issues: [
+            makeIssue({
+              status: 'Awaiting Workspace',
+              storyOptionId: 'opt-red',
+              ...overrides,
+            }),
+          ],
+          expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+        },
+        {
+          scenario: `open yellow Preparation issue with ${trigger} set`,
+          issues: [
+            makeIssue({
+              status: 'Preparation',
+              storyOptionId: 'opt-yellow',
+              ...overrides,
+            }),
+          ],
+          expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+        },
+      ]),
+      {
+        scenario: 'open Awaiting Owner issue with null storyOptionId',
+        issues: [makeIssue({ status: 'Awaiting Owner', storyOptionId: null })],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'open Awaiting Owner issue with unknown storyOptionId',
+        issues: [
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-unknown' }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'open Todo by human issue in a BLUE story',
+        issues: [
+          makeIssue({ status: 'Todo by human', storyOptionId: 'opt-blue' }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'open Awaiting Owner issue in a GREEN story',
+        issues: [
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-green' }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'open red Todo by human issue assigned to another login',
+        issues: [
+          makeIssue({
+            status: 'Todo by human',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else'],
+          }),
+        ],
+        expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+      },
+      {
+        scenario:
+          'open yellow Awaiting Workspace issue assigned to another login',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Workspace',
+            storyOptionId: 'opt-yellow',
+            assignees: ['someone-else'],
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 1 },
+      },
+      {
+        scenario:
+          'mixed red and yellow issues with triggers, Done, closed and other colours',
+        issues: [
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-red' }),
+          makeIssue({ status: null, storyOptionId: 'opt-red' }),
+          makeIssue({
+            status: 'Todo by human',
+            storyOptionId: 'opt-red',
+            nextActionHour: 9,
+          }),
+          makeIssue({ status: 'Done', storyOptionId: 'opt-red' }),
+          makeIssue({
+            status: 'In Tmux by human',
+            storyOptionId: 'opt-yellow',
+          }),
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-yellow',
+            dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
+          }),
+          makeIssue({
+            status: 'Awaiting Workspace',
+            storyOptionId: 'opt-yellow',
+            isClosed: true,
+          }),
+          makeIssue({
+            status: 'Awaiting Workspace',
+            storyOptionId: 'opt-blue',
+          }),
+        ],
+        expected: { humanPendingRed: 2, humanPendingYellow: 1 },
       },
     ];
 
