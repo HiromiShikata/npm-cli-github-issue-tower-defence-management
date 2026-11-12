@@ -264,7 +264,7 @@ export const deleteAllCommentsRequestBuild = (
   ...(actionId === undefined ? {} : { actionId }),
 });
 
-const generateActionId = (): string =>
+export const generateActionId = (): string =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
