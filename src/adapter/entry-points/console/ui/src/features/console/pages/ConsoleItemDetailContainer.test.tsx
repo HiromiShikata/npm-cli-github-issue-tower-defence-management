@@ -1621,12 +1621,20 @@ describe('ConsoleItemDetailContainer', () => {
     const input = onQueueAction.mock.calls[0][0];
     const commitPromise = input.commit();
     await waitFor(() => {
-      expect(operations.addComment).toHaveBeenCalledWith(issueItem, 'ok');
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'ok',
+        expect.any(String),
+      );
     });
     expect(operations.closeIssue).not.toHaveBeenCalledWith(issueItem, 'close');
     resolveAddComment?.();
     await commitPromise;
-    expect(operations.closeIssue).toHaveBeenCalledWith(issueItem, 'close');
+    expect(operations.closeIssue).toHaveBeenCalledWith(
+      issueItem,
+      'close',
+      expect.any(String),
+    );
   });
 
   it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
@@ -3662,20 +3670,34 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   const commentOfflinePayloadFor = (
     item: ConsoleListItem,
     body: string,
+    includeActionId = false,
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: COMMENT_OPERATION_PATH,
-    requestBody: { pjcode: 'acme', url: item.url, body },
+    requestBody: includeActionId
+      ? expect.objectContaining({
+          pjcode: 'acme',
+          url: item.url,
+          body,
+          actionId: expect.any(String),
+        })
+      : { pjcode: 'acme', url: item.url, body },
   });
 
   const triageOfflinePayloadFor = (
     item: ConsoleListItem,
     action: 'close' | 'set_status',
     extra?: { statusName: string; commentBody?: string },
+    includeActionId = false,
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
-    requestBody: buildTriageRequest('acme', item, action, extra),
+    requestBody: includeActionId
+      ? expect.objectContaining({
+          ...buildTriageRequest('acme', item, action, extra),
+          actionId: expect.any(String),
+        })
+      : buildTriageRequest('acme', item, action, extra),
   });
 
   const commentBodyWrittenOffline = 'Checked during the flight.';
@@ -3790,8 +3812,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'OK & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, 'ok'),
-        triageOfflinePayloadFor(issueItem, 'close'),
+        commentOfflinePayloadFor(issueItem, 'ok', true),
+        triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },
     {
@@ -3806,8 +3828,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
-        triageOfflinePayloadFor(issueItem, 'close'),
+        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing, true),
+        triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },
     {
@@ -3878,10 +3900,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       await expect(commit()).resolves.toBeUndefined();
 
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -3942,10 +3964,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         closeFailure,
       );
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -3970,9 +3992,11 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       const addCommentMock = operations.addComment as jest.Mock;
       const closeIssueMock = operations.closeIssue as jest.Mock;
       expect(addCommentMock.mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
-      expect(closeIssueMock.mock.calls).toEqual([[issueItem, 'close']]);
+      expect(closeIssueMock.mock.calls).toEqual([
+        [issueItem, 'close', expect.any(String)],
+      ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
         closeIssueMock.mock.invocationCallOrder[0],
       );
@@ -3992,7 +4016,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -4029,7 +4053,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       );
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
