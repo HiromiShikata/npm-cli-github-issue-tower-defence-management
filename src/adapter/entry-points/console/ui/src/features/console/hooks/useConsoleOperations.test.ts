@@ -1416,3 +1416,126 @@ describe('useConsoleOperations returned object referential stability', () => {
     expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
   });
 });
+
+describe('useConsoleOperations action identifiers', () => {
+  it.each([
+    {
+      name: 'set agent',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setAgent(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'set next action date value',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionDateValue(issueItem, '2026-06-20'),
+    },
+    {
+      name: 'set next action hour value',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionHourValue(issueItem, 10),
+    },
+    {
+      name: 'set next action date',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionDate(issueItem, 'snooze_3hours'),
+    },
+    {
+      name: 'set story',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setStory(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'set in tmux by human',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setInTmuxByHuman(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'close issue',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.closeIssue(issueItem, 'close'),
+    },
+    {
+      name: 'close issue as not planned',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.closeIssue(issueItem, 'close_not_planned'),
+    },
+  ])(
+    'posts a non-empty action identifier when the caller omits it for $name',
+    async ({ invoke }) => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+
+      await act(async () => {
+        await invoke(result.current.operations);
+      });
+
+      const actionId = lastBody(fetchMock).actionId;
+      expect(typeof actionId).toBe('string');
+      expect(actionId).not.toBe('');
+    },
+  );
+
+  it('posts addComment with the supplied action identifier', async () => {
+    const fetchMock = captureFetch();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, comment: { id: 1 } }),
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.addComment(
+        issueItem,
+        'comment body',
+        'action-123',
+      );
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment');
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: 'action-123' });
+  });
+
+  it('posts addComment without an action identifier when none is supplied', async () => {
+    const fetchMock = captureFetch();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, comment: { id: 1 } }),
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.addComment(issueItem, 'comment body');
+    });
+
+    expect(lastBody(fetchMock)).not.toHaveProperty('actionId');
+  });
+
+  it('posts closeIssue with the supplied action identifier', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.closeIssue(
+        issueItem,
+        'close',
+        'action-456',
+      );
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: 'action-456' });
+  });
+
+  it('posts closeIssue with a generated action identifier when none is supplied', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.closeIssue(issueItem, 'close');
+    });
+
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: expect.any(String) });
+  });
+});

@@ -56,6 +56,7 @@ import {
   handleStoryUpdateDescription,
   handleTimer,
   handleTriage,
+  runConsoleOperationOnce,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 import {
@@ -888,18 +889,24 @@ const handleOperationApi = async (
       workflowOwningPjcode !== null
         ? () => resolveProject(workflowOwningPjcode)
         : null,
+    priorAttempt: null,
   };
-  const dispatched = dispatchOperation(
-    context,
-    options.resolveGithubToken ?? null,
-    requestPath,
-    body,
-  );
-  if (dispatched === null) {
-    return null;
-  }
   try {
-    const result = await dispatched;
+    const dispatched = await runConsoleOperationOnce(
+      context,
+      body.actionId,
+      (attemptContext) =>
+        dispatchOperation(
+          attemptContext,
+          options.resolveGithubToken ?? null,
+          requestPath,
+          body,
+        ),
+    );
+    if (dispatched === null) {
+      return null;
+    }
+    const result = dispatched;
     if (result.statusCode >= 400 && result.statusCode < 500) {
       const errorMsg =
         typeof result.body === 'object' &&

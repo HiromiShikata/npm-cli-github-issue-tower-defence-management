@@ -3,6 +3,7 @@ import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from '../hooks/consoleActionDeliv
 import {
   ConsoleActionPartiallySentError,
   type ConsoleOfflinePayload,
+  useConsoleActionQueue,
 } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import {
@@ -190,6 +191,7 @@ describe('ConsoleItemDetailContainer', () => {
       prItem.url,
       'approve_and_merge',
       [],
+      expect.any(String),
     );
   });
 
@@ -404,6 +406,7 @@ describe('ConsoleItemDetailContainer', () => {
       bakedPullRequestUrl,
       'approve_and_merge',
       [],
+      expect.any(String),
     );
   });
 
@@ -1214,7 +1217,10 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.deleteAllComments).not.toHaveBeenCalled();
 
     await input.commit();
-    expect(operations.deleteAllComments).toHaveBeenCalledWith(issueItem);
+    expect(operations.deleteAllComments).toHaveBeenCalledWith(
+      issueItem,
+      expect.any(String),
+    );
   });
 
   it('surfaces errors from deleteAllComments via the queue rather than swallowing them', async () => {
@@ -1285,11 +1291,15 @@ describe('ConsoleItemDetailContainer', () => {
     expect(input.item).toBe(issueItem);
     expect(operations.setStory).not.toHaveBeenCalled();
     input.commit();
-    expect(operations.setStory).toHaveBeenCalledWith(issueItem, {
-      id: '28415d6c',
-      name: 'regular / workflow improvement',
-      color: 'GRAY',
-    });
+    expect(operations.setStory).toHaveBeenCalledWith(
+      issueItem,
+      {
+        id: '28415d6c',
+        name: 'regular / workflow improvement',
+        color: 'GRAY',
+      },
+      expect.any(String),
+    );
   });
 
   it('queues the set_story action with an overlayPatch that carries the selected story option id alongside its name and color', () => {
@@ -1422,11 +1432,15 @@ describe('ConsoleItemDetailContainer', () => {
     expect(input.item).toBe(issueItem);
     expect(operations.setAgent).not.toHaveBeenCalled();
     input.commit();
-    expect(operations.setAgent).toHaveBeenCalledWith(issueItem, {
-      id: '95c55dd3',
-      name: 'developer',
-      color: 'GRAY',
-    });
+    expect(operations.setAgent).toHaveBeenCalledWith(
+      issueItem,
+      {
+        id: '95c55dd3',
+        name: 'developer',
+        color: 'GRAY',
+      },
+      expect.any(String),
+    );
   });
 
   it('pre-selects the agent dropdown by the item agentOptionId rather than by the agent display name', () => {
@@ -1527,6 +1541,7 @@ describe('ConsoleItemDetailContainer', () => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
         'closing comment',
+        expect.any(String),
       );
     });
     expect(onQueueAction).toHaveBeenCalledWith(
@@ -1621,12 +1636,20 @@ describe('ConsoleItemDetailContainer', () => {
     const input = onQueueAction.mock.calls[0][0];
     const commitPromise = input.commit();
     await waitFor(() => {
-      expect(operations.addComment).toHaveBeenCalledWith(issueItem, 'ok');
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'ok',
+        expect.any(String),
+      );
     });
     expect(operations.closeIssue).not.toHaveBeenCalledWith(issueItem, 'close');
     resolveAddComment?.();
     await commitPromise;
-    expect(operations.closeIssue).toHaveBeenCalledWith(issueItem, 'close');
+    expect(operations.closeIssue).toHaveBeenCalledWith(
+      issueItem,
+      'close',
+      expect.any(String),
+    );
   });
 
   it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
@@ -3538,6 +3561,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     expect(operations.addComment).toHaveBeenCalledWith(
       issueItem,
       'Reviewed on the train.',
+      expect.any(String),
     );
     expect(onQueueAction).not.toHaveBeenCalled();
   });
@@ -3662,20 +3686,34 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   const commentOfflinePayloadFor = (
     item: ConsoleListItem,
     body: string,
+    includeActionId = false,
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: COMMENT_OPERATION_PATH,
-    requestBody: { pjcode: 'acme', url: item.url, body },
+    requestBody: includeActionId
+      ? expect.objectContaining({
+          pjcode: 'acme',
+          url: item.url,
+          body,
+          actionId: expect.any(String),
+        })
+      : { pjcode: 'acme', url: item.url, body },
   });
 
   const triageOfflinePayloadFor = (
     item: ConsoleListItem,
     action: 'close' | 'set_status',
     extra?: { statusName: string; commentBody?: string },
+    includeActionId = false,
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
-    requestBody: buildTriageRequest('acme', item, action, extra),
+    requestBody: includeActionId
+      ? expect.objectContaining({
+          ...buildTriageRequest('acme', item, action, extra),
+          actionId: expect.any(String),
+        })
+      : buildTriageRequest('acme', item, action, extra),
   });
 
   const commentBodyWrittenOffline = 'Checked during the flight.';
@@ -3687,23 +3725,27 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
       ],
     },
     {
       condition: 'the comment request fails because the network is unavailable',
       isAirplaneModeOn: false,
       addCommentResult: 'network failure' as const,
-      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedAddCommentCalls: [
+        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+      ],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline)],
+        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
       ],
     },
     {
       condition: 'airplane mode is off and the network is available',
       isAirplaneModeOn: false,
       addCommentResult: 'posted' as const,
-      expectedAddCommentCalls: [[issueItem, commentBodyWrittenOffline]],
+      expectedAddCommentCalls: [
+        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+      ],
       expectedHeldPayloadsPerCall: [],
     },
   ])(
@@ -3790,8 +3832,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'OK & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, 'ok'),
-        triageOfflinePayloadFor(issueItem, 'close'),
+        commentOfflinePayloadFor(issueItem, 'ok', true),
+        triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },
     {
@@ -3806,8 +3848,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing),
-        triageOfflinePayloadFor(issueItem, 'close'),
+        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing, true),
+        triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },
     {
@@ -3878,10 +3920,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       await expect(commit()).resolves.toBeUndefined();
 
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -3942,10 +3984,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         closeFailure,
       );
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -3970,9 +4012,11 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       const addCommentMock = operations.addComment as jest.Mock;
       const closeIssueMock = operations.closeIssue as jest.Mock;
       expect(addCommentMock.mock.calls).toEqual([
-        [issueItem, expectedCommentBody],
+        [issueItem, expectedCommentBody, expect.any(String)],
       ]);
-      expect(closeIssueMock.mock.calls).toEqual([[issueItem, 'close']]);
+      expect(closeIssueMock.mock.calls).toEqual([
+        [issueItem, 'close', expect.any(String)],
+      ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
         closeIssueMock.mock.invocationCallOrder[0],
       );
@@ -3992,7 +4036,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -4029,7 +4073,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       );
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close'],
+        [issueItem, 'close', expect.any(String)],
       ]);
     },
   );
@@ -4056,6 +4100,270 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     expect(addCommentAndMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
     expect(onCommentError).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      name: 'standalone composer comment add-comment submit',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'Persisted action comment.' },
+        });
+        fireEvent.click(view.getByText('Comment'));
+      },
+    },
+    {
+      name: 'set story',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: consoleStoryOptionsFixture,
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByTitle('Change agent or story'));
+        fireEvent.change(view.getByRole('combobox', { name: 'Set story' }), {
+          target: { value: consoleStoryOptionsFixture[0].id },
+        });
+      },
+    },
+    {
+      name: 'set agent',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: consoleAgentOptionsFixture,
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByTitle('Change agent or story'));
+        fireEvent.change(view.getByRole('combobox', { name: 'Set agent' }), {
+          target: { value: consoleAgentOptionsFixture[0].id },
+        });
+      },
+    },
+    {
+      name: 'set next action date',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('+1d'));
+      },
+    },
+    {
+      name: 'set next action date from the +3h snooze button',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('+3h'));
+      },
+    },
+    {
+      name: 'set in-tmux-by-human',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('In Tmux by human'));
+      },
+    },
+    {
+      name: 'plain close',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('Close', { exact: true }));
+      },
+    },
+    {
+      name: 'close not planned',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('Close as not planned'));
+      },
+    },
+    {
+      name: 'review approve and merge',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Approve & Merge');
+        fireEvent.click(view.getByText('Approve & Merge'));
+      },
+    },
+    {
+      name: 'review mark unnecessary',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Unnecessary');
+        fireEvent.click(view.getByText('Unnecessary'));
+      },
+    },
+    {
+      name: 'review mark totally wrong',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        await view.findByText('Totally wrong');
+        fireEvent.click(view.getByText('Totally wrong'));
+      },
+    },
+    {
+      name: 'review request changes',
+      tab: 'prs' as const,
+      item: prItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: async (view: ReturnType<typeof render>) => {
+        const fileRow = await view.findByRole('button', {
+          name: new RegExp(
+            consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
+          ),
+        });
+        fireEvent.click(fileRow);
+        fireEvent.click(
+          view.getAllByRole('button', { name: /^Comment on line/ })[0],
+        );
+        fireEvent.change(
+          view.getByPlaceholderText('Leave a review comment on this line…'),
+          { target: { value: 'Please address this.' } },
+        );
+        fireEvent.click(
+          view.container.querySelector(
+            '.console-diff-composer-submit',
+          ) as Element,
+        );
+        await waitFor(() =>
+          expect(view.getByText('Reject')).not.toBeDisabled(),
+        );
+        fireEvent.click(view.getByText('Reject'));
+      },
+    },
+    {
+      name: 'delete all comments',
+      tab: 'todo-by-human' as const,
+      item: issueItem,
+      storyOptions: [],
+      agentOptions: [],
+      perform: (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('⚠'));
+        fireEvent.click(view.getByText('Delete All Comments'));
+      },
+    },
+  ])(
+    'requires the live request to carry the persisted actionId for $name',
+    async ({ name: _name, tab, item, storyOptions, agentOptions, perform }) => {
+      jest.useFakeTimers();
+      localStorage.clear();
+      const originalFetch = global.fetch;
+      let descriptorAtFetch: string | null = null;
+      const fetchMock = jest.fn(async () => {
+        descriptorAtFetch = localStorage.getItem(
+          CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        );
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            comment: {
+              id: 91,
+              author: 'HiromiShikata',
+              body: 'Persisted action comment.',
+              createdAt: '2026-06-19T12:00:00.000Z',
+            },
+          }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const QueueHarness = () => {
+        const actionQueue = useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+        });
+        const operations = useConsoleOperations('acme');
+        return (
+          <ConsoleItemDetailContainer
+            tab={tab}
+            item={item}
+            caches={buildCaches({
+              prFiles: tab === 'prs' ? consoleChangedFilesFixture : [],
+            })}
+            operations={operations}
+            statusOptions={consoleStatusOptionsFixture}
+            storyOptions={storyOptions}
+            agentOptions={agentOptions}
+            storyColors={consoleStoryColorsFixture}
+            storyName="TDPM Console port"
+            overlayStatus={null}
+            now={Date.parse('2026-06-19T12:00:00.000Z')}
+            onQueueAction={(input) => {
+              actionQueue.enqueue({
+                message: 'test action',
+                color: 'blue',
+                commit: input.commit,
+                commitWithActionId: input.commitWithActionId,
+                offline: input.offline,
+                advance: () => {},
+              });
+            }}
+            isAirplaneModeOn={false}
+            onOfflineActionsCreate={actionQueue.offlineActionsCreate}
+            pjcode="acme"
+          />
+        );
+      };
+      try {
+        const view = render(<QueueHarness />);
+        await perform(view);
+        await waitFor(() => {
+          expect(
+            JSON.parse(
+              localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ??
+                'null',
+            ),
+          ).not.toHaveLength(0);
+        });
+        await act(async () => {
+          jest.advanceTimersByTime(5000);
+          await Promise.resolve();
+        });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const descriptor = JSON.parse(descriptorAtFetch ?? 'null')[0] as {
+          requestBody: { actionId?: unknown };
+        };
+        const firstRequest = fetchMock.mock.calls[0] as unknown as [
+          string,
+          RequestInit,
+        ];
+        const requestBody = JSON.parse(firstRequest[1].body as string) as {
+          actionId?: unknown;
+        };
+        expect(typeof descriptor.requestBody.actionId).toBe('string');
+        expect(descriptor.requestBody.actionId).toBe(requestBody.actionId);
+      } finally {
+        global.fetch = originalFetch;
+        jest.useRealTimers();
+        localStorage.clear();
+      }
+    },
+  );
 });
 
 describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaiting Workspace status', () => {

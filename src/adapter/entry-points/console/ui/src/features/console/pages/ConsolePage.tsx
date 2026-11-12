@@ -30,7 +30,10 @@ import {
   parseTabFromPath,
   useConsoleNavigation,
 } from '../hooks/useConsoleNavigation';
-import { useConsoleOperations } from '../hooks/useConsoleOperations';
+import {
+  generateActionId,
+  useConsoleOperations,
+} from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
@@ -1579,7 +1582,7 @@ export const ConsolePage = () => {
         item,
         { agent: option.name, agentOptionId: option.id },
         { agent: item.agent, agentOptionId: item.agentOptionId ?? null },
-        () => operations.setAgent(item, option),
+        () => operations.setAgent(item, option, generateActionId()),
       ),
     [applyStoryTaskChange, operations],
   );
@@ -1617,7 +1620,12 @@ export const ConsolePage = () => {
             nextActionDate === '' ? null : `${nextActionDate}T00:00:00.000Z`,
         },
         { nextActionDate: item.nextActionDate },
-        () => operations.setNextActionDateValue(item, nextActionDate),
+        () =>
+          operations.setNextActionDateValue(
+            item,
+            nextActionDate,
+            generateActionId(),
+          ),
       ),
     [applyStoryTaskChange, operations],
   );
@@ -1628,7 +1636,12 @@ export const ConsolePage = () => {
         item,
         { nextActionHour },
         { nextActionHour: item.nextActionHour },
-        () => operations.setNextActionHourValue(item, nextActionHour),
+        () =>
+          operations.setNextActionHourValue(
+            item,
+            nextActionHour,
+            generateActionId(),
+          ),
       ),
     [applyStoryTaskChange, operations],
   );
