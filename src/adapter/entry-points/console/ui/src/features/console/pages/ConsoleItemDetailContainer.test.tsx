@@ -4152,7 +4152,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       },
     },
     {
-      name: 'set next action hour',
+      name: 'set next action date from the +3h snooze button',
       tab: 'todo-by-human' as const,
       item: issueItem,
       storyOptions: [],

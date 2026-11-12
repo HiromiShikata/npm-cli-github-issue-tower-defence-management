@@ -1418,6 +1418,63 @@ describe('useConsoleOperations returned object referential stability', () => {
 });
 
 describe('useConsoleOperations action identifiers', () => {
+  it.each([
+    {
+      name: 'set agent',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setAgent(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'set next action date value',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionDateValue(issueItem, '2026-06-20'),
+    },
+    {
+      name: 'set next action hour value',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionHourValue(issueItem, 10),
+    },
+    {
+      name: 'set next action date',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setNextActionDate(issueItem, 'snooze_3hours'),
+    },
+    {
+      name: 'set story',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setStory(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'set in tmux by human',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.setInTmuxByHuman(issueItem, consoleStatusOptionsFixture[0]),
+    },
+    {
+      name: 'close issue',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.closeIssue(issueItem, 'close'),
+    },
+    {
+      name: 'close issue as not planned',
+      invoke: (operations: ConsoleOperationsApi) =>
+        operations.closeIssue(issueItem, 'close_not_planned'),
+    },
+  ])(
+    'posts a non-empty action identifier when the caller omits it for $name',
+    async ({ invoke }) => {
+      const fetchMock = captureFetch();
+      const { result } = setup();
+
+      await act(async () => {
+        await invoke(result.current.operations);
+      });
+
+      const actionId = lastBody(fetchMock).actionId;
+      expect(typeof actionId).toBe('string');
+      expect(actionId).not.toBe('');
+    },
+  );
+
   it('posts addComment with the supplied action identifier', async () => {
     const fetchMock = captureFetch();
     fetchMock.mockResolvedValue({

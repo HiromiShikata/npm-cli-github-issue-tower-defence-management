@@ -11634,6 +11634,41 @@ describe('ConsolePage operation bar status buttons', () => {
     );
   });
 
+  it('requires the live request to carry the persisted actionId for set next action hour', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    installFetchWithActiveTabPayload('stories', {
+      ...listPayload('stories'),
+      statusOptions: statusOptionsNamed(allStatusButtonNames),
+      stories: [
+        {
+          storyName: 'TDPM Console port',
+          storyOptionId: 'st1',
+          color: 'BLUE',
+          description: '',
+          openItemCount: 1,
+          storyViewUrl: null,
+          items: [taskItem(todoByHumanName)],
+        },
+      ],
+    });
+
+    const { findByRole, findByLabelText } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('button', { name: 'Show tasks' }));
+    fireEvent.change(await findByLabelText('Set next action hour'), {
+      target: { value: '10' },
+    });
+
+    await waitFor(() =>
+      expect(postedBodyOf('/api/triage')).toMatchObject({
+        action: 'set_next_action_hour',
+        actionId: expect.any(String),
+      }),
+    );
+    const actionId = postedBodyOf('/api/triage')?.actionId;
+    expect(typeof actionId).toBe('string');
+    expect(actionId).not.toBe('');
+  });
+
   it('renders the In Tmux by human, Todo by human and Awaiting Workspace buttons in the operation bar of a non-closed task opened from a story of the stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     installFetchWithActiveTabPayload('stories', {
