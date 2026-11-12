@@ -32,6 +32,16 @@ test.describe('console action replay', () => {
       responseFetched = resolve;
     });
     let held = false;
+    let triagePostCount = 0;
+
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        new URL(request.url()).pathname.includes('/api/triage')
+      ) {
+        triagePostCount += 1;
+      }
+    });
 
     await page.route('**/api/triage*', async (route) => {
       const response = await route.fetch();
@@ -49,19 +59,10 @@ test.describe('console action replay', () => {
     await page.getByRole('button', { name: 'OK & Close', exact: true }).click();
 
     await responseIsFetched;
-    await expect
-      .poll(
-        () =>
-          harness.commentCalls.filter(
-            (call) => call.url === issueUrl && call.body === 'ok',
-          ).length,
-      )
-      .toBe(1);
-    await expect.poll(() => harness.closeIssueCalls.length).toBe(1);
-
     await page.reload();
     releaseResponse();
 
+    await expect.poll(() => triagePostCount).toBeGreaterThanOrEqual(2);
     await expect
       .poll(
         () =>
