@@ -1,3 +1,10 @@
+## [2.195.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.6...v2.195.7) (2026-11-12)
+
+
+### Bug Fixes
+
+* **console:** execute each console operation at most once per actionId ([#3722](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3722)) ([6219421](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/62194216c0b9cdcb7d4dfcc016ee6030571b02ae))
+
 ## [2.195.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.5...v2.195.6) (2026-11-12)
 
 
