@@ -34,6 +34,12 @@ import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRep
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
+import {
+  type ConsoleActionRecord,
+  ACTION_RESULT_LIMIT,
+  readConsoleActionRecords,
+  writeConsoleActionRecord,
+} from './consoleActionResultStore';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -80,6 +86,8 @@ export type ConsoleOperationContext = {
   resolveWorkflowProjectBinding:
     (() => Promise<ConsoleProjectBinding | null>) | null;
   workflowRepositoryNameWithOwner: string | null;
+  priorAttempt?: ConsoleActionRecord | null;
+  actionOnceClaimed?: boolean;
 };
 
 export type ConsoleOperationResponse = {
@@ -93,34 +101,11 @@ const ok = (): ConsoleOperationResponse => ({
   body: { ok: true },
 });
 
-const actionResults = new Map<string, Record<string, unknown>>();
+const inMemoryActionRecords = new Map<string, ConsoleActionRecord>();
 const pendingActionResults = new Map<
   string,
-  Promise<ConsoleOperationResponse>
+  Promise<{ statusCode: number; body: unknown }>
 >();
-const ACTION_RESULT_LIMIT = 1000;
-
-const storedActionResult = (
-  actionId: unknown,
-): ConsoleOperationResponse | null => {
-  if (!isNonEmptyString(actionId)) return null;
-  const body = actionResults.get(actionId);
-  return body === undefined
-    ? null
-    : { statusCode: 200, body: { ...body, duplicate: true } };
-};
-
-const rememberActionResult = (
-  actionId: unknown,
-  body: Record<string, unknown>,
-): void => {
-  if (!isNonEmptyString(actionId)) return;
-  if (actionResults.size >= ACTION_RESULT_LIMIT) {
-    const first = actionResults.keys().next().value;
-    if (typeof first === 'string') actionResults.delete(first);
-  }
-  actionResults.set(actionId, body);
-};
 
 const badRequest = (message: string): ConsoleOperationResponse => ({
   statusCode: 400,
@@ -134,6 +119,9 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const isStaleNodeIdError = (error: unknown): boolean =>
   error instanceof Error &&
@@ -704,12 +692,7 @@ const handleTriageImpl = async (
   const { project, pjcode } = binding;
 
   if (action === 'set_status') {
-    const previousResult = isNonEmptyString(body.actionId)
-      ? actionResults.get(body.actionId)
-      : undefined;
-    if (previousResult?.statusSet === true) {
-      return { statusCode: 200, body: { ...previousResult, duplicate: true } };
-    }
+    const previousResult = context.priorAttempt?.body;
     const statusName = body.statusName;
     if (!isNonEmptyString(statusName))
       return badRequest('statusName is required for set_status');
@@ -771,7 +754,6 @@ const handleTriageImpl = async (
         commentPosted,
         statusSet: false,
       };
-      if (commentPosted) rememberActionResult(body.actionId, resultBody);
       return { ...failure, body: resultBody };
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
@@ -801,7 +783,6 @@ const handleTriageImpl = async (
             statusSet: true,
             error: commentFailure,
           };
-    rememberActionResult(body.actionId, resultBody);
     return {
       statusCode: 200,
       body:
@@ -1095,8 +1076,6 @@ const handleCommentImpl = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  const duplicate = storedActionResult(body.actionId);
-  if (duplicate !== null) return duplicate;
   const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
   if (pjcode === null) {
     console.warn('[handleComment] pjcode absent in request body', { url });
@@ -1114,7 +1093,6 @@ const handleCommentImpl = async (
         createdAt: posted.createdAt.toISOString(),
       },
     };
-    rememberActionResult(body.actionId, resultBody);
     return { statusCode: 200, body: resultBody };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1150,18 +1128,72 @@ const duplicateResponse = (
   return { ...response, body: { ...body, duplicate: true } };
 };
 
-const runWithPendingAction = async (
+export const runConsoleOperationOnce = async (
+  context: ConsoleOperationContext,
   actionId: unknown,
-  operation: () => Promise<ConsoleOperationResponse>,
-): Promise<ConsoleOperationResponse> => {
-  if (!isNonEmptyString(actionId)) return operation();
+  operation: (
+    attemptContext: ConsoleOperationContext,
+  ) => Promise<{ statusCode: number; body: unknown }> | null,
+): Promise<{ statusCode: number; body: unknown } | null> => {
+  if (!isNonEmptyString(actionId) || context.actionOnceClaimed === true) {
+    return operation(context);
+  }
+  const records =
+    context.consoleDataOutputDir === null
+      ? null
+      : readConsoleActionRecords(context.consoleDataOutputDir, Date.now());
+  const stored =
+    context.consoleDataOutputDir === null
+      ? (inMemoryActionRecords.get(actionId) ?? null)
+      : (records?.[actionId] ?? null);
+  if (
+    stored !== null &&
+    stored.statusCode >= 200 &&
+    stored.statusCode < 300 &&
+    stored.body.ok !== false
+  ) {
+    return {
+      statusCode: stored.statusCode,
+      body: { ...stored.body, duplicate: true },
+    };
+  }
   const pending = pendingActionResults.get(actionId);
   if (pending !== undefined) return duplicateResponse(await pending);
   if (pendingActionResults.size >= ACTION_RESULT_LIMIT) {
     const first = pendingActionResults.keys().next().value;
     if (typeof first === 'string') pendingActionResults.delete(first);
   }
-  const promise = operation();
+  const operationResult = operation({
+    ...context,
+    priorAttempt: stored,
+    actionOnceClaimed: true,
+  });
+  if (operationResult === null) return null;
+  const promise = Promise.resolve(operationResult).then((response) => {
+    const body = isRecord(response.body) ? response.body : {};
+    const done =
+      response.statusCode >= 200 &&
+      response.statusCode < 300 &&
+      body.ok !== false;
+    if (done || body.commentPosted === true) {
+      const record = {
+        recordedAtMs: Date.now(),
+        statusCode: response.statusCode,
+        body,
+      };
+      if (context.consoleDataOutputDir === null) {
+        inMemoryActionRecords.set(actionId, record);
+      } else {
+        writeConsoleActionRecord(
+          context.consoleDataOutputDir,
+          actionId,
+          record,
+          Date.now(),
+        );
+      }
+    }
+    return response;
+  });
   pendingActionResults.set(actionId, promise);
   try {
     return await promise;
@@ -1172,19 +1204,32 @@ const runWithPendingAction = async (
   }
 };
 
+const requireOperationResponse = (
+  response: ConsoleOperationResponse | null,
+): ConsoleOperationResponse => {
+  if (response === null) throw new Error('operation returned no response');
+  return response;
+};
+
 export const handleTriage = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> =>
-  body.action === 'set_status'
-    ? runWithPendingAction(body.actionId, () => handleTriageImpl(context, body))
-    : handleTriageImpl(context, body);
+  requireOperationResponse(
+    await runConsoleOperationOnce(context, body.actionId, (attemptContext) =>
+      handleTriageImpl(attemptContext, body),
+    ),
+  );
 
 export const handleComment = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> =>
-  runWithPendingAction(body.actionId, () => handleCommentImpl(context, body));
+  requireOperationResponse(
+    await runConsoleOperationOnce(context, body.actionId, (attemptContext) =>
+      handleCommentImpl(attemptContext, body),
+    ),
+  );
 
 export const handleAttachmentUpload = async (
   context: ConsoleOperationContext,
