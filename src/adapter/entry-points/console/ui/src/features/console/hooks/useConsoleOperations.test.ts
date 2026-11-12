@@ -1528,7 +1528,7 @@ describe('useConsoleOperations action identifiers', () => {
     expect(lastBody(fetchMock)).toMatchObject({ actionId: 'action-456' });
   });
 
-  it('posts closeIssue without an action identifier when none is supplied', async () => {
+  it('posts closeIssue with a generated action identifier when none is supplied', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();
 
@@ -1536,6 +1536,6 @@ describe('useConsoleOperations action identifiers', () => {
       await result.current.operations.closeIssue(issueItem, 'close');
     });
 
-    expect(lastBody(fetchMock)).not.toHaveProperty('actionId');
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: expect.any(String) });
   });
 });
