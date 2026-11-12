@@ -2,6 +2,7 @@ import { Issue } from '../../entities/Issue';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -62,12 +63,17 @@ export class GenerateDashboardRowUseCase {
       issues.filter((issue) => mine(issue) && issue.status === statusName)
         .length;
 
+    const isOpenNotDoneWithoutDependencyOrSchedule = (issue: Issue): boolean =>
+      issue.isClosed === false &&
+      issue.status !== DONE_STATUS_NAME &&
+      issue.dependedIssueUrls.length === 0 &&
+      issue.nextActionDate === null &&
+      issue.nextActionHour === null;
+
     const countHumanPendingByStoryColor = (color: string): number =>
       issues.filter(
         (issue) =>
-          issue.isClosed === false &&
-          (issue.status === AWAITING_OWNER_STATUS_NAME ||
-            issue.status === TODO_STATUS_NAME) &&
+          isOpenNotDoneWithoutDependencyOrSchedule(issue) &&
           issue.storyOptionId != null &&
           storyColorMap.get(issue.storyOptionId) === color,
       ).length;
