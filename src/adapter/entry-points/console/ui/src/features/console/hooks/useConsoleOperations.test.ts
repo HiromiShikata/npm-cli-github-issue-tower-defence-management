@@ -1416,3 +1416,69 @@ describe('useConsoleOperations returned object referential stability', () => {
     expect(codeElementAfterSecondRender).toBe(codeElementAfterFirstRender);
   });
 });
+
+describe('useConsoleOperations action identifiers', () => {
+  it('posts addComment with the supplied action identifier', async () => {
+    const fetchMock = captureFetch();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, comment: { id: 1 } }),
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.addComment(
+        issueItem,
+        'comment body',
+        'action-123',
+      );
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/comment');
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: 'action-123' });
+  });
+
+  it('posts addComment without an action identifier when none is supplied', async () => {
+    const fetchMock = captureFetch();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, comment: { id: 1 } }),
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.addComment(issueItem, 'comment body');
+    });
+
+    expect(lastBody(fetchMock)).not.toHaveProperty('actionId');
+  });
+
+  it('posts closeIssue with the supplied action identifier', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.closeIssue(
+        issueItem,
+        'close',
+        'action-456',
+      );
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/triage');
+    expect(lastBody(fetchMock)).toMatchObject({ actionId: 'action-456' });
+  });
+
+  it('posts closeIssue without an action identifier when none is supplied', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.closeIssue(issueItem, 'close');
+    });
+
+    expect(lastBody(fetchMock)).not.toHaveProperty('actionId');
+  });
+});
