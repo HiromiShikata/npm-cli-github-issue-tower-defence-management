@@ -1,3 +1,10 @@
+## [2.195.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.7...v2.195.8) (2026-11-12)
+
+
+### Bug Fixes
+
+* **dashboard:** count red and yellow issues the same way as the Story tab ([#3723](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3723)) ([69bac26](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/69bac268f2969d8a4bf3a5c1d701df14af296d08))
+
 ## [2.195.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.6...v2.195.7) (2026-11-12)
 
 
