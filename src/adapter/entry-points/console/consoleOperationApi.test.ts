@@ -876,6 +876,155 @@ describe('consoleOperationApi', () => {
       });
       jest.useRealTimers();
     });
+
+    it('approve_and_merge rejects with the Status-changed 400 before any pull request write when the live Status differs from expectedStatusName', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_merge',
+        status: 'Todo',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(errorMessageOf(response.body)).toContain(
+        'Status changed since this action was queued',
+      );
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge returns the required-checks 400 before the stale-Status rejection when the live Status differs and a required check is not green', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_ci',
+        status: 'Todo',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: ['test'],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_ci',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Cannot merge: required checks are not green: test',
+      });
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge returns the Status-changed 400 and posts only the conflict comment when the live Status differs and the pull request is conflicted', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_conflict',
+        status: 'Todo',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_conflict',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(errorMessageOf(response.body)).toContain(
+        'Status changed since this action was queued',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge merges and then moves the item to Awaiting workspace when the live Status equals expectedStatusName', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_match_merge',
+        status: 'Preparation',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_match_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_match_merge' }),
+        'status_aw',
+      );
+    });
+
+    it('approve_and_merge returns the bad-gateway response without approving or merging when the live issue cannot be loaded for the Status check', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_unloadable_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        { bypassCache: true },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: {
+          error: 'issue "https://github.com/o/r/pull/1" could not be loaded',
+        },
+      });
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleTriage close contract', () => {
@@ -8977,17 +9126,17 @@ describe('consoleOperationApi', () => {
     });
 
     it('resolves github token using the project organization owner', async () => {
-      const metaSiteProject: Project = {
+      const exampleOrgProject: Project = {
         ...mock<Project>(),
         id: 'PVT_meta',
-        url: 'https://github.com/orgs/meta-site/projects/1',
+        url: 'https://github.com/orgs/example-org/projects/1',
         status: project.status,
         story: project.story,
       };
       const metaContext: ConsoleOperationContext = {
         resolveIssueRepository: () => issueRepository,
         resolveProject: async (pjcode: string) =>
-          pjcode === 'acme' ? { pjcode, project: metaSiteProject } : null,
+          pjcode === 'acme' ? { pjcode, project: exampleOrgProject } : null,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
@@ -8999,7 +9148,7 @@ describe('consoleOperationApi', () => {
         workflowRepositoryNameWithOwner: null,
       };
       const tokenResolver = jest.fn((owner: string) =>
-        owner === 'meta-site' ? 'meta-site-token' : 'other-token',
+        owner === 'example-org' ? 'example-org-token' : 'other-token',
       );
       const response = await handleProjectMaxPreparingUpdate(
         metaContext,
@@ -9007,15 +9156,15 @@ describe('consoleOperationApi', () => {
         { pjcode: 'acme', maximumPreparingIssuesCount: 2 },
       );
       expect(response.statusCode).toBe(200);
-      expect(tokenResolver).toHaveBeenCalledWith('meta-site');
+      expect(tokenResolver).toHaveBeenCalledWith('example-org');
       expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
-        metaSiteProject.url,
-        'meta-site-token',
+        exampleOrgProject.url,
+        'example-org-token',
       );
       expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
-        metaSiteProject.id,
+        exampleOrgProject.id,
         expect.stringContaining('maximumPreparingIssuesCount'),
-        'meta-site-token',
+        'example-org-token',
       );
     });
   });

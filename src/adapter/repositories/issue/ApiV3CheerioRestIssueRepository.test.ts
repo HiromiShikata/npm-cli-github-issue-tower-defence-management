@@ -18106,7 +18106,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.updateBranch(
-        'https://github.com/utage3/fc-happy/pull/1909',
+        'https://github.com/example-org/example-repo/pull/1909',
       );
 
       expect(result).toBe(true);
@@ -18122,7 +18122,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.updateBranch(
-        'https://github.com/utage3/fc-happy/pull/1909',
+        'https://github.com/example-org/example-repo/pull/1909',
       );
 
       expect(result).toBe(false);
@@ -18139,13 +18139,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.updateBranch(
-        'https://github.com/utage3/fc-happy/pull/1909',
+        'https://github.com/example-org/example-repo/pull/1909',
       );
 
       expect(result).toBe(false);
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          'transient error updating branch for PR https://github.com/utage3/fc-happy/pull/1909',
+          'transient error updating branch for PR https://github.com/example-org/example-repo/pull/1909',
         ),
       );
     });
@@ -18162,7 +18162,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = repository.updateBranch(
-        'https://github.com/utage3/fc-happy/pull/1909',
+        'https://github.com/example-org/example-repo/pull/1909',
       );
 
       await expect(result).rejects.toThrow(/Failed to update branch for PR/);
@@ -18183,7 +18183,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
 
       await expect(
-        repository.updateBranch('https://github.com/utage3/fc-happy/pull/1909'),
+        repository.updateBranch(
+          'https://github.com/example-org/example-repo/pull/1909',
+        ),
       ).rejects.toThrow(GitHubRateLimitError);
     });
   });
