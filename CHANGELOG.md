@@ -1,3 +1,10 @@
+## [2.195.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.9...v2.195.10) (2026-11-14)
+
+
+### Bug Fixes
+
+* **config:** restrict organization board agents to the local agent list ([#3727](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3727)) ([4019e5d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4019e5d644ba86211913fc8b96153c32d0a2a066))
+
 ## [2.195.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.8...v2.195.9) (2026-11-14)
 
 
