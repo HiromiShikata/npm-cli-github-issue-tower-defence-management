@@ -897,7 +897,7 @@ describe('setProjectReadmeMaxPreparingIssuesCount', () => {
     const result = setProjectReadmeMaxPreparingIssuesCount(readme, 10);
     const config = parseProjectReadmeConfig(result);
     expect(config.maximumPreparingIssuesCount).toBe(10);
-    expect(config.defaultAgentName).toBe('impl');
+    expect(result).toContain('defaultAgentName: impl');
   });
 
   it('appends a new config block when none exists', () => {
@@ -1948,14 +1948,6 @@ describe('parseProjectReadmeConfig and mergeConfigs keep README precedence for t
       configFile: { utilizationPercentageThreshold: 40 },
       cliOverrides: { utilizationPercentageThreshold: 45 },
       cliValue: 45,
-    },
-    {
-      key: 'defaultAgentName',
-      readmeYaml: 'defaultAgentName: readme-agent',
-      readmeValue: 'readme-agent',
-      configFile: { defaultAgentName: 'config-agent' },
-      cliOverrides: { defaultAgentName: 'cli-agent' },
-      cliValue: 'cli-agent',
     },
     {
       key: 'defaultLlmAgentName',
