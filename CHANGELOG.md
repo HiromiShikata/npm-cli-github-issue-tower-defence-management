@@ -1,3 +1,11 @@
+## [2.195.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.8...v2.195.9) (2026-11-14)
+
+
+### Bug Fixes
+
+* **console:** check Status before merge in approve_and_merge ([#3725](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3725)) ([49b18d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49b18d5356722bbbeaced22096b32f276500f1e8))
+* **security:** treat malformed cookies as absent, linear heading regex, scope release secrets, pin actions to SHA ([#3726](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3726)) ([e5bda3f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e5bda3ff83860bd70dff5705d4093bfd63d62b3b))
+
 ## [2.195.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.7...v2.195.8) (2026-11-12)
 
 
