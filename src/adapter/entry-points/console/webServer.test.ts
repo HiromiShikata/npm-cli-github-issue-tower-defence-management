@@ -3325,6 +3325,174 @@ describe('webServer token cookie redirect', () => {
   });
 });
 
+describe('webServer token cookie authentication', () => {
+  const testToken = 'cookie-auth-token+with/special=chars';
+  const dataRequestPath = '/projects/acme/prs/list.json';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const requestServer = (
+    server: http.Server,
+    requestPath: string,
+    headers: http.OutgoingHttpHeaders = {},
+  ): Promise<{ statusCode: number; body: string }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        { host: '127.0.0.1', port, path: requestPath, headers },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      httpRequest.end();
+    });
+  };
+
+  const startWithDataFixture = async (
+    consoleErrorReporter?: (
+      error: unknown,
+      requestPath: string,
+    ) => Promise<void>,
+  ): Promise<{ server: http.Server; tmpDir: string }> => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const listDir = path.join(dataDir, 'acme', 'prs');
+    fs.mkdirSync(listDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(listDir, 'list.json'),
+      JSON.stringify({ pjcode: 'acme', items: [] }),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      consoleErrorReporter,
+      port: 0,
+    });
+    return { server, tmpDir };
+  };
+
+  it('authenticates well-formed token cookies and rejects absent or wrong ones', async () => {
+    const cases = [
+      {
+        name: 'percent-encoded token value',
+        cookie: `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(testToken)}`,
+        expectedStatus: 200,
+      },
+      {
+        name: 'raw token value without percent-encoding',
+        cookie: `${CONSOLE_TOKEN_COOKIE}=${testToken}`,
+        expectedStatus: 200,
+      },
+      {
+        name: 'token cookie among other cookies',
+        cookie: `other=1; ${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(testToken)}; a=b`,
+        expectedStatus: 200,
+      },
+      {
+        name: 'well-formed but wrong token value',
+        cookie: `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent('wrong-token')}`,
+        expectedStatus: 401,
+      },
+      {
+        name: 'empty token cookie value',
+        cookie: `${CONSOLE_TOKEN_COOKIE}=`,
+        expectedStatus: 401,
+      },
+      {
+        name: 'no token cookie',
+        cookie: 'other=1',
+        expectedStatus: 401,
+      },
+    ];
+    const { server, tmpDir } = await startWithDataFixture();
+    try {
+      for (const testCase of cases) {
+        const response = await requestServer(server, dataRequestPath, {
+          Cookie: testCase.cookie,
+        });
+        expect({
+          name: testCase.name,
+          statusCode: response.statusCode,
+        }).toEqual({
+          name: testCase.name,
+          statusCode: testCase.expectedStatus,
+        });
+        if (testCase.expectedStatus === 200) {
+          expect(JSON.parse(response.body)).toEqual({
+            pjcode: 'acme',
+            items: [],
+          });
+        }
+      }
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('answers a malformed percent-encoded token cookie with the same 401 as a missing cookie without throwing or reporting an error', async () => {
+    const consoleErrorReporter = jest.fn(async () => {});
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const { server, tmpDir } = await startWithDataFixture(consoleErrorReporter);
+    try {
+      const missingCookie = await requestServer(server, dataRequestPath);
+      expect(missingCookie.statusCode).toBe(401);
+
+      const malformedCookies = [
+        `${CONSOLE_TOKEN_COOKIE}=%E0%A4%A`,
+        `${CONSOLE_TOKEN_COOKIE}=%`,
+        `${CONSOLE_TOKEN_COOKIE}=%ZZ`,
+      ];
+      for (const cookie of malformedCookies) {
+        const response = await requestServer(server, dataRequestPath, {
+          Cookie: cookie,
+        });
+        expect({ cookie, statusCode: response.statusCode }).toEqual({
+          cookie,
+          statusCode: missingCookie.statusCode,
+        });
+        expect({ cookie, body: response.body }).toEqual({
+          cookie,
+          body: missingCookie.body,
+        });
+      }
+      expect(consoleErrorReporter).not.toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 const toPlainValue = (document: { toJS: () => unknown }): unknown =>
   document.toJS();
 
