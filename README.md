@@ -341,9 +341,9 @@ workingReport:
     - string
     - string
 startPreparation?: # Optional: Enable automatic issue preparation workflow
-  defaultAgentName: string # Default agent name to assign for preparation
+  defaultAgentName: string # Default agent name to assign for preparation. Read from the local config file or CLI only; a value in the project README is ignored with a warning.
   configFilePath: string # Path to config file passed to the aw command
-  defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label and llmModelNameByAgentName)
+  defaultLlmModelName?: string | null # Optional: Default LLM model name (overridable via llm-model: label and llmModelNameByAgentName). Read from the local config file or CLI only; a value in the project README is ignored with a warning.
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues across all tokens. When null, the default is 6
   utilizationPercentageThreshold?: number # Optional: accepted for compatibility only (percentage, default 90); no longer excludes tokens from rotation; still written to the situation file
@@ -430,8 +430,8 @@ The config YAML for `startDaemon` and `notifyFinishedIssuePreparation` commands:
 ```yaml
 projectUrl: string # URL of the GitHub project
 projectName: string # Project name (used for cache directory path)
-defaultAgentName: string # Default agent name for issue preparation
-defaultLlmModelName?: string # Optional: Default LLM model name
+defaultAgentName: string # Default agent name for issue preparation. Read from the local config file or CLI only; a value in the project README is ignored with a warning.
+defaultLlmModelName?: string # Optional: Default LLM model name. Read from the local config file or CLI only; a value in the project README is ignored with a warning.
 defaultLlmAgentName?: string # Optional: Default LLM agent name
 maximumPreparingIssuesCount?: number # Optional: Max concurrent preparing issues across all tokens. Omitted defaults to 6
 utilizationPercentageThreshold?: number # Optional: accepted for compatibility only (percentage, default 90); no longer excludes tokens from rotation; still written to the situation file
@@ -522,6 +522,8 @@ The project README is editable by anyone who can edit the project, so the follow
 - `awLogDirectoryPath`
 - `agentDefinitionsDirectoryPath`
 - `consoleDataOutputDir`
+- `defaultAgentName`
+- `defaultLlmModelName`
 
 ### Claude OAuth Token Rotation
 

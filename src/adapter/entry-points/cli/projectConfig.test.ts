@@ -209,6 +209,63 @@ describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
   });
 });
 
+const returnedKeys = (result: object): string[] =>
+  Object.entries(result)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+
+describe('parseProjectReadmeConfig defaultAgentName', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('warns that defaultAgentName is unknown in the README and omits it from the parse result', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme('defaultAgentName: readme-agent\n');
+    const result = parseProjectReadmeConfig(
+      readme,
+      'https://example.com/project',
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Unknown key "defaultAgentName" in project README config section (project URL: https://example.com/project)',
+    );
+    expect(returnedKeys(result)).not.toContain('defaultAgentName');
+    warnSpy.mockRestore();
+  });
+
+  it('yields no defaultAgentName when the README does not set the key', () => {
+    const readme = makeReadme('developerAgentNames:\n  - my-developer\n');
+    expect(returnedKeys(parseProjectReadmeConfig(readme))).not.toContain(
+      'defaultAgentName',
+    );
+  });
+});
+
+describe('parseProjectReadmeConfig defaultLlmModelName', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('warns that defaultLlmModelName is unknown in the README and omits it from the parse result', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme('defaultLlmModelName: readme-model\n');
+    const result = parseProjectReadmeConfig(
+      readme,
+      'https://example.com/project',
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Unknown key "defaultLlmModelName" in project README config section (project URL: https://example.com/project)',
+    );
+    expect(returnedKeys(result)).not.toContain('defaultLlmModelName');
+    warnSpy.mockRestore();
+  });
+
+  it('yields no defaultLlmModelName when the README does not set the key', () => {
+    const readme = makeReadme('developerAgentNames:\n  - my-developer\n');
+    expect(returnedKeys(parseProjectReadmeConfig(readme))).not.toContain(
+      'defaultLlmModelName',
+    );
+  });
+});
+
 describe('loadConfigFile consoleGithubTokenFileDir', () => {
   let dir: string;
 
@@ -840,7 +897,7 @@ describe('setProjectReadmeMaxPreparingIssuesCount', () => {
     const result = setProjectReadmeMaxPreparingIssuesCount(readme, 10);
     const config = parseProjectReadmeConfig(result);
     expect(config.maximumPreparingIssuesCount).toBe(10);
-    expect(config.defaultAgentName).toBe('impl');
+    expect(result).toContain('defaultAgentName: impl');
   });
 
   it('appends a new config block when none exists', () => {
@@ -1891,14 +1948,6 @@ describe('parseProjectReadmeConfig and mergeConfigs keep README precedence for t
       configFile: { utilizationPercentageThreshold: 40 },
       cliOverrides: { utilizationPercentageThreshold: 45 },
       cliValue: 45,
-    },
-    {
-      key: 'defaultAgentName',
-      readmeYaml: 'defaultAgentName: readme-agent',
-      readmeValue: 'readme-agent',
-      configFile: { defaultAgentName: 'config-agent' },
-      cliOverrides: { defaultAgentName: 'cli-agent' },
-      cliValue: 'cli-agent',
     },
     {
       key: 'defaultLlmAgentName',

@@ -766,8 +766,8 @@ defaultLlmModelName: 'claude-opus-4-5'
 
       const result = parseProjectReadmeConfig(readme);
 
-      expect(result.defaultAgentName).toBe('readme-agent');
-      expect(result.defaultLlmModelName).toBe('claude-opus-4-5');
+      expect(Object.keys(result)).not.toContain('defaultAgentName');
+      expect(Object.keys(result)).not.toContain('defaultLlmModelName');
     });
 
     it('should return empty config when no details/summary section exists', () => {
@@ -822,12 +822,12 @@ thresholdForAutoReject: 5
     it('should be case-insensitive for the summary tag', () => {
       const readme = `<details>
 <SUMMARY>config</SUMMARY>
-defaultAgentName: 'case-test-agent'
+maximumPreparingIssuesCount: 4
 </details>`;
 
       const result = parseProjectReadmeConfig(readme);
 
-      expect(result.defaultAgentName).toBe('case-test-agent');
+      expect(result.maximumPreparingIssuesCount).toBe(4);
     });
 
     it('should not return codexHomeCandidates from README config and should warn that it is unknown', () => {
@@ -868,7 +868,6 @@ changeTargetPathAliases:
     it('should not warn when only known top-level keys are present', () => {
       const readme = `<details>
 <summary>config</summary>
-defaultAgentName: 'agent'
 maximumPreparingIssuesCount: 5
 </details>`;
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -878,7 +877,6 @@ maximumPreparingIssuesCount: 5
         'https://github.com/orgs/example/projects/1',
       );
 
-      expect(result.defaultAgentName).toBe('agent');
       expect(result.maximumPreparingIssuesCount).toBe(5);
       expect(consoleWarnSpy).not.toHaveBeenCalled();
 
@@ -912,7 +910,7 @@ unknownTwo: 42
     it('should warn only for unknown keys in a mixed config', () => {
       const readme = `<details>
 <summary>config</summary>
-defaultAgentName: 'agent'
+maximumPreparingIssuesCount: 5
 unexpectedKey: 'oops'
 </details>`;
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -922,7 +920,7 @@ unexpectedKey: 'oops'
         'https://github.com/orgs/example/projects/2',
       );
 
-      expect(result.defaultAgentName).toBe('agent');
+      expect(result.maximumPreparingIssuesCount).toBe(5);
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Unknown key "unexpectedKey" in project README config section (project URL: https://github.com/orgs/example/projects/2)',
@@ -1016,7 +1014,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       expect(result.defaultAgentName).toBe('cli-agent');
     });
 
-    it('should use README overrides over both CLI and configFile', () => {
+    it('should ignore README defaultAgentName and use CLI overrides over configFile', () => {
       const configFile = {
         projectUrl: 'https://github.com/config/project',
         defaultAgentName: 'config-agent',
@@ -1024,14 +1022,16 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       const cliOverrides = {
         defaultAgentName: 'cli-agent',
       };
-      const readmeOverrides = {
-        defaultAgentName: 'readme-agent',
-      };
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const readmeOverrides = parseProjectReadmeConfig(
+        `<details>\n<summary>config</summary>\ndefaultAgentName: readme-agent\n</details>`,
+      );
+      consoleWarnSpy.mockRestore();
 
       const result = mergeConfigs(configFile, cliOverrides, readmeOverrides);
 
       expect(result.projectUrl).toBe('https://github.com/config/project');
-      expect(result.defaultAgentName).toBe('readme-agent');
+      expect(result.defaultAgentName).toBe('cli-agent');
     });
 
     it('should preserve projectName from configFile', () => {
@@ -1666,7 +1666,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       ).rejects.toThrow('process.exit called');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+        'defaultAgentName is required. Provide via --defaultAgentName or config file.',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
@@ -1754,7 +1754,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       consoleLogSpy.mockRestore();
     });
 
-    it('should apply README config overrides', async () => {
+    it('should not apply README defaultAgentName and pass the config file value', async () => {
       const readmeContent = [
         '# Project',
         '<details>',
@@ -1786,7 +1786,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
 
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
-          defaultAgentName: 'readme-agent',
+          defaultAgentName: 'agent1',
         }),
       );
     });

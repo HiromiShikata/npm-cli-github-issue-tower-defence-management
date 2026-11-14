@@ -1,6 +1,10 @@
 import type { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import type { Issue } from '../entities/Issue';
-import type { FieldOption, Project } from '../entities/Project';
+import {
+  isOrganizationOwnedProjectUrl,
+  type FieldOption,
+  type Project,
+} from '../entities/Project';
 import { isValidModelId, modelRuntimeOf } from '../entities/ModelRuntime';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
@@ -1014,6 +1018,17 @@ export class StartPreparationUseCase {
           ? null
           : agentNameFromDesignation(staleness.liveIssue.agent ?? '')) ||
         params.defaultAgentName;
+      const agentsAllowedOnBoard = params.agents ?? [];
+      if (
+        isOrganizationOwnedProjectUrl(project.url) &&
+        agent !== params.defaultAgentName &&
+        !agentsAllowedOnBoard.includes(agent)
+      ) {
+        console.error(
+          `Not launching ${issue.url}: agent "${agent}" is neither in the agents list (${JSON.stringify(agentsAllowedOnBoard)}) nor the defaultAgentName "${params.defaultAgentName}" for the organization-owned board ${project.url}.`,
+        );
+        continue;
+      }
       const mappedModelName = mappedModelNameOf(agent);
 
       if (

@@ -484,7 +484,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       },
     };
 
-    it('should override startPreparation fields from README config', async () => {
+    it('should override startPreparation fields from README config, except defaultAgentName which stays local', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 maximumPreparingIssuesCount: 0
@@ -502,9 +502,38 @@ utilizationPercentageThreshold: 80
       expect(capturedRunInputs[0][0]).toMatchObject({
         startPreparation: {
           maximumPreparingIssuesCount: 0,
-          defaultAgentName: 'readme-agent',
+          defaultAgentName: 'yaml-agent',
           utilizationPercentageThreshold: 80,
         },
+      });
+    });
+
+    it('should use the local defaultAgentName and defaultLlmModelName when the README config sets them to other values', async () => {
+      const readmeContent = `<details>
+<summary>config</summary>
+defaultAgentName: readme-agent
+defaultLlmModelName: readme-model
+</details>`;
+      mockFetchReturningReadme(readmeContent);
+      jest.mocked(fs.readFileSync).mockReturnValue(
+        YAML.stringify({
+          ...validConfig,
+          startPreparation: {
+            defaultAgentName: 'local-agent',
+            defaultLlmModelName: 'local-model',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: 10,
+            utilizationPercentageThreshold: 90,
+          },
+        }),
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0].startPreparation).toMatchObject({
+        defaultAgentName: 'local-agent',
+        defaultLlmModelName: 'local-model',
       });
     });
 
@@ -908,7 +937,7 @@ claudeCodeOauthTokenListJsonPath: /readme/tokens.json
       );
     });
 
-    it('should log the effective values with readmeOverride source when the README config overrides them', async () => {
+    it('should log the README-overridable value with readmeOverride source and keep the local defaultLlmModelName and defaultAgentName', async () => {
       const readmeContent = `<details>
 <summary>config</summary>
 maximumPreparingIssuesCount: 3
@@ -936,10 +965,10 @@ defaultAgentName: readme-agent
         'Effective maximumPreparingIssuesCount: 3 (source: readmeOverride)',
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Effective defaultLlmModelName: readme-model (source: readmeOverride)',
+        'Effective defaultLlmModelName: yaml-model (source: configFile)',
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Effective defaultAgentName: readme-agent (source: readmeOverride)',
+        'Effective defaultAgentName: yaml-agent (source: configFile)',
       );
     });
 

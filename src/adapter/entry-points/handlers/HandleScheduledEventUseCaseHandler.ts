@@ -404,12 +404,8 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,
-            defaultAgentName:
-              readmeConfig.defaultAgentName ??
-              input.startPreparation.defaultAgentName,
-            defaultLlmModelName:
-              readmeConfig.defaultLlmModelName ??
-              input.startPreparation.defaultLlmModelName,
+            defaultAgentName: input.startPreparation.defaultAgentName,
+            defaultLlmModelName: input.startPreparation.defaultLlmModelName,
             defaultLlmAgentName:
               readmeConfig.defaultLlmAgentName ??
               input.startPreparation.defaultLlmAgentName,
@@ -460,14 +456,14 @@ export class HandleScheduledEventUseCaseHandler {
     console.log(
       `Effective defaultLlmModelName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultLlmModelName,
-        readmeConfig.defaultLlmModelName,
+        undefined,
         input.startPreparation?.defaultLlmModelName,
       )}`,
     );
     console.log(
       `Effective defaultAgentName: ${formatEffectiveConfig(
         mergedInput.startPreparation?.defaultAgentName,
-        readmeConfig.defaultAgentName,
+        undefined,
         input.startPreparation?.defaultAgentName,
       )}`,
     );

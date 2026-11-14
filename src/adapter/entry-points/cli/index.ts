@@ -582,7 +582,7 @@ program
     }
     if (!defaultAgentName) {
       console.error(
-        'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+        'defaultAgentName is required. Provide via --defaultAgentName or config file.',
       );
       process.exit(1);
     }

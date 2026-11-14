@@ -38,6 +38,10 @@ export const buildStoryListWithNew = (
   }
   return [existingStories[0], newEntry, ...existingStories.slice(1)];
 };
+
+export const isOrganizationOwnedProjectUrl = (projectUrl: string): boolean =>
+  /^https:\/\/github\.com\/orgs\/[^/]+\/projects\//.test(projectUrl);
+
 export type Project = {
   id: string;
   url: string;
