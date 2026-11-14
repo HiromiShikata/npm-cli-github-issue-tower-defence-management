@@ -231,11 +231,6 @@ describe('specificationSectionsDetect heading line performance', () => {
   const HEADING_TIME_BOUND_MS = 1000;
   const CHILD_KILL_TIMEOUT_MS = 4000;
 
-  // A synchronous regex cannot be interrupted by the Jest timeout, so the
-  // function runs in a child Node process that the parent kills after
-  // CHILD_KILL_TIMEOUT_MS. A catastrophic backtrack then fails the test
-  // instead of hanging the whole suite. The child imports the TypeScript
-  // source directly through Node's built-in type stripping.
   const childScript = `
     import { pathToFileURL } from 'node:url';
     const sourceModule = await import(pathToFileURL(process.argv[1]).href);

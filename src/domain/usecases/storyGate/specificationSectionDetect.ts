@@ -29,11 +29,6 @@ const isWhitespaceCharacter = (character: string): boolean =>
 const isLineTerminatorCharacter = (character: string): boolean =>
   LINE_TERMINATOR_CHARACTER_PATTERN.test(character);
 
-// Linear-time equivalent of matching /^##\s+(.+?)\s*#*\s*$/ on one line and
-// returning group 1, with the same results for every input. The leading
-// whitespace run is taken as long as possible, the captured text is the
-// shortest non-empty run that leaves only whitespace, '#' and whitespace up
-// to the end of the line, and it may not contain a line terminator.
 const levelTwoHeadingText = (line: string): string | null => {
   if (!line.startsWith('##')) {
     return null;
