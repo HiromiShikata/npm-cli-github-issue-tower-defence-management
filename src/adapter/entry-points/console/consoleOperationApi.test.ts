@@ -900,6 +900,84 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
+    it('approve_and_merge returns the required-checks 400 before the stale-Status rejection when the live Status differs and a required check is not green', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_ci',
+        status: 'Todo',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: ['test'],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_ci',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Cannot merge: required checks are not green: test',
+      });
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge returns the Status-changed 400 and posts only the conflict comment when the live Status differs and the pull request is conflicted', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_conflict',
+        status: 'Todo',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_conflict',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(errorMessageOf(response.body)).toContain(
+        'Status changed since this action was queued',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+      );
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
     it('approve_and_merge merges and then moves the item to Awaiting workspace when the live Status equals expectedStatusName', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
