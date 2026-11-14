@@ -213,6 +213,12 @@ const errorMessages = (spy: jest.SpyInstance): string[] =>
     callArguments.map((argument) => String(argument)).join(' '),
   );
 
+const rejectedAgentErrorMessage = (
+  rejectedAgentName: string,
+  agentsAllowedOnBoard: string[],
+): string =>
+  `Not launching ${REJECTED_ISSUE_URL}: agent "${rejectedAgentName}" is neither in the agents list (${JSON.stringify(agentsAllowedOnBoard)}) nor the defaultAgentName "${DEFAULT_AGENT_NAME}" for the organization-owned board ${ORGANIZATION_BOARD_URL}.`;
+
 describe('StartPreparationUseCase.run organization board agent allowlist', () => {
   let consoleLogSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
@@ -322,13 +328,12 @@ describe('StartPreparationUseCase.run organization board agent allowlist', () =>
           case: rejectedCase.name,
           launched: launchedAgentNameByIssueUrl(harness.localCommandRunner),
         }).toEqual({ case: rejectedCase.name, launched: new Map() });
-        expect(
-          errorMessages(consoleErrorSpy).some(
-            (message) =>
-              message.includes(REJECTED_ISSUE_URL) &&
-              message.includes(rejectedCase.issueAgent),
+        expect(errorMessages(consoleErrorSpy)).toContainEqual(
+          rejectedAgentErrorMessage(
+            rejectedCase.issueAgent,
+            rejectedCase.agents,
           ),
-        ).toBe(true);
+        );
       }
     });
 
@@ -355,13 +360,9 @@ describe('StartPreparationUseCase.run organization board agent allowlist', () =>
       expect(launchedAgentNameByIssueUrl(harness.localCommandRunner)).toEqual(
         new Map([[ACCEPTED_ISSUE_URL, LISTED_AGENT_NAME]]),
       );
-      expect(
-        errorMessages(consoleErrorSpy).some(
-          (message) =>
-            message.includes(REJECTED_ISSUE_URL) &&
-            message.includes(UNLISTED_AGENT_NAME),
-        ),
-      ).toBe(true);
+      expect(errorMessages(consoleErrorSpy)).toContainEqual(
+        rejectedAgentErrorMessage(UNLISTED_AGENT_NAME, [LISTED_AGENT_NAME]),
+      );
     });
   });
 
