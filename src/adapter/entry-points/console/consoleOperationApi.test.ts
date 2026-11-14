@@ -924,6 +924,29 @@ describe('consoleOperationApi', () => {
         'status_aw',
       );
     });
+
+    it('approve_and_merge returns the bad-gateway response without approving or merging when the live issue cannot be loaded for the Status check', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_unloadable_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        { bypassCache: true },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: {
+          error: 'issue "https://github.com/o/r/pull/1" could not be loaded',
+        },
+      });
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleTriage close contract', () => {
