@@ -876,6 +876,54 @@ describe('consoleOperationApi', () => {
       });
       jest.useRealTimers();
     });
+
+    it('approve_and_merge rejects with the Status-changed 400 before any pull request write when the live Status differs from expectedStatusName', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_stale_merge',
+        status: 'Todo',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_stale_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(errorMessageOf(response.body)).toContain(
+        'Status changed since this action was queued',
+      );
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge merges and then moves the item to Awaiting workspace when the live Status equals expectedStatusName', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_match_merge',
+        status: 'Preparation',
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_match_merge',
+        expectedStatusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ itemId: 'PVTI_match_merge' }),
+        'status_aw',
+      );
+    });
   });
 
   describe('handleTriage close contract', () => {
