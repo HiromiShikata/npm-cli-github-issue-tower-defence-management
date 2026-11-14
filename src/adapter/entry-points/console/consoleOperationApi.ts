@@ -567,15 +567,6 @@ export const handleReview = async (
         'Cannot merge: pull request not found or already closed',
       );
     }
-    const statusChangedFailure =
-      await rejectWhenStatusChangedBeforePullRequestWrite(
-        issueRepository,
-        prUrl,
-        expectedStatusAtActionTime,
-      );
-    if (statusChangedFailure !== null) {
-      return statusChangedFailure;
-    }
     const routeConflictToAwaitingWorkspace =
       async (): Promise<ConsoleOperationResponse> => {
         await issueRepository.createCommentByUrl(
@@ -603,6 +594,15 @@ export const handleReview = async (
       const missing = prStatus.missingRequiredCheckNames;
       const detail = missing.length > 0 ? `: ${missing.join(', ')}` : '';
       return badRequest(`Cannot merge: required checks are not green${detail}`);
+    }
+    const statusChangedFailure =
+      await rejectWhenStatusChangedBeforePullRequestWrite(
+        issueRepository,
+        prUrl,
+        expectedStatusAtActionTime,
+      );
+    if (statusChangedFailure !== null) {
+      return statusChangedFailure;
     }
     const prDetail = await issueRepository.getPullRequestDetail(prUrl);
     const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
