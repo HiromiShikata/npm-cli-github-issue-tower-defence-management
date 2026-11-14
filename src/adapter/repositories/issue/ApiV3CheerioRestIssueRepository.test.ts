@@ -18183,7 +18183,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
 
       await expect(
-        repository.updateBranch('https://github.com/example-org/example-repo/pull/1909'),
+        repository.updateBranch(
+          'https://github.com/example-org/example-repo/pull/1909',
+        ),
       ).rejects.toThrow(GitHubRateLimitError);
     });
   });
