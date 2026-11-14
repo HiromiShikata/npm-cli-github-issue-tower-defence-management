@@ -178,7 +178,11 @@ export const extractCookieToken = (
     if (value.length === 0) {
       return null;
     }
-    return decodeURIComponent(value);
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return null;
+    }
   }
   return null;
 };
