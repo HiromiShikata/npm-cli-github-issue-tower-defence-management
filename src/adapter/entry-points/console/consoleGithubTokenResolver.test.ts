@@ -157,14 +157,14 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(resolve('acme-labs')).toBe('fine-grained-token');
   });
 
-  it('should return the cmg token when the cmg project URL owner is example-org', () => {
+  it('should return the example-project token when the example-project project URL owner is example-org', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { cmg: 'https://github.com/orgs/example-org/projects/18' },
-      { cmg: 'cmg-token' },
+      { 'example-project': 'https://github.com/orgs/example-org/projects/18' },
+      { 'example-project': 'example-project-token' },
     );
 
-    expect(resolve('example-org')).toBe('cmg-token');
+    expect(resolve('example-org')).toBe('example-project-token');
   });
 
   it('should keep using the default token for owners that match no project url', () => {

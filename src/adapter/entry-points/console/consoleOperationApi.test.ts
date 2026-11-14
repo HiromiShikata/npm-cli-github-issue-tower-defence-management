@@ -8977,17 +8977,17 @@ describe('consoleOperationApi', () => {
     });
 
     it('resolves github token using the project organization owner', async () => {
-      const metaSiteProject: Project = {
+      const exampleOrgProject: Project = {
         ...mock<Project>(),
         id: 'PVT_meta',
-        url: 'https://github.com/orgs/meta-site/projects/1',
+        url: 'https://github.com/orgs/example-org/projects/1',
         status: project.status,
         story: project.story,
       };
       const metaContext: ConsoleOperationContext = {
         resolveIssueRepository: () => issueRepository,
         resolveProject: async (pjcode: string) =>
-          pjcode === 'acme' ? { pjcode, project: metaSiteProject } : null,
+          pjcode === 'acme' ? { pjcode, project: exampleOrgProject } : null,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
@@ -8999,7 +8999,7 @@ describe('consoleOperationApi', () => {
         workflowRepositoryNameWithOwner: null,
       };
       const tokenResolver = jest.fn((owner: string) =>
-        owner === 'meta-site' ? 'meta-site-token' : 'other-token',
+        owner === 'example-org' ? 'example-org-token' : 'other-token',
       );
       const response = await handleProjectMaxPreparingUpdate(
         metaContext,
@@ -9007,15 +9007,15 @@ describe('consoleOperationApi', () => {
         { pjcode: 'acme', maximumPreparingIssuesCount: 2 },
       );
       expect(response.statusCode).toBe(200);
-      expect(tokenResolver).toHaveBeenCalledWith('meta-site');
+      expect(tokenResolver).toHaveBeenCalledWith('example-org');
       expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
-        metaSiteProject.url,
-        'meta-site-token',
+        exampleOrgProject.url,
+        'example-org-token',
       );
       expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
-        metaSiteProject.id,
+        exampleOrgProject.id,
         expect.stringContaining('maximumPreparingIssuesCount'),
-        'meta-site-token',
+        'example-org-token',
       );
     });
   });

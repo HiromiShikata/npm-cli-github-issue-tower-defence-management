@@ -756,7 +756,7 @@ describe('GraphqlProjectItemRepository', () => {
               type: 'FORBIDDEN',
               path: ['node', 'items', 'nodes', 1, 'content'],
               message:
-                '`meta-site` forbids access via a personal access token (classic).',
+                '`example-org` forbids access via a personal access token (classic).',
             },
           ],
         }),
@@ -972,7 +972,7 @@ describe('GraphqlProjectItemRepository', () => {
             type: 'FORBIDDEN',
             path: ['node', 'items', 'nodes', forbiddenNodeIndex, 'content'],
             message:
-              '`meta-site` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
+              '`example-org` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
           },
         ],
       });
@@ -1116,7 +1116,7 @@ describe('GraphqlProjectItemRepository', () => {
             {
               type: 'FORBIDDEN',
               path: ['node', 'items', 'nodes', 1, 'content'],
-              message: '`meta-site` forbids access.',
+              message: '`example-org` forbids access.',
             },
             { message: 'Something else went wrong.' },
           ],
@@ -1216,7 +1216,7 @@ describe('GraphqlProjectItemRepository', () => {
                 0,
               ],
               message:
-                '`meta-site` forbids access via a personal access token (classic).',
+                '`example-org` forbids access via a personal access token (classic).',
             },
           ],
         }),
@@ -2052,7 +2052,7 @@ describe('GraphqlProjectItemRepository', () => {
               type: 'FORBIDDEN',
               path: ['node', 'items', 'nodes', 1, 'content'],
               message:
-                '`meta-site` forbids access via a personal access token (classic).',
+                '`example-org` forbids access via a personal access token (classic).',
             },
           ],
         }),
@@ -2099,7 +2099,7 @@ describe('GraphqlProjectItemRepository', () => {
             {
               type: 'FORBIDDEN',
               path: ['node', 'items', 'nodes', 1, 'content'],
-              message: '`meta-site` forbids access.',
+              message: '`example-org` forbids access.',
             },
             { message: 'Something else went wrong.' },
           ],
@@ -2366,7 +2366,7 @@ describe('GraphqlProjectItemRepository', () => {
                 0,
               ],
               message:
-                '`meta-site` forbids access via a personal access token (classic).',
+                '`example-org` forbids access via a personal access token (classic).',
             },
           ],
         }),
@@ -2426,7 +2426,7 @@ describe('GraphqlProjectItemRepository', () => {
               type: 'FORBIDDEN',
               path: ['nodes', 0, 'content'],
               message:
-                '`meta-site` forbids access via a personal access token (classic).',
+                '`example-org` forbids access via a personal access token (classic).',
             },
           ],
         }),
