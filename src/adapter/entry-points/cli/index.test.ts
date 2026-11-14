@@ -1666,7 +1666,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       ).rejects.toThrow('process.exit called');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+        'defaultAgentName is required. Provide via --defaultAgentName or config file.',
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
