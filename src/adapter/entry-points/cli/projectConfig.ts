@@ -44,6 +44,8 @@ export type ConfigFile = {
 };
 
 export type LocalOnlyConfigKey =
+  | 'defaultAgentName'
+  | 'defaultLlmModelName'
   | 'preparationProcessCheckCommand'
   | 'allowedIssueAuthors'
   | 'autoAssignManagerAuthors'
@@ -173,10 +175,8 @@ const getDisksValue = (
 };
 
 const knownProjectReadmeConfigKeys = [
-  'defaultAgentName',
   'developerAgentName',
   'developerAgentNames',
-  'defaultLlmModelName',
   'defaultLlmAgentName',
   'maximumPreparingIssuesCount',
   'utilizationPercentageThreshold',
@@ -354,9 +354,7 @@ export const parseProjectReadmeConfig = (
       }
     }
     return {
-      defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
       developerAgentNames: getDeveloperAgentNamesValue(parsed),
-      defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
       maximumPreparingIssuesCount: getNumberValue(
         parsed,
@@ -398,17 +396,13 @@ export const mergeConfigs = (
   projectUrl: cliOverrides.projectUrl ?? configFile.projectUrl,
   manager: cliOverrides.manager ?? configFile.manager,
   defaultAgentName:
-    readmeOverrides.defaultAgentName ??
-    cliOverrides.defaultAgentName ??
-    configFile.defaultAgentName,
+    cliOverrides.defaultAgentName ?? configFile.defaultAgentName,
   developerAgentNames:
     readmeOverrides.developerAgentNames ??
     cliOverrides.developerAgentNames ??
     configFile.developerAgentNames,
   defaultLlmModelName:
-    readmeOverrides.defaultLlmModelName ??
-    cliOverrides.defaultLlmModelName ??
-    configFile.defaultLlmModelName,
+    cliOverrides.defaultLlmModelName ?? configFile.defaultLlmModelName,
   defaultLlmAgentName:
     readmeOverrides.defaultLlmAgentName ??
     cliOverrides.defaultLlmAgentName ??
